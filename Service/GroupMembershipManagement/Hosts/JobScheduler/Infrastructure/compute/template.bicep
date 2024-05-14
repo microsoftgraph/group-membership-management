@@ -89,6 +89,9 @@ param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environ
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool = false
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
@@ -194,12 +197,30 @@ module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
   ]
 }
 
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-JobScheduler'
+  params: {
+    functionName: 'JobScheduler'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionAppTemplate_JobScheduler.outputs.msi
+    stagingSlotPrincipalId: functionAppSlotTemplate_JobScheduler.outputs.msi
+  }
+  dependsOn: [
+    functionAppTemplate_JobScheduler
+    functionAppSlotTemplate_JobScheduler
+  ]
+}
+
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-JobScheduler/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_JobScheduler
+    functionAppRBAC
   ]
 }
 
@@ -208,6 +229,7 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_JobScheduler
+    functionAppRBAC
+    functionAppSettings
   ]
 }

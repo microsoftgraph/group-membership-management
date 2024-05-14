@@ -1,15 +1,10 @@
 param prereqsKeyVaultName string
-param prereqsKeyVaultSkuName string
-param prereqsKeyVaultSkuFamily string
+param prereqsKeyVaultSkuName string = 'standard'
+param prereqsKeyVaultSkuFamily string = 'A'
 param location string
 param tenantId string
 
 //secrets
-param graphAppCertificateName string
-param graphAppClientId string
-@secure()
-param graphAppClientSecret string
-param graphAppTenantId string
 @secure()
 param senderPassword string
 param senderUsername string
@@ -20,11 +15,6 @@ param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
 param teamsChannelServiceAccountUsername string
-param sqlMembershipAppId string
-@secure()
-param sqlMembershipAppPasswordCredentialValue string
-param webapiClientId string
-param webApiTenantId string
 
 // prereqs resources
 module prereqsKeyVault '../Infrastructure/data/keyVault.bicep' = {
@@ -43,22 +33,6 @@ module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecrets.bicep' = {
   params: {
     keyVaultName: prereqsKeyVaultName
     keyVaultParameters: [
-      {
-        name: 'graphAppCertificateName'
-        value: graphAppCertificateName
-      }
-      {
-        name: 'graphAppClientId'
-        value: graphAppClientId
-      }
-      {
-        name: 'graphAppClientSecret'
-        value: graphAppClientSecret
-      }
-      {
-        name: 'graphAppTenantId'
-        value: graphAppTenantId
-      }
       {
         name: 'senderPassword'
         value: senderPassword
@@ -90,22 +64,6 @@ module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecrets.bicep' = {
       {
         name: 'teamsChannelServiceAccountUsername'
         value: teamsChannelServiceAccountUsername
-      }
-      {
-        name: 'sqlMembershipAppId'
-        value: sqlMembershipAppId
-      }
-      {
-        name: 'sqlMembershipAppPasswordCredentialValue'
-        value: sqlMembershipAppPasswordCredentialValue
-      }
-      {
-        name: 'webapiClientId'
-        value: webapiClientId
-      }
-      {
-        name: 'webApiTenantId'
-        value: webApiTenantId
       }
     ]
   }

@@ -51,6 +51,7 @@ var replicaConnectionString = 'Server=tcp:${replicaSqlServerName}${environment()
 var jobsMSIConnectionString = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433;${jobsSqlDataBaseName}Authentication=Active Directory Default;'
 var replicaJobsMSIConnectionString = 'Server=tcp:${replicaSqlServerName}${environment().suffixes.sqlServerHostname},1433;${replicaJobsSqlDataBaseName}Authentication=Active Directory Default;'
 
+// primary sql server resources
 resource sqlServer 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: sqlServerName
   location: location
@@ -114,14 +115,43 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
   }
 }
 
-resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
-  scope: primaryDatabase
-  name: 'Do Not Delete'
+resource longTermBackup 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2022-05-01-preview' = {
+  parent: primaryDatabase
+  name: 'default'
   properties: {
-    level: 'CanNotDelete'
+    weeklyRetention: 'P1W'
+    monthlyRetention: 'P1M'
+    yearlyRetention: 'P1Y'
+    weekOfYear: 1
   }
 }
 
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' existing = {
+  name: logAnalyticsName
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2017-05-01-preview' = {
+  scope: sqlServer::masterDataBase
+  name: 'diagnosticSettings'
+  properties: {
+    workspaceId: logAnalytics.id
+    logs: [
+      {
+        category: 'SQLSecurityAuditEvents'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+  }
+  dependsOn: [
+    longTermBackup
+  ]
+}
+
+// replica sql server resources
 resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
   name: replicaSqlServerName
   location: location
@@ -129,7 +159,7 @@ resource replicaSqlServer 'Microsoft.Sql/servers@2021-11-01-preview' = {
     type: 'SystemAssigned'
   }
   dependsOn: [
-    primaryDatabase
+    diagnosticSettings
   ]
   properties: {
     minimalTlsVersion: '1.2'
@@ -178,48 +208,30 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
   }
 }
 
+// conditional resources
+// --- primary sql server locks
+resource SqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
+  scope: primaryDatabase
+  name: 'Do Not Delete'
+  properties: {
+    level: 'CanNotDelete'
+  }
+  dependsOn: [
+    diagnosticSettings
+    readReplicaDb
+  ]
+}
+
+/// --- replica sql server locks
 resource RSqlDatabase_DeleteLock 'Microsoft.Authorization/locks@2020-05-01' = if(isProduction) {
   scope: readReplicaDb
   name: 'Do Not Delete'
   properties: {
     level: 'CanNotDelete'
   }
-}
-
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2021-06-01' existing = {
-  name: logAnalyticsName
-}
-
-resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2017-05-01-preview' = {
-  scope: sqlServer::masterDataBase
-  name: 'diagnosticSettings'
-  properties: {
-    workspaceId: logAnalytics.id
-    logs: [
-      {
-        category: 'SQLSecurityAuditEvents'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-    ]
-  }
   dependsOn: [
-    sqlServer
+    SqlDatabase_DeleteLock
   ]
-}
-
-resource longTermBackup 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2022-05-01-preview' = {
-  parent: primaryDatabase
-  name: 'default'
-  properties: {
-    weeklyRetention: 'P1W'
-    monthlyRetention: 'P1M'
-    yearlyRetention: 'P1Y'
-    weekOfYear: 1
-  }
 }
 
 module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {

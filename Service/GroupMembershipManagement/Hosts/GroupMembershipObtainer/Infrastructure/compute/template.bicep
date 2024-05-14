@@ -69,6 +69,9 @@ param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environ
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool = false
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var serviceBusFQN = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
@@ -225,12 +228,30 @@ module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' =
   ]
 }
 
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-GroupMembershipObtainer'
+  params: {
+    functionName: 'GroupMembershipObtainer'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionAppTemplate_GroupMembershipObtainer.outputs.msi
+    stagingSlotPrincipalId: functionAppSlotTemplate_GroupMembershipObtainer.outputs.msi
+  }
+  dependsOn: [
+    functionAppTemplate_GroupMembershipObtainer
+    functionAppSlotTemplate_GroupMembershipObtainer
+  ]
+}
+
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GroupMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_GroupMembershipObtainer
+    functionAppRBAC
   ]
 }
 
@@ -239,6 +260,7 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_GroupMembershipObtainer
+    functionAppRBAC
+    functionAppSettings
   ]
 }

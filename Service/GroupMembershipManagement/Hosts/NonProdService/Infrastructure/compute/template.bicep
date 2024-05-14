@@ -106,6 +106,9 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${appConfigurationName}.azconfig.io'
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool = false
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
@@ -286,12 +289,30 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
   ]
 }
 
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-NonProdService'
+  params: {
+    functionName: 'NonProdService'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionAppTemplate_NonProdService.outputs.msi
+    stagingSlotPrincipalId: functionAppSlotTemplate_NonProdService.outputs.msi
+  }
+  dependsOn: [
+    functionAppTemplate_NonProdService
+    functionAppSlotTemplate_NonProdService
+  ]
+}
+
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-NonProdService/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_NonProdService
+    functionAppRBAC
   ]
 }
 
@@ -300,6 +321,7 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_NonProdService
+    functionAppRBAC
+    functionAppSettings
   ]
 }

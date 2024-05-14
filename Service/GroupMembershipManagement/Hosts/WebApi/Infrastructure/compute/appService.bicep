@@ -29,6 +29,9 @@ param tenantId string
 @description('User assigned managed identities. Single or list of user assigned managed identities. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}')
 param userManagedIdentities object = {}
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool
+
 var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
 
 resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
@@ -62,6 +65,22 @@ resource sites_scm 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-
   }
 }
 
+module webApiRBAC 'webApiRBAC.bicep' = {
+  name: 'functionAppsRBAC-WebApi'
+  params: {
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataResourceGroup
+    setRBACPermissions: setRBACPermissions
+    webApiPrincipalId: websiteTemplate.identity.principalId
+  }
+  dependsOn: [
+    sites_ftp
+    sites_scm
+  ]
+}
+
 resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
   name: 'web'
   parent: websiteTemplate
@@ -72,8 +91,7 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     appSettings: appSettings
   }
   dependsOn: [
-    sites_ftp
-    sites_scm
+    webApiRBAC
     ]
 }
 

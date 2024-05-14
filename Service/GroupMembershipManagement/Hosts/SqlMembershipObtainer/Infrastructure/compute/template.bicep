@@ -98,6 +98,9 @@ param shouldStopSyncIfSourceNotPresentInGraph bool = false
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool = false
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var serviceBusTopicName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
@@ -260,12 +263,30 @@ module functionAppSlotTemplate_SqlMembershipObtainer 'functionAppSlot.bicep' = {
   ]
 }
 
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-SqlMembershipObtainer'
+  params: {
+    functionName: 'SqlMembershipObtainer'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionAppTemplate_SqlMembershipObtainer.outputs.msi
+    stagingSlotPrincipalId: functionAppSlotTemplate_SqlMembershipObtainer.outputs.msi
+  }
+  dependsOn: [
+    functionAppTemplate_SqlMembershipObtainer
+    functionAppSlotTemplate_SqlMembershipObtainer
+  ]
+}
+
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-SqlMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_SqlMembershipObtainer
+    functionAppRBAC
   ]
 }
 
@@ -274,6 +295,7 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_SqlMembershipObtainer
+    functionAppRBAC
+    functionAppSettings
   ]
 }

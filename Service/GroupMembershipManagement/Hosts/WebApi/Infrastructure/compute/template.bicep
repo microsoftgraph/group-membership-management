@@ -61,6 +61,9 @@ param dataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbrev
 @description('Name of the Azure Data Factory pipeline.')
 param adfPipeline string
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool = false
+
 var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
@@ -185,7 +188,7 @@ var appSettings = [
     value: dataResourceGroup
   }
   {
-    name: 'Settings:GraphUserAssignedManagedIdentityClientId'
+    name: 'Settings:GraphCredentials:UserAssignedManagedIdentityClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   }
 ]
@@ -236,6 +239,7 @@ module appService 'appService.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     appInsights

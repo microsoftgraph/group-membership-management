@@ -89,6 +89,9 @@ param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmen
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool = false
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
@@ -262,12 +265,30 @@ module functionAppSlotTemplate_MembershipAggregator 'functionAppSlot.bicep' = {
   ]
 }
 
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-MembershipAggregator'
+  params: {
+    functionName: 'MembershipAggregator'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionAppTemplate_MembershipAggregator.outputs.msi
+    stagingSlotPrincipalId: functionAppSlotTemplate_MembershipAggregator.outputs.msi
+  }
+  dependsOn: [
+    functionAppTemplate_MembershipAggregator
+    functionAppSlotTemplate_MembershipAggregator
+  ]
+}
+
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-MembershipAggregator/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
-    functionAppTemplate_MembershipAggregator
+    functionAppRBAC
   ]
 }
 
@@ -276,6 +297,7 @@ resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [
-    functionAppSlotTemplate_MembershipAggregator
+    functionAppRBAC
+    functionAppSettings
   ]
 }

@@ -5,7 +5,7 @@ param prereqsResourceGroupName string
 param dataResourceGroupName string
 param computeResourceGroupName string
 param appConfigurationDataOwners array
-param grantAppConfigurationDataOwnersPermission bool = true
+param setRBACPermissions bool = false
 
 resource prereqsResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: prereqsResourceGroupName
@@ -22,7 +22,7 @@ resource computeResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = 
   location: location
 }
 
-module appConfigurationRBAC 'rbacTemplate.bicep' = if (grantAppConfigurationDataOwnersPermission) {
+module appConfigurationRBAC 'rbacTemplate.bicep' = if (setRBACPermissions) {
   name: 'appConfigurationRBAC'
   scope: dataResourceGroup
   params: {

@@ -8,14 +8,10 @@ param isManagedApplication bool
 param managedResourceGroupName string
 param appConfigurationName string
 param authenticationType string
+param setRBACPermissions bool
 
 // prereqs parameters
 // parameters for prereqs key vault
-param graphAppCertificateName string = 'not-set'
-param graphAppClientId string
-@secure()
-param graphAppClientSecret string
-param graphAppTenantId string
 @secure()
 param senderPassword string
 param senderUsername string
@@ -26,11 +22,6 @@ param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
 param teamsChannelServiceAccountUsername string
-param sqlMembershipAppId string
-@secure()
-param sqlMembershipAppPasswordCredentialValue string
-param webapiClientId string
-param webApiTenantId string
 
 // data parameters
 param notifierProviderId string
@@ -76,10 +67,6 @@ module prereqResources 'prereqResources.bicep' = {
     prereqsKeyVaultSkuFamily: prereqsKeyVaultSkuFamily
     location: location
     tenantId: tenantId
-    graphAppCertificateName: graphAppCertificateName
-    graphAppClientId: graphAppClientId
-    graphAppClientSecret: graphAppClientSecret
-    graphAppTenantId: graphAppTenantId
     senderPassword: senderPassword
     senderUsername: senderUsername
     supportEmailAddresses: supportEmailAddresses
@@ -88,10 +75,6 @@ module prereqResources 'prereqResources.bicep' = {
     teamsChannelServiceAccountObjectId: teamsChannelServiceAccountObjectId
     teamsChannelServiceAccountPassword: teamsChannelServiceAccountPassword
     teamsChannelServiceAccountUsername: teamsChannelServiceAccountUsername
-    sqlMembershipAppId: sqlMembershipAppId
-    sqlMembershipAppPasswordCredentialValue: sqlMembershipAppPasswordCredentialValue
-    webapiClientId: webapiClientId
-    webApiTenantId: webApiTenantId
   }
 }
 
@@ -141,6 +124,7 @@ module computeResources 'computeResources.bicep' = {
     tenantDomain: tenantDomain
     pipeline: pipeline
     appConfigurationName: appConfigurationName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     dataResources

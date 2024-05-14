@@ -3,12 +3,13 @@ param location string
 param environmentAbbreviation string
 param solutionAbbreviation string
 param tenantId string
-param managedResourceGroupName string
-param isManagedApplication bool
+param managedResourceGroupName string = ''
+param isManagedApplication bool = false
 param appConfigurationName string
+param setRBACPermissions bool
 
 // UI parameters
-param customDomainName string
+param customDomainName string = ''
 param apiAppClientId string
 param apiServiceBaseUri string
 param uiAppTenantId string
@@ -49,6 +50,7 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     jobTriggerDataResources
@@ -79,6 +81,7 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     destinationAttributesUpdaterDataResources
@@ -109,6 +112,7 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     groupMembershipObtainerDataResources
@@ -144,6 +148,7 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     sqlMembershipStorageAccountName: 'not-used'
     sqlMembershipStorageAccountConnectionString: 'not-used'
     pipeline: pipeline
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     groupMembershipObtainerDataResources
@@ -174,6 +179,7 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     groupOwnershipObtainerDataResources
@@ -204,6 +210,7 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     placeMembershipObtainerDataResources
@@ -234,6 +241,7 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     teamsChannelMembershipObtainerDataResources
@@ -264,6 +272,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     membershipAggregatorDataResources
@@ -294,6 +303,7 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     graphUpdaterDataResources
@@ -324,6 +334,7 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     teamsChannelUpdaterDataResources
@@ -355,6 +366,7 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     appConfigurationName: appConfigurationName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     nonProdServiceDataResources
@@ -386,6 +398,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     storageAccountSecretName: 'storageAccountConnectionString'
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     azureUserReaderDataResources
@@ -416,6 +429,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     storageAccountName: 'notUsed'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     notifierDataResources
@@ -446,6 +460,7 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
     storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     jobSchedulerDataResources
@@ -473,6 +488,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     prereqsResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
     adfPipeline: pipeline
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources

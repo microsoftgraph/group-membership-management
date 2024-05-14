@@ -9,7 +9,7 @@ param managedResourceGroupName string = '${solutionAbbreviation}-mrg-${environme
 param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environmentAbbreviation}'
 param appConfigurationDataOwners array
 @description('Must be true for the initial deployment')
-param grantAppConfigurationDataOwnersPermission bool = true
+param setRBACPermissions bool = true
 @allowed([
   'UserAssignedManagedIdentity'
   'ClientSecret'
@@ -18,11 +18,6 @@ param grantAppConfigurationDataOwnersPermission bool = true
 param authenticationType string
 // prereqs parameters
 // parameters for prereqs key vault
-param graphAppCertificateName string = 'not-set'
-param graphAppClientId string
-@secure()
-param graphAppClientSecret string
-param graphAppTenantId string
 @secure()
 param senderPassword string
 param senderUsername string
@@ -33,11 +28,6 @@ param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
 param teamsChannelServiceAccountUsername string
-param sqlMembershipAppId string
-@secure()
-param sqlMembershipAppPasswordCredentialValue string
-param webapiClientId string
-param webApiTenantId string
 
 // data parameters
 param notifierProviderId string
@@ -77,7 +67,7 @@ module gmmResourceGroups 'resourceGroups.bicep' = {
     dataResourceGroupName: dataResourceGroupName
     computeResourceGroupName: computeResourceGroupName
     appConfigurationDataOwners: appConfigurationDataOwners
-    grantAppConfigurationDataOwnersPermission: grantAppConfigurationDataOwnersPermission
+    setRBACPermissions: setRBACPermissions
   }
 }
 
@@ -92,10 +82,6 @@ module gmmResources 'commonResources.bicep' = {
     environmentAbbreviation: environmentAbbreviation
     isManagedApplication: isManagedApplication
     managedResourceGroupName: managedResourceGroupName
-    graphAppCertificateName: graphAppCertificateName
-    graphAppClientId: graphAppClientId
-    graphAppClientSecret: graphAppClientSecret
-    graphAppTenantId: graphAppTenantId
     senderPassword: senderPassword
     senderUsername: senderUsername
     supportEmailAddresses: supportEmailAddresses
@@ -104,10 +90,6 @@ module gmmResources 'commonResources.bicep' = {
     teamsChannelServiceAccountObjectId: teamsChannelServiceAccountObjectId
     teamsChannelServiceAccountPassword: teamsChannelServiceAccountPassword
     teamsChannelServiceAccountUsername: teamsChannelServiceAccountUsername
-    sqlMembershipAppId: sqlMembershipAppId
-    sqlMembershipAppPasswordCredentialValue: sqlMembershipAppPasswordCredentialValue
-    webapiClientId: webapiClientId
-    webApiTenantId: webApiTenantId
     notifierProviderId: notifierProviderId
     serviceBusMembershipUpdatersTopicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
@@ -128,6 +110,7 @@ module gmmResources 'commonResources.bicep' = {
     skipADFDeployment: skipADFDeployment
     appConfigurationName: appConfigurationName
     authenticationType: authenticationType
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     gmmResourceGroups
