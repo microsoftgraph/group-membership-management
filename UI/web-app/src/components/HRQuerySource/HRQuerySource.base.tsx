@@ -1572,6 +1572,7 @@ const checkType = (value: string, type: string | undefined): string => {
     };
 
     if (allSameGroupIndex && groupIndices[0] === 0) {
+      if (clonedNewGroups[groupIndices[0]].items.length === selectedItems.length) { return; }
       const newGroup: Group = {
         name: "",
         items: childItems,
@@ -1584,6 +1585,7 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     else if (allSameGroupIndex && groupIndices[0] > 0) {
+      if (clonedNewGroups[groupIndices[0]].items.length === selectedItems.length) { return; }
       clonedNewGroups[groupIndices[0]].children = [
         ...(clonedNewGroups[groupIndices[0]].children || []),
         {
