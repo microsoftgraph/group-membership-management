@@ -34,20 +34,17 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
         index['enabledOrNot'] =
         index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
         const lastRunTime = formatLastRunTime(index['lastSuccessfulRunTime']);
-        const estimatedNextRunTime = formatNextRunTime(index['estimatedNextRunTime'], index['period'], index['enabledOrNot']);
+        const estimatedNextRunTime = formatNextRunTime(index['estimatedNextRunTime'], index['enabledOrNot']);
         const SQLMinDateMoment = moment.utc('1753-01-01T00:00:00');
         
         if(lastRunTime[0] === SQLMinDateMoment.toLocaleString()) { // Jobs that haven't run yet
           index['lastSuccessfulRunTime'] = "Pending initial sync";
           index['estimatedNextRunTime'] = "Pending initial sync";
         }
-        else if (estimatedNextRunTime[0] === "-") { // Disabled jobs
-          index['lastSuccessfulRunTime'] = `${format(strings.hoursAgo, lastRunTime[0], lastRunTime[1])}`;
-          index['estimatedNextRunTime'] = "-";
-        }
         else {
           index['lastSuccessfulRunTime'] = `${format(strings.hoursAgo, lastRunTime[0], lastRunTime[1])}`;
-          index['estimatedNextRunTime'] = `${format(strings.hoursLeft, estimatedNextRunTime[0], estimatedNextRunTime[1])}`;
+          index['estimatedNextRunTime'] = estimatedNextRunTime[0] === "-" ? "-" // Disabled jobs
+                                            : `${format(strings.hoursLeft, estimatedNextRunTime[0], estimatedNextRunTime[1])}`;
         }
         
         index['arrow'] = '';
