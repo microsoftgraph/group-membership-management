@@ -1,0 +1,12 @@
+{
+  "$schema": "https://aka.ms/azure/static-web-apps-cli/schema",
+  "configurations": {
+    "default": {
+      "appLocation": ".",
+      "outputLocation": "build",
+      "appBuildCommand": "pnpm install && pnpm run build",
+      "run": "pnpm start",
+      "appDevserverUrl": "http://localhost:3000"
+    }
+  }
+}

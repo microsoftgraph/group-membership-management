@@ -2,21 +2,6 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "graphAppClientId": {
-      "value": ""
-    },
-    "graphAppClientSecret": {
-      "value": ""
-    },
-    "graphAppTenantId": {
-      "value": ""
-    },
-    "webapiClientId": {
-      "value": ""
-    },
-    "webApiTenantId": {
-      "value": ""
-    },
     "senderUsername": {
       "value": ""
     },
@@ -42,6 +27,9 @@
       "value": ""
     },
     "location": {
+      "value": ""
+    },
+    "uiLocation": {
       "value": ""
     },
     "tenantId": {
@@ -76,12 +64,6 @@
     },
     "sqlSkuTier": {
       "value": "GeneralPurpose"
-    },
-    "sqlMembershipAppId": {
-      "value": ""
-    },
-    "sqlMembershipAppPasswordCredentialValue": {
-      "value": ""
     },
     "notifierProviderId": {
       "value": "00000000-0000-0000-0000-000000000000"
@@ -137,18 +119,6 @@
         ]
       }
     },
-    "apiAppClientId": {
-      "value": ""
-    },
-    "apiServiceBaseUri": {
-      "value": "https://<solution>-compute-<env>-webapi.azurewebsites.net"
-    },
-    "uiAppTenantId": {
-      "value": ""
-    },
-    "uiAppClientId": {
-      "value": ""
-    },
     "sharepointDomain": {
       "value": "m365x00000000.sharepoint.com"
     },
@@ -163,8 +133,14 @@
         }
       ]
     },
-    "authenticationType":{
+    "authenticationType": {
       "value": "UserAssignedManagedIdentity|ClientSecret|Certificate"
+    },
+    "pipeline": {
+      "value": "PopulateDestinationPipeline"
+    },
+    "setRBACPermissions": {
+      "value": true
     }
   }
 }

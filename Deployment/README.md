@@ -18,11 +18,11 @@ Run the following command to deploy the resources.
 ```
 . .\Deploy-Resources.ps1
 
-Deploy-Resources `
--SolutionAbbreviation "<solution-abbreviation>" `
--EnvironmentAbbreviation "<en>" `
--Location "" `
--TemplateFilePath "localTemplate.json" `
--ParameterFilePath "parameters.json" `
--Verbose
+Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
+                    -EnvironmentAbbreviation "<environment-abbreviation>" `
+                    -Location "<location>" `
+                    -TemplateFilesDirectory "<template-file-path>" `
+                    -ParameterFilePath "<parameter-file-path>" `
+                    -SubscriptionId "<subscription-id>" `
+                    -Verbose
 ```

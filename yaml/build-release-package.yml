@@ -39,7 +39,10 @@ stages:
         targetType: inline
         workingDirectory: 'Deployment'
         script: |
-          az bicep build --file localTemplate.bicep
+          $templateFiles = Get-ChildItem -Path . -Filter "*.bicep"
+          foreach ($templateFile in $templateFiles) {
+            az bicep build --file $templateFile.FullName
+          }
         pwsh: true
 
     - task: CopyFiles@2
@@ -50,6 +53,24 @@ stages:
           **/*.json
           **/*.ps1
         TargetFolder: '$(build.artifactstagingdirectory)/deployment'
+
+    - task: CopyFiles@2
+      displayName: 'Copy UI scripts'
+      inputs:
+        SourceFolder: 'UI/Scripts'
+        Contents: |
+          **/*.ps1
+        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
+        OverWrite: false
+
+    - task: CopyFiles@2
+      displayName: 'Copy WebAPI scripts'
+      inputs:
+        SourceFolder: 'Service/GroupMembershipManagement/Hosts/WebApi/Scripts'
+        Contents: |
+          **/*.ps1
+        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
+        OverWrite: false
 
     - task: DotNetCoreCLI@2
       displayName: 'Install EF Core tools'
