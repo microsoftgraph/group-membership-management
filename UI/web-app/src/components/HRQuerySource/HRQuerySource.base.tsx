@@ -599,6 +599,47 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
+  const filterItems = (clonedNewGroups: Group[], childItems: IFilterPart[], groupIndex: number) => {
+    clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+      !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+    if (clonedNewGroups[groupIndex].items.length === 0) {
+      clonedNewGroups[groupIndex].andOr = "";
+      //if last group, delete andOr from previous group / previous group's last child
+      if (groupIndex === groups.length-1) {
+        const previousGroupIndex = groupIndex - 1;
+        if (previousGroupIndex >= 0){
+          const prevGroupChildren = clonedNewGroups[previousGroupIndex].children;
+          if (prevGroupChildren.length > 0) {
+            clonedNewGroups[previousGroupIndex].children[clonedNewGroups[previousGroupIndex].children.length-1].andOr = "";
+          }
+          else {
+            clonedNewGroups[previousGroupIndex].andOr = "";
+          }
+        }
+      }
+    }
+    return clonedNewGroups;
+  };
+
+  const filterChildren = (clonedNewGroups: Group[], childItems: IFilterPart[], groupIndex: number, childIndex: number) => {
+    clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+      !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+    if (clonedNewGroups[groupIndex].children[childIndex].items.length === 0) {
+      clonedNewGroups[groupIndex].children[childIndex].andOr = "";
+      if (groupIndex === groups.length-1 && childIndex === clonedNewGroups[groupIndex].children.length-1) {
+        //if it's last group and last child, delete andOr from previous child / current group
+        const previousChildIndex = childIndex - 1;
+        if (previousChildIndex >= 0){
+            clonedNewGroups[groupIndex].children[previousChildIndex].andOr = "";
+        }
+        else {
+          clonedNewGroups[groupIndex].andOr = "";
+        }
+      }
+    }
+    return clonedNewGroups;
+  };
+
   const removeComponent = (indexToRemove: number) => {
     if (indexToRemove === -1) return;
     if (groupingEnabled) {
@@ -625,51 +666,12 @@ const checkType = (value: string, type: string | undefined): string => {
       if (ifGroupItem && groups[groupIndex].items[indexToRemove ?? 0]) {
         console.log("it's a group item", groups[groupIndex].items[indexToRemove ?? 0]);
         if (groups[groupIndex].children.length > 0) { return; }
-        const childItems = selectedItems;
-        const filterItems = (groupIndex: number) => {
-          clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
-            !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
-          if (clonedNewGroups[groupIndex].items.length === 0) {
-            clonedNewGroups[groupIndex].andOr = "";
-            //if last group, delete andOr from previous group / previous group's last child
-            if (groupIndex === groups.length-1) {
-              const previousGroupIndex = groupIndex - 1;
-              if (previousGroupIndex >= 0){
-                const prevGroupChildren = clonedNewGroups[previousGroupIndex].children;
-                if (prevGroupChildren.length > 0) {
-                  clonedNewGroups[previousGroupIndex].children[clonedNewGroups[previousGroupIndex].children.length-1].andOr = "";
-                }
-                else {
-                  clonedNewGroups[previousGroupIndex].andOr = "";
-                }
-              }
-            }
-          }
-        };
-        filterItems(groupIndex);
+        clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndex);
       }
 
       if (ifGroupChild && groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]) {
         console.log("it's a child item", groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]);
-        const childItems = selectedItems;
-        const filterChildren = (groupIndex: number, childIndex: number) => {
-          clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
-            !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
-          if (clonedNewGroups[groupIndex].children[childIndex].items.length === 0) {
-            clonedNewGroups[groupIndex].children[childIndex].andOr = "";
-            if (groupIndex === groups.length-1 && childIndex === clonedNewGroups[groupIndex].children.length-1) {
-              //if it's last group and last child, delete andOr from previous child / current group
-              const previousChildIndex = childIndex - 1;
-              if (previousChildIndex >= 0){
-                  clonedNewGroups[groupIndex].children[previousChildIndex].andOr = "";
-              }
-              else {
-                clonedNewGroups[groupIndex].andOr = "";
-              }
-            }
-          }
-        };
-        filterChildren(groupIndex, childIndex);
+        clonedNewGroups = filterChildren(clonedNewGroups, selectedItems, groupIndex, childIndex);
       }
 
       clonedNewGroups = clonedNewGroups.filter((group: { items: any[]; children: any[]; }) =>
@@ -1467,6 +1469,7 @@ const checkType = (value: string, type: string | undefined): string => {
     selectedItems.forEach((selectedItem, index) => {
       const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
       const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
+
       if (ifGroupItem)
       {
         const groupIndex = groups.findIndex(group => group.items?.some(item => JSON.stringify(item) === JSON.stringify(selectedItem)));
@@ -1505,30 +1508,16 @@ const checkType = (value: string, type: string | undefined): string => {
 
     let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
     const childItems = selectedItems;
-    const filterItems = (groupIndex: number) => {
-      clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
-        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
-      if (clonedNewGroups[groupIndex].items.length === 0) {
-        clonedNewGroups[groupIndex].andOr = "";
-        clonedNewGroups[groupIndex-1].andOr = "";
-      }
-    };
-    const filterChildren = (groupIndex: number, childIndex: number) => {
-      clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
-        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
-      if (clonedNewGroups[groupIndex].children[childIndex].items.length === 0) {
-        clonedNewGroups[groupIndex].children[childIndex].andOr = "";
-      }
-    };
 
-    if (allSameGroupIndex && allSameChildIndex && groupIndices[0] > 0 && childIndices[0] >= 0) {
+    if (allSameGroupIndex && allSameChildIndex && childIndices[0] >= 0) {
       clonedNewGroups[groupIndices[0]].items = [...clonedNewGroups[groupIndices[0]].items, ...childItems];
-      filterChildren(groupIndices[0], childIndices[0]);
+      clonedNewGroups = filterChildren(clonedNewGroups, selectedItems, groupIndices[0], childIndices[0]);
     }
 
     else if (allSameGroupIndex && groupIndices[0] > 0 && childIndices[0] === -1) {
+      if (groups[groupIndices[0]] && groups[groupIndices[0]].children && groups[groupIndices[0]].children.length > 0) { return; }
       clonedNewGroups[0].items = [...clonedNewGroups[0].items, ...childItems];
-      filterItems(groupIndices[0]);
+      clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndices[0]);
     }
 
     clonedNewGroups = clonedNewGroups.filter((group: { items: any[]; children: any[]; }) =>
@@ -1546,81 +1535,81 @@ const checkType = (value: string, type: string | undefined): string => {
     setGroupingEnabled(true);
   }
 
-    function onGroupClick() {
-      let newGroups = [...groups];
-      let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
-      const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
-      selectedItems.forEach((selectedItem, index) => {
+  function onGroupClick() {
+    let newGroups = [...groups];
+    let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
+    const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
+    selectedItems.forEach((selectedItem, index) => {
 
-        const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
-        if (ifGroupItem)
-        {
-          const groupIndex = groups.findIndex(group => group.items?.some(item => JSON.stringify(item) === JSON.stringify(selectedItem)));
-          if (groupIndex === 0) {
-            indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
-          }
-          else if (groupIndex > 0) {
-            indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
-          }
+      const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
+      if (ifGroupItem)
+      {
+        const groupIndex = groups.findIndex(group => group.items?.some(item => JSON.stringify(item) === JSON.stringify(selectedItem)));
+        if (groupIndex === 0) {
+          indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
         }
-      });
-
-      selectedItems.forEach((selectedItem, index) => {
-        const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
-        if (ifGroupChild) {
-          return;
+        else if (groupIndex > 0) {
+          indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
         }
-      });
+      }
+    });
 
-      const groupIndices = indices.map(({ groupIndex }) => groupIndex);
-      const allSameGroupIndex = groupIndices.every((groupIndex, index, array) => groupIndex === array[0]);
+    selectedItems.forEach((selectedItem, index) => {
+      const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
+      if (ifGroupChild) {
+        return;
+      }
+    });
 
-      let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
-      const childItems = selectedItems.map(selectedItem => ({ attribute: selectedItem.attribute, equalityOperator: selectedItem.equalityOperator, value: selectedItem.value, andOr: selectedItem.andOr }));
-      const filterItems = (groupIndex: number) => {
-        clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
-          !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+    const groupIndices = indices.map(({ groupIndex }) => groupIndex);
+    const allSameGroupIndex = groupIndices.every((groupIndex, index, array) => groupIndex === array[0]);
+
+    let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
+    const childItems = selectedItems.map(selectedItem => ({ attribute: selectedItem.attribute, equalityOperator: selectedItem.equalityOperator, value: selectedItem.value, andOr: selectedItem.andOr }));
+    const filterItems = (groupIndex: number) => {
+      clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+    };
+
+    if (allSameGroupIndex && groupIndices[0] === 0) {
+      const newGroup: Group = {
+        name: "",
+        items: childItems,
+        children: [],
+        andOr: ""
       };
+      clonedNewGroups.push(newGroup);
+      clonedNewGroups[clonedNewGroups.length-2].andOr = selectedItems[0].andOr; // between groups
+      filterItems(groupIndices[0]);
+    }
 
-      if (allSameGroupIndex && groupIndices[0] === 0) {
-        const newGroup: Group = {
-          name: "",
+    else if (allSameGroupIndex && groupIndices[0] > 0) {
+      clonedNewGroups[groupIndices[0]].children = [
+        ...(clonedNewGroups[groupIndices[0]].children || []),
+        {
+          name: ``,
           items: childItems,
           children: [],
           andOr: ""
-        };
-        clonedNewGroups.push(newGroup);
-        clonedNewGroups[clonedNewGroups.length-2].andOr = selectedItems[0].andOr; // between groups
-        filterItems(groupIndices[0]);
-      }
-
-      else if (allSameGroupIndex && groupIndices[0] > 0) {
-        clonedNewGroups[groupIndices[0]].children = [
-          ...(clonedNewGroups[groupIndices[0]].children || []),
-          {
-            name: ``,
-            items: childItems,
-            children: [],
-            andOr: ""
-          }
-        ];
-        if (clonedNewGroups[groupIndices[0]].children.length === 1)
-        {
-          clonedNewGroups[groupIndices[0]].andOr = selectedItems[0].andOr; // between group & children
         }
-        else if (clonedNewGroups[groupIndices[0]].children.length > 1)
-        {
-          clonedNewGroups[groupIndices[0]].children[clonedNewGroups[groupIndices[0]].children.length-2].andOr = selectedItems[0].andOr; // between children
-        }
-        filterItems(groupIndices[0]);
+      ];
+      if (clonedNewGroups[groupIndices[0]].children.length === 1)
+      {
+        clonedNewGroups[groupIndices[0]].andOr = selectedItems[0].andOr; // between group & children
       }
-      clonedNewGroups = clonedNewGroups.filter((group: { items: string | any[]; children: string | any[]; }) => group.items?.length > 0 || group.children?.length > 0);
-      setGroups(clonedNewGroups);
-      getGroupLabels(clonedNewGroups);
-      setSelectedIndices([]);
-      selection.setAllSelected(false);
-      setGroupingEnabled(true);
+      else if (clonedNewGroups[groupIndices[0]].children.length > 1)
+      {
+        clonedNewGroups[groupIndices[0]].children[clonedNewGroups[groupIndices[0]].children.length-2].andOr = selectedItems[0].andOr; // between children
+      }
+      filterItems(groupIndices[0]);
     }
+    clonedNewGroups = clonedNewGroups.filter((group: { items: string | any[]; children: string | any[]; }) => group.items?.length > 0 || group.children?.length > 0);
+    setGroups(clonedNewGroups);
+    getGroupLabels(clonedNewGroups);
+    setSelectedIndices([]);
+    selection.setAllSelected(false);
+    setGroupingEnabled(true);
+  }
 
   const dropdownStyles: Partial<IDropdownStyles> = {
     dropdown: { width: 100 },
