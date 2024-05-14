@@ -12,11 +12,13 @@ Abbreviation for the environment
 .PARAMETER Location
 Location where the resources will be deployed
 
-.PARAMETER TemplateFilePath
-Template file path
+.PARAMETER TemplateFilesDirectory
+Template files directory
+Absolute path.
 
 .PARAMETER ParameterFilePath
-Parameter file path
+Parameter file path.
+Absolute path.
 
 .PARAMETER SubscriptionId
 Optional.
@@ -31,14 +33,49 @@ Optional.
 If you are using a user-assigned managed identity, set this flag to true to assign the necessary permissions to the managed identity.
 
 .EXAMPLE
-Deploy-PrivateResources -SolutionAbbreviation "<solution-abbreviation>" `
-                        -EnvironmentAbbreviation "<environment-abbreviation>" `
-                        -Location "<location>" `
-                        -TemplateFilePath "<template-file-path>" `
-                        -ParameterFilePath "<parameter-file-path>" `
-                        -SubscriptionId "<subscription-id>" `
-                        -Verbose
+Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
+                    -EnvironmentAbbreviation "<environment-abbreviation>" `
+                    -Location "<location>" `
+                    -TemplateFilesDirectory "<template-file-path>" `
+                    -ParameterFilePath "<parameter-file-path>" `
+                    -SubscriptionId "<subscription-id>" `
+                    -Verbose
 #>
+
+$maxRetries = 3
+
+function Retry-Operation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ScriptBlock]$Operation,
+        [Parameter(ValueFromRemainingArguments = $true)]
+        $params,
+        [Parameter(Mandatory = $true)]
+        [string]$OperationName
+    )
+
+    # Initialize the retry counter
+    $retryCount = 0
+
+    do {
+        try {
+            & $Operation @params
+            break
+        }
+        catch {
+
+            Write-Warning $_.Exception.Message
+
+            $retryCount++
+            if ($retryCount -ge $maxRetries) {
+                throw
+            }
+
+            Write-Warning "'$OperationName' failed, retrying... ($retryCount/$maxRetries)"
+            Start-Sleep -Seconds (5 * $retryCount)
+        }
+    } while ($true)
+}
 
 function Deploy-PostDeploymentUpdates {
     [CmdletBinding()]
@@ -101,6 +138,236 @@ function Set-ResourceProviders {
     }
 }
 
+function Get-TemplateAsHashtable {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilePath
+    )
+
+    $TemplateFileText = [System.IO.File]::ReadAllText($TemplateFilePath)
+    $TemplateObject = ConvertFrom-Json $TemplateFileText -AsHashtable
+    return $TemplateObject
+}
+
+function Get-TemplateParameters {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParametersFilePath,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{}
+    )
+
+    $TemplateObject = Get-TemplateAsHashtable -TemplateFilePath $TemplateFilePath
+    $ParametersObject = Get-TemplateAsHashtable -TemplateFilePath $ParametersFilePath
+
+    $commonParametersObject = @{}
+
+    # add those with a default value
+    $TemplateObject.parameters.Keys | ForEach-Object {
+        $parameter = $TemplateObject.parameters[$_]
+        if ($parameter.Keys -contains "defaultValue") {
+            $commonParametersObject[$_] = $parameter.defaultValue
+        }
+    }
+
+    # add from the additional parameters
+    if ($AdditionalParameters.parameters.Keys.Count -gt 0) {
+        $TemplateObject.parameters.Keys | ForEach-Object {
+            if ($AdditionalParameters.parameters.Keys -contains $_) {
+                $commonParametersObject[$_] = $AdditionalParameters.parameters[$_].value
+            }
+        }
+    }
+
+    # add (or overwrite) from the parameters file
+    $TemplateObject.parameters.Keys | ForEach-Object {
+        if ($ParametersObject.parameters.Keys -contains $_) {
+            $commonParametersObject[$_] = $ParametersObject.parameters[$_].value
+        }
+    }
+
+    return $commonParametersObject
+}
+
+function Check-IfKeyVaultSecretExists {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$VaultName,
+        [Parameter(Mandatory = $true)]
+        [string]$SecretName
+    )
+
+    $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -ErrorAction SilentlyContinue
+    return $null -ne $secret
+}
+
+function Set-KeyVaultRole {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $True)]
+        [string] $ObjectId,
+        [Parameter(Mandatory = $True)]
+        [string] $Scope,
+        [Parameter(Mandatory = $True)]
+        [string] $RoleDefinitionName,
+        [Parameter(Mandatory = $True)]
+        [string] $KeyVaultName
+    )
+
+    if ($null -eq (Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName)) {
+        New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName;
+        Write-Host "Added role $RoleDefinitionName to $ObjectId on the $KeyVaultName keyvault.";
+    }
+    else {
+        Write-Host "$ObjectId already has  $RoleDefinitionName role on $KeyVaultName.";
+    }
+}
+
+function Set-AdminKeyVaultRoles {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $True)]
+        [string] $UserObjectId,
+        [Parameter(Mandatory = $True)]
+        [string] $KeyVaultName,
+        [Parameter(Mandatory = $True)]
+        [string] $ResourceGroupName
+    )
+    $keyVault = `
+        Get-AzKeyVault `
+        -ResourceGroupName $ResourceGroupName `
+        -Name $KeyVaultName
+
+    Set-KeyVaultRole `
+        -ObjectId $UserObjectId `
+        -Scope $keyVault.ResourceId `
+        -RoleDefinitionName "Key Vault Data Access Administrator" `
+        -KeyVaultName $keyVault.VaultName
+
+    Set-KeyVaultRole `
+        -ObjectId $UserObjectId `
+        -Scope $keyVault.ResourceId `
+        -RoleDefinitionName "Key Vault Administrator" `
+        -KeyVaultName $keyVault.VaultName
+}
+
+function Set-PrereqResources {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{},
+        [Parameter(Mandatory = $false)]
+        [bool] $SetRBACPermissions
+    )
+
+    $directoryPath = $TemplateFilePath
+    $currentUser = Get-AzADUser -SignedIn
+    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+
+    # deploy prereq resources
+    Write-Host "`nCreating prereqs resources"
+    $prereqResourcesParameters = `
+        Get-TemplateParameters `
+        -TemplateFilePath "$directoryPath\prereqResources.json" `
+        -ParametersFilePath $ParameterFilePath `
+        -AdditionalParameters $AdditionalParameters
+
+    New-AzResourceGroupDeployment `
+        -ResourceGroupName $prereqsResourceGroup `
+        -TemplateFile "$directoryPath\prereqResources.json" `
+        -TemplateParameterObject $prereqResourcesParameters
+
+    # grant permissions to prereqs key vault
+    if ($setRBACPermissions -eq $true) {
+        Set-AdminKeyVaultRoles `
+            -UserObjectId $currentUser.Id `
+            -KeyVaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+            -ResourceGroupName $prereqsResourceGroup
+    }
+}
+
+function Set-DataResources {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{},
+        [Parameter(Mandatory = $false)]
+        [bool] $SetRBACPermissions
+    )
+
+    Write-Host "`nCreating data resources"
+
+    $directoryPath = $TemplateFilePath
+    $currentUser = Get-AzADUser -SignedIn
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+
+    $dataResourcesParameters = `
+        Get-TemplateParameters `
+        -TemplateFilePath "$directoryPath\dataResources.json" `
+        -ParametersFilePath $ParameterFilePath `
+        -AdditionalParameters $AdditionalParameters
+
+    New-AzResourceGroupDeployment `
+        -ResourceGroupName $dataResourceGroup `
+        -TemplateFile "$directoryPath\dataResources.json" `
+        -TemplateParameterObject $dataResourcesParameters
+
+    # grant permissions to data key vault
+    if ($setRBACPermissions -eq $true) {
+        Set-AdminKeyVaultRoles `
+            -UserObjectId $currentUser.Id `
+            -KeyVaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+            -ResourceGroupName $dataResourceGroup
+    }
+}
+
+function Set-ComputeResources {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{}
+    )
+
+    $directoryPath = $TemplateFilePath
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    Write-Host "`nCreating compute resources"
+    $computeResourcesParameters = `
+        Get-TemplateParameters `
+        -TemplateFilePath "$directoryPath\computeResources.json" `
+        -ParametersFilePath $ParameterFilePath `
+        -AdditionalParameters $AdditionalParameters
+
+    New-AzResourceGroupDeployment `
+        -ResourceGroupName $computeResourceGroup `
+        -TemplateFile "$directoryPath\computeResources.json" `
+        -TemplateParameterObject $computeResourcesParameters
+
+}
+
 function Set-GMMResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -117,12 +384,119 @@ function Set-GMMResources {
 
     # deploy resources
     Write-Host "`nDeploying resources"
+    $directoryPath = $TemplateFilePath
+
+    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    $commonParametersObject = @{ parameters = @{} }
+    $commonParametersObject.parameters["solutionAbbreviation"] = @{"value" = $SolutionAbbreviation }
+    $commonParametersObject.parameters["environmentAbbreviation"] = @{"value" = $EnvironmentAbbreviation }
+    $commonParametersObject.parameters["prereqsResourceGroupName"] = @{"value" = $prereqsResourceGroup }
+    $commonParametersObject.parameters["dataResourceGroupName"] = @{"value" = $dataResourceGroup }
+    $commonParametersObject.parameters["computeResourceGroupName"] = @{"value" = $computeResourceGroup }
+    $commonParametersObject.parameters["prereqsKeyVaultName"] = @{"value" = $prereqsResourceGroup }
+    $commonParametersObject.parameters["dataKeyVaultName"] = @{"value" = $dataResourceGroup }
+    $commonParametersObject.parameters["computeKeyVaultName"] = @{"value" = $computeResourceGroup }
+    $commonParametersObject.parameters["appConfigurationName"] = @{"value" = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation" }
+    $commonParametersObject.parameters["apiServiceBaseUri"] = @{"value" = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" }
+
+    $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
+    $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
+
+    # deploy resource groups
+    Write-Host "`nCreating resource groups"
+    $resourceGroupsParameters = `
+        Get-TemplateParameters `
+        -TemplateFilePath "$directoryPath\resourceGroups.json" `
+        -ParametersFilePath $ParameterFilePath `
+        -AdditionalParameters $commonParametersObject
+
     New-AzDeployment `
-        -TemplateFile $TemplateFilePath `
-        -TemplateParameterFile $ParameterFilePath `
-        -solutionAbbreviation $SolutionAbbreviation `
-        -environmentAbbreviation $EnvironmentAbbreviation `
-        -location $Location
+        -TemplateFile "$directoryPath\resourceGroups.json" `
+        -TemplateParameterObject $resourceGroupsParameters `
+        -Location $Location
+
+    # deploy prereq resources
+    Retry-Operation `
+        -Operation ${function:Set-PrereqResources} `
+        -OperationName "Create prereq resources" `
+        -params @{
+        SolutionAbbreviation    = $SolutionAbbreviation
+        EnvironmentAbbreviation = $EnvironmentAbbreviation
+        TemplateFilePath        = $TemplateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $commonParametersObject
+        SetRBACPermissions      = $setRBACPermissions
+    }
+
+    # creating app registrations
+    Write-Host "`nCreating app registrations"
+    $appRegistrations = `
+        Set-GMMAppRegistrations `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ScriptsDirectory "$scriptsDirectory\Scripts" `
+        -SecondaryTenantId $SecondaryTenantId
+
+    # add app registrations to common parameters
+    $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
+    $commonParametersObject.parameters["uiAppTenantId"] = @{ "value" = $appRegistrations.UITenantId }
+    $commonParametersObject.parameters["uiAppClientId"] = @{ "value" = $appRegistrations.UIApplicationId }
+
+    # deploy data resources
+    Retry-Operation `
+        -Operation ${function:Set-DataResources} `
+        -OperationName "Create data resources" `
+        -params @{
+        SolutionAbbreviation    = $SolutionAbbreviation
+        EnvironmentAbbreviation = $EnvironmentAbbreviation
+        TemplateFilePath        = $TemplateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $commonParametersObject
+        SetRBACPermissions      = $setRBACPermissions
+    }
+
+    # deploy compute resources
+    Retry-Operation `
+        -Operation ${function:Set-ComputeResources} `
+        -OperationName "Create compute resources" `
+        -params @{
+        SolutionAbbreviation    = $SolutionAbbreviation
+        EnvironmentAbbreviation = $EnvironmentAbbreviation
+        TemplateFilePath        = $TemplateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $commonParametersObject
+    }
+
+    # deploy ADF resources
+    Write-Host "`nCreating ADF resources"
+    $adfResourcesParameters = `
+        Get-TemplateParameters `
+        -TemplateFilePath "$directoryPath\adfHRResources.json" `
+        -ParametersFilePath $ParameterFilePath `
+        -AdditionalParameters $commonParametersObject
+
+    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "storageAccountConnectionString")
+    foreach ($secret in $adfDataSecrets) {
+        $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
+        if (-not $secretExists) {
+            $secretValue = ConvertTo-SecureString -String "not-set" -AsPlainText -Force
+            Set-AzKeyVaultSecret -VaultName $dataResourceGroup -Name $secret -SecretValue $secretValue
+        }
+    }
+
+    New-AzResourceGroupDeployment `
+        -ResourceGroupName $dataResourceGroup `
+        -TemplateFile "$directoryPath\adfHRResources.json" `
+        -TemplateParameterObject $adfResourcesParameters
+
+    Write-Host "`nResources deployed"
+
+    return @{
+        AppRegistrations = $appRegistrations
+    }
 }
 
 function Set-SqlServerFirewallRule {
@@ -220,7 +594,7 @@ function Set-RBACPermissions {
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $false)]
-		[bool] $SetUserAssignedManagedIdentityPermissions = $false
+        [bool] $SetUserAssignedManagedIdentityPermissions = $false
     )
 
     # grant permissions to resources
@@ -228,9 +602,9 @@ function Set-RBACPermissions {
 
     . ($ScriptsDirectory + '\Set-PostDeploymentRoles.ps1')
     Set-PostDeploymentRoles `
-    -SolutionAbbreviation $SolutionAbbreviation `
-    -EnvironmentAbbreviation $EnvironmentAbbreviation `
-    -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
 
 }
 
@@ -273,11 +647,18 @@ function Set-FunctionAppCode {
         Write-Host "Publishing code for function app $($functionApp.Name)"
 
         $functionName = $functionApp.Name.Split("-")[3]
+        $packageFile = "$FunctionsPackagesDirectory\$functionName.zip"
+
+        if (-not (Test-Path $packageFile)) {
+            Write-Host "Package file not found: $packageFile"
+            continue
+        }
+
         Publish-AzWebApp `
             -ResourceGroupName $computeResourceGroup `
             -Name $functionApp.Name `
-            -ArchivePath "$FunctionsPackagesDirectory\$functionName.zip" `
-            -Force `
+            -ArchivePath $packageFile `
+            -Force
     }
 
     # publish web api code
@@ -331,14 +712,16 @@ function Set-KeyVaultFirewallRules {
         [Parameter(Mandatory = $true)]
         [string]$ipAddress,
         [Parameter(Mandatory = $true)]
-        [string]$ScriptsDirectory
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$Region
     )
 
     # enable firewall rules for key vaults
     Write-Host "Enabling firewall rules for key vaults"
 
     # get ip addresses for firewall rules
-    . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory
+    . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
     $ipRules = Get-Content "$ScriptsDirectory\ipRules.txt"
     $ipRules += $ipAddress
 
@@ -403,6 +786,221 @@ function Start-FunctionApps {
     }
 }
 
+function Set-GMMAppRegistrations {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $false)]
+        [System.Nullable[Guid]]$SecondaryTenantId,
+        [Parameter(Mandatory = $False)]
+        [boolean] $SkipIfApplicationExists = $True
+    )
+
+    Write-Host "`nSetting GMM App Registrations"
+    . ($ScriptsDirectory + '\Set-UIAzureADApplication.ps1')
+
+    $currentContext = Get-AzContext
+    $subscriptionName = $currentContext.Subscription.Name
+    $mainTenantId = $currentContext.Tenant.Id
+
+    $uiInformation = Set-UIAzureADApplication `
+        -SubscriptionName $subscriptionName `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -TenantId $mainTenantId `
+        -DevTenantId $SecondaryTenantId `
+        -SaveToKeyVault $true `
+        -SkipPrompts $true `
+        -SkipIfApplicationExists $true `
+        -Clean $false
+
+    . ($ScriptsDirectory + '\Set-WebApiAzureADApplication.ps1')
+    $apiInformation = Set-WebApiAzureADApplication `
+        -SubscriptionName $subscriptionName `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -TenantId $mainTenantId `
+        -DevTenantId $SecondaryTenantId `
+        -SaveToKeyVault $true `
+        -SkipPrompts $true `
+        -SkipIfApplicationExists $true `
+        -Clean $false
+
+    . ($ScriptsDirectory + '\Set-GraphCredentialsAzureADApplication.ps1')
+    $graphInformation = Set-GraphCredentialsAzureADApplication `
+        -SubscriptionName $subscriptionName `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -TenantIdToCreateAppIn ($SecondaryTenantId ?? $mainTenantId) `
+        -TenantIdWithKeyVault $mainTenantId `
+        -SaveToKeyVault $true `
+        -SkipPrompts $true `
+        -SkipIfApplicationExists $true `
+        -Clean $false
+
+    $null = Set-AzContext -Tenant $mainTenantId
+
+    . ($ScriptsDirectory + '\Set-GMMSqlMembershipAzureADApplication.ps1')
+    $sqlMembershipApp = Set-GMMSqlMembershipAzureADApplication `
+        -SubscriptionName $subscriptionName `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Clean $false `
+        -SkipIfApplicationExists $true
+
+    return @{
+        UIApplicationId            = $uiInformation.ApplicationId;
+        UITenantId                 = $uiInformation.TenantId;
+        APIApplicationId           = $apiInformation.ApplicationId;
+        APITenantId                = $apiInformation.TenantId;
+        GraphApplicationId         = $graphInformation.ApplicationId;
+        GraphTenantId              = $graphInformation.TenantId;
+        SqlMembershipApplicationId = $sqlMembershipApp.ApplicationId;
+        SqlMembershipTenantId      = $sqlMembershipApp.TenantId;
+    }
+}
+
+function Set-ConfigureWebApps {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$WebApiName,
+        [Parameter(Mandatory = $true)]
+        [string]$UIWebAppName,
+        [Parameter(Mandatory = $true)]
+        [string]$UIAppRegistrationId,
+        [Parameter(Mandatory = $true)]
+        [string]$ComputeResourceGroup
+    )
+
+    # Set CORS for web apps
+    $allowedOrigins = @()
+
+    try {
+        $customDomain = Get-AzStaticWebAppCustomDomain -Name $UIWebAppName -ResourceGroupName $ComputeResourceGroup
+        if (-not [string]::IsNullOrEmpty($customDomain)) {
+            $allowedOrigins += $customDomain.HostName
+        }
+    }
+    catch {
+        Write-Output "No custom domain associated with this web app."
+    }
+
+    $staticWebApp = Get-AzStaticWebApp -Name $UIWebAppName -ResourceGroupName $ComputeResourceGroup
+    $allowedOrigins += "https://$($staticWebApp.DefaultHostname)"
+
+    $webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $WebApiName
+    $currentCORs = $webApi.SiteConfig.Cors.AllowedOrigins
+    $newCORs = @()
+
+    if ($null -eq $currentCORs) {
+        $currentCORs = New-Object System.Collections.Generic.List[string]
+    }
+
+    foreach ($origin in $allowedOrigins) {
+        if (-not $currentCORs.Contains($origin)) {
+            $newCORs += $origin
+        }
+    }
+
+    if ($newCORs.Count -gt 0) {
+
+        # preserve the existing CORS settings
+        $currentCORs | ForEach-Object {
+            $newCORs += $_
+        }
+
+        $apiResourceParams = @{
+            ResourceName      = $WebApiName
+            ResourceType      = "Microsoft.Web/sites"
+            ResourceGroupName = $ComputeResourceGroup
+        }
+
+        $webApiResource = Get-AzResource @apiResourceParams
+        $webApiResource.Properties.siteConfig.cors = @{
+            allowedOrigins = $newCORs
+        }
+
+        $webApiResource | Set-AzResource -Force
+    }
+
+    # Set UI Redirect URIs
+    $uiApp = Get-AzADApplication -ApplicationId $UIAppRegistrationId
+    $currentRedirectUris = $uiApp.Spa.RedirectUri
+    $newRedirectUris = @()
+
+    foreach ($origin in $allowedOrigins) {
+        if (-not $currentRedirectUris.Contains($origin)) {
+            $newRedirectUris += $origin
+        }
+    }
+
+    if ($newRedirectUris.Count -gt 0) {
+
+        # preserve the existing redirect URIs
+        $currentRedirectUris | ForEach-Object {
+            $newRedirectUris += $_
+        }
+
+        Update-AzADApplication `
+            -ObjectId $uiApp.Id `
+            -SPARedirectUri $newRedirectUris
+    }
+}
+
+function Set-PublishUICode {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$UIClientId,
+        [Parameter(Mandatory = $true)]
+        [string]$UITenantId,
+        [Parameter(Mandatory = $true)]
+        [string]$WebApiClientId,
+        [Parameter(Mandatory = $true)]
+        [string]$WebApiBaseUri,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$DataResourceGroup,
+        [Parameter(Mandatory = $true)]
+        [string]$ComputeResourceGroup,
+        [Parameter(Mandatory = $true)]
+        [string]$WebAppDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$MainTenantId,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId
+    )
+
+    $appInsights = Get-AzApplicationInsights -ResourceGroupName $DataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $appInsightsConnectionString = $appInsights.ConnectionString
+
+    $envContent = "REACT_APP_AAD_UI_APP_CLIENT_ID=$UIClientId`n"
+    $envContent += "REACT_APP_AAD_APP_TENANT_ID=$UITenantId`n"
+    $envContent += "REACT_APP_AAD_API_APP_CLIENT_ID=$WebApiClientId`n"
+    $envContent += "REACT_APP_AAD_APP_SERVICE_BASE_URI=$WebApiBaseUri`n"
+    $envContent += "REACT_APP_APPINSIGHTS_CONNECTIONSTRING=$appInsightsConnectionString`n"
+    $envContent += "REACT_APP_ENVIRONMENT_ABBREVIATION=$EnvironmentAbbreviation`n"
+    $envContent += "AZURE_SUBSCRIPTION_ID=$SubscriptionId`n"
+    $envContent += "AZURE_TENANT_ID=$MainTenantId`n"
+
+    Set-Content -Path "$WebAppDirectory\.env" -Value $envContent -Force
+    $currentLocation = Get-Location
+
+    Set-Location -Path $WebAppDirectory
+    swa login --tenant-id $MainTenantId --subscription-id $SubscriptionId
+    swa build
+    swa deploy "build" --env "Production" -n "$SolutionAbbreviation-ui" -R $ComputeResourceGroup
+
+    Set-Location -Path $currentLocation
+}
+
 function Deploy-Resources {
     [CmdletBinding()]
     param (
@@ -415,15 +1013,17 @@ function Deploy-Resources {
         [Parameter(Mandatory = $false)]
         [string]$SubscriptionId,
         [Parameter(Mandatory = $true)]
-        [string]$TemplateFilePath,
+        [string]$TemplateFilesDirectory, # absolute path
         [Parameter(Mandatory = $true)]
-        [string]$ParameterFilePath,
+        [string]$ParameterFilePath, # absolute path
         [Parameter(Mandatory = $false)]
         [bool]$SkipResourceProvidersCheck = $false,
         [Parameter(Mandatory = $false)]
         [bool]$StartFunctions = $true,
         [Parameter(Mandatory = $false)]
-		[bool] $SetUserAssignedManagedIdentityPermissions = $false
+        [bool] $SetUserAssignedManagedIdentityPermissions = $true,
+        [Parameter(Mandatory = $false)]
+        [System.Nullable[Guid]]$SecondaryTenantId
     )
 
     # define the resource groups
@@ -439,18 +1039,20 @@ function Deploy-Resources {
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -SubscriptionId $SubscriptionId
 
+    $context = Get-AzContext
+
     if (!$SkipResourceProvidersCheck) {
         Set-ResourceProviders
     }
 
-    Stop-FunctionApps -ResourceGroupName $computeResourceGroup
+    # Stop-FunctionApps -ResourceGroupName $computeResourceGroup
     Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
-    Set-GMMResources `
+    $response = Set-GMMResources `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -Location $Location `
-        -TemplateFilePath $TemplateFilePath `
+        -TemplateFilePath $TemplateFilesDirectory `
         -ParameterFilePath $ParameterFilePath
 
     Start-Sleep -Seconds 30
@@ -489,19 +1091,40 @@ function Deploy-Resources {
         -FunctionsPackagesDirectory "$scriptsDirectory\function_packages" `
         -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
 
-    Set-KeyVaultFirewallRules `
-        -ResourceGroups $resourceGroups `
-        -ipAddress $ipAddress `
-        -ScriptsDirectory "$scriptsDirectory\Scripts"
+
+    # Configure web apps
+    Set-ConfigureWebApps `
+        -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
+        -UIWebAppName "$SolutionAbbreviation-ui" `
+        -UIAppRegistrationId $response.AppRegistrations.UIApplicationId `
+        -ComputeResourceGroup $computeResourceGroup
+
+    # Publish UI code
+    Set-PublishUICode `
+        -UIClientId $response.AppRegistrations.UIApplicationId `
+        -UITenantId $response.AppRegistrations.UITenantId `
+        -WebApiClientId $response.AppRegistrations.APIApplicationId `
+        -WebApiBaseUri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -DataResourceGroup $dataResourceGroup `
+        -ComputeResourceGroup $computeResourceGroup `
+        -WebAppDirectory "$scriptsDirectory\webapp_package\web-app" `
+        -MainTenantId $context.Tenant.Id `
+        -SubscriptionId $SubscriptionId
 
     Deploy-PostDeploymentUpdates `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$ScriptsDirectory\scripts"
 
+    Set-KeyVaultFirewallRules `
+        -ResourceGroups $resourceGroups `
+        -ipAddress $ipAddress `
+        -ScriptsDirectory "$scriptsDirectory\Scripts" `
+        -Region $Location
+
     if ($StartFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
 }
-
-

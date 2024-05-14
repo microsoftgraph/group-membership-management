@@ -61,11 +61,17 @@ function Set-WebApiAzureADApplication {
 		[Parameter(Mandatory = $True)]
 		[Guid] $TenantId,
 		[Parameter(Mandatory = $False)]
-		[Guid] $DevTenantId,
+		[System.Nullable[Guid]] $DevTenantId,
 		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory = $False)]
 		[boolean] $Clean = $False,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SaveToKeyVault = $True,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipPrompts = $False,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipIfApplicationExists = $True,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -76,6 +82,9 @@ function Set-WebApiAzureADApplication {
 	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
 
+	$context = Get-AzContext
+	$currentTenantId = $context.Tenant.Id
+
 	if($null -eq $DevTenantId) {
 		$DevTenantId = $TenantId
 		Write-Host "Please sign in to your tenant."
@@ -83,11 +92,18 @@ function Set-WebApiAzureADApplication {
 		Write-Host "Please sign in to your dev tenant."
 	}
 
-	Connect-AzAccount -Tenant $DevTenantId
+	if($currentTenantId -ne $DevTenantId) {
+		Connect-AzAccount -Tenant $DevTenantId
+	}
 
 	#region Delete Application / Service Principal if they already exist
 	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
 	$webApiApp = (Get-AzADApplication -DisplayName $webApiAppDisplayName)
+
+	if ($null -ne $webApiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
+		Write-Host "Application $webApiAppDisplayName already exists. Skipping creation..."
+		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
+	}
 
 	if ($Clean) {
 		$webApiApp | ForEach-Object {
@@ -131,7 +147,6 @@ function Set-WebApiAzureADApplication {
 
 		New-AzADServicePrincipal -ApplicationId $webApiApp.AppId
 
-
 		$permissionScope = New-Object Microsoft.Azure.Powershell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPermissionScope
 		$permissionScope.Id = New-Guid
 		$permissionScope.AdminConsentDescription = "WebAPI user impersonation"
@@ -144,8 +159,11 @@ function Set-WebApiAzureADApplication {
 
 		$api = $webApiApp.Api
 		$api.Oauth2PermissionScope = $permissionScope
+		$api.RequestedAccessTokenVersion = 2
 
 		Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
+
+		Start-Sleep -Seconds 30
 
 		$webSettings = $webApiApp.Web
 		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
@@ -156,6 +174,19 @@ function Set-WebApiAzureADApplication {
 								-DisplayName $webApiAppDisplayName `
 								-Web $webSettings `
 								-AvailableToOtherTenants $false
+
+		Start-Sleep -Seconds 30
+
+		$uiApp = Get-AzADApplication -DisplayName "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+		if($uiApp) {
+
+			 $preAuthApp = New-Object Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPreAuthorizedApplication
+		     $preAuthApp.AppId = $uiApp.AppId
+			 $preAuthApp.DelegatedPermissionId = $permissionScope.Id
+			 $api.PreAuthorizedApplication = $preAuthApp
+
+			 Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
+		}
 	}
 	else {
 		$webApiApp.Web.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
@@ -194,9 +225,50 @@ function Set-WebApiAzureADApplication {
 	. ($scriptsDirectory + '\Scripts\Set-AppRolesIfNeeded.ps1')
 		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
+	if($SaveToKeyVault -eq $false) {
+		Write-Verbose "Set-WebApiAzureADApplication completed."
+		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
+	}
+
+	Set-WebAPIKeyVaultSecrets -SubscriptionName $SubscriptionName `
+							  -SolutionAbbreviation $SolutionAbbreviation `
+							  -EnvironmentAbbreviation $EnvironmentAbbreviation `
+							  -TenantId $TenantId `
+							  -WebApiApplicationId $webApiApp.AppId `
+							  -DevTenantId $DevTenantId `
+							  -CertificateName $CertificateName `
+							  -SkipPrompts $SkipPrompts
+
+	return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
+	Write-Verbose "Set-WebApiAzureADApplication completed."
+}
+
+function Set-WebAPIKeyVaultSecrets {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory = $True)]
+		[string] $SubscriptionName,
+		[Parameter(Mandatory = $True)]
+		[string] $SolutionAbbreviation,
+		[Parameter(Mandatory = $True)]
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory = $True)]
+		[Guid] $TenantId,
+		[Parameter(Mandatory = $True)]
+		[Guid] $WebApiApplicationId,
+		[Parameter(Mandatory = $False)]
+		[System.Nullable[Guid]] $DevTenantId,
+		[Parameter(Mandatory = $False)]
+		[string] $CertificateName,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipPrompts = $False,
+		[Parameter(Mandatory = $False)]
+		[string] $ErrorActionPreference = $Stop
+	)
+
 	# These need to go into the key vault
 	$webApiAppTenantId = $DevTenantId;
-	$webApiAppClientId = $webApiApp.AppId;
+	$webApiAppClientId = $WebApiApplicationId;
 
 	# Create new secret
 	$endDate = [System.DateTime]::Now.AddYears(1)
@@ -206,7 +278,7 @@ function Set-WebApiAzureADApplication {
 
 	if ($TenantId -ne $DevTenantId) {
 		Write-Host "Please sign in to your primary tenant."
-		Connect-AzAccount -Tenant $TenantId -Confirm
+		Connect-AzAccount -Tenant $TenantId
 	}
 
 	Set-AzContext -Subscription $SubscriptionName
@@ -222,7 +294,11 @@ function Set-WebApiAzureADApplication {
 	$webApiClientIdKeyVaultSecretName = "webApiClientId"
 
 	Write-Verbose "WebApi application (client) ID is $webApiAppClientId"
-	$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
+	if($SkipPrompts){
+		$webApiClientIdSecret = ConvertTo-SecureString -String $webApiAppClientId -AsPlainText -Force
+	} else {
+		$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
+	}
 
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiClientIdKeyVaultSecretName `
@@ -233,7 +309,11 @@ function Set-WebApiAzureADApplication {
 	$webApiAppClientSecretName = "webApiClientSecret"
 
 	Write-Verbose "WebApi application client secret is $($webApiAppClientSecret.SecretText)"
-	$webApiClientSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application client secret from above and paste it here"
+	if($SkipPrompts){
+		$webApiClientSecret = ConvertTo-SecureString -String $webApiAppClientSecret.SecretText -AsPlainText -Force
+	} else {
+		$webApiClientSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application client secret from above and paste it here"
+	}
 
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiAppClientSecretName `
@@ -244,7 +324,11 @@ function Set-WebApiAzureADApplication {
 	$webApiTenantSecretName = "webApiTenantId"
 
 	Write-Verbose "WebApi tenant ID is $webApiAppTenantId"
-	$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
+	if($SkipPrompts){
+		$webApiTenantSecret = ConvertTo-SecureString -String $webApiAppTenantId -AsPlainText -Force
+	} else {
+		$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
+	}
 
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $webApiTenantSecretName `
@@ -260,14 +344,18 @@ function Set-WebApiAzureADApplication {
 		$CertificateName = "not-set"
 		$setWebApiCertificate = $true
 	}
- elseif ($CertificateName) {
+ 	elseif ($CertificateName) {
 		$setWebApiCertificate = $true
 	}
 
 	if ($setWebApiCertificate) {
 
 		Write-Verbose "Certificate name is $CertificateName"
-		$webApiAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
+		if($SkipPrompts){
+			$webApiAppCertificateSecret = ConvertTo-SecureString -String $CertificateName -AsPlainText -Force
+		} else {
+			$webApiAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
+		}
 
 		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 							 -Name $webApiAppCertificateName `

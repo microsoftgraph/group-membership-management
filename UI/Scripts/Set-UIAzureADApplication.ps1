@@ -63,11 +63,17 @@ function Set-UIAzureADApplication {
 		[Parameter(Mandatory = $True)]
 		[Guid] $TenantId,
 		[Parameter(Mandatory = $False)]
-		[Guid] $DevTenantId,
+		[System.Nullable[Guid]] $DevTenantId,
 		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory = $False)]
 		[boolean] $Clean = $False,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SaveToKeyVault = $True,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipPrompts = $False,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipIfApplicationExists = $True,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -78,6 +84,9 @@ function Set-UIAzureADApplication {
 	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
 
+	$context = Get-AzContext
+	$currentTenantId = $context.Tenant.Id
+
 	if($null -eq $DevTenantId) {
 		$DevTenantId = $TenantId
 		Write-Host "Please sign in to your tenant."
@@ -85,11 +94,18 @@ function Set-UIAzureADApplication {
 		Write-Host "Please sign in to your dev tenant."
 	}
 
-	Connect-AzAccount -Tenant $DevTenantId
+	if($currentTenantId -ne $DevTenantId) {
+		Connect-AzAccount -Tenant $DevTenantId
+	}
 
 	#region Delete Application / Service Principal if they already exist
 	$uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
 	$uiApp = (Get-AzADApplication -DisplayName $uiAppDisplayName)
+
+	if ($null -ne $uiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
+		Write-Host "Application $uiAppDisplayName already exists. Skipping creation..."
+		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; }
+	}
 
 	if ($Clean) {
 		$uiApp | ForEach-Object {
@@ -167,62 +183,116 @@ function Set-UIAzureADApplication {
 
 	Start-Sleep -Seconds 30
 
-	# These need to go into the key vault
-	$uiAppTenantId = $DevTenantId;
-	$uiAppClientId = $uiApp.AppId;
-
-	# Create new secret
-	$endDate = [System.DateTime]::Now.AddYears(1)
-	$uiAppClientSecret = Get-AzADApplication -ApplicationId $uiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
-
-	Write-Host (Get-AzContext)
-
-	if ($TenantId -ne $DevTenantId) {
-		Write-Host "Please sign in to your primary tenant."
-		Connect-AzAccount -Tenant $TenantId -Confirm
+	if($SaveToKeyVault -eq $false) {
+		Write-Verbose "Set-UIAzureADApplication completed."
+		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; }
 	}
 
-	Set-AzContext -Subscription $SubscriptionName
+	Set-UIKeyVaultSecrets -SubscriptionName $SubscriptionName `
+						  -SolutionAbbreviation $SolutionAbbreviation `
+						  -EnvironmentAbbreviation $EnvironmentAbbreviation `
+						  -TenantId $TenantId `
+						  -UIApplicationId $uiApp.AppId `
+						  -DevTenantId $DevTenantId `
+						  -CertificateName $CertificateName `
+						  -SkipPrompts $SkipPrompts
 
-	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-	$keyVault = Get-AzKeyVault -VaultName $keyVaultName
-
-	if ($null -eq $keyVault) {
-		throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
-	}
-
-	# Store Application (client) ID in KeyVault
-	$uiAppIdKeyVaultSecretName = "uiAppId"
-
-    Write-Verbose "UI application (client) ID is $uiAppClientId"
-	$uiAppIdSecret = Read-Host -AsSecureString -Prompt "Please take the UI application ID from above and paste it here"
-
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $uiAppIdKeyVaultSecretName `
-						 -SecretValue $uiAppIdSecret
-	Write-Verbose "$uiAppIdKeyVaultSecretName added to vault for $uiAppDisplayName."
-
-	# Store Application secret in KeyVault
-	$uiAppClientSecretName = "uiPasswordCredentialValue"
-
-    Write-Verbose "UI application client secret is $($uiAppClientSecret.SecretText)"
-	$uiPasswordCredentialValue = Read-Host -AsSecureString -Prompt "Please take the UI application client secret from above and paste it here"
-
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $uiAppClientSecretName `
-						 -SecretValue $uiPasswordCredentialValue
-	Write-Verbose "$uiAppClientSecretName added to vault for $uiAppDisplayName."
-
-	# Store tenantID in KeyVault
-	$uiTenantSecretName = "uiTenantId"
-
-    Write-Verbose "UI tenant ID is $uiAppTenantId"
-	$uiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the UI tenant ID from above and paste it here"
-
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $uiTenantSecretName `
-						 -SecretValue $uiTenantSecret
-	Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
-
+	return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; }
 	Write-Verbose "Set-UIAzureADApplication completed."
+}
+
+function Set-UIKeyVaultSecrets {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory = $True)]
+		[string] $SubscriptionName,
+		[Parameter(Mandatory = $True)]
+		[string] $SolutionAbbreviation,
+		[Parameter(Mandatory = $True)]
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory = $True)]
+		[Guid] $TenantId,
+		[Parameter(Mandatory = $True)]
+		[Guid] $UIApplicationId,
+		[Parameter(Mandatory = $False)]
+		[System.Nullable[Guid]] $DevTenantId,
+		[Parameter(Mandatory = $False)]
+		[string] $CertificateName,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipPrompts = $False,
+		[Parameter(Mandatory = $False)]
+		[string] $ErrorActionPreference = $Stop
+	)
+
+		# These need to go into the key vault
+		$uiAppTenantId = $DevTenantId;
+		$uiAppClientId = $UIApplicationId
+
+		# Create new secret
+		$endDate = [System.DateTime]::Now.AddYears(1)
+		$uiAppClientSecret = Get-AzADApplication -ApplicationId $uiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
+
+		Write-Host (Get-AzContext)
+
+		if ($TenantId -ne $DevTenantId) {
+			Write-Host "Please sign in to your primary tenant."
+			Connect-AzAccount -Tenant $TenantId
+		}
+
+		Set-AzContext -Subscription $SubscriptionName
+
+		$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+		$keyVault = Get-AzKeyVault -VaultName $keyVaultName
+
+		if ($null -eq $keyVault) {
+			throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
+		}
+
+		# Store Application (client) ID in KeyVault
+		$uiAppIdKeyVaultSecretName = "uiAppId"
+
+		Write-Verbose "UI application (client) ID is $uiAppClientId"
+		if($SkipPrompts) {
+			$uiAppIdSecret = ConvertTo-SecureString -String $uiAppClientId -AsPlainText -Force
+		} else {
+			$uiAppIdSecret = Read-Host -AsSecureString -Prompt "Please take the UI application ID from above and paste it here"
+		}
+
+		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+							 -Name $uiAppIdKeyVaultSecretName `
+							 -SecretValue $uiAppIdSecret
+		Write-Verbose "$uiAppIdKeyVaultSecretName added to vault for $uiAppDisplayName."
+
+		# Store Application secret in KeyVault
+		$uiAppClientSecretName = "uiPasswordCredentialValue"
+
+		Write-Verbose "UI application client secret is $($uiAppClientSecret.SecretText)"
+		if($SkipPrompts){
+			$uiPasswordCredentialValue = ConvertTo-SecureString -String $uiAppClientSecret.SecretText -AsPlainText -Force
+		} else {
+			$uiPasswordCredentialValue = Read-Host -AsSecureString -Prompt "Please take the UI application client secret from above and paste it here"
+		}
+
+		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+							 -Name $uiAppClientSecretName `
+							 -SecretValue $uiPasswordCredentialValue
+		Write-Verbose "$uiAppClientSecretName added to vault for $uiAppDisplayName."
+
+		# Store tenantID in KeyVault
+		$uiTenantSecretName = "uiTenantId"
+
+		Write-Verbose "UI tenant ID is $uiAppTenantId"
+		if($SkipPrompts){
+			$uiTenantSecret = ConvertTo-SecureString -String $uiAppTenantId -AsPlainText -Force
+		} else {
+			$uiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the UI tenant ID from above and paste it here"
+		}
+
+		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+							 -Name $uiTenantSecretName `
+							 -SecretValue $uiTenantSecret
+
+		Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
+
+		Write-Verbose "Set-UIAzureADApplication completed."
 }

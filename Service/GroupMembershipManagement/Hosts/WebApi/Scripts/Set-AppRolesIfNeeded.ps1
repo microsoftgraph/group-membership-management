@@ -32,7 +32,12 @@ function Set-AppRolesIfNeeded {
     . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded
 
-    Connect-AzAccount -Tenant $TenantId
+    $context = Get-AzContext
+	$currentTenantId = $context.Tenant.Id
+
+    if($currentTenantId -ne $TenantId) {
+		Connect-AzAccount -Tenant $TenantId
+	}
 
     $WebApiApp = Get-AzADApplication -ObjectId $WebApiObjectId
     if (-not $WebApiApp) {
@@ -132,6 +137,10 @@ function Set-AppRolesIfNeeded {
         $currentAppRoles = $currentAppRoles | Where-Object {
             $newAppRolesLookup.ContainsKey($_.Value)
         }
+    }
+
+    if(-not $currentAppRoles) {
+        $currentAppRoles = @()
     }
 
     foreach ($role in $newAppRoles) {

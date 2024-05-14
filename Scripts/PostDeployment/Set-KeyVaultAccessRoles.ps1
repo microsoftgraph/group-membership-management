@@ -56,6 +56,29 @@ function Set-KeyVaultAccessRoles {
 	$dataKeyVault = Get-AzKeyVault -ResourceGroupName $DataResourceGroupName -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName
 
+	$serviceConnectionName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
+	$serviceConnectionPrincipal = Get-AzADServicePrincipal -DisplayName $serviceConnectionName
+	if ($serviceConnectionPrincipal) {
+		# prereqs keyvault
+		Set-KVRoleAssignment `
+			-ObjectId $serviceConnectionPrincipal.Id `
+			-DisplayName $serviceConnectionName `
+			-Scope $prereqsKeyVault.ResourceId `
+			-RoleDefinitionName "Key Vault Secrets User" `
+			-KeyVaultName $prereqsKeyVault.VaultName
+
+		# data keyvault
+		Set-KVRoleAssignment `
+			-ObjectId $serviceConnectionPrincipal.Id `
+			-DisplayName $serviceConnectionName `
+			-Scope $dataKeyVault.ResourceId `
+			-RoleDefinitionName "Key Vault Secrets User" `
+			-KeyVaultName $dataKeyVault.VaultName
+	}
+	else {
+		Write-Host "Service connection $serviceConnectionName was not found!"
+	}
+
 	# Grant the Function Apps access to the keyvaults
 	foreach ($functionApp in $functionApps) {
 		$ProductionFunctionAppName = $functionApp.Name
@@ -69,21 +92,21 @@ function Set-KeyVaultAccessRoles {
 			if ($functionServicePrincipal) {
 				# prereqs keyvault
 				Set-KVRoleAssignment `
-				-ObjectId $functionServicePrincipal.Id `
-				-DisplayName $fa `
-				-Scope $prereqsKeyVault.ResourceId `
-				-RoleDefinitionName "Key Vault Secrets User" `
-				-KeyVaultName $prereqsKeyVault.VaultName
+					-ObjectId $functionServicePrincipal.Id `
+					-DisplayName $fa `
+					-Scope $prereqsKeyVault.ResourceId `
+					-RoleDefinitionName "Key Vault Secrets User" `
+					-KeyVaultName $prereqsKeyVault.VaultName
 
 				# data keyvault
 				Set-KVRoleAssignment `
-				-ObjectId $functionServicePrincipal.Id `
-				-DisplayName $fa `
-				-Scope $dataKeyVault.ResourceId `
-				-RoleDefinitionName "Key Vault Secrets User" `
-				-KeyVaultName $dataKeyVault.VaultName
+					-ObjectId $functionServicePrincipal.Id `
+					-DisplayName $fa `
+					-Scope $dataKeyVault.ResourceId `
+					-RoleDefinitionName "Key Vault Secrets User" `
+					-KeyVaultName $dataKeyVault.VaultName
 			}
-			elseif ($null -eq $functionServicePrincipal) {
+			else {
 				Write-Host "Function $fa was not found!"
 			}
 		}
@@ -97,19 +120,19 @@ function Set-KeyVaultAccessRoles {
 		if ($webApiServicePrincipal) {
 			# prereqs keyvault
 			Set-KVRoleAssignment `
-			-ObjectId $webApiServicePrincipal.Id `
-			-DisplayName $webApi.Name `
-			-Scope $prereqsKeyVault.ResourceId `
-			-RoleDefinitionName "Key Vault Secrets User" `
-			-KeyVaultName $prereqsKeyVault.VaultName
+				-ObjectId $webApiServicePrincipal.Id `
+				-DisplayName $webApi.Name `
+				-Scope $prereqsKeyVault.ResourceId `
+				-RoleDefinitionName "Key Vault Secrets User" `
+				-KeyVaultName $prereqsKeyVault.VaultName
 
 			# data keyvault
 			Set-KVRoleAssignment `
-			-ObjectId $webApiServicePrincipal.Id `
-			-DisplayName $webApi.Name `
-			-Scope $dataKeyVault.ResourceId `
-			-RoleDefinitionName "Key Vault Secrets User" `
-			-KeyVaultName $dataKeyVault.VaultName
+				-ObjectId $webApiServicePrincipal.Id `
+				-DisplayName $webApi.Name `
+				-Scope $dataKeyVault.ResourceId `
+				-RoleDefinitionName "Key Vault Secrets User" `
+				-KeyVaultName $dataKeyVault.VaultName
 		}
 		elseif ($null -eq $webApiServicePrincipal) {
 			Write-Host "Web API $($webApi.Name) was not found!"
@@ -117,21 +140,21 @@ function Set-KeyVaultAccessRoles {
 	}
 
 	# Grant the Data Factories access to the keyvaults
-	$dataFactories = Get-AzResource -ResourceGroupName $DataResourceGroupName -ResourceType "Microsoft.DataFactory/factories"
+	$dataFactories = Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroupName
 	foreach ($dataFactory in $dataFactories) {
-		$dataFactoryName = $dataFactory.Name
-		$dataFactoryServicePrincipal = Get-AzADServicePrincipal -DisplayName $dataFactoryName
+		$dataFactoryName = $dataFactory.DataFactoryName
+		$dataFactoryServicePrincipal = $dataFactory.Identity.PrincipalId
 
 		if ($dataFactoryServicePrincipal) {
 			# data keyvault
 			Set-KVRoleAssignment `
-			-ObjectId $dataFactoryServicePrincipal.Id `
-			-DisplayName $dataFactoryName `
-			-Scope $dataKeyVault.ResourceId `
-			-RoleDefinitionName "Key Vault Secrets User" `
-			-KeyVaultName $dataKeyVault.VaultName
+				-ObjectId $dataFactoryServicePrincipal `
+				-DisplayName $dataFactoryName `
+				-Scope $dataKeyVault.ResourceId `
+				-RoleDefinitionName "Key Vault Secrets User" `
+				-KeyVaultName $dataKeyVault.VaultName
 		}
-		elseif ($null -eq $dataFactoryServicePrincipal) {
+		else {
 			Write-Host "Data Factory $dataFactoryName was not found!"
 		}
 

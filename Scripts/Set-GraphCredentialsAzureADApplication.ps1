@@ -66,6 +66,12 @@ function Set-GraphCredentialsAzureADApplication {
 		[Guid] $TenantIdWithKeyVault,
 		[Parameter(Mandatory=$False)]
 		[string] $CertificateName,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SaveToKeyVault = $True,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipPrompts = $False,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipIfApplicationExists = $True,
 		[Parameter(Mandatory=$False)]
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory=$False)]
@@ -78,8 +84,13 @@ function Set-GraphCredentialsAzureADApplication {
     . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded
 
-    Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
-	Connect-AzAccount -Tenant $TenantIdToCreateAppIn
+	$context = Get-AzContext
+	$currentTenantId = $context.Tenant.Id
+
+	if($currentTenantId -ne $TenantIdToCreateAppIn){
+		Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
+		Connect-AzAccount -Tenant $TenantIdToCreateAppIn
+	}
 
 	while ((Set-AzContext -TenantId $TenantIdToCreateAppIn).Tenant.Id -ne $TenantIdToCreateAppIn)
 	{
@@ -89,20 +100,29 @@ function Set-GraphCredentialsAzureADApplication {
 
 	#region Delete Application / Service Principal if they already exist
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
-	$graphApps = (Get-AzADApplication -DisplayName $graphAppDisplayName)
+	$graphApp = (Get-AzADApplication -DisplayName $graphAppDisplayName)
 
-	$graphApps | ForEach-Object {
+	if($null -ne $graphApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false)
+	{
+		Write-Host "Application $graphAppDisplayName already exists. Skipping creation..."
+		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+	}
 
-        $displayName = $_.DisplayName;
-        $objectId = $_.Id;
-        try {
-            Remove-AzADApplication -ObjectId $objectId
-            Write-Host "Removed $displayName..." -ForegroundColor Green;
-        }
-        catch {
-            Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
-        }
-    }
+	if($Clean -eq $true)
+	{
+		$graphApp | ForEach-Object {
+
+			$displayName = $_.DisplayName;
+			$objectId = $_.Id;
+			try {
+				Remove-AzADApplication -ObjectId $objectId
+				Write-Host "Removed $displayName..." -ForegroundColor Green;
+			}
+			catch {
+				Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
+			}
+		}
+	}
     #endregion
 
     # These are the function apps that need to interact with the graph.
@@ -118,7 +138,7 @@ function Set-GraphCredentialsAzureADApplication {
 	$appPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRole `
 		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") } `
         | ForEach-Object { @{Id = $_.Id; Type = "Role" } }
-	
+
 	$delegatedPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").Oauth2PermissionScope `
 		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Channel.ReadBasic.All") -or ($_.Value -eq "Mail.Send") } `
 		| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
@@ -161,18 +181,59 @@ function Set-GraphCredentialsAzureADApplication {
 								-Web $webSettings
     }
 
+	if($SaveToKeyVault -eq $false)
+	{
+		Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
+		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+	}
+
+	Set-GraphAppKeyVaultSecrets -SubscriptionName $SubscriptionName `
+								-SolutionAbbreviation $SolutionAbbreviation `
+								-EnvironmentAbbreviation $EnvironmentAbbreviation `
+								-TenantIdToCreateAppIn $TenantIdToCreateAppIn `
+								-TenantIdWithKeyVault $TenantIdWithKeyVault `
+								-ApplicationClientId $graphApp.AppId `
+								-CertificateName $CertificateName `
+								-SkipPrompts $SkipPrompts
+
+	return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+	Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
+}
+
+
+function Set-GraphAppKeyVaultSecrets {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$True)]
+		[string] $SubscriptionName,
+		[Parameter(Mandatory=$True)]
+		[string] $SolutionAbbreviation,
+		[Parameter(Mandatory=$True)]
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory=$True)]
+		[Guid] $TenantIdToCreateAppIn,
+		[Parameter(Mandatory=$True)]
+		[Guid] $TenantIdWithKeyVault,
+		[Parameter(Mandatory=$True)]
+		[Guid] $ApplicationClientId,
+		[Parameter(Mandatory=$False)]
+		[string] $CertificateName,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipPrompts = $False
+	)
+
 	# These need to go into the key vault
 	$graphAppTenantId = $TenantIdToCreateAppIn;
-	$graphAppClientId = $graphApp.AppId;
+	$graphAppClientId = $ApplicationClientId;
 
 	# Create new secret
 	$endDate = [System.DateTime]::Now.AddYears(1)
     $graphAppClientSecret = Get-AzADApplication -ApplicationId $graphAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
 
-	do {
-		Write-Host "Please sign in with an account that can write to the prereqs key vault."
-        Add-AzAccount -TenantId $TenantIdWithKeyVault -Subscription $SubscriptionName
-	} while ((Set-AzContext -TenantId $TenantIdWithKeyVault -Subscription $SubscriptionName).Tenant.Id -ne $TenantIdWithKeyVault);
+	if ($TenantIdToCreateAppIn -ne $TenantIdWithKeyVault) {
+		Write-Host "Please sign in to your primary tenant."
+		Connect-AzAccount -Tenant $TenantIdWithKeyVault
+	}
 
    Write-Host (Get-AzContext)
 
@@ -188,7 +249,11 @@ function Set-GraphCredentialsAzureADApplication {
     $graphClientIdKeyVaultSecretName = "graphAppClientId"
 
     Write-Verbose "Graph application (client) ID is $graphAppClientId"
-	$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
+	if($SkipPrompts){
+		$graphClientIdSecret = ConvertTo-SecureString -String $graphAppClientId -AsPlainText -Force
+	} else {
+		$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
+	}
 
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $graphClientIdKeyVaultSecretName `
@@ -199,7 +264,11 @@ function Set-GraphCredentialsAzureADApplication {
 	$graphAppClientSecretName = "graphAppClientSecret"
 
     Write-Verbose "Graph application client secret is $($graphAppClientSecret.SecretText)"
-	$graphClientSecret = Read-Host -AsSecureString -Prompt "Please take the graph application client secret from above and paste it here"
+	if($SkipPrompts){
+		$graphClientSecret = ConvertTo-SecureString -String $graphAppClientSecret.SecretText -AsPlainText -Force
+	} else {
+		$graphClientSecret = Read-Host -AsSecureString -Prompt "Please take the graph application client secret from above and paste it here"
+	}
 
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 							-Name $graphAppClientSecretName `
@@ -210,7 +279,11 @@ function Set-GraphCredentialsAzureADApplication {
 	$graphTenantSecretName = "graphAppTenantId"
 
     Write-Verbose "Graph application tenant id is $graphAppTenantId"
-	$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
+	if($SkipPrompts){
+		$graphTenantSecret = ConvertTo-SecureString -String $graphAppTenantId -AsPlainText -Force
+	} else {
+		$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
+	}
 
 	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 						 -Name $graphTenantSecretName `
@@ -231,7 +304,11 @@ function Set-GraphCredentialsAzureADApplication {
 
 	if($setGraphAppCertificate){
 		Write-Verbose "Certificate name is $CertificateName"
-		$graphAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
+		if($SkipPrompts){
+			$graphAppCertificateSecret = ConvertTo-SecureString -String $CertificateName -AsPlainText -Force
+		} else {
+			$graphAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
+		}
 
 		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
 								-Name $graphAppCertificateName `

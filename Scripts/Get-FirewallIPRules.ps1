@@ -4,12 +4,13 @@ Updates the ipRules.txt file with the Azure published IP ranges for the specifie
 #>
 param (
     [Parameter(Mandatory=$true)]
-    [string]$FolderPathToSaveIpRules
+    [string]$FolderPathToSaveIpRules,
+    [Parameter(Mandatory=$false)]
+    [string]$Regions
 )
-
     # Installing MSIdentityTools Module
     Write-Host "Installing MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
-    Install-Module -Name MSIdentityTools -RequiredVersion 2.0.45 -Force
+    Install-Module -Name MSIdentityTools -RequiredVersion 2.0.52 -Force
     Import-Module -Name MSIdentityTools
     Write-Host "Installed MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
 
@@ -18,16 +19,22 @@ param (
     Write-Host "Retrieved Azure published IP ranges..." -ForegroundColor Yellow
 
     $azureSubnetProperties = $allIPRanges.values.properties
-    $regions = $azureSubnetProperties.region `
-    | Sort-Object -Unique `
-    | Where-Object { $_.Contains('us') -and -not `
-                    $_.Contains('australia') -and -not `
-                    $_.Contains('austria') -and -not `
-                    $_.Contains('euap') -and -not `
-                    $_.Contains('usstag') -and -not `
-                    $_.Contains('slv') -and -not `
-                    $_.Contains('east') -and -not `
-                    $_.Contains('central') }
+
+    if ([string]::IsNullOrEmpty($Regions)) {
+        $regionList = $azureSubnetProperties.region `
+        | Sort-Object -Unique `
+        | Where-Object { $_.Contains('us') -and -not `
+                        $_.Contains('australia') -and -not `
+                        $_.Contains('austria') -and -not `
+                        $_.Contains('euap') -and -not `
+                        $_.Contains('usstag') -and -not `
+                        $_.Contains('slv') -and -not `
+                        $_.Contains('east') -and -not `
+                        $_.Contains('central') }
+    } else {
+        $regionList = $Regions.Split(",") | ForEach-Object { $_.Trim() } | Sort-Object -Unique
+    }
+
 
     $systemServices = @()
     $systemServices += "AzureAppService"
@@ -35,7 +42,7 @@ param (
     $systemServices += "DataFactory"
     $systemServices += ""
 
-    $filteredSubnetProperties = $azureSubnetProperties | Where-Object { ($_.systemService -in $systemServices -and $_.region -in $regions) }
+    $filteredSubnetProperties = $azureSubnetProperties | Where-Object { ($_.systemService -in $systemServices -and $_.region -in $regionList) }
     $filteredIpV4AddressPrefixes = $filteredSubnetProperties.addressPrefixes | Where-Object { $_.Contains('.') }
     $filteredIpV4AddressPrefixes = $filteredIpV4AddressPrefixes | Sort-Object -Unique
     $filteredIpV4AddressPrefixes.Count
