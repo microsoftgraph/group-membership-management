@@ -87,11 +87,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       if (children.length === 0) {
         setIncludeFilter(false);
         setFilteredOptions({});
+        setFilteredValueOptions({});
       } else {
         let items: IFilterPart[] = children.map((child, index) => ({
           attribute: child.filter.split(' ')[0],
           equalityOperator: child.filter.split(' ')[1],
-          value: child.filter.split(' ')[2],
+          value:  attributeValues[child.filter.split(' ')[0]] &&
+                attributeValues[child.filter.split(' ')[0]].values &&
+                attributeValues[child.filter.split(' ')[0]].values.length > 0 &&
+                child.filter.split(' ')[2] && child.filter.split(' ')[2].startsWith("'") && child.filter.split(' ')[2].endsWith("'") ? child.filter.split(' ')[2].slice(1, -1) : child.filter.split(' ')[2],
           andOr: child.filter.split(' ')[3]
         }));
         setItems(items);
@@ -501,7 +505,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   useEffect(() => {
     if (source?.manager?.id) {
-      if (objectIdEmployeeIdMapping[source.manager.id] === undefined) {        
+      if (objectIdEmployeeIdMapping[source.manager.id] === undefined) {
         dispatch(fetchOrgLeaderDetailsUsingId({
           employeeId: source.manager.id,
           partId: partId as number
@@ -1633,7 +1637,7 @@ const checkType = (value: string, type: string | undefined): string => {
         <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onGroupDownClick(index)} style={{ marginBottom: '-15px'}} />
       </div>)} */}
       <DetailsList
-        styles={{ root: groups.length > 1 && items.length > 1 ? classNames.detailsListWithBorder : classNames.detailsList }}
+        styles={{ root: classNames.detailsList }}
         items={items}
         columns={columns}
         onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
