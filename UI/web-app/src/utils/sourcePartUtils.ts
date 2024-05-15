@@ -7,16 +7,27 @@ import { SourcePartType } from '../models/SourcePartType';
 
 export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T): T {
     if (IsHRSourcePartQuery(sourcePart)) {
-        const trimmedSource = {
-            ...sourcePart,
-            source: {
-                manager: {
-                    id: sourcePart.source?.manager?.id ?? undefined,
-                    depth: typeof sourcePart.source?.manager?.depth === 'number' && sourcePart.source.manager.depth > 0 ? sourcePart.source.manager.depth : sourcePart.source?.manager?.depth,
-                  },
-                filter: sourcePart.source.filter || undefined
-            },
-        };
+        let trimmedSource = sourcePart;
+        if (trimmedSource.source.manager === undefined || (trimmedSource.source.manager && trimmedSource.source.manager.id === undefined)) {
+            trimmedSource = {
+                ...sourcePart,
+                source: {
+                    filter: sourcePart.source.filter || undefined
+                },
+            };
+        }
+        else {
+            trimmedSource = {
+                ...sourcePart,
+                source: {
+                    manager: {
+                        id: sourcePart.source?.manager?.id ?? undefined,
+                        depth: typeof sourcePart.source?.manager?.depth === 'number' && sourcePart.source.manager.depth > 0 ? sourcePart.source.manager.depth : sourcePart.source?.manager?.depth,
+                      },
+                    filter: sourcePart.source.filter || undefined
+                },
+            };
+        }
         return trimmedSource as T;
     } else if (IsGroupMembershipSourcePartQuery(sourcePart)) {
         // No properties to trim for GroupMembershipSourcePart
