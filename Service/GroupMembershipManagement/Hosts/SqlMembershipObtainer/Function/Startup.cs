@@ -40,7 +40,7 @@ namespace SqlMembershipObtainer
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
             });
 
-            builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(GetValueOrThrow("sqlServerBasicConnectionString")));
+            builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(GetValueOrThrow("sqlServerMSIConnectionString")));
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
             builder.Services.AddSingleton<IDataFactorySecret<IDataFactoryRepository>>(new DataFactorySecrets<IDataFactoryRepository>(GetValueOrThrow("pipeline"), GetValueOrThrow("dataFactoryName"), GetValueOrThrow("subscriptionId"), GetValueOrThrow("dataResourceGroup")));
