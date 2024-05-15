@@ -577,9 +577,68 @@ const checkType = (value: string, type: string | undefined): string => {
     });
   };
 
-  const addComponent = () => {
+  const addComponent = (groupIndex?: number, childIndex?: number) => {
+    console.log("items", items);
+    console.log("groups", groups);
     setFilterErrorMessage('');
     setSource(props.source);
+
+    if (groupingEnabled) {
+
+      const emptyItemIndex = items.findIndex(item =>
+        item.attribute === "" &&
+        item.equalityOperator === "" &&
+        item.value === "" &&
+        item.andOr === ""
+      );
+
+      if (emptyItemIndex >= 0) {
+        return;
+      }
+
+
+      if (groupIndex !== undefined && childIndex !== undefined) {
+        if (groups[groupIndex].children[childIndex].items[groups[groupIndex].children[childIndex].items.length-1].andOr === "" || groups[groupIndex].children[childIndex].items[groups[groupIndex].children[childIndex].items.length-1].andOr === undefined) {
+          setFilterErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
+          return;
+        }
+      }
+      else if (groupIndex !== undefined) {
+        if (groups[groupIndex].items[groups[groupIndex].items.length-1].andOr === "" || groups[groupIndex].items[groups[groupIndex].items.length-1].andOr === undefined) {
+          setFilterErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
+          return;
+        }
+      }
+
+      if (groupIndex !== undefined && childIndex !== undefined && groupIndex >= 0 && childIndex >= 0) {
+        groups[groupIndex].children[childIndex].items = [
+          ...(groups[groupIndex].children[childIndex].items || []),
+          {
+            attribute: ``,
+            equalityOperator: ``,
+            value: ``,
+            andOr: ""
+          }
+        ];
+      }
+
+      else if (groupIndex !== undefined && groupIndex >= 0) {
+        groups[groupIndex].items = [
+          ...(groups[groupIndex].items || []),
+          {
+            attribute: ``,
+            equalityOperator: ``,
+            value: ``,
+            andOr: ""
+          }
+        ];
+      }
+
+      setGroups(groups);
+      setItemsBasedOnGroups(groups);
+      return;
+    }
+
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     let result = true;
@@ -641,8 +700,28 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const removeComponent = (indexToRemove: number) => {
+    console.log("indexToRemove", indexToRemove);
+    console.log("items", items);
+    console.log("selectedIndices[0]", selectedIndices[0]);
     if (indexToRemove === -1) return;
     if (groupingEnabled) {
+
+      let a: number = -1;
+      if ( selectedIndices[0] === -1) {
+        console.log("not found in items");
+        const emptyItemIndex = items.findIndex(item =>
+          item.attribute === "" &&
+          item.equalityOperator === "" &&
+          item.value === "" &&
+          item.andOr === ""
+        );
+        console.log("emptyItemIndex", emptyItemIndex);
+        a = emptyItemIndex;
+      }
+      selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
+
+      console.log("updated selectedIndices", selectedIndices[0]);
+
       let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(groups));
       const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
       const groupIndex = groups.findIndex(group =>
@@ -660,12 +739,15 @@ const checkType = (value: string, type: string | undefined): string => {
         )
       ) : -1;
 
+      console.log("groupIndex", groupIndex);
+      console.log("childIndex", childIndex);
+
       const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
       const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
 
       if (ifGroupItem && groups[groupIndex].items[indexToRemove ?? 0]) {
         console.log("it's a group item", groups[groupIndex].items[indexToRemove ?? 0]);
-        if (groups[groupIndex].children.length > 0) { return; }
+        if (groups[groupIndex].items.length === 1 && groups[groupIndex].children.length > 0) { return; }
         clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndex);
       }
 
@@ -808,8 +890,41 @@ const checkType = (value: string, type: string | undefined): string => {
     newValue: string;
   }
 
-  const updateGroupItem = (updateParams: UpdateParam, index: number, otherIndex?: number): void => {
+  const updateGroupItem = (updateParams: UpdateParam, index: number, otherIndex?: number, gi?: number): void => {
     const { property, newValue } = updateParams;
+
+    let a: number = -1;
+
+
+    console.log("selectedIndices", selectedIndices[0]);
+    console.log("updateGroupItem - items", items);
+    console.log("updateGroupItem - groups", groups);
+    console.log("index", index);
+    console.log("item", items[index]);
+    console.log("group Index", gi);
+
+    if ( selectedIndices[0] === -1) {
+
+      console.log("not found in items");
+      const emptyItemIndex = items.findIndex(item =>
+        item.attribute === "" &&
+        item.equalityOperator === "" &&
+        item.value === "" &&
+        item.andOr === ""
+      );
+      console.log("emptyItemIndex", emptyItemIndex);
+      a = emptyItemIndex;
+      // return;
+    }
+
+
+
+
+    selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
+
+
+    console.log("updated selectedIndices", selectedIndices[0]);
+
     const groupIndex = groups.findIndex(group =>
       group.children?.some(child =>
           child.items.some(item =>
@@ -825,10 +940,13 @@ const checkType = (value: string, type: string | undefined): string => {
       )
     ) : -1;
 
+    console.log("group Index", groupIndex);
+    console.log("child Index", childIndex);
+
     const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
     const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
 
-    if(!ifGroupItem && !ifGroupChild) {
+    if(!ifGroupItem && !ifGroupChild && property === "andOr") {
       if (otherIndex != null) {
         groups[index].children[otherIndex].andOr = newValue;
       } else {
@@ -847,15 +965,17 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     const updatedItems = [...items];
-    if (updatedItems[selectedIndices[0]]) updatedItems[selectedIndices[0]][property] = newValue;
+    if (updatedItems[index] && updatedItems[selectedIndices[0]]) updatedItems[selectedIndices[0]][property] = newValue;
 
     setItems(updatedItems);
     setGroups(groups);
     getGroupLabels(groups);
   }
 
-  const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
+  const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number): void => {
+    console.log("items", items);
     if (item) {
+      console.log("item", item);
       const selectedAttribute = attributes?.find(attribute => attribute.name === item.key);
       dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type }));
       const updatedItems = items.map((it, idx) => {
@@ -868,11 +988,12 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     if (groupingEnabled && item && index != null) {
+      console.log("index", index);
       const updateParams: UpdateParam = {
         property: "attribute",
         newValue: item.text
       };
-      updateGroupItem(updateParams, index);
+      updateGroupItem(updateParams, index, undefined, groupIndex);
       return;
     }
 
@@ -1081,7 +1202,7 @@ const checkType = (value: string, type: string | undefined): string => {
         property: "andOr",
         newValue: item.text
       };
-      updateGroupItem(updateParams, index, childIndex);
+      updateGroupItem(updateParams, index, childIndex, undefined);
       return;
     }
   }
@@ -1355,7 +1476,7 @@ const checkType = (value: string, type: string | undefined): string => {
     setItemsBasedOnGroups(newGroups);
   }
 
-  const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn): JSX.Element => {
+  const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
         // case 'upDown':
@@ -1368,7 +1489,7 @@ const checkType = (value: string, type: string | undefined): string => {
           selectedKey={item.attribute}
           options={filteredOptions[index] || getOptions(attributes)}
           onInputValueChange={(text) => onAttributeChange(text, index)}
-          onChange={(event, option) => handleAttributeChange(event, option, index)}
+          onChange={(event, option) => handleAttributeChange(event, option, index, groupIndex)}
           allowFreeInput
           autoComplete="off"
           useComboBoxAsMenuWidth={true}
@@ -1403,7 +1524,7 @@ const checkType = (value: string, type: string | undefined): string => {
           }
         case 'andOr':
           return (
-            !groupingEnabled ? (
+            (groups.length <= 0) ? (
               <Dropdown
                 selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
                 onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
@@ -1418,7 +1539,14 @@ const checkType = (value: string, type: string | undefined): string => {
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
                 />
-              ) : (<div />)
+              ) : (
+                <Dropdown
+                  // selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
+                  onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
+                  options={orAndOperatorOptions}
+                  styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+                />
+              )
             )
           );
         case 'remove':
@@ -1446,6 +1574,7 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const handleSelectionChanged = () => {
+    console.log("handleSelectionChanged", selection.getSelectedIndices());
     setSelectedIndices(selection.getSelectedIndices());
   };
 
@@ -1536,6 +1665,9 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
   function onGroupClick() {
+    console.log("onGroupClick - selectedIndices", selectedIndices);
+    console.log("onGroupClick - items", items);
+
     let newGroups = [...groups];
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
     const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
@@ -1617,9 +1749,9 @@ const checkType = (value: string, type: string | undefined): string => {
     dropdown: { width: 100 },
   };
 
-  const renderItems = (items: IFilterPart[], conjunction: string, index: number, isLastItem: boolean, isUpDownEnabled: boolean) => {
+  const renderItems = (items: IFilterPart[], isUpDownEnabled: boolean, groupIndex: number, childIndex?: number) => {
     const selection: Selection = new Selection({
-      onSelectionChanged: () => handleSelectionChange(selection, index)
+      onSelectionChanged: () => handleSelectionChange(selection)
     });
     return (
       <div>
@@ -1631,14 +1763,17 @@ const checkType = (value: string, type: string | undefined): string => {
         styles={{ root: classNames.detailsList }}
         items={items}
         columns={columns}
-        onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
+        onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column, groupIndex)}
         selection={selection}
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
       />
-      {/* <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(index, childIndex)}>
+      {/* <div className={classNames.error}>
+        {filterErrorMessage}
+      </div> */}
+      <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(groupIndex, childIndex)}>
         {strings.HROnboarding.addAttribute}
-      </ActionButton> */}
+      </ActionButton>
       </div>
     );
   };
@@ -1648,7 +1783,7 @@ const checkType = (value: string, type: string | undefined): string => {
       <div>
       <Stack key={parentIndex}>
         <Stack tokens={{ childrenGap: 10 }}>
-          {group.items.length > 0 && renderItems(group.items, 'And', parentIndex, parentIndex === groups.length - 1, true)}
+          {group.items.length > 0 && renderItems(group.items, true, parentIndex)}
           {((group.items && group.items.length > 0 && parentIndex !== groups.length - 1) || (group.children && group.children.length > 0)) && (
           <div>
           <Dropdown
@@ -1671,7 +1806,7 @@ const checkType = (value: string, type: string | undefined): string => {
       <Stack key={parentIndex + '-' + childIndex} tokens={{ childrenGap: 10 }} style={{ paddingLeft: '50px' }}>
         <Label>{childGroup.name}</Label>
         <Stack tokens={{ childrenGap: 10 }}>
-          {childGroup.items.length > 0 && renderItems(childGroup.items, childGroup.items[childGroup.items.length-1].andOr, parentIndex, childIndex === children.length - 1, false)}
+          {childGroup.items.length > 0 && renderItems(childGroup.items, false, parentIndex, childIndex)}
           {((childGroup.items && childGroup.items.length > 0 && (childIndex !== children.length - 1 || parentIndex !== groups.length - 1)) || (childGroup.children && childGroup.children.length > 0)) && (
           <div>
           <Dropdown
@@ -1688,8 +1823,15 @@ const checkType = (value: string, type: string | undefined): string => {
     ));
   };
 
-  function handleSelectionChange(selection: Selection, index: number) {
+
+  function handleSelectionChange(selection: Selection) {
+    console.log("handleSelectionChange", selection.getSelectedIndices());
+
+    console.log("handleSelectionChange - items", items);
+
+
     const selectedItems = selection.getSelection() as any[];
+    console.log("handleSelectionChange - selectedItems", selectedItems);
     const selectedIndices = selectedItems.map(selectedItem => {
       return items.findIndex(item =>
         item.attribute === selectedItem.attribute &&
@@ -1840,7 +1982,8 @@ const checkType = (value: string, type: string | undefined): string => {
           <br/>
 
 
-          {(groupingEnabled || groups != null) ? (
+          {(groupingEnabled) ? (
+
             <div>
               {groups.map((group: Group, index: number) => (
                 <div>
@@ -1851,6 +1994,7 @@ const checkType = (value: string, type: string | undefined): string => {
               ))}
             </div>
             ) : (
+
             <DetailsList
               setKey="items"
               items={items}
@@ -1865,7 +2009,7 @@ const checkType = (value: string, type: string | undefined): string => {
             />
           )}
 
-          {(groups.length <= 0 || !groupingEnabled) && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
+          {(!groupingEnabled) && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>
