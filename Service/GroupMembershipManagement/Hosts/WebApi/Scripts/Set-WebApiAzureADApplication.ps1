@@ -296,7 +296,7 @@ function Set-WebAPIKeyVaultSecrets {
 	Write-Verbose "WebApi application (client) ID is $webApiAppClientId"
 	if($SkipPrompts){
 		$webApiClientIdSecret = New-Object System.Security.SecureString
-		$webApiAppClientId.ToCharArray() | ForEach-Object { $webApiClientIdSecret.AppendChar($_) }
+		$webApiAppClientId.ToString().ToCharArray() | ForEach-Object { $webApiClientIdSecret.AppendChar($_) }
 	} else {
 		$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
 	}
@@ -328,7 +328,7 @@ function Set-WebAPIKeyVaultSecrets {
 	Write-Verbose "WebApi tenant ID is $webApiAppTenantId"
 	if($SkipPrompts){
 		$webApiTenantSecret = New-Object System.Security.SecureString
-		$webApiAppTenantId.ToCharArray() | ForEach-Object { $webApiTenantSecret.AppendChar($_) }
+		$webApiAppTenantId.ToString().ToCharArray() | ForEach-Object { $webApiTenantSecret.AppendChar($_) }
 	} else {
 		$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
 	}

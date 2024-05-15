@@ -235,7 +235,8 @@ function Set-GraphAppKeyVaultSecrets {
 		Connect-AzAccount -Tenant $TenantIdWithKeyVault
 	}
 
-   Write-Host (Get-AzContext)
+	Set-AzContext -SubscriptionName $SubscriptionName
+   	Write-Host (Get-AzContext)
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
@@ -251,7 +252,7 @@ function Set-GraphAppKeyVaultSecrets {
     Write-Verbose "Graph application (client) ID is $graphAppClientId"
 	if($SkipPrompts){
 		$graphClientIdSecret = New-Object System.Security.SecureString
-		$graphAppClientId.ToCharArray() | ForEach-Object { $graphClientIdSecret.AppendChar($_) }
+		$graphAppClientId.ToString().ToCharArray() | ForEach-Object { $graphClientIdSecret.AppendChar($_) }
 	} else {
 		$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
 	}
@@ -283,7 +284,7 @@ function Set-GraphAppKeyVaultSecrets {
     Write-Verbose "Graph application tenant id is $graphAppTenantId"
 	if($SkipPrompts){
 		$graphTenantSecret = New-Object System.Security.SecureString
-		$graphAppTenantId.ToCharArray() | ForEach-Object { $graphTenantSecret.AppendChar($_) }
+		$graphAppTenantId.ToString().ToCharArray() | ForEach-Object { $graphTenantSecret.AppendChar($_) }
 	} else {
 		$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
 	}

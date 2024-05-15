@@ -254,7 +254,7 @@ function Set-UIKeyVaultSecrets {
 		Write-Verbose "UI application (client) ID is $uiAppClientId"
 		if($SkipPrompts) {
 			$uiAppIdSecret = New-Object System.Security.SecureString
-			$uiAppClientId.ToCharArray() | ForEach-Object { $uiAppIdSecret.AppendChar($_) }
+			$uiAppClientId.ToString().ToCharArray() | ForEach-Object { $uiAppIdSecret.AppendChar($_) }
 		} else {
 			$uiAppIdSecret = Read-Host -AsSecureString -Prompt "Please take the UI application ID from above and paste it here"
 		}
@@ -286,7 +286,7 @@ function Set-UIKeyVaultSecrets {
 		Write-Verbose "UI tenant ID is $uiAppTenantId"
 		if($SkipPrompts){
 			$uiTenantSecret = New-Object System.Security.SecureString
-			$uiAppTenantId.ToCharArray() | ForEach-Object { $uiTenantSecret.AppendChar($_) }
+			$uiAppTenantId.ToString().ToCharArray() | ForEach-Object { $uiTenantSecret.AppendChar($_) }
 		} else {
 			$uiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the UI tenant ID from above and paste it here"
 		}
