@@ -1128,4 +1128,10 @@ function Deploy-Resources {
     if ($StartFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
+
+    # open the web app
+    $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
+    if ($null -ne $staticWebApp) {
+        Start-Process "https://$($staticWebApp.DefaultHostname)"
+    }
 }
