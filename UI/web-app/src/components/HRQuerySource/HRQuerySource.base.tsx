@@ -25,6 +25,8 @@ import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
 import { selectAttributes, selectSource, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
+import { Group } from '../../models/Group';
+import { parseGroup, stringifyGroups } from './QuerySerializer';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -47,13 +49,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   type FilteredOptionsState = {
     [key: number]: IComboBoxOption[];
   };
-
-  interface Group {
-    name: string;
-    items: IFilterPart[];
-    children: Group[];
-    andOr: string;
-  }
 
   const dispatch = useDispatch<AppDispatch>();
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
@@ -146,266 +141,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     }
   }, [children]);
 
-  function stringifyGroup(group: Group, isChild?: boolean, childIndex?: number, childrenLength?: number): string {
-    let result = '(';
-
-    result += `${group.items.map((item, index) => {
-      if (index < group.items.length - 1) {
-          return item.attribute + ' ' + item.equalityOperator + ' ' + item.value + ' ' + item.andOr;
-      } else {
-          return item.attribute + ' ' + item.equalityOperator + ' ' + item.value;
-      }
-    }).join(' ')}`;
-
-    if (group.children.length === 0) {
-      result += ')';
-    }
-
-    if (isChild) {
-      if (childrenLength && childIndex !== childrenLength-1) result += ` ${group.andOr} `;
-    }
-    else {
-      result += ` ${group.andOr} `;
-    }
-
-    group.children.forEach((child, index) => {
-        result += stringifyGroup(child, true, index, group.children.length);
-        if (index < group.children.length - 1) {
-            result += ' ';
-        }
-    });
-
-    if (group.children.length > 0) {
-      result += ')';
-      result += ` ${group.children[group.children.length-1].andOr} `;
-    }
-
-    return result;
-  }
-
-  function stringifyGroups(groups: Group[]): string {
-      let result = '';
-
-      groups.forEach((group, index) => {
-          result += stringifyGroup(group);
-          if (index < groups.length - 1) {
-              result += ' ';
-          }
-      });
-
-      return result;
-  }
-
-  function parseFilterPart(part: string): IFilterPart {
-    const operators = ["<=", ">=", "<>", "=", ">", "<"];
-    let operatorFound = '';
-    let operatorIndex = -1;
-
-    for (const operator of operators) {
-      const index = part.indexOf(operator);
-      if (index !== -1) {
-        operatorFound = operator;
-        operatorIndex = index;
-        break;
-      }
-    }
-
-    if (operatorIndex === -1) {
-      setFilterTextEnabled(true);
-    }
-    const attribute = part.slice(0, operatorIndex).trim();
-    const value = part.slice(operatorIndex + operatorFound.length).trim();
-
-    return {
-      attribute,
-      equalityOperator: operatorFound,
-      value,
-      andOr: ""
-    };
-  }
-
-function findPartsOfString(string: string, substringArray: { currentSegment: string, start: number; end: number }[]): { currentSegment: string, start: number; end: number, andOr: string }[] {
-  const output: { currentSegment: string, start: number; end: number, andOr: "" }[] = [];
-  let lastEnd = 0;
-
-  for (const substringInfo of substringArray) {
-      const { currentSegment, start, end } = substringInfo;
-
-      // Add the segment between the end of the previous segment and the start of the current segment
-      if (start > lastEnd) {
-          output.push({
-              currentSegment: string.substring(lastEnd, start),
-              start: lastEnd,
-              end: start - 1,
-              andOr: ""
-          });
-      }
-
-      // Add the current segment
-      output.push({ currentSegment, start, end, andOr: "" });
-
-      // Update lastEnd
-      lastEnd = end + 1;
-  }
-
-  // Add the remaining part of the string after the last segment
-  if (lastEnd < string.length) {
-      output.push({
-          currentSegment: string.substring(lastEnd),
-          start: lastEnd,
-          end: string.length - 1,
-          andOr: ""
-      });
-  }
-
-  return output;
-}
-
-function appendAndOr(a: { currentSegment: string; start: number; end: number; andOr: string; }[]) {
-  a.forEach((segment, index) => {
-    let modifiedSegment = segment.currentSegment.trim();
-    let startWord = '';
-    let endWord = '';
-
-    const lowerCaseSegment = modifiedSegment.toLowerCase();
-
-    if (lowerCaseSegment.startsWith('and ')) {
-        startWord = 'And';
-        modifiedSegment = modifiedSegment.substring(4).trim();
-    } else if (lowerCaseSegment.startsWith('or ')) {
-        startWord = 'Or';
-        modifiedSegment = modifiedSegment.substring(3).trim();
-    }
-
-    if (lowerCaseSegment.endsWith(' and')) {
-        endWord = 'And';
-        modifiedSegment = modifiedSegment.substring(0, modifiedSegment.length - 4).trim();
-    } else if (lowerCaseSegment.endsWith(' or')) {
-        endWord = 'Or';
-        modifiedSegment = modifiedSegment.substring(0, modifiedSegment.length - 3).trim();
-    }
-
-    if (lowerCaseSegment === 'and') {
-      startWord = 'And';
-      modifiedSegment = '';
-    } else if (lowerCaseSegment === 'or') {
-      startWord = 'Or';
-      modifiedSegment = '';
-    }
-
-    if (startWord !== '') {
-        a[index-1].andOr = startWord;
-    }
-    if (endWord !== '') {
-        a[index].andOr = endWord;
-    }
-
-    a[index].currentSegment = modifiedSegment;
-
-    if (modifiedSegment === '') {
-      a.splice(index, 1);
-    } else {
-        a[index].currentSegment = modifiedSegment;
-    }
-  });
-  return a;
-}
-
-  function parseGroup(input: string): Group[] {
-    const groups: Group[] = [];
-    let subStrings: { currentSegment: string, start: number; end: number}[] = [];
-    let depth = 0;
-    let currentSegment = '';
-    let operators: string[] = [];
-
-    input = input.trim();
-    let start: number = 0;
-    let end: number = input.length - 1;
-
-    for (let i = 0; i < input.length; i++) {
-        const char = input[i];
-
-        if (char === '(') {
-            if (depth > 0) {
-                currentSegment += char;
-            }
-            depth++;
-            if (depth === 1) start = i;
-        } else if (char === ')') {
-            depth--;
-            if (depth === 0) {
-                end = i;
-                subStrings.push({ currentSegment, start, end});
-                currentSegment = '';
-            } else {
-                currentSegment += char;
-            }
-        } else if (depth === 0 && (input.substr(i, 3) === ' Or' || input.substr(i, 4) === ' And')) {
-            operators.push(input.substr(i, input.substr(i, 4) === ' And' ? 4 : 3).trim());
-            i += operators[operators.length - 1].length - 1;
-        } else if (depth > 0) {
-            currentSegment += char;
-        }
-    }
-
-    var allParts = findPartsOfString(input, subStrings);
-    var allPartsWithAndOr = appendAndOr(allParts);
-
-    allPartsWithAndOr.forEach((currentSegment, i) => {
-      groups.push(parseSegment(currentSegment.currentSegment));
-      if (groups[i].children.length > 0 && groups[i].children && groups[i].children[groups[i].children.length-1].andOr !== null) {
-        groups[i].children[groups[i].children.length-1].andOr = allPartsWithAndOr[i].andOr;
-      }
-      else if (allPartsWithAndOr[i].andOr !== '') groups[i].andOr = allPartsWithAndOr[i].andOr;
-
-    });
-    return groups;
-}
-
-function parseSegment(segment: string, groupOperator?: string): Group {
-    if (segment.includes('(') && segment.includes(')')) {
-      let children: Group[] = [];
-        const innerSegments = segment.match(/\((.*?)\)/g)?.map(innerSegment => innerSegment.replace(/^\(|\)$/g, ''));
-        const contentOutsideParentheses = segment.replace(/\s*\([^)]*\)\s*/g, '||').split('||');
-          if (innerSegments) {
-            innerSegments.forEach((innerSegment, index) => {
-              const childGroup = parseSegment(innerSegment, contentOutsideParentheses && contentOutsideParentheses.length >= 0 ? contentOutsideParentheses[index+1] : "");
-              children.push(childGroup);
-            });
-          }
-
-          let start = segment.indexOf('(');
-          let end = segment.lastIndexOf(')');
-          let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
-          var match = remainingSegment.match(/\b(Or|And)\b/i);
-          var operator = match ? match[1] : null;
-          remainingSegment = remainingSegment.replace(/^\s*(Or|And)|\s*(Or|And)\s*$/gi, '').trim();
-          if (remainingSegment) {
-            return {
-                name: '',
-                items: parseSegment(remainingSegment).items,
-                children: children,
-                andOr: operator ?? ''
-            };
-        }
-    }
-    const items = segment.split(/ And | Or /gi).map(parseFilterPart);
-    const operators = segment.match(/(?: And | Or )/gi) || [];
-
-    items.forEach((item, index) => {
-        if (index < items.length - 1) {
-            item.andOr = operators[index].trim();
-        }
-    });
-
-    return {
-        name: '',
-        items,
-        children: [],
-        andOr: groupOperator ?? ''
-    };
-}
-
 function setItemsBasedOnGroups(groups: Group[]) {
   let items: IFilterPart[] = [];
   groups.forEach(group => {
@@ -459,9 +194,13 @@ const checkType = (value: string, type: string | undefined): string => {
 
   useEffect(() => {
     if (props.source.filter && !groupingEnabled && (props.source.filter.includes("(") || props.source.filter.includes(")"))) {
-      const a = parseGroup(props.source.filter);
-      const b = setItemsBasedOnGroups(a);
-      setGroups(a);
+      const groups = parseGroup(props.source.filter);
+      if (groups.length <= 0) {
+        setFilterTextEnabled(true);
+        return;
+      }
+      const b = setItemsBasedOnGroups(groups);
+      setGroups(groups);
       setGroupingEnabled(true);
     }
     else {
@@ -1891,7 +1630,7 @@ const checkType = (value: string, type: string | undefined): string => {
         disabled={isEditingExistingJob}
       />
 
-      {(source.filter && filterTextEnabled) ?
+      {(source.filter && (filterTextEnabled || !attributes)) ?
        (
         <><div className={classNames.labelContainer}>
         <Label>{strings.HROnboarding.filter}</Label>
