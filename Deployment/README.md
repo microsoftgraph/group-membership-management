@@ -18,7 +18,7 @@ This script will deploy all resources in the specified environment with minimal 
 
 ### Deployment
 The script [Deploy-Resources.ps1](Deploy-Resources.ps1) and the [parameters.json](parameters.json) files are located in the Deployment folder.  
-Before running the script, make sure to update the parameters.json file with the correct values.  
+Before running the script, make sure to update the parameters.json file with the required values.  
 Once the parameters.json file is updated, run the following command to deploy the resources.
 Powershell scripts might be blocked in your environment, to unblock the scripts run the following command in PowerShell 7.x from the root directory.  
 
