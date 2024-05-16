@@ -40,7 +40,7 @@ Run the following commands to deploy the resources with a Tenant Admin account.
     -EnvironmentAbbreviation "<environment-abbreviation>" `
     -Location "<azure-region>" `
     -SubscriptionId "<subscription-id>" `
-    -TemplateFilePath "<absolute-directory-path-to-Deployment-directory>" `
+    -TemplateFilesDirectory "<absolute-directory-path-to-Deployment-directory>" `
     -ParameterFilePath "<absolute-path-to-parameters.json" `
     -Verbose
 ```
