@@ -85,6 +85,7 @@ namespace Hosts.Notifier
                 case nameof(NotificationMessageType.SourceNotExistNotification):
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.SyncDisabledNoGroupContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NoDataNotification):
