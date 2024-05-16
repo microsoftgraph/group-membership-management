@@ -1236,7 +1236,6 @@ const checkType = (value: string, type: string | undefined): string => {
                 />
               ) : (
                 <Dropdown
-                  // selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
@@ -1459,9 +1458,6 @@ const checkType = (value: string, type: string | undefined): string => {
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
       />
-      {/* <div className={classNames.error}>
-        {filterErrorMessage}
-      </div> */}
       <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(groupIndex, childIndex)}>
         {strings.HROnboarding.addAttribute}
       </ActionButton>
