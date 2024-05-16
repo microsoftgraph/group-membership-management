@@ -3,55 +3,82 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "senderUsername": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The email address of the user that will be used to send emails."
+      }
     },
     "senderPassword": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The password of the user that will be used to send emails."
+      }
     },
     "teamsChannelServiceAccountObjectId": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The object id of the service account that will be used to manage Teams channels."
+      }
     },
     "teamsChannelServiceAccountUsername": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The username of the service account that will be used to manage Teams channels."
+      }
     },
     "teamsChannelServiceAccountPassword": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The password of the service account that will be used to manage Teams channels."
+      }
     },
     "supportEmailAddresses": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The email addresses of the users that will receive support emails."
+      }
     },
     "syncDisabledCCEmailAddresses": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The email addresses of the users that will receive emails when a sync job is disabled."
+      }
     },
     "syncCompletedCCEmailAddresses": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The email addresses of the users that will receive emails when a sync job is completed."
+      }
     },
     "location": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The Azure region where the resources will be deployed. See https://azure.microsoft.com/en-us/explore/global-infrastructure/geographies/#overview"
+      }
     },
     "uiLocation": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The Azure region where the UI will be deployed. Could be the same value as the 'location' parameter or different."
+      }
     },
     "tenantId": {
-      "value": ""
-    },
-    "keyVaultReaders": {
-      "value": [
-        {
-          "objectId": "",
-          "secrets": [
-            "get",
-            "set",
-            "list"
-          ]
-        }
-      ]
+      "value": "",
+      "metadata": {
+        "description": "The Azure AD tenant id."
+      }
     },
     "sqlAdministratorsGroupId": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The object id of the group that will be added as an administrator to the SQL server. Make sure you are a member of this group."
+      }
     },
     "sqlAdministratorsGroupName": {
-      "value": ""
+      "value": "",
+      "metadata": {
+        "description": "The name of the group that will be added as an administrator to the SQL server."
+      }
     },
     "sqlSkuCapacity": {
       "value": 4
@@ -66,7 +93,10 @@
       "value": "GeneralPurpose"
     },
     "notifierProviderId": {
-      "value": "00000000-0000-0000-0000-000000000000"
+      "value": "00000000-0000-0000-0000-000000000000",
+      "metadata": {
+        "description": "The provider id of the notifier. See https://github.com/microsoftgraph/group-membership-management/blob/main/Documentation/NotifierSetup.md"
+      }
     },
     "serviceBusTopicSubscriptions": {
       "value": [
@@ -120,10 +150,16 @@
       }
     },
     "sharepointDomain": {
-      "value": "m365x00000000.sharepoint.com"
+      "value": "m365x00000000.sharepoint.com",
+      "metadata": {
+        "description": "The SharePoint domain of the tenant."
+      }
     },
     "tenantDomain": {
-      "value": "m365x00000000.onmicrosoft.com"
+      "value": "m365x00000000.onmicrosoft.com",
+      "metadata": {
+        "description": "The domain of the tenant."
+      }
     },
     "appConfigurationDataOwners": {
       "value": [
@@ -131,16 +167,25 @@
           "principalId": "<guid>",
           "principalType": "Device|ForeignGroup|Group|ServicePrincipal|User"
         }
-      ]
+      ],
+      "metadata": {
+        "description": "The list of data owners for the App Configuration. principalId is the object id of the user, group, or service principal. principalType is the type of the principal, pick only one value."
+      }
     },
     "authenticationType": {
-      "value": "UserAssignedManagedIdentity|ClientSecret|Certificate"
+      "value": "UserAssignedManagedIdentity|ClientSecret|Certificate",
+      "metadata": {
+        "description": "The type of authentication to use for the App Configuration. UserAssignedManagedIdentity is recommended."
+      }
     },
     "pipeline": {
       "value": "PopulateDestinationPipeline"
     },
     "setRBACPermissions": {
-      "value": true
+      "value": true,
+      "metadata": {
+        "description": "Flag to set RBAC permissions for the service principals."
+      }
     }
   }
 }
