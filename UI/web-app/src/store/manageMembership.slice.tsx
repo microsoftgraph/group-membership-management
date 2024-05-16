@@ -17,7 +17,7 @@ import { SyncJobQuery } from '../models/SyncJobQuery';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { SourcePartQuery } from '../models/SourcePartQuery';
-import { isSourcePartValid } from '../utils/sourcePartUtils';
+import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -362,6 +362,6 @@ export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.
 export default manageMembershipSlice.reducer;
 
 export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
-    const compositeQuery: SyncJobQuery = sourceParts.map(part => part.query);
+    const compositeQuery: SyncJobQuery = sourceParts.map(part => removeUnusedProperties(part.query));
     return compositeQuery;
 }
