@@ -578,8 +578,6 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const addComponent = (groupIndex?: number, childIndex?: number) => {
-    console.log("items", items);
-    console.log("groups", groups);
     setFilterErrorMessage('');
     setSource(props.source);
 
@@ -700,28 +698,19 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const removeComponent = (indexToRemove: number) => {
-    console.log("indexToRemove", indexToRemove);
-    console.log("items", items);
-    console.log("selectedIndices[0]", selectedIndices[0]);
     if (indexToRemove === -1) return;
     if (groupingEnabled) {
-
       let a: number = -1;
       if ( selectedIndices[0] === -1) {
-        console.log("not found in items");
         const emptyItemIndex = items.findIndex(item =>
           item.attribute === "" &&
           item.equalityOperator === "" &&
           item.value === "" &&
           item.andOr === ""
         );
-        console.log("emptyItemIndex", emptyItemIndex);
         a = emptyItemIndex;
       }
       selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
-
-      console.log("updated selectedIndices", selectedIndices[0]);
-
       let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(groups));
       const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
       const groupIndex = groups.findIndex(group =>
@@ -739,20 +728,15 @@ const checkType = (value: string, type: string | undefined): string => {
         )
       ) : -1;
 
-      console.log("groupIndex", groupIndex);
-      console.log("childIndex", childIndex);
-
       const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
       const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
 
       if (ifGroupItem && groups[groupIndex].items[indexToRemove ?? 0]) {
-        console.log("it's a group item", groups[groupIndex].items[indexToRemove ?? 0]);
         if (groups[groupIndex].items.length === 1 && groups[groupIndex].children.length > 0) { return; }
         clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndex);
       }
 
       if (ifGroupChild && groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]) {
-        console.log("it's a child item", groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]);
         clonedNewGroups = filterChildren(clonedNewGroups, selectedItems, groupIndex, childIndex);
       }
 
@@ -892,39 +876,17 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const updateGroupItem = (updateParams: UpdateParam, index: number, otherIndex?: number, gi?: number): void => {
     const { property, newValue } = updateParams;
-
     let a: number = -1;
-
-
-    console.log("selectedIndices", selectedIndices[0]);
-    console.log("updateGroupItem - items", items);
-    console.log("updateGroupItem - groups", groups);
-    console.log("index", index);
-    console.log("item", items[index]);
-    console.log("group Index", gi);
-
     if ( selectedIndices[0] === -1) {
-
-      console.log("not found in items");
       const emptyItemIndex = items.findIndex(item =>
         item.attribute === "" &&
         item.equalityOperator === "" &&
         item.value === "" &&
         item.andOr === ""
       );
-      console.log("emptyItemIndex", emptyItemIndex);
       a = emptyItemIndex;
-      // return;
     }
-
-
-
-
     selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
-
-
-    console.log("updated selectedIndices", selectedIndices[0]);
-
     const groupIndex = groups.findIndex(group =>
       group.children?.some(child =>
           child.items.some(item =>
@@ -939,9 +901,6 @@ const checkType = (value: string, type: string | undefined): string => {
           JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
       )
     ) : -1;
-
-    console.log("group Index", groupIndex);
-    console.log("child Index", childIndex);
 
     const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
     const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
@@ -973,9 +932,7 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number): void => {
-    console.log("items", items);
     if (item) {
-      console.log("item", item);
       const selectedAttribute = attributes?.find(attribute => attribute.name === item.key);
       dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type }));
       const updatedItems = items.map((it, idx) => {
@@ -988,7 +945,6 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     if (groupingEnabled && item && index != null) {
-      console.log("index", index);
       const updateParams: UpdateParam = {
         property: "attribute",
         newValue: item.text
@@ -1574,7 +1530,6 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const handleSelectionChanged = () => {
-    console.log("handleSelectionChanged", selection.getSelectedIndices());
     setSelectedIndices(selection.getSelectedIndices());
   };
 
@@ -1665,9 +1620,6 @@ const checkType = (value: string, type: string | undefined): string => {
   }
 
   function onGroupClick() {
-    console.log("onGroupClick - selectedIndices", selectedIndices);
-    console.log("onGroupClick - items", items);
-
     let newGroups = [...groups];
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
     const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
@@ -1825,13 +1777,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
 
   function handleSelectionChange(selection: Selection) {
-    console.log("handleSelectionChange", selection.getSelectedIndices());
-
-    console.log("handleSelectionChange - items", items);
-
-
     const selectedItems = selection.getSelection() as any[];
-    console.log("handleSelectionChange - selectedItems", selectedItems);
     const selectedIndices = selectedItems.map(selectedItem => {
       return items.findIndex(item =>
         item.attribute === selectedItem.attribute &&
