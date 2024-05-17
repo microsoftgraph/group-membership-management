@@ -482,7 +482,7 @@ function Set-GMMResources {
     foreach ($secret in $adfDataSecrets) {
         $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
         if (-not $secretExists) {
-            $secretValue = = New-Object System.Security.SecureString
+            $secretValue = New-Object System.Security.SecureString
             "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
             Set-AzKeyVaultSecret -VaultName $dataResourceGroup -Name $secret -SecretValue $secretValue
         }
