@@ -128,6 +128,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       await dispatch(removeGMM({ syncJobId: job.syncJobId }));
       await dispatch(fetchJobs());
       setShowRemoveGMMDialog(false);
+      var url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job.targetGroupId}/menuId/`;
+      window.open(url, '_blank', 'noopener,noreferrer');
       navigate('/');
     } catch (error) {
       setShowRemoveGMMError(true);

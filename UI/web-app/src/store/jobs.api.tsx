@@ -15,7 +15,6 @@ import {
 import { formatLastRunTime, formatNextRunTime } from '../utils/dateUtils';
 import { format } from '@fluentui/react';
 import { strings } from '../services/localization/i18n/locales/en/translations';
-import moment from 'moment';
 
 export interface JobsResponse {
   jobs: Job[];
@@ -35,9 +34,9 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
         index['status'] === SyncStatus.Idle || index['status'] === SyncStatus.InProgress ? true : false;
         const lastRunTime = formatLastRunTime(index['lastSuccessfulRunTime']);
         const estimatedNextRunTime = formatNextRunTime(index['estimatedNextRunTime'], index['enabledOrNot']);
-        const SQLMinDateMoment = moment.utc('1753-01-01T00:00:00');
+        const SQLMinDate = new Date(Date.UTC(1753, 0, 1));
         
-        if(lastRunTime[0] === SQLMinDateMoment.toLocaleString()) { // Jobs that haven't run yet
+        if(lastRunTime[0] === SQLMinDate.toLocaleDateString()) { // Jobs that haven't run yet
           index['lastSuccessfulRunTime'] = "Pending initial sync";
           index['estimatedNextRunTime'] = "Pending initial sync";
         }
