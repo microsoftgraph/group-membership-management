@@ -19,50 +19,73 @@ steps:
       csmParametersFile: ${{ parameters.root }}/webapp_arm_templates/UI/Infrastructure/compute/parameters/parameters.${{parameters.environmentAbbreviation}}.json
       overrideParameters: -location "${{parameters.location}}"
                           -solutionAbbreviation "${{parameters.solutionAbbreviation}}"
+                          -environmentAbbreviation "${{parameters.environmentAbbreviation}}"
       deploymentMode: 'Incremental'
       deploymentOutputs: deploymentOutputs
 
-  - task: PowerShell@2
+  - task: AzurePowerShell@5
     name: 'SetDeploymentOutputVariables'
     displayName: 'Set Deployment Output Variables'
     inputs:
-      targetType: inline
-      script: |
+      azureSubscription: ${{parameters.serviceConnection}}
+      scriptType: inlineScript
+      inline: |
         $armOutputObj = '$(deploymentOutputs)' | ConvertFrom-Json
         $armOutputObj.PSObject.Properties | ForEach-Object {
           $keyname = $_.Name
           $value = $_.Value.value
 
           # Creates a standard pipeline variable
-          Write-Output "##vso[task.setvariable variable=$keyName;issecret=true]$value"
+          if ($keyname -eq 'deployment_token') {
+            Write-Output "##vso[task.setvariable variable=$keyName;issecret=true]$value"
+          } else {
+            Write-Output "##vso[task.setvariable variable=$keyName]$value"
+          }
 
           # Display keys in pipeline
           Write-Output "output variable: $keyName"
         }
-      pwsh: true
+
+      azurePowerShellVersion: LatestVersion
+
+  # We have to set the environment variables used by the react app in the task
+  # that builds the app because they are resolved at build time.
+  - task: NodeTool@0
+    name: 'InstallNode'
+    displayName: 'Install Node'
+    inputs:
+      versionSpec: '14.19.0'
+
+  - task: Npm@1
+    displayName: 'npm install pnpm@7.33.5'
+    inputs:
+      command: custom
+      verbose: false
+      customCommand: 'install -g pnpm@7.33.5'
 
   - task: PowerShell@2
-    name: 'InstallPnpm'
-    displayName: 'Install pnpm'
+    displayName: 'pnpm run build'
     inputs:
-      targetType: inline
-      script: npm install -g pnpm
-      pwsh: true
+      targetType: 'inline'
+      script: pnpm install && pnpm run build
+      workingDirectory: '${{ parameters.root }}/webapp_package/web-app'
+    env:
+      REACT_APP_AAD_UI_APP_CLIENT_ID: $(ui_app_client_id)
+      REACT_APP_AAD_API_APP_CLIENT_ID: $(api_app_client_id)
+      REACT_APP_AAD_APP_TENANT_ID: $(ui_app_tenant_id)
+      REACT_APP_AAD_APP_SERVICE_BASE_URI: $(api_service_base_uri)
+      REACT_APP_APPINSIGHTS_CONNECTIONSTRING: $(app_insights_connection_string)
+      REACT_APP_VERSION_NUMBER: $(Build.BuildNumber)
+      REACT_APP_SHAREPOINTDOMAIN: $(sharepoint_domain)
+      REACT_APP_DOMAINNAME: $(tenant_domain)
+      REACT_APP_ENVIRONMENT_ABBREVIATION: ${{parameters.environmentAbbreviation}}
 
   - task: AzureStaticWebApp@0
     name: DeployStaticWebApp
     displayName: Deploy Static Web App
     inputs:
-      app_location: 'web-app'
-      app_build_command: 'pnpm install && pnpm run build'
-      cwd: '${{ parameters.root }}/webapp_package'
+      app_location: 'build'
+      skip_app_build: true
+      output_location: ''
+      cwd: '${{ parameters.root }}/webapp_package/web-app'
       azure_static_web_apps_api_token: $(deployment_token)
-    env:
-      REACT_APP_AAD_UI_APP_CLIENT_ID: $(REACT_APP_AAD_UI_APP_CLIENT_ID_${{parameters.environmentAbbreviation}})
-      REACT_APP_AAD_API_APP_CLIENT_ID: $(REACT_APP_AAD_API_APP_CLIENT_ID_${{parameters.environmentAbbreviation}})
-      REACT_APP_AAD_APP_TENANT_ID: $(REACT_APP_AAD_APP_TENANT_ID_${{parameters.environmentAbbreviation}})
-      REACT_APP_AAD_APP_SERVICE_BASE_URI: $(REACT_APP_AAD_APP_SERVICE_BASE_URI_${{parameters.environmentAbbreviation}})
-      REACT_APP_VERSION_NUMBER: $(Build.BuildNumber)
-      REACT_APP_SHAREPOINTDOMAIN: $(REACT_APP_SHAREPOINTDOMAIN_${{parameters.environmentAbbreviation}})
-      REACT_APP_DOMAINNAME: $(REACT_APP_DOMAINNAME_${{parameters.environmentAbbreviation}})
-      REACT_APP_ENVIRONMENT_ABBREVIATION: ${{parameters.environmentAbbreviation}}
