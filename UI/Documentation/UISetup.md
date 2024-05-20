@@ -40,8 +40,8 @@ Add the following variables to your environment parameter file located in `/Serv
 - **apiServiceBaseUri** (Set value as `https://<solutionAbbreviation>-compute-<environmentAbbreviation>-webapi.azurewebsites.net`)
 - **uiAppTenantId** (Set value as the azure tenant id where the UI/WebApi applications are installed)
 - **uiAppClientId** (Set value as the application (client) id of `<solutionAbbreviation>`-ui-`<environmentAbbreviation>`)
-- **sharepointDomain** (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.onmicrosoft.com )
-- **tenantDomain** (Set value as the domain name for your tenant, i.e. m365x1234567.sharepoint.com)
+- **sharepointDomain** (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.sharepoint.com )
+- **tenantDomain** (Set value as the domain name for your tenant, i.e. m365x1234567.onmicrosoft.com)
 
 ## Post-Deployment tasks
 
@@ -58,8 +58,8 @@ Add the following variables to `.env`:
 - REACT_APP_AAD_APP_TENANT_ID (Set value as the azure tenant id where the UI/WebApi applications are installed)
 - REACT_APP_AAD_UI_APP_CLIENT_ID (Set value as the application (client) id of `<solutionAbbreviation>`-ui-`<environmentAbbreviation>`)
 - REACT_APP_APPINSIGHTS_CONNECTIONSTRING (Set value as the application insights connection string)
-- REACT_APP_SHAREPOINTDOMAIN (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.onmicrosoft.com )
-- REACT_APP_DOMAINNAME (Set value as the domain name for your tenant, i.e. m365x1234567.sharepoint.com)
+- REACT_APP_SHAREPOINTDOMAIN (Set value as the SharePoint domain for your tenant, i.e. m365x1234567.sharepoint.com )
+- REACT_APP_DOMAINNAME (Set value as the domain name for your tenant, i.e. m365x1234567.onmicrosoft.com)
 - REACT_APP_VERSION_NUMBER (Optional: this value is pulled from the build pipeline)
 - REACT_APP_MANAGE_MEMBERSHIP_FLAG (Optional: this value sets the state of the Manage Membership feature flag (true or false))
 - REACT_APP_ENVIRONMENT_ABBREVIATION: (Set value with `<environmentAbbreviation>`)
