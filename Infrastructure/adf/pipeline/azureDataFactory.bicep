@@ -173,6 +173,7 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
   dependsOn: [
     dataFactory
     dataFlow_PopulateDestinationDataFlow
+    linkedService_AzureUserReader
   ]
 }
 
