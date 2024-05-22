@@ -18,6 +18,7 @@ import {
 } from './AdvancedViewSourcePart.types';
 import { useStrings } from "../../store/hooks";
 import GroupOwnershipSchema from '../../models/schemas/GroupOwnershipSchema.json';
+import PlaceMembershipSchema from '../../models/schemas/PlaceMembershipSchema.json';
 import { AppDispatch } from '../../store';
 import {
   setIsAdvancedQueryValid,
@@ -25,6 +26,7 @@ import {
 } from '../../store/manageMembership.slice';
 import { ISourcePart } from '../../models/ISourcePart';
 import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
+import { PlaceMembershipSourcePart } from '../../models/PlaceMembershipSourcePart';
 
 const getClassNames = classNamesFunction<
   IAdvancedViewSourcePartStyleProps,
@@ -48,7 +50,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
   const [localQuery, setLocalQuery] = useState<string | undefined>(JSON.stringify(part.query));
-  const schema = GroupOwnershipSchema;
+  const schema = part.query.type === 'GroupOwnership' ? GroupOwnershipSchema : PlaceMembershipSchema;
   const ajv = new Ajv();
 
   useEffect(() => {
@@ -88,7 +90,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
       if(isValid) {
         const updatedSourcePart: ISourcePart = {
           id: part.id,
-          query: JSON.parse(localQuery?? '{}') as GroupOwnershipSourcePart
+          query: JSON.parse(localQuery ?? '{}') as GroupOwnershipSourcePart | PlaceMembershipSourcePart
         };
         dispatch(updateSourcePart(updatedSourcePart));
         setValidationMessage(strings.ManageMembership.labels.validQuery);

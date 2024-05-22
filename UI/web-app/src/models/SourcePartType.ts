@@ -4,5 +4,6 @@
 export enum SourcePartType {
     HR = "SqlMembership",
     GroupMembership = "GroupMembership",
-    GroupOwnership = "GroupOwnership"
+    GroupOwnership = "GroupOwnership",
+    PlaceMembership = "PlaceMembership",
 }

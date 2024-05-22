@@ -115,6 +115,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     sourceTypeOptions.push( { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership });
     sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
+    sourceTypeOptions.push( { key: SourcePartType.PlaceMembership, text: strings.ManageMembership.labels.placeMembership });
     return sourceTypeOptions;
   };
 
@@ -213,6 +214,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           )}
           {part.query.type === SourcePartType.GroupOwnership && (
             <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} />
+          )}
+          {part.query.type === SourcePartType.PlaceMembership && (
+            <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} />
           )}
           <div className={classNames.error}>
             {errorMessage}

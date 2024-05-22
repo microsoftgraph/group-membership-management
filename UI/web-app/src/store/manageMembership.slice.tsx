@@ -203,6 +203,12 @@ const manageMembershipSlice = createSlice({
                         source: []
                     };
                     break;
+                case SourcePartType.PlaceMembership:
+                    updatedQuery = {
+                        type: type,
+                        source: ""
+                    };
+                    break;
                 default:
                     updatedQuery = currentQuery;
             }

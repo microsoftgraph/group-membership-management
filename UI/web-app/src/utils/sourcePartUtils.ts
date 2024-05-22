@@ -1,7 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { IsHRSourcePartQuery, IsGroupMembershipSourcePartQuery, IsGroupOwnershipSourcePartQuery, ISourcePart } from '../models';
+import { 
+    IsHRSourcePartQuery, 
+    IsGroupMembershipSourcePartQuery, 
+    IsGroupOwnershipSourcePartQuery, 
+    IsPlaceMembershipSourcePartQuery,
+    ISourcePart, 
+} from '../models';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { SourcePartType } from '../models/SourcePartType';
 
@@ -35,6 +41,9 @@ export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T)
     } else if (IsGroupOwnershipSourcePartQuery(sourcePart)) {
         // No properties to trim for GroupOwnershipSourcePart
         return sourcePart;
+    } else if (IsPlaceMembershipSourcePartQuery(sourcePart)) {
+        // No properties to trim for PlaceMembershipSourcePart
+        return sourcePart;
     } else {
         throw new Error("Not a supported source type.");
     }
@@ -55,6 +64,11 @@ export function isSourcePartValid(sourcePart: ISourcePart): boolean {
             return false;
         case SourcePartType.GroupOwnership:
             if(IsGroupOwnershipSourcePartQuery(sourcePart.query)){
+                return sourcePart.query.source.length > 0;
+            }
+            return false;
+        case SourcePartType.PlaceMembership:
+            if(IsPlaceMembershipSourcePartQuery(sourcePart.query)){
                 return sourcePart.query.source.length > 0;
             }
             return false;

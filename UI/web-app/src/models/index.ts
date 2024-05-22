@@ -26,3 +26,4 @@ export * from './ISourcePart';
 export * from './HRSourcePart';
 export * from './GroupMembershipSourcePart';
 export * from './GroupOwnershipSourcePart';
+export * from './PlaceMembershipSourcePart';

@@ -321,6 +321,7 @@ export type IStrings = {
       HR: string;
       groupMembership: string;
       groupOwnership: string;
+      placeMembership: string;
       clickHere: string;
       requestor: string;
     }

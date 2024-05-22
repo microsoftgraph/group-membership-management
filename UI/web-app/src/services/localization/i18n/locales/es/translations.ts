@@ -330,6 +330,7 @@ export const strings: IStrings = {
       HR: 'RH',
       groupMembership: 'Membresía de grupo',
       groupOwnership: 'Propietario de grupo',
+      placeMembership: 'Membresía de lugar',
       clickHere: 'Haz click aquí',
       requestor: 'Solicitante',
     }

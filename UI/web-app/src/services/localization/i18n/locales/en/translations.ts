@@ -326,6 +326,7 @@ export const strings: IStrings = {
       HR: 'HR',
       groupMembership: 'Group Membership',
       groupOwnership: 'Group Ownership',
+      placeMembership: 'Place Membership',
       clickHere: 'Click here',
       requestor: 'Requestor',
     }
