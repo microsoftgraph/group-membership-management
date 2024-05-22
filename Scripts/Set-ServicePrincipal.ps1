@@ -98,8 +98,6 @@ function Set-ServicePrincipal {
 
     Write-Host "Please ensure you have ownership permissions on this subscription."
 
-    $scope = "/subscriptions/$($subscription.Id)"
-
     $servicePrincipalName = "$solutionAbbreviation-serviceconnection-$environmentAbbreviation";
 
     Write-Host "The service principals name is $servicePrincipalName"
@@ -119,7 +117,7 @@ function Set-ServicePrincipal {
     if($null -eq $servicePrincipal) {
         #region Create service principal
         Write-Host "The service principal is being created..."
-        $servicePrincipal = New-AzADServicePrincipal -Role "Owner" -Scope $scope -DisplayName $servicePrincipalName
+        $servicePrincipal = New-AzADServicePrincipal -Role "Owner" -DisplayName $servicePrincipalName
         Write-Host "The service principal has been created."
         #endregion
 
