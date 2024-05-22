@@ -140,7 +140,7 @@ function Set-GraphCredentialsAzureADApplication {
         | ForEach-Object { @{Id = $_.Id; Type = "Role" } }
 
 	$delegatedPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").Oauth2PermissionScope `
-		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Channel.ReadBasic.All") -or ($_.Value -eq "Mail.Send") } `
+		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Mail.Send") } `
 		| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
 
 	$requiredResourceAccess.ResourceAccess = $appPermissions + $delegatedPermissions
