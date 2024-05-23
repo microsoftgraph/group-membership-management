@@ -59,12 +59,14 @@ namespace WebApi.Controllers.v1.Destination
                 var claimsIdentity = User.Identity as ClaimsIdentity;
                 var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
 
+                var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
                 if (string.IsNullOrEmpty(userId))
                 {
                     return new ForbidResult();
                 }
 
-                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest (groupId, userId));
+                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest (groupId, userId, isJobTenantWriter));
                 return Ok(response.Status);
             }
             catch (Exception ex)

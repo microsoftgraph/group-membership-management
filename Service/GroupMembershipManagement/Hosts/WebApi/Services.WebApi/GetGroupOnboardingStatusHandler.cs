@@ -45,7 +45,14 @@ namespace Services
             }
             else if (!isUserOwner)
             {
-                response.Status = OnboardingStatus.UserNotOwner;
+                if (request.IsJobTenantWriter)
+                {
+                    response.Status = OnboardingStatus.ReadyForOnboarding;
+                }
+                else
+                {
+                    response.Status = OnboardingStatus.UserNotOwner;
+                }
             }
             else
             {

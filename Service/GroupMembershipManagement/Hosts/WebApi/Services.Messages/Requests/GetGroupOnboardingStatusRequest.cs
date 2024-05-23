@@ -9,11 +9,13 @@ namespace Services.Messages.Requests
     {
         public Guid GroupId { get; set; }
         public string UserIdentity { get; }
+        public bool IsJobTenantWriter {  get; set; }
 
-        public GetGroupOnboardingStatusRequest(Guid groupId, string userIdentity)
+        public GetGroupOnboardingStatusRequest(Guid groupId, string userIdentity, bool isJobTenantWriter)
         {
             GroupId = groupId;
             UserIdentity = userIdentity;
+            IsJobTenantWriter = isJobTenantWriter;
         }
     }
 }
