@@ -15,8 +15,6 @@ parameters:
   type: string
 - name: subscriptionName
   type: string
-- name: keyVaultReaders
-  type: object
 
 steps:
 
@@ -47,7 +45,7 @@ steps:
     location: $(location)
     csmFile: ${{ parameters.root }}/Infrastructure/data/template.bicep
     csmParametersFile: ${{parameters.root}}/Infrastructure/data/parameters/parameters.${{parameters.environmentAbbreviation}}.json
-    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -location "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -keyVaultReaders "${{parameters.keyVaultReaders}}" -existingDataResources "$(dataResourcesOutput.dataResources)"'
+    overrideParameters: '-environmentAbbreviation "${{parameters.environmentAbbreviation}}" -location "${{parameters.location}}" -solutionAbbreviation "${{parameters.solutionAbbreviation}}" -tenantId "${{parameters.tenantId}}" -existingDataResources "$(dataResourcesOutput.dataResources)"'
     deploymentMode: 'Incremental'
     deploymentOutputs: dataoutputs
 
