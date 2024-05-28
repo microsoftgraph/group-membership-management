@@ -105,7 +105,7 @@ param serviceBusNotificationsQueue string = 'notifications'
 param serviceBusFailedNotificationsQueue string = 'failedNotifications'
 
 @description('App configuration key for Service Bus queue threshold.')
-param FailedNotificationsQueueThreshold string = 'FailedNotificationsQueueThreshold'
+param failedNotificationsQueueThreshold string = 'FailedNotificationsQueueThreshold'
 
 @description('Enter storage account name.')
 @minLength(1)
@@ -721,7 +721,14 @@ module dashboardTemplate 'dashboard.bicep' = {
     jobsStorageAccountTemplate
   ]
 }
+resource configurationStore 'Microsoft.AppConfiguration/configurationStores@2023-08-01-preview' existing = {
+  name: appConfigurationName
+}
 
+resource configurationStoreKeyValue 'Microsoft.AppConfiguration/configurationStores/keyValues@2023-08-01-preview' existing = {
+  parent: configurationStore
+  name: failedNotificationsQueueThreshold
+}
 module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
   name: 'serviceBusQueueAlert'
   params: {
@@ -729,7 +736,7 @@ module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
     serviceBusQueueName: serviceBusFailedNotificationsQueue
     location: location
     actionGroupId: actionGroupTemplate.outputs.actionGroupId
-    threshold: int(reference(resourceId('Microsoft.AppConfiguration/configurationStores', appConfigurationName), '2019-02-01-preview').properties.settings[FailedNotificationsQueueThreshold].value)
+    threshold: int(configurationStoreKeyValue.properties.value)
   }
   dependsOn: [
     appConfigurationTemplate
