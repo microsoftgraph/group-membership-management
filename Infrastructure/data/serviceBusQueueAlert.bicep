@@ -15,7 +15,7 @@ param threshold int
 
 resource serviceBusQueueAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: '${serviceBusQueueName}-Alert'
-  location: location
+  location: 'global'
   properties: {
     severity: 3 
     enabled: true 
