@@ -1,24 +1,29 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
   classNamesFunction,
   useTheme,
-  Dropdown, IDropdownOption,
+  Dropdown,
+  IDropdownOption,
   Spinner,
   ActionButton,
-  MessageBar, MessageBarType, MessageBarButton, NormalPeoplePicker, IPersonaProps
+  MessageBar,
+  MessageBarType,
+  MessageBarButton,
+  NormalPeoplePicker,
+  IPersonaProps
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
   ISelectDestinationStyleProps,
   ISelectDestinationStyles,
 } from './SelectDestination.types';
-import { useStrings } from "../../store/hooks";
-import { PageSection } from "../PageSection";
+import { useStrings } from '../../store/hooks';
+import { PageSection } from '../PageSection';
 import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';
 import {
@@ -69,15 +74,31 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
   const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
 
+  const [inputValue, setInputValue] = useState('');
+
+  const debouncedSearch = useCallback(debounce((input: string) => {
+    dispatch(searchDestinations(input));
+  }, 300), []);
+
+  const handleInputChange = (input: string): string => {
+    setInputValue(input);
+    debouncedSearch(input);
+    return input;
+  }
+
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
     return ["Outlook", "Yammer", "SharePoint"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
   };
 
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
+
   const appIdNotOwnerWarning = onboardingStatus === OnboardingStatus.AppIdNotOwner ? (
     <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.appIdNotOwnerWarning} <a href={addGroupOwnerLink}>{strings.ManageMembership.labels.clickHere}</a>.
+      {strings.ManageMembership.labels.appIdNotOwnerWarning} 
+        <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
+          {strings.ManageMembership.labels.clickHere}
+        </a>.
     </div>
   ) : null;
 
@@ -127,11 +148,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     return text && groupPickerSuggestions ? groupPickerSuggestions : [];
   };
 
-  const handleDestinationInputChanged = (input: string): string => {
-    dispatch(searchDestinations(input));
-    return input;
-  }
-
   return (
     <div className={classNames.root}>
       <PageSection>
@@ -160,63 +176,72 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               resolveDelay={300}
               itemLimit={1}
               selectedItems={selectedDestinationPersona}
-              onInputChange={handleDestinationInputChanged}
+              onInputChange={handleInputChange}
               onChange={onSearchDestinationChange}
               styles={{ text: classNames.peoplePicker }}
               pickerCalloutProps={{ calloutMinWidth: 500 }}
             />
           </div>
-          {loadingSearchResults ? (
-            <Spinner />
-          ) : (
-            <div>
-              {selectedDestination && hasRequiredEndpoints() ? (
-                <div className={classNames.endpointsContainer}>
-                  {selectedDestinationEndpoints ? strings.ManageMembership.labels.appsUsed : ''}
-                  {selectedDestinationEndpoints?.includes("Outlook") && (
-                    <div className={classNames.outlookContainer}>
-                      <ActionButton
-                        iconProps={{ iconName: 'OutlookLogo' }}
-                        onClick={() => openOutlookLink()}
-                      >
-                        Outlook
-                      </ActionButton>
-                      {outlookWarningUrl &&
-                        <MessageBar
-                          messageBarType={MessageBarType.warning}
-                          className={classNames.outlookWarning}
-                          isMultiline={false}
-                          actions={
-                            <MessageBarButton onClick={() => onClickOutlookWarning()}>{strings.learnMore}</MessageBarButton>
-                          }>
-                          {strings.ManageMembership.labels.outlookWarning}
-                        </MessageBar>}
-                    </div>)}
-                  {selectedDestinationEndpoints?.includes("SharePoint") && (
+          <div className={classNames.resultsContainer}>
+            {!hasRequiredEndpoints() && (
+              <div className={classNames.spinnerContainer}>
+                {loadingSearchResults ? <Spinner /> : null}
+              </div>
+            )}
+            {selectedDestination && hasRequiredEndpoints() && (
+              <div className={classNames.endpointsContainer}>
+                {selectedDestinationEndpoints ? strings.ManageMembership.labels.appsUsed : ''}
+                {selectedDestinationEndpoints?.includes("Outlook") && (
+                  <div className={classNames.outlookContainer}>
                     <ActionButton
-                      iconProps={{ iconName: 'SharePointLogo' }}
-                      onClick={() => openSharePointLink()}
+                      iconProps={{ iconName: 'OutlookLogo' }}
+                      onClick={() => openOutlookLink()}
                     >
-                      SharePoint
+                      Outlook
                     </ActionButton>
-                  )}
-                  {selectedDestinationEndpoints?.includes("Yammer") && (
-                    <ActionButton
-                      iconProps={{ iconName: 'YammerLogo' }}
-                      onClick={() => openYammerLink()}
-                    >
-                      Yammer
-                    </ActionButton>
-                  )}
-                  {appIdNotOwnerWarning}
-                  {userNotOwnerWarning}
-                  {alreadyOnboardedWarning}
-                </div>
-              ) : null}
-            </div>
-          )}
+                    {outlookWarningUrl &&
+                      <MessageBar
+                        messageBarType={MessageBarType.warning}
+                        className={classNames.outlookWarning}
+                        isMultiline={false}
+                        actions={
+                          <MessageBarButton onClick={() => onClickOutlookWarning()}>{strings.learnMore}</MessageBarButton>
+                        }>
+                        {strings.ManageMembership.labels.outlookWarning}
+                      </MessageBar>}
+                  </div>)}
+                {selectedDestinationEndpoints?.includes("SharePoint") && (
+                  <ActionButton
+                    iconProps={{ iconName: 'SharePointLogo' }}
+                    onClick={() => openSharePointLink()}
+                  >
+                    SharePoint
+                  </ActionButton>
+                )}
+                {selectedDestinationEndpoints?.includes("Yammer") && (
+                  <ActionButton
+                    iconProps={{ iconName: 'YammerLogo' }}
+                    onClick={() => openYammerLink()}
+                  >
+                    Yammer
+                  </ActionButton>
+                )}
+                {appIdNotOwnerWarning}
+                {userNotOwnerWarning}
+                {alreadyOnboardedWarning}
+              </div>
+            )}
+          </div>
         </div>
       </PageSection>
     </div>
   );
 };
+
+function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
+  let timeout: NodeJS.Timeout;
+  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}

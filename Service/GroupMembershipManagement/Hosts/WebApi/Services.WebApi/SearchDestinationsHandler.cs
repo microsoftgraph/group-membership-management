@@ -23,7 +23,7 @@ namespace Services
         {
             var response = new SearchDestinationsResponse();
 
-            int minQueryLength = 3;
+            int minQueryLength = 1;
             if (string.IsNullOrEmpty(request.Query) || request.Query.Length < minQueryLength)
             {
                 return response;

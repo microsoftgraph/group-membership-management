@@ -16,10 +16,12 @@ export interface ISelectDestinationStyles {
   dropdownTitle: IStyle;
   dropdownField: IStyle;
   peoplePicker: IStyle;
+  resultsContainer: IStyle;
   endpointsContainer: IStyle;
   outlookWarning: IStyle;
   outlookContainer: IStyle;
   ownershipWarning: IStyle;
+  spinnerContainer: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {
