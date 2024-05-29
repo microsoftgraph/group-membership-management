@@ -43,7 +43,7 @@ resource serviceBusQueueAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
           dimensions: [
             {
               name: 'EntityName' 
-              operator: 'Equals' 
+              operator: 'Include' 
               values: [
                 serviceBusQueueName 
               ]
