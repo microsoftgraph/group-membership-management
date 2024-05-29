@@ -368,6 +368,6 @@ export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.
 export default manageMembershipSlice.reducer;
 
 export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
-    const compositeQuery: SyncJobQuery = sourceParts.map(part => removeUnusedProperties(part.query));
+    const compositeQuery: SyncJobQuery = sourceParts.map(part => part.query ? removeUnusedProperties(part.query) : part.query);
     return compositeQuery;
 }
