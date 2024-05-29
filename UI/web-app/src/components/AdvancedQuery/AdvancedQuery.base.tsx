@@ -24,6 +24,9 @@ import {
   setIsAdvancedQueryValid,
 } from '../../store/manageMembership.slice';
 import { removeUnusedProperties } from '../../utils/sourcePartUtils';
+import { SourcePartType } from '../../models/SourcePartType';
+import { SourcePartQuery } from '../../models/SourcePartQuery';
+import { validateGroup } from '../../store/groups.api';
 
 const getClassNames = classNamesFunction<
   IAdvancedQueryStyleProps,
@@ -110,15 +113,32 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     onQueryChange(event, newValue);
   };
 
-  const onValidateQuery = () => {
+  const onValidateQuery = async () => {
     try {
       const parsedQuery = JSON.parse(localQuery || '[]');
       const validate = ajv.compile(schema);
       const isValid = validate(parsedQuery);
 
       if (isValid) {
+        const validationResults = await Promise.all(
+          (parsedQuery as Array<SourcePartQuery>).map(async (part) => {
+            if (part.type === SourcePartType.GroupMembership && part.source) {
+              const result = await dispatch(validateGroup(part.source)).unwrap();
+              return result;
+            }
+            return { groupId: part.source, isValid: true };
+          })
+        );
+
+        const invalidGroups = validationResults.filter(result => !result.isValid);
+        if (invalidGroups.length > 0) {
+          const invalidGroupIds = invalidGroups.map(result => result.groupId).join(', ');
+          setValidationMessage(`${strings.ManageMembership.labels.invalidGroups} ${invalidGroupIds}`);
+        } else {
+          setValidationMessage(strings.ManageMembership.labels.validQuery);
+        }
+
         dispatch(setAdvancedViewQuery(localQuery || '[]'));
-        setValidationMessage(strings.ManageMembership.labels.validQuery);
       } else {
         const errorsFromAjv = validate.errors;
         const formattedErrors = formatErrors(errorsFromAjv as ExtendedErrorObject[] | null | undefined);

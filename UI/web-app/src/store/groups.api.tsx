@@ -8,6 +8,10 @@ import { TokenType } from '../services/auth';
 import { Destination } from '../models';
 import { IPersonaProps } from '@fluentui/react';
 
+interface ValidateGroupResponse {
+    groupId: string;
+    isValid: boolean;
+  }
 
 export const searchGroups = createAsyncThunk<IPersonaProps[], string, ThunkConfig>(
     'destinations/searchDestinations',
@@ -38,6 +42,35 @@ export const searchGroups = createAsyncThunk<IPersonaProps[], string, ThunkConfi
         } catch (error) {
             console.error('Failed to fetch destination data!', error);
             throw new Error('Failed to fetch destination data!');
+        }
+    }
+);
+
+
+export const validateGroup = createAsyncThunk<ValidateGroupResponse, string, ThunkConfig>(
+    'destinations/searchDestinations',
+    async (groupId: string, { extra }) => {
+        const { authenticationService } = extra.services;
+        const token = await authenticationService.getTokenAsync(TokenType.GMM);
+        const headers = new Headers();
+        const bearer = `Bearer ${token}`;
+        headers.append('Authorization', bearer);
+
+        const options = {
+            method: 'GET',
+            headers,
+        };
+
+        try {
+            const response = await fetch(`${config.searchDestinations}/${encodeURIComponent(groupId)}`, options);
+            if (!response.ok) {
+                console.error('Group is not valid!', response.statusText);
+                return { groupId, isValid: false };
+            }
+            return { groupId, isValid: true };
+        } catch (error) {
+            console.error('Failed to validate group!', error);
+            throw new Error('Failed to validate group!');
         }
     }
 );

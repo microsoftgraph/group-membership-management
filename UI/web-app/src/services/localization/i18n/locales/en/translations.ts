@@ -293,6 +293,7 @@ export const strings: IStrings = {
       query: 'Query',
       validQuery: 'Query is valid.',
       invalidQuery: 'Failed to parse query. Ensure it is valid JSON.',
+      invalidGroups: 'Invalid group IDs:',
       step3title: 'Step 3: Membership Configuration',
       step3description: 'Define the source membership for the destination.',
       selectStartDate: 'Select an option to start managing the membership',

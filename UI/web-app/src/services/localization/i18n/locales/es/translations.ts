@@ -297,6 +297,7 @@ export const strings: IStrings = {
       query: 'Consulta',
       validQuery: 'Consulta válida.',
       invalidQuery: 'Error al analizar la consulta. Asegúrese de que sea JSON válido.',
+      invalidGroups: 'Grupos inválido:',
       step3title: 'Paso 3: Configuración de Membresía',
       step3description: 'Defina la fuente de la membresía para el destino.',
       selectStartDate: 'Selecciona una opción para comenzar a administrar la membresía',

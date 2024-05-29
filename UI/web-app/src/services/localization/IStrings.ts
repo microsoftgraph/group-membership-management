@@ -288,6 +288,7 @@ export type IStrings = {
       query: string;
       validQuery: string;
       invalidQuery: string;
+      invalidGroups: string;
       step3title: string;
       step3description: string;
       selectStartDate: string;
