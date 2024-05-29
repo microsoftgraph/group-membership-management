@@ -5,25 +5,25 @@ param serviceBusNamespaceId string
 param serviceBusQueueName string
 
 @description('Location for the alert. Must be the same location as the namespace.')
-param location string
+param location string = 'global'
 
 @description('The ID of the action group that is triggered when the alert is activated.')
 param actionGroupId string = ''
 
 @description('The threshold value that triggers the alert.')
-param threshold int
+param threshold int = 10
 
 resource serviceBusQueueAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: '${serviceBusQueueName}-Alert'
-  location: 'global'
+  location: location
   properties: {
     severity: 3 
     enabled: true 
     scopes: [
       serviceBusNamespaceId 
     ]
-    evaluationFrequency: 'PT1M' 
-    windowSize: 'PT1M' 
+    evaluationFrequency: 'PT5M' 
+    windowSize: 'PT5M' 
     targetResourceType: 'Microsoft.ServiceBus/namespaces' 
     targetResourceRegion: location 
     actions: [

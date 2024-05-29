@@ -104,9 +104,6 @@ param serviceBusNotificationsQueue string = 'notifications'
 @description('Enter notifications service bus queue name')
 param serviceBusFailedNotificationsQueue string = 'failedNotifications'
 
-@description('App configuration key for Service Bus queue threshold.')
-param failedNotificationsQueueThreshold string = 'FailedNotificationsQueueThreshold'
-
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -188,14 +185,6 @@ param appConfigurationKeyData array = [
     contentType: 'integer'
     tag: {
       tag1: 'JobTrigger'
-    }
-  }
-  {
-    key: 'FailedNotificationsQueueThreshold'
-    value: '1'
-    contentType: 'integer'
-    tag: {
-      tag1: 'ServiceBus'
     }
   }
   {
@@ -727,9 +716,7 @@ module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
   params: {
     serviceBusNamespaceId: resourceId('Microsoft.ServiceBus/namespaces', serviceBusName)
     serviceBusQueueName: serviceBusFailedNotificationsQueue
-    location: location
     actionGroupId: actionGroupTemplate.outputs.actionGroupId
-    threshold: 1
   }
   dependsOn: [
     appConfigurationTemplate
