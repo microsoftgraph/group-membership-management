@@ -1,5 +1,7 @@
 # Set sender address for email notification
 
+Follow the steps below to set the sender's credentials that will be used to send email notifications. If you don't want to use email notifications see [Skip email notifications](#skip-email-notifications).
+
 1) Open the Azure Portal from the tenant where the Graph App is created in
 2) Add Mail.Send Delegated Permission in `<SolutionAbbreviation>-Graph-<EnvironmentAbbreviation>` application
 
@@ -59,3 +61,31 @@
     * value = "true"
 
 3) If the key-value pair above does not exist (maybe the Set-SenderReceipientCredentials script failed at the end) then add it
+
+## Skip email notifications
+
+If you decide not to use email notifications follow these steps. From Powershell 7 command prompt run:
+
+```
+ . ./Set-SenderRecipientCredentials.ps1
+
+ Skip-SenderRecipientCredentials `
+    -SubscriptionName "<SubscriptionName>" `
+    -SolutionAbbreviation "<SolutionAbbreviation>" `
+    -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
+```
+
+The script will populate default values for sender's username and password required by GMM deployment to succeed, and it also indicates GMM to not send any email notifications by setting Mail:SkipMailNotifications to true in App Configuration settings.
+
+If at a later time you decide to use email notifications you will need to follow steps from [Set sender address for email notification](#set-sender-address-for-email-notification). Keep in mind that re-running these scripts creates a new version of the senderUsername and senderPassword secrets in your prereqs keyvault. You will need to update the Notifier's function settings to use the latest version of the secrets.
+
+Notifier's function sender credentials settings that need to be updated:
+```
+"name": "senderAddress",  
+"value": "@Microsoft.KeyVault(SecretUri=https://<solutionAbbreviation>-prereqs-<environmentAbbreviation>.vault.azure.net/secrets/senderUsername/<version>)"
+  
+"name": "senderPassword",  
+"value": "@Microsoft.KeyVault(SecretUri=https://<solutionAbbreviation>-prereqs-<environmentAbbreviation>.vault.azure.net/secrets/senderPassword/<version>)"
+```
+
+`<version>` - Needs to be replaced with the latest version for both secrets in the prereqs keyvault.

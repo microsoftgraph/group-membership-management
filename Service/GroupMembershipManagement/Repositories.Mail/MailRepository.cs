@@ -41,6 +41,17 @@ namespace Repositories.Mail
 
         public async Task SendMailAsync(EmailMessage emailMessage, Guid? runId)
         {
+            if (_mailConfig.SkipEmailNotifications)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = "Email notifications are disabled."
+                });
+
+                return;
+            }
+
             if (emailMessage is null)
             {
                 throw new ArgumentNullException(nameof(emailMessage));
@@ -75,7 +86,7 @@ namespace Repositories.Mail
 
             try
             {
-                if(_mailConfig.GMMHasSendMailApplicationPermissions)
+                if (_mailConfig.GMMHasSendMailApplicationPermissions)
                 {
                     var body = new Microsoft.Graph.Users.Item.SendMail.SendMailPostRequestBody
                     {
@@ -139,8 +150,8 @@ namespace Repositories.Mail
 
             string groupId = emailMessage?.AdditionalContentParams[0];
             string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
-            var urlSetting =  await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
-            var dashboardUrlSetting =  await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
+            var urlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
+            var dashboardUrlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
 
             string UIUrl = urlSetting?.SettingValue ?? "";
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";

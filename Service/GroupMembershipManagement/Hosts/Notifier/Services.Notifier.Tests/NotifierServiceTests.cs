@@ -25,6 +25,13 @@ using System.Text.Json;
 using DIConcreteTypes;
 using Repositories.Logging;
 using Models.Entities;
+using Repositories.Mail;
+using Microsoft.Graph;
+using Microsoft.Azure.Documents.SystemFunctions;
+using Microsoft.Graph.Me.SendMail;
+using static Microsoft.Graph.Me.SendMail.SendMailRequestBuilder;
+using System.Threading;
+using Microsoft.Kiota.Abstractions;
 
 namespace Services.Notifier.Tests
 {
@@ -249,6 +256,70 @@ namespace Services.Notifier.Tests
             await _notifierService.SendNormalThresholdEmailAsync(messageBody);
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once());
 
+        }
+
+        [TestMethod]
+        public async Task SendEmailWhenEmailsHaveBeenDisabled()
+        {
+
+            var requestAdapter = new Mock<IRequestAdapter>();
+            requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault("https://graph.microsoft.com/v1.0");
+            var graphServiceClient = new Mock<GraphServiceClient>(requestAdapter.Object, "https://graph.microsoft.com/v1.0");
+
+            var mailConfig = new MailConfig(true, false, "not-set", true);
+            var mailRepository = new MailRepository(graphServiceClient.Object,
+                                                    mailConfig,
+                                                    _localizationRepository,
+                                                    _loggerMock.Object,
+                                                    "abc",
+                                                    _graphGroupRepository.Object,
+                                                    new Mock<IDatabaseSettingsRepository>().Object);
+
+            _notifierService = new NotifierService(_loggerMock.Object,
+                                    mailRepository,
+                                    _mailAddresses.Object,
+                                    _localizationRepository,
+                                    _thresholdNotificationService.Object,
+                                    _notificationRepository.Object,
+                                    _graphGroupRepository.Object,
+                                    _notificationTypesRepository.Object,
+                                    _jobNotificationRepository.Object,
+                                    _thresholdConfig.Object,
+                                    _gmmResources.Object,
+                                    _telemetryClient
+                                    );
+
+            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
+            var notificationTypeId = 1;
+
+            string[] additionalContentParameters = new string[] { "Param1", "Param2" };
+            var messageContent = new Dictionary<string, Object>
+            {
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParameters }
+            };
+            string subjectTemplate = "DisabledJobEmailSubject";
+            string contentTemplate = "SyncDisabledNoGroupEmailBody";
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = contentTemplate, Disabled = false });
+
+            _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
+                .ReturnsAsync(false);
+
+            string serializedMessageContent = JsonSerializer.Serialize(messageContent);
+            OrchestratorRequest request = new OrchestratorRequest
+            {
+                MessageType = nameof(NotificationMessageType.SyncStartedNotification),
+                MessageBody = serializedMessageContent,
+                SubjectTemplate = subjectTemplate,
+                ContentTemplate = contentTemplate
+            };
+
+            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.SubjectTemplate, request.ContentTemplate);
+            _loggerMock.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Equals("Email notifications are disabled.")), 
+                                                        VerbosityLevel.INFO, 
+                                                        It.IsAny<string>(), 
+                                                        It.IsAny<string>()), Times.Once());
         }
     }
 }

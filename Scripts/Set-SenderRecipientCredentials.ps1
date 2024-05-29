@@ -47,6 +47,46 @@ Set-SenderRecipientCredentials	-SubscriptionName "<subscription name>" `
 								-Verbose
 
 #>
+
+function Skip-SenderRecipientCredentials {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory=$True)]
+		[string] $SubscriptionName,
+		[Parameter(Mandatory=$True)]
+		[string] $SolutionAbbreviation,
+		[Parameter(Mandatory=$True)]
+		[string] $EnvironmentAbbreviation
+	)
+
+	$defaultValue = "not-set"
+	$defaultSecret = New-Object System.Security.SecureString
+	$defaultValue.ToCharArray() | ForEach-Object { $defaultSecret.AppendChar($_) }
+
+	Set-SenderRecipientCredentials `
+		-SubscriptionName $SubscriptionName `
+		-SolutionAbbreviation $SolutionAbbreviation `
+		-EnvironmentAbbreviation $EnvironmentAbbreviation `
+		-SecureSenderUsername $defaultSecret `
+		-SecureSenderPassword $defaultSecret `
+		-SecureSyncCompletedCCEmailAddresses $defaultValue `
+		-SecureSyncDisabledCCEmailAddresses $defaultValue `
+		-SecureSupportEmailAddresses $defaultValue `
+		-GmmGraphAppHasMailApplicationPermissions $false
+
+		$dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+		$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
+		$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $dataResourceGroupName -Name $appConfigName;
+
+		Set-AzAppConfigurationKeyValue -Endpoint $appConfigObject.Endpoint `
+										-Key "Mail:SkipMailNotifications" `
+										-Value "true" `
+										-ContentType "boolean" `
+										-Etag { tag1="Mail" }
+
+		Write-Host "Set Mail:SkipMailNotifications key with the value 'true'";
+}
+
 function Set-SenderRecipientCredentials {
 	[CmdletBinding()]
 	param(
@@ -147,12 +187,12 @@ function Set-SenderRecipientCredentials {
 
 	#endregion
 
+	$dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
+	$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $dataResourceGroupName -Name $appConfigName;
+
 	#region If GMM Graph App has Application permission for Mail.Send, add app config value to indicate it
 	if($GmmGraphAppHasMailApplicationPermissions) {
-
-		$dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-		$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
-		$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $dataResourceGroupName -Name $appConfigName;
 
 		Set-AzAppConfigurationKeyValue -Endpoint $appConfigObject.Endpoint `
 										-Key "Mail:IsMailApplicationPermissionGranted" `
@@ -163,6 +203,12 @@ function Set-SenderRecipientCredentials {
 		Write-Host "Updated Mail:IsMailApplicationPermissionGranted key with the value $isMailApplicationPermissionGranted";
 
 	}
+
+	Set-AzAppConfigurationKeyValue -Endpoint $appConfigObject.Endpoint `
+		-Key "Mail:SkipMailNotifications" `
+		-Value "false" `
+		-ContentType "boolean" `
+		-Etag { tag1="Mail" }
 
 	#endregion
 

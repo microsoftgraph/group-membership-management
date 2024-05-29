@@ -8,5 +8,6 @@ namespace Repositories.Contracts.InjectConfig
         public bool IsAdaptiveCardEnabled { get; }
         public bool GMMHasSendMailApplicationPermissions { get; set; }
         public string SenderAddress { get; set; }
+        public bool SkipEmailNotifications { get; set; }
     }
 }

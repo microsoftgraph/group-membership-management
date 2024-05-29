@@ -157,7 +157,8 @@ namespace Hosts.FunctionBase
                 var configuration = services.GetService<IConfiguration>();
                 return new MailConfig(configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled"),
                     configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
-                    configuration.GetValue<string>("senderAddress"));
+                    configuration.GetValue<string>("senderAddress"),
+                    configuration.GetValue("Mail:SkipMailNotifications", false));
             });
 
             builder.Services.AddSingleton<IMailRepository>(services =>
