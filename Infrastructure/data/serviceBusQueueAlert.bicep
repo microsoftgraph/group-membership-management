@@ -11,7 +11,7 @@ param location string = 'global'
 param actionGroupId string = ''
 
 @description('The threshold value that triggers the alert.')
-param threshold int = 10
+param threshold int
 
 resource serviceBusQueueAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
   name: '${serviceBusQueueName}-Alert'

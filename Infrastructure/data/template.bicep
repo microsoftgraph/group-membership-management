@@ -386,6 +386,8 @@ param sqlAdministratorsGroupId string
 @description('Administrators Azure AD Group Name')
 param sqlAdministratorsGroupName string
 
+@description('Failed notifications alert threshold.')
+param notificationAlertThreshold int
 module sqlServer 'sqlServer.bicep' =  {
   name: 'sqlServerTemplate'
   params: {
@@ -717,6 +719,7 @@ module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
     serviceBusNamespaceId: resourceId('Microsoft.ServiceBus/namespaces', serviceBusName)
     serviceBusQueueName: serviceBusFailedNotificationsQueue
     actionGroupId: actionGroupTemplate.outputs.actionGroupId
+    threshold: notificationAlertThreshold
   }
   dependsOn: [
     appConfigurationTemplate
