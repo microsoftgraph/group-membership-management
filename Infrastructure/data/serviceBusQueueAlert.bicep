@@ -39,7 +39,7 @@ resource serviceBusQueueAlert 'Microsoft.Insights/metricAlerts@2018-03-01' = {
           metricName: 'ActiveMessages' 
           metricNamespace: 'Microsoft.ServiceBus/namespaces' 
           operator: 'GreaterThan'
-          timeAggregation: 'Total'
+          timeAggregation: 'Average'
           dimensions: [
             {
               name: 'EntityName' 
