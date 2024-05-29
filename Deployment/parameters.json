@@ -2,6 +2,18 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "skipMailNotifications": {
+      "value": false,
+      "metadata": {
+        "description": "If you don't want to send email notifications set this to true. When this is true, 'senderUsername','senderPassword','supportEmailAddresses','syncDisabledCCEmailAddresses','syncCompletedCCEmailAddresses' should be set to 'not-set'."
+      }
+    },
+    "isMailApplicationPermissionGranted": {
+      "value": false,
+      "metadata": {
+        "description": "If you are not able or don't want to use delegated Mail.Send permission, you can grant application permission Mail.Send to the <solution>-Graph-<environment> or <solution>-identity-<environment>-Graph application depending on the authentication type selected. Then set this parameter to true."
+      }
+    },
     "senderUsername": {
       "value": "",
       "metadata": {
@@ -12,24 +24,6 @@
       "value": "",
       "metadata": {
         "description": "The password of the user that will be used to send emails."
-      }
-    },
-    "teamsChannelServiceAccountObjectId": {
-      "value": "",
-      "metadata": {
-        "description": "The object id of the service account that will be used to manage Teams channels."
-      }
-    },
-    "teamsChannelServiceAccountUsername": {
-      "value": "",
-      "metadata": {
-        "description": "The username of the service account that will be used to manage Teams channels."
-      }
-    },
-    "teamsChannelServiceAccountPassword": {
-      "value": "",
-      "metadata": {
-        "description": "The password of the service account that will be used to manage Teams channels."
       }
     },
     "supportEmailAddresses": {
@@ -48,6 +42,24 @@
       "value": "",
       "metadata": {
         "description": "The email addresses of the users that will receive emails when a sync job is completed."
+      }
+    },
+    "teamsChannelServiceAccountObjectId": {
+      "value": "",
+      "metadata": {
+        "description": "The object id of the service account that will be used to manage Teams channels."
+      }
+    },
+    "teamsChannelServiceAccountUsername": {
+      "value": "",
+      "metadata": {
+        "description": "The username of the service account that will be used to manage Teams channels."
+      }
+    },
+    "teamsChannelServiceAccountPassword": {
+      "value": "",
+      "metadata": {
+        "description": "The password of the service account that will be used to manage Teams channels."
       }
     },
     "location": {
@@ -175,7 +187,7 @@
     "authenticationType": {
       "value": "UserAssignedManagedIdentity|ClientSecret|Certificate",
       "metadata": {
-        "description": "The type of authentication to use for the App Configuration. UserAssignedManagedIdentity is recommended."
+        "description": "The type of authentication to use for the App Configuration. UserAssignedManagedIdentity is recommended and will use <solution>-identity-<environment>-Graph. ClientSecret and Certificate will use <solution>-Graph-<environment>."
       }
     },
     "pipeline": {

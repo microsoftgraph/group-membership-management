@@ -16,6 +16,9 @@ param setRBACPermissions bool = true
   'Certificate'
 ])
 param authenticationType string
+param skipMailNotifications bool = false
+param isMailApplicationPermissionGranted bool = false
+
 // prereqs parameters
 // parameters for prereqs key vault
 @secure()
@@ -111,6 +114,8 @@ module gmmResources 'commonResources.bicep' = {
     appConfigurationName: appConfigurationName
     authenticationType: authenticationType
     setRBACPermissions: setRBACPermissions
+    skipMailNotifications: skipMailNotifications
+    isMailApplicationPermissionGranted: isMailApplicationPermissionGranted
   }
   dependsOn: [
     gmmResourceGroups

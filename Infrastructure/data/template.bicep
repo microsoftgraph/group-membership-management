@@ -145,6 +145,8 @@ param logAnalyticsSku string = 'PerGB2018'
   'Certificate'
 ])
 param authenticationType string = 'ClientSecret'
+param skipMailNotifications bool = false
+param isMailApplicationPermissionGranted bool = false
 
 @description('Enter app configuration name.')
 @minLength(1)
@@ -314,6 +316,22 @@ param appConfigurationKeyData array = [
       tag1: 'GraphAPI'
     }
     description: 'Authentication type for Graph API. Possible values: UserAssignedManagedIdentity, ClientSecret, Certificate'
+  }
+  {
+    key: 'Mail:IsMailApplicationPermissionGranted'
+    value: isMailApplicationPermissionGranted
+    contentType: 'bool'
+    tag: {
+      tag1: 'Mail'
+    }
+  }
+  {
+    key: 'Mail:SkipMailNotifications'
+    value: skipMailNotifications
+    contentType: 'bool'
+    tag: {
+      tag1: 'Mail'
+    }
   }
 ]
 

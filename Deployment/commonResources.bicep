@@ -9,6 +9,8 @@ param managedResourceGroupName string
 param appConfigurationName string
 param authenticationType string
 param setRBACPermissions bool
+param skipMailNotifications bool
+param isMailApplicationPermissionGranted bool
 
 // prereqs parameters
 // parameters for prereqs key vault
@@ -97,6 +99,8 @@ module dataResources 'dataResources.bicep' = {
     sqlSkuTier: sqlSkuTier
     tenantId: tenantId
     authenticationType: authenticationType
+    skipMailNotifications: skipMailNotifications
+    isMailApplicationPermissionGranted: isMailApplicationPermissionGranted
   }
   dependsOn: [
     prereqResources

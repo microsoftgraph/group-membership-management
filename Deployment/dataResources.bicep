@@ -12,6 +12,8 @@ param sqlSkuName string
 param sqlSkuTier string
 param tenantId string
 param authenticationType string
+param skipMailNotifications bool
+param isMailApplicationPermissionGranted bool
 
 //data resources
 module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
@@ -31,5 +33,7 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     sqlSkuTier: sqlSkuTier
     tenantId: tenantId
     authenticationType: authenticationType
+    skipMailNotifications: skipMailNotifications
+    isMailApplicationPermissionGranted: isMailApplicationPermissionGranted
   }
 }
