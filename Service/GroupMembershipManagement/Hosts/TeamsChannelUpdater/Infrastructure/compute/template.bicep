@@ -199,6 +199,16 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
   scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
+module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
+  name: 'existingLogAnalyticsWorkspace'
+  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    resourceGroupClassification: 'data'
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
 module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {
   name: 'functionAppTemplate-TeamsChannelUpdater'
   params: {
@@ -210,10 +220,12 @@ module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
+    existingLogAnalyticsWorkspace
   ]
 }
 
@@ -228,6 +240,7 @@ module functionAppSlotTemplate_TeamsChannelUpdater 'functionAppSlot.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     functionAppTemplate_TeamsChannelUpdater

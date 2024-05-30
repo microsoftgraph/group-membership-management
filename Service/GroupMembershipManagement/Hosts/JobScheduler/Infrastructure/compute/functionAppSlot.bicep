@@ -20,6 +20,9 @@ param servicePlanName string
 @description('app settings')
 param secretSettings object
 
+@description('Log Analytics Workspace Id.')
+param logAnalyticsWorkspaceId string
+
 resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
   kind: kind
@@ -37,6 +40,24 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   }
   identity: {
     type: 'SystemAssigned'
+  }
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'functionAppSlot-diagnostics'
+  scope: functionAppSlot
+  properties: {
+    workspaceId:  logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'FunctionAppLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
   }
 }
 

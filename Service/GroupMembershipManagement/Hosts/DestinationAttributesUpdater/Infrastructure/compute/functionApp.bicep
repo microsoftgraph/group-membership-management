@@ -25,6 +25,9 @@ param userManagedIdentities object = {}
 
 var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
 
+@description('Log Analytics Workspace Id.')
+param logAnalyticsWorkspaceId string
+
 resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   name: name
   location: location
@@ -42,6 +45,24 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
     userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
+  }
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'functionApp-diagnostics'
+  scope: functionApp
+  properties: {
+    workspaceId:  logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'FunctionAppLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
   }
 }
 

@@ -31,6 +31,9 @@ param userManagedIdentities object = {}
 
 var deployUserManagedIdentity = userManagedIdentities != null && userManagedIdentities != {}
 
+@description('Log Analytics Workspace Id.')
+param logAnalyticsWorkspaceId string
+
 resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   name: name
   kind: kind
@@ -49,6 +52,24 @@ resource functionAppSlot 'Microsoft.Web/sites/slots@2018-11-01' = {
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
     userAssignedIdentities: deployUserManagedIdentity ? userManagedIdentities : null
+  }
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'functionAppSlot-diagnostics'
+  scope: functionAppSlot
+  properties: {
+    workspaceId:  logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: 'FunctionAppLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
   }
 }
 
@@ -89,7 +110,7 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultName: dataKeyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
+        {
           name: 'nonProdServiceStagingKey'
           value: listkeys('${functionAppSlot.id}/host/default', '2018-11-01').functionKeys.default
         }

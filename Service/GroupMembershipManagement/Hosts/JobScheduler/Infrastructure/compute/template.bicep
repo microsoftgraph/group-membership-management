@@ -167,6 +167,16 @@ var productionSettings = {
   AzureFunctionsWebHost__hostid: 'JobScheduler'
 }
 
+module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
+  name: 'existingLogAnalyticsWorkspace'
+  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    resourceGroupClassification: 'data'
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
 module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobScheduler'
   params: {
@@ -177,9 +187,11 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     secretSettings: commonSettings
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     servicePlanTemplate
+    existingLogAnalyticsWorkspace
   ]
 }
 
@@ -191,6 +203,7 @@ module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
     location: location
     servicePlanName: servicePlanName
     secretSettings: commonSettings
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     functionAppTemplate_JobScheduler

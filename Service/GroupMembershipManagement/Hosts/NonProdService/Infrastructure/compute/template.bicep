@@ -250,6 +250,16 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
   scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
+module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
+  name: 'existingLogAnalyticsWorkspace'
+  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    resourceGroupClassification: 'data'
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
 module functionAppTemplate_NonProdService 'functionApp.bicep' = {
   name: 'functionAppTemplate-NonProdService'
   params: {
@@ -263,10 +273,12 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
+    existingLogAnalyticsWorkspace
   ]
 }
 
@@ -283,6 +295,7 @@ module functionAppSlotTemplate_NonProdService 'functionAppSlot.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     functionAppTemplate_NonProdService

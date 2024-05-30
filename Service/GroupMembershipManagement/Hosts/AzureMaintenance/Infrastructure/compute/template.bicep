@@ -190,6 +190,16 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
   scope: resourceGroup(dataKeyVaultResourceGroup)
 }
 
+module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
+  name: 'existingLogAnalyticsWorkspace'
+  scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
+  params: {
+    environmentAbbreviation: environmentAbbreviation
+    resourceGroupClassification: 'data'
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
 module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
   name: 'functionAppTemplate-AzureMaintenance'
   params: {
@@ -201,10 +211,12 @@ module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
+    existingLogAnalyticsWorkspace
   ]
 }
 
@@ -219,6 +231,7 @@ module functionAppSlotTemplate_AzureMaintenance 'functionAppSlot.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
+    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
     functionAppTemplate_AzureMaintenance
