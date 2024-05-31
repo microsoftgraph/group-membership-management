@@ -47,7 +47,7 @@ Run the following commands to deploy the resources with a Tenant Admin account.
 
 While most of the deployment is automated, you will be prompted to login again to your Azure account.
 
-### Post Deployment
+## Post Deployment
 Once the deployment is complete, you will need to gran Admin consent to the deployed applications.
 - Navigate to the Azure Portal and go to the Microsoft Entra ID.
 - Click on App Registrations.
@@ -61,6 +61,7 @@ The WebApi provides roles that can be assigned to users. See these relevant sect
 - [Roles as policy to gate functionality](https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md#roles-as-policy-to-gate-functionality)
 - [Add a role to a group](https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md#add-a-role-to-a-group)
 
+```
 Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
                     -EnvironmentAbbreviation "<environment-abbreviation>" `
                     -Location "<location>" `
@@ -69,3 +70,31 @@ Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
                     -SubscriptionId "<subscription-id>" `
                     -Verbose
 ```
+
+### Creating and uploading the certificate
+
+If you opted to use a certificate for the Microsoft Graph API `<solutionAbbreviation>-Graph-<environmentAbbreviation>`, follow these steps to complete the configuration.
+
+1. Create a self-signed certificate. See [Quickstart: Set and retrieve a certificate from Azure Key Vault using the Azure portal](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal)
+2. Upload the certificate to your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
+
+    We need to upload the certificate to the `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application, in order to do that, we need to export it from the prereqs keyvault.
+
+    Exporting the certificate:
+
+    1. In the Azure Portal navigate to your prereqs keyvault, it will be named following this convention `<solutionAbbreviation>`-prereqs-`<environmentAbbreviation>`.
+    2. Locate and click on the Certificates blade on the left menu.
+    3. Click on your certificate from the list.
+    4. Click on the latest version.
+    5. On the top menu click on 'Download in CER format' button to download the certificate.
+
+    If you need more details on how to export the certificate please see [Quickstart: Set and retrieve a certificate from Azure Key Vault using the Azure portal](https://docs.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal) documentation.
+
+    Uploading the certificate:
+
+    1. In the Azure Portal navigate to Microsoft Entra ID. If you don't see it on your screen you can use the top search bar to locate it.
+    2. Navigate to 'App registrations' blade on the left menu.
+    3. Click on 'All applications" to locate and open your `<solutionAbbreviation>`-Graph-`<environmentAbbreviation>` application.
+    4. On your application screen click on 'Certificates and secrets' blade on the left menu.
+    5. Click on the 'Upload certificate' button.
+    6. Locate and add your certificate.
