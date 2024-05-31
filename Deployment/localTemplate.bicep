@@ -18,6 +18,7 @@ param setRBACPermissions bool = true
 param authenticationType string
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
+param certificateName string = 'not-set'
 
 // prereqs parameters
 // parameters for prereqs key vault

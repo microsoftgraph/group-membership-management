@@ -190,6 +190,12 @@
         "description": "The type of authentication to use for the App Configuration. UserAssignedManagedIdentity is recommended and will use <solution>-identity-<environment>-Graph. ClientSecret and Certificate will use <solution>-Graph-<environment>."
       }
     },
+    "certificateName": {
+      "value": "not-set",
+      "metadata": {
+        "description": "The name of the certificate in the Key Vault. This is required if the authenticationType is Certificate. This is only used by application <solutionAbbreviation>-Graph-<EnvironmentAbbreviation>. See https://learn.microsoft.com/en-us/azure/key-vault/certificates/quick-create-portal for more information on certificates."
+      }
+    },
     "pipeline": {
       "value": "PopulateDestinationPipeline"
     },

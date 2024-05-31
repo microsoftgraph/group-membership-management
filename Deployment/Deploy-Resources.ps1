@@ -404,6 +404,7 @@ function Set-GMMResources {
 
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
     $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
+    $certificateName = $parameterObject.parameters["certificateName"].value ?? "not-set";
 
     # deploy resource groups
     Write-Host "`nCreating resource groups"
@@ -438,7 +439,8 @@ function Set-GMMResources {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
-        -SecondaryTenantId $SecondaryTenantId
+        -SecondaryTenantId $SecondaryTenantId `
+        -CertificateName $certificateName
 
     # add app registrations to common parameters
     $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
@@ -799,7 +801,9 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $false)]
         [System.Nullable[Guid]]$SecondaryTenantId,
         [Parameter(Mandatory = $False)]
-        [boolean] $SkipIfApplicationExists = $True
+        [boolean] $SkipIfApplicationExists = $True,
+        [Parameter(Mandatory = $False)]
+        [string] $CertificateName
     )
 
     Write-Host "`nSetting GMM App Registrations"
@@ -842,6 +846,7 @@ function Set-GMMAppRegistrations {
         -SaveToKeyVault $true `
         -SkipPrompts $true `
         -SkipIfApplicationExists $true `
+        -CertificateName $CertificateName `
         -Clean $false
 
     $null = Set-AzContext -Tenant $mainTenantId
