@@ -98,3 +98,8 @@ If you opted to use a certificate for the Microsoft Graph API `<solutionAbbrevia
     4. On your application screen click on 'Certificates and secrets' blade on the left menu.
     5. Click on the 'Upload certificate' button.
     6. Locate and add your certificate.
+
+3. Delete the Client secret.
+
+      1. Under Certificates & secrets, click on the Client secrets.
+      2. Delete the secret that was created as part of the deployment.
