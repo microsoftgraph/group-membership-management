@@ -144,8 +144,6 @@ module adfHRResources 'adfHRResources.bicep' = if (!skipADFDeployment) {
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    sqlAdministratorsGroupId: sqlAdministratorsGroupId
-    sqlAdministratorsGroupName: sqlAdministratorsGroupName
   }
   dependsOn: [
     computeResources
