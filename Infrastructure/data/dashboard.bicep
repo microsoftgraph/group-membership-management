@@ -5200,7 +5200,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "NotificationSent"\n| order by Bin desc \n| order by Bin desc'
+                  Query: 'customEvents\n| where name == "NotificationSent"\n| summarize Count = count() by Date = bin(timestamp, 1d) \n| order by Date desc'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Notifications Sent Per Day'
@@ -5211,7 +5211,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'Notifications count'
+                        name: 'Count'
                         type: 'long'
                       }
                     ]
@@ -5316,7 +5316,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| summarize Count = count() by Bin = bin(timestamp, 1d) \n| order by Bin desc'
+                  Query: 'customEvents\n| where name == "NotificationResponseReceived"\n| summarize Count = count() by Date = bin(timestamp, 1d) \n| order by Date desc'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Notifications Responses Received Per Day'
@@ -5327,7 +5327,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'Responses received count'
+                        name: 'Count'
                         type: 'long'
                       }
                     ]
@@ -5443,7 +5443,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     }
                     yAxis: [
                       {
-                        name: 'Notifications Count'
+                        name: 'NotificationsCount'
                         type: 'long'
                       }
                     ]
