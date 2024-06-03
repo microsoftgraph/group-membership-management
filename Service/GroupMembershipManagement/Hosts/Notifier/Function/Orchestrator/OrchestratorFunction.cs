@@ -94,6 +94,12 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
+                case nameof(NotificationMessageType.InactiveSyncJobNotification):
+                    message.SubjectTemplate = NotificationConstants.SyncDisabledInactivityEmailSubject;
+                    message.ContentTemplate = NotificationConstants.SyncDisabledInactivityEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest

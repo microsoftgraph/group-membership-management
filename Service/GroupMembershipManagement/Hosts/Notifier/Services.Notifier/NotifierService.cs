@@ -115,8 +115,8 @@ namespace Services.Notifier
                 IsHTML = true
             };
 
-            var response = await _mailRepository.SendMailAsync(message, null);
-            
+            await _mailRepository.SendMailAsync(message, null);
+            TrackSentNotificationEvent(notification.TargetOfficeGroupId);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent email to recipient addresses." });
 
             if (response != null && response.StatusCode != HttpStatusCode.Accepted)
