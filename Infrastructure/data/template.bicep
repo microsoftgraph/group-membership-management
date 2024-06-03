@@ -441,9 +441,11 @@ module serviceBusTemplate 'serviceBus.bicep' = {
     sku: serviceBusSku
     location: location
     keyVaultName: keyVaultName
+    logAnalyticsWorkspaceId: logAnalyticsTemplate.outputs.resourceId
   }
   dependsOn: [
     dataKeyVaultTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -455,6 +457,7 @@ module serviceBusTopicTemplate 'serviceBusTopic.bicep' = {
   }
   dependsOn: [
     serviceBusTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -467,6 +470,7 @@ module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
   }
   dependsOn: [
     serviceBusTopicTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -478,6 +482,7 @@ module serviceBusMembershipUpdatersTopicTemplate 'serviceBusTopic.bicep' = {
   }
   dependsOn: [
     serviceBusTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -490,6 +495,7 @@ module serviceBusMembershipUpdatersSubscriptionsTemplate 'serviceBusSubscription
   }
   dependsOn: [
     serviceBusMembershipUpdatersTopicTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -503,6 +509,7 @@ module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
   }
   dependsOn:[
     serviceBusTemplate
+    logAnalyticsTemplate
   ]
 }
 
@@ -516,6 +523,7 @@ module notificationsQueue 'serviceBusQueue.bicep' = {
   }
   dependsOn:[
     serviceBusTemplate
+    logAnalyticsTemplate
   ]
 }
 

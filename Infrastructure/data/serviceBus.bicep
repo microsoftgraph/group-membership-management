@@ -13,6 +13,9 @@ param location string
 @description('Data KeyVault name.')
 param keyVaultName string
 
+@description('Log Analytics Workspace Id.')
+param logAnalyticsWorkspaceId string
+
 resource serviceBus 'Microsoft.ServiceBus/namespaces@2022-10-01-preview' = {
   name: name
   location: location
@@ -41,4 +44,23 @@ module serviceBusSecrets 'keyVaultSecretsSecure.bicep' = {
   dependsOn: [
     serviceBus
   ]
+}
+
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'ServiceBus-diagnostics'
+  scope: serviceBus
+  properties: {
+    workspaceId:  logAnalyticsWorkspaceId
+    logs: [
+      {
+        category: null
+        categoryGroup: 'allLogs'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
+      }
+    ]
+  }
 }
