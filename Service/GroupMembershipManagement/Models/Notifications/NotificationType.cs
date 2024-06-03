@@ -11,5 +11,6 @@ namespace Models.Notifications
         NotValidSourceNotification= 6,
         NoDataNotification = 7,
         NormalThresholdNotification = 8,
+        InactiveSyncJobNotification = 9,
     }
 }

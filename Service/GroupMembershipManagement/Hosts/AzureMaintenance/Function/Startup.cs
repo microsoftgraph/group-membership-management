@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.AzureMaintenance;
@@ -14,6 +15,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.NotificationsRepository;
+using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
 
@@ -68,14 +70,20 @@ namespace Hosts.AzureMaintenance
 
             builder.Services.AddScoped<IAzureMaintenanceService>(services =>
             {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
+                var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
+
                 return new AzureMaintenanceService(services.GetService<IDatabaseSyncJobsRepository>(),
                     services.GetService<IDatabasePurgedSyncJobsRepository>(),
                     services.GetService<IGraphGroupRepository>(),
-                    services.GetService<IEmailSenderRecipient>(),
-                    services.GetService<IMailRepository>(),
                     services.GetService<IHandleInactiveJobsConfig>(),
-                    services.GetService<INotificationRepository>());
-            });
+                    services.GetService<INotificationRepository>(),
+                    notificationsQueueRepository,
+                    services.GetService<ILoggingRepository>());
+        });
         }
 
         private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)

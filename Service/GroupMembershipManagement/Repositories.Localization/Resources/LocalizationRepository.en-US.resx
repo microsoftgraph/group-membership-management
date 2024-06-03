@@ -1064,7 +1064,7 @@ Please reach out to support to update the source definition and re-enable the me
   Contact support if you would like to re-enable GMM.
     </value>
   </data>
-  <data name="CustomerPausedJobEmailBody" xml:space="preserve">
+  <data name="SyncDisabledInactivityEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as the owner of **{0}**.
 
 Your group's membership synchronizations are currently disabled due to one of the following reasons:
@@ -1077,7 +1077,7 @@ If you believe this group should still be managed by Group Membership Management
 
 If not remediated by {2}, your group's membership will still remain, but its affiliation with GMM (including its membership definition) will be removed. You will need to re-onboard if you still want GMM to manage your group after that date.</value>
   </data>
-  <data name="CustomerPausedJobEmailSubject" xml:space="preserve">
+  <data name="SyncDisabledInactivityEmailSubject" xml:space="preserve">
     <value>Group Membership Management (GMM) update</value>
   </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">

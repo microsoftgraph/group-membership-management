@@ -8,19 +8,23 @@ using System.Threading.Tasks;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Models;
+using Services.Contracts;
 
 namespace Hosts.AzureMaintenance
 {
     public class OrchestratorFunction
     {
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
-        private readonly IThresholdNotificationConfig _thresholdNotificationConfig;
+        private readonly IThresholdNotificationConfig _thresholdNotificationConfig = null;
+        private readonly IAzureMaintenanceService _azureMaintenanceService = null;
 
         public OrchestratorFunction(IHandleInactiveJobsConfig handleInactiveJobsConfig,
-            IThresholdNotificationConfig thresholdNotificationConfig)
+            IThresholdNotificationConfig thresholdNotificationConfig,
+            IAzureMaintenanceService azureMaintenanceService)
         {
             _handleInactiveJobsConfig = handleInactiveJobsConfig;
             _thresholdNotificationConfig = thresholdNotificationConfig;
+            _azureMaintenanceService = azureMaintenanceService;
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
@@ -54,7 +58,20 @@ namespace Hosts.AzureMaintenance
                     var processingTasks = new List<Task>();
                     foreach (var inactiveSyncJob in inactiveSyncJobs)
                     {
-                        var processTask = context.CallActivityAsync(nameof(SendEmailFunction), inactiveSyncJob);
+                        var groupName = await _azureMaintenanceService.GetGroupNameAsync(inactiveSyncJob.TargetOfficeGroupId);
+                        var additionalContentParams = new[]
+                        {
+                            groupName,
+                            inactiveSyncJob.TargetOfficeGroupId.ToString(),
+                            context.CurrentUtcDateTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion-5).ToString()
+                        };
+                        var processTask = context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest
+                        {
+                            RunId = runId,
+                            SyncJob = inactiveSyncJob,
+                            NotificationType = Models.Notifications.NotificationMessageType.InactiveSyncJobNotification,
+                            AdditionalContentParams = additionalContentParams
+                        });
                         processingTasks.Add(processTask);
                     }
                     await Task.WhenAll(processingTasks);

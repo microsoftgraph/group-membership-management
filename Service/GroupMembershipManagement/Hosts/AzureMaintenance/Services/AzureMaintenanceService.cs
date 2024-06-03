@@ -3,6 +3,8 @@
 
 using Models;
 using Models.AzureMaintenance;
+using Models.Notifications;
+using Models.ServiceBus;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -10,39 +12,37 @@ using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Services
 {
     public class AzureMaintenanceService : IAzureMaintenanceService
 	{
-        private const string CustomerPausedJobEmailSubject = "CustomerPausedJobEmailSubject";
-        private const string CustomerPausedJobEmailBody = "CustomerPausedJobEmailBody";
-
         private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
         private readonly IDatabasePurgedSyncJobsRepository _purgedSyncJobRepository = null;
         private readonly IGraphGroupRepository _graphGroupRepository = null;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
-        private readonly IMailRepository _mailRepository = null;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig = null;
-		private readonly INotificationRepository _notificationRepository = null;
+        private readonly INotificationRepository _notificationRepository = null;
+        private readonly IServiceBusQueueRepository _notificationsQueueRepository;
+        private readonly ILoggingRepository _loggingRepository;
 
         public AzureMaintenanceService(
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabasePurgedSyncJobsRepository purgedSyncJobRepository,
             IGraphGroupRepository graphGroupRepository,
-            IEmailSenderRecipient emailSenderAndRecipients,
-            IMailRepository mailRepository,
 			IHandleInactiveJobsConfig handleInactiveJobsConfig,
-            INotificationRepository notificationRepository)
+            INotificationRepository notificationRepository,
+            IServiceBusQueueRepository notificationQueueRepository,
+            ILoggingRepository loggingRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _purgedSyncJobRepository = purgedSyncJobRepository ?? throw new ArgumentNullException(nameof(purgedSyncJobRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
-            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
 			_notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
+            _notificationsQueueRepository = notificationQueueRepository ?? throw new ArgumentNullException(nameof(notificationQueueRepository));
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -69,30 +69,28 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task SendEmailAsync(SyncJob job, string groupName)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams)
         {
-            if (job != null)
+            var messageContent = new Dictionary<string, Object>
             {
-                var owners = await _graphGroupRepository.GetGroupOwnersAsync(job.TargetOfficeGroupId);
-                var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-                var message = new EmailMessage
-                {
-                    Subject = CustomerPausedJobEmailSubject,
-                    Content = CustomerPausedJobEmailBody,
-                    SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                    SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                    ToEmailAddresses = ownerEmails,
-                    CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
-                    AdditionalContentParams = new[]
-                    {
-                        groupName,
-                        job.TargetOfficeGroupId.ToString(),
-                        DateTime.UtcNow.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion-5).ToString()
-                    }
-                };
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParams }
+            };
+            var body = Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+            await _notificationsQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage 
+            {            
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
+            });
 
-                await _mailRepository.SendMailAsync(message, job.RunId);
-            }
+
         }
 
         public async Task<int> BackupInactiveJobsAsync(List<SyncJob> syncJobs)

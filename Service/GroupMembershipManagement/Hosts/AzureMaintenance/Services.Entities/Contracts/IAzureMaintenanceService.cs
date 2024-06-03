@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Notifications;
 using Services.Entities.Contracts;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,6 @@ namespace Services.Contracts
         Task<int> RemoveBackupsAsync();
         Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs);
         Task<string> GetGroupNameAsync(Guid groupId);
-        Task SendEmailAsync(SyncJob job, string groupName);
+        Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams);
     }
 }
