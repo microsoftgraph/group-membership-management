@@ -248,7 +248,29 @@ namespace Services.Tests
             Assert.IsNotNull(attributeValues);
             Assert.AreEqual(attributeValues.Count, 3);
             Assert.AreEqual(attributeValues[0].Code, "Code1");
-            Assert.AreEqual(attributeValues[1].Description, "Description1");
+            Assert.AreEqual(attributeValues[0].Description, "Description1");
+        }
+
+        [TestMethod]
+        public async Task ExceptionGetHRFilterattributeValuesTestAsync()
+        {
+            _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
+            _sqlMembershipRepository.Setup(x => x.GetAttributeValuesAsync(It.IsAny<string>(), It.IsAny<string>())).Throws(new Exception("Unexpected exception triggered for testing"));
+
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeValuesAsync("attribute");
+
+            Assert.IsNotNull(response);
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                            It.Is<LogMessage>(m => m.Message.StartsWith("Unable to retrieve Sql Filter Attribute Values")),
+                                            It.IsAny<VerbosityLevel>(),
+                                            It.IsAny<string>(),
+                                            It.IsAny<string>()), Times.Once());
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)
