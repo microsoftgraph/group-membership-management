@@ -237,9 +237,9 @@ namespace Services
             }
             else if (syncJobsCount >= _jobTriggerConfig.JobCountThreshold)
             {
-                double percentage = ((double)syncJobsCount / totalSyncJobsCount) * 100;
+                double PerMille = ((double)syncJobsCount / totalSyncJobsCount) * 1000;
 
-                if (percentage >= _jobTriggerConfig.JobPercentThreshold)
+                if (PerMille >= _jobTriggerConfig.JobPerMilleThreshold)
                 {
                     return true;
                 }

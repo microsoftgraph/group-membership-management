@@ -8,15 +8,15 @@ public class JobTriggerConfig : IJobTriggerConfig
     {
         public JobTriggerConfig() {}
 
-        public JobTriggerConfig(bool gmmHasGroupReadWriteAllPermissions, int jobCountThreshold, int jobPercentThreshold)
+        public JobTriggerConfig(bool gmmHasGroupReadWriteAllPermissions, int jobCountThreshold, int jobPerMilleThreshold)
         {
             GMMHasGroupReadWriteAllPermissions = gmmHasGroupReadWriteAllPermissions;
             JobCountThreshold = jobCountThreshold;
-            JobPercentThreshold = jobPercentThreshold;
+            JobPerMilleThreshold = jobPerMilleThreshold;
         }
 
         public bool GMMHasGroupReadWriteAllPermissions { get; set; }
         public int JobCountThreshold { get; set; }  
-        public int JobPercentThreshold { get; set; }  
+        public int JobPerMilleThreshold { get; set; }  
     }
 }

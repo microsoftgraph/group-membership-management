@@ -40,7 +40,7 @@ namespace Hosts.JobTrigger
             {
                 settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
                 settings.JobCountThreshold = GetIntSetting(configuration, "JobTrigger:JobCountThreshold", 10);
-                settings.JobPercentThreshold = GetIntSetting(configuration, "JobTrigger:JobPercentThreshold", 1);
+                settings.JobPerMilleThreshold = GetIntSetting(configuration, "JobTrigger:JobPerMilleThreshold", 10);
             });
 
             builder.Services.AddSingleton<IJobTriggerConfig>(services => services.GetService<IOptions<JobTriggerConfig>>().Value);

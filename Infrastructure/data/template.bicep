@@ -175,8 +175,8 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'JobTrigger:JobPercentThreshold'
-    value: '1'
+    key: 'JobTrigger:JobPerMilleThreshold'
+    value: '10'
     contentType: 'integer'
     tag: {
       tag1: 'JobTrigger'

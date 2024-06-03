@@ -8,13 +8,13 @@ namespace Repositories.Mocks
     {
         public bool GMMHasGroupReadWriteAllPermissions { get; set; }
 		public int JobCountThreshold { get; set; }
-		public int JobPercentThreshold { get; set; }
+		public int JobPerMilleThreshold { get; set; }
 
 		public MockJobTriggerConfig()
         {
             GMMHasGroupReadWriteAllPermissions = false;
             JobCountThreshold = 4;
-            JobPercentThreshold = 25;
+            JobPerMilleThreshold = 250;
 
 		}
     }

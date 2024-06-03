@@ -6,7 +6,7 @@ namespace Repositories.Contracts.InjectConfig
     {
         public bool GMMHasGroupReadWriteAllPermissions { get; }
 		public int JobCountThreshold { get; }
-		public int JobPercentThreshold { get; }
+		public int JobPerMilleThreshold { get; }
 
 	}
 }
