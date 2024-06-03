@@ -66,7 +66,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
         }
 
         [Authorize()]
-        [HttpGet("defaultAttributeValues")]
+        [HttpGet("attributeValues/{attribute}")]
         public async Task<IActionResult> GetDefaultSourceAttributeValuesAsync(string attribute)
         {
             try

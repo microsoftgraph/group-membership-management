@@ -37,20 +37,18 @@ export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse,
   'fetchSqlFilterAttributeValues',
   async (request, { extra }) => {
     const { gmmApi } = extra.apis;
+    let payload: GetAttributeValuesResponse;
     try {
-      const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute);
-      const payload: GetAttributeValuesResponse = {
-        values: response,
-        attribute: request.attribute,
-        type: request.type
-      };
+      if (request.attribute.endsWith("_Code")) {
+        const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute.slice(0, -5));
+        payload = { values: response, attribute: request.attribute, type: request.type };
+      }
+      else {
+        payload = { values: [], attribute: request.attribute, type: request.type };
+      }
       return payload;
     } catch (error) {
-      const payload: GetAttributeValuesResponse = {
-        values: [],
-        attribute: request.attribute,
-        type: request.type
-      };
+      payload = { values: [], attribute: request.attribute, type: request.type };
       return payload;
     }
   }

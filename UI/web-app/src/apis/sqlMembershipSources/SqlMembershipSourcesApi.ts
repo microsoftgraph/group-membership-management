@@ -21,7 +21,7 @@ export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSo
   }
 
   public async fetchDefaultSqlMembershipSourceAttributeValues(attribute: string): Promise<SqlMembershipAttributeValue[]> {
-    const response = await this.httpClient.get<SqlMembershipAttributeValue[]>('/attributesValues/' + attribute);
+    const response = await this.httpClient.get<SqlMembershipAttributeValue[]>('/attributeValues/' + attribute);
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
