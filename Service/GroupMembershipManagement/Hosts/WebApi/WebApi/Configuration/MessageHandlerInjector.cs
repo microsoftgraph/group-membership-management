@@ -23,6 +23,7 @@ namespace WebApi.Configuration
 
             services.AddTransient<IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse>, GetDefaultSqlMembershipSourceHandler>();
             services.AddTransient<IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse>, GetDefaultSqlMembershipSourceAttributesHandler>();
+            services.AddTransient<IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse>, GetDefaultSqlMembershipSourceAttributeValuesHandler>();
             services.AddTransient<IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse>, PatchDefaultSqlMembershipSourceCustomLabelHandler>();
             services.AddTransient<IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse>, PatchDefaultSqlMembershipSourceAttributesHandler>();
 

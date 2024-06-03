@@ -380,6 +380,78 @@ namespace Repositories.SqlMembershipRepository
             return columnDetails;
         }
 
+        public async Task<bool> CheckIfMappingsTableExistsAsync(string tableName)
+        {
+            bool tableExists = false;
+            var retryPolicy = GetRetryPolicy();
+            try
+            {
+                await retryPolicy.Execute(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = 'mappings'";
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            var result = (int)cmd.ExecuteScalar();
+                            tableExists = result > 0;
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return tableExists;
+        }
+
+        public async Task<List<(string Code, string Description)>> GetAttributeValuesAsync(string attribute, string tableName)
+        {
+            var attributeValues = new List<(string Code, string Description)>();
+            var retryPolicy = GetRetryPolicy();
+
+            try
+            {
+                var selectQuery = $"SELECT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
+
+                await retryPolicy.Execute(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                int codeOrdinal = reader.GetOrdinal("Code");
+                                int descriptionOrdinal = reader.GetOrdinal("Description");
+
+                                while (reader.Read())
+                                {
+
+                                    var code = reader.IsDBNull(codeOrdinal) ? null : reader.GetString(codeOrdinal).Trim();
+                                    var description = reader.IsDBNull(descriptionOrdinal) ? null : reader.GetString(descriptionOrdinal).Trim();
+                                    attributeValues.Add((code, description));
+                                }
+                                await reader.CloseAsync();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return attributeValues;
+        }
+
         private RetryPolicy GetRetryPolicy()
         {
             return Policy.Handle<SqlException>()
