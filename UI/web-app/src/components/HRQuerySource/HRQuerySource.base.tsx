@@ -1199,7 +1199,7 @@ const checkType = (value: string, type: string | undefined): string => {
         case 'value':
           if (attributeValues && attributeValues[items[index].attribute] && attributeValues[items[index].attribute].values.length > 0) {
             return <ComboBox
-              selectedKey={items[index].value}
+              selectedKey={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={filteredValueOptions[index] || getValueOptions(attributeValues[items[index].attribute].values)}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
               onChange={(event, option) => handleAttributeValueChange(event, option, index)}
@@ -1209,7 +1209,7 @@ const checkType = (value: string, type: string | undefined): string => {
               />
           } else {
             return <TextField
-              value={items[index].value}
+              value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(event, newValue!, index)}
               onBlur={(event) => handleBlur(event, index)}
               styles={{ fieldGroup: classNames.textField }}
