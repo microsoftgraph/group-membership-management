@@ -78,13 +78,13 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const debouncedSearch = useCallback(debounce((input: string) => {
     dispatch(searchDestinations(input));
-  }, 300), []);
+  }, 50), []);
 
   const handleInputChange = (input: string): string => {
     setInputValue(input);
     debouncedSearch(input);
     return input;
-  }
+  };
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;

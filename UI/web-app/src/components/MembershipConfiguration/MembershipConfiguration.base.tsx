@@ -23,7 +23,8 @@ import {
   setCompositeQuery,
   setIsAdvancedView,
   setIsAdvancedQueryValid,
-  manageMembershipIsEditingExistingJob
+  manageMembershipIsEditingExistingJob,
+  resetManageMembership
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
@@ -119,6 +120,12 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(setCompositeQuery(compositeQuery));
   }, [dispatch, sourceParts]);
 
+    // Reset state on component unmount
+    useEffect(() => {
+      return () => {
+        dispatch(resetManageMembership());
+      };
+    }, [dispatch]);
 
   return (
     <div>

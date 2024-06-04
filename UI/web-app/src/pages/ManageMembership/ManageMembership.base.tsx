@@ -85,6 +85,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
+    dispatch(resetManageMembership());
     dispatch(setPagingBarVisible(false));
   }, [dispatch]);
 
