@@ -17,8 +17,6 @@ namespace Services
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
-        private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
-
         public GetDefaultSqlMembershipSourceAttributeValuesHandler(ILoggingRepository loggingRepository,
                               IDataFactoryRepository dataFactoryRepository,
                               ISqlMembershipRepository sqlMembershipRepository) : base(loggingRepository)
@@ -33,7 +31,7 @@ namespace Services
             try
             {
                 var response = new GetDefaultSqlMembershipSourceAttributeValuesResponse();
-                var attributeValues = await GetSqlAttributeValues(request.Attribute);
+                var attributeValues = await GetSqlAttributeValuesAsync(request.Attribute);
                 foreach (var attributeValue in attributeValues)
                 {
                     var dto = new SqlMembershipAttributeValueDTO(attributeValue.Code, attributeValue.Description);
@@ -49,7 +47,7 @@ namespace Services
             }
         }
 
-        private async Task<List<(string Code, string Description)>> GetSqlAttributeValues(string attribute)
+        private async Task<List<(string Code, string Description)>> GetSqlAttributeValuesAsync(string attribute)
         {
             var tableName = await GetTableNameAsync();
             var attributes = await GetAttributeValuesAsync(attribute, tableName);
@@ -101,11 +99,7 @@ namespace Services
 
         private async Task<string> GetADFRunIdAsync()
         {
-            await _adfRunIdSemaphore.WaitAsync();
-
             var lastSqlMembershipRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
-
-            _adfRunIdSemaphore.Release();
 
             if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
             {
