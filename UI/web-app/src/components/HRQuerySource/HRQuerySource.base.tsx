@@ -975,14 +975,14 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const columns = [
-    //  {
-    //   key: 'upDown',
-    //   name: '',
-    //   fieldName: 'upDown',
-    //   minWidth: 20,
-    //   maxWidth: 20,
-    //   isResizable: false
-    // },
+     {
+      key: 'upDown',
+      name: '',
+      fieldName: 'upDown',
+      minWidth: 20,
+      maxWidth: 20,
+      isResizable: false
+    },
     {
       key: 'attribute',
       name: 'Attribute',
@@ -1174,11 +1174,11 @@ const checkType = (value: string, type: string | undefined): string => {
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
-        // case 'upDown':
-        //   return <div className={classNames.upDown}>
-        //     <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
-        //     <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
-        //   </div>;
+        case 'upDown':
+          return <div className={classNames.upDown}>
+            <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
+          </div>;
         case 'attribute':
           return <ComboBox
           selectedKey={item.attribute}
