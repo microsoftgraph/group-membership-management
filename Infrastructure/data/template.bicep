@@ -387,7 +387,8 @@ param sqlAdministratorsGroupId string
 param sqlAdministratorsGroupName string
 
 @description('Failed notifications alert threshold.')
-param notificationAlertThreshold int
+param notificationAlertThreshold int = 10
+
 module sqlServer 'sqlServer.bicep' =  {
   name: 'sqlServerTemplate'
   params: {
