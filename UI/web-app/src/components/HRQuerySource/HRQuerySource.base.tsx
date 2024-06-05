@@ -192,6 +192,12 @@ const checkType = (value: string, type: string | undefined): string => {
     return valueOptions;
   };
 
+  const getAttributeValues = (attribute: string, attributeValue: string) => {
+      const selectedAttribute = attributes?.find(att => att.name === attribute);
+      dispatch(fetchAttributeValues({attribute: attribute, type: selectedAttribute?.type }));
+    return attributeValue;
+  }
+
   useEffect(() => {
     if (props.source.filter && !groupingEnabled && (props.source.filter.includes("(") || props.source.filter.includes(")"))) {
       const groups = parseGroup(props.source.filter);
@@ -1209,7 +1215,7 @@ const checkType = (value: string, type: string | undefined): string => {
               />
           } else {
             return <TextField
-              value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+              value={attributeValues && attributeValues[item.attribute] === undefined ? getAttributeValues(item.attribute, items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(event, newValue!, index)}
               onBlur={(event) => handleBlur(event, index)}
               styles={{ fieldGroup: classNames.textField }}
