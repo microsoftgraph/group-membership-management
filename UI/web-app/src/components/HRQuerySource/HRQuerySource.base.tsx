@@ -1462,7 +1462,7 @@ const checkType = (value: string, type: string | undefined): string => {
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
       />
-      <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(groupIndex, childIndex)}>
+      <ActionButton styles={{ root: classNames.addAttribute }} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(groupIndex, childIndex)}>
         {strings.HROnboarding.addAttribute}
       </ActionButton>
       </div>
@@ -1689,7 +1689,7 @@ const checkType = (value: string, type: string | undefined): string => {
             />
           )}
 
-          {(!groupingEnabled) && <ActionButton iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
+          {(!groupingEnabled) && <ActionButton styles={{ root: classNames.addAttribute }} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>

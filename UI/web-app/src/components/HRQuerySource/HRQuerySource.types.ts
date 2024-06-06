@@ -19,6 +19,7 @@ export type HRQuerySourceStyles = {
   horizontalChoiceGroupContainer: IStyle;
   removeButton: IStyle;
   error: IStyle;
+  addAttribute: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {

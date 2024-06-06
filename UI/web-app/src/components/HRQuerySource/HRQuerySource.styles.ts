@@ -65,6 +65,9 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       display: 'flex',
       flexDirection: 'column'
     },
+    addAttribute: {
+      marginLeft: 60
+    },
     spinButton: {
       '&:after': {
         borderColor: theme.palette.neutralQuaternary
