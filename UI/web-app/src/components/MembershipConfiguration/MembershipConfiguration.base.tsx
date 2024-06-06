@@ -23,8 +23,6 @@ import {
   setCompositeQuery,
   setIsAdvancedView,
   setIsAdvancedQueryValid,
-  manageMembershipIsEditingExistingJob,
-  resetManageMembership
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
@@ -42,8 +40,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   });
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
-
-  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
 
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const sourceParts = useSelector(getSourcePartsFromState);
@@ -120,13 +116,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(setCompositeQuery(compositeQuery));
   }, [dispatch, sourceParts]);
 
-    // Reset state on component unmount
-    useEffect(() => {
-      return () => {
-        dispatch(resetManageMembership());
-      };
-    }, [dispatch]);
-
   return (
     <div>
       <div className={classNames.toggleContainer}>
@@ -152,8 +141,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             />
           ))}
         </div>
-        {isEditingExistingJob ?
-          <></> :
           <div className={classNames.addButtonContainer}>
             <DefaultButton
               iconProps={{ iconName: 'Add' }}
@@ -161,7 +148,6 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               {strings.ManageMembership.labels.addSourcePart}
             </DefaultButton>
           </div>
-        }
       </>) : (<div className={classNames.card}>
         <AdvancedQuery
           query={advancedViewQuery}

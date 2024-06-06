@@ -122,9 +122,8 @@ const manageMembershipSlice = createSlice({
         setShowDecreaseDropdown: (state, action: PayloadAction<boolean>) => {
             state.showDecreaseDropdown = action.payload;
         },
-        resetManageMembership: (state) => {
-            Object.assign(state, initialState);
-        },
+        resetManageMembership: () =>  initialState
+        ,
         setIsAdvancedView: (state, action: PayloadAction<boolean>) => {
             if (action.payload) {
                 // Switching to advanced view
@@ -249,6 +248,11 @@ const manageMembershipSlice = createSlice({
                 query: query,
                 isValid: true
             }));
+            state.newJob.requestor = action.payload.requestor;
+            state.newJob.startDate = action.payload.startDate;
+            state.newJob.period = action.payload.period;
+            state.newJob.thresholdPercentageForAdditions = action.payload.thresholdPercentageForAdditions;
+            state.newJob.thresholdPercentageForRemovals = action.payload.thresholdPercentageForRemovals;
         },
         setIsEditingExistingJob: (state, action: PayloadAction<boolean>) => {
             state.isEditingExistingJob = action.payload;

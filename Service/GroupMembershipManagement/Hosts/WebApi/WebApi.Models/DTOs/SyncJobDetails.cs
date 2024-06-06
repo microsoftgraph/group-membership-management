@@ -13,7 +13,8 @@ namespace WebApi.Models.DTOs
             int thresholdViolations, 
             int thresholdPercentageForAdditions,
             int thresholdPercentageForRemovals,
-            List<string> endpoints)
+            List<string> endpoints,
+            int period)
         { 
             StartDate = startDate;
             LastSuccessfulStartTime = lastSuccessfulStartTime;
@@ -23,6 +24,7 @@ namespace WebApi.Models.DTOs
             ThresholdPercentageForAdditions = thresholdPercentageForAdditions;
             ThresholdPercentageForRemovals = thresholdPercentageForRemovals;
             Endpoints = endpoints;
+            Period = period;
         }
 
         
@@ -34,5 +36,6 @@ namespace WebApi.Models.DTOs
         public int ThresholdPercentageForAdditions { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
         public List<string> Endpoints { get; set; }
+        public int Period { get; set; }
     }
 }

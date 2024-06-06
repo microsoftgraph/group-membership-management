@@ -14,7 +14,7 @@ import {
     type IContentContainerStyleProps,
     type IContentContainerStyles,
 } from './ContentContainer.types';
-import { strings } from '../../services/localization/i18n/locales/en/translations';
+import { useStrings } from '../../store/hooks';
 
 export const getClassNames = classNamesFunction<IContentContainerStyleProps, IContentContainerStyles>();
 
@@ -27,6 +27,7 @@ export const ContentContainerBase: React.FunctionComponent<IContentContainerProp
         className,
         theme: useTheme(),
     });
+    const strings = useStrings();
 
     return (
 

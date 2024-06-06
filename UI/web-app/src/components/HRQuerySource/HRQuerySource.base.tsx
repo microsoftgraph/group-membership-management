@@ -19,7 +19,6 @@ import { fetchOrgLeaderDetails, fetchOrgLeaderDetailsUsingId } from '../../store
 import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
-import { manageMembershipIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
 import { selectAttributes, selectSource, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
@@ -54,7 +53,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
-  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
@@ -1540,7 +1538,6 @@ const checkType = (value: string, type: string | undefined): string => {
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
-        disabled={isEditingExistingJob}
       />
 
       {(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && objectIdEmployeeIdMapping[source.manager.id].text !== undefined)) && (
@@ -1569,7 +1566,6 @@ const checkType = (value: string, type: string | undefined): string => {
               onChange={handleOrgLeaderChange}
               styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
               pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
-              disabled={isEditingExistingJob}
             />
           </div>
         </Stack.Item>
@@ -1584,7 +1580,7 @@ const checkType = (value: string, type: string | undefined): string => {
             </div>
             <SpinButton
               value={source.manager?.depth?.toString()}
-              disabled={isDisabled || isEditingExistingJob}
+              disabled={isDisabled}
               min={0}
               max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}
               step={1}
@@ -1607,7 +1603,6 @@ const checkType = (value: string, type: string | undefined): string => {
                 root: classNames.horizontalChoiceGroup,
                 flexContainer: classNames.horizontalChoiceGroupContainer
               }}
-              disabled={isEditingExistingJob}
             />
           </div>
         </Stack.Item>
@@ -1629,7 +1624,6 @@ const checkType = (value: string, type: string | undefined): string => {
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
-        disabled={isEditingExistingJob}
       />
 
       {(source.filter && (filterTextEnabled || !attributes)) ?
@@ -1649,7 +1643,6 @@ const checkType = (value: string, type: string | undefined): string => {
           styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
           validateOnLoad={false}
           validateOnFocusOut={false}
-          disabled={isEditingExistingJob}
         ></TextField></>
         ) : attributes && attributes.length > 0 && (includeFilter || source.filter) ?
         (

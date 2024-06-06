@@ -10,4 +10,5 @@ export interface JobDetails {
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
   endpoints: string[];
+  period: number;
 }

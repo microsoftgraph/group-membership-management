@@ -183,7 +183,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
             </Stack>
           </div>)}
 
-          {!locationState.jobId && (<div>
+          <div>
             <div className={classNames.cardHeader}>
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.configuration}
@@ -240,7 +240,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </Stack.Item>
               }
             </Stack>
-          </div>)}
+          </div>
 
           <div>
           <div className={classNames.cardHeader}>

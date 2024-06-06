@@ -71,7 +71,8 @@ namespace Services
                     thresholdViolations: job.ThresholdViolations,
                     thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
                     thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals,
-                    endpoints: endpoints
+                    endpoints: endpoints,
+                    period: job.Period
                 );
 
             response.Model = dto;

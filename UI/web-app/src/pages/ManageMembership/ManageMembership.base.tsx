@@ -57,8 +57,8 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobOwnerWriter, selectIsJobTenantWriter } from '../../store/roles.slice';
-import { Job, SyncStatus } from '../../models';
+import { selectIsJobWriter } from '../../store/roles.slice';
+import { SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 
 const getClassNames = classNamesFunction<
@@ -96,8 +96,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const hasChanges = useSelector(manageMembershipHasChanges);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
-  const isJobOwnerWriter = useSelector(selectIsJobOwnerWriter);
-  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isJobWriter = useSelector(selectIsJobWriter)
 
   // Existing job
   const jobDetails = useSelector(selectSelectedJobDetails);
@@ -105,10 +104,14 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   useEffect(() => {
     let editingExistingJob = !!locationState.jobId;
-    if (editingExistingJob && (isJobOwnerWriter || isJobTenantWriter)) {
-      editingExistingJob = false;
+    if (editingExistingJob && isJobWriter) {
+      editingExistingJob = true;
+      dispatch(setIsEditingExistingJob(editingExistingJob));
     }
-    dispatch(setIsEditingExistingJob(editingExistingJob));
+    else {
+      editingExistingJob = false;
+      dispatch(setIsEditingExistingJob(editingExistingJob));
+    }
 
     if (locationState.currentStep) {
       dispatch(setCurrentStep(locationState.currentStep));
@@ -212,7 +215,33 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         op: "replace",
         path: "/Status",
         value: SyncStatus.PendingReview
-      }];
+      },
+      {
+        op: "replace",
+        path: "/StartDate",
+        value: startDate
+      },
+      {
+        op: "replace",
+        path: "/Period",
+        value: period
+      },
+      {
+        op: "replace",
+        path: "/ThresholdPercentageForAdditions",
+        value: thresholdPercentageForAdditions
+      },
+      {
+        op: "replace",
+        path: "/ThresholdPercentageForRemovals",
+        value: thresholdPercentageForRemovals
+      },
+      {
+        op: "replace",
+        path: "/Requestor",
+        value: requestor
+      }
+    ];
 
       setIsEditingJob(true);
 
@@ -315,32 +344,29 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
                 onEditButtonClick={onEditButtonClick}
               />}
           />}
-          {isEditingExistingJob ?
-            <></> :
-            <div className={classNames.bottomContainer}>
-              {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
-                <DefaultButton 
+          <div className={classNames.bottomContainer}>
+            {currentStep !== OnboardingSteps.SelectDestination && <div className={classNames.backButtonContainer}>
+              {!(isEditingExistingJob && currentStep === OnboardingSteps.RunConfiguration) &&
+                <DefaultButton
                   text={strings.back}
                   onClick={onBackStepClick}
-                  disabled={isEditingExistingJob && currentStep === OnboardingSteps.RunConfiguration}
+                />}
+            </div>}
+            <div className={classNames.circlesContainer}>
+              {Array.from({ length: 4 }, (_, index) => (
+                <Icon
+                  key={index}
+                  iconName={index === currentStep ? 'CircleFill' : 'CircleRing'}
+                  className={classNames.circleIcon}
                 />
-              </div>}
-              <div className={classNames.circlesContainer}>
-                {Array.from({ length: 4 }, (_, index) => (
-                  <Icon
-                    key={index}
-                    iconName={index === currentStep ? 'CircleFill' : 'CircleRing'}
-                    className={classNames.circleIcon}
-                  />
-                ))}
-              </div>
-              <div className={classNames.nextButtonContainer}>
-                {currentStep === OnboardingSteps.Confirmation ?
-                  <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} />
-                  : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
-              </div>
+              ))}
             </div>
-          }
+            <div className={classNames.nextButtonContainer}>
+              {currentStep === OnboardingSteps.Confirmation ?
+                <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} />
+                : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
+            </div>
+          </div>
         </div >
       }
       <Dialog

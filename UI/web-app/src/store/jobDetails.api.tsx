@@ -9,7 +9,6 @@ import { type JobDetails } from '../models/JobDetails';
 import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { Job } from '../models/Job';
 import { RemoveGMMResponse } from '../models';
 import { PatchJobRequest } from '../models/PatchJobRequest';
 

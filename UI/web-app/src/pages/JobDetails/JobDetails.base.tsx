@@ -59,7 +59,7 @@ import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
 import { Loader } from '../../components/Loader';
-import { formatLastRunTime, formatNextRunTime } from '../../utils/dateUtils';
+import { setIsEditingExistingJob } from '../../store/manageMembership.slice';
 
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
@@ -98,7 +98,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobsLoading = useSelector(selectJobsLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
-  const showLoader = jobsLoading || removeGMMPending;
+  const showLoader: boolean = jobsLoading || removeGMMPending;
+  const canEditJob: boolean = isJobWriter && (job.status !== SyncStatus.PendingReview && job.status !== SyncStatus.SubmissionRejected);
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
@@ -111,7 +112,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  const openRunConfiguration = (): void => {
+    dispatch(setIsEditingExistingJob(true));
+    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job.syncJobId } });
+  };
+
   const openMembershipConfiguration = (): void => {
+    dispatch(setIsEditingExistingJob(true));
     navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job.syncJobId } });
   };
 
@@ -196,17 +203,17 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               title={strings.JobDetails.labels.configuration}
               children={<MembershipConfiguration job={job} classNames={classNames} />}
               removeButton={true}
-            // Hidden until feature is enabled
-            // actionText={strings.JobDetails.editButton}
-            // useLinkButton={true}
-            // linkButtonIconName='edit'
+              editButton={canEditJob}
+              actionText={canEditJob ? strings.JobDetails.editButton : ''}
+              useLinkButton={true}
+              actionOnClick={openRunConfiguration}
             />
               <ContentContainer
                 title={strings.JobDetails.labels.sourceParts}
                 children={<label>{jobDetails?.source}</label>}
                 removeButton={isJobWriter}
-                editButton={isJobWriter}
-                actionText={strings.JobDetails.viewDetails}
+                editButton={canEditJob}
+                actionText={canEditJob ? strings.JobDetails.editButton : strings.JobDetails.viewDetails}
                 useLinkButton={true}
                 actionOnClick={openMembershipConfiguration}
               />

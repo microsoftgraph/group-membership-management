@@ -185,7 +185,6 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               selectedKey={part.query.type}
               onChange={handleSourceTypeChanged}
-              disabled={isEditingExistingJob}
             />
             <ChoiceGroup
               className={classNames.exclusionaryPart}
@@ -194,7 +193,6 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               onChange={handleExclusionaryChange}
               selectedKey={isExclusionary ? 'Yes' : 'No'}
-              disabled={isEditingExistingJob}
             />
             {isEditingExistingJob ?
               <></>

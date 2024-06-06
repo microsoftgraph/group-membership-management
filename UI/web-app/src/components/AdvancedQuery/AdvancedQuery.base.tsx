@@ -19,7 +19,6 @@ import { useStrings } from "../../store/hooks";
 import schemaDefinition from '../../models/schemas/Query.json';
 import { AppDispatch } from '../../store';
 import {
-  manageMembershipIsEditingExistingJob,
   setAdvancedViewQuery,
   setIsAdvancedQueryValid,
 } from '../../store/manageMembership.slice';
@@ -71,7 +70,6 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
   const [localQuery, setLocalQuery] = useState<string>(query === '' ? defaultAdvancedViewQuery : query);
-  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const schema = schemaDefinition;
   const ajv = new Ajv();
 
@@ -168,7 +166,6 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
-        disabled={isEditingExistingJob}
       />
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>

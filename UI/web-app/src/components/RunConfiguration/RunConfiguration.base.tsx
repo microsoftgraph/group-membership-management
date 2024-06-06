@@ -33,7 +33,8 @@ import {
   setShowDecreaseDropdown,
   setShowIncreaseDropdown,
   setStartDateOption,
-  setUseThresholdLimits
+  setUseThresholdLimits,
+  manageMembershipRequestor
 } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
@@ -57,6 +58,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   const dispatch = useDispatch<AppDispatch>();
   const period: number = useSelector(manageMembershipPeriod);
   const startDate: string = useSelector(manageMembershipStartDate);
+  const requestor: string = useSelector(manageMembershipRequestor);
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
 
@@ -79,11 +81,16 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
     { key: 'No', text: strings.no },
   ];
 
-  const frequencyOptions = [
+  const predefinedFrequencyOptions  = [
     { key: '12', text: `12 ${strings.ManageMembership.labels.hrs}` },
     { key: '24', text: `24 ${strings.ManageMembership.labels.hrs}` },
     { key: '36', text: `36 ${strings.ManageMembership.labels.hrs}` }
   ];
+
+  const frequencyOptions = [...predefinedFrequencyOptions];
+  if (!predefinedFrequencyOptions.some(option => option.key === period.toString())) {
+    frequencyOptions.push({ key: period.toString(), text: `${period} ${strings.ManageMembership.labels.hrs}` });
+  }
 
   const increaseOptions = Array.from({ length: 10 }, (_, i) => ({ key: `${(i + 1) * 10}`, text: `${(i + 1) * 10}%` }));
   const decreaseOptions = Array.from({ length: 11 }, (_, i) => ({ key: `${i * 5}`, text: `${i * 5}%` }));
@@ -97,6 +104,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
       {isJobTenantWriter &&
         <TextField
           label={strings.ManageMembership.labels.requestor}
+          value={requestor}
           placeholder={strings.ManageMembership.labels.requestor}
           onChange={handleRequestorChange}
           styles={{
@@ -143,7 +151,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
           className={classNames.controlWidth}
           label={strings.ManageMembership.labels.frequency}
           options={frequencyOptions}
-          defaultSelectedKey={period.toString()}
+          defaultSelectedKey={period ? period.toString() : undefined}
           onChange={(event, option) => {
             if (option) {
               dispatch(setNewJobPeriod(Number(option.key)));
