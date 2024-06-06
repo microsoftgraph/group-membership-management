@@ -44,7 +44,7 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultSecrets: {
       secrets: [
         {
-          name: 'storageAccountConnectionString'
+          name: 'adfStorageAccountConnectionString'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
       ]

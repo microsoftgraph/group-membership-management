@@ -10,8 +10,8 @@ param location string
 @description('Name of SQL Server')
 param sqlServerName string
 
-@secure()
-param sqlAdminPassword string
+@description('Name of SQL Server')
+param sqlDataBaseName string
 
 @description('AzureUserReader function url.')
 @secure()
@@ -24,6 +24,9 @@ param azureUserReaderFunctionKey string
 @description('Connection string of adf storage account')
 @secure()
 param storageAccountConnectionString string
+
+var sqlServerUrl = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433'
+
 
 resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
   name: factoryName
@@ -61,7 +64,7 @@ resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/link
     annotations: []
     type: 'SqlServer'
     typeProperties: {
-      connectionString: 'Server=tcp:${sqlServerName}.database.windows.net,1433;Initial Catalog=${sqlServerName};Persist Security Info=False;User ID=SQLDBAdmin;Password=${sqlAdminPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
+      connectionString: '${sqlServerUrl};${sqlDataBaseName};Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;Connection Timeout=90;'
     }
   }
   dependsOn: [

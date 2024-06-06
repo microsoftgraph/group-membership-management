@@ -15,7 +15,10 @@ param location string
 param tenantId string
 
 @description('Name of SQL Server')
-param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
+param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+
+@description('Name of SQL Server')
+param sqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
 
 @description('Name of Azure Data Factory')
 param azureDataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
@@ -33,10 +36,10 @@ module azureDataFactoryTemplate 'azureDataFactory.bicep' = {
 		factoryName: azureDataFactoryName
 		environmentAbbreviation: environmentAbbreviation
 		location: location
-		sqlAdminPassword: dataKeyVault.getSecret('sqlAdminPassword')
 		sqlServerName: sqlServerName
+		sqlDataBaseName: sqlDataBaseName
 		azureUserReaderUrl: dataKeyVault.getSecret('azureUserReaderUrl')
 		azureUserReaderFunctionKey: dataKeyVault.getSecret('azureUserReaderKey')
-		storageAccountConnectionString: dataKeyVault.getSecret('storageAccountConnectionString')
+		storageAccountConnectionString: dataKeyVault.getSecret('adfStorageAccountConnectionString')
 	}
 }

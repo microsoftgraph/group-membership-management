@@ -30,37 +30,19 @@ param storageAccountSku string = 'Standard_LRS'
 param storageAccountContainerName string = 'csvcontainer'
 
 @description('Name of SQL Server')
-param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
+param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
-@description('Administrator user name')
-param sqlAdminUserName string = 'SQLDBAdmin'
-
-@secure()
-@description('Administrator password')
-param sqlAdminPassword string = 'ADMN${toLower(newGuid())}!$#'
-
-@description('Administrators Azure AD Group Object Id')
-param sqlAdministratorsGroupId string
-
-@description('Administrators Azure AD Group Name')
-param sqlAdministratorsGroupName string
+@description('Name of SQL Server')
+param sqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
 
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 module sqlServer 'sqlServer.bicep' =  {
   name: 'sqlServerTemplate'
   params: {
-    environmentAbbreviation: environmentAbbreviation
     location: location
-    solutionAbbreviation: solutionAbbreviation
-    keyVaultName: dataKeyVaultName
     sqlServerName: sqlServerName
-    sqlDatabaseName: sqlServerName
-    sqlAdminUserName:  sqlAdminUserName
-    sqlAdminPassword: sqlAdminPassword
-    sqlAdministratorsGroupId: sqlAdministratorsGroupId
-    sqlAdministratorsGroupName: sqlAdministratorsGroupName
-    tenantId: tenantId
+    sqlDatabaseName: sqlDataBaseName
   }
 }
 
