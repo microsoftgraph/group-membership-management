@@ -52,7 +52,7 @@ namespace SqlMembershipObtainer
             var filter = request.Query.Filter;
             var manager = request.Query.Manager;
 
-            if (manager != null)
+            if (manager != null && manager.Id > 0)
             {
                 var res = await context.CallActivityAsync<GraphProfileInformationResponse>(
                                                     nameof(ManagerOrgReaderFunction),
