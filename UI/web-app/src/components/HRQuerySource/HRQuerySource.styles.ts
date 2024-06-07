@@ -47,6 +47,22 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     detailsList: {
       minWidth: 1200
     },
+    betweenGroupsDropdown: {
+      width: 100,
+      marginLeft: 0
+    },
+    betweenChildrenDropdown: {
+      maxWidth: 100,
+      marginLeft: 70
+    },
+    startOfNestedGroupDropdown: {
+      maxWidth: 100,
+      marginLeft: 70
+    },
+    endOfNestedGroupDropdown: {
+      maxWidth: 100,
+      marginLeft: -50
+    },
     detailsListWithBorder: {
       minWidth: 1200,
       borderStyle: 'solid',

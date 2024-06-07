@@ -1439,10 +1439,6 @@ const checkType = (value: string, type: string | undefined): string => {
     setGroupingEnabled(true);
   }
 
-  const dropdownStyles: Partial<IDropdownStyles> = {
-    dropdown: { width: 100 },
-  };
-
   const renderItems = (items: IFilterPart[], isUpDownEnabled: boolean, groupIndex: number, childIndex?: number) => {
     const selection: Selection = new Selection({
       onSelectionChanged: () => handleSelectionChange(selection)
@@ -1481,7 +1477,7 @@ const checkType = (value: string, type: string | undefined): string => {
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex)}
             selectedKey={group.andOr.charAt(0).toUpperCase() + group.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
-            styles={dropdownStyles}
+            styles={group.children && group.children.length > 0 ?  { root: classNames.startOfNestedGroupDropdown } : { root: classNames.betweenGroupsDropdown }}
           />
           </div>
           )}
@@ -1504,7 +1500,7 @@ const checkType = (value: string, type: string | undefined): string => {
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex, childIndex)}
             selectedKey={childGroup.andOr.charAt(0).toUpperCase() + childGroup.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
-            styles={dropdownStyles}
+            styles={parentIndex !== groups.length - 1 && childIndex === children.length - 1 ? { root: classNames.endOfNestedGroupDropdown } : { root: classNames.betweenChildrenDropdown }}
           />
           </div>
           )}

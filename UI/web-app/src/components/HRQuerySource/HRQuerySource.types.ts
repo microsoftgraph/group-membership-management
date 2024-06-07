@@ -20,6 +20,10 @@ export type HRQuerySourceStyles = {
   removeButton: IStyle;
   error: IStyle;
   addAttribute: IStyle;
+  betweenGroupsDropdown: IStyle;
+  betweenChildrenDropdown: IStyle;
+  startOfNestedGroupDropdown: IStyle;
+  endOfNestedGroupDropdown: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {
