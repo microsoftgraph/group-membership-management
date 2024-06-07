@@ -480,7 +480,7 @@ function Set-GMMResources {
         -ParametersFilePath $ParameterFilePath `
         -AdditionalParameters $commonParametersObject
 
-    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "storageAccountConnectionString")
+    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountConnectionString")
     foreach ($secret in $adfDataSecrets) {
         $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
         if (-not $secretExists) {
@@ -537,7 +537,9 @@ function Set-SQLServerPermissions {
         [Parameter(Mandatory = $true)]
         [string]$ConnectionString,
         [Parameter(Mandatory = $true)]
-        [string]$ComputeResourceGroup
+        [string]$ComputeResourceGroup,
+        [Parameter(Mandatory = $true)]
+        [string]$DataResourceGroup
     )
 
     # SQL Permissions
@@ -581,6 +583,27 @@ function Set-SQLServerPermissions {
 
         $roleCommand = $connection.CreateCommand()
         $roleCommand.CommandText = $functionSqlScript
+        [void]$roleCommand.ExecuteNonQuery()
+        $roleCommand.Dispose()
+    }
+
+    $dataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+    $dataFactory = Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue
+
+    if($null -ne $dataFactory) {
+
+        $dataFactorySqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$dataFactoryName')
+        BEGIN
+            CREATE USER [$dataFactoryName] FROM EXTERNAL PROVIDER
+            ALTER ROLE db_datareader ADD MEMBER [$dataFactoryName]
+            ALTER ROLE db_datawriter ADD MEMBER [$dataFactoryName]
+            ALTER ROLE db_ddladmin ADD MEMBER [$dataFactoryName]
+        END"
+
+        Write-Host "Granting permissions to SQL database for $dataFactoryName"
+
+        $roleCommand = $connection.CreateCommand()
+        $roleCommand.CommandText = $dataFactorySqlScript
         [void]$roleCommand.ExecuteNonQuery()
         $roleCommand.Dispose()
     }
@@ -1080,7 +1103,8 @@ function Deploy-Resources {
 
     Set-SQLServerPermissions `
         -ConnectionString $connectionString `
-        -ComputeResourceGroup $computeResourceGroup
+        -ComputeResourceGroup $computeResourceGroup `
+        -DataResourceGroup $dataResourceGroup
 
     Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
