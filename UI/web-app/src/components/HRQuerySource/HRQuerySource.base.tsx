@@ -1366,17 +1366,9 @@ const checkType = (value: string, type: string | undefined): string => {
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
     const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
     selectedItems.forEach((selectedItem, index) => {
-
-      const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
-      if (ifGroupItem)
-      {
-        const groupIndex = groups.findIndex(group => group.items?.some(item => JSON.stringify(item) === JSON.stringify(selectedItem)));
-        if (groupIndex === 0) {
-          indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
-        }
-        else if (groupIndex > 0) {
-          indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
-        }
+      const groupIndex = groups.findIndex(group => isGroupItem(group, selectedItem));
+      if (groupIndex >= 0) {
+        indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
       }
     });
 
@@ -1406,7 +1398,10 @@ const checkType = (value: string, type: string | undefined): string => {
         andOr: ""
       };
       clonedNewGroups.push(newGroup);
-      clonedNewGroups[clonedNewGroups.length-2].andOr = selectedItems[0].andOr; // between groups
+      const lastGroup = clonedNewGroups[clonedNewGroups.length - 2];
+      lastGroup.children.length > 0
+        ? lastGroup.children[lastGroup.children.length - 1].andOr = strings.and // between last child & group i.e. at the end of nested group
+        : lastGroup.andOr = strings.and; // between groups
       filterItems(groupIndices[0]);
     }
 
@@ -1421,14 +1416,23 @@ const checkType = (value: string, type: string | undefined): string => {
           andOr: ""
         }
       ];
-      if (clonedNewGroups[groupIndices[0]].children.length === 1)
-      {
-        clonedNewGroups[groupIndices[0]].andOr = selectedItems[0].andOr; // between group & children
+
+      const lastGroupIndex = clonedNewGroups.length - 1;
+      const currentGroupIndex = groupIndices[0];
+      const currentGroup = clonedNewGroups[currentGroupIndex];
+
+      if (currentGroup.children.length === 1) {
+        currentGroup.andOr = strings.and; // between group & first child i.e. at the start of nested group
+      } else if (currentGroup.children.length > 1) {
+        const lastChildIndex = currentGroup.children.length - 2;
+        currentGroup.children[lastChildIndex].andOr = strings.and; // between children
       }
-      else if (clonedNewGroups[groupIndices[0]].children.length > 1)
-      {
-        clonedNewGroups[groupIndices[0]].children[clonedNewGroups[groupIndices[0]].children.length-2].andOr = selectedItems[0].andOr; // between children
+
+      if (currentGroup.children.length >= 1 && currentGroupIndex < lastGroupIndex) {
+        const lastChildIndex = currentGroup.children.length - 1;
+        currentGroup.children[lastChildIndex].andOr = strings.and; // between last child & group i.e. at the end of nested group
       }
+
       filterItems(groupIndices[0]);
     }
     clonedNewGroups = clonedNewGroups.filter((group: { items: string | any[]; children: string | any[]; }) => group.items?.length > 0 || group.children?.length > 0);
