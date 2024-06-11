@@ -183,10 +183,11 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const getValueOptions = (attributeValues?: SqlMembershipAttributeValue[]): IComboBoxOption[] => {
-    valueOptions = attributeValues?.map((attributeValue, index) => ({
+    let valueOptions = attributeValues?.map((attributeValue, index) => ({
       key: attributeValue.code,
       text: attributeValue.description ? attributeValue.description : attributeValue.code
     })) || [];
+    valueOptions.sort((a, b) => a.text.localeCompare(b.text));
     return valueOptions;
   };
 
