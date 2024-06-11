@@ -8,6 +8,14 @@ trigger:
 - develop
 - main
 
+schedules:
+  - cron: "0 0 * * 0"
+    displayName: Weekly Build
+    branches:
+      include:
+      - main
+    always: true
+
 pool:
   vmImage: "windows-latest"
 
