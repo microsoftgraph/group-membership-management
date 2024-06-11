@@ -691,7 +691,7 @@ const checkType = (value: string, type: string | undefined): string => {
     if (groupingEnabled && item && index != null) {
       const updateParams: UpdateParam = {
         property: "attribute",
-        newValue: item.text
+        newValue: item.key.toString()
       };
       updateGroupItem(updateParams, index, undefined, groupIndex);
       return;
