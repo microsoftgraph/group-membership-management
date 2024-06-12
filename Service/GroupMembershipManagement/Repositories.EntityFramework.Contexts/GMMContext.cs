@@ -5,6 +5,7 @@ using Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Models;
+using Models.Notifications;
 using System.Text.Json;
 
 namespace Repositories.EntityFramework.Contexts
@@ -140,7 +141,30 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(s => s.ChangeReason).IsRequired();
                 entity.Property(s => s.ChangeDetails).IsRequired();
             });
+            modelBuilder.Entity<NotificationType>(entity =>
+            {
+                entity.HasKey(e => e.Id);
 
+                entity.Property(e => e.Name)
+                    .HasConversion(
+                        v => v.ToString(),
+                        v => (NotificationMessageType)Enum.Parse(typeof(NotificationMessageType), v))
+                    .IsUnicode(false);
+            });
+            SeedNotificationTypes(modelBuilder);
+        }
+        private void SeedNotificationTypes(ModelBuilder modelBuilder)
+        {
+            var notificationTypes = Enum.GetValues(typeof(NotificationMessageType))
+                .Cast<NotificationMessageType>()
+                .Select((value, index) => new NotificationType
+                {
+                    Id = index + 1,
+                    Name = value,
+                    Disabled = false
+                });
+
+            modelBuilder.Entity<NotificationType>().HasData(notificationTypes);
         }
 
         public GMMContext(DbContextOptions<GMMContext> options)
