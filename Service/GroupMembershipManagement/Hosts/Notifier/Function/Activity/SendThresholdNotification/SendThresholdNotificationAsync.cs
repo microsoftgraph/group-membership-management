@@ -24,11 +24,12 @@ namespace Hosts.Notifier
         }
 
         [FunctionName(nameof(SendThresholdNotification))]
-        public async Task SendThresholdNotificationAsync([ActivityTrigger] ThresholdNotification notification)
+        public async Task<bool> SendThresholdNotificationAsync([ActivityTrigger] ThresholdNotification notification)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendThresholdNotification)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.SendThresholdEmailAsync(notification);
+            var thresholdDiabled = await _notifierService.SendThresholdEmailAsync(notification);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SendThresholdNotification)} function completed at: {DateTime.UtcNow}" });
+            return thresholdDiabled;
         }
     }
 }

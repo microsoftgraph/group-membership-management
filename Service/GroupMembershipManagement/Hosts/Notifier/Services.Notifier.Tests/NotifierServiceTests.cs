@@ -218,8 +218,8 @@ namespace Services.Notifier.Tests
             };
             string subjectTemplate = "DisabledJobEmailSubject";
             string contentTemplate = "SyncDisabledNoGroupEmailBody";
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = contentTemplate, Disabled = false });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = false });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);
@@ -330,13 +330,13 @@ namespace Services.Notifier.Tests
             var notificationTypeId = 1;
             var notificationName = "SyncStartedEmailBody";
 
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(notificationName))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = notificationName, Disabled = false });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = false });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(true);
 
-            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, notificationName);
+            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, NotificationMessageType.SyncStartedNotification);
             Assert.IsTrue(result);
 
         }
@@ -348,13 +348,13 @@ namespace Services.Notifier.Tests
             var notificationTypeId = 1;
             var notificationName = "SyncStartedEmailBody";
 
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(notificationName))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = notificationName, Disabled = true });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = true });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);
 
-            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, notificationName);
+            bool result = await _notifierService.IsNotificationDisabledAsync(job.Id, NotificationMessageType.SyncStartedNotification);
             Assert.IsTrue(result);
 
         }
@@ -363,7 +363,7 @@ namespace Services.Notifier.Tests
         {
             var job = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "requestor@example.com", TargetOfficeGroupId = Guid.NewGuid() };
             var messageBody = JsonSerializer.Serialize(new { SyncJob = job });
-            var messageType = "TestMessageType";
+            var messageType = NotificationMessageType.SyncStartedNotification.ToString();
             var subjectTemplate = "TestSubjectTemplate";
             var contentTemplate = "SyncDisabledNoGroupEmailBody";
 
@@ -443,8 +443,8 @@ namespace Services.Notifier.Tests
             };
             string subjectTemplate = "DisabledJobEmailSubject";
             string contentTemplate = "SyncDisabledNoGroupEmailBody";
-            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(contentTemplate))
-                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = contentTemplate, Disabled = false });
+            _notificationTypesRepository.Setup(repo => repo.GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType.SyncStartedNotification))
+                .ReturnsAsync(new NotificationType { Id = notificationTypeId, Name = NotificationMessageType.SyncStartedNotification, Disabled = false });
 
             _jobNotificationRepository.Setup(repo => repo.IsNotificationDisabledForJobAsync(job.Id, notificationTypeId))
                 .ReturnsAsync(false);

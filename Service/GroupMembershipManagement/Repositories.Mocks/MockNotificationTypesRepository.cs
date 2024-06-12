@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.Notifications;
 using Polly;
 using Repositories.Contracts;
 using System;
@@ -20,13 +21,13 @@ namespace Repositories.Mocks
 			_notificationNameToTypeMapping = notificationNameToTypeMapping ?? new Dictionary<string, NotificationType>();
 		}
 
-		public async Task<NotificationType> GetNotificationTypeByNotificationTypeNameAsync(string notificationName)
-		{
-			if (_notificationNameToTypeMapping.TryGetValue(notificationName, out NotificationType notificationType))
-			{
-				return await Task.FromResult(notificationType);
-			}
-			return null;
-		}
-	}
+        public async Task<NotificationType?> GetNotificationTypeByNotificationTypeNameAsync(NotificationMessageType notificationName)
+        {
+            if (_notificationNameToTypeMapping.TryGetValue(notificationName.ToString(), out NotificationType notificationType))
+            {
+                return await Task.FromResult(notificationType);
+            }
+            return null;
+        }
+    }
 }

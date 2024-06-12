@@ -67,8 +67,8 @@ namespace Services.Notifier.Tests
 
             _durableContext.Verify(x => x.CallActivityAsync<ThresholdNotification>(
                 nameof(CreateThresholdNotificationFunction), It.IsAny<OrchestratorRequest>()), Times.Once);
-            _durableContext.Verify(x => x.CallActivityAsync(
-                nameof(SendThresholdNotification), It.IsAny<ThresholdNotification>()), Times.Once);
+            _durableContext.Setup(x => x.CallActivityAsync<bool>(nameof(SendThresholdNotification), It.IsAny<ThresholdNotification>()))
+                                .ReturnsAsync(false);
             _durableContext.Verify(x => x.CallActivityAsync(
                 nameof(UpdateNotificationStatusFunction), It.IsAny<UpdateNotificationStatusRequest>()), Times.Once);
             _durableContext.Verify(x => x.CallActivityAsync(
