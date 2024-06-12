@@ -43,6 +43,7 @@ module sqlServer 'sqlServer.bicep' =  {
     location: location
     sqlServerName: sqlServerName
     sqlDatabaseName: sqlDataBaseName
+    dataKeyVaultName: dataKeyVaultName
   }
 }
 

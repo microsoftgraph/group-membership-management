@@ -25,7 +25,7 @@ param azureUserReaderFunctionKey string
 @secure()
 param storageAccountConnectionString string
 
-var sqlServerUrl = 'Server=tcp:${sqlServerName}${environment().suffixes.sqlServerHostname},1433'
+var sqlServerUrl = '${sqlServerName}${environment().suffixes.sqlServerHostname}'
 
 
 resource dataFactory 'Microsoft.DataFactory/factories@2018-06-01' = {
@@ -62,9 +62,13 @@ resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/link
   name: '${factoryName}/DestinationDatabase'
   properties: {
     annotations: []
-    type: 'SqlServer'
+    type: 'AzureSqlDatabase'
     typeProperties: {
-      connectionString: '${sqlServerUrl};${sqlDataBaseName};Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;Connection Timeout=90;'
+      server: sqlServerUrl
+      database: sqlDataBaseName
+      encrypt: 'mandatory'
+      trustServerCertificate: false
+      authenticationType: 'SystemAssignedManagedIdentity'
     }
   }
   dependsOn: [

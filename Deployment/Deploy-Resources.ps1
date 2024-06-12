@@ -537,6 +537,8 @@ function Set-SQLServerPermissions {
         [Parameter(Mandatory = $true)]
         [string]$ConnectionString,
         [Parameter(Mandatory = $true)]
+        [string]$ConnectionStringADF,
+        [Parameter(Mandatory = $true)]
         [string]$ComputeResourceGroup,
         [Parameter(Mandatory = $true)]
         [string]$DataResourceGroup
@@ -587,10 +589,19 @@ function Set-SQLServerPermissions {
         $roleCommand.Dispose()
     }
 
+    $connection.Close()
+
+    # ADF Permissions
     $dataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
     $dataFactory = Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue
+    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer"}
 
     if($null -ne $dataFactory) {
+
+        $connectionADF = New-Object System.Data.SqlClient.SqlConnection
+        $connectionADF.ConnectionString = $ConnectionStringADF
+        $connectionADF.AccessToken = $sqlToken
+        $connectionADF.Open()
 
         $dataFactorySqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$dataFactoryName')
         BEGIN
@@ -602,13 +613,30 @@ function Set-SQLServerPermissions {
 
         Write-Host "Granting permissions to SQL database for $dataFactoryName"
 
-        $roleCommand = $connection.CreateCommand()
-        $roleCommand.CommandText = $dataFactorySqlScript
-        [void]$roleCommand.ExecuteNonQuery()
-        $roleCommand.Dispose()
-    }
+        $roleCommandADF = $connectionADF.CreateCommand()
+        $roleCommandADF.CommandText = $dataFactorySqlScript
+        [void]$roleCommandADF.ExecuteNonQuery()
+        $roleCommandADF.Dispose()
 
-    $connection.Close()
+        foreach ($functionApp in $functionAppsADF) {
+
+            $functionSqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$($functionApp.Name)')
+            BEGIN
+                CREATE USER [$($functionApp.Name)] FROM EXTERNAL PROVIDER
+                ALTER ROLE db_datareader ADD MEMBER [$($functionApp.Name)]
+                ALTER ROLE db_datawriter ADD MEMBER [$($functionApp.Name)]
+            END"
+
+            Write-Host "Granting permissions to SQL database for $($functionApp.Name)"
+
+            $roleCommandADF = $connectionADF.CreateCommand()
+            $roleCommandADF.CommandText = $functionSqlScript
+            [void]$roleCommandADF.ExecuteNonQuery()
+            $roleCommandADF.Dispose()
+        }
+
+        $connectionADF.Close()
+    }
 }
 
 function Set-RBACPermissions {
@@ -1101,8 +1129,14 @@ function Deploy-Resources {
         -Name "sqlDatabaseConnectionString" `
         -AsPlainText
 
+    $connectionStringADF = Get-AzKeyVaultSecret `
+        -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+        -Name "sqlServerBasicConnectionStringADF" `
+        -AsPlainText
+
     Set-SQLServerPermissions `
         -ConnectionString $connectionString `
+        -ConnectionStringADF $connectionStringADF `
         -ComputeResourceGroup $computeResourceGroup `
         -DataResourceGroup $dataResourceGroup
 
