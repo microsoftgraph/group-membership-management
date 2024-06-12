@@ -85,10 +85,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         let items: IFilterPart[] = children.map((child, index) => ({
           attribute: child.filter.split(' ')[0],
           equalityOperator: child.filter.split(' ')[1],
-          value:  attributeValues[child.filter.split(' ')[0]] &&
-                attributeValues[child.filter.split(' ')[0]].values &&
-                attributeValues[child.filter.split(' ')[0]].values.length > 0 &&
-                child.filter.split(' ')[2] && child.filter.split(' ')[2].startsWith("'") && child.filter.split(' ')[2].endsWith("'") ? child.filter.split(' ')[2].slice(1, -1) : child.filter.split(' ')[2],
+          value: child.filter.split(' ')[2],
           andOr: child.filter.split(' ')[3]
         }));
         setItems(items);
@@ -777,17 +774,17 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
-  const handleAttributeValueChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
+  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
     if (item) {
+      const selectedValue = item.key.toString();
+      const selectedValueAfterConversion = attributeValues[attribute] ? checkType(selectedValue, attributeValues[attribute.toString()].type) : selectedValue;
+
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
-          return { ...it, value: item.text };
+          return { ...it, value: selectedValueAfterConversion || selectedValue };
         }
         return it;
       });
-
-      const selectedValue = item.key.toString();
-      const selectedValueAfterConversion = attributeValues[updatedItems[index ?? 0].attribute] ? checkType(selectedValue, attributeValues[updatedItems[index ?? 0].attribute.toString()].type) : selectedValue;
 
       setItems(updatedItems);
 
@@ -835,10 +832,13 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
-  const handleTAttributeValueChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+  const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+    const selectedValue = newValue;
+    const selectedValueAfterConversion = attributeValues[attribute] ? checkType(selectedValue, attributeValues[attribute].type) : selectedValue;
+
     const updatedItems = items.map((it, idx) => {
         if (idx === index) {
-            return { ...it, value: newValue };
+            return { ...it, value: selectedValueAfterConversion || selectedValue };
         }
         return it;
     });
@@ -848,20 +848,20 @@ const checkType = (value: string, type: string | undefined): string => {
     if (groupingEnabled && index != null) {
       const updateParams: UpdateParam = {
         property: "value",
-        newValue: newValue
+        newValue: selectedValueAfterConversion || selectedValue
       };
       updateGroupItem(updateParams, index);
       return;
     }
   }
 
-  const handleBlur = (event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+  const handleBlur = (attribute: string, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
     if (groupingEnabled && index != null) {
       return;
     }
     var newValue = event.target.value.trim();
     const selectedValue = newValue;
-    const selectedValueAfterConversion = attributeValues[items[index ?? 0].attribute] ? checkType(selectedValue, attributeValues[items[index ?? 0].attribute].type) : selectedValue;
+    const selectedValueAfterConversion = attributeValues[attribute] ? checkType(selectedValue, attributeValues[attribute].type) : selectedValue;
     const regex = /(?<= And | Or )/;
     let segments = props.source.filter?.split(regex);
     if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -1207,7 +1207,7 @@ const checkType = (value: string, type: string | undefined): string => {
               selectedKey={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={filteredValueOptions[index] || getValueOptions(attributeValues[items[index].attribute].values)}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
-              onChange={(event, option) => handleAttributeValueChange(event, option, index)}
+              onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index)}
               allowFreeInput
               autoComplete="off"
               useComboBoxAsMenuWidth={true}
@@ -1215,8 +1215,8 @@ const checkType = (value: string, type: string | undefined): string => {
           } else {
             return <TextField
               value={attributeValues && attributeValues[item.attribute] === undefined ? getAttributeValues(item.attribute, items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-              onChange={(event, newValue) => handleTAttributeValueChange(event, newValue!, index)}
-              onBlur={(event) => handleBlur(event, index)}
+              onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index)}
+              onBlur={(event) => handleBlur(item.attribute, event, index)}
               styles={{ fieldGroup: classNames.textField }}
               validateOnLoad={false}
               validateOnFocusOut={false}
