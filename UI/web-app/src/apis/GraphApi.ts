@@ -27,7 +27,7 @@ export class GraphApi extends ApiBase implements IGraphApi {
     const response = await this.httpClient.get<GraphResponseEntity<UserEntity[]>>(`/users`, {
       params: {
         $select: 'displayName,mail,id',
-        $search: `"mail:${mail}" OR "displayName:${displayName}"`,
+        $search: `"mail:${mail}" OR "displayName:${displayName}" OR "userPrincipalName:${displayName}"`,
         $orderby: "displayName"
       },
       headers: {
