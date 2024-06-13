@@ -213,7 +213,7 @@ namespace Services.Notifier
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = job.RunId,
-                    Message = $"Notification template '{contentTemplate}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}."
+                    Message = $"Notification '{messageType}' is disabled for job {job.Id} with destination group {job.TargetOfficeGroupId}."
                 });
                 return;
             }
