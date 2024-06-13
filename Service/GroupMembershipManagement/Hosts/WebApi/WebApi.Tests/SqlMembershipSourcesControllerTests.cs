@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Messaging.EventGrid.SystemEvents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Models;
@@ -71,7 +72,7 @@ namespace Services.Tests
 
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAsync()).ReturnsAsync(() => _defaultSource);
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync()).ReturnsAsync(() => _storedAttributeSettings);
-            _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).ReturnsAsync(new List<(string Name, string Type)> { ("Name1", "nvarchar"), ("Name2", "int"), ("Name3", "nvarchar") });
+            _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).ReturnsAsync(new List<(string Name, string Type)> { ("Name1", "nvarchar"), ("Name2", "int"), ("Name3_Code", "nvarchar") });
             _sqlMembershipRepository.Setup(x => x.GetAttributeValuesAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new List<(string Code, string Description)> { ("Code1", "Description1"), ("Code2", "Description2"), ("Code3", "Description3") });
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
@@ -119,6 +120,30 @@ namespace Services.Tests
             Assert.AreEqual(attributes.Count, 3);
             Assert.AreEqual(attributes[0].Name, "Name1");
             Assert.AreEqual(attributes[0].CustomLabel, "");
+            Assert.IsFalse(attributes[0].HasMapping);
+        }
+
+        [TestMethod]
+        public async Task CodeColumnRenameTestAsync()
+        {
+            _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync()).ReturnsAsync(() => null);
+
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributesAsync();
+
+            Assert.IsNotNull(response);
+
+            var okResult = response as OkObjectResult;
+
+            Assert.IsNotNull(okResult);
+            Assert.IsNotNull(okResult.Value);
+
+            var attributes = okResult.Value as List<SqlMembershipAttribute>;
+            Assert.IsNotNull(attributes);
+
+            Assert.AreEqual(attributes.Count, 3);
+            Assert.AreEqual(attributes[2].Name, "Name3");
+            Assert.AreEqual(attributes[2].CustomLabel, "");
+            Assert.IsTrue(attributes[2].HasMapping);
         }
 
         [TestMethod]
@@ -130,13 +155,15 @@ namespace Services.Tests
                 {
                     Name = "Name1",
                     CustomLabel = "CustomLabel1",
-                    Type = "nvarchar"
+                    Type = "nvarchar", 
+                    HasMapping = false
                 },
                 new SqlMembershipAttribute
                 {
                     Name = "RemovedAttribute1",
                     CustomLabel = "RemovedCustomLabel1",
-                    Type = "nvarchar"
+                    Type = "nvarchar",
+                    HasMapping = false
                 }
             };
 
@@ -157,6 +184,7 @@ namespace Services.Tests
             Assert.AreEqual(attributes.Count, 3);
             Assert.AreEqual(attributes[0].Name, "Name1");
             Assert.AreEqual(attributes[0].CustomLabel, "CustomLabel1");
+            Assert.IsFalse(attributes[0].HasMapping);
             Assert.AreEqual(attributes[1].CustomLabel, "");
 
             _databaseSqlMembershipSourcesRepository.Verify(x => x.UpdateDefaultSourceAttributesAsync(It.Is<List<SqlMembershipAttribute>>(list => !list.Any(a => a.Name == "RemovedAttribute1"))), Times.Once());

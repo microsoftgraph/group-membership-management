@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Data.SqlClient;
+using Microsoft.Graph.Models;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
@@ -35,30 +36,24 @@ namespace Services
         {
             try
             {
-                var sqlFilterAttributes = await GetSqlAttributes();
+                var sqlFilterAttributes = await GetSqlAttributesAsync();
                 var storedAttributeSettings = await _databaseSqlMembershipSourcesRepository.GetDefaultSourceAttributesAsync();
 
                 if (storedAttributeSettings != null)
                 {
-                    storedAttributeSettings.RemoveAll(attribute =>
-                        !sqlFilterAttributes.Any(t => t.Name == attribute.Name && t.Type == attribute.Type)
-                    );
+                    storedAttributeSettings.RemoveAll(attribute => !sqlFilterAttributes.Any(t => t.Name == attribute.Name && t.Type == attribute.Type));
 
                     await _databaseSqlMembershipSourcesRepository.UpdateDefaultSourceAttributesAsync(storedAttributeSettings);
                 }
 
-                var attributesToReturn = sqlFilterAttributes.Select(attributeTuple =>
+                var attributesToReturn = sqlFilterAttributes.Select(sqlAttribute =>
                 {
                     var storedAttribute = storedAttributeSettings?.FirstOrDefault(attribute =>
-                        attribute.Name == attributeTuple.Name && attribute.Type == attributeTuple.Type
+                        attribute.Name == sqlAttribute.Name && attribute.Type == sqlAttribute.Type
                     );
 
-                    return storedAttribute ?? new SqlMembershipAttribute
-                    {
-                        Name = attributeTuple.Name,
-                        Type = attributeTuple.Type,
-                        CustomLabel = ""
-                    };
+                    return storedAttribute ?? sqlAttribute;
+
                 }).ToList();
 
                 return new GetDefaultSqlMembershipSourceAttributesResponse { Attributes = attributesToReturn };
@@ -70,14 +65,35 @@ namespace Services
             }
         }
 
-        private async Task<List<(string Name, string Type)>> GetSqlAttributes()
+        private async Task<List<SqlMembershipAttribute>> GetSqlAttributesAsync()
         {
             var tableName = await GetTableNameAsync();
-            var attributes = await GetColumnNamesAsync(tableName);
+            var columns = await GetColumnDetailsAsync(tableName);
+            var attributes = columns.Select(column =>
+            {
+                var codeSuffix = "_Code";
+                var attributeName = column.Name;
+                var hasMapping = false;
+
+                if (attributeName.EndsWith(codeSuffix))
+                {
+                    attributeName = attributeName.Substring(0, attributeName.Length - codeSuffix.Length);
+                    hasMapping = true;
+                }
+
+                return new SqlMembershipAttribute
+                {
+                    Name = attributeName,
+                    Type = column.Type,
+                    CustomLabel = "",
+                    HasMapping = hasMapping
+                };
+            }).ToList();
+
             return attributes;
         }
 
-        private async Task<List<(string Name, string Type)>> GetColumnNamesAsync(string tableName)
+        private async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
         {
             var attributes = new List<(string Name, string Type)>();
 
