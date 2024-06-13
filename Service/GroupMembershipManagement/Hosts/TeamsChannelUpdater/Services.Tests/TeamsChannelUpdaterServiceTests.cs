@@ -20,8 +20,7 @@ namespace Services.Tests
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
-        private Mock<IMailRepository> _mockMailRepository = null!;
-        private Mock<IEmailSenderRecipient> _mockEmailSenderRecipient = null!;
+        private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
 
         private string _groupName = "Group 1 Display Name";
 
@@ -84,11 +83,10 @@ namespace Services.Tests
 
 
             _mockLoggingRepository = new Mock<ILoggingRepository>();
-            _mockMailRepository = new Mock<IMailRepository>();
-            _mockEmailSenderRecipient = new Mock<IEmailSenderRecipient>();
+            _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             _teamsChannelUpdaterService = new TeamsChannelUpdaterService(_mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object, 
-                _mockLoggingRepository.Object, _mockMailRepository.Object, _mockEmailSenderRecipient.Object);
+                _mockLoggingRepository.Object, _mockServiceBusQueueRepository.Object);
 
         }
 

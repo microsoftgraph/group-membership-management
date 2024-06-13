@@ -18,6 +18,7 @@ using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.Entities;
 using System.Text.Json;
 using Services.TeamsChannelUpdater.Contracts;
+using Models.Notifications;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -125,11 +126,6 @@ namespace Hosts.TeamsChannelUpdater
                     var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                     new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
 
-                    var groupOwners = await context.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction),
-                                                    new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-
-                    var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
-
                     var additionalContent = new[]
                     {
                                 groupMembership.Destination.ObjectId.ToString(),
@@ -142,14 +138,12 @@ namespace Hosts.TeamsChannelUpdater
                     };
 
                     await context.CallActivityAsync(nameof(EmailSenderFunction),
-                                                    new EmailSenderRequest
-                                                    {
-                                                        ToEmail = ownerEmails,
-                                                        CcEmail = _emailSenderAndRecipients.SyncCompletedCCAddresses,
-                                                        ContentTemplate = SyncCompletedEmailBody,
-                                                        AdditionalContentParams = additionalContent,
-                                                        RunId = groupMembership.RunId
-                                                    });
+                        new EmailSenderRequest
+                        {
+                            SyncJob = syncJob,
+                            NotificationType = NotificationMessageType.SyncCompletedNotification,
+                            AdditionalContentParams = additionalContent,
+                        });
                 }
 
 

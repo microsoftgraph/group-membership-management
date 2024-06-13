@@ -14,6 +14,8 @@ using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.ServiceBus;
 using System.Text.Json;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.Graph.Models;
+using Models.Notifications;
 
 namespace Services.Tests
 {
@@ -81,13 +83,6 @@ namespace Services.Tests
                     groupName = await CallGroupNameReaderFunctionAsync(request as GroupNameReaderRequest);
                 })
                 .ReturnsAsync(() => groupName);
-            List<AzureADUser> owners = new List<AzureADUser>();
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction), It.IsAny<GroupOwnersReaderRequest>()))
-                .Callback<string, object>(async (name, request) =>
-                {
-                    owners = await CallGroupOwnersReaderFunctionAsync(request as GroupOwnersReaderRequest);
-                })
-                .ReturnsAsync(() => owners);
             _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.IsAny<EmailSenderRequest>()))
                 .Callback<string, object>(async (name, request) =>
                 {
@@ -143,8 +138,9 @@ namespace Services.Tests
                                             ), Times.Once);
             _mockLoggingRepository.Verify(x => x.RemoveSyncJobProperties(It.IsAny<Guid>()), Times.Once());
 
-            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>())); _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<Guid>(),
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Never());
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));
+
+            _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Never);
         }
 
         [TestMethod]
@@ -182,8 +178,7 @@ namespace Services.Tests
             _mockLoggingRepository.Verify(x => x.RemoveSyncJobProperties(It.IsAny<Guid>()), Times.Once());
 
             _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));
-            _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>(), It.IsAny<Guid>(), 
-                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string[]>()), Times.Once());
+            _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()));
         }
 
         [TestMethod]
@@ -265,12 +260,6 @@ namespace Services.Tests
         {
             var groupNameReaderFunction = new GroupNameReaderFunction(_mockLoggingRepository.Object, _mockTeamsChannelUpdaterService.Object);
             return await groupNameReaderFunction.GetGroupNameAsync(request);
-        }
-
-        private async Task<List<AzureADUser>> CallGroupOwnersReaderFunctionAsync(GroupOwnersReaderRequest request)
-        {
-            var groupOwnersReaderFunction = new GroupOwnersReaderFunction(_mockLoggingRepository.Object, _mockTeamsChannelUpdaterService.Object);
-            return await groupOwnersReaderFunction.GetGroupOwnersAsync(request);
         }
 
         private async Task CallEmailSenderFunctionAsync(EmailSenderRequest request)

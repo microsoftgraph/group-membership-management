@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
+using Repositories.ServiceBusQueue;
 using Repositories.TeamsChannel;
 using Services.TeamsChannelUpdater;
 using Services.TeamsChannelUpdater.Contracts;
@@ -44,7 +45,6 @@ namespace Hosts.TeamsChannelUpdater
 
                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
             })
-            .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>()
             .AddTransient<ITeamsChannelRepository, TeamsChannelRepository>()
             .AddSingleton(services =>
             {
@@ -52,7 +52,16 @@ namespace Hosts.TeamsChannelUpdater
                 var serviceBusMembershipUpdatersTopic = GetValueOrThrow("serviceBusMembershipUpdatersTopic");
                 var receiver = client.CreateReceiver(serviceBusMembershipUpdatersTopic, "TeamsChannelUpdater");
                 return receiver;
-            });
+            })
+            .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+             {
+                 var configuration = services.GetRequiredService<IConfiguration>();
+                 var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                 var client = services.GetRequiredService<ServiceBusClient>();
+                 var sender = client.CreateSender(notificationsQueue);
+                 return new ServiceBusQueueRepository(sender);
+             })
+            .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>();
         }
     }
 }

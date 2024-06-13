@@ -4,7 +4,10 @@ using Models;
 using Models.Entities;
 using Repositories.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
-using Repositories.Contracts.InjectConfig;
+using Models.Notifications;
+using Models.ServiceBus;
+using System.Text.Json;
+using System.Text;
 
 namespace Services.TeamsChannelUpdater
 {
@@ -16,8 +19,7 @@ namespace Services.TeamsChannelUpdater
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IMailRepository _mailRepository;
-        private readonly IEmailSenderRecipient _emailSenderAndRecipients;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         private Guid _runId;
         public Guid RunId
@@ -33,14 +35,12 @@ namespace Services.TeamsChannelUpdater
         public TeamsChannelUpdaterService(ITeamsChannelRepository teamsChannelRepository,
             IDatabaseSyncJobsRepository syncJobRepository, 
             ILoggingRepository loggingRepository,
-            IMailRepository mailRepository,
-            IEmailSenderRecipient emailSenderAndRecipients)
+            IServiceBusQueueRepository serviceBusQueueRepository)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
-            _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
@@ -109,19 +109,28 @@ namespace Services.TeamsChannelUpdater
             return await _teamsChannelRepository.GetGroupOwnersAsync(groupObjectId, runId, top);
         }
 
-        public async Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, Guid runId, string ccEmail = null, string emailSubject = null, string[] additionalSubjectParams = null)
+        public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams)
         {
-            await _mailRepository.SendMailAsync(new EmailMessage
+            var messageContent = new Dictionary<string, Object>
             {
-                Subject = emailSubject ?? EmailSubject,
-                Content = contentTemplate,
-                SenderAddress = _emailSenderAndRecipients.SenderAddress,
-                SenderPassword = _emailSenderAndRecipients.SenderPassword,
-                ToEmailAddresses = toEmail,
-                CcEmailAddresses = ccEmail,
-                AdditionalContentParams = additionalContentParams,
-                AdditionalSubjectParams = additionalSubjectParams
-            }, runId);
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParams }
+            };
+
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
+            var message = new ServiceBusMessage
+            {
+                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                Body = body
+            };
+            message.ApplicationProperties.Add("MessageType", notificationType.ToString());
+
+            await _serviceBusQueueRepository.SendMessageAsync(message);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = job.RunId,
+                Message = $"Sent message {message.MessageId} to service bus notifications queue "
+            });
         }
 
     }
