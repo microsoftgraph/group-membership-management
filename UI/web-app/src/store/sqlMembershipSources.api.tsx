@@ -3,11 +3,11 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { ThunkConfig } from './store';
-import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../models';
+import { SqlMembershipAttribute, SqlMembershipSource } from '../models';
 import { GetAttributeValuesResponse } from '../models/GetAttributeValuesResponse';
 import { GetAttributeValuesRequest } from '../models/GetAttributeValuesRequest';
 
-export const fetchDefaultSqlMembershipSource = createAsyncThunk<SqlMembershipAttribute, void, ThunkConfig>(
+export const fetchDefaultSqlMembershipSource = createAsyncThunk<SqlMembershipSource, void, ThunkConfig>(
     'sqlMembershipSources/fetchDefaultSqlMembershipSource',
     async (_, { extra }) => {
       const { gmmApi } = extra.apis;

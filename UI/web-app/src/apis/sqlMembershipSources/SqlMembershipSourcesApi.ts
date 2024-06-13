@@ -8,7 +8,7 @@ import { ISqlMembershipSourcesApi } from './ISqlMembershipSourcesApi';
 
 export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSourcesApi {
 
-  public async fetchDefaultSqlMembershipSource(): Promise<SqlMembershipAttribute> {
+  public async fetchDefaultSqlMembershipSource(): Promise<SqlMembershipSource> {
     const response = await this.httpClient.get<SqlMembershipSource>('/default');
     this.ensureSuccessStatusCode(response);
     return response.data;
