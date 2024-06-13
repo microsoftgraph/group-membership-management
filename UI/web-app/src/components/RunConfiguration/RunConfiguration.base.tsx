@@ -151,7 +151,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
           className={classNames.controlWidth}
           label={strings.ManageMembership.labels.frequency}
           options={frequencyOptions}
-          defaultSelectedKey={period ? period.toString() : undefined}
+          defaultSelectedKey={period ? period.toString() : predefinedFrequencyOptions[0].key}
           onChange={(event, option) => {
             if (option) {
               dispatch(setNewJobPeriod(Number(option.key)));

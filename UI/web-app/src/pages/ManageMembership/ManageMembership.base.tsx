@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
@@ -85,7 +85,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
-    dispatch(resetManageMembership());
     dispatch(setPagingBarVisible(false));
   }, [dispatch]);
 
@@ -99,38 +98,35 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isJobWriter = useSelector(selectIsJobWriter)
 
   // Existing job
-  const jobDetails = useSelector(selectSelectedJobDetails);
+  const jobDetailsRef = useRef(useSelector(selectSelectedJobDetails));
   const isLoading = useSelector(selectSelectedJobLoading);
 
   useEffect(() => {
-    let editingExistingJob = !!locationState.jobId;
-    if (editingExistingJob && isJobWriter) {
-      editingExistingJob = true;
-      dispatch(setIsEditingExistingJob(editingExistingJob));
-    }
-    else {
-      editingExistingJob = false;
-      dispatch(setIsEditingExistingJob(editingExistingJob));
+    let editingExistingJob = !!locationState?.jobId && isJobWriter;
+    dispatch(setIsEditingExistingJob(editingExistingJob));
+
+    if (!editingExistingJob) {
+      jobDetailsRef.current = undefined;
     }
 
-    if (locationState.currentStep) {
+    if (locationState?.currentStep) {
       dispatch(setCurrentStep(locationState.currentStep));
     }
 
-    if (locationState.jobId) {
+    if (locationState?.jobId) {
       dispatch(fetchJobDetails({
         syncJobId: locationState.jobId
       }));
     } else {
       dispatch(resetManageMembership());
     }
-  }, [dispatch, locationState]);
+  }, [dispatch, locationState, isJobWriter]);
 
   useEffect(() => {
-    if (jobDetails) {
-      dispatch(setJobDetailsForExistingJob(jobDetails));
+    if (jobDetailsRef.current) {
+      dispatch(setJobDetailsForExistingJob(jobDetailsRef.current));
     }
-  }, [dispatch, jobDetails]);
+  }, [dispatch, jobDetailsRef.current]);
 
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
   const allSourcePartsValid = useSelector(areAllSourcePartsValid);

@@ -239,7 +239,7 @@ const manageMembershipSlice = createSlice({
             state.sourceParts = [];
         },
         setJobDetailsForExistingJob: (state, action: PayloadAction<JobDetails>) => {
-            const { source } = action.payload;
+            const { source, requestor, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
             state.advancedViewQuery = JSON.stringify(source);
             state.compositeQuery = buildCompositeQuery(JSON.parse(source));
             state.sourceParts = JSON.parse(source).map((query: SourcePartQuery, index: number) => ({
@@ -248,11 +248,11 @@ const manageMembershipSlice = createSlice({
                 query: query,
                 isValid: true
             }));
-            state.newJob.requestor = action.payload.requestor;
-            state.newJob.startDate = action.payload.startDate;
-            state.newJob.period = action.payload.period;
-            state.newJob.thresholdPercentageForAdditions = action.payload.thresholdPercentageForAdditions;
-            state.newJob.thresholdPercentageForRemovals = action.payload.thresholdPercentageForRemovals;
+            state.newJob.requestor = requestor || state.newJob.requestor;
+            state.newJob.startDate = startDate || state.newJob.startDate;
+            state.newJob.period = period || state.newJob.period;
+            state.newJob.thresholdPercentageForAdditions = thresholdPercentageForAdditions || state.newJob.thresholdPercentageForAdditions;
+            state.newJob.thresholdPercentageForRemovals = thresholdPercentageForRemovals || state.newJob.thresholdPercentageForRemovals;
         },
         setIsEditingExistingJob: (state, action: PayloadAction<boolean>) => {
             state.isEditingExistingJob = action.payload;
