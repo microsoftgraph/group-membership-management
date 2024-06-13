@@ -73,7 +73,7 @@ namespace Services.Notifier
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        public async Task<bool> SendThresholdEmailAsync(ThresholdNotification notification)
+        public async Task SendThresholdEmailAsync(ThresholdNotification notification)
         {
             bool isNotificationDisabled = await IsNotificationDisabledAsync(notification.SyncJobId, NotificationMessageType.ThresholdNotification);
 
@@ -84,7 +84,6 @@ namespace Services.Notifier
                     RunId = notification.SyncJobId,
                     Message = $"Notification '{NotificationMessageType.ThresholdNotification}' is disabled for job {notification.Id} with destination group {notification.TargetOfficeGroupId}."
                 });
-                return true;
             }
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending email to recipient addresses." });
 
@@ -137,7 +136,6 @@ namespace Services.Notifier
                 await _serviceBusQueueRepository.SendMessageAsync(failedMessage);
             }
             TrackSentNotificationEvent(notification.TargetOfficeGroupId);
-            return false;
         }
 
         public async Task<List<Models.ThresholdNotifications.ThresholdNotification>> RetrieveQueuedNotificationsAsync()

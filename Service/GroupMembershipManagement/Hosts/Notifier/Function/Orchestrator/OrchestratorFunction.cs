@@ -44,15 +44,8 @@ namespace Hosts.Notifier
             {
                 case nameof(NotificationMessageType.ThresholdNotification):
                     var notification = await context.CallActivityAsync<ThresholdNotification>(nameof(CreateThresholdNotificationFunction), message);
-                    var thresholdDisabled = await context.CallActivityAsync<bool>(nameof(SendThresholdNotification), notification);
-                    if (!thresholdDisabled)
-                    {
-                        await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest
-                        {
-                            Notification = notification,
-                            Status = ThresholdNotificationStatus.AwaitingResponse
-                        });
-                    }
+                    await context.CallActivityAsync(nameof(SendThresholdNotification), notification);
+                    await context.CallActivityAsync(nameof(UpdateNotificationStatusFunction), new UpdateNotificationStatusRequest { Notification = notification, Status = ThresholdNotificationStatus.AwaitingResponse });
                     break;
 
                 case nameof(NotificationMessageType.NormalThresholdNotification):
