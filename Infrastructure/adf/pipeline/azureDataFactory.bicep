@@ -58,17 +58,13 @@ resource linkedService_AzureBlobStorage 'Microsoft.DataFactory/factories/linkedS
   ]
 }
 
-resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = {
+resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/linkedservices@2018-06-01' = {
   name: '${factoryName}/DestinationDatabase'
   properties: {
     annotations: []
     type: 'AzureSqlDatabase'
     typeProperties: {
-      server: sqlServerUrl
-      database: sqlDataBaseName
-      encrypt: 'mandatory'
-      trustServerCertificate: false
-      authenticationType: 'SystemAssignedManagedIdentity'
+      connectionString: 'Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=${sqlServerUrl};Initial Catalog=${sqlDataBaseName}'
     }
   }
   dependsOn: [
@@ -191,17 +187,12 @@ resource dataSet_DestinationTable 'Microsoft.DataFactory/factories/datasets@2018
       referenceName: 'DestinationDatabase'
       type: 'LinkedServiceReference'
     }
-    parameters: {
-      TableName: {
-        type: 'String'
-      }
-    }
     annotations: []
-    type: 'SqlServerTable'
+    type: 'AzureSqlTable'
     schema: []
     typeProperties: {
       table: {
-        value: '@dataset().TableName'
+        value: '@replace(pipeline().RunId,\'-\',\'\')'
         type: 'Expression'
       }
     }

@@ -15,7 +15,7 @@ module sqlForHRData '../Infrastructure/adf/sql/template.bicep' = {
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     sqlServerName: sqlServerName
-    sqlDataBaseName: sqlDataBaseName
+    adfSqlDataBaseName: sqlDataBaseName
   }
 }
 

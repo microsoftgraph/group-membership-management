@@ -1131,7 +1131,7 @@ function Deploy-Resources {
 
     $connectionStringADF = Get-AzKeyVaultSecret `
         -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
-        -Name "sqlServerBasicConnectionStringADF" `
+        -Name "sqlServerBasicConnectionString" `
         -AsPlainText
 
     Set-SQLServerPermissions `

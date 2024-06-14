@@ -32,8 +32,11 @@ param storageAccountContainerName string = 'csvcontainer'
 @description('Name of SQL Server')
 param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
-@description('Name of SQL Server')
-param sqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
+@description('Name of ADF  SQL Server')
+param adfSqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-destination'
+
+@description('Name of Jobs SQL Server')
+param jobsSqlDataBaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
@@ -42,7 +45,8 @@ module sqlServer 'sqlServer.bicep' =  {
   params: {
     location: location
     sqlServerName: sqlServerName
-    sqlDatabaseName: sqlDataBaseName
+    adfSqlDatabaseName: adfSqlDataBaseName
+    jobsSqlDatabaseName: jobsSqlDataBaseName
     dataKeyVaultName: dataKeyVaultName
   }
 }
