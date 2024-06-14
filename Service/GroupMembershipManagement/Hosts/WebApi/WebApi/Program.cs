@@ -291,37 +291,38 @@ namespace WebApi
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
+                // Configure the HTTP request pipeline.
                 IdentityModelEventSource.ShowPII = true;
                 app.UseDeveloperExceptionPage();
+
+                // Configure SwaggerUI
+                var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
+                app.UseSwaggerUI(options =>
+                {
+                    foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
+                    {
+                        var url = $"/swagger/{description.GroupName}/swagger.json";
+                        options.SwaggerEndpoint(url, description.GroupName.ToUpperInvariant());
+                        options.OAuthAppName("Swagger Client");
+                        options.OAuthClientId(azureAdClientId);
+                        options.OAuthUseBasicAuthenticationWithAccessCodeGrant();
+                        options.OAuthAdditionalQueryStringParams(new Dictionary<string, string> {
+                                { "scope", $"https://{azureAdClientId}/.default" },
+                                { "nonce", Guid.NewGuid().ToString() },
+                                { "resource", azureAdClientId }
+                            });
+                    }
+                });
             }
 
-            var apiVersionDescriptionProvider = app.Services.GetRequiredService<IApiVersionDescriptionProvider>();
             app.UseSwagger(c =>
             {
                 c.PreSerializeFilters.Add((swagger, httpReq) =>
                 {
                     swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
                 });
-            });
-
-            app.UseSwaggerUI(options =>
-            {
-                foreach (var description in apiVersionDescriptionProvider.ApiVersionDescriptions)
-                {
-                    var url = $"/swagger/{description.GroupName}/swagger.json";
-                    options.SwaggerEndpoint(url, description.GroupName.ToUpperInvariant());
-                    options.OAuthAppName("Swagger Client");
-                    options.OAuthClientId(azureAdClientId);
-                    options.OAuthUseBasicAuthenticationWithAccessCodeGrant();
-                    options.OAuthAdditionalQueryStringParams(new Dictionary<string, string> {
-                                { "scope", $"https://{azureAdClientId}/.default" },
-                                { "nonce", Guid.NewGuid().ToString() },
-                                { "resource", azureAdClientId }
-                            });
-                }
             });
 
             using (var scope = app.Services.CreateScope())
