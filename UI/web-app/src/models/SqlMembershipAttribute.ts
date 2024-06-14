@@ -5,5 +5,6 @@ export type SqlMembershipAttribute = {
     name: string;
     customLabel: string;
     type: string;
+    hasMapping: boolean;
   };
   

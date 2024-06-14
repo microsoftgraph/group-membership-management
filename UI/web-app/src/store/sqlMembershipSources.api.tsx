@@ -39,7 +39,7 @@ export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse,
     const { gmmApi } = extra.apis;
     let payload: GetAttributeValuesResponse;
     try {
-      if (request.attribute.endsWith("_Code")) {
+      if (request.hasMapping && request.attribute.endsWith("_Code")) {
         const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute.slice(0, -5));
         payload = { values: response, attribute: request.attribute, type: request.type };
       }

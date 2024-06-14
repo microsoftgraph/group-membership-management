@@ -173,7 +173,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
     options = attributes?.map((attribute, index) => ({
-      key: attribute.name,
+      key: attribute.hasMapping ? attribute.name + '_Code' : attribute.name,
       text: attribute.customLabel ? attribute.customLabel : attribute.name,
     })) || [];
     return options;
@@ -190,7 +190,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const getAttributeValues = (attribute: string, attributeValue: string) => {
       const selectedAttribute = attributes?.find(att => att.name === attribute);
-      dispatch(fetchAttributeValues({attribute: attribute, type: selectedAttribute?.type }));
+      dispatch(fetchAttributeValues({attribute: attribute, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
     return attributeValue;
   }
 
@@ -674,8 +674,8 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number): void => {
     if (item) {
-      const selectedAttribute = attributes?.find(attribute => attribute.name === item.key);
-      dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type }));
+      const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === item.key) || (!hasMapping && name === item.key)));
+      dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
           return { ...it, attribute: item.text };
