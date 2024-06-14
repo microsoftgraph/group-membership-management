@@ -96,9 +96,42 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
   properties: {
     activities: [
       {
+        name: 'Create users schema'
+        type: 'Script'
+        dependsOn: []
+        policy: {
+          timeout: '0.12:00:00'
+          retry: 0
+          retryIntervalInSeconds: 30
+          secureOutput: false
+          secureInput: false
+        }
+        userProperties: []
+        linkedServiceName: {
+          referenceName: 'DestinationDatabase'
+          type: 'LinkedServiceReference'
+        }
+        typeProperties: {
+          scripts: [
+            {
+              type: 'Query'
+              text: 'IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = \'users\')\nBEGIN\n    EXEC (\'CREATE SCHEMA users AUTHORIZATION dbo;\')\n    PRINT \'Schema Created\'\nEND'
+            }
+          ]
+          scriptBlockExecutionTimeout: '02:00:00'
+        }
+      }
+      {
         name: 'AzureUserReader'
         type: 'AzureFunctionActivity'
-        dependsOn: []
+        dependsOn: [
+          {
+            activity: 'Create users schema'
+            dependencyConditions: [
+              'Succeeded'
+            ]
+          }
+        ]
         policy: {
           timeout: '0.12:00:00'
           retry: 0
@@ -191,6 +224,7 @@ resource dataSet_DestinationTable 'Microsoft.DataFactory/factories/datasets@2018
     type: 'AzureSqlTable'
     schema: []
     typeProperties: {
+      schema: 'users'
       table: {
         value: '@replace(pipeline().RunId,\'-\',\'\')'
         type: 'Expression'

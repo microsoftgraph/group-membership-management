@@ -840,6 +840,105 @@ function Start-FunctionApps {
     }
 }
 
+function Update-AppSettingsVersion {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ComputeResourceGroupName
+    )
+
+    Write-Host "`nChecking function app settings"
+    $functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName
+    foreach ($function in $functionApps) {
+
+        $settings = Get-AzFunctionAppSetting -ResourceGroupName $ComputeResourceGroupName -Name $function.Name
+        foreach ($key in $settings.Keys) {
+            if (-not ($settings[$key].Contains("Microsoft.KeyVault"))) {
+                continue
+            }
+
+            $kvReference = Get-KeyVaultReference -KeyVaultReference $settings[$key]
+            $latestSecretVersion = Get-AzKeyVaultSecret -VaultName $kvReference.KeyVaultName -Name $kvReference.SecretName
+
+            if ($latestSecretVersion.Version -ne $kvReference.Version) {
+                Write-Host "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
+                $updatedVersion = $settings[$key] -replace $version, $latestSecretVersion.Version
+                $updatedSettings = Update-AzFunctionAppSetting -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion }
+            }
+        }
+    }
+
+    Write-Host "`nChecking web app settings"
+    $webApps = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName | Where-Object { $_.Kind -eq "app" }
+    foreach ($webApp in $webApps) {
+
+        $hasUpdates = $false
+
+        foreach ($keyPair in $webApp.SiteConfig.AppSettings) {
+
+            $key = $keyPair.Name
+            $value = $keyPair.Value
+
+            if (-not ($value.Contains("Microsoft.KeyVault"))) {
+                continue
+            }
+
+            $kvReference = Get-KeyVaultReference -KeyVaultReference $value
+            $latestSecretVersion = Get-AzKeyVaultSecret -VaultName $kvReference.KeyVaultName -Name $kvReference.SecretName
+
+            if ($latestSecretVersion.Version -ne $kvReference.Version) {
+                Write-Host "Updating $($webApp.Name) -> $key to $($latestSecretVersion.Version)"
+                $updatedVersion = $value -replace $kvReference.Version, $latestSecretVersion.Version
+
+                $appSettings = $webApp.SiteConfig.AppSettings
+                $settingsCount = $appSettings.Count
+                for ($i = 0; $i -lt $settingsCount; $i++) {
+                    if ($appSettings[$i].Name -eq $key) {
+                        $appSettings[$i].Value = $updatedVersion
+                        break
+                    }
+                }
+
+                $hasUpdates = $true
+            }
+        }
+
+        if ($hasUpdates) {
+            $updatedSettings = @{}
+            foreach ($setting in $webApp.SiteConfig.AppSettings) {
+                $updatedSettings[$setting.Name] = $setting.Value
+            }
+
+            Set-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name $webApp.Name -AppSettings $updatedSettings
+        }
+
+    }
+}
+
+function  Get-KeyVaultReference {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$KeyVaultReference
+    )
+
+    $keyVaultNamePattern = "SecretUri=https://(?<kvName>.*?)\.vault"
+    $kvMatch = [regex]::Match($KeyVaultReference, $keyVaultNamePattern)
+    $kvName = $kvMatch.Groups["kvName"].Value
+
+    $secretNamePattern = "secrets/(?<secret>.*?)/"
+    $secretNameMatch = [regex]::Match($KeyVaultReference, $secretNamePattern)
+    $secretName = $secretNameMatch.Groups["secret"].Value
+
+    $pattern = "$secretName/(?<version>.*)\)"
+    $match = [regex]::Match($KeyVaultReference, $pattern)
+    $version = $match.Groups["version"].Value
+
+    return @{
+        KeyVaultName = $kvName;
+        SecretName   = $secretName;
+        Version      = $version;
+    }
+}
+
 function Set-GMMAppRegistrations {
     [CmdletBinding()]
     param(
@@ -1114,6 +1213,8 @@ function Deploy-Resources {
 
     Start-Sleep -Seconds 30
 
+    Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
+
     Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Set-SqlServerFirewallRule `
@@ -1195,6 +1296,7 @@ function Deploy-Resources {
     # open the web app
     $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
     if ($null -ne $staticWebApp) {
+        Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
         Start-Process "https://$($staticWebApp.DefaultHostname)"
     }
 }
