@@ -594,9 +594,9 @@ function Set-SQLServerPermissions {
     # ADF Permissions
     $dataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
     $dataFactory = Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue
-    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer"}
+    $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" }
 
-    if($null -ne $dataFactory) {
+    if ($null -ne $dataFactory) {
 
         $connectionADF = New-Object System.Data.SqlClient.SqlConnection
         $connectionADF.ConnectionString = $ConnectionStringADF
@@ -708,23 +708,27 @@ function Set-FunctionAppCode {
             continue
         }
 
-        Publish-AzWebApp `
-            -ResourceGroupName $computeResourceGroup `
-            -Name $functionApp.Name `
-            -ArchivePath $packageFile `
-            -Force
+        $publishCodeOperation = {
+            Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $functionApp.Name -ArchivePath $packageFile -Force
+        }
+
+        Retry-Operation `
+            -Operation $publishCodeOperation `
+            -OperationName "Deploying code for $($functionApp.Name)"
     }
 
     # publish web api code
     Write-Host "`nPublishing code for webapi app $ComputeResourceGroup-webapi"
     $webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name "$ComputeResourceGroup-webapi"
     $webApiName = $webApi.Name.Split("-")[3]
-    Publish-AzWebApp `
-        -ResourceGroupName $computeResourceGroup `
-        -Name $webApi.Name `
-        -ArchivePath "$WebApiPackagesDirectory\$webApiName.zip" `
-        -Force `
 
+    $publishWebAPICodeOperation = {
+        Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $webApi.Name -ArchivePath "$WebApiPackagesDirectory\$webApiName.zip" -Force
+    }
+
+    Retry-Operation `
+        -Operation $publishWebAPICodeOperation `
+        -OperationName "Deploying code for $($webApi.Name)"
 }
 
 function Disable-KeyVaultFirewallRules {
@@ -861,7 +865,7 @@ function Update-AppSettingsVersion {
 
             if ($latestSecretVersion.Version -ne $kvReference.Version) {
                 Write-Host "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
-                $updatedVersion = $settings[$key] -replace $version, $latestSecretVersion.Version
+                $updatedVersion = $settings[$key] -replace $kvReference.Version, $latestSecretVersion.Version
                 $updatedSettings = Update-AzFunctionAppSetting -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion }
             }
         }
@@ -1212,10 +1216,11 @@ function Deploy-Resources {
         -ParameterFilePath $ParameterFilePath
 
     Start-Sleep -Seconds 30
+    
+    Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
 
-    Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Set-SqlServerFirewallRule `
         -SolutionAbbreviation $SolutionAbbreviation `

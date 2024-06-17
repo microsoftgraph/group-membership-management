@@ -114,8 +114,8 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
         typeProperties: {
           scripts: [
             {
-              type: 'Query'
-              text: 'IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = \'users\')\nBEGIN\n    EXEC (\'CREATE SCHEMA users AUTHORIZATION dbo;\')\n    PRINT \'Schema Created\'\nEND'
+              type: 'NonQuery'
+              text: 'IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = \'users\')\nBEGIN\n   EXEC(\'CREATE SCHEMA users\')\nEND'
             }
           ]
           scriptBlockExecutionTimeout: '02:00:00'
