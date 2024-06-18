@@ -19,6 +19,7 @@ import { useStrings } from "../../store/hooks";
 import schemaDefinition from '../../models/schemas/Query.json';
 import { AppDispatch } from '../../store';
 import {
+  manageMembershipAdvancedViewQuery,
   setAdvancedViewQuery,
   setIsAdvancedQueryValid,
 } from '../../store/manageMembership.slice';
@@ -72,6 +73,11 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const [localQuery, setLocalQuery] = useState<string>(query === '' ? defaultAdvancedViewQuery : query);
   const schema = schemaDefinition;
   const ajv = new Ajv();
+  const advancedViewQueryFromStore = useSelector(manageMembershipAdvancedViewQuery);
+
+  useEffect(() => {
+    setLocalQuery(advancedViewQueryFromStore || defaultAdvancedViewQuery);
+  }, [advancedViewQueryFromStore]);
 
   useEffect(() => {
     if (query && query.trim().length > 0) {

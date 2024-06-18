@@ -30,7 +30,9 @@ export const groupPartSlice = createSlice({
 });
 
 export const selectSelectedGroupById = (state: RootState, id: string) => {
-  return state.groupPart.searchResults?.find((group) => group.id === id);
+  return Array.isArray(state.groupPart.searchResults)
+  ? state.groupPart.searchResults.find((group) => group.id === id)
+  : undefined;
 };
 
 export default groupPartSlice.reducer;

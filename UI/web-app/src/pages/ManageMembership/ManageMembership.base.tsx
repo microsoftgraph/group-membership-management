@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
@@ -27,7 +27,6 @@ import {
   manageMembershipCurrentStep,
   manageMembershipHasChanges,
   manageMembershipisAdvancedQueryValid,
-  manageMembershipQuery,
   manageMembershipSelectedDestination,
   setCurrentStep,
   setHasChanges,
@@ -43,7 +42,8 @@ import {
   manageMembershipIsEditingExistingJob,
   manageMembershipCompositeQuery,
   clearSourceParts,
-  manageMembershipRequestor
+  manageMembershipRequestor,
+  manageMembershipAdvancedViewQuery
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -138,15 +138,15 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const inputRequestor = useSelector(manageMembershipRequestor);
   const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
-  const advancedViewQuery = useSelector(manageMembershipQuery);
+  const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
 
-  let finalQuery: SyncJobQuery;
-  if(!sourcePartsQuery || sourcePartsQuery.length === 0) {
-    finalQuery = advancedViewQuery;
-  } else {
-    finalQuery = sourcePartsQuery;
-  }
+  const finalQuery: SyncJobQuery = useMemo(() => {
+    if (!sourcePartsQuery || sourcePartsQuery.length === 0) {
+      return advancedViewQuery ? JSON.parse(advancedViewQuery) : {} as SyncJobQuery;
+    }
+    return sourcePartsQuery;
+  }, [sourcePartsQuery, advancedViewQuery]);
   
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
     dispatch(setHasChanges(true));

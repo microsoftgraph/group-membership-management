@@ -164,9 +164,15 @@ const manageMembershipSlice = createSlice({
             state.isAdvancedView = action.payload;
         },
         setAdvancedViewQuery: (state, action: PayloadAction<string>) => {
-            if(!action.payload) return;
+            if (!action.payload) return;
             state.advancedViewQuery = action.payload;
-            state.newJob.query = JSON.parse(action.payload);
+            const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
+            state.newJob.query = parsedQuery;
+            state.sourceParts = parsedQuery.map((query, index) => ({
+              id: index + 1,
+              query: query,
+              isValid: true
+            }));
         },
         setCompositeQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
             state.compositeQuery = action.payload;
@@ -215,6 +221,10 @@ const manageMembershipSlice = createSlice({
                 ...state.sourceParts[partIndex],
                 query: updatedQuery
             };
+            const compositeQuery = buildCompositeQuery(state.sourceParts);
+            state.compositeQuery = compositeQuery;
+            state.advancedViewQuery = JSON.stringify(compositeQuery);
+            
         },
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
