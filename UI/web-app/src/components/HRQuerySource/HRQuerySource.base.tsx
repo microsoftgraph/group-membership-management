@@ -83,12 +83,27 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         setFilteredOptions({});
         setFilteredValueOptions({});
       } else {
-        let items: IFilterPart[] = children.map((child, index) => ({
-          attribute: child.filter.split(' ')[0],
-          equalityOperator: child.filter.split(' ')[1],
-          value: child.filter.split(' ')[2],
-          andOr: child.filter.split(' ')[3]
-        }));
+        let items: IFilterPart[] = children.map((child, index) => {
+          const parts = child.filter.split(' ');
+          let value = '';
+          let andOr = '';
+          for (let i = 2; i < parts.length; i++) {
+            const part = parts[i].toLowerCase();
+            if (part === 'and' || part === 'or') {
+              andOr = parts[i];
+              value = parts.slice(2, i).join(' ');
+              break;
+            }
+          }
+          if (andOr === '') { value = parts.slice(2).join(' '); }
+          const filterPart: IFilterPart = {
+            attribute: parts[0],
+            equalityOperator: parts[1],
+            value: value,
+            andOr: andOr
+          };
+          return filterPart;
+        });
         setItems(items);
       }
     }
@@ -326,8 +341,7 @@ const checkType = (value: string, type: string | undefined): string => {
     setFilterErrorMessage('');
     setSource(props.source);
 
-    if (groupingEnabled) {
-
+    if (groupingEnabled && groupIndex !== undefined) {
       const emptyItemIndex = items.findIndex(item =>
         item.attribute === "" &&
         item.equalityOperator === "" &&
@@ -382,13 +396,24 @@ const checkType = (value: string, type: string | undefined): string => {
       return;
     }
 
-    const regex = /(?<= And | Or )/;
+    const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     let result = true;
     if (segments) {
         for (let i = 0; i < segments.length; i++) {
             const parts = segments[i].trim().split(' ');
-            if (parts.length < 4) {
+            let value = '';
+            let andOr = '';
+            for (let i = 2; i < parts.length; i++) {
+              const part = parts[i].toLowerCase();
+              if (part === 'and' || part === 'or') {
+                andOr = parts[i];
+                value = parts.slice(2, i).join(' ');
+                break;
+              }
+            }
+            if (andOr === '') { value = parts.slice(2).join(' '); }
+            if (parts[0] === "" || parts[1] === "" || value === "" || andOr === "") {
                 result = false;
                 break;
             }
@@ -698,7 +723,7 @@ const checkType = (value: string, type: string | undefined): string => {
       return;
     }
 
-    const regex = /(?<= And | Or )/;
+    const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       const a = item.key.toString();
@@ -743,7 +768,7 @@ const checkType = (value: string, type: string | undefined): string => {
       updateGroupItem(updateParams, index);
       return;
     }
-    const regex = /(?<= And | Or )/;
+    const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       let a = item.text;
@@ -801,7 +826,7 @@ const checkType = (value: string, type: string | undefined): string => {
         return;
       }
 
-      const regex = /(?<= And | Or )/;
+      const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
       let segments = props.source.filter?.split(regex);
       if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
         let filter: string;
@@ -822,8 +847,21 @@ const checkType = (value: string, type: string | undefined): string => {
           words = segments[index].trim().split(' ');
         }
         if (words.length > 0) {
-            words[2] = selectedValueAfterConversion || selectedValue;
-        }
+					let value = '';
+					let andOr = '';
+					for (let i = 2; i < words.length; i++) {
+						const part = words[i].toLowerCase();
+						if (part === 'and' || part === 'or') {
+							andOr = words[i];
+							value = words.slice(2, i).join(' ');
+							break;
+						}
+					}
+					if (andOr === '') { value = words.slice(2).join(' '); }
+					words.splice(2);
+					words.splice(2, 0, selectedValueAfterConversion || selectedValue);
+					if (andOr !== '') { words.push(andOr + ' '); }
+				}
         segments[index] = words.join(' ');
         const updatedFilter = segments.join('');
         setSource(prevSource => {
@@ -837,8 +875,9 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+    const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const selectedValueAfterConversion = attributeValues[attribute] ? checkType(selectedValue, attributeValues[attribute].type) : selectedValue;
+    const selectedValueAfterConversion = selectedAttribute?.type ? checkType(selectedValue, selectedAttribute?.type) : selectedValue;
 
     const updatedItems = items.map((it, idx) => {
         if (idx === index) {
@@ -864,9 +903,10 @@ const checkType = (value: string, type: string | undefined): string => {
       return;
     }
     var newValue = event.target.value.trim();
+    const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const selectedValueAfterConversion = attributeValues[attribute] ? checkType(selectedValue, attributeValues[attribute].type) : selectedValue;
-    const regex = /(?<= And | Or )/;
+    const selectedValueAfterConversion = selectedAttribute?.type ? checkType(selectedValue, selectedAttribute.type) : selectedValue;
+    const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       let filter: string;
@@ -887,8 +927,21 @@ const checkType = (value: string, type: string | undefined): string => {
         words = segments[index].trim().split(' ');
       }
       if (words.length > 0) {
-          words[2] = selectedValueAfterConversion || selectedValue;
-      }
+				let value = '';
+				let andOr = '';
+				for (let i = 2; i < words.length; i++) {
+					const part = words[i].toLowerCase();
+					if (part === 'and' || part === 'or') {
+						andOr = words[i];
+						value = words.slice(2, i).join(' ');
+						break;
+					}
+				}
+				if (andOr === '') { value = words.slice(2).join(' '); }
+				words.splice(2);
+				words.splice(2, 0, selectedValueAfterConversion || selectedValue);
+				if (andOr !== '') { words.push(andOr + ' '); }
+			}
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
       setSource(prevSource => {
@@ -923,12 +976,11 @@ const checkType = (value: string, type: string | undefined): string => {
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
-      const a = item.text;
       let filter: string;
       if (source.filter !== "") {
-        filter = `${source.filter} ` + a;
+        filter = `${source.filter} ` + item.text;
       } else {
-        filter = a;
+        filter = item.text;
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
@@ -938,15 +990,31 @@ const checkType = (value: string, type: string | undefined): string => {
     }
     else if (segments && index !== undefined && segments[index] && item) {
       let  words = segments[index].split(' ');
-      if (words[0] === "") { words = segments[index].trim().split(' '); }
       if (words[0] === "") {
         words = segments[index].trim().split(' ');
       }
+			if (words.length > 0 && words[words.length - 1] === "") {
+				words.pop();
+			}
       if (words.length > 0) {
-          words[3] = item.text;
+				let value = '';
+				let andOr = '';
+				let startIndex = 2;
+				for (let i = startIndex; i < words.length; i++) {
+					const part = words[i].toLowerCase();
+					if (part === 'and' || part === 'or') {
+						andOr = words[i];
+						value = words.slice(startIndex, i).join(' ');
+						break;
+					}
+				}
+				if (andOr === '') { value = words.slice(startIndex).join(' '); }
+				const indexAfterValue = startIndex + value.split(' ').length;
+				words.splice(indexAfterValue);
+				words.splice(indexAfterValue, 0, item.text);
       }
       segments[index] = words.join(' ');
-      const updatedFilter = segments.join('');
+      const updatedFilter = segments.join(' ');
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
