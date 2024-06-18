@@ -267,12 +267,14 @@ namespace Services
 
             if (!await CheckTeamExists(job, channel))
                 return DestinationVerifierResult.NotFound;
-            if (!await CheckGMMIsTeamOwner(job, channel))
+            if (!_jobTriggerConfig.GMMHasChannelReadWriteAllPermissions && !await CheckGMMIsTeamOwner(job, channel))
                 return DestinationVerifierResult.NotOwnedByGMM;
+
             if (!await CheckChannelExists(job, channel))
                 return DestinationVerifierResult.NotFound;
-            if (!await CheckGMMIsChannelOwner(job, channel))
+            if(!_jobTriggerConfig.GMMHasChannelReadWriteAllPermissions && !await CheckGMMIsChannelOwner(job, channel))
                 return DestinationVerifierResult.NotOwnedByGMM;
+            
 
             return DestinationVerifierResult.Success;
         }

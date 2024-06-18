@@ -5,7 +5,8 @@ namespace Repositories.Contracts.InjectConfig
     public interface IJobTriggerConfig
     {
         public bool GMMHasGroupReadWriteAllPermissions { get; }
-		public int JobCountThreshold { get; }
+        public bool GMMHasChannelReadWriteAllPermissions { get; }
+        public int JobCountThreshold { get; }
 		public int JobPerMilleThreshold { get; }
 
 	}

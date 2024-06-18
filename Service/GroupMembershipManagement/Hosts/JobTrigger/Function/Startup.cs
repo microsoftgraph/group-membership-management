@@ -40,6 +40,7 @@ namespace Hosts.JobTrigger
             builder.Services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
+                settings.GMMHasChannelReadWriteAllPermissions = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
                 settings.JobCountThreshold = GetIntSetting(configuration, "JobTrigger:JobCountThreshold", 10);
                 settings.JobPerMilleThreshold = GetIntSetting(configuration, "JobTrigger:JobPerMilleThreshold", 10);
             });
