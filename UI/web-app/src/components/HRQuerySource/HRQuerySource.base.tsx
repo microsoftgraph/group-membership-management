@@ -85,22 +85,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       } else {
         let items: IFilterPart[] = children.map((child, index) => {
           const parts = child.filter.split(' ');
-          let value = '';
-          let andOr = '';
-          for (let i = 2; i < parts.length; i++) {
-            const part = parts[i].toLowerCase();
-            if (part === 'and' || part === 'or') {
-              andOr = parts[i];
-              value = parts.slice(2, i).join(' ');
-              break;
-            }
-          }
-          if (andOr === '') { value = parts.slice(2).join(' '); }
+          var result = findValueAndOr(parts);
           const filterPart: IFilterPart = {
             attribute: parts[0],
             equalityOperator: parts[1],
-            value: value,
-            andOr: andOr
+            value: result.value,
+            andOr: result.andOr
           };
           return filterPart;
         });
@@ -151,6 +141,22 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       }
     }
   }, [children]);
+
+  function findValueAndOr(words: string[]): { andOr: string, value: string } {
+    let value = '';
+    let andOr = '';
+    let startIndex = 2;
+    for (let i = startIndex; i < words.length; i++) {
+      const part = words[i].toLowerCase();
+      if (part === 'and' || part === 'or') {
+        andOr = words[i];
+        value = words.slice(startIndex, i).join(' ');
+        break;
+      }
+    }
+    if (andOr === '') { value = words.slice(startIndex).join(' '); }
+    return { andOr, value };
+  }
 
 function setItemsBasedOnGroups(groups: Group[]) {
   let items: IFilterPart[] = [];
@@ -400,24 +406,14 @@ const checkType = (value: string, type: string | undefined): string => {
     let segments = props.source.filter?.split(regex);
     let result = true;
     if (segments) {
-        for (let i = 0; i < segments.length; i++) {
-            const parts = segments[i].trim().split(' ');
-            let value = '';
-            let andOr = '';
-            for (let i = 2; i < parts.length; i++) {
-              const part = parts[i].toLowerCase();
-              if (part === 'and' || part === 'or') {
-                andOr = parts[i];
-                value = parts.slice(2, i).join(' ');
-                break;
-              }
-            }
-            if (andOr === '') { value = parts.slice(2).join(' '); }
-            if (parts[0] === "" || parts[1] === "" || value === "" || andOr === "") {
-                result = false;
-                break;
-            }
+      for (let i = 0; i < segments.length; i++) {
+        const parts = segments[i].trim().split(' ');
+        var res = findValueAndOr(parts);
+        if (parts[0] === "" || parts[1] === "" || res.value === "" || res.andOr === "") {
+            result = false;
+            break;
         }
+      }
     }
     if (result || children.length === 0) {
     setChildren(prevChildren => [...prevChildren, { filter: ''}]);
@@ -847,20 +843,10 @@ const checkType = (value: string, type: string | undefined): string => {
           words = segments[index].trim().split(' ');
         }
         if (words.length > 0) {
-					let value = '';
-					let andOr = '';
-					for (let i = 2; i < words.length; i++) {
-						const part = words[i].toLowerCase();
-						if (part === 'and' || part === 'or') {
-							andOr = words[i];
-							value = words.slice(2, i).join(' ');
-							break;
-						}
-					}
-					if (andOr === '') { value = words.slice(2).join(' '); }
+          var result = findValueAndOr(words);
 					words.splice(2);
 					words.splice(2, 0, selectedValueAfterConversion || selectedValue);
-					if (andOr !== '') { words.push(andOr + ' '); }
+					if (result.andOr !== '') { words.push(result.andOr + ' '); }
 				}
         segments[index] = words.join(' ');
         const updatedFilter = segments.join('');
@@ -927,20 +913,10 @@ const checkType = (value: string, type: string | undefined): string => {
         words = segments[index].trim().split(' ');
       }
       if (words.length > 0) {
-				let value = '';
-				let andOr = '';
-				for (let i = 2; i < words.length; i++) {
-					const part = words[i].toLowerCase();
-					if (part === 'and' || part === 'or') {
-						andOr = words[i];
-						value = words.slice(2, i).join(' ');
-						break;
-					}
-				}
-				if (andOr === '') { value = words.slice(2).join(' '); }
+				var result = findValueAndOr(words);
 				words.splice(2);
 				words.splice(2, 0, selectedValueAfterConversion || selectedValue);
-				if (andOr !== '') { words.push(andOr + ' '); }
+				if (result.andOr !== '') { words.push(result.andOr + ' '); }
 			}
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
@@ -997,19 +973,8 @@ const checkType = (value: string, type: string | undefined): string => {
 				words.pop();
 			}
       if (words.length > 0) {
-				let value = '';
-				let andOr = '';
-				let startIndex = 2;
-				for (let i = startIndex; i < words.length; i++) {
-					const part = words[i].toLowerCase();
-					if (part === 'and' || part === 'or') {
-						andOr = words[i];
-						value = words.slice(startIndex, i).join(' ');
-						break;
-					}
-				}
-				if (andOr === '') { value = words.slice(startIndex).join(' '); }
-				const indexAfterValue = startIndex + value.split(' ').length;
+        var result = findValueAndOr(words);
+				const indexAfterValue = 2 + result.value.split(' ').length;
 				words.splice(indexAfterValue);
 				words.splice(indexAfterValue, 0, item.text);
       }
