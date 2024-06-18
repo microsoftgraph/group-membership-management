@@ -49,6 +49,13 @@ const sqlMembershipSourcesSlice = createSlice({
     },
     setAttributes: (state, action: PayloadAction<SqlMembershipAttribute[] | undefined>) => {
         state.attributes = action.payload;
+    },
+    setAttributeValues: (state, action) => {
+      const { attribute, type, values} = action.payload;
+      state.attributeValues[attribute] = {
+        values: values,
+        type: type
+      };
     }
   },
   extraReducers: (builder) => {
@@ -126,7 +133,7 @@ const sqlMembershipSourcesSlice = createSlice({
   },
 });
 
-export const { setSource, setAttributes } = sqlMembershipSourcesSlice.actions;
+export const { setSource, setAttributes, setAttributeValues } = sqlMembershipSourcesSlice.actions;
 export const selectSource = (state: RootState) => state.sqlMembershipSources.source;
 export const selectAttributes = (state: RootState) => state.sqlMembershipSources.attributes;
 export const selectAttributeValues = (state: RootState) => state.sqlMembershipSources.attributeValues;

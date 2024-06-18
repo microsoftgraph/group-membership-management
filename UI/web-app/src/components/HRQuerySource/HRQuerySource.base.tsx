@@ -21,11 +21,12 @@ import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeI
 import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource, selectAttributeValues } from '../../store/sqlMembershipSources.slice';
+import { selectAttributes, selectSource, selectAttributeValues, setAttributeValues } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { parseGroup, stringifyGroups } from './QuerySerializer';
+import { GetAttributeValuesResponse } from '../../models/GetAttributeValuesResponse';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -189,8 +190,11 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   const getAttributeValues = (attribute: string, attributeValue: string) => {
-      const selectedAttribute = attributes?.find(att => att.name === attribute);
-      dispatch(fetchAttributeValues({attribute: attribute, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
+    const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
+    dispatch(fetchAttributeValues({attribute: attribute, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping })).then(results => {
+      var payload = results.payload as GetAttributeValuesResponse;
+      dispatch(setAttributeValues({ attribute: attribute, values: payload.values, type: selectedAttribute?.type }));
+    }).catch(error => {});
     return attributeValue;
   }
 
@@ -1214,7 +1218,7 @@ const checkType = (value: string, type: string | undefined): string => {
               />
           } else {
             return <TextField
-              value={attributeValues && attributeValues[item.attribute] === undefined ? getAttributeValues(item.attribute, items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+              value={item.attribute.endsWith("_Code") && attributeValues && attributeValues[item.attribute] === undefined ? getAttributeValues(item.attribute, items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index)}
               onBlur={(event) => handleBlur(item.attribute, event, index)}
               styles={{ fieldGroup: classNames.textField }}
