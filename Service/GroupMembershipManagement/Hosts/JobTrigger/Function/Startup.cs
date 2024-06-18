@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
@@ -66,9 +67,23 @@ namespace Hosts.JobTrigger
 
                 var configuration = services.GetService<IConfiguration>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-                graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
-                graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
-                var graphServiceClient = new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials));
+
+                var channelReadWriteApplicationPermissionGranted = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+                
+                TokenCredential graphTokenCredential;
+
+                if (channelReadWriteApplicationPermissionGranted)
+                {
+                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
+                }
+                else
+                {
+                    graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                    graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+
+                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials);
+                }
+                var graphServiceClient = new GraphServiceClient(graphTokenCredential);
 
                 return new TeamsChannelRepository(loggingRepository, graphServiceClient, telemetryClient);
             });
