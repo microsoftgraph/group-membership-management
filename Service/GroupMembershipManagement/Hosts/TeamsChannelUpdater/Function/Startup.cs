@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Core;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
@@ -33,9 +34,22 @@ namespace Hosts.TeamsChannelUpdater
             {
                 var configuration = services.GetService<IConfiguration>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-                graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
-                graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
-                return new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials));
+
+                var channelReadWriteApplicationPermissionGranted = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+
+                TokenCredential graphTokenCredential;
+                if (channelReadWriteApplicationPermissionGranted)
+                {
+                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
+                }
+                else
+                {
+                    graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                    graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+
+                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials);
+                }
+                return new GraphServiceClient(graphTokenCredential);
             })
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
             {
@@ -62,6 +76,12 @@ namespace Hosts.TeamsChannelUpdater
                  return new ServiceBusQueueRepository(sender);
              })
             .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>();
+        }
+
+        private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            return checkParse ? value : defaultValue;
         }
     }
 }

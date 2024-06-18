@@ -45,6 +45,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.RetryPolicyProvider", "..\..\..\Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj", "{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -131,6 +133,10 @@ Global
 		{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C5D2583-A04B-45E1-A4F5-40B5E5DEC042}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FCF83599-33C3-4C6F-BCA4-0EAC2D7D0ABF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
