@@ -355,7 +355,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_OWNER_DELETER)]
         public async Task RemoveGMMAsyncWhenIsAnAuthorizedUser(string role)
         {
             var syncJobId = Guid.NewGuid();

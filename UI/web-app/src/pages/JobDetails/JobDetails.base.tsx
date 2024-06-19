@@ -54,7 +54,7 @@ import {
 import { JobDetails } from '../../models/JobDetails';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
@@ -98,8 +98,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobsLoading = useSelector(selectJobsLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
-  const showLoader: boolean = jobsLoading || removeGMMPending;
+  const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
+  const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
   const canEditJob: boolean = isJobWriter && (job.status !== SyncStatus.PendingReview && job.status !== SyncStatus.SubmissionRejected);
+  const showLoader: boolean = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
@@ -218,7 +220,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 actionOnClick={openMembershipConfiguration}
               />
             <div className={classNames.removeGMM}>
-              {isJobWriter &&
+              {canDeleteJob &&
                 <ActionButton
                   iconProps={{ iconName: 'Delete' }}
                   title={strings.JobDetails.labels.removeGMM}
@@ -291,7 +293,9 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
   const [jobStatus, setJobStatus] = useState(job.status);
   const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
+  const isJobEnabler = useSelector(selectIsJobOwnerEnabler);
   const isJobWriter = useSelector(selectIsJobWriter);
+  const canEnableJob = isJobEnabler || isJobWriter;
 
   useEffect(() => {
     setJobStatus(job.status);
@@ -351,7 +355,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
           inlineLabel={true}
           checked={isJobEnabled}
           onChange={handleStatusChange}
-          disabled={!isJobWriter || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.SubmissionRejected}
+          disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.SubmissionRejected}
         />
         <div>
           <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>

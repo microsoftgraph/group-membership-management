@@ -27,6 +27,9 @@ namespace Services.Tests
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_ENABLER),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_DELETER),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_CONFIGURATION_EDITOR),
                 new Claim(ClaimTypes.Role, Roles.JOB_OWNER_READER),
                 new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
                 new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
@@ -44,8 +47,10 @@ namespace Services.Tests
             Assert.IsNotNull(okResult);
             var rolesStatuses = okResult.Value as RolesObject;
             Assert.IsNotNull(rolesStatuses);
-            Assert.IsTrue(rolesStatuses.IsJobOwnerWriter);
             Assert.IsTrue(rolesStatuses.IsJobOwnerReader);
+            Assert.IsTrue(rolesStatuses.IsJobOwnerEnabler);
+            Assert.IsTrue(rolesStatuses.IsJobOwnerDeleter);
+            Assert.IsTrue(rolesStatuses.IsJobOwnerWriter);
             Assert.IsTrue(rolesStatuses.IsJobTenantReader);
             Assert.IsTrue(rolesStatuses.IsJobTenantWriter);
             Assert.IsTrue(rolesStatuses.IsSubmissionReviewer);

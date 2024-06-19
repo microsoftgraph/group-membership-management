@@ -8,6 +8,8 @@ import { getAllRoles } from './roles.api';
 // Define a type for the slice stat
 export type Roles = {
   isJobOwnerReader: boolean;
+  isJobOwnerEnabler: boolean;
+  isJobOwnerDeleter: boolean;
   isJobOwnerWriter: boolean;
   isJobTenantReader: boolean;
   isJobTenantWriter: boolean;
@@ -20,6 +22,8 @@ export type Roles = {
 // Define the initial state using that ty
 const initialState: Roles = {
   isJobOwnerReader: false,
+  isJobOwnerEnabler: false,
+  isJobOwnerDeleter: false,
   isJobOwnerWriter: false,
   isJobTenantReader: false,
   isJobTenantWriter: false,
@@ -49,7 +53,8 @@ export const rolesSlice = createSlice({
 
 export const selectIsFetchingRoles = (state: RootState) => state.roles.isFetchingRoles;
 export const selectIsJobOwnerReader = (state: RootState) => state.roles.isJobOwnerReader;
-export const selectIsJobOwnerWriter = (state: RootState) => state.roles.isJobOwnerWriter;
+export const selectIsJobOwnerEnabler = (state: RootState) => state.roles.isJobOwnerEnabler;
+export const selectIsJobOwnerDeleter = (state: RootState) => state.roles.isJobOwnerDeleter;
 export const selectIsJobTenantReader = (state: RootState) => state.roles.isJobTenantReader;
 export const selectIsJobTenantWriter = (state: RootState) => state.roles.isJobTenantWriter;
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;

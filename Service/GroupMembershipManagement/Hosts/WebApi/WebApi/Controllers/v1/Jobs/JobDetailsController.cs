@@ -44,7 +44,7 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = Models.Roles.JOB_TENANT_WRITER + "," + Models.Roles.SUBMISSION_REVIEWER)]
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_ENABLER}, {Models.Roles.JOB_TENANT_WRITER}, {Models.Roles.JOB_OWNER_CONFIGURATION_EDITOR}, {Models.Roles.SUBMISSION_REVIEWER}")]
         [HttpPatch("{syncJobId}")]
         [Consumes("application/json-patch+json")]
         public async Task<ActionResult> UpdateSyncJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
@@ -81,7 +81,7 @@ namespace WebApi.Controllers.v1.Jobs
             }
         }
 
-        [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_DELETER},{Models.Roles.JOB_OWNER_WRITER},{Models.Roles.JOB_TENANT_WRITER}")]
         [HttpPost("{syncJobId}/removeGMM")]
         public async Task<ActionResult> RemoveGMMAsync(Guid syncJobId)
         {

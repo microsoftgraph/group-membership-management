@@ -38,10 +38,20 @@ The roles are:
     - Users with this role have **read** access to Membership Management page.
     - They can view onboarded destinations that they own.
 
+- Job Owner Enabler
+    - Users with this role can use the UI to enable or disable destinations that they own.
+
+- Job Owner Deleter
+    - Users with this role can use the UI to delete destinations that they own.
+
+- Job Owner Configuration Editor
+    - Users with this role can edit the configuration of destinations that they own.
+
 - Job Owner Writer
     - Users with this role have **read write** access to groups that they own in the Membership Management page.
     - They can view onboarded destinations that they own.
     - They can submit updates or onboarding requests for destinations that they own.
+    - They can delete destinations they own.
 
 - Job Tenant Reader
     - Users with this role have access to Membership Management page.

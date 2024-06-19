@@ -3,6 +3,9 @@
 
 export interface Roles {
   isJobOwnerReader(): boolean;
+  isJobOwnerEnabler(): boolean;
+  isJobOwnerDeleter(): boolean;
+  isJobOwnerConfigurationEditor(): boolean;
   isJobOwnerWriter(): boolean;
   isJobTenantReader(): boolean;
   isJobTenantWriter(): boolean;

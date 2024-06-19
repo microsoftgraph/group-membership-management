@@ -57,6 +57,30 @@ function Set-AppRolesIfNeeded {
             AllowedMemberTypes = @($memberTypes)
         },
         @{
+            DisplayName        = "Job Owner Enabler/Disabler"
+            Description        = "Can enable or disable owned destinations in the tenant."
+            Value              = "Job.Enable.OwnedBy"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Job Owner Deleter"
+            Description        = "Can delete the job from GMM (disable GMM sync)."
+            Value              = "Job.Delete.OwnedBy"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Job Owner Configuration Editor"
+            Description        = "Can update owned destinations' configuration."
+            Value              = "Job.EditConfiguration.OwnedBy"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
             DisplayName        = "Job Writer"
             Description        = "Can create, view, and update owned destinations in the tenant."
             Value              = "Job.ReadWrite.OwnedBy"
