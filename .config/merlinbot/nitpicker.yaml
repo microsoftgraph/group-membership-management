@@ -13,4 +13,4 @@ comments:
     # You can specify multiple paths.
     # Common file types: `.js`, `.jsx`, `.ts`, and `.html`
     pathFilter:
-      - /**/*.tsx # Change this value to match the paths to your project's UI files.
+      - /UI/web-app/**/*.tsx
