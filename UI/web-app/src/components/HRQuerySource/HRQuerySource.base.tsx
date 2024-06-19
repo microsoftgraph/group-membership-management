@@ -1674,7 +1674,7 @@ const checkType = (value: string, type: string | undefined): string => {
       {(includeFilter || source.filter) &&
       <div className={classNames.cardHeader}>
         <div className={classNames.cardTitle}>
-          Attributes
+          {strings.HROnboarding.attributeTitle}
         </div>
         <IconButton
           iconProps={{ iconName: expanded ? 'ChevronUp' : 'ChevronDown' }}
@@ -1711,13 +1711,13 @@ const checkType = (value: string, type: string | undefined): string => {
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onGroupClick}
               disabled={!(selectedIndices.length > 1)}>
-              Group
+              {strings.HROnboarding.group}
             </ActionButton>
             <ActionButton
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onUnGroupClick}
               disabled={!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)}>
-              Ungroup
+              {strings.HROnboarding.ungroup}
             </ActionButton>
           <br/>
 

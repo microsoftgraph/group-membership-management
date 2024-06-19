@@ -30,6 +30,9 @@ export type IStrings = {
     includeOrg: string;
     includeFilter: string;
     includeLeader: string;
+    group: string;
+    ungroup: string;
+    attributeTitle: string;
     addAttribute: string;
     attribute: string;
     equalityOperator: string;
