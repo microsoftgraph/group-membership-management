@@ -17,6 +17,6 @@ namespace Services.Contracts
         Task<int> RemoveBackupsAsync();
         Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs);
         Task<string> GetGroupNameAsync(Guid groupId);
-        Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParams);
+        Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType);
     }
 }

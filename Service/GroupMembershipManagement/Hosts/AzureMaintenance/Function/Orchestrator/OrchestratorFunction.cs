@@ -49,28 +49,16 @@ namespace Hosts.AzureMaintenance
 
                 if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
                 {
-                    if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
-                    {
-                        await context.CallActivityAsync(nameof(ExpireNotificationsFunction), inactiveSyncJobs);
-                    }
                     await context.CallActivityAsync(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
                     var processingTasks = new List<Task>();
                     foreach (var inactiveSyncJob in inactiveSyncJobs)
                     {
-                        var groupName = await _azureMaintenanceService.GetGroupNameAsync(inactiveSyncJob.TargetOfficeGroupId);
-                        var additionalContentParams = new[]
-                        {
-                            groupName,
-                            inactiveSyncJob.TargetOfficeGroupId.ToString(),
-                            context.CurrentUtcDateTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion-5).ToString()
-                        };
                         var processTask = context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest
                         {
                             RunId = runId,
                             SyncJob = inactiveSyncJob,
-                            NotificationType = Models.Notifications.NotificationMessageType.InactiveSyncJobNotification,
-                            AdditionalContentParams = additionalContentParams
+                            NotificationType = Models.Notifications.NotificationMessageType.InactiveSyncJobNotification
                         });
                         processingTasks.Add(processTask);
                     }
