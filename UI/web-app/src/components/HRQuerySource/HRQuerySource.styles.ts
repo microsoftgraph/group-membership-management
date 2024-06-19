@@ -27,6 +27,27 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       '> *': { marginRight: '20px' },
       flexWrap: 'wrap'
     },
+    expandButton: {
+      fontSize: 12,
+      height: 14
+    },
+    separator: {
+      minWidth: 1200
+    },
+    cardHeader: {
+      display: 'flex',
+      flexDirection: 'row',
+      alignItems: 'space-between',
+      marginTop: 50,
+      minWidth: 1200
+    },
+    cardTitle: {
+      flex: 1,
+      fontSize: 16,
+      fontStyle: 'normal',
+      fontWeight: 'normal',
+      lineHeight: '22px'
+    },
     labelContainer: {
       display: 'flex',
       alignItems: 'center'

@@ -24,6 +24,10 @@ export type HRQuerySourceStyles = {
   betweenChildrenDropdown: IStyle;
   startOfNestedGroupDropdown: IStyle;
   endOfNestedGroupDropdown: IStyle;
+  expandButton: IStyle;
+  separator: IStyle;
+  cardHeader: IStyle;
+  cardTitle: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDropdownStyles} from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, IDropdownStyles, Separator} from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -75,6 +75,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [groupingEnabled, setGroupingEnabled] = useState(false);
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -169,6 +170,10 @@ function setItemsBasedOnGroups(groups: Group[]) {
   });
   setItems(items);
 }
+
+const toggleExpand = () => {
+  setExpanded(!expanded);
+};
 
 const getGroupLabels = (groups: Group[]) => {
   const str = stringifyGroups(groups);
@@ -572,6 +577,7 @@ const checkType = (value: string, type: string | undefined): string => {
   const handleIncludeFilterChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
     if (option?.key === "No") {
       setIncludeFilter(false);
+      setExpanded(false);
       setFilteredOptions({});
       setFilteredValueOptions({});
       const filter = "";
@@ -586,6 +592,7 @@ const checkType = (value: string, type: string | undefined): string => {
         addComponent();
       }
       setIncludeFilter(true);
+      setExpanded(true);
       dispatch(fetchDefaultSqlMembershipSourceAttributes());
       setSource(prevSource => {
         const newSource = { ...prevSource };
@@ -1664,6 +1671,21 @@ const checkType = (value: string, type: string | undefined): string => {
         }}
       />
 
+      {(includeFilter || source.filter) &&
+      <div className={classNames.cardHeader}>
+        <div className={classNames.cardTitle}>
+          Attributes
+        </div>
+        <IconButton
+          iconProps={{ iconName: expanded ? 'ChevronUp' : 'ChevronDown' }}
+          styles={{ root: classNames.expandButton }}
+          onClick={toggleExpand}
+          title={strings.ManageMembership.labels.expandCollapse}
+        />
+      </div>}
+
+      {(includeFilter || source.filter) && <Separator styles={{root: classNames.separator}} />}
+
       {(source.filter && (filterTextEnabled || !attributes)) ?
        (
         <><div className={classNames.labelContainer}>
@@ -1682,7 +1704,7 @@ const checkType = (value: string, type: string | undefined): string => {
           validateOnLoad={false}
           validateOnFocusOut={false}
         ></TextField></>
-        ) : attributes && attributes.length > 0 && (includeFilter || source.filter) ?
+        ) : attributes && attributes.length > 0 && expanded && (includeFilter || source.filter) ?
         (
           <div>
             <ActionButton
@@ -1700,7 +1722,7 @@ const checkType = (value: string, type: string | undefined): string => {
           <br/>
 
 
-          {(groupingEnabled) ? (
+          {(groupingEnabled && expanded) ? (
 
             <div>
               {groups.map((group: Group, index: number) => (
