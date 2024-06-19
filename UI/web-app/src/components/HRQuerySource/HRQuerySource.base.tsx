@@ -1680,7 +1680,7 @@ const checkType = (value: string, type: string | undefined): string => {
           iconProps={{ iconName: expanded ? 'ChevronUp' : 'ChevronDown' }}
           styles={{ root: classNames.expandButton }}
           onClick={toggleExpand}
-          title={strings.ManageMembership.labels.expandCollapse}
+          title={expanded ? strings.ManageMembership.labels.collapse : strings.ManageMembership.labels.expand}
         />
       </div>}
 

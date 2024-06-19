@@ -315,7 +315,8 @@ export type IStrings = {
       updatingSyncJob: string;
       group: string;
       destinationPickerSuggestionsHeaderText: string;
-      expandCollapse: string;
+      expand: string;
+      collapse: string;
       sourceType: string;
       addSourcePart: string;
       excludeSourcePart: string;

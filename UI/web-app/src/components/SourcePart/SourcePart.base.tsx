@@ -172,7 +172,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           className={classNames.expandButton}
           iconProps={{ iconName: expanded ? 'ChevronUp' : 'ChevronDown' }}
           onClick={toggleExpand}
-          title={strings.ManageMembership.labels.expandCollapse}
+          title={expanded ? strings.ManageMembership.labels.collapse : strings.ManageMembership.labels.expand}
         />
       </div>
       {expanded &&
