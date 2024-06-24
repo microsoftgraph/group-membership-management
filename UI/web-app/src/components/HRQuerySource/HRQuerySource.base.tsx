@@ -101,20 +101,17 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   }, [children]);
 
   useEffect(() => {
+    let mappedItems = items.map((item) => ({ attribute: item.attribute, equalityOperator: item.equalityOperator, value: item.value, andOr: item.andOr }));
+    let att = mappedItems.map(item => item.attribute);
+    let distinctAttributes = [...new Set(att)];
+    for (let i = 0; i < distinctAttributes.length; i++) {
+      if (attributeValues && attributeValues[distinctAttributes[i]] === undefined) {
+        const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === distinctAttributes[i]) || (!hasMapping && name === distinctAttributes[i])));
+        dispatch(fetchAttributeValues({attribute: distinctAttributes[i] as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
+      }
+    }
     if (!groupingEnabled) {
-      const newGroups = [
-        {
-          name: "",
-          items: items.map((item) => ({
-            attribute: item.attribute,
-            equalityOperator: item.equalityOperator,
-            value: item.value,
-            andOr: item.andOr,
-          })),
-          children: [],
-          andOr: ""
-        },
-      ];
+      const newGroups = [{ name: "", items: mappedItems, children: [], andOr: "" }];
       setGroups(newGroups);
     }
   }, [items]);
@@ -214,15 +211,6 @@ const checkType = (value: string, type: string | undefined): string => {
     valueOptions.sort((a, b) => a.text.localeCompare(b.text));
     return valueOptions;
   };
-
-  const getAttributeValues = (attribute: string, attributeValue: string) => {
-    const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
-    dispatch(fetchAttributeValues({attribute: attribute, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping })).then(results => {
-      var payload = results.payload as GetAttributeValuesResponse;
-      dispatch(setAttributeValues({ attribute: attribute, values: payload.values, type: selectedAttribute?.type }));
-    }).catch(error => {});
-    return attributeValue;
-  }
 
   useEffect(() => {
     if (props.source.filter && !groupingEnabled && (props.source.filter.includes("(") || props.source.filter.includes(")"))) {
@@ -707,7 +695,9 @@ const checkType = (value: string, type: string | undefined): string => {
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number): void => {
     if (item) {
       const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === item.key) || (!hasMapping && name === item.key)));
-      dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
+      if (attributeValues && attributeValues[item.key] === undefined) {
+        dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
+      }
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
           return { ...it, attribute: item.text };
@@ -1258,7 +1248,7 @@ const checkType = (value: string, type: string | undefined): string => {
               />
           } else {
             return <TextField
-              value={item.attribute.endsWith("_Code") && attributeValues && attributeValues[item.attribute] === undefined ? getAttributeValues(item.attribute, items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+              value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index)}
               onBlur={(event) => handleBlur(item.attribute, event, index)}
               styles={{ fieldGroup: classNames.textField }}
