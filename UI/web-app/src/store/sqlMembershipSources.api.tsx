@@ -43,6 +43,9 @@ export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse,
         const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute.slice(0, -5));
         payload = { values: response, attribute: request.attribute, type: request.type };
       }
+      else if (request.type === "bit") {
+        payload = { values: [{ description: "Yes", code: "1" }, { description: "No", code: "0" }], attribute: request.attribute, type: request.type };
+      }
       else {
         payload = { values: [], attribute: request.attribute, type: request.type };
       }
