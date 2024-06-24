@@ -16,6 +16,7 @@ import {
     itemTitle: IStyle;
     itemData: IStyle;
     endpointsContainer: IStyle;
+    queryContainer: IStyle;
   }
   
   export interface IConfirmationStyleProps {

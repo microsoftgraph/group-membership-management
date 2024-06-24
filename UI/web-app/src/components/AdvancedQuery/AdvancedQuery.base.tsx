@@ -55,7 +55,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
           "id": 0,
           "depth": 0
         },    
-        filter: "" 
+        "filter": "" 
       },
     },
     {

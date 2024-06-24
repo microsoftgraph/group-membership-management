@@ -256,9 +256,9 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
             </div>
             <Separator />
             <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-                <Stack.Item align="start">
+              <Stack.Item align="start" className={classNames.queryContainer}>
                 <pre>{displayQuery}</pre>
-                </Stack.Item>
+              </Stack.Item>
             </Stack>
           </div>
         </div>
