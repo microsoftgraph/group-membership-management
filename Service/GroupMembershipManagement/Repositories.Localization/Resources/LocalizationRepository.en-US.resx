@@ -1039,7 +1039,7 @@ The group **{1}** with Id: {0} **has completed its initial sync**.
     <value>Management Alert</value>
   </data>
   <data name="SyncDisabledNoGroupEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of this group.
+    <value>You received this notification because you are listed as an owner of **{1}**.
 
 Membership syncs for group with object Id {0}, previously named **{1}**, are now **disabled** because the group **no longer exists**.
 
@@ -1049,7 +1049,7 @@ Otherwise, contact support for further help.
     </value>
   </data>
   <data name="SyncDisabledNoSourceGroupEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of this group, **{1}**.
+    <value>You received this notification because you are listed as an owner of **{1}**.
 
 Membership syncs for group **{1}**, are now **disabled** because its pre-defined source group with object Id: {2} **no longer exists**.
 
@@ -1057,7 +1057,7 @@ Please reach out to support to update the source definition and re-enable the me
 </value>
   </data>
   <data name="SyncDisabledNoOwnerEmailBody" xml:space="preserve">
-    <value> You received this notification because you are listed as an owner of this group, **{2}**.
+    <value> You received this notification because you are listed as an owner of **{2}**.
 
   Membership syncs are **disabled** because **GMM is not an owner** of **{2}** with object Id {0}.
 
@@ -1066,15 +1066,16 @@ Please reach out to support to update the source definition and re-enable the me
   </data>
   <data name="CustomerPausedJobEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as the owner of **{0}**.
-Your group **{0}** is currently disabled from Group Membership Management (GMM) due to one of the following reasons:
+
+Your group's membership synchronizations are currently disabled due to one of the following reasons:
 
 •	Source and/or destination group(s) no longer exist.
 •	Group owner did not take action on a drastic membership change alert.
-•	Group owner paused syncs for more than 30 days.
+•	Membership syncs were paused by owner for more than 30 days.
 
-If you believe this group should still be managed by Group Membership Management (GMM), please take the necessary actions via GMM UI or reach out to support to request the assistance before {2}.
+If you believe this group should still be managed by Group Membership Management (GMM), please take the necessary actions via the GMM UI or reach out to support to request assistance before{2}.
 
-If not remediated by {2}, your group's affiliation with GMM (including its membership definition) will be removed.  You will need to re-onboard if you still want GMM to manage your group after that date.</value>
+If not remediated by {2}, your group's membership will still remain, but its affiliation with GMM (including its membership definition) will be removed. You will need to re-onboard if you still want GMM to manage your group after that date.</value>
   </data>
   <data name="CustomerPausedJobEmailSubject" xml:space="preserve">
     <value>Group Membership Management (GMM) update</value>
@@ -1088,9 +1089,9 @@ If not remediated by {2}, your group's affiliation with GMM (including its membe
   <data name="NoDataEmailContent" xml:space="preserve">
     <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{1}**.
 
-Membership syncs for **{1}** with Id {0} have been paused since the membership definition provided currently indicates that there should be no users in the destination..
+The membership definition provided for **{1}** currently does not return any users. This is not common, so out of an abundance of caution, no users have been removed and subsequent membership syncs have been paused.
 
-Please reach out to support to get this issue resolved.
+Please review your membership definition by visiting the GMM UI.
 
 </value>
   </data>
@@ -1099,11 +1100,12 @@ Please reach out to support to get this issue resolved.
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{0}**.
-Membership syncs for **{0}** with Id {1} have been disabled because its following source group object ID(s) are not valid:
+
+    Membership syncs for **{0}** with Id {1} have been disabled because its following source group object ID(s) are not valid:
 {2}</value>
   </data>
   <data name="SyncJobDisabledEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{0}**. Please visit {3} to learn more about GMM.
 
 The synchronization job for group {0} with Id: {1} has been disabled.
 
@@ -1113,7 +1115,7 @@ The group sync will be PAUSED until your response is received.
 </value>
   </data>
   <data name="SyncThresholdBothEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of this group. Please visit {3} to learn more about GMM.
+    <value>You received this notification because you are listed as a GMM onboarding requestor or as owner of **{1}**. Please visit {3} to learn more about GMM.
 
 The group {1} with Id: {0} has exceeded the specified thresholds.
 
