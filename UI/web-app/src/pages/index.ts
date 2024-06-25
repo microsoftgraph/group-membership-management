@@ -6,3 +6,4 @@ export * from './JobDetails';
 export * from './ManageMembership';
 export * from './JobsPage';
 export * from './OwnerPage';
+export * from './NotFound';

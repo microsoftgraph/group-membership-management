@@ -250,7 +250,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     index?: number,
     ev?: React.FocusEvent<HTMLElement>
   ): void => {
-    navigate('/JobDetails', { replace: false, state: { item: item } });
+    if(item.targetGroupName === null){
+      navigate('/NotFound', { replace: true, state: { item: item} });
+    } else {
+      navigate('/JobDetails', { replace: false, state: { item: item } });
+    }
   };
 
   const onRefreshClicked = (

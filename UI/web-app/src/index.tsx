@@ -10,7 +10,7 @@ import { Provider } from 'react-redux';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
 import { App } from './App';
-import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership } from './pages';
+import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership, NotFound } from './pages';
 import { store } from './store';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
@@ -55,6 +55,7 @@ ReactDOM.render(
               <Route path="/OwnerPage" element={<OwnerPage />} />
               <Route path="/AdminConfig" element={<AdminConfig />} />
               <Route path="/ManageMembership" element={<ManageMembership />} />
+              <Route path="/NotFound" element={<NotFound />} />
             </Route>
           </Routes>
         </BrowserRouter>

@@ -183,6 +183,7 @@ export const strings: IStrings = {
       internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.',
       removeGMMError: 'Error al dejar de administrar con GMM.',
     },
+    notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
     openInAzure: 'Abrir en Azure',
     viewDetails: 'Ver Detalles',
     editButton: 'Editar',

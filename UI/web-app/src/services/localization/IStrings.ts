@@ -175,6 +175,7 @@ export type IStrings = {
       internalError: string;
       removeGMMError: string;
     }
+    notFound: string;
     openInAzure: string;
     viewDetails: string;
     editButton: string;

@@ -183,6 +183,7 @@ export const strings: IStrings = {
     openInAzure: 'Open in Azure',
     viewDetails: 'View Details',
     editButton: 'Edit',
+    notFound: 'Membership syncs for group with object Id {0} are now disabled because the group no longer exists.',
   },
   JobsList: {
     listOfMemberships: 'Managed groups',
