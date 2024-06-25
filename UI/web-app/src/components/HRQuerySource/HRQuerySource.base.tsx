@@ -1064,17 +1064,18 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   ];
 
-  function onUpClick(index: number, items: IFilterPart[]) {
+  function reorderItems(index: number, newIndex: number, items: IFilterPart[]) {
     let newItems = [...items];
-    const insertIndex = index - 1;
-    if (insertIndex < 0) { return; }
+    const insertIndex = newIndex;
+    if (insertIndex < 0 || insertIndex >= items.length || index === newIndex) { return; }
 
     let sourceItems: IFilterPart[] = [];
     sourceItems.push(items[index]);
     sourceItems.push(items[insertIndex]);
-    let transformedItems: ChildType[] = sourceItems.map((item) => ({
-      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-    }));
+    let transformedItems: ChildType[] = sourceItems.map((item) => {
+      const filter = `${item.attribute} ${item.equalityOperator} ${item.value}`;
+      return { filter: item.andOr ? `${filter} ${item.andOr}` : "undefined" };
+    });
     const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
     if (hasUndefined) { return; }
 
@@ -1120,67 +1121,15 @@ const checkType = (value: string, type: string | undefined): string => {
       setChildren(newChildren);
       setItems(newItems);
     }
+  }
+
+  function onUpClick(index: number, items: IFilterPart[]) {
+    reorderItems(index, index - 1, items);
   }
 
   function onDownClick(index: number, items: IFilterPart[]) {
-    let newItems = [...items];
-    const insertIndex = index + 1;
-
-    if (insertIndex >= items.length) { return; }
-
-    let sourceItems: IFilterPart[] = [];
-    sourceItems.push(items[index]);
-    sourceItems.push(items[insertIndex]);
-    let transformedItems: ChildType[] = sourceItems.map((item) => ({
-      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-    }));
-    const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
-    if (hasUndefined) { return; }
-
-    setIsDragAndDropEnabled(true);
-    newItems = newItems.filter((_, i) => i !== index);
-    newItems.splice(insertIndex, 0, { ...items[index] });
-    let newChildren: ChildType[] = newItems.map((item) => ({
-      filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
-    }));
-
-    if (groupingEnabled) {
-      const groupIndex = groups.findIndex(group =>
-        group.children?.some(child =>
-            child.items.some(item =>
-                JSON.stringify(item) === JSON.stringify(items[index])
-            )
-        ) || group.items?.some(item =>
-            JSON.stringify(item) === JSON.stringify(items[index])
-        )
-      );
-      const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
-        child.items.some(item =>
-            JSON.stringify(item) === JSON.stringify(items[index])
-        )
-      ) : -1;
-
-      if (groupIndex !== -1 && childIndex === -1) {
-        groups[groupIndex].items = newItems;
-        setGroups(groups);
-        getGroupLabels(groups);
-        setItemsBasedOnGroups(groups);
-      }
-      else if (groupIndex !== -1 && childIndex !== -1) {
-        groups[groupIndex].children[childIndex].items = newItems;
-        setGroups(groups);
-        getGroupLabels(groups);
-        setItemsBasedOnGroups(groups);
-      }
-    }
-    else {
-      groups[0].items = newItems;
-      setGroups(groups);
-      setChildren(newChildren);
-      setItems(newItems);
-    }
+    reorderItems(index, index + 1, items);
   }
-
 
   function onGroupUpClick(index: number) {
     let newGroups = [...groups];
