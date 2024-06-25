@@ -150,6 +150,7 @@ param logAnalyticsSku string = 'PerGB2018'
 param authenticationType string = 'ClientSecret'
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
+param isTeamsChannelApplicationPermissionGranted bool = false
 
 @description('Enter app configuration name.')
 @minLength(1)
@@ -350,6 +351,14 @@ param appConfigurationKeyData array = [
     contentType: 'bool'
     tag: {
       tag1: 'Mail'
+    }
+  }
+  {
+    key: 'TeamsChannel:IsChannelReadWriteApplicationPermissionGranted'
+    value: isTeamsChannelApplicationPermissionGranted
+    contentType: 'bool'
+    tag: {
+      tag1: 'TeamsChannel'
     }
   }
 ]
