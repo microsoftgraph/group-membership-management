@@ -84,6 +84,7 @@ namespace Services.Notifier
                     RunId = notification.SyncJobId,
                     Message = $"Notification '{NotificationMessageType.ThresholdNotification}' is disabled for job {notification.Id} with destination group {notification.TargetOfficeGroupId}."
                 });
+                return;
             }
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending email to recipient addresses." });
 
