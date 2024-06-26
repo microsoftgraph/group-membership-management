@@ -5,6 +5,7 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Models.CustomAttributes;
+using Models.Notifications;
 
 namespace Models
 {
@@ -15,7 +16,7 @@ namespace Models
         public int Id { get; set; }
 
         [Required]
-        public string Name { get; set; }
+        public NotificationMessageType Name { get; set; }
         public bool Disabled { get; set; }
     }
 }
