@@ -1073,7 +1073,7 @@ Your group's membership synchronizations are currently disabled due to one of th
 •	Group owner did not take action on a drastic membership change alert.
 •	Membership syncs were paused by owner for more than 30 days.
 
-If you believe this group should still be managed by Group Membership Management (GMM), please take the necessary actions via the GMM UI or reach out to support to request assistance before{2}.
+If you believe this group should still be managed by Group Membership Management (GMM), please take the necessary actions via the GMM UI or reach out to support to request assistance before {2}.
 
 If not remediated by {2}, your group's membership will still remain, but its affiliation with GMM (including its membership definition) will be removed. You will need to re-onboard if you still want GMM to manage your group after that date.</value>
   </data>
