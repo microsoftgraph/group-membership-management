@@ -2,37 +2,32 @@
 // Licensed under the MIT license.
 
 using Azure;
-using Azure.Data.Tables;
-using DIConcreteTypes;
-using Microsoft.Extensions.Options;
-using Models;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using ModelNotification = Models.ThresholdNotifications.ThresholdNotification;
+using EntityNotification = Entities.ThresholdNotification;
+using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.NotificationsRepository
 {
     public class NotificationRepository : INotificationRepository
     {
-        private readonly string _thresholdNotificationPartitionKey = "ThresholdNotification";
-        private readonly TableClient _tableClient = null;
-        private readonly ILoggingRepository _log;
+        private readonly GMMContext _writeContext;
+        private readonly GMMReadContext _readContext;
 
-        public NotificationRepository(IOptions<NotificationRepoCredentials<NotificationRepository>> notificationRepoCredentials, ILoggingRepository logger)
+        public NotificationRepository(GMMContext writeContext, GMMReadContext readContext)
         {
-            _log = logger ?? throw new ArgumentNullException(nameof(logger));
-            _tableClient = new TableClient(notificationRepoCredentials.Value.ConnectionString, notificationRepoCredentials.Value.TableName);
+            _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
+            _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<ThresholdNotification> GetThresholdNotificationByIdAsync(Guid notificationId)
+        public async Task<ModelNotification?> GetThresholdNotificationByIdAsync(Guid notificationId)
         {
             try
             {
-                var result = await _tableClient.GetEntityAsync<ThresholdNotificationEntity>(_thresholdNotificationPartitionKey, notificationId.ToString());
-                return ToModel(result.Value);
+                var result = await _readContext.ThresholdNotifications.FirstOrDefaultAsync(n => n.Id == notificationId);
+                return result != null ? ToModel(result) : null;
             }
             catch (RequestFailedException ex)
             {
@@ -44,56 +39,67 @@ namespace Repositories.NotificationsRepository
             return null;
         }
 
-        public async Task<ThresholdNotification> GetThresholdNotificationBySyncJobIdAsync(Guid syncJobId)
+        public async Task<ModelNotification?> GetThresholdNotificationBySyncJobIdAsync(Guid syncJobId)
         {
             var resolutionNameString = ThresholdNotificationResolution.Unresolved.ToString();
-            var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x =>
-                x.SyncJobId == syncJobId && x.ResolutionName == resolutionNameString);
 
-            await foreach (var segmentResult in queryResult.AsPages())
+            var queryResult = await _readContext.ThresholdNotifications
+                                .Where(n => n.SyncJobId == syncJobId &&
+                                            n.ResolutionName == resolutionNameString)
+                                .FirstOrDefaultAsync();
+
+            if (queryResult != null)
             {
-                var results = segmentResult.Values;
-                if (results.Count() > 0)
-                {
-                    return ToModel(results.ElementAt(0));
-                }
+                return ToModel(queryResult);
             }
 
             return null;
         }
 
-        public async Task SaveNotificationAsync(ThresholdNotification notification)
+        public async Task SaveNotificationAsync(ModelNotification notification)
         {
-            var entity = ToEntity(notification);
-            await _tableClient.UpsertEntityAsync(entity);
+            var entityNotification = ToEntity(notification);
+
+            var existingNotification = await _readContext.ThresholdNotifications
+                .FirstOrDefaultAsync(n => n.Id == entityNotification.Id);
+
+            if (existingNotification == null)
+            {
+                _writeContext.ThresholdNotifications.Add(entityNotification);
+            }
+            else
+            {
+                _writeContext.Entry(existingNotification).CurrentValues.SetValues(entityNotification);
+            }
+            await _writeContext.SaveChangesAsync();
         }
 
-        public async IAsyncEnumerable<ThresholdNotification> GetQueuedNotificationsAsync()
+        public async IAsyncEnumerable<ModelNotification> GetQueuedNotificationsAsync()
         {
-            var notifications = new List<ThresholdNotification>();
+            var notifications = new List<ModelNotification>();
 
-            var queryResult = _tableClient.QueryAsync<ThresholdNotificationEntity>(x => x.StatusName == ThresholdNotificationStatus.Queued.ToString());
-
-            await foreach (var segmentResult in queryResult.AsPages())
             {
-                var results = segmentResult.Values.Where(x => x.ResolutionName == ThresholdNotificationResolution.Unresolved.ToString());
-                foreach (var notification in results)
+                var query = _readContext.ThresholdNotifications
+                                    .Where(n => n.StatusName == ThresholdNotificationStatus.Queued.ToString() &&
+                                                n.ResolutionName == ThresholdNotificationResolution.Unresolved.ToString());
+
+                await foreach (var notification in query.AsAsyncEnumerable())
                 {
                     yield return ToModel(notification);
                 }
             }
         }
 
-        public async Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status)
+        public async Task UpdateNotificationStatusAsync(ModelNotification notification, ThresholdNotificationStatus status)
         {
             var updatedNotification = ToEntity(notification);
             updatedNotification.Status = status;
             await SaveNotificationAsync(ToModel(updatedNotification));
         }
 
-        private ThresholdNotification ToModel(ThresholdNotificationEntity entity)
+        private ModelNotification ToModel(EntityNotification entity)
         {
-            return new ThresholdNotification
+            return new ModelNotification
             {
                 Id = entity.Id,
                 SyncJobId = entity.SyncJobId,
@@ -110,19 +116,15 @@ namespace Repositories.NotificationsRepository
                 TargetOfficeGroupId = entity.TargetOfficeGroupId,
                 ThresholdPercentageForAdditions = entity.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = entity.ThresholdPercentageForRemovals,
-                LastUpdatedTime = entity.Timestamp?.UtcDateTime ?? DateTime.MinValue
+                LastUpdatedTime = entity.LastUpdatedTime
             };
         }
 
-        private ThresholdNotificationEntity ToEntity(ThresholdNotification entity)
+        private EntityNotification ToEntity(ModelNotification entity)
         {
-            return new ThresholdNotificationEntity
+            return new EntityNotification
             {
-                PartitionKey = _thresholdNotificationPartitionKey,
-                RowKey = entity.Id.ToString(),
                 Id = entity.Id,
-                SyncJobPartitionKey = entity.SyncJobId.ToString(),
-                SyncJobRowKey = entity.SyncJobId.ToString(),
                 SyncJobId = entity.SyncJobId,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,

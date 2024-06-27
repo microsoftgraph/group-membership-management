@@ -31,15 +31,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{6A1A20D0-25FB-41E5-AA43-19D3DDA9A9F1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{4EEB09A8-A1CF-4A50-ACD7-FC4EB406E59B}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADGroups", "..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj", "{0C9234E0-1E3A-46C9-A4C2-3766F0992AAE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\..\..\Services.Contracts\Services.Contracts.csproj", "{B7AAC356-FF19-4BF7-8EE0-4FEFED95ADB3}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Notifications", "..\..\..\Services.Notifications\Services.Notifications.csproj", "{D631037A-CD3E-44A7-B0FA-6E8949E0E84C}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Notifications.Tests", "..\..\..\Repositories.Notifications.Tests\Repositories.Notifications.Tests.csproj", "{4E5DD232-118A-4010-8A07-5100929C07FE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..\..\Repositories.Mocks\Repositories.Mocks.csproj", "{731CA9A5-9E74-4478-A6AC-D0A4353BC425}"
 EndProject
@@ -109,10 +105,6 @@ Global
 		{6A1A20D0-25FB-41E5-AA43-19D3DDA9A9F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6A1A20D0-25FB-41E5-AA43-19D3DDA9A9F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6A1A20D0-25FB-41E5-AA43-19D3DDA9A9F1}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4EEB09A8-A1CF-4A50-ACD7-FC4EB406E59B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4EEB09A8-A1CF-4A50-ACD7-FC4EB406E59B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4EEB09A8-A1CF-4A50-ACD7-FC4EB406E59B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4EEB09A8-A1CF-4A50-ACD7-FC4EB406E59B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0C9234E0-1E3A-46C9-A4C2-3766F0992AAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0C9234E0-1E3A-46C9-A4C2-3766F0992AAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0C9234E0-1E3A-46C9-A4C2-3766F0992AAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -125,10 +117,6 @@ Global
 		{D631037A-CD3E-44A7-B0FA-6E8949E0E84C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D631037A-CD3E-44A7-B0FA-6E8949E0E84C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D631037A-CD3E-44A7-B0FA-6E8949E0E84C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4E5DD232-118A-4010-8A07-5100929C07FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4E5DD232-118A-4010-8A07-5100929C07FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4E5DD232-118A-4010-8A07-5100929C07FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4E5DD232-118A-4010-8A07-5100929C07FE}.Release|Any CPU.Build.0 = Release|Any CPU
 		{731CA9A5-9E74-4478-A6AC-D0A4353BC425}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{731CA9A5-9E74-4478-A6AC-D0A4353BC425}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{731CA9A5-9E74-4478-A6AC-D0A4353BC425}.Release|Any CPU.ActiveCfg = Release|Any CPU
