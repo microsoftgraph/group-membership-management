@@ -345,11 +345,9 @@ namespace Services.Notifier
                 thresholdNotification = new ThresholdNotification
                 {
                     Id = Guid.NewGuid(),
-                    SyncJobPartitionKey = job.Id.ToString(),
-                    SyncJobRowKey = job.Id.ToString(),
                     SyncJobId = job.Id,
-                    ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage,
-                    ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage,
+                    ChangePercentageForAdditions = threshold.IncreaseThresholdPercentage,
+                    ChangePercentageForRemovals = threshold.DecreaseThresholdPercentage,
                     ChangeQuantityForAdditions = threshold.DeltaToAddCount,
                     ChangeQuantityForRemovals = threshold.DeltaToRemoveCount,
                     CreatedTime = DateTime.UtcNow,
@@ -365,8 +363,8 @@ namespace Services.Notifier
             }
             else
             {
-                thresholdNotification.ChangePercentageForAdditions = (int)threshold.IncreaseThresholdPercentage;
-                thresholdNotification.ChangePercentageForRemovals = (int)threshold.DecreaseThresholdPercentage;
+                thresholdNotification.ChangePercentageForAdditions = threshold.IncreaseThresholdPercentage;
+                thresholdNotification.ChangePercentageForRemovals = threshold.DecreaseThresholdPercentage;
                 thresholdNotification.ChangeQuantityForAdditions = threshold.DeltaToAddCount;
                 thresholdNotification.ChangeQuantityForRemovals = threshold.DeltaToRemoveCount;
                 thresholdNotification.ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions;

@@ -22,6 +22,8 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<DestinationName> DestinationNames { get; set; }
         public DbSet<DestinationOwner> DestinationOwners { get; set; }
         public DbSet<Entities.SyncJobChange> SyncJobChanges { get; set; } = null!;
+        public DbSet<ThresholdNotification> ThresholdNotifications { get; set; } = null!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<SyncJob>().Property(t => t.Id)
@@ -140,6 +142,39 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(s => s.ChangeSource).IsRequired();
                 entity.Property(s => s.ChangeReason).IsRequired();
                 entity.Property(s => s.ChangeDetails).IsRequired();
+            });
+            modelBuilder.Entity<ThresholdNotification>(entity =>
+            {
+                entity.HasKey(t => t.Id);
+
+                entity.Property(t => t.Id)
+                    .ValueGeneratedOnAdd()
+                    .HasDefaultValueSql("NEWSEQUENTIALID()");
+
+                entity.Property(t => t.TargetOfficeGroupId).IsRequired();
+                entity.Property(t => t.SyncJobId).IsRequired();
+                entity.Property(t => t.StatusName).HasMaxLength(50);
+                entity.Property(t => t.ResolvedByUPN).HasMaxLength(255);
+                entity.Property(t => t.ResolutionName).HasMaxLength(50);
+                entity.Property(t => t.CardStateName).HasMaxLength(50);
+
+                entity.Property(t => t.ThresholdPercentageForAdditions).HasDefaultValue(100);
+                entity.Property(t => t.ThresholdPercentageForRemovals).HasDefaultValue(20);
+                entity.Property(t => t.ChangePercentageForAdditions).HasDefaultValue(0);
+                entity.Property(t => t.ChangePercentageForRemovals).HasDefaultValue(0);
+                entity.Property(t => t.ChangeQuantityForAdditions).HasDefaultValue(0);
+                entity.Property(t => t.ChangeQuantityForRemovals).HasDefaultValue(0);
+                entity.Property(t => t.CreatedTime).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(t => t.ResolvedTime).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(t => t.LastUpdatedTime)
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne<SyncJob>()
+                    .WithMany()
+                    .HasForeignKey(t => t.SyncJobId)
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .HasPrincipalKey(s => s.Id);  
             });
             modelBuilder.Entity<NotificationType>(entity =>
             {

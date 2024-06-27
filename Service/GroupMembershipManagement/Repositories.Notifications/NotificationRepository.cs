@@ -96,8 +96,6 @@ namespace Repositories.NotificationsRepository
             return new ThresholdNotification
             {
                 Id = entity.Id,
-                SyncJobPartitionKey = entity.SyncJobId.ToString(),
-                SyncJobRowKey = entity.SyncJobId.ToString(),
                 SyncJobId = entity.SyncJobId,
                 ChangePercentageForAdditions = entity.ChangePercentageForAdditions,
                 ChangePercentageForRemovals = entity.ChangePercentageForRemovals,

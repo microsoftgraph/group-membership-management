@@ -18,16 +18,6 @@ namespace Models.ThresholdNotifications
         public Guid SyncJobId { get; set; } = Guid.Empty;
 
         /// <summary>
-        /// The threshold notification sync job's PartitionKey.
-        /// </summary>
-        public string SyncJobPartitionKey { get; set; } = string.Empty;
-
-        /// <summary>
-        /// The threshold notification  sync job's RowKey.
-        /// </summary>
-        public string SyncJobRowKey { get; set; } = string.Empty;
-
-        /// <summary>
         /// The id of the group associated with the notification.
         /// </summary>
         public Guid TargetOfficeGroupId { get; set; } = Guid.Empty;
@@ -50,12 +40,12 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// The percentage of users to be added as a percentage of the current group size.
         /// </summary>
-        public int ChangePercentageForAdditions { get; set; } = 0;
+        public double ChangePercentageForAdditions { get; set; } = 0;
 
         /// <summary>
         /// The percentage of users to be removed as a percentage of the current group size.
         /// </summary>
-        public int ChangePercentageForRemovals { get; set; } = 0;
+        public double ChangePercentageForRemovals { get; set; } = 0;
 
         /// <summary>
         /// The number of users to be added to the current group;
