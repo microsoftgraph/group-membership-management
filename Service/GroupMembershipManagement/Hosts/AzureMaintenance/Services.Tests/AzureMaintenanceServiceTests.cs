@@ -235,8 +235,6 @@ namespace Services.Tests
                 CreatedTime = DateTime.UtcNow,
                 Resolution = ThresholdNotificationResolution.Unresolved,
                 Id = Guid.NewGuid(),
-                SyncJobPartitionKey = Guid.NewGuid().ToString(),
-                SyncJobRowKey = Guid.NewGuid().ToString(),
                 ResolvedBy = string.Empty,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.AwaitingResponse,
