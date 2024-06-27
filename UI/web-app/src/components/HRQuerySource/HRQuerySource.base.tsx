@@ -26,7 +26,6 @@ import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../model
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { parseGroup, stringifyGroups } from './QuerySerializer';
-import { GetAttributeValuesResponse } from '../../models/GetAttributeValuesResponse';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -988,6 +987,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const onAttributeChange = (text: string, index: number) => {
     let newFilteredOptions = { ...filteredOptions };
+    if (groupingEnabled && groups.length > 1) return;
     if (attributes && attributes.length > 0) {
       if (!text) {
         newFilteredOptions[index] = getOptions(attributes);
@@ -1001,6 +1001,7 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const onAttributeValueChange = (text: string, index: number) => {
     let newFilteredValueOptions = { ...filteredValueOptions };
+    if (groupingEnabled && groups.length > 1) return;
     const currentAttributeValues = attributeValues[items[index].attribute].values || [];
     if (currentAttributeValues.length > 0) {
       if (!text) {
