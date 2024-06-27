@@ -241,11 +241,6 @@ namespace WebApi
             builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(services.GetService<IConfiguration>().GetValue<string>("Settings:SqlServerConnectionString")));
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
-            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("Settings:jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("Settings:notificationsTableName");
-            });
             builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
 
             builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))

@@ -5,9 +5,6 @@
     "isProduction": {
       "value": true
     },
-    "notificationsTableName": {
-      "value": "notifications"
-    },
     "serviceBusTopicSubscriptions": {
       "value": [
         {

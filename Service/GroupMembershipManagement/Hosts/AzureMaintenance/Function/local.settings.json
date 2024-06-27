@@ -11,7 +11,6 @@
     "jobsStorageAccountConnectionString": "",
     "ConnectionStrings:JobsContext": "",
     "ConnectionStrings:JobsContextReadOnly": "",
-    "notificationsTableName": "",
     "graphCredentials:ClientId": "",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:KeyVaultName": "",

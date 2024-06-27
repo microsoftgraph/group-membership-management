@@ -23,8 +23,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{5C683B9D-E546-4FA0-87F8-242342EC5BA8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.NotificationRepository", "..\..\..\Repositories.Notifications\Repositories.NotificationRepository.csproj", "{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.TeamsChannelUpdater", "..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj", "{FC7E66B0-A134-4041-867E-370834F2C0D1}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.TeamsChannelUpdater.Contracts", "..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj", "{46E07EED-A68C-4850-9AA5-89BEB144B028}"
@@ -89,10 +87,6 @@ Global
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5C683B9D-E546-4FA0-87F8-242342EC5BA8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9AD0DD4C-01FB-40A1-9A9E-BBDC2DD74EB7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FC7E66B0-A134-4041-867E-370834F2C0D1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FC7E66B0-A134-4041-867E-370834F2C0D1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FC7E66B0-A134-4041-867E-370834F2C0D1}.Release|Any CPU.ActiveCfg = Release|Any CPU

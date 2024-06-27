@@ -126,10 +126,6 @@ param jobsStorageAccountName string = 'jobs${environmentAbbreviation}${uniqueStr
 @minLength(1)
 param membershipContainerName string = 'membership'
 
-@description('Enter notifications table name.')
-@minLength(1)
-param notificationsTableName string = 'notifications'
-
 param logAnalyticsName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @allowed([
@@ -653,10 +649,6 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'membershipContainerName'
         value: membershipContainerName
-      }
-      {
-        name: 'notificationsTableName'
-        value: notificationsTableName
       }
       {
         name: 'appInsightsAppId'

@@ -56,11 +56,6 @@ namespace Hosts.AzureMaintenance
                     services.GetService<IOptions<ThresholdNotificationConfig>>().Value.IsThresholdNotificationEnabled);
             });
 
-            builder.Services.AddOptions<NotificationRepoCredentials<NotificationRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.ConnectionString = configuration.GetValue<string>("jobsStorageAccountConnectionString");
-                settings.TableName = configuration.GetValue<string>("notificationsTableName");
-            });
             builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
 
 
