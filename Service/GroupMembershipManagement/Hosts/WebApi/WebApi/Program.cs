@@ -241,7 +241,7 @@ namespace WebApi
             builder.Services.AddSingleton<IKeyVaultSecret<ISqlMembershipRepository>>(services => new KeyVaultSecret<ISqlMembershipRepository>(services.GetService<IConfiguration>().GetValue<string>("Settings:SqlServerConnectionString")));
             builder.Services.AddSingleton<ISqlMembershipRepository, SqlMembershipRepository>();
 
-            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
             builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))
             .AddGraphAPIClient()

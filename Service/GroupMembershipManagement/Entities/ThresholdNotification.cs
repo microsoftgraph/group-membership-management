@@ -139,7 +139,7 @@ namespace Entities
             }
             set
             {
-                this.ResolutionName = value.HasValue ? value.ToString() : null;
+                this.CardStateName = value.HasValue ? value.ToString() : null;
             }
         }
     }

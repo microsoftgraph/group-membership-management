@@ -210,7 +210,7 @@ namespace Hosts.FunctionBase
                         );
             });
 
-            builder.Services.AddSingleton<INotificationRepository, NotificationRepository>();
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
             builder.Services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
             {

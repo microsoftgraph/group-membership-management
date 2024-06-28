@@ -70,6 +70,7 @@ namespace Repositories.NotificationsRepository
             else
             {
                 _writeContext.Entry(existingNotification).CurrentValues.SetValues(entityNotification);
+                _writeContext.Entry(existingNotification).State = EntityState.Modified;
             }
             await _writeContext.SaveChangesAsync();
         }
