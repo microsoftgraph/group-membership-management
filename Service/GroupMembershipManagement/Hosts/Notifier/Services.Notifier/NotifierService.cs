@@ -174,7 +174,7 @@ namespace Services.Notifier
             var notification = await CreateActionableNotification(threshold, job, sendDisableJobNotification);
             return notification;
         }
-        private async Task<(SyncJob job, string[] additionalContentParameters)> ParseMessageContentAsync(string messageBody)
+        private (SyncJob job, string[] additionalContentParameters) ParseMessageContentAsync(string messageBody)
         {
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, object>>(messageBody);
 
@@ -194,7 +194,7 @@ namespace Services.Notifier
         }
         public async Task SendEmailAsync(string messageType, string messageBody, string subjectTemplate, string contentTemplate)
         {
-            var (job, additionalContentParameters) = await ParseMessageContentAsync(messageBody);
+            var (job, additionalContentParameters) = ParseMessageContentAsync(messageBody);
 
             if (!Enum.TryParse<NotificationMessageType>(messageType, true, out var messageTypeEnum))
             {
@@ -221,7 +221,7 @@ namespace Services.Notifier
 
             if (!NotificationConstants.DestinationNotExistContent.Equals(contentTemplate, StringComparison.InvariantCultureIgnoreCase))
             {
-                var destinationObjectId = (await ParseDestinationAsync(job)).ObjectId;
+                var destinationObjectId = ParseDestinationAsync(job).ObjectId;
                 var owners = await _graphGroupRepository.GetGroupOwnersAsync(destinationObjectId);
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
@@ -291,7 +291,7 @@ namespace Services.Notifier
             return await _jobNotificationRepository.IsNotificationDisabledForJobAsync(jobId, notificationType.Id);
         }
 
-        public async Task<AzureADGroup> ParseDestinationAsync(SyncJob syncJob)
+        public AzureADGroup ParseDestinationAsync(SyncJob syncJob)
         {
             if (string.IsNullOrWhiteSpace(syncJob.Destination)) return null;
 
