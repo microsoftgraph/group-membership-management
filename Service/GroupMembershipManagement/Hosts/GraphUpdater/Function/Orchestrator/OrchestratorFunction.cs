@@ -158,6 +158,25 @@ namespace Hosts.GraphUpdater
 						RunId = syncJob.RunId
 					});
 
+                    var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
+                                                    new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
+
+                    var additionalContent = new[]
+                    {
+                                groupMembership.Destination.ObjectId.ToString(),
+                                groupName,
+                                membersAddedResponse.SuccessCount.ToString(),
+                                membersRemovedResponse.SuccessCount.ToString(),
+                    };
+
+                    await context.CallActivityAsync(nameof(EmailSenderFunction),
+                                                    new EmailSenderRequest
+                                                    {
+                                                        SyncJob = syncJob,
+                                                        NotificationType = NotificationMessageType.GuestUserFailureNotification,
+                                                        AdditionalContentParams = additionalContent
+                                                    });
+
                     TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
 
                     if (syncJob?.RunId.HasValue ?? false)
@@ -172,11 +191,6 @@ namespace Hosts.GraphUpdater
                 {
                     var groupName = await context.CallActivityAsync<string>(nameof(GroupNameReaderFunction),
                                                     new GroupNameReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-
-                    var groupOwners = await context.CallActivityAsync<List<AzureADUser>>(nameof(GroupOwnersReaderFunction),
-                                                    new GroupOwnersReaderRequest { RunId = groupMembership.RunId, GroupId = groupMembership.Destination.ObjectId });
-
-                    var ownerEmails = string.Join(";", groupOwners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
                     var additionalContent = new[]
                     {

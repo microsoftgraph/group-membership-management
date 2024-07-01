@@ -1149,4 +1149,11 @@ The group sync will be PAUSED until your response is received.
   <data name="ThresholdNotificationResolution.Paused" xml:space="preserve">
     <value>Sync Job Paused</value>
   </data>
+  <data name="GuestUserFailureEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+The group **{1}** with Id: {0} **has been set to the status "GuestUsersCannotBeAddedToUnifiedGroup"** because GMM failed to add guest users to the destination, due to the destination not having the right settings to allow guest users to be added by GMM. 
+
+Even though GMM couldn't add the guest users, it still **added the remaining {2} users** and **removed the expected {3} users** from the destination.</value>
+  </data>
 </root>

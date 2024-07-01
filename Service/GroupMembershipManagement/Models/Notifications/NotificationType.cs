@@ -12,5 +12,6 @@ namespace Models.Notifications
         NoDataNotification = 7,
         NormalThresholdNotification = 8,
         InactiveSyncJobNotification = 9,
+        GuestUserFailureNotification = 10,
     }
 }

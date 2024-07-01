@@ -100,6 +100,12 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
+                case nameof(NotificationMessageType.GuestUserFailureNotification):
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.ContentTemplate = NotificationConstants.GuestUserFailureEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
