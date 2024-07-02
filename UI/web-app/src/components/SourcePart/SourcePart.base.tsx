@@ -204,7 +204,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={isEditingExistingJob ? () => { } : handleSourceChange} />
+              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange} />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
