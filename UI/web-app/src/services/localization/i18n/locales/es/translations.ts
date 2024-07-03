@@ -313,6 +313,8 @@ export const strings: IStrings = {
       frequency: 'frecuencia',
       hrs: 'hrs',
       preventAutomaticSync: '¿Prevenir sincronización automática si los cambios en la membresía exceden los límites de incremento y/o decremento?',
+      preventAutomaticSyncInfo: 'Active esta configuración seleccionando \'Sí\' para aprobar manualmente la sincronización cuando los cambios en la membresía superen los umbrales especificados. Por ejemplo, con un umbral de aumento del 20% y un umbral de disminución del 15% en 100 miembros, la sincronización se pausará si los miembros superan los 120 o si disminuyen a menos de 85. Seleccione \'No\' para permitir la sincronización automática continua.',
+      preventAutomaticSyncWarning: 'Advertencia: Seleccionar \'No\' permitirá la sincronización automática sin revisión manual, sin importar cuán significativos sean los cambios en la membresía',
       increase: 'Incremento',
       decrease: 'Decremento',
       step4title: 'Paso 4: Confirmación',

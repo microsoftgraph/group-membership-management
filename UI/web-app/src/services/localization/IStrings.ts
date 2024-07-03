@@ -304,6 +304,8 @@ export type IStrings = {
       hrs: string;
       frequency: string;
       preventAutomaticSync: string;
+      preventAutomaticSyncInfo: string;
+      preventAutomaticSyncWarning: string;
       increase: string;
       decrease: string;
       step4title: string;

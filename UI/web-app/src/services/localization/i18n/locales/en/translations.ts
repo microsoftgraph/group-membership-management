@@ -309,6 +309,8 @@ export const strings: IStrings = {
       frequency: 'Frequency',
       hrs: 'hrs',
       preventAutomaticSync: 'Prevent automatic synchronization if membership change exceeds increase and/or decrease threshold?',
+      preventAutomaticSyncInfo: 'Enable this setting by selecting \'Yes\' to manually approve synchronization when membership changes exceed specified thresholds. For example, with a 20% increase threshold and a 15% decrease threshold on 100 members, synchronization will pause above 120 members or below 85 members. Select \'No\' to allow continuous automatic synchronization.',
+      preventAutomaticSyncWarning: 'Warning: Selecting \'No\' will allow automatic synchronization without manual review, regardless of how significantly the membership changes',
       increase: 'Increase',
       decrease: 'Decrease',
       step4title: 'Step 4: Confirmation',

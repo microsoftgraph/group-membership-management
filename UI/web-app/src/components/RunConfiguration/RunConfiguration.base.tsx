@@ -7,7 +7,8 @@ import {
   classNamesFunction,
   useTheme,
   ChoiceGroup, IChoiceGroupOption, DatePicker, Dropdown, Checkbox,
-  TextField
+  TextField,
+  MessageBar, MessageBarType,
 } from '@fluentui/react';
 import {
   IRunConfigurationProps,
@@ -162,7 +163,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
       <div>
         <InfoLabel
           label={strings.ManageMembership.labels.preventAutomaticSync}
-          description={strings.ManageMembership.labels.preventAutomaticSync}
+          description={strings.ManageMembership.labels.preventAutomaticSyncInfo}
         />
         <ChoiceGroup
           styles={{
@@ -189,6 +190,15 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
             }
           }}
         />
+        {useThresholdLimits === 'No' && (
+          <MessageBar
+            messageBarType={MessageBarType.warning}
+            isMultiline={false}
+            dismissButtonAriaLabel="Close"
+            className={classNames.thresholdWarning}          >
+           {strings.ManageMembership.labels.preventAutomaticSyncWarning}
+          </MessageBar>
+      )}
       </div>
       {useThresholdLimits === 'Yes' && (
         <div className={classNames.checkboxPairsContainer}>

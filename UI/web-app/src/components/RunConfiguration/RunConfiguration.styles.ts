@@ -71,6 +71,11 @@ import {
         backgroud: theme.palette.white,
         width: 300
       },
+      thresholdWarning: {
+        width: 'fit-content',
+        display: 'flex',
+        alignItems: 'center'
+      },
     };
   };
   
