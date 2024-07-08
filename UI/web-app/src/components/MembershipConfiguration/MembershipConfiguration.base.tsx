@@ -64,7 +64,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         type: SourcePartType.HR,
         source: sourcePartQuery,
         exclusionary: false
-      }
+      },
+      isNew: true
     };
     dispatch(addSourcePart(newPart));
   };

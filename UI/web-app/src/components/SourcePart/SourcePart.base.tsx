@@ -53,9 +53,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
-  const [expanded, setExpanded] = useState(isEditingExistingJob);
+  const [expanded, setExpanded] = useState(part.isNew ||isEditingExistingJob);
   const hrSource = useSelector(selectSource);
-
+  
+  useEffect(() => {
+    if (part.isNew) {
+      dispatch(updateSourcePart({ ...part, isNew: false }));
+    }
+  }, [dispatch, part]);
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
 

@@ -231,7 +231,7 @@ const manageMembershipSlice = createSlice({
             if (index !== -1) {
                 state.sourceParts[index] = {
                     ...state.sourceParts[index],
-                    query: action.payload.query
+                    ...action.payload,
                 };
             }
         },
