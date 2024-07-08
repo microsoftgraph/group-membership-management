@@ -31,7 +31,7 @@ parameters:
   - name: buildSourceCode
     displayName: Build source code?
     type: boolean
-    default: false
+    default: true
 
 stages:
 
