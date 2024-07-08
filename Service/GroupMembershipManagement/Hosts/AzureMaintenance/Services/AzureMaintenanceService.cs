@@ -74,8 +74,8 @@ namespace Services
             var groupName = await GetGroupNameAsync(job.TargetOfficeGroupId);
             var additionalContentParams = new[]
             {
-                groupName,
                 job.TargetOfficeGroupId.ToString(),
+                groupName,
                 DateTime.UtcNow.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion).ToString()
             };
 

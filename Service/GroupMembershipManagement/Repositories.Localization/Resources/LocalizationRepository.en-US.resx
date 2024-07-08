@@ -1065,7 +1065,7 @@ Please reach out to support to update the source definition and re-enable the me
     </value>
   </data>
   <data name="SyncDisabledInactivityEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as the owner of **{0}**.
+    <value>You received this notification because you are listed as the owner of **{1}**.
 
 Your group's membership synchronizations are currently disabled due to one of the following reasons:
 
