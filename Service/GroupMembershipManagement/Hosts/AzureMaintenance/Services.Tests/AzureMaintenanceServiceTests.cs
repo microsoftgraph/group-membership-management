@@ -237,7 +237,7 @@ namespace Services.Tests
                 Id = Guid.NewGuid(),
                 SyncJobPartitionKey = Guid.NewGuid().ToString(),
                 SyncJobRowKey = Guid.NewGuid().ToString(),
-                ResolvedByUPN = string.Empty,
+                ResolvedBy = string.Empty,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.AwaitingResponse,
                 TargetOfficeGroupId = Guid.NewGuid(),
