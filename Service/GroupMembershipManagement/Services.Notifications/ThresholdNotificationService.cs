@@ -111,7 +111,7 @@ namespace Services.Notifications
                 ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
                 ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
-                ResolvedByUPN = notification.ResolvedByUPN,
+                ResolvedBy = notification.ResolvedBy,
                 ResolvedTime = notification.ResolvedTime.ToString("U"),
                 Resolution = resolution,
                 NotificationId = $"{notification.Id}",

@@ -24,6 +24,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.O365.ActionableMessages.Utilities;
 using WebApi.Models;
 using WebApi.Configuration;
+using System;
 
 namespace Services.Tests
 {
@@ -124,15 +125,15 @@ namespace Services.Tests
 
                 var notification = new ThresholdNotification
                 {
-                    ChangePercentageForAdditions = Random.Shared.Next(51, 100),
-                    ChangePercentageForRemovals = Random.Shared.Next(51, 100),
+                    ChangePercentageForAdditions = Random.Shared.NextDouble() * (100 - 51) + 51,
+                    ChangePercentageForRemovals = Random.Shared.NextDouble() * (100 - 51) + 51,
                     ChangeQuantityForAdditions = Random.Shared.Next(50, 1000),
                     ChangeQuantityForRemovals = Random.Shared.Next(50, 1000),
                     CreatedTime = DateTime.UtcNow,
                     Resolution = ThresholdNotificationResolution.Unresolved,
                     Id = Guid.NewGuid(),
                     SyncJobId = Guid.NewGuid(),
-                    ResolvedByUPN = string.Empty,
+                    ResolvedBy = string.Empty,
                     ResolvedTime = DateTime.UtcNow,
                     Status = ThresholdNotificationStatus.AwaitingResponse,
                     TargetOfficeGroupId = group.ObjectId,
@@ -153,7 +154,7 @@ namespace Services.Tests
                 CreatedTime = DateTime.UtcNow,
                 Resolution = ThresholdNotificationResolution.Paused,
                 Id = Guid.NewGuid(),
-                ResolvedByUPN = _userUPN,
+                ResolvedBy = _userUPN,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.AwaitingResponse
             };
@@ -296,7 +297,7 @@ namespace Services.Tests
             var resolvedTime = DateTime.UtcNow.AddDays(Random.Shared.Next(-30, -1));
             _thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
             _thresholdNotification.Resolution = ThresholdNotificationResolution.IgnoreOnce;
-            _thresholdNotification.ResolvedByUPN = _userUPN;
+            _thresholdNotification.ResolvedBy = _userUPN;
             _thresholdNotification.ResolvedTime = resolvedTime;
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
@@ -426,7 +427,7 @@ namespace Services.Tests
             var resolvedTime = DateTime.UtcNow.AddDays(Random.Shared.Next(-30, -1));
             _thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
             _thresholdNotification.Resolution = ThresholdNotificationResolution.IgnoreOnce;
-            _thresholdNotification.ResolvedByUPN = _userUPN;
+            _thresholdNotification.ResolvedBy = _userUPN;
             _thresholdNotification.ResolvedTime = resolvedTime;
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);

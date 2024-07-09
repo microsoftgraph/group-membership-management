@@ -352,7 +352,7 @@ namespace Services.Notifier
                     ChangeQuantityForRemovals = threshold.DeltaToRemoveCount,
                     CreatedTime = DateTime.UtcNow,
                     Resolution = ThresholdNotificationResolution.Unresolved,
-                    ResolvedByUPN = string.Empty,
+                    ResolvedBy = string.Empty,
                     ResolvedTime = DateTime.FromFileTimeUtc(0),
                     Status = ThresholdNotificationStatus.Triggered,
                     CardState = ThresholdNotificationCardState.DefaultCard,

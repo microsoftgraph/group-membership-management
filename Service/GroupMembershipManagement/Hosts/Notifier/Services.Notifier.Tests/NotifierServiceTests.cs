@@ -140,7 +140,7 @@ namespace Services.Notifier.Tests
                 ChangePercentageForRemovals = 1,
                 CreatedTime = DateTime.UtcNow,
                 Resolution = ThresholdNotificationResolution.Unresolved,
-                ResolvedByUPN = string.Empty,
+                ResolvedBy = string.Empty,
                 ResolvedTime = DateTime.UtcNow,
                 Status = ThresholdNotificationStatus.Unknown,
                 CardState = ThresholdNotificationCardState.DefaultCard,

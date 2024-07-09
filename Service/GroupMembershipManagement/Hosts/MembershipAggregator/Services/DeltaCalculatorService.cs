@@ -335,7 +335,7 @@ namespace Services
                 if (thresholdNotification != null && thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
                 {
                     thresholdNotification.Resolution = ThresholdNotificationResolution.SelfCorrected;
-                    thresholdNotification.ResolvedByUPN = "N/A";
+                    thresholdNotification.ResolvedBy = "N/A";
                     thresholdNotification.ResolvedTime = DateTime.UtcNow;
                     thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
 

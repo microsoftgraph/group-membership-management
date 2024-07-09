@@ -96,7 +96,7 @@ namespace Entities
         /// <summary>
         /// The UPN of the person who resolved the notification.
         /// </summary>
-        public string ResolvedByUPN { get; set; } = string.Empty;
+        public string ResolvedBy { get; set; } = string.Empty;
         
         [DatabaseGenerated(DatabaseGeneratedOption.Computed)]
         public DateTime LastUpdatedTime { get; set; }

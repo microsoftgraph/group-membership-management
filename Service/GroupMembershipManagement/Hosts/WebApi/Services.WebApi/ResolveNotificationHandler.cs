@@ -83,7 +83,7 @@ namespace Services
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
                 thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
-                thresholdNotification.ResolvedByUPN = resolvedByMail;
+                thresholdNotification.ResolvedBy = resolvedByMail;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
 
                 await handleSyncJobResolution(thresholdNotification);

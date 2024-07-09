@@ -91,12 +91,12 @@ namespace Repositories.NotificationsRepository
         /// <summary>
         /// The percentage of users to be added as a percentage of the current group size.
         /// </summary>
-        public int ChangePercentageForAdditions { get; set; } = 0;
+        public double ChangePercentageForAdditions { get; set; } = 0;
 
         /// <summary>
         /// The percentage of users to be removed as a percentage of the current group size.
         /// </summary>
-        public int ChangePercentageForRemovals { get; set; } = 0;
+        public double ChangePercentageForRemovals { get; set; } = 0;
 
         /// <summary>
         /// The number of users to be added to the current group;
@@ -121,7 +121,7 @@ namespace Repositories.NotificationsRepository
         /// <summary>
         /// The UPN of the person who resolved the notification.
         /// </summary>
-        public string ResolvedByUPN { get; set; } = string.Empty;
+        public string ResolvedBy { get; set; } = string.Empty;
 
         /// <summary>
         /// The action taken to resolve the notification.

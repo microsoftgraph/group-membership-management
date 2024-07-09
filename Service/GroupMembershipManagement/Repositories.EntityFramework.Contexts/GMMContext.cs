@@ -154,7 +154,7 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(t => t.TargetOfficeGroupId).IsRequired();
                 entity.Property(t => t.SyncJobId).IsRequired();
                 entity.Property(t => t.StatusName).HasMaxLength(50);
-                entity.Property(t => t.ResolvedByUPN).HasMaxLength(255);
+                entity.Property(t => t.ResolvedBy).HasMaxLength(255);
                 entity.Property(t => t.ResolutionName).HasMaxLength(50);
                 entity.Property(t => t.CardStateName).HasMaxLength(50);
 

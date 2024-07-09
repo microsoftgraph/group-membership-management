@@ -75,7 +75,7 @@ namespace Models.ThresholdNotifications
         /// <summary>
         /// The UPN of the person who resolved the notification.
         /// </summary>
-        public string ResolvedByUPN { get; set; } = string.Empty;
+        public string ResolvedBy { get; set; } = string.Empty;
 
         /// <summary>
         /// The action taken to resolve the notification.
