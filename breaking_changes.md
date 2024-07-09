@@ -1,5 +1,18 @@
 # Breaking Changes
 
+## 7/9/2024
+
+The storage of threshold notifications will be migrated from the current storage table to a SQL table. To accommodate this update, users will need to run the following script to migrate existing records.
+
+1. Export the existing storage table to a CSV file. This can be done using Azure Storage Explorer or any preferred tool for accessing Azure Storage.
+2. Run the Set-MigrateStorageTable.ps1 script to migrate existing records from the storage table to the SQL table.
+
+```
+  . .\Set-MigrateStorageTable.ps1
+  Set-MigrateStorageTable	-connectionString "<connectionString>"  `
+                          -notificationsCsvPath "<notificationsCsvPath>" `
+```
+
 ## 5/1/2024
 
 Local auth has been disabled for App Configuration resource.
