@@ -213,7 +213,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 children={<label>{jobDetails?.source}</label>}
                 removeButton={isJobWriter}
                 editButton={canEditJob}
-                actionText={canEditJob ? strings.JobDetails.editButton : strings.JobDetails.viewDetails}
+                actionText={canEditJob ? strings.JobDetails.editButton : ''}
                 useLinkButton={true}
                 actionOnClick={openMembershipConfiguration}
               />
