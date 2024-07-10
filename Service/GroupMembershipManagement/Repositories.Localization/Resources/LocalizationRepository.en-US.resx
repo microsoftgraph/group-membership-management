@@ -631,7 +631,7 @@
             },
             {
               "type": "TextBlock",
-              "text": "This notification was resolved by **${$root.resolvedByUPN}** on **${$root.resolvedTime}** UTC.",
+              "text": "This notification was resolved by **${$root.resolvedBy}** on **${$root.resolvedTime}** UTC.",
               "wrap": true,
               "spacing": "Small",
               "color": "Good"
