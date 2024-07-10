@@ -142,7 +142,7 @@ namespace Services
             HashSet<string> groupDestinationsForPeriod = new HashSet<string>(jobsToDistribute.ConvertAll(job => job.Destination));
             runtimeMap = new Dictionary<string, double>(runtimeMap.Where(entry => groupDestinationsForPeriod.Contains(entry.Key) || entry.Key == "Default"));
 
-            // Sort sync jobs by Status, LastRunTime
+            // Sort sync jobs by Status, LastRunTime and ThresholdPercentages
             jobsToDistribute.Sort();
 
             double totalTimeInSeconds = runtimeMap.Values.Sum() + (jobsToDistribute.Count - runtimeMap.Count) * runtimeMap["Default"];
