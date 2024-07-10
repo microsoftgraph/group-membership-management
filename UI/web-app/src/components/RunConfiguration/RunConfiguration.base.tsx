@@ -193,7 +193,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
         {useThresholdLimits === 'No' && (
           <MessageBar
             messageBarType={MessageBarType.warning}
-            isMultiline={false}
+            isMultiline={true}
             dismissButtonAriaLabel="Close"
             className={classNames.thresholdWarning}          >
            {strings.ManageMembership.labels.preventAutomaticSyncWarning}
