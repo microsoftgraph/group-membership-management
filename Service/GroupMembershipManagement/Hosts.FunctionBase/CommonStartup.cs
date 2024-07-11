@@ -30,6 +30,9 @@ using Microsoft.EntityFrameworkCore;
 using Repositories.EntityFramework;
 using Repositories.FeatureFlag;
 using Azure.Core;
+using System.IO;
+using Models;
+using System.Data;
 
 namespace Hosts.FunctionBase
 {
@@ -37,6 +40,8 @@ namespace Hosts.FunctionBase
     {
         protected abstract string FunctionName { get; }
         protected abstract string DryRunSettingName { get; }
+
+        private const string SCHEMA_DIRECTORY = "Schemas";
 
         public override void ConfigureAppConfiguration(IFunctionsConfigurationBuilder builder)
         {
@@ -241,6 +246,20 @@ namespace Hosts.FunctionBase
 
                 return new ServiceBusClient(serviceBusFQN, new DefaultAzureCredential());
             });
+
+            var rootPath = builder.GetContext().ApplicationRootPath;
+            var jsonSchemasPath = Path.Combine(rootPath, SCHEMA_DIRECTORY);
+            var schemaProvider = new SchemaProvider();
+            if (Directory.Exists(jsonSchemasPath))
+            {
+                var files = Directory.EnumerateFiles(jsonSchemasPath);
+                foreach (var file in files)
+                {
+                    var fileName = Path.GetFileNameWithoutExtension(file);
+                    schemaProvider.Schemas.Add((Schema)Enum.Parse(typeof(Schema), fileName), File.ReadAllText(file));
+                }
+            }
+            builder.Services.AddSingleton(schemaProvider);
         }
 
         public string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)

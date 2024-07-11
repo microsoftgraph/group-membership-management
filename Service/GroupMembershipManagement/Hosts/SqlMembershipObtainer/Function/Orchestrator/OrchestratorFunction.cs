@@ -70,6 +70,31 @@ namespace SqlMembershipObtainer
                     return;
                 }
 
+                else
+                {
+                    try
+                    {
+                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId });
+                        if (!hasValidJson)
+                        {
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob });
+                            return;
+                        }
+                    }
+                    catch (JsonReaderException)
+                    {
+                        await context.CallActivityAsync(nameof(LoggerFunction),
+                                new LoggerRequest
+                                {
+                                    SyncJob = syncJob,
+                                    Message = $"Source query is not valid for job:{syncJob.Id}"
+                                });
+
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                        return;
+                    }
+                }
+
                 var query = JsonConvert.DeserializeObject<Query>(currentQueryAsString);
                 var graphProfilesResponse = await context.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
                             nameof(OrganizationProcessorFunction),
