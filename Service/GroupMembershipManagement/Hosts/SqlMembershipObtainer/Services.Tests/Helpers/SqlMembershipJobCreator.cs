@@ -37,8 +37,8 @@ namespace Services.Tests.Helpers
         public static string GetJobQuery(string syncType, string managerId)
         {
             var individualQueries = $"{{\"type\":\"{syncType}\"," +
-                                    $"\"source\": {{\"id\":[{managerId}]," +
-                                    $"\"filter\":\"(Attribute = 'Value')\"}} }}";
+                                    $"\"source\":{{\"manager\":{{\"id\":{managerId}}}," +
+                                    $"\"filter\":\"(Attribute = 'Value')\"}}}}";
 
             return $"[{string.Join(",", individualQueries)}]";
 

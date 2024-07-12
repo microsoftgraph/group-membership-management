@@ -42,6 +42,8 @@ namespace Services.Tests
         private TelemetryClient _telemetryClient;
         private Mock<ISqlMembershipObtainerService> _sqlMembershipObtainerService;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
+        SchemaProvider _schemaProvider;
+        private bool _isValid = true;
 
         [TestInitialize]
         public void Setup()
@@ -118,6 +120,14 @@ namespace Services.Tests
                                         {
                                             await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
                                         });
+            _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
+
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
         }
 
         [TestMethod]
@@ -188,6 +198,31 @@ namespace Services.Tests
 
             _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                     It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.QueryNotValid)), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestInvalidSchemaAsync()
+        {
+            _syncJob.Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":[1, 2]},\"filter\":\"Attribute = 'Value'\"}}]";
+
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => false);
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                It.Is<LogMessage>(m => m.Message.Contains($"Query not valid")),
+                                It.IsAny<VerbosityLevel>(),
+                                It.IsAny<string>(),
+                                It.IsAny<string>()), Times.Once());
+
+            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError)), Times.Once());
         }
 
         [TestMethod]
@@ -298,6 +333,12 @@ namespace Services.Tests
         {
             var function = new GroupMembershipSenderFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
             return await function.SendGroupMembershipAsync(request);
+        }
+
+        private async Task<bool> CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
+        {
+            var function = new SchemaValidatorFunction(_loggingRepository.Object, _schemaProvider);
+            return await function.ValidateSchemasAsync(request);
         }
 
         private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)
