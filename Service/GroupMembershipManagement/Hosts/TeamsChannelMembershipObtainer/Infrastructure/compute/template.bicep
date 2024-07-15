@@ -42,17 +42,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -93,7 +84,6 @@ var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, da
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var teamsChannelMembershipObtainerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelMembershipObtainerStorageAccountProd')
-var teamsChannelMembershipObtainerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelMembershipObtainerStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -142,13 +132,6 @@ var appSettings = {
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMOStaging'
-  'TeamsChannelMembershipObtainer:IsDryRunEnabled': 1
-  AzureFunctionsWebHost__hostid: 'TeamsChannelMOStaging'
 }
 
 var productionSettings = {
@@ -208,24 +191,6 @@ module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = 
   ]
 }
 
-module functionAppSlotTemplate_TeamsChannelMembershipObtainer 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-TeamsChannelMembershipObtainer'
-  params: {
-    name: '${functionAppName}-TeamsChannelMembershipObtainer/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_TeamsChannelMembershipObtainer
-  ]
-}
-
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-TeamsChannelMembershipObtainer'
   params: {
@@ -236,11 +201,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_TeamsChannelMembershipObtainer.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_TeamsChannelMembershipObtainer.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_TeamsChannelMembershipObtainer
-    functionAppSlotTemplate_TeamsChannelMembershipObtainer
   ]
 }
 
@@ -250,15 +213,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-TeamsChannelMembershipObtainer/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

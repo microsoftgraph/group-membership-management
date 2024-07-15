@@ -112,28 +112,4 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
   }
 }
 
-resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
-  name: 'slotConfigNames'
-  parent: functionApp
-  properties: {
-    appSettingNames: [
-      'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.StarterFunction.Disabled'
-      'AzureWebJobs.OrchestratorFunction.Disabled'
-      'AzureWebJobs.LoggerFunction.Disabled'
-      'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled'
-      'AzureWebJobs.GetJobsSegmentedFunction.Disabled'
-      'AzureWebJobs.ResetJobsFunction.Disabled'
-      'AzureWebJobs.DistributeJobsFunction.Disabled'
-      'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled'
-      'AzureWebJobs.BatchUpdateJobsFunction.Disabled'
-      'AzureWebJobs.PipelineInvocationStarterFunction.Disabled'
-      'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled'
-      'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled'
-      'AzureWebJobs.PostCallbackFunction.Disabled'
-      'AzureFunctionsWebHost__hostid'
-    ]
-  }
-}
-
 output msi string = functionApp.identity.principalId

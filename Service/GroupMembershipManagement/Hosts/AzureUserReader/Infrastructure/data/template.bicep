@@ -21,7 +21,6 @@ param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('aur${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('aur${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module azureUserReaderStorageAccountProd 'storageAccount.bicep' = {
   name: 'aurProdstorageAccountTemplate'
@@ -31,16 +30,5 @@ module azureUserReaderStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountConnectionStringSettingName: 'azureUserReaderStorageAccountProd'
-  }
-}
-
-module azureUserReaderStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'aurStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'azureUserReaderStorageAccountStaging'
   }
 }

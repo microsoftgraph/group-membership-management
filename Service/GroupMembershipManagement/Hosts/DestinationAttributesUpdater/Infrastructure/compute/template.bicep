@@ -68,17 +68,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -111,7 +102,6 @@ var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKe
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var destinationAttributesUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'destinationAttributesUpdaterStorageAccountProd')
-var destinationAttributesUpdaterStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'destinationAttributesUpdaterStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -158,17 +148,6 @@ var appSettings = {
   appConfigurationEndpoint: appConfigurationEndpoint
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(destinationAttributesUpdaterStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}DestinationAttributesUpdaterStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.AttributeCacheUpdaterFunction.Disabled': 1
-  'AzureWebJobs.AttributeReaderFunction.Disabled': 1
-  'AzureWebJobs.DestinationReaderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'DestinationAttrUpdaterStaging'
 }
 
 var productionSettings = {
@@ -227,24 +206,6 @@ module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_DestinationAttributesUpdater 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-DestinationAttributesUpdater'
-  params: {
-    name: '${functionAppName}-DestinationAttributesUpdater/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_DestinationAttributesUpdater
-  ]
-}
-
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-DestinationAttributesUpdater'
   params: {
@@ -255,11 +216,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_DestinationAttributesUpdater.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_DestinationAttributesUpdater.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_DestinationAttributesUpdater
-    functionAppSlotTemplate_DestinationAttributesUpdater
   ]
 }
 
@@ -269,15 +228,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-DestinationAttributesUpdater/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

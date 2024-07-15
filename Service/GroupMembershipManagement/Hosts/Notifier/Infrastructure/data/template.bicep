@@ -21,7 +21,6 @@ param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('ntf${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('ntf${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module notifierStorageAccountProd 'storageAccount.bicep' = {
   name: 'ntfProdstorageAccountTemplate'
@@ -31,16 +30,5 @@ module notifierStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountConnectionStringSettingName: 'notifierStorageAccountProd'
-  }
-}
-
-module notifierStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'ntfStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'notifierStorageAccountStaging'
   }
 }

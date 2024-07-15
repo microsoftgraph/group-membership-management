@@ -21,7 +21,6 @@ param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('dau${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('dau${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module destinationAttributesUpdaterStorageAccountProd 'storageAccount.bicep' = {
   name: 'dauProdstorageAccountTemplate'
@@ -31,16 +30,5 @@ module destinationAttributesUpdaterStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountConnectionStringSettingName: 'destinationAttributesUpdaterStorageAccountProd'
-  }
-}
-
-module destinationAttributesUpdaterStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'dauStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'destinationAttributesUpdaterStorageAccountStaging'
   }
 }

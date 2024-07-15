@@ -8,11 +8,11 @@ param environmentAbbreviation string
 @maxLength(3)
 param solutionAbbreviation string = 'gmm'
 
+@description('Enter tenant Id.')
+param tenantId string
+
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Tenant id.')
-param tenantId string
 
 @description('Resource location.')
 param location string
@@ -24,7 +24,6 @@ param storageAccountSku string = 'Standard_LRS'
 
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('sqlmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('sqlmo${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module smoStorageAccountProd 'storageAccount.bicep' = {
   name: 'smoProdstorageAccountTemplate'
@@ -35,17 +34,5 @@ module smoStorageAccountProd 'storageAccount.bicep' = {
     location: location
     sqlMembershipObtainerStorageAccountName: 'sqlMembershipObtainerStorageAccountNameProd'
     storageAccountConnectionStringSettingName: 'sqlMembershipObtainerStorageAccountProd'
-  }
-}
-
-module smoStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'smoStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: dataKeyVaultName
-    location: location
-    sqlMembershipObtainerStorageAccountName: 'sqlMembershipObtainerStorageAccountNameStaging'
-    storageAccountConnectionStringSettingName: 'sqlMembershipObtainerStorageAccountStaging'
   }
 }

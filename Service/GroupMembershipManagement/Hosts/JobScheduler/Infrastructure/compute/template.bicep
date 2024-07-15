@@ -68,17 +68,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -98,6 +89,7 @@ var storageAccountConnectionString = resourceId(subscription().subscriptionId, d
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
+var jobSchedulerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerStorageAccountProd')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-JobScheduler'
@@ -118,9 +110,10 @@ var commonSettings = {
 }
 
 var appSettings = {
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   jobSchedulerSchedule: '0 0 0 * * Sun'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
@@ -129,27 +122,8 @@ var appSettings = {
   'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
 }
 
-var stagingSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler-staging')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobSchedulerStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 1
-  'AzureWebJobs.ResetJobsFunction.Disabled': 1
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 1
-  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 1
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 1
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 1
-  'AzureWebJobs.PostCallbackFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'JobSchedulerStaging'
-}
-
 var productionSettings = {
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
@@ -195,21 +169,6 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_JobScheduler 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-JobScheduler'
-  params: {
-    name: '${functionAppName}-JobScheduler/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_JobScheduler
-  ]
-}
-
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-JobScheduler'
   params: {
@@ -220,11 +179,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_JobScheduler.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_JobScheduler.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_JobScheduler
-    functionAppSlotTemplate_JobScheduler
   ]
 }
 
@@ -234,15 +191,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-03-01' = {
-  name: '${functionAppName}-JobScheduler/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

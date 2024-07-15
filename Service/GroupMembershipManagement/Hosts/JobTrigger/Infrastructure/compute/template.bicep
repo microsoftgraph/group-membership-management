@@ -68,17 +68,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -113,7 +104,6 @@ var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyV
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 var jobTriggerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobTriggerStorageAccountProd')
-var jobTriggerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobTriggerStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -162,21 +152,6 @@ var appSettings = {
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobTriggerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobTriggerStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.EmailSenderFunction.Disabled': 1
-  'AzureWebJobs.GroupNameReaderFunction.Disabled': 1
-  'AzureWebJobs.GroupVerifierFunction.Disabled': 1
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.SyncJobsReaderFunction.Disabled': 1
-  'AzureWebJobs.TopicMessageSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'JobTriggerStaging'
 }
 
 var productionSettings = {
@@ -235,24 +210,6 @@ module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_JobTrigger 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-JobTrigger'
-  params: {
-    name: '${functionAppName}-JobTrigger/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_JobTrigger
-  ]
-}
-
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-JobTrigger'
   params: {
@@ -263,11 +220,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_JobTrigger.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_JobTrigger.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_JobTrigger
-    functionAppSlotTemplate_JobTrigger
   ]
 }
 
@@ -277,15 +232,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-JobTrigger/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

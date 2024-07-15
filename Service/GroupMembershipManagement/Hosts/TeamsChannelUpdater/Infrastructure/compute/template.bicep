@@ -42,17 +42,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -92,7 +83,6 @@ var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, da
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var teamsChannelUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelUpdaterStorageAccountProd')
-var teamsChannelUpdaterStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'teamsChannelUpdaterStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -141,24 +131,6 @@ var appSettings = {
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   triggerSchedule: '0,30 * * * * *'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelUpdaterStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelUpdaterStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.JobReaderFunction.Disabled': 1
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.EmailSenderFunction.Disabled': 1
-  'AzureWebJobs.GroupOwnersReaderFunction.Disabled': 1
-  'AzureWebJobs.GroupNameReaderFunction.Disabled': 1
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 1
-  'AzureWebJobs.TeamsChannelUpdaterSubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.TeamsUpdaterFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'TeamsChannelUpdaterStaging'
 }
 
 var productionSettings = {
@@ -229,24 +201,6 @@ module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_TeamsChannelUpdater 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-TeamsChannelUpdater'
-  params: {
-    name: '${functionAppName}-TeamsChannelUpdater/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_TeamsChannelUpdater
-  ]
-}
-
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-TeamsChannelUpdater'
   params: {
@@ -257,11 +211,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_TeamsChannelUpdater.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_TeamsChannelUpdater.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_TeamsChannelUpdater
-    functionAppSlotTemplate_TeamsChannelUpdater
   ]
 }
 
@@ -271,15 +223,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-TeamsChannelUpdater/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

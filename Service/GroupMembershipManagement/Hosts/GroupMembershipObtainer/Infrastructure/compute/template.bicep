@@ -42,17 +42,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -92,7 +83,6 @@ var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKe
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var groupMembershipObtainerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'groupMembershipObtainerStorageAccountProd')
-var groupMembershipObtainerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'groupMembershipObtainerStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
@@ -142,29 +132,6 @@ var appSettings = {
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainerStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 1
-  'AzureWebJobs.EmailSenderFunction.Disabled': 1
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 1
-  'AzureWebJobs.GroupsReaderFunction.Disabled': 1
-  'AzureWebJobs.GroupValidatorFunction.Disabled': 1
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.MembersReaderFunction.Disabled': 1
-  'AzureWebJobs.SourceGroupsReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainerStaging'
 }
 
 var productionSettings = {
@@ -223,24 +190,6 @@ module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-GroupMembershipObtainer'
-  params: {
-    name: '${functionAppName}-GroupMembershipObtainer/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_GroupMembershipObtainer
-  ]
-}
-
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-GroupMembershipObtainer'
   params: {
@@ -251,11 +200,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_GroupMembershipObtainer.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_GroupMembershipObtainer.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_GroupMembershipObtainer
-    functionAppSlotTemplate_GroupMembershipObtainer
   ]
 }
 
@@ -265,15 +212,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-GroupMembershipObtainer/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

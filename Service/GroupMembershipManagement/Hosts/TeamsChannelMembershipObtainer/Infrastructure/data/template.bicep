@@ -21,7 +21,7 @@ param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('tcmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('tcmo${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+
 module teamsChannelMembershipObtainerStorageAccountProd 'storageAccount.bicep' = {
   name: 'tcmoProdstorageAccountTemplate'
   params: {
@@ -30,15 +30,5 @@ module teamsChannelMembershipObtainerStorageAccountProd 'storageAccount.bicep' =
     keyVaultName: keyVaultName
     location: location
     storageAccountConnectionStringSettingName: 'teamsChannelMembershipObtainerStorageAccountProd'
-  }
-}
-module teamsChannelMembershipObtainerStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'tcmoStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'teamsChannelMembershipObtainerStorageAccountStaging'
   }
 }

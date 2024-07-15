@@ -48,17 +48,8 @@ param functionAppKind string = 'functionapp'
 @description('Maximum elastic worker count.')
 param maximumElasticWorkerCount int = 1
 
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
 @description('Enter storage account name.')
 param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -87,7 +78,6 @@ var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionI
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var azureMaintenanceStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'azureMaintenanceStorageAccountProd')
-var azureMaintenanceStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'azureMaintenanceStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
@@ -132,25 +122,6 @@ var appSettings = {
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(azureMaintenanceStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureMaintenanceStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.LoggerFunction.Disabled': 1
-  'AzureWebJobs.RetrieveBackupsFunction.Disabled': 1
-  'AzureWebJobs.ReviewAndDeleteFunction.Disabled': 1
-  'AzureWebJobs.TableBackupFunction.Disabled': 1
-  'AzureWebJobs.BackUpInactiveJobsFunction.Disabled': 1
-  'AzureWebJobs.ReadGroupNameFunction.Disabled': 1
-  'AzureWebJobs.ReadSyncJobsFunction.Disabled': 1
-  'AzureWebJobs.RemoveBackUpsFunction.Disabled': 1
-  'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 1
-  'AzureWebJobs.SendEmailFunction.Disabled': 1
-  'AzureWebJobs.ExpireNotificationsFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'AzureMaintenanceStaging'
 }
 
 var productionSettings = {
@@ -222,23 +193,6 @@ module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_AzureMaintenance 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-AzureMaintenance'
-  params: {
-    name: '${functionAppName}-AzureMaintenance/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_AzureMaintenance
-  ]
-}
 
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-AzureMaintenance'
@@ -250,11 +204,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_AzureMaintenance.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_AzureMaintenance.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_AzureMaintenance
-    functionAppSlotTemplate_AzureMaintenance
   ]
 }
 
@@ -264,15 +216,5 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
     functionAppRBAC
-  ]
-}
-
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-AzureMaintenance/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
   ]
 }

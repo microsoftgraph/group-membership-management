@@ -21,7 +21,6 @@ param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('gmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('gmo${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module gmoStorageAccountProd 'storageAccount.bicep' = {
   name: 'gmoProdstorageAccountTemplate'
@@ -33,15 +32,3 @@ module gmoStorageAccountProd 'storageAccount.bicep' = {
     storageAccountConnectionStringSettingName: 'groupMembershipObtainerStorageAccountProd'
   }
 }
-
-module gmoStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'gmoStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'groupMembershipObtainerStorageAccountStaging'
-  }
-}
-
