@@ -20,7 +20,7 @@ param environmentAbbreviation string
 param tenantId string
 
 @description('Service plan name.')
-param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'GroupMembershipObtainer'),0,8)}'
+param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'JobFinalizer'),0,8)}'
 
 @description('Service plan sku')
 param servicePlanSku string = 'Y1'
@@ -91,13 +91,13 @@ var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, da
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var groupMembershipObtainerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'groupMembershipObtainerStorageAccountProd')
-var groupMembershipObtainerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'groupMembershipObtainerStorageAccountStaging')
+var jobFinalizerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobFinalizerStorageAccountProd')
+var jobFinalizerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobFinalizerStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-GroupMembershipObtainer'
+  name: 'servicePlanTemplate-JobFinalizer'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -117,8 +117,8 @@ var commonSettings = {
 var appSettings = {
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-GroupMembershipObtainer')
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-JobFinalizer')
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
@@ -145,7 +145,7 @@ var appSettings = {
 }
 
 var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainerStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
@@ -168,9 +168,9 @@ var stagingSettings = {
 }
 
 var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainer'
-  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainer'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobFinalizer'
+  AzureFunctionsWebHost__hostid: 'JobFinalizer'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -179,7 +179,7 @@ resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 }
 
 module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
-  name: 'uamiNameReader-GroupMembershipObtainer'
+  name: 'uamiNameReader-JobFinalizer'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
   }
@@ -204,9 +204,9 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 }
 
 module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
-  name: 'functionAppTemplate-GroupMembershipObtainer'
+  name: 'functionAppTemplate-JobFinalizer'
   params: {
-    name: '${functionAppName}-GroupMembershipObtainer'
+    name: '${functionAppName}-JobFinalizer'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -224,9 +224,9 @@ module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
 }
 
 module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-GroupMembershipObtainer'
+  name: 'functionAppSlotTemplate-JobFinalizer'
   params: {
-    name: '${functionAppName}-GroupMembershipObtainer/staging'
+    name: '${functionAppName}-JobFinalizer/staging'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -242,9 +242,9 @@ module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' =
 }
 
 module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-GroupMembershipObtainer'
+  name: 'functionAppsRBAC-JobFinalizer'
   params: {
-    functionName: 'GroupMembershipObtainer'
+    functionName: 'JobFinalizer'
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     dataKeyVaultName: dataKeyVaultName
@@ -260,7 +260,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-GroupMembershipObtainer/appsettings'
+  name: '${functionAppName}-JobFinalizer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, productionSettings)
   dependsOn: [
@@ -269,7 +269,7 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
 }
 
 resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-GroupMembershipObtainer/staging/appsettings'
+  name: '${functionAppName}-JobFinalizer/staging/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, stagingSettings)
   dependsOn: [

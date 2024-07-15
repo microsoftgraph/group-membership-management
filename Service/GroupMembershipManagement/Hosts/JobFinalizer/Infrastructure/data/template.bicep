@@ -30,7 +30,7 @@ module gmoStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'groupMembershipObtainerStorageAccountProd'
+    storageAccountConnectionStringSettingName: 'jobFinalizerStorageAccountProd'
   }
 }
 
@@ -41,7 +41,7 @@ module gmoStorageAccountStaging 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'groupMembershipObtainerStorageAccountStaging'
+    storageAccountConnectionStringSettingName: 'jobFinalizerStorageAccountStaging'
   }
 }
 

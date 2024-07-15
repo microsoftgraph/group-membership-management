@@ -24,7 +24,7 @@ param pipeline string
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var computeResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-compute-${environmentAbbreviation}'
-
+// TODO: Add the new function here
 // function resources
 // ----------------- JobTrigger
 module jobTriggerDataResources '../Service/GroupMembershipManagement/Hosts/JobTrigger/Infrastructure/data/template.bicep' = {
