@@ -127,6 +127,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}Notifier'
+  AzureFunctionsWebHost__hostid: 'Notifier'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-Notifier')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -153,10 +156,16 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(notifierStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}Notifier'
-  AzureFunctionsWebHost__hostid: 'Notifier'
+var activityFunctionSettings = {
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.CreateThresholdNotificationFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.RetrieveNotificationsFunction.Disabled': 0
+  'AzureWebJobs.SendNormalThresholdNotification.Disabled': 0
+  'AzureWebJobs.SendNotification.Disabled': 0
+  'AzureWebJobs.SendThresholdNotification.Disabled': 0
+  'AzureWebJobs.UpdateNotificationStatusFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -230,7 +239,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-Notifier/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

@@ -105,6 +105,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMO'
+  AzureFunctionsWebHost__hostid: 'TeamsChannelMO'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-TeamsChannelMembershipObtainer')
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
@@ -134,11 +137,16 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMO'
-  'TeamsChannelMembershipObtainer:IsDryRunEnabled': 0
-  AzureFunctionsWebHost__hostid: 'TeamsChannelMO'
+var activityFunctionSettings = {
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.ChannelValidatorFunction.Disabled': 0
+  'AzureWebJobs.FileUploaderFunction.Disabled': 0
+  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSender.Disabled': 0
+  'AzureWebJobs.TelemetryTracker.Disabled': 0
+  'AzureWebJobs.UserReaderFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -210,7 +218,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-TeamsChannelMembershipObtainer/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

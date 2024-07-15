@@ -85,7 +85,6 @@ param setRBACPermissions bool = false
 
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
-var storageAccountConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'storageAccountConnectionString')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
@@ -110,10 +109,12 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
+  AzureFunctionsWebHost__hostid: 'JobScheduler'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(storageAccountConnectionString, '2019-09-01').secretUriWithVersion})'
   jobSchedulerSchedule: '0 0 0 * * Sun'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
@@ -122,23 +123,20 @@ var appSettings = {
   'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
+var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
-  'AzureWebJobs.ResetJobsFunction.Disabled': 0
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 0
+  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
   'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 0
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
   'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
+  'AzureWebJobs.DistributeJobsFunction.Disabled': 0
+  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.PostCallbackFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'JobScheduler'
+  'AzureWebJobs.ResetJobsFunction.Disabled': 0
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
@@ -188,7 +186,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-JobScheduler/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

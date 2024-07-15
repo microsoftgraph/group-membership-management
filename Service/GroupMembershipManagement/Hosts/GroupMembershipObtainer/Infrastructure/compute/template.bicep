@@ -105,6 +105,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainer'
+  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainer'
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
@@ -134,10 +137,29 @@ var appSettings = {
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainer'
-  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainer'
+var activityFunctionSettings = {
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.SubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 0
+  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 0
+  'AzureWebJobs.DestinationNameReaderFunction.Disabled': 0
+  'AzureWebJobs.EmailSenderFunction.Disabled': 0
+  'AzureWebJobs.FeatureFlagReaderFunction.Disabled': 0
+  'AzureWebJobs.FileDeleterFunction.Disabled': 0
+  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
+  'AzureWebJobs.GetTransitiveGroupCountFunction.Disabled': 0
+  'AzureWebJobs.GetUserCountFunction.Disabled': 0
+  'AzureWebJobs.GroupReaderFunction.Disabled': 0
+  'AzureWebJobs.GroupValidatorFunction.Disabled': 0
+  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
+  'AzureWebJobs.MembersReaderFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 0
+  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 0
+  'AzureWebJobs.UsersReaderFunction.Disabled': 0
+  'AzureWebJobs.UsersSenderFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -209,7 +231,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GroupMembershipObtainer/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

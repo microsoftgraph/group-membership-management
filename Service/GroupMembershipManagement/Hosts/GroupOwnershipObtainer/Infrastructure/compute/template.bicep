@@ -104,6 +104,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupOwnershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupOwnershipObtainer'
+  AzureFunctionsWebHost__hostid: 'GroupOwnershipObtainer'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(groupOwnershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-GroupOwnershipObtainer')
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
@@ -132,21 +135,18 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupOwnershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupOwnershipObtainer'
+var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.FeatureFlagFunction.Disabled': 0
   'AzureWebJobs.GetGroupOwnersFunction.Disabled': 0
   'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
   'AzureWebJobs.JobsFilterFunction.Disabled': 0
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
   'AzureWebJobs.UsersSenderFunction.Disabled': 0
-  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
-  'AzureWebJobs.FeatureFlagFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'GroupOwnershipObtainer'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -218,7 +218,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GroupOwnershipObtainer/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

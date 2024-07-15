@@ -98,6 +98,9 @@ var commonSettings = {
 }
 
 var appSettings =  {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(azureUserReaderStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReader'
+  AzureFunctionsWebHost__hostid: 'AzureUserReader'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(azureUserReaderStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-AzureUserReader')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -117,10 +120,15 @@ var appSettings =  {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(azureUserReaderStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureUserReader'
-  AzureFunctionsWebHost__hostid: 'AzureUserReader'
+var activityFunctionSettings = {
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.PersonnelNumberReaderFunction.Disabled': 0
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.UploadUsersFunction.Disabled': 0
+  'AzureWebJobs.AzureUserCreatorFunction.Disabled': 0
+  'AzureWebJobs.UserCreatorSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.AzureUserReaderFunction.Disabled': 0
+  'AzureWebJobs.UserReaderSubOrchestratorFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -194,7 +202,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-AzureUserReader/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

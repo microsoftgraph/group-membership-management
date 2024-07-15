@@ -177,6 +177,9 @@ var commonSettings = {
 }
 
 var appSettings =  {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdService'
+  AzureFunctionsWebHost__hostid: 'NonProdService'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-NonProdService')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -194,17 +197,20 @@ var appSettings =  {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(nonProdServiceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}NonProdService'
+var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.IntegrationTestingPrepSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.LoadTestingPrepSubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled': 0
   'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
+  'AzureWebJobs.LoadTestingGroupCalculatorFunction.Disabled': 0
+  'AzureWebJobs.LoadTestingSyncJobCreatorFunction.Disabled': 0
+  'AzureWebJobs.LoadTestingSyncJobRetrieverFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.TenantUserCountFunction.Disabled': 0
   'AzureWebJobs.TenantUserReaderFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'NonProdService'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -278,7 +284,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-NonProdService/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

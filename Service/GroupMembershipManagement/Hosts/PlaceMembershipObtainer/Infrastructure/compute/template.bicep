@@ -103,7 +103,11 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(placeMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}PlaceMembershipObtainer'
+  AzureFunctionsWebHost__hostid: 'PlaceMembershipObtainer'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(placeMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-PlaceMembershipObtainer')
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
@@ -129,21 +133,17 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(placeMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-PlaceMembershipObtainer')
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}PlaceMembershipObtainer'
+var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.UsersSenderFunction.Disabled': 0
-  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
   'AzureWebJobs.SubOrchestratorFunction.Disabled': 0
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
   'AzureWebJobs.RoomsReaderFunction.Disabled': 0
-  'AzureWebJobs.WorkspacesReaderFunction.Disabled': 0
-  'AzureWebJobs.UsersReaderFunction.Disabled': 0
   'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'PlaceMembershipObtainer'
+  'AzureWebJobs.UsersReaderFunction.Disabled': 0
+  'AzureWebJobs.UsersSenderFunction.Disabled': 0
+  'AzureWebJobs.WorkspacesReaderFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -215,7 +215,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-PlaceMembershipObtainer/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

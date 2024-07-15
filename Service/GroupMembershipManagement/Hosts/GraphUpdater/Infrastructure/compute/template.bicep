@@ -105,6 +105,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
+  AzureFunctionsWebHost__hostid: 'GraphUpdater'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-GraphUpdater')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -134,10 +137,24 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsWebHost__hostid: 'GraphUpdater'
+var activityFunctionSettings = {
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.CacheUserUpdaterSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 0
+  'AzureWebJobs.CacheUpdaterFunction.Disabled': 0
+  'AzureWebJobs.EmailSenderFunction.Disabled': 0
+  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
+  'AzureWebJobs.GroupNameReaderFunction.Disabled': 0
+  'AzureWebJobs.GroupOwnersReaderFunction.Disabled': 0
+  'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
+  'AzureWebJobs.GroupValidatorFunction.Disabled': 0
+  'AzureWebJobs.JobReaderFunction.Disabled': 0
+  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
+  'AzureWebJobs.MessageReaderFunction.Disabled': 0
+  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -212,7 +229,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GraphUpdater/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

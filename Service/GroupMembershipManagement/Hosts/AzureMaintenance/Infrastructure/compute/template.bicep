@@ -100,6 +100,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(azureMaintenanceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureMaintenance'
+  AzureFunctionsWebHost__hostid: 'AzureMaintenance'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(azureMaintenanceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-AzureMaintenance')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -124,23 +127,17 @@ var appSettings = {
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(azureMaintenanceStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}AzureMaintenance'
+var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.RetrieveBackupsFunction.Disabled': 0
-  'AzureWebJobs.ReviewAndDeleteFunction.Disabled': 0
-  'AzureWebJobs.TableBackupFunction.Disabled': 0
   'AzureWebJobs.BackUpInactiveJobsFunction.Disabled': 0
+  'AzureWebJobs.EmailSenderFunction.Disabled': 0
+  'AzureWebJobs.ExpireNotificationsFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.ReadGroupNameFunction.Disabled': 0
   'AzureWebJobs.ReadSyncJobsFunction.Disabled': 0
   'AzureWebJobs.RemoveBackUpsFunction.Disabled': 0
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 0
-  'AzureWebJobs.SendEmailFunction.Disabled': 0
-  'AzureWebJobs.ExpireNotificationsFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'AzureMaintenance'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -213,7 +210,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-AzureMaintenance/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

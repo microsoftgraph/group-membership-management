@@ -128,6 +128,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SqlMembershipObtainer'
+  AzureFunctionsWebHost__hostid: 'SqlMembershipObtainer'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-SqlMembershipObtainer')
@@ -165,23 +168,19 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(sqlMembershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SqlMembershipObtainer'
+var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.ManagerOrgProcessorFunction.Disabled': 0
   'AzureWebJobs.OrganizationProcessorFunction.Disabled': 0
   'AzureWebJobs.ChildEntitiesFilterFunction.Disabled': 0
+  'AzureWebJobs.FeatureFlagFunction.Disabled': 0
   'AzureWebJobs.GroupMembershipSenderFunction.Disabled': 0
   'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.ManagerOrgReaderFunction.Disabled': 0
+  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
   'AzureWebJobs.TableNameReaderFunction.Disabled': 0
   'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
-  'AzureWebJobs.FeatureFlagFunction.Disabled': 0
-  'AzureWebJobs.QueueMessageSenderFunction.Disabled': 0
-  AzureFunctionsWebHost__hostid: 'SqlMembershipObtainer'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -253,7 +252,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-SqlMembershipObtainer/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]

@@ -123,6 +123,9 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(destinationAttributesUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}DestinationAttributesUpdater'
+  AzureFunctionsWebHost__hostid: 'DestinationAttributesUpdater'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(destinationAttributesUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-DestinationAttributesUpdater')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -150,10 +153,13 @@ var appSettings = {
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
-var productionSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(destinationAttributesUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}DestinationAttributesUpdater'
-  AzureFunctionsWebHost__hostid: 'DestinationAttributesUpdater'
+var activityFunctionSettings = {
+  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.OrchestratorFunction.Disabled': 0
+  'AzureWebJobs.AttributeCacheUpdaterFunction.Disabled': 0
+  'AzureWebJobs.AttributeReaderFunction.Disabled': 0
+  'AzureWebJobs.DestinationReaderFunction.Disabled': 0
+  'AzureWebJobs.LoggerFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -225,7 +231,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-DestinationAttributesUpdater/appsettings'
   kind: 'string'
-  properties: union(commonSettings, appSettings, productionSettings)
+  properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
     functionAppRBAC
   ]
