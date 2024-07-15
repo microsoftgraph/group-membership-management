@@ -57,29 +57,25 @@ function Set-ADFManagedIdentityRoles
     }
 
     foreach ($functionApp in $functionApps)
-	{   
-    	$ProductionFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
-		$StagingFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp/slots/staging"
-		$functionAppBasedOnSlots = @($ProductionFunctionAppName,$StagingFunctionAppName)
+	{
+    	$functionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 
-        foreach ($fa in $functionAppBasedOnSlots)
-		{
-			$servicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
+        $servicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
 
-            if ($servicePrincipal)
-			{
-                $servicePrincipals.Add($servicePrincipal)
-            }
-            elseif ($null -eq $servicePrincipal) {
-                Write-Host "Function $fa was not found!"
-            }
+        if ($servicePrincipal)
+        {
+            $servicePrincipals.Add($servicePrincipal)
         }
+        elseif ($null -eq $servicePrincipal) {
+            Write-Host "Function $functionAppName was not found!"
+        }
+
     }
 
     foreach ($appService in $appServices)
-	{   
+	{
 		$servicePrincipal = Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$appService"
-        
+
         if ($servicePrincipal)
         {
             $servicePrincipals.Add($servicePrincipal)
@@ -108,6 +104,6 @@ function Set-ADFManagedIdentityRoles
             Write-Host "$servicePrincipalName already has access to the $azureDataFactoryName ADF resource.";
         }
     }
-	
+
 	Write-Host "Done attempting to add Data Factory Contributor role assignments.";
 }

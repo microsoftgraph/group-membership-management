@@ -35,8 +35,7 @@ function Set-AppConfigurationManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$functionApps = @("GraphUpdater","MembershipAggregator","GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier","TeamsChannelMembershipObtainer","GroupOwnershipObtainer", "TeamsChannelUpdater", "DestinationAttributesUpdater")
-	$webApi = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+	$apps = @("WebApi","GraphUpdater","MembershipAggregator","GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier","TeamsChannelMembershipObtainer","GroupOwnershipObtainer", "TeamsChannelUpdater", "DestinationAttributesUpdater")
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	if($DataResourceGroupName)
@@ -47,43 +46,36 @@ function Set-AppConfigurationManagedIdentityRoles
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
 	$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName;
 
-	foreach ($functionApp in $functionApps)
+	foreach ($app in $apps)
 	{
 		Write-Host "Granting app service access to app configuration";
 
-		$ProductionFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
-		$StagingFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp/slots/staging"
+		$appName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$app"
 
-		$functionAppBasedOnSlots = @($ProductionFunctionAppName,$StagingFunctionAppName, $webApi)
+		Write-Host "FunctionAppName: $appName"
 
-		foreach ($fa in $functionAppBasedOnSlots)
+		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $appName;
+
+		# Grant the app service access to the app configuration
+		if ($appServicePrincipal)
 		{
 
-			Write-Host "FunctionAppName: $fa"
-
-			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
-
-			# Grant the app service access to the app configuration
-			if ($appServicePrincipal)
+			if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id))
 			{
-
-				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id))
-				{
-					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader";
-					if ($assignment) {
-						Write-Host "Added role assignment to allow $fa to read from the $appConfigName app configuration.";
-					}
-					else {
-						Write-Host "Failed to add role assignment to allow $fa to read from the $appConfigName app configuration. Please double check that you have permission to perform this operation";
-					}
+				$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader";
+				if ($assignment) {
+					Write-Host "Added role assignment to allow $appName to read from the $appConfigName app configuration.";
 				}
-				else
-				{
-					Write-Host "$fa can already read keys from the $appConfigName app configuration.";
+				else {
+					Write-Host "Failed to add role assignment to allow $appName to read from the $appConfigName app configuration. Please double check that you have permission to perform this operation";
 				}
-			} elseif ($null -eq $appServicePrincipal) {
-				Write-Host "Function $fa was not found!"
 			}
+			else
+			{
+				Write-Host "$appName can already read keys from the $appConfigName app configuration.";
+			}
+		} elseif ($null -eq $appServicePrincipal) {
+			Write-Host "App $appName was not found!"
 		}
 	}
 

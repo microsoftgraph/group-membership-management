@@ -50,45 +50,40 @@ function Set-StorageAccountContainerManagedIdentityRoles
 			$resourceGroupName = $DataResourceGroupName
 		}
 
-		$ProductionFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
-		$StagingFunctionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp/slots/staging"
+		$functionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 
-		$functionAppBasedOnSlots = @($ProductionFunctionAppName,$StagingFunctionAppName)
+		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
 
-		foreach ($fa in $functionAppBasedOnSlots)
+		# Grant the app service access to the storage account blobs
+		if ($appServicePrincipal)
 		{
-			$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
+			$resources = Get-AzResource -ResourceGroupName $resourceGroupName
 
-			# Grant the app service access to the storage account blobs
-			if ($appServicePrincipal)
+			$filteredStorageAccountsList = $resources | Where-Object {
+				$_.ResourceType -eq "Microsoft.Storage/storageAccounts" -and $_.Name -like "jobs$EnvironmentAbbreviation*"
+			}
+
+			$storageAccountObject = $filteredStorageAccountsList[0]
+			$storageAccountName = $storageAccountObject.Name
+
+			if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id))
 			{
-				$resources = Get-AzResource -ResourceGroupName $resourceGroupName
-
-				$filteredStorageAccountsList = $resources | Where-Object {
-					$_.ResourceType -eq "Microsoft.Storage/storageAccounts" -and $_.Name -like "jobs$EnvironmentAbbreviation*"
+				$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
+				if ($assignment) {
+					Write-Host "Added role assignment to allow $functionAppName to access on the $storageAccountName blobs.";
 				}
-
-				$storageAccountObject = $filteredStorageAccountsList[0]
-				$storageAccountName = $storageAccountObject.Name
-
-				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id))
-				{
-					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
-					if ($assignment) {
-						Write-Host "Added role assignment to allow $fa to access on the $storageAccountName blobs.";
-					}
-					else {
-						Write-Host "Failed to add role assignment to allow $fa to access on the $storageAccountName blobs. Please double check that you have permission to perform this operation";
-					}
-				}
-				else
-				{
-					Write-Host "$fa already has access to $storageAccountName blobs.";
+				else {
+					Write-Host "Failed to add role assignment to allow $functionAppName to access on the $storageAccountName blobs. Please double check that you have permission to perform this operation";
 				}
 			}
-			elseif ($null -eq $appServicePrincipal) {
-				Write-Host "Function $fa was not found!"
+			else
+			{
+				Write-Host "$functionAppName already has access to $storageAccountName blobs.";
 			}
+		}
+		elseif ($null -eq $appServicePrincipal) {
+			Write-Host "Function $functionAppName was not found!"
+
 		}
 	}
 

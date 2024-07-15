@@ -81,34 +81,30 @@ function Set-KeyVaultAccessRoles {
 
 	# Grant the Function Apps access to the keyvaults
 	foreach ($functionApp in $functionApps) {
-		$ProductionFunctionAppName = $functionApp.Name
-		$StagingFunctionAppName = "$($functionApp.Name)/slots/staging"
-		$functionAppBasedOnSlots = @($ProductionFunctionAppName, $StagingFunctionAppName)
+		$functionAppName = $functionApp.Name
 
-		foreach ($fa in $functionAppBasedOnSlots) {
-			$functionServicePrincipal = Get-AzADServicePrincipal -DisplayName $fa;
+		$functionServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
 
-			# Grant the app service access to the keyvaults
-			if ($functionServicePrincipal) {
-				# prereqs keyvault
-				Set-KVRoleAssignment `
-					-ObjectId $functionServicePrincipal.Id `
-					-DisplayName $fa `
-					-Scope $prereqsKeyVault.ResourceId `
-					-RoleDefinitionName "Key Vault Secrets User" `
-					-KeyVaultName $prereqsKeyVault.VaultName
+		# Grant the app service access to the keyvaults
+		if ($functionServicePrincipal) {
+			# prereqs keyvault
+			Set-KVRoleAssignment `
+				-ObjectId $functionServicePrincipal.Id `
+				-DisplayName $functionAppName `
+				-Scope $prereqsKeyVault.ResourceId `
+				-RoleDefinitionName "Key Vault Secrets User" `
+				-KeyVaultName $prereqsKeyVault.VaultName
 
-				# data keyvault
-				Set-KVRoleAssignment `
-					-ObjectId $functionServicePrincipal.Id `
-					-DisplayName $fa `
-					-Scope $dataKeyVault.ResourceId `
-					-RoleDefinitionName "Key Vault Secrets User" `
-					-KeyVaultName $dataKeyVault.VaultName
-			}
-			else {
-				Write-Host "Function $fa was not found!"
-			}
+			# data keyvault
+			Set-KVRoleAssignment `
+				-ObjectId $functionServicePrincipal.Id `
+				-DisplayName $functionAppName `
+				-Scope $dataKeyVault.ResourceId `
+				-RoleDefinitionName "Key Vault Secrets User" `
+				-KeyVaultName $dataKeyVault.VaultName
+		}
+		else {
+			Write-Host "Function $functionAppName was not found!"
 		}
 	}
 
