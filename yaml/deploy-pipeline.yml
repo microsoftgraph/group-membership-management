@@ -75,7 +75,7 @@ stages:
               downloadType: 'single'
               artifactName: $(Build.BuildNumber)_$(buildType)
 
-          - template: deploy-functionapps.yml
+          - template: deploy-functionapp.yml
             parameters:
               solutionAbbreviation: ${{ parameters.solutionAbbreviation }}
               environmentAbbreviation: ${{ parameters.environmentAbbreviation }}
