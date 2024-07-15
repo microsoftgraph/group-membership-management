@@ -124,6 +124,7 @@ namespace Hosts.FunctionBase
 
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabasePendingSyncJobChangesRepository, DatabasePendingSyncJobChangesRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();

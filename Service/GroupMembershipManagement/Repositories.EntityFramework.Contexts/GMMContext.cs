@@ -14,6 +14,7 @@ namespace Repositories.EntityFramework.Contexts
     {
         public DbSet<SyncJob> SyncJobs { get; set; } = null!;
         public DbSet<PurgedSyncJob> PurgedSyncJobs { get; set; } = null!;
+        public DbSet<PendingSyncJobChange> PendingSyncJobChanges { get; set; } = null!;
         public DbSet<Status> Statuses { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
         public DbSet<Entities.SqlMembershipSource> SqlMembershipSources { get; set; } = null!;
@@ -33,6 +34,10 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<PurgedSyncJob>().Property(p => p.Id)
                   .ValueGeneratedOnAdd()
                   .HasDefaultValueSql("NEWID()");
+            
+            modelBuilder.Entity<PendingSyncJobChange>().Property(p => p.Id)
+                  .ValueGeneratedOnAdd()
+                  .HasDefaultValueSql("NEWSEQUENTIALID()");
 
             modelBuilder.Entity<Setting>(entity =>
             {

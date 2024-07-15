@@ -277,6 +277,7 @@ namespace WebApi
             builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabasePendingSyncJobChangesRepository, DatabasePendingSyncJobChangesRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             builder.Services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
