@@ -21,6 +21,7 @@ import { AppDispatch } from '../../store';
 import { searchDestinations } from '../../store/manageMembership.api';
 import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
 import { useSelectedGroupById } from '../../store/groupPart.slice';
+import { selectIsJobWriter } from '../../store/roles.slice';
 import { searchGroups } from '../../store/groups.api';
 
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
@@ -33,6 +34,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   });
   const strings = useStrings();
   const dispatch = useDispatch<AppDispatch>();
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   const groupId: string = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
   const [localSearchResults, setLocalSearchResults] = useState<IPersonaProps[]>([]);
@@ -113,6 +115,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
         selectedItems={selectedGroup}
         styles={{ text: classNames.groupPicker }}
         pickerCalloutProps={{ calloutMinWidth: 500 }}
+        disabled={!isJobWriter}
       />
     </div>
   );

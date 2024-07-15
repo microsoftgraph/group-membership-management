@@ -29,6 +29,7 @@ import { useStrings } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
+import { selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -48,6 +49,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
   const compositeQuery = useSelector(manageMembershipCompositeQuery) ?? globalQuery;
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   const sourcePartQuery: HRSourcePartSource = {
     manager: {
@@ -145,7 +147,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           <div className={classNames.addButtonContainer}>
             <DefaultButton
               iconProps={{ iconName: 'Add' }}
-              onClick={newSourcePart}>
+              onClick={newSourcePart}
+              disabled={!isJobWriter}>
               {strings.ManageMembership.labels.addSourcePart}
             </DefaultButton>
           </div>

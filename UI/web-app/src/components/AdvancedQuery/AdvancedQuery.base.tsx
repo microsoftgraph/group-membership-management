@@ -27,6 +27,7 @@ import { removeUnusedProperties } from '../../utils/sourcePartUtils';
 import { SourcePartType } from '../../models/SourcePartType';
 import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { validateGroup } from '../../store/groups.api';
+import { selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IAdvancedQueryStyleProps,
@@ -74,6 +75,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const schema = schemaDefinition;
   const ajv = new Ajv();
   const advancedViewQueryFromStore = useSelector(manageMembershipAdvancedViewQuery);
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   useEffect(() => {
     setLocalQuery(advancedViewQueryFromStore || defaultAdvancedViewQuery);
@@ -172,6 +174,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
+        disabled={!isJobWriter}
       />
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>

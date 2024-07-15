@@ -210,15 +210,15 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               useLinkButton={true}
               actionOnClick={openRunConfiguration}
             />
-              <ContentContainer
-                title={strings.JobDetails.labels.sourceParts}
-                children={<label>{jobDetails?.source}</label>}
-                removeButton={isJobWriter}
-                editButton={canEditJob}
-                actionText={canEditJob ? strings.JobDetails.editButton : ''}
-                useLinkButton={true}
-                actionOnClick={openMembershipConfiguration}
-              />
+            <ContentContainer
+              title={strings.JobDetails.labels.sourceParts}
+              children={<label>{jobDetails?.source}</label>}
+              removeButton={isJobWriter}
+              editButton={canEditJob}
+              actionText={canEditJob ? strings.JobDetails.editButton : strings.JobDetails.viewDetails}
+              useLinkButton={true}
+              actionOnClick={openMembershipConfiguration}
+            />
             <div className={classNames.removeGMM}>
               {canDeleteJob &&
                 <ActionButton

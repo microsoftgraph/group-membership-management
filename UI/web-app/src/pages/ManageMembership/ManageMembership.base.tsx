@@ -95,14 +95,14 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const hasChanges = useSelector(manageMembershipHasChanges);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
-  const isJobWriter = useSelector(selectIsJobWriter)
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   // Existing job
   const jobDetailsRef = useRef(useSelector(selectSelectedJobDetails));
   const isLoading = useSelector(selectSelectedJobLoading);
 
   useEffect(() => {
-    let editingExistingJob = !!locationState?.jobId && isJobWriter;
+    let editingExistingJob = !!locationState?.jobId;
     dispatch(setIsEditingExistingJob(editingExistingJob));
 
     if (!editingExistingJob) {
@@ -120,7 +120,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     } else {
       dispatch(resetManageMembership());
     }
-  }, [dispatch, locationState, isJobWriter]);
+  }, [dispatch, locationState]);
 
   useEffect(() => {
     if (jobDetailsRef.current) {
@@ -294,7 +294,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     isNextDisabled = false;
   } else if (currentStep === OnboardingSteps.MembershipConfiguration && !isStep3ConditionsMet) {
     isNextDisabled = true;
-  } else if (currentStep === OnboardingSteps.Confirmation) {
+  } else if (currentStep === OnboardingSteps.Confirmation || !isJobWriter) {
     isNextDisabled = true;
   }
 

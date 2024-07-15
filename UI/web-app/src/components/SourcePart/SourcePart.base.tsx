@@ -26,6 +26,7 @@ import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
+import { selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -53,6 +54,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const isJobWriter = useSelector(selectIsJobWriter);
   const [expanded, setExpanded] = useState(part.isNew ||isEditingExistingJob);
   const hrSource = useSelector(selectSource);
   
@@ -190,6 +192,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               selectedKey={part.query.type}
               onChange={handleSourceTypeChanged}
+              disabled={!isJobWriter}
             />
             <ChoiceGroup
               className={classNames.exclusionaryPart}
@@ -198,10 +201,16 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               onChange={handleExclusionaryChange}
               selectedKey={isExclusionary ? 'Yes' : 'No'}
+              disabled={!isJobWriter}
             />
             {isEditingExistingJob ?
               <></>
-              : <DefaultButton iconProps={{ iconName: 'Delete' }} className={classNames.deleteButton} onClick={handleDelete} >
+              : <DefaultButton 
+                  iconProps={{ iconName: 'Delete' }} 
+                  className={classNames.deleteButton} 
+                  onClick={handleDelete}
+                  disabled={!isJobWriter}
+                >
                 {strings.delete}
               </DefaultButton>
             }
@@ -227,7 +236,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           {part.query.type === SourcePartType.HR && (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (totalSourceParts === part.id) && (
           <ActionButton
             iconProps={{ iconName: "Copy" }}
-            onClick={handleCopy}>
+            onClick={handleCopy}
+            disabled={!isJobWriter}
+          >
             {strings.copy}
         </ActionButton>
         )}

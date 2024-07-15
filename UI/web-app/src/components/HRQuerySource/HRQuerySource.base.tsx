@@ -22,6 +22,7 @@ import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
 import { selectAttributes, selectSource, selectAttributeValues, setAttributeValues } from '../../store/sqlMembershipSources.slice';
+import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
@@ -53,6 +54,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
+  const isJobWriter = useSelector(selectIsJobWriter);
   const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
   const [includeOrg, setIncludeOrg] = useState(false);
@@ -1523,6 +1525,7 @@ const checkType = (value: string, type: string | undefined): string => {
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
+        disabled={!isJobWriter}
       />
 
       {(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && objectIdEmployeeIdMapping[source.manager.id].text !== undefined)) && (
@@ -1551,6 +1554,7 @@ const checkType = (value: string, type: string | undefined): string => {
               onChange={handleOrgLeaderChange}
               styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
               pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
+              disabled={!isJobWriter}
             />
           </div>
         </Stack.Item>
@@ -1565,7 +1569,7 @@ const checkType = (value: string, type: string | undefined): string => {
             </div>
             <SpinButton
               value={source.manager?.depth?.toString()}
-              disabled={isDisabled}
+              disabled={isDisabled ||!isJobWriter}
               min={0}
               max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}
               step={1}
@@ -1588,6 +1592,7 @@ const checkType = (value: string, type: string | undefined): string => {
                 root: classNames.horizontalChoiceGroup,
                 flexContainer: classNames.horizontalChoiceGroupContainer
               }}
+              disabled={!isJobWriter}
             />
           </div>
         </Stack.Item>
@@ -1609,6 +1614,7 @@ const checkType = (value: string, type: string | undefined): string => {
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
+        disabled={!isJobWriter}
       />
 
       {(includeFilter || source.filter) &&
@@ -1621,6 +1627,7 @@ const checkType = (value: string, type: string | undefined): string => {
           styles={{ root: classNames.expandButton }}
           onClick={toggleExpand}
           title={expanded ? strings.ManageMembership.labels.collapse : strings.ManageMembership.labels.expand}
+          disabled={!isJobWriter}
         />
       </div>}
 
@@ -1643,6 +1650,7 @@ const checkType = (value: string, type: string | undefined): string => {
           styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
           validateOnLoad={false}
           validateOnFocusOut={false}
+          disabled={!isJobWriter}
         ></TextField></>
         ) : attributes && attributes.length > 0 && expanded && (includeFilter || source.filter) ?
         (
@@ -1650,13 +1658,13 @@ const checkType = (value: string, type: string | undefined): string => {
             <ActionButton
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onGroupClick}
-              disabled={!(selectedIndices.length > 1)}>
+              disabled={(!(selectedIndices.length > 1)) || !isJobWriter}>
               {strings.HROnboarding.group}
             </ActionButton>
             <ActionButton
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onUnGroupClick}
-              disabled={!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)}>
+              disabled={(!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)) || !isJobWriter}>
               {strings.HROnboarding.ungroup}
             </ActionButton>
           <br/>

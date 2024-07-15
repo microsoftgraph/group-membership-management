@@ -39,7 +39,7 @@ import {
 } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IRunConfigurationStyleProps,
@@ -68,6 +68,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   const showIncreaseDropdown = useSelector(manageMembershipShowIncreaseDropdown);
   const showDecreaseDropdown = useSelector(manageMembershipShowDecreaseDropdown);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   const defaultIncreaseThreshold: number = 100;
   const defaultDecreaseThreshold: number = 20;
@@ -129,6 +130,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
             }
           }
         }}
+        disabled={!isJobWriter}
       />
       {startDateOption === 'RequestedDate' && (
         <DatePicker
@@ -143,6 +145,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               dispatch(setNewJobStartDate(date.toDateString()));
             }
           }}
+          disabled={!isJobWriter}
         />
       )}
       <div>
@@ -158,6 +161,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               dispatch(setNewJobPeriod(Number(option.key)));
             }
           }}
+          disabled={!isJobWriter}
         />
       </div>
       <div>
@@ -189,6 +193,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               }
             }
           }}
+          disabled={!isJobWriter}
         />
         {useThresholdLimits === 'No' && (
           <MessageBar
@@ -214,6 +219,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForAdditions(-1));
                 }
               }}
+              disabled={!isJobWriter}
             />
             <Dropdown
               title={strings.ManageMembership.labels.increase}
@@ -226,6 +232,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForAdditions(Number(option.key)));
                 }
               }}
+              disabled={!isJobWriter}
             />
           </div>
 
@@ -241,6 +248,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForRemovals(-1));
                 }
               }}
+              disabled={!isJobWriter}
             />
             <Dropdown
               title={strings.ManageMembership.labels.decrease}
@@ -253,6 +261,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
                   dispatch(setNewJobThresholdPercentageForRemovals(Number(option.key)));
                 }
               }}
+              disabled={!isJobWriter}
             /></div>
         </div>
       )}

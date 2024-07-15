@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   IProcessedStyleSet,
   TextField,
@@ -27,6 +27,7 @@ import {
 import { ISourcePart } from '../../models/ISourcePart';
 import { GroupOwnershipSourcePart } from '../../models/GroupOwnershipSourcePart';
 import { PlaceMembershipSourcePart } from '../../models/PlaceMembershipSourcePart';
+import { selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IAdvancedViewSourcePartStyleProps,
@@ -52,6 +53,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
   const [localQuery, setLocalQuery] = useState<string | undefined>(JSON.stringify(part.query));
   const schema = part.query.type === 'GroupOwnership' ? GroupOwnershipSchema : PlaceMembershipSchema;
   const ajv = new Ajv();
+  const isJobWriter = useSelector(selectIsJobWriter);
 
   useEffect(() => {
     setLocalQuery(JSON.stringify(part.query));
@@ -124,6 +126,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
+        disabled={!isJobWriter}
       />
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>
