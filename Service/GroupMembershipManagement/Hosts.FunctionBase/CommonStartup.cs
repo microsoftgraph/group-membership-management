@@ -183,7 +183,7 @@ namespace Hosts.FunctionBase
                     configuration.GetValue("Mail:SkipMailNotifications", false));
             });
 
-            builder.Services.AddSingleton<IMailRepository>(services =>
+            builder.Services.AddScoped<IMailRepository>(services =>
             {
                 var mailConfig = services.GetService<IMailConfig>();
                 var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
