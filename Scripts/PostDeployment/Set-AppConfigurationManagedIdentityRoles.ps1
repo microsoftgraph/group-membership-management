@@ -35,7 +35,7 @@ function Set-AppConfigurationManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$apps = @("WebApi","GraphUpdater","MembershipAggregator","GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier","TeamsChannelMembershipObtainer","GroupOwnershipObtainer", "TeamsChannelUpdater", "DestinationAttributesUpdater")
+	$apps = @("WebApi","GraphUpdater","MembershipAggregator","GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier","TeamsChannelMembershipObtainer","GroupOwnershipObtainer", "TeamsChannelUpdater", "DestinationAttributesUpdater", "JobFinalizer")
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	if($DataResourceGroupName)

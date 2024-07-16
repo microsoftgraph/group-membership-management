@@ -36,7 +36,7 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$functionApps = @("GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","MembershipAggregator","GraphUpdater","TeamsChannelMembershipObtainer","GroupOwnershipObtainer","TeamsChannelUpdater", "DestinationAttributesUpdater")
+	$functionApps = @("GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","MembershipAggregator","GraphUpdater","TeamsChannelMembershipObtainer","GroupOwnershipObtainer","TeamsChannelUpdater", "DestinationAttributesUpdater", "JobFinalizer")
 
 	foreach ($functionApp in $functionApps)
 	{
