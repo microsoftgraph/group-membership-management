@@ -203,17 +203,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               selectedKey={isExclusionary ? 'Yes' : 'No'}
               disabled={!isJobWriter}
             />
-            {isEditingExistingJob ?
-              <></>
-              : <DefaultButton 
-                  iconProps={{ iconName: 'Delete' }} 
-                  className={classNames.deleteButton} 
-                  onClick={handleDelete}
-                  disabled={!isJobWriter}
-                >
-                {strings.delete}
-              </DefaultButton>
-            }
+            <DefaultButton 
+                iconProps={{ iconName: 'Delete' }} 
+                className={classNames.deleteButton} 
+                onClick={handleDelete}
+                disabled={!isJobWriter}
+              >
+              {strings.delete}
+            </DefaultButton>
           </div>
 
           {part.query.type === SourcePartType.HR && (
