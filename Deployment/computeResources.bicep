@@ -24,7 +24,7 @@ param pipeline string
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var computeResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-compute-${environmentAbbreviation}'
-// TODO: Add the new function here
+
 // function resources
 // ----------------- JobTrigger
 module jobTriggerDataResources '../Service/GroupMembershipManagement/Hosts/JobTrigger/Infrastructure/data/template.bicep' = {
@@ -464,6 +464,37 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
   }
   dependsOn: [
     jobSchedulerDataResources
+  ]
+}
+
+// ----------------- JobFinalizer
+module jobFinalizerDataResources '../Service/GroupMembershipManagement/Hosts/JobFinalizer/Infrastructure/data/template.bicep' = {
+  name: 'jobFinalizerDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    storageAccountName: 'notused'
+  }
+}
+
+module jobFinalizerComputeResources '../Service/GroupMembershipManagement/Hosts/JobFinalizer/Infrastructure/compute/template.bicep' = {
+  name: 'jobFinalizerComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    storageAccountName: 'notUsed'
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+  }
+  dependsOn: [
+    jobFinalizerDataResources
   ]
 }
 
