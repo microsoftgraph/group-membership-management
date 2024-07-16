@@ -15,6 +15,7 @@ using Moq;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,6 +48,8 @@ namespace Tests.Services
         private SGMembershipCalculator _membershipCalculator;
         private DurableHttpResponse _membershipAgregatorResponse;
         private TelemetryClient _telemetryClient;
+        SchemaProvider _schemaProvider;
+        private bool _isValid = true;
 
         [TestInitialize]
         public void Setup()
@@ -173,6 +176,14 @@ namespace Tests.Services
                                         {
                                             await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
                                         });
+            _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
 
         }
 
@@ -415,6 +426,114 @@ namespace Tests.Services
 
         }
 
+        [TestMethod]
+        public async Task TestMissingSchemasAsync()
+        {
+            _schemaProvider = new SchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
+
+            var orchestratorFunction = new OrchestratorFunction(
+                                            _loggingRepository.Object,
+                                            _membershipCalculator,
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
+                                            );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                                It.Is<LogMessage>(m => m.Message == $"No json schemas have been loaded. Skipping schema validation."),
+                                                It.IsAny<VerbosityLevel>(),
+                                                It.IsAny<string>(),
+                                                It.IsAny<string>()
+                                            ), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TestMissingGroupMembershipSchemaAsync()
+        {
+            _schemaProvider = SchemaProviderFactory.CreateMissingGroupMembershipSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
+
+            var orchestratorFunction = new OrchestratorFunction(
+                                            _loggingRepository.Object,
+                                            _membershipCalculator,
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
+                                            );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                                It.Is<LogMessage>(m => m.Message == $"No GroupMembership schema has been loaded. Skipping schema validation."),
+                                                It.IsAny<VerbosityLevel>(),
+                                                It.IsAny<string>(),
+                                                It.IsAny<string>()
+                                            ), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TestInvalidSchemaAsync()
+        {
+            var orchestratorFunction = new OrchestratorFunction(
+                                            _loggingRepository.Object,
+                                            _membershipCalculator,
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
+                                            );
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                   .Callback<string, object>(async (name, request) =>
+                   {
+                       await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                   })
+                   .ReturnsAsync(() => false);
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError)), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestJsonReaderExceptionAsync()
+        {
+            _schemaProvider = SchemaProviderFactory.CreateMissingGroupMembershipSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .ThrowsAsync(new JsonReaderException());
+
+            var orchestratorFunction = new OrchestratorFunction(
+                                            _loggingRepository.Object,
+                                            _membershipCalculator,
+                                            _configuration.Object,
+                                            _emailSenderRecipient.Object
+                                            );
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                                It.Is<LogMessage>(m => m.Message.Contains("Source query is not valid for job")),
+                                                It.IsAny<VerbosityLevel>(),
+                                                It.IsAny<string>(),
+                                                It.IsAny<string>()
+                                            ), Times.Once);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                   It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.QueryNotValid)), Times.Once());
+        }
+
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
             var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
@@ -455,5 +574,10 @@ namespace Tests.Services
             await function.SendMessageAsync(request);
         }
 
+        private async Task<bool> CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
+        {
+            var function = new SchemaValidatorFunction(_loggingRepository.Object, _schemaProvider);
+            return await function.ValidateSchemasAsync(request);
+        }
     }
 }
