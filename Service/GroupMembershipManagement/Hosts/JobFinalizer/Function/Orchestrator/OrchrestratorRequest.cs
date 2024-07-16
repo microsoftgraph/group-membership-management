@@ -3,7 +3,7 @@
 
 using Models;
 
-namespace Hosts.GroupMembershipObtainer
+namespace Hosts.JobFInalizer
 {
     public class OrchestratorRequest
     {

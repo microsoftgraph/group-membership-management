@@ -7,12 +7,7 @@ using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-using Repositories.BlobStorage;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
-using Repositories.GraphGroups;
-using Repositories.ServiceBusQueue;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.JobFinalizer.Startup))]
@@ -28,14 +23,13 @@ namespace Hosts.JobFinalizer
         {
             base.Configure(builder);
 
-            .AddScoped<JobFinalizerService>(services =>
+            builder.Services.AddScoped(services =>
             {
                 return new JobFinalizerService(
                     services.GetRequiredService<IDatabaseSyncJobsRepository>(),
-                    services.GetRequiredService<ILoggingRepository>(),
-
+                    services.GetRequiredService<ILoggingRepository>()
                 );
-            })
+            });
         }
     }
 }

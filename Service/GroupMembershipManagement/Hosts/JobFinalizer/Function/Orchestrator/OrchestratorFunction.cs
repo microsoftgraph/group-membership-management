@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Repositories.Contracts.InjectConfig;
 using Models.Notifications;
+using Hosts.JobFInalizer;
 
 namespace Hosts.JobFinalizer
 {
@@ -25,7 +26,7 @@ namespace Hosts.JobFinalizer
         private readonly ILoggingRepository _log;
 
         public OrchestratorFunction(
-            ILoggingRepository loggingRepository,
+            ILoggingRepository loggingRepository
             )
         {
             _log = loggingRepository;
@@ -41,17 +42,18 @@ namespace Hosts.JobFinalizer
                 var syncJob = mainRequest.SyncJob;
                 var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
                 var syncjobStatus = mainRequest.Status;
+                SyncStatus status;
 
                 if (!string.Equals(syncjobStatus, "unknown", StringComparison.OrdinalIgnoreCase))
                 {
-                    SyncStatus status = (SyncStatus)Enum.Parse(typeof(SyncStatus), syncjobStatus, true);
+                    status = (SyncStatus)Enum.Parse(typeof(SyncStatus), syncjobStatus, true);
 
                 }
                 else
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"{syncJob.TargetOfficeGroupId} pass an unknown status. Marking job as {SyncStatus.Error}."}, VerbosityLevel.DEBUG);
-                    return 
+                    return;
                 }
 
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);

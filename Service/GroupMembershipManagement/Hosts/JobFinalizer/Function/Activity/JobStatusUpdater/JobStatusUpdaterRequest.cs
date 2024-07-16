@@ -3,7 +3,7 @@
 using Models;
 using System;
 
-namespace Hosts.GroupMembershipObtainer
+namespace Hosts.JobFinalizer
 {
     public class JobStatusUpdaterRequest
     {

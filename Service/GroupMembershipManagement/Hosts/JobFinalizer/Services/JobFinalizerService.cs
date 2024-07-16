@@ -1,10 +1,9 @@
-﻿// Copyright (c) Microsoft Corporation.
+// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
 using Models.Entities;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
@@ -14,19 +13,20 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Models.Helpers;
+using Services.Contracts;
 
 namespace Hosts.JobFinalizer
 {
-    public class JobFinalizerService
+    public class JobFinalizerService : IJobFinalizerService
     {
 
         private readonly ILoggingRepository _log;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
 
 
-        public SGMembershipCalculator(
+        public JobFinalizerService(
                                       IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-                                      ILoggingRepository logging,
+                                      ILoggingRepository logging
                                       )
         {
             _log = logging;
