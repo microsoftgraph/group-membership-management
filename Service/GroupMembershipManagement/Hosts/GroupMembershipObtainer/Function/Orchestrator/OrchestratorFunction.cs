@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Repositories.Contracts.InjectConfig;
 using Models.Notifications;
+using Newtonsoft.Json.Linq;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -101,6 +102,27 @@ namespace Hosts.GroupMembershipObtainer
                     }
                     else
                     {
+                        if (!mainRequest.IsDestinationPart)
+                        {
+                            try
+                            {
+                                var queryParts = JArray.Parse(syncJob.Query);
+                                var currentPart = queryParts[mainRequest.CurrentPart - 1];
+                                var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId });
+                                if (!hasValidJson)
+                                {
+                                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob });
+                                    return;
+                                }
+                            }
+                            catch (JsonReaderException)
+                            {
+                                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source query is not valid for job:{syncJob.Id}" });
+                                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
+                                return;
+                            }
+                        }
+
                         var compressedResponse = await context.CallSubOrchestratorAsync<string>(nameof(SubOrchestratorFunction),
                                                                                                                         new GroupMembershipRequest
                                                                                                                         {
