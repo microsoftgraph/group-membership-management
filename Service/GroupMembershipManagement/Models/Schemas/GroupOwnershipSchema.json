@@ -13,25 +13,7 @@
         "items": {
         "type": "string",
         "enum": ["All", "Hybrid", "GroupMembership"]
-        },
-        "oneOf": [
-        {
-            "contains": { "const": "All" },
-            "not": { "contains": { "const": "Hybrid" } }
-        },
-        {
-            "contains": { "const": "Hybrid" },
-            "not": { "contains": { "const": "All" } }
-        },
-        {
-            "not": {
-            "anyOf": [
-                { "contains": { "const": "All" } },
-                { "contains": { "const": "Hybrid" } }
-            ]
-            }
         }
-        ]
     },
     "exclusionary": {
         "type": "boolean"
@@ -40,4 +22,3 @@
     "required": ["type", "source"],
     "additionalProperties": false
 }
-    
