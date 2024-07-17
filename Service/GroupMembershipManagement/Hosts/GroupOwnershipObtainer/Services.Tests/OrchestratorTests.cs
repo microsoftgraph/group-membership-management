@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using DIConcreteTypes;
 using Hosts.GroupOwnershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -15,6 +16,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
+using Services.Tests.Helpers;
 
 namespace Services.Tests
 {
@@ -31,7 +33,8 @@ namespace Services.Tests
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private Mock<IDurableOrchestrationContext> _durableOrchestrationContext = null!;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
-
+        SchemaProvider _schemaProvider;
+        private bool _isValid = true;
         private List<SyncJob> _sampleSyncJobs = null!;
         private SyncJob _groupOwnershipObtainerSyncJob = null!;
         private TelemetryClient _telemetryClient = null!;
@@ -187,6 +190,14 @@ namespace Services.Tests
                                         {
                                             await CallQueueMessageSenderFunctionAsync((MembershipAggregatorHttpRequest)request);
                                         });
+            _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
         }
 
         [TestMethod]
@@ -373,6 +384,49 @@ namespace Services.Tests
                                                 It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
         }
 
+        [TestMethod]
+        public async Task TestInvalidSchemaAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => false);
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
+                                    It.IsAny<IEnumerable<SyncJob>>(),
+                                    SyncStatus.SchemaError), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task TestMissingSchemasAsync()
+        {
+            _schemaProvider = new SchemaProvider();
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
+                    .ReturnsAsync(() => _isValid);
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
+
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                                                It.Is<LogMessage>(m => m.Message == $"No json schemas have been loaded. Skipping schema validation."),
+                                                It.IsAny<VerbosityLevel>(),
+                                                It.IsAny<string>(),
+                                                It.IsAny<string>()
+                                            ), Times.Once);
+        }
+
         private async Task CallLoggerFunctionAsync(LoggerRequest request)
         {
             var function = new LoggerFunction(_loggingRepository.Object);
@@ -419,6 +473,12 @@ namespace Services.Tests
         {
             var function = new QueueMessageSenderFunction(_loggingRepository.Object, _serviceBusQueueRepository.Object);
             await function.SendMessageAsync(request);
+        }
+
+        private async Task<bool> CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
+        {
+            var function = new SchemaValidatorFunction(_loggingRepository.Object, _schemaProvider);
+            return await function.ValidateSchemasAsync(request);
         }
     }
 }
