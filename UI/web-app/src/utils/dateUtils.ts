@@ -4,7 +4,8 @@
 const SQLMinDate = new Date(Date.UTC(1753, 0, 1));
 
 export function formatLastRunTime(lastSuccessfulRunTime: string): [string, number] {
-    const lastRunTimeDate = new Date(lastSuccessfulRunTime);
+    const utcLastRunTime = lastSuccessfulRunTime.endsWith('Z') ? lastSuccessfulRunTime : `${lastSuccessfulRunTime}Z`;
+    const lastRunTimeDate = new Date(utcLastRunTime);
     const today = new Date();
     const hoursAgo = Math.round(Math.abs(today.getTime() - lastRunTimeDate.getTime()) / 36e5);
 
@@ -22,7 +23,8 @@ export function formatLastRunTime(lastSuccessfulRunTime: string): [string, numbe
 }
 
 export function formatNextRunTime(estimatedNextRunTime: string, enabled: boolean): [string, number] {
-    const estimatedNextRunTimeDate = new Date(estimatedNextRunTime);
+    const utcEstimatedNextRunTime = estimatedNextRunTime.endsWith('Z') ? estimatedNextRunTime : `${estimatedNextRunTime}Z`;
+    const estimatedNextRunTimeDate = new Date(utcEstimatedNextRunTime);
     const today = new Date();
     const hoursLeft = Math.round(Math.abs(estimatedNextRunTimeDate.getTime() - today.getTime()) / 36e5);
 
