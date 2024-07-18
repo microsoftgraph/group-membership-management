@@ -36,6 +36,17 @@ import {
 
 const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFilterStyles>();
 
+const FILTER_STATE_STORAGE_KEY = 'jobsListFilterState';
+
+const saveFilterStateToLocalStorage = (state: any) => {
+  localStorage.setItem(FILTER_STATE_STORAGE_KEY, JSON.stringify(state));
+};
+
+const loadFilterStateFromLocalStorage = () => {
+  const state = localStorage.getItem(FILTER_STATE_STORAGE_KEY);
+  return state ? JSON.parse(state) : null;
+};
+
 export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> = (props: IJobsListFilterProps) => {
   const {
     className,
@@ -128,8 +139,28 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
+    const savedFilterState = loadFilterStateFromLocalStorage();
+    if (savedFilterState) {
+      setDestinationId(savedFilterState.destinationId);
+      setStatusSelectedItem(savedFilterState.statusSelectedItem);
+      setActionRequiredSelectedItem(savedFilterState.actionRequiredSelectedItem);
+      setDestinationTypeSelectedItem(savedFilterState.destinationTypeSelectedItem);
+      setDestinationName(savedFilterState.destinationName);
+      setSelectedOwners(savedFilterState.selectedOwners);
+    }
+  }, []);
 
-  }, [dispatch, ownerPickerSuggestions]);
+  useEffect(() => {
+    const filterState = {
+      destinationId,
+      statusSelectedItem,
+      actionRequiredSelectedItem,
+      destinationTypeSelectedItem,
+      destinationName,
+      selectedOwners,
+    };
+    saveFilterStateToLocalStorage(filterState);
+  }, [destinationId, statusSelectedItem, actionRequiredSelectedItem, destinationTypeSelectedItem, destinationName, selectedOwners]);
 
   const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     const inputGuid = newValue || '';
@@ -210,6 +241,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     setIdValidationErrorMessage(undefined);
     setActionRequiredSelectedItem(actionRequiredDropdownOptions[0]);
     setStatusSelectedItem(statusDropdownOptions[0]);
+
+    localStorage.removeItem(FILTER_STATE_STORAGE_KEY);
   };
 
   const getPickerSuggestions = async (
