@@ -26,7 +26,7 @@ import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
-import { parseGroup, stringifyGroups } from './QuerySerializer';
+import { containsSqlExpression, parseGroup, stringifyGroups } from './QuerySerializer';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -214,6 +214,13 @@ const checkType = (value: string, type: string | undefined): string => {
   };
 
   useEffect(() => {
+    if (props.source.filter) {
+      if (containsSqlExpression(props.source.filter)) {
+        setFilterTextEnabled(true);
+        return;
+      }
+    }
+
     if (props.source.filter && !groupingEnabled && (props.source.filter.includes("(") || props.source.filter.includes(")"))) {
       const groups = parseGroup(props.source.filter);
       if (groups.length <= 0) {

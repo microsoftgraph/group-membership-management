@@ -1,6 +1,12 @@
 import { Group } from "../../models/Group";
 import { IFilterPart } from "../../models/IFilterPart";
 
+export function containsSqlExpression(filter: string): boolean {
+  const sqlExpressions = ['IN', 'BETWEEN', 'NOT', 'LIKE', 'IS NULL', 'IS NOT NULL'];
+  const regex = new RegExp(`\\b(${sqlExpressions.join('|')})\\b`, 'i');
+  return regex.test(filter);
+};
+
 export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: number, childrenLength?: number): string {
 
     let result = '(';
