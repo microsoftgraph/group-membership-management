@@ -22,7 +22,8 @@ Set-TeamsChannelServiceAccountSecrets   -SubscriptionName "<Subscription Name>" 
                                         -EnvironmentAbbreviation "<Environment Abbreviation>" `
                                         -teamsChannelServiceAccountUsername $teamsChannelServiceAccountUsername `
                                         -teamsChannelServiceAccountPassword $teamsChannelServiceAccountPassword `
-                                        -teamsChannelServiceAccountObjectId $teamsChannelServiceAccountObjectId
+                                        -teamsChannelServiceAccountObjectId $teamsChannelServiceAccountObjectId `
+										-GmmGraphAppHasTeamsChannelApplicationPermissions $false
 #>
 
 function Set-TeamsChannelServiceAccountSecrets {
@@ -39,7 +40,9 @@ function Set-TeamsChannelServiceAccountSecrets {
         [Parameter(Mandatory=$True)]
         [SecureString] $teamsChannelServiceAccountPassword,
         [Parameter(Mandatory=$True)]
-        [SecureString] $teamsChannelServiceAccountObjectId
+        [SecureString] $teamsChannelServiceAccountObjectId,
+        [Parameter(Mandatory=$False)]
+        [SecureString] $GmmGraphAppHasTeamsChannelApplicationPermissions
     )
 
     Write-Verbose "Set-TeamsChannelServiceAccountSecrets starting..."
@@ -80,4 +83,23 @@ function Set-TeamsChannelServiceAccountSecrets {
 						 -SecretValue $teamsChannelServiceAccountObjectId
 	Write-Verbose "teamsChannelServiceAccountObjectId added to vault..."
 
+
+	#region If GMM Graph App has Application permission for Channel.ReadBasic.All and ChannelMember.ReadWrite.All, add app config value to indicate it
+	if($GmmGraphAppHasTeamsChannelApplicationPermissions) {
+
+		$dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+		$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
+		$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $dataResourceGroupName -Name $appConfigName;
+
+		Set-AzAppConfigurationKeyValue -Endpoint $appConfigObject.Endpoint `
+										-Key "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted" `
+										-Value "true" `
+										-ContentType "boolean" `
+										-Etag { tag1="TeamsChannel" }
+
+		Write-Host "Updated TeamsChannel:IsChannelReadWriteApplicationPermissionGranted key with the value True";
+
+	}
+
+	#endregion
 }
