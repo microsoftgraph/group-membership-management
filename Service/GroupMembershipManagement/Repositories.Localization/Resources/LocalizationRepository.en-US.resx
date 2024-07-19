@@ -1013,7 +1013,7 @@
 }</value>
   </data>
   <data name="EmailSubject" xml:space="preserve">
-    <value>Onboarding</value>
+    <value>[Awareness] Onboarding notification</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
@@ -1036,7 +1036,7 @@ The group **{1}** with Id: {0} **has completed its initial sync**.
     </value>
   </data>
   <data name="DisabledJobEmailSubject" xml:space="preserve">
-    <value>Management Alert</value>
+    <value>[Action Required] Sync disabled</value>
   </data>
   <data name="SyncDisabledNoGroupEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
@@ -1078,7 +1078,7 @@ If you believe this group should still be managed by Group Membership Management
 If not remediated by {2}, your group's membership will still remain, but its affiliation with GMM (including its membership definition) will be removed. You will need to re-onboard if you still want GMM to manage your group after that date.</value>
   </data>
   <data name="SyncDisabledInactivityEmailSubject" xml:space="preserve">
-    <value>Group Membership Management (GMM) update</value>
+    <value>[Final Notice] Sync disabled</value>
   </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
@@ -1096,7 +1096,7 @@ Please review your membership definition by visiting the GMM UI.
 </value>
   </data>
   <data name="NoDataEmailSubject" xml:space="preserve">
-    <value>Group Membership Management - No data found for group {1}</value>
+    <value>[Action Required] No data found for group {1}</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{0}**.
@@ -1138,10 +1138,10 @@ The group sync will be PAUSED until your response is received.
 </value>
   </data>
   <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
-    <value>[Action Required] GMM: Synchronization job for group {1} has been disabled.</value>
+    <value>[Action Required] Synchronization job for group {0} has been disabled.</value>
   </data>
   <data name="SyncThresholdEmailSubject" xml:space="preserve">
-    <value>[Action Required] GMM: Membership Change Alert review for {0}.</value>
+    <value>[Action Required] Membership Change Alert review for {0}.</value>
   </data>
   <data name="ThresholdNotificationResolution.IgnoreOnce" xml:space="preserve">
     <value>Ignore Thresholds Once</value>

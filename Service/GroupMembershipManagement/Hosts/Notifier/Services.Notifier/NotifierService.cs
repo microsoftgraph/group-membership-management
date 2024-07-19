@@ -104,9 +104,17 @@ namespace Services.Notifier
                 </body>
                 </html>";
 
+            var cardState = notification.CardState; 
+
+            string subjectKey = cardState == ThresholdNotificationCardState.DisabledCard 
+                ? "SyncThresholdDisablingJobEmailSubject" 
+                : "SyncThresholdEmailSubject";
+
+            string subject = _localizationRepository.TranslateSetting(subjectKey, groupName);
+            
             var message = new EmailMessage
             {
-                Subject = _localizationRepository.TranslateSetting("SyncThresholdEmailSubject", groupName),
+                Subject = subject,
                 Content = string.Format(htmlTemplate, adaptiveCard),
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
@@ -409,7 +417,7 @@ namespace Services.Notifier
 
             string contentTemplate;
             string[] additionalContent;
-            string[] additionalSubjectContent = new[] { job.TargetOfficeGroupId.ToString(), groupName };
+            string[] additionalSubjectContent = new[] { groupName };
 
             var thresholdEmail = GetNormalThresholdEmail(groupName, threshold, job);
             contentTemplate = thresholdEmail.ContentTemplate;
