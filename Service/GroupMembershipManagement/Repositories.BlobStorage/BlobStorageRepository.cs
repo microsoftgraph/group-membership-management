@@ -3,11 +3,14 @@
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Azure.Storage.Blobs.Specialized;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace Repositories.BlobStorage
@@ -100,6 +103,30 @@ namespace Repositories.BlobStorage
 
             if (metadata != null && metadata.Count > 0)
                 blobClient.SetMetadata(metadata);
+        }
+
+        public async Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
+        {
+            var blockBlobClient = _containerClient.GetBlockBlobClient(path);
+            var blockIdBytes = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString());
+            var blockId = Convert.ToBase64String(blockIdBytes);
+            var byteArray = Encoding.UTF8.GetBytes(content);
+
+            using (MemoryStream stream = new MemoryStream(byteArray))
+            {
+                await blockBlobClient.StageBlockAsync(blockId, stream);
+            }
+
+            if (metadata != null && metadata.Count > 0)
+                await blockBlobClient.SetMetadataAsync(metadata);
+
+            return blockId;
+        }
+
+        public async Task CommitFileAsync(string path, List<string> blockIds)
+        {
+            var blockBlobClient = _containerClient.GetBlockBlobClient(path);
+            var response = await blockBlobClient.CommitBlockListAsync(blockIds);
         }
     }
 }

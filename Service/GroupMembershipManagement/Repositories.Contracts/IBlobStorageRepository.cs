@@ -9,10 +9,12 @@ namespace Repositories.Contracts
     public interface IBlobStorageRepository
     {
         public Task UploadFileAsync(string path, string content, Dictionary<string, string> metadata = null);
+        Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null);
         public Task DeleteFileAsync(string path);
         public Task<BlobResult> DownloadFileAsync(string path);
         public Task<BlobResult> DownloadCacheFileAsync(string path);
         public Task DeleteFilesAsync(string path);
         public Task<BlobMetadataResult> GetBlobMetadataAsync(string path);
+        public Task CommitFileAsync(string path, List<string> blockIds);
     }
 }
