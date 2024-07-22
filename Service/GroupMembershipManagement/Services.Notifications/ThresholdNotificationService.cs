@@ -60,8 +60,8 @@ namespace Services.Notifications
                 GroupName = groupName,
                 ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
                 ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
-                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
-                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ChangePercentageForAdditions = GetTruncatedPercentage(notification.ChangePercentageForAdditions, notification.ThresholdPercentageForAdditions),
+                ChangePercentageForRemovals = GetTruncatedPercentage(notification.ChangePercentageForRemovals, notification.ThresholdPercentageForRemovals),
                 ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
                 ApiHostname = _apiHostname,
@@ -107,8 +107,8 @@ namespace Services.Notifications
                 GroupName = groupName,
                 ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions,
                 ChangeQuantityForRemovals = notification.ChangeQuantityForRemovals,
-                ChangePercentageForAdditions = notification.ChangePercentageForAdditions,
-                ChangePercentageForRemovals = notification.ChangePercentageForRemovals,
+                ChangePercentageForAdditions = GetTruncatedPercentage(notification.ChangePercentageForAdditions, notification.ThresholdPercentageForAdditions),
+                ChangePercentageForRemovals = GetTruncatedPercentage(notification.ChangePercentageForRemovals, notification.ThresholdPercentageForRemovals),
                 ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
                 ResolvedBy = notification.ResolvedBy,
@@ -123,6 +123,18 @@ namespace Services.Notifications
             var card = template.Expand(cardData);
 
             return card;
+        }
+
+        private double GetTruncatedPercentage(double changePercentage, int thresholdPercentage)
+        {
+            if (changePercentage - thresholdPercentage >= 1)
+            {
+                return Math.Round(changePercentage, 1);
+            }
+            else
+            {
+                return Math.Ceiling(changePercentage * 100) / 100.0;
+            }
         }
 
         /// <inheritdoc />
