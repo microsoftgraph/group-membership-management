@@ -73,6 +73,12 @@ namespace Services
             var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.TargetOfficeGroupId).ToList()))
                                .ToDictionary(x => x.ObjectId);
 
+            if (request.CustomSortBy == "targetGroupName")
+            {
+                var jobsWithNames = jobs.Select(job => new { Job = job, TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null }).ToList();
+                jobs = jobsWithNames.OrderBy(job => job.TargetGroupName).Select(job => job.Job).ToList();
+            }
+
             foreach (var job in jobs)
             {
                 var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
@@ -118,7 +124,7 @@ namespace Services
         {
             var query = _databaseSyncJobsRepository.GetSyncJobs(true);
 
-            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_READER) || 
+            if (_httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_READER) ||
                 _httpContextAccessor.HttpContext.User.IsInRole(Roles.JOB_TENANT_WRITER))
             {
                 return query;

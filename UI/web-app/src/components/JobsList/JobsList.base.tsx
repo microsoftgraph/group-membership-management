@@ -60,6 +60,7 @@ import {
   selectPagingBarfilterDestinationType,
   selectPagingBarfilterDestinationOwner,
   setPagingBarVisible,
+  setCustomSortBy,
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
@@ -148,7 +149,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isResizable: true,
       isSorted: sortKey === 'targetGroupName',
       isSortedDescending,
-      columnActionsMode: 0,
+      showSortIconWhenUnsorted: true,
     },
     {
       key: 'lastSuccessfulRunTime',
@@ -236,6 +237,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       const isSortedDescending: boolean = !!column.isSorted && !column.isSortedDescending;
       dispatch(setSortKey(column.key));
       dispatch(setIsSortedDescending(isSortedDescending));
+
+      if (column.key === 'targetGroupName') {
+        dispatch(setCustomSortBy(column.key));
+      }
     }
   }
 

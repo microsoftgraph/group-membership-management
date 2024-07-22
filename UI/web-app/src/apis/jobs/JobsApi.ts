@@ -34,17 +34,20 @@ export class JobsApi extends ApiBase implements IJobsApi {
     const response = await this.httpClient.post('/', jobWithSerializedQuery);
     this.ensureSuccessStatusCode(response);
     return response;
-}
+  }
 
   private mapPagingOptionsToODataQueryOptions(pagingOptions?: PagingOptions): ODataQueryOptions | undefined {
-    return pagingOptions
+    const queryOptions: ODataQueryOptions = pagingOptions
       ? {
           $skip: pagingOptions.itemsToSkip,
           $top: pagingOptions.pageSize,
           $orderBy: pagingOptions.orderBy,
           $filter: pagingOptions.filter,
+          customSortBy: pagingOptions.customSortBy 
         }
-      : undefined;
+      : {};
+
+    return queryOptions;
   }
 
   private mapJobEntityToJob(entity: JobEntity): Job {

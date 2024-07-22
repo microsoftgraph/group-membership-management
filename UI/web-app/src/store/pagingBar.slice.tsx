@@ -21,6 +21,7 @@ export type PagingBarState = {
   filterDestinationType?: string;
   filterDestinationName?: string;
   filterDestinationOwner?: string;
+  customSortBy?: string;
 }
 
 // Define the initial state using that type
@@ -37,7 +38,8 @@ const initialState: PagingBarState = {
   filterDestinationId: undefined,
   filterDestinationType: undefined,
   filterDestinationName: undefined,
-  filterDestinationOwner: undefined
+  filterDestinationOwner: undefined,
+  customSortBy: undefined
 };
 
 export const pagingBarSlice = createSlice({
@@ -82,6 +84,9 @@ export const pagingBarSlice = createSlice({
     },
     setFilterDestinationOwner: (state, action) => {
       state.filterDestinationOwner = action.payload;
+    },
+    setCustomSortBy: (state, action) => {
+      state.customSortBy = action.payload;
     }
   },
   extraReducers: (builder) => {
@@ -104,7 +109,8 @@ export const {
   setFilterDestinationName,
   setFilterDestinationOwner,
   setFilterActionRequired,
-  setFilterStatus
+  setFilterStatus,
+  setCustomSortBy
 } = pagingBarSlice.actions;
 export const selectPagingBar = (state: RootState) => state.pagingBar;
 export const selectPagingBarVisible = (state: RootState) => state.pagingBar.visible;
@@ -129,12 +135,13 @@ export const selectPagingOptions = (state: RootState) => {
     filterDestinationId,
     filterDestinationName,
     filterDestinationType,
-    filterDestinationOwner
+    filterDestinationOwner,
+    customSortBy
   } = state.pagingBar;
   
   let orderByString: string | undefined = undefined;
   let filters: string[] = [];
-  if (sortKey !== undefined) {
+  if (sortKey !== undefined && sortKey !== 'targetGroupName') {
     orderByString = sortKey + (isSortedDescending ? ' desc' : '');
   }
   if (filterDestinationId) {
@@ -171,7 +178,8 @@ export const selectPagingOptions = (state: RootState) => {
     orderBy: orderByString,
     filter: filterString,
     sortKey,
-    isSortedDescending
+    isSortedDescending,
+    customSortBy: customSortBy !== 'targetGroupName' ? customSortBy : undefined
   };
 };
 

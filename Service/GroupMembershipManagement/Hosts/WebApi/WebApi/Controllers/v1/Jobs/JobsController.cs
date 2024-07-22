@@ -32,9 +32,9 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpGet()]
-        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions)
+        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions, [FromQuery] string? customSortBy = null)
         {
-            var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions });
+            var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions, CustomSortBy = customSortBy });
             Response.Headers.Add("x-total-pages", response.TotalNumberOfPages.ToString());
             Response.Headers.Add("x-current-page", response.CurrentPage.ToString());
             return Ok(response.Model);
