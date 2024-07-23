@@ -24,6 +24,8 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<DestinationOwner> DestinationOwners { get; set; }
         public DbSet<Entities.SyncJobChange> SyncJobChanges { get; set; } = null!;
         public DbSet<ThresholdNotification> ThresholdNotifications { get; set; } = null!;
+        public DbSet<ServiceStatus> ServiceStatus { get; set; }
+        public DbSet<ServiceStatusHistory> ServiceStatusHistory { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -192,6 +194,19 @@ namespace Repositories.EntityFramework.Contexts
                     .IsUnicode(false);
             });
             SeedNotificationTypes(modelBuilder);
+
+
+            modelBuilder.Entity<ServiceStatus>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Status)
+                    .HasConversion(
+                        v => v.ToString(),
+                        v => (ServiceStatuses)Enum.Parse(typeof(ServiceStatuses), v))
+                    .IsUnicode(false);
+                entity.Ignore(x => x.Status);
+                entity.ToTable("ServiceStatuses");
+            });
         }
         private void SeedNotificationTypes(ModelBuilder modelBuilder)
         {

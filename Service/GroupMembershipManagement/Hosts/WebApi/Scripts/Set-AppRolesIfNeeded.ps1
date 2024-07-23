@@ -115,7 +115,7 @@ function Set-AppRolesIfNeeded {
         @{
             DisplayName        = "Hyperlink Administrator"
             Description        = "Can add, update, or remove custom URLs."
-            Value              = "Settings.Hyperlink.ReadWrite.All"
+            Value              = "Hyperlink.ReadWrite.All"
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
@@ -123,7 +123,15 @@ function Set-AppRolesIfNeeded {
         @{
             DisplayName        = "Custom Membership Provider Administrator"
             Description        = "Can add, update, or remove custom field names."
-            Value              = "Settings.CustomSource.ReadWrite.All"
+            Value              = "CustomSource.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "Reset Administrator"
+            Description        = "Can reset or stop GMM."
+            Value              = "Operations.Reset"
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
