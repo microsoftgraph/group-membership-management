@@ -80,7 +80,7 @@ export const strings: IStrings = {
   },
   AdminConfig: {
     labels: {
-      pageTitle: "Admin Configuration",
+      pageTitle: "Admin Center",
       saveButton: "Save",
       saveSuccess: "Saved successfully.",
     },
@@ -101,6 +101,13 @@ export const strings: IStrings = {
         title: "Privacy Policy",
         description: "This is the link that shows on the bottom left corner of the dashboard. It takes you to an internal site that has all the details on how XMM handles and stores user data.",
       },
+    },
+    Operations: {
+      labels: {
+        operations: "Operations",
+        title: "Stop & Restart Buttons",
+        description: "Use the Stop button to halt GMM operations and the Restart button to reboot GMM at any time.",
+      }
     },
     CustomSourceSettings: {
       labels: {

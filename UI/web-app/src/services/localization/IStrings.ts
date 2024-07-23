@@ -99,6 +99,13 @@ export type IStrings = {
         description: string;
       },
     },
+    Operations: {
+      labels: {
+        operations: string;
+        description: string;
+        title: string;
+      };
+    };
     CustomSourceSettings: {
       labels: {
         customSource: string;

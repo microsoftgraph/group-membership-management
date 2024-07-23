@@ -53,7 +53,7 @@ ReactDOM.render(
               <Route path="/" element={<JobsPage />} />
               <Route path="/JobDetails" element={<JobDetails />} />
               <Route path="/OwnerPage" element={<OwnerPage />} />
-              <Route path="/AdminConfig" element={<AdminConfig />} />
+              <Route path="/Admin" element={<AdminConfig />} />
               <Route path="/ManageMembership" element={<ManageMembership />} />
               <Route path="/NotFound" element={<NotFound />} />
             </Route>

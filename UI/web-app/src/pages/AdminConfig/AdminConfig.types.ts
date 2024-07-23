@@ -59,6 +59,11 @@ export type HyperlinkSettingsProps = {
   setHasValidationErrors: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
+export type OperationsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+};
+
 export type CustomSourceSettingsProps = {
   classNames: IProcessedStyleSet<AdminConfigStyles>;
   sqlMembershipSource: SqlMembershipSource | undefined;

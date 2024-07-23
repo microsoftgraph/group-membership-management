@@ -4,9 +4,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import { AdminConfigStyleProps, AdminConfigStyles, AdminConfigViewProps, CustomLabelCellProps, CustomSourceSettingsProps, HyperlinkSettingsProps } from './AdminConfig.types';
+import { AdminConfigStyleProps, AdminConfigStyles, AdminConfigViewProps, CustomLabelCellProps, CustomSourceSettingsProps, HyperlinkSettingsProps, OperationsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkSetting } from '../../components/HyperlinkSetting';
+import { Operation } from '../../components/Operation';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
@@ -100,6 +101,19 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings} />
                 </PivotItem>
               }
+              {true &&
+                <PivotItem
+                  headerText={strings.Operations.labels.operations}
+                  headerButtonProps={{
+                    'data-order': 1,
+                    'data-title': strings.Operations.labels.operations,
+                  }}
+                >
+                  <Operations
+                    classNames={classNames}
+                    strings={strings} />
+                </PivotItem>
+              }
             </Pivot>
           </PageSection>
         </div>
@@ -114,7 +128,19 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     </Page>
   );
 };
-
+const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsProps) => {
+  const { classNames, strings} = props;
+  return (
+    <div>
+      <div className={classNames.description}>{strings.Operations.labels.description}</div>
+      <div className={classNames.title}>
+      <Operation
+          title={strings.Operations.labels.title}
+        ></Operation>
+      </div>
+    </div>
+  );
+}
 const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (props: HyperlinkSettingsProps) => {
 
   const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;

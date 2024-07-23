@@ -82,7 +82,7 @@ export const strings: IStrings = {
   },
   AdminConfig: {
     labels: {
-      pageTitle: "Configuración de Administrador",
+      pageTitle: "Centro de Administrador",
       saveButton: "Guardar",
       saveSuccess:  "Guardado exitosamente."
     },
@@ -103,6 +103,13 @@ export const strings: IStrings = {
         title: "Política de Privacidad",
         description: "Esta es la liga que se muestra en la esquina inferior izquierda del dashboard. Te lleva a un sitio interno que tiene todos los detalles sobre cómo XMM maneja y almacena los datos de los usuarios.",
       },
+    },
+    Operations: {
+      labels: {
+        operations: "Operaciones",
+        title: "Botones de Detener y Reiniciar",
+        description: "Utilice el botón Detener para detener las operaciones de GMM y el botón Reiniciar para reiniciar GMM en cualquier momento.",
+      }
     },
     CustomSourceSettings: {
       labels: {

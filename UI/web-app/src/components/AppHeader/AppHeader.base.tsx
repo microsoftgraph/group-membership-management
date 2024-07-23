@@ -51,7 +51,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   const navigate = useNavigate();
 
   const onSettingsButtonClicked = (): void => {
-    navigate('/AdminConfig', { replace: false, state: { item: 1 } });
+    navigate('/Admin', { replace: false, state: { item: 1 } });
   };
 
   const onLogoClicked = () => {
