@@ -728,10 +728,10 @@ const checkType = (value: string, type: string | undefined): string => {
 
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
-    if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
+    if (item && (props.source.filter == undefined || props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       const a = item.key.toString();
       let filter: string;
-      if (source.filter !== "") {
+      if (source.filter && source.filter !== "") {
         filter = `${source.filter} ` + a;
       } else {
         filter = a;
