@@ -77,6 +77,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [groupingEnabled, setGroupingEnabled] = useState(false);
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -256,7 +257,7 @@ const checkType = (value: string, type: string | undefined): string => {
   }, [orgLeaderDetails.maxDepth]);
 
   useEffect(() => {
-    if (orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
+    if (orgLeaderUpdated && orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
       const id: number = orgLeaderDetails.employeeId;
       const newSource = {
         ...props.source,
@@ -268,7 +269,7 @@ const checkType = (value: string, type: string | undefined): string => {
       setSource(newSource);
       onSourceChange(newSource, partId);
     }
-  }, [orgLeaderDetails.employeeId, orgLeaderDetails.objectId]);
+  }, [orgLeaderUpdated, orgLeaderDetails.employeeId, orgLeaderDetails.objectId]);
 
   useEffect(() => {
     if (source?.manager?.id) {
@@ -279,7 +280,7 @@ const checkType = (value: string, type: string | undefined): string => {
         }))
       }
     }
-  }, [source]);
+  }, [props.source.manager?.id]);
 
   useEffect(() => {
     if (orgLeaderDetails.employeeId === 0 && orgLeaderDetails.maxDepth === 0 && includeOrg && partId === orgLeaderDetails.partId) {
@@ -311,7 +312,8 @@ const checkType = (value: string, type: string | undefined): string => {
         key: items[0].key as number,
         text: items[0].text as string,
         partId: partId as number
-      }))
+      }));
+      setOrgLeaderUpdated(true);
     }
   };
 
