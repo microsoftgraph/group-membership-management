@@ -8,6 +8,8 @@ export type OperationStyles = {
   root: IStyle;
   card: IStyle;
   title: IStyle;
+  buttonContainer: IStyle; 
+  button: IStyle;
 };
 
 export type OperationStyleProps = {

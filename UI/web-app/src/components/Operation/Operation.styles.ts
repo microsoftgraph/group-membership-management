@@ -33,5 +33,14 @@ export const getStyles = (props: OperationStyleProps): OperationStyles => {
       fontWeight: 600,
       fontSize: 16,
     },
+    buttonContainer: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+    },
+    button: {
+      margin: '10px 0',
+      width: '200px', 
+    },
   };
 };
