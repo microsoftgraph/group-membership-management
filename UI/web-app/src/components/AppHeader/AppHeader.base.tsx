@@ -15,7 +15,7 @@ import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
-import { selectIsCustomMembershipProviderAdministrator, selectIsHyperlinkAdministrator } from '../../store/roles.slice';
+import { selectIsCustomMembershipProviderAdministrator, selectIsHyperlinkAdministrator, selectIsOperationsResetAdministrator} from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -40,7 +40,8 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   const profilePhoto = useSelector(selectProfilePhoto);
   const isHyperlinkAdmin = useSelector(selectIsHyperlinkAdministrator);
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
-  const canViewSettings = isHyperlinkAdmin || isCustomMembershipProviderAdmin;
+  const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
+  const canViewSettings = isHyperlinkAdmin || isCustomMembershipProviderAdmin || isOperationsResetAdministrator;
 
   useEffect(() => {
     if (!profilePhoto) {

@@ -16,7 +16,7 @@ const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyle
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
-  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, isHyperlinkAdmin, isCustomMembershipProviderAdmin } = props;
+  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, isHyperlinkAdmin, isCustomMembershipProviderAdmin, isOperationsResetAdministrator } = props;
 
   // generate class names
   const classNames: IProcessedStyleSet<AdminConfigStyles> = getClassNames(styles, {
@@ -101,7 +101,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings} />
                 </PivotItem>
               }
-              {false &&
+              {!isOperationsResetAdministrator &&
                 <PivotItem
                   headerText={strings.Operations.labels.operations}
                   headerButtonProps={{

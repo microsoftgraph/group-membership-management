@@ -38,6 +38,7 @@ namespace WebApi.Controllers.v1.Roles
             var isSubmissionReviewer = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
             var isHyperlinkAdministrator = User.IsInRole(Models.Roles.HYPERLINK_ADMINISTRATOR);
             var isCustomMembershipProviderAdministrator = User.IsInRole(Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR);
+            var isOperationsResetAdministrator = User.IsInRole(Models.Roles.RESET_ADMINISTRATOR);
 
             var roleStatus = new Models.DTOs.RolesObject
             {
@@ -50,6 +51,7 @@ namespace WebApi.Controllers.v1.Roles
                 IsSubmissionReviewer = isSubmissionReviewer,
                 IsHyperlinkAdministrator = isHyperlinkAdministrator,
                 IsCustomMembershipProviderAdministrator = isCustomMembershipProviderAdministrator
+                IsOperationsResetAdministrator = isOperationsResetAdministrator
             };
 
             return Ok(roleStatus);

@@ -49,6 +49,7 @@ export type AdminConfigViewProps = AdminConfigProps & {
   strings: IStrings['AdminConfig'];
   isHyperlinkAdmin: boolean;
   isCustomMembershipProviderAdmin: boolean;
+  isOperationsResetAdministrator: boolean;
 };
 
 export type HyperlinkSettingsProps = {

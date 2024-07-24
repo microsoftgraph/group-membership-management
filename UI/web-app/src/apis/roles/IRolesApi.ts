@@ -11,6 +11,7 @@ export interface Roles {
   isJobTenantWriter(): boolean;
   isHyperlinkAdministrator(): boolean;
   isCustomMembershipProviderAdministrator(): boolean;
+  isOperationsResetAdministrator(): boolean;
 }
 
 

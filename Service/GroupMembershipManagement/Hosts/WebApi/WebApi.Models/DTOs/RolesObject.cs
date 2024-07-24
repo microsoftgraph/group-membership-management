@@ -19,5 +19,6 @@ namespace WebApi.Models.DTOs
         public bool IsSubmissionReviewer { get; set; }
         public bool IsHyperlinkAdministrator { get; set; }
         public bool IsCustomMembershipProviderAdministrator { get; set; }
+        public bool IsOperationsResetAdministrator { get; set; }
     }
 }

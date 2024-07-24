@@ -16,6 +16,7 @@ export type Roles = {
   isSubmissionReviewer: boolean;
   isHyperlinkAdministrator: boolean;
   isCustomMembershipProviderAdministrator: boolean;
+  isOperationsResetAdministrator: boolean;
   isFetchingRoles: boolean;
 }
 
@@ -30,6 +31,7 @@ const initialState: Roles = {
   isSubmissionReviewer: false,
   isHyperlinkAdministrator: false,
   isCustomMembershipProviderAdministrator: false,
+  isOperationsResetAdministrator: false,
   isFetchingRoles: false,
 };
 
@@ -60,6 +62,7 @@ export const selectIsJobTenantWriter = (state: RootState) => state.roles.isJobTe
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;
 export const selectIsHyperlinkAdministrator = (state: RootState) => state.roles.isHyperlinkAdministrator;
 export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
+export const selectIsOperationsResetAdministrator = (state: RootState) => state.roles.isOperationsResetAdministrator;
 
 export const selectHasAccess = (state: RootState) => {
   return state.roles.isJobOwnerReader || state.roles.isJobOwnerWriter || state.roles.isJobTenantReader || state.roles.isJobTenantWriter;
