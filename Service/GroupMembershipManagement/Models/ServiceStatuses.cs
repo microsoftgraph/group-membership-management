@@ -3,9 +3,11 @@
 
 namespace Models
 {
-    public enum ServiceStatus
+    public enum ServiceStatuses
     {
         Running,
-        Stopped
+        Stopped,
+        Resetting,
+        Stopping
     }
 }
