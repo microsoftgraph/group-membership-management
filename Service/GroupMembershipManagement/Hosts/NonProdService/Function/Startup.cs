@@ -31,8 +31,8 @@ namespace Hosts.NonProdService
 
             builder.Services
             .AddGraphAPIClient()
-            .AddSingleton<IGraphGroupRepository, GraphGroupRepository>()
-            .AddSingleton<IGraphUserRepository, GraphUserRepository>();
+            .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+            .AddScoped<IGraphUserRepository, GraphUserRepository>();
 
             builder.Services.AddOptions<LoadTestingPrepSubOrchestratorOptions>().Configure<IConfiguration>((settings, configuration) =>
             {
