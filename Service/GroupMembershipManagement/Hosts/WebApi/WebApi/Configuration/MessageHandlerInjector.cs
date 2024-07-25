@@ -16,7 +16,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse>, SearchDestinationsHandler>();
             services.AddTransient<IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse>, GetGroupEndpointsHandler>();
             services.AddTransient<IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse>, GetGroupOnboardingStatusHandler>();
-            
+
             services.AddTransient<IRequestHandler<GetSettingRequest, GetSettingResponse>, GetSettingHandler>();
             services.AddTransient<IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse>, GetAllSettingsHandler>();
             services.AddTransient<IRequestHandler<PatchSettingRequest, NullResponse>, PatchSettingHandler>();
@@ -40,6 +40,8 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<PatchJobRequest, PatchJobResponse>, PatchJobHandler>();
             services.AddTransient<IRequestHandler<PostJobRequest, PostJobResponse>, PostJobHandler>();
             services.AddTransient<IRequestHandler<RemoveGMMRequest, RemoveGMMResponse>, RemoveGMMHandler>();
+
+            services.AddTransient<IRequestHandler<PostOperationRequest, PostOperationResponse>, PostOperationHandler>();
 
             return services;
         }

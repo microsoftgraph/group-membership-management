@@ -30,10 +30,16 @@ using Repositories.GraphGroups;
 using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.NotificationsRepository;
+using Repositories.ServiceStatus;
 using Repositories.SqlMembershipRepository;
+using Services.Contracts;
 using Services.Contracts.Notifications;
+using Services.Entities;
 using Services.Notifications;
+using Services.WebApi;
+using Services.WebApi.Contracts;
 using System.Security.Claims;
+using WebApi.BackgroundServices;
 using WebApi.Configuration;
 using WebApi.Models;
 
@@ -44,6 +50,13 @@ namespace WebApi
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            builder.WebHost.ConfigureServices(services =>
+            {
+                services.AddHostedService<OperationsBackgroundService>();
+            });
+
+            builder.Services.AddSingleton<IOperationsTaskQueue, OperationsTaskQueue>();
 
             builder.Services.AddHttpContextAccessor();
 
@@ -283,7 +296,24 @@ namespace WebApi
             builder.Services.AddScoped<IDatabaseSqlMembershipSourcesRepository, DatabaseSqlMembershipSourcesRepository>();
             builder.Services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
             builder.Services.AddScoped<IJobNotificationsRepository, JobNotificationRepository>();
+            builder.Services.AddScoped<IServiceStatusRepository, ServiceStatusRepository>();
 
+            builder.Services.AddOptions<ResourceManagerServiceConfiguration>()
+                            .Configure<IConfiguration, IDataFactorySecret<IDataFactoryRepository>>((settings, configuration, dataFactorySecrets) =>
+                            {
+                                var computeResourceGroup = dataFactorySecrets.ResourceGroup.Replace("data", "compute", StringComparison.InvariantCultureIgnoreCase);
+                                settings.SubscriptionId = dataFactorySecrets.SubscriptionId;
+                                settings.DataResourceGroup = dataFactorySecrets.ResourceGroup;
+                                settings.ComputeResourceGroup = computeResourceGroup;
+
+                            });
+
+            builder.Services.AddSingleton<IResourceManagerService, ResourceManagerService>(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                return new ResourceManagerService(settings.Value, loggingRepository);
+            });
 
             var app = builder.Build();
 
