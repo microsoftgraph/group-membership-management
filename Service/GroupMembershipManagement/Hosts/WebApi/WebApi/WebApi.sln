@@ -49,6 +49,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlMembershipObtainer.Entit
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\..\GraphUpdater\Services.Entities\Services.Entities.csproj", "{3AE58292-C456-4C09-AD12-EC374BA1E4DF}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceStatus", "..\..\..\Repositories.ServiceStatus\Repositories.ServiceStatus.csproj", "{88B1C083-EE8D-4337-B411-BAF8A3AB098F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -151,6 +153,10 @@ Global
 		{3AE58292-C456-4C09-AD12-EC374BA1E4DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3AE58292-C456-4C09-AD12-EC374BA1E4DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3AE58292-C456-4C09-AD12-EC374BA1E4DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88B1C083-EE8D-4337-B411-BAF8A3AB098F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

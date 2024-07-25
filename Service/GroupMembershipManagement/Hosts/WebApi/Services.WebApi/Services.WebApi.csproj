@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.ResourceManager.AppService" Version="1.0.2" />
+    <PackageReference Include="Azure.ResourceManager.Storage" Version="1.3.0" />
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.21.0" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.OData" Version="8.2.0" />
@@ -21,6 +23,7 @@
     <ProjectReference Include="..\..\..\Repositories.DataFactory\Repositories.DataFactory.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\GraphUpdater\Services.Entities\Services.Entities.csproj" />
     <ProjectReference Include="..\Services.Messages.Contracts\Services.Messages.Contracts.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
     <ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />
