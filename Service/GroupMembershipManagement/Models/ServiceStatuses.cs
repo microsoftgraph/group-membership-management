@@ -8,6 +8,7 @@ namespace Models
         Running,
         Stopped,
         Resetting,
-        Stopping
+        Stopping,
+        Starting
     }
 }

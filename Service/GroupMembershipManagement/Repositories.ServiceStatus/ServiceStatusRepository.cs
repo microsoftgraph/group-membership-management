@@ -5,7 +5,6 @@ using Entities;
 using Microsoft.EntityFrameworkCore;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
-using ServiceStatusEntity = Entities.ServiceStatus;
 
 namespace Repositories.ServiceStatus
 {
@@ -23,20 +22,20 @@ namespace Repositories.ServiceStatus
         public async Task<Models.ServiceStatuses> GetCurrentServiceStatusAsync()
         {
             var status = await _readContext.ServiceStatusHistory.Include(x => x.StatusDetails).OrderByDescending(s => s.Timestamp).FirstAsync();
-            return status.StatusDetails.Status;
+            return status.StatusDetails.Name;
         }
 
         public Task SetServiceStatusAsync(Models.ServiceStatuses status, Guid requestorId)
         {
-            _writeContext.ServiceStatusHistory.Add(new ServiceStatusHistory
+            var statusDetails = _readContext.ServiceStatus.Single(s => s.Name == status);
+            var statusHistory = new ServiceStatusHistory
             {
                 RequestorObjectId = requestorId,
-                StatusDetails = new ServiceStatusEntity
-                {
-                    Status = status
-                }
-            });
+                ServiceStatusId = statusDetails.Id,
+                Timestamp = DateTime.UtcNow
+            };
 
+            _writeContext.ServiceStatusHistory.Add(statusHistory);
             return _writeContext.SaveChangesAsync();
         }
     }

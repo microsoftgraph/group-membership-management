@@ -199,12 +199,11 @@ namespace Repositories.EntityFramework.Contexts
             modelBuilder.Entity<ServiceStatus>(entity =>
             {
                 entity.HasKey(e => e.Id);
-                entity.Property(e => e.Status)
+                entity.Property(e => e.Name)
                     .HasConversion(
                         v => v.ToString(),
                         v => (ServiceStatuses)Enum.Parse(typeof(ServiceStatuses), v))
                     .IsUnicode(false);
-                entity.Ignore(x => x.Status);
                 entity.ToTable("ServiceStatuses");
             });
         }

@@ -9,7 +9,6 @@ namespace Entities
     public class ServiceStatus
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
-        public ServiceStatuses Status { get; set; }
+        public ServiceStatuses Name { get; set; }
     }
 }
