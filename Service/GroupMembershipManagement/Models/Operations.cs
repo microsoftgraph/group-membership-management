@@ -6,6 +6,7 @@ namespace Models
     public enum Operations
     {
         Reset,
-        Stop
+        Stop,
+        Start
     }
 }
