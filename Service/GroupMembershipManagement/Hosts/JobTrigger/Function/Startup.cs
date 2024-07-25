@@ -55,7 +55,8 @@ namespace Hosts.JobTrigger
             .AddSingleton<IKeyVaultSecret<IJobTriggerService, Guid>>(services =>
             {
                 var configuration = services.GetService<IConfiguration>();
-                return new KeyVaultSecret<IJobTriggerService, Guid>(Guid.Parse(configuration["teamsChannelServiceAccountObjectId"]));
+                var serviceAccountObjectId = string.IsNullOrWhiteSpace(configuration["teamsChannelServiceAccountObjectId"]) ? Guid.Empty : Guid.Parse(configuration["teamsChannelServiceAccountObjectId"]);
+                return new KeyVaultSecret<IJobTriggerService, Guid>(serviceAccountObjectId);
             });
 
             builder.Services.AddGraphAPIClient();
