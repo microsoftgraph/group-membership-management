@@ -47,7 +47,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"ResolveNotificationHandler request: " +
-                $"ThresholdNotificationId: {request.ThresholdNotificationId}, UserIdentifier: {request.UserIdentifier}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
+                $"ThresholdNotificationId: {request.ThresholdNotificationId}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
             });
             if (thresholdNotification == null)
             {
