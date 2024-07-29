@@ -81,6 +81,13 @@ var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataReso
 var sqlServerMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerMSIConnectionString')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
+var serviceBusFQN = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
+var serviceBusMembershipAggregatorQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipAggregatorQueue')
+var serviceBusMembershipUpdatersTopic = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipUpdatersTopic')
+var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
+var jobSchedulerFunctionBaseUrl = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionBaseUrl')
+var jobSchedulerFunctionKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionKey')
+
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
   name: appInsightsName
@@ -190,6 +197,30 @@ var appSettings = [
   {
     name: 'Settings:GraphCredentials:UserAssignedManagedIdentityClientId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:ServiceBusFQN'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:MembershipAggregatorQueue'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:MembershipUpdatersTopic'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipUpdatersTopic, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:SyncJobTopic'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:JobSchedulerFunctionBaseUrl'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerFunctionBaseUrl, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:JobSchedulerFunctionKey'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerFunctionKey, '2019-09-01').secretUriWithVersion})'
   }
 ]
 
