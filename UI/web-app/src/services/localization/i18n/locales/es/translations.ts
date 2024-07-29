@@ -107,7 +107,7 @@ export const strings: IStrings = {
     Operations: {
       labels: {
         operations: "Operaciones",
-        title: "Botones de Detener y Reiniciar",
+        title: "Panel de Control GMM",
         description: "Utilice el botón Detener para detener las operaciones de GMM y el botón Reiniciar para reiniciar GMM en cualquier momento.",
       }
     },

@@ -42,5 +42,9 @@ export const getStyles = (props: OperationStyleProps): OperationStyles => {
       margin: '10px 0',
       width: '200px', 
     },
+    description: {
+      fontSize: 14,
+      fontWeight: 400,
+    },
   };
 };

@@ -14,7 +14,7 @@ import { useStrings } from '../../store/hooks';
 export const getClassNames = classNamesFunction<OperationStyleProps, OperationStyles>();
 
 export const OperationBase: React.FunctionComponent<OperationProps> = (props: OperationProps) => {
-  const { title, className, styles } = props;
+  const { title, description, className, styles } = props;
   const classNames: IProcessedStyleSet<OperationStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -37,7 +37,9 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
 return (
   <div className={classNames.card}>
     <div className={classNames.title}>{title}</div>
+    <div className={classNames.description}>{description}</div>
     <div className={classNames.buttonContainer}>
+      
       <DefaultButton
         text={isStopped ? 'Stopped' : 'Stop GMM'}
         onClick={handleStop}

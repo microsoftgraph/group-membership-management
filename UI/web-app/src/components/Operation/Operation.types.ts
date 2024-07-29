@@ -8,6 +8,7 @@ export type OperationStyles = {
   root: IStyle;
   card: IStyle;
   title: IStyle;
+  description: IStyle;
   buttonContainer: IStyle; 
   button: IStyle;
 };
@@ -21,4 +22,5 @@ export type OperationProps = React.AllHTMLAttributes<HTMLDivElement> & {
   className?: string;
   styles?: IStyleFunctionOrObject<OperationStyleProps, OperationStyles>;
   title: string;
+  description: string;
 };

@@ -132,13 +132,11 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
   const { classNames, strings} = props;
   return (
     <div>
-      <div className={classNames.description}>{strings.Operations.labels.description}</div>
-      <div className={classNames.title}>
       <Operation
           title={strings.Operations.labels.title}
+          description={strings.Operations.labels.description}
         ></Operation>
       </div>
-    </div>
   );
 }
 const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (props: HyperlinkSettingsProps) => {
