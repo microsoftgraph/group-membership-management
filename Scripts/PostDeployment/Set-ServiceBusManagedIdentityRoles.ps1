@@ -77,5 +77,16 @@ function Set-ServiceBusManagedIdentityRoles {
 		}
 	}
 
+	$webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+	$webApiSP = $webApi.Identity.PrincipalId
+
+	if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver")) {
+		New-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver";
+		Write-Host "Added role assignment to allow $($webApi.Name) to receive on the $($serviceBusNamespace.Name) namespace.";
+	}
+	else {
+		Write-Host "$($webApi.Name) can already receive messages from the $($serviceBusNamespace.Name) queue.";
+	}
+
 	Write-Host "Done.";
 }

@@ -87,5 +87,22 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		}
 	}
 
-	Write-Host "Done attempting to add Storage Blob Data Contributor role assignments.";
+	$webApiPermissions = @("Storage Queue Data Contributor","Storage Table Data Contributor")
+	$webApi = Get-AzWebApp -ResourceGroupName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation" -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+	$webApiSP = $webApi.Identity.PrincipalId
+	$dataRG = Get-AzResourceGroup -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+	$dataRGResourceId = $dataRG.ResourceId
+
+	foreach($permission in $webApiPermissions)
+	{
+		if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $permission)) {
+			New-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $permission;
+			Write-Host "Added role assignment $permission to $($webApi.Name) with scope $dataRGResourceId.";
+		}
+		else {
+			Write-Host "$($webApi.Name) can already $permission with scope $dataRGResourceId.";
+		}
+	}
+
+	Write-Host "Done attempting to add Storage role assignments.";
 }
