@@ -27,3 +27,4 @@ export * from './HRSourcePart';
 export * from './GroupMembershipSourcePart';
 export * from './GroupOwnershipSourcePart';
 export * from './PlaceMembershipSourcePart';
+export * from './OperationStatus';

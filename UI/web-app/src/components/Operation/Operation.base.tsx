@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useState } from 'react';
-import { classNamesFunction, type IProcessedStyleSet, DefaultButton, PrimaryButton } from '@fluentui/react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { classNamesFunction, type IProcessedStyleSet, DefaultButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import type {
   OperationProps,
@@ -10,6 +11,10 @@ import type {
   OperationStyles,
 } from './Operation.types';
 import { useStrings } from '../../store/hooks';
+import { OperationStatus } from '../../models/OperationStatus';
+import { fetchOperationStatus,stopOperation, resetOperation } from '../../store/operations.api';
+import { resetError, selectOperationStatus, selectOperationIsLoading, selectOperationError } from '../../store/operations.slice';
+import { AppDispatch } from '../../store';
 
 export const getClassNames = classNamesFunction<OperationStyleProps, OperationStyles>();
 
@@ -19,40 +24,49 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
     className,
     theme: useTheme(),
   });
+
+  const dispatch: AppDispatch = useDispatch();
+  const status = useSelector(selectOperationStatus);
+  const isLoading = useSelector(selectOperationIsLoading);
+  const error = useSelector(selectOperationError);
   const strings = useStrings();
 
-  const [isStopped, setIsStopped] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
+  useEffect(() => {
+    dispatch(fetchOperationStatus());
+  }, [dispatch]);
 
-  const handleStop = () => {
-    setIsStopped(true);
-    setIsResetting(false);
+  const handleStop = async () => {
+    dispatch(stopOperation());
   };
 
-  const handleReset = () => {
-    setIsResetting(true);
-    setIsStopped(false);
+  const handleReset = async () => {
+    dispatch(resetOperation());
   };
 
-return (
-  <div className={classNames.card}>
-    <div className={classNames.title}>{title}</div>
-    <div className={classNames.description}>{description}</div>
-    <div className={classNames.buttonContainer}>
-      
-      <DefaultButton
-        text={isStopped ? 'Stopping...' : 'Stop GMM'}
-        onClick={handleStop}
-        disabled={isStopped}
-        className={classNames.button}
-      />
-      <DefaultButton
-        text={isResetting ? 'Resetting...' : 'Reset GMM'}
-        onClick={handleReset}
-        disabled={isResetting}
-        className={classNames.button}
-      />
+  useEffect(() => {
+    if (error) {
+      console.error('Operation error:', error);
+      dispatch(resetError());
+    }
+  }, [error, dispatch]);
+
+  return (
+    <div className={classNames.card}>
+      <div className={classNames.title}>{title}</div>
+      <div className={classNames.buttonContainer}>
+        <DefaultButton
+          text={status === OperationStatus.Stopped ? 'Stopped' : 'Stop GMM'}
+          onClick={handleStop}
+          disabled={isLoading || status === OperationStatus.Stopped}
+          className={classNames.button}
+        />
+        <DefaultButton
+          text={status === OperationStatus.Stopping ? 'Resetting...' : 'Reset GMM'}
+          onClick={handleReset}
+          disabled={isLoading || status !== OperationStatus.Stopped}
+          className={classNames.button}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
 };

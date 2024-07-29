@@ -3,6 +3,7 @@
 
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
+import { IOperationsApi } from '../../apis/operations/IOperationsApi';
 
 export type OperationStyles = {
   root: IStyle;
