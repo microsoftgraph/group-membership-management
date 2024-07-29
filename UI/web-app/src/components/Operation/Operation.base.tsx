@@ -53,6 +53,7 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
   return (
     <div className={classNames.card}>
       <div className={classNames.title}>{title}</div>
+      <div className={classNames.description}>{description}</div>
       <div className={classNames.buttonContainer}>
         <DefaultButton
           text={status === OperationStatus.Stopped ? 'Stopped' : 'Stop GMM'}
