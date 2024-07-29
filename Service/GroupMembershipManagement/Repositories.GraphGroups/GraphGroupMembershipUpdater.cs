@@ -339,6 +339,8 @@ namespace Repositories.GraphGroups
                                     Message = $"{response.RequestId} was not added because it is a guest user and the destination does not allow guest users",
                                     RunId = RunId
                                 });
+
+                                postResponse.ResponseCode = ResponseCode.GuestError;
                             }
                         }
                     }
