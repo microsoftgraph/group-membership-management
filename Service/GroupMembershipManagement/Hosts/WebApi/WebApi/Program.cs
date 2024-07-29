@@ -51,13 +51,6 @@ namespace WebApi
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.WebHost.ConfigureServices(services =>
-            {
-                services.AddHostedService<OperationsBackgroundService>();
-            });
-
-            builder.Services.AddSingleton<IOperationsTaskQueue, OperationsTaskQueue>();
-
             builder.Services.AddHttpContextAccessor();
 
             builder.Services.AddControllers(options =>
@@ -305,7 +298,6 @@ namespace WebApi
                                 settings.SubscriptionId = dataFactorySecrets.SubscriptionId;
                                 settings.DataResourceGroup = dataFactorySecrets.ResourceGroup;
                                 settings.ComputeResourceGroup = computeResourceGroup;
-
                             });
 
             builder.Services.AddSingleton<IResourceManagerService, ResourceManagerService>(services =>
@@ -314,6 +306,31 @@ namespace WebApi
                 var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                 return new ResourceManagerService(settings.Value, loggingRepository);
             });
+
+            builder.Services.AddOptions<OperationsSettings>().Configure<IConfiguration, IServiceProvider>((settings, configuration, services) =>
+            {
+                var rmsc = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
+                configuration.GetSection("Settings:ServiceBus").Bind(settings);
+                var functionBaseUrl = configuration.GetValue<string>("Settings:JobSchedulerFunctionBaseUrl");
+                var functionKey = configuration.GetValue<string>("Settings:JobSchedulerFunctionKey");
+                settings.JobSchedulerFunctionBaseUrl = functionBaseUrl;
+                settings.JobSchedulerFunctionKey = functionKey;
+                settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
+                settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
+            });
+
+            builder.Services.AddSingleton(services =>
+            {
+                var settings = services.GetRequiredService<IOptions<OperationsSettings>>();
+                return settings.Value;
+            });
+
+            builder.WebHost.ConfigureServices(services =>
+            {
+                services.AddHostedService<OperationsBackgroundService>();
+            });
+
+            builder.Services.AddSingleton<IOperationsTaskQueue, OperationsTaskQueue>();
 
             var app = builder.Build();
 
