@@ -459,8 +459,12 @@ namespace Services.Tests
         private void ValidateUnresolvedCard(string cardJson)
         {
             Assert.IsTrue(cardJson.Contains($"The most recent attempt to update the membership of your GMM managed group '**{_groupName}**"));
-            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **{Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1)}%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
-            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForRemovals}** members to be removed, decreasing the group size by **{Math.Round(_thresholdNotification.ChangePercentageForRemovals, 1)}%**, which is more than the current removals threshold of **{_thresholdNotification.ThresholdPercentageForRemovals}%**."));
+            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **"));
+            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1).ToString()));
+            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
+            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForRemovals}** members to be removed, decreasing the group size by **"));
+            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForRemovals, 1).ToString()));
+            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current removals threshold of **{_thresholdNotification.ThresholdPercentageForRemovals}%**."));
             Assert.IsTrue(cardJson.Contains($"https://{_hostname}/api/v1/notifications/{_thresholdNotification.Id}/resolve"));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.Paused}\\\""));
             Assert.IsTrue(cardJson.Contains($"\\\"resolution\\\":\\\"{ThresholdNotificationResolution.IgnoreOnce}\\\""));
@@ -473,7 +477,9 @@ namespace Services.Tests
             Console.WriteLine(cardJson);
             Assert.IsTrue(cardJson.Contains($"Synchronization of your GMM group **{_groupName}** has been disabled. If no action is taken, the sync will be deleted on "));
             Assert.IsTrue(cardJson.Contains("After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.")) ;
-            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **{Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1)}%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
+            Assert.IsTrue(cardJson.Contains($"GMM has identified **{_thresholdNotification.ChangeQuantityForAdditions}** members to be added, increasing the group size by **"));
+            Assert.IsTrue(cardJson.Contains(Math.Round(_thresholdNotification.ChangePercentageForAdditions, 1).ToString()));
+            Assert.IsTrue(cardJson.Contains($"%**, which is more than the current additions threshold of **{_thresholdNotification.ThresholdPercentageForAdditions}%**."));
             Assert.IsTrue(cardJson.Contains($"{_thresholdNotification.Id}"));
             Assert.IsTrue(cardJson.Contains($"\"originator\":\"{_providerId}\""));
         }

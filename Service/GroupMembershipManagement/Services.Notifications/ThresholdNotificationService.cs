@@ -51,7 +51,7 @@ namespace Services.Notifications
             }
             else
             {
-                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard and DisabledCard. Please check on this card");
+                throw new NotSupportedException("Currently the Notifier trigger only supports NextCardState of DefaultCard, DisabledCard, and ExpiredCard. Please check on this card");
             }
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
