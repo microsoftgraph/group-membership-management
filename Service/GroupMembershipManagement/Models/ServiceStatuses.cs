@@ -9,6 +9,7 @@ namespace Models
         Stopped,
         Resetting,
         Stopping,
-        Starting
+        Starting,
+        Error
     }
 }

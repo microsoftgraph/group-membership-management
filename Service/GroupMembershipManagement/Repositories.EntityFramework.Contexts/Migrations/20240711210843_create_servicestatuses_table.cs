@@ -31,7 +31,8 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 { Guid.Parse("6C8AB321-D03F-EF11-86C3-6045BDC8336C"), ServiceStatuses.Stopped },
                 { Guid.Parse("6D8AB321-D03F-EF11-86C3-6045BDC8336C"), ServiceStatuses.Resetting },
                 { Guid.Parse("6E8AB321-D03F-EF11-86C3-6045BDC8336C"), ServiceStatuses.Stopping },
-                { Guid.Parse("6F8AB321-D03F-EF11-86C3-6045BDC8336C"), ServiceStatuses.Starting }
+                { Guid.Parse("6F8AB321-D03F-EF11-86C3-6045BDC8336C"), ServiceStatuses.Starting },
+                { Guid.Parse("708AB321-D03F-EF11-86C3-6045BDC8336C"), ServiceStatuses.Error }
             };
 
             foreach (var status in statuses)

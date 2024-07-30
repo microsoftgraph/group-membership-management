@@ -49,11 +49,13 @@ namespace WebApi.BackgroundServices
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
+            OperationDetails? operationDetails = null;
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    var operationDetails = await _backgroundTaskQueue.DequeueAsync();
+                    operationDetails = await _backgroundTaskQueue.DequeueAsync();
 
                     if (operationDetails != null)
                     {
@@ -112,6 +114,7 @@ namespace WebApi.BackgroundServices
                                 Message = $"Unexpected error in {nameof(OperationsBackgroundService)}\n{ex.Message}"
                             });
 
+                    await SetStatusAsync(ServiceStatuses.Error, operationDetails?.RequestorId ?? Guid.Empty);
                     await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
                 }
             }
@@ -144,7 +147,7 @@ namespace WebApi.BackgroundServices
             while (true)
             {
                 var messages = await receiver.ReceiveMessagesAsync(100, TimeSpan.FromSeconds(10), cancellationToken);
-                if (messages == null || messages.Count == 0)
+                if (messages.Count == 0)
                 {
                     break;
                 }

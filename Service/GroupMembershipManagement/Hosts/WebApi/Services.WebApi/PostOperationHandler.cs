@@ -48,7 +48,7 @@ namespace Services.WebApi
                     return new PostOperationResponse
                     {
                         StatusCode = HttpStatusCode.OK,
-                        ResponseData = new List<string> { currentStatus.ToString() }
+                        Status = currentStatus
                     };
                 }
 
@@ -62,7 +62,7 @@ namespace Services.WebApi
                     return new PostOperationResponse
                     {
                         StatusCode = HttpStatusCode.OK,
-                        ResponseData = new List<string> { currentStatus.ToString() }
+                        Status = currentStatus
                     };
                 }
 
@@ -76,7 +76,7 @@ namespace Services.WebApi
                     return new PostOperationResponse
                     {
                         StatusCode = HttpStatusCode.OK,
-                        ResponseData = new List<string> { currentStatus.ToString() }
+                        Status = currentStatus
                     };
                 }
 
@@ -101,7 +101,7 @@ namespace Services.WebApi
                 return new PostOperationResponse
                 {
                     StatusCode = HttpStatusCode.OK,
-                    ResponseData = new List<string> { currentStatus.ToString() }
+                    Status = currentStatus
                 };
             }
             catch (Exception ex)
@@ -114,6 +114,7 @@ namespace Services.WebApi
                 return new PostOperationResponse
                 {
                     StatusCode = HttpStatusCode.InternalServerError,
+                    ErrorCode = "Error",
                     ResponseData = new List<string> { $"Unable to process {nameof(PostOperationRequest)} to {request.Operation}" }
                 };
             }
