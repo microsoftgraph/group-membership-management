@@ -20,7 +20,7 @@ param environmentAbbreviation string
 param tenantId string
 
 @description('Service plan name.')
-param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'JobFinalizer'),0,8)}'
+param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'NotifierJobFinalizer'),0,8)}'
 
 @description('Service plan sku')
 param servicePlanSku string = 'Y1'
@@ -96,16 +96,6 @@ var jobFinalizerStorageAccountStaging = resourceId(subscription().subscriptionId
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
-module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-JobFinalizer'
-  params: {
-    name: servicePlanName
-    sku: servicePlanSku
-    location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
-  }
-}
-
 var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
   WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
@@ -146,7 +136,7 @@ var appSettings = {
 
 var stagingSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainerStaging'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobFinalizerStaging'
   'AzureWebJobs.StarterFunction.Disabled': 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 1
   'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
@@ -164,7 +154,7 @@ var stagingSettings = {
   'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
   'AzureWebJobs.UsersReaderFunction.Disabled': 1
   'AzureWebJobs.UsersSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'GroupMembershipObtainerStaging'
+  AzureFunctionsWebHost__hostid: 'JobFinalizerStaging'
 }
 
 var productionSettings = {
@@ -203,7 +193,7 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
-module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
+module functionAppTemplate_JobFinalizer 'functionApp.bicep' = {
   name: 'functionAppTemplate-JobFinalizer'
   params: {
     name: '${functionAppName}-JobFinalizer'
@@ -217,13 +207,12 @@ module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
-    servicePlanTemplate
     graphUAMI
     existingLogAnalyticsWorkspace
   ]
 }
 
-module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' = {
+module functionAppSlotTemplate_JobFinalizer 'functionAppSlot.bicep' = {
   name: 'functionAppSlotTemplate-JobFinalizer'
   params: {
     name: '${functionAppName}-JobFinalizer/staging'
@@ -237,7 +226,7 @@ module functionAppSlotTemplate_GroupMembershipObtainer 'functionAppSlot.bicep' =
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
   }
   dependsOn: [
-    functionAppTemplate_GroupMembershipObtainer
+    functionAppTemplate_JobFinalizer
   ]
 }
 
@@ -250,12 +239,12 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_GroupMembershipObtainer.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_GroupMembershipObtainer.outputs.msi
+    productionSlotPrincipalId: functionAppTemplate_JobFinalizer.outputs.msi
+    stagingSlotPrincipalId: functionAppSlotTemplate_JobFinalizer.outputs.msi
   }
   dependsOn: [
-    functionAppTemplate_GroupMembershipObtainer
-    functionAppSlotTemplate_GroupMembershipObtainer
+    functionAppTemplate_JobFinalizer
+    functionAppSlotTemplate_JobFinalizer
   ]
 }
 
