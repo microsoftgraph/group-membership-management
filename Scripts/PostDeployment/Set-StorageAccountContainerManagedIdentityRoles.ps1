@@ -129,5 +129,3 @@ function Set-StorageAccountContainerManagedIdentityRoles
 
 	Write-Host "Done attempting to add Storage role assignments.";
 }
-
-Set-StorageAccountContainerManagedIdentityRoles -SolutionAbbreviation gmm -EnvironmentAbbreviation ar
