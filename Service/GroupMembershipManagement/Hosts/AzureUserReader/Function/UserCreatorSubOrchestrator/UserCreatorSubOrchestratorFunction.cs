@@ -53,7 +53,8 @@ namespace Hosts.AzureUserReader
                 var userCreatorRequest = new AzureUserCreatorRequest
                 {
                     PersonnelNumbers = batch,
-                    TenantInformation = request.TenantInformation
+                    TenantInformation = request.TenantInformation,
+                    RequestId = context.InstanceId
                 };
 
                 var newProfiles = await context.CallActivityAsync<List<GraphProfileInformation>>(nameof(AzureUserCreatorFunction), userCreatorRequest);

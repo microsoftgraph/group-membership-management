@@ -8,6 +8,7 @@ using NonProdService.LoadTestingPrepSubOrchestrator;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hosts.NonProdService
@@ -47,22 +48,30 @@ namespace Hosts.NonProdService
             {
                 var groupCount = groupSizesAndCounts[groupSize];
                 var groupIds = new List<Guid>();
-                // For each group size, create however many groups are needed and put the ids into a list associated with the group size.
-                for (var i = 0; i < groupCount; i++)
-                {
-                    var groupCreateResponse = await context.CallActivityAsync<GroupCreatorAndRetrieverResponse>(
-                        nameof(GroupCreatorAndRetrieverFunction),
-                        new GroupCreatorAndRetrieverRequest
-                        {
-                            GroupName = $"LoadTesting_DestinationGroup_{groupSize}_{i+1}",
-                            TestGroupType = TestGroupType.LoadTesting,
-                            GroupOwnersIds = new List<Guid>() { options.DestinationGroupOwnerId },
-                            RetrieveMembers = false,
-                            RunId = runId
-                        });
 
-                    groupIds.Add(groupCreateResponse.TargetGroup.ObjectId);
+                // Process groups in batches
+                const int batchSize = 10;
+                for (var i = 0; i < groupCount; i += batchSize)
+                {
+                    var batchTasks = new List<Task<GroupCreatorAndRetrieverResponse>>();
+                    for (var j = 0; j < batchSize && (i + j) < groupCount; j++)
+                    {
+                        batchTasks.Add(context.CallActivityAsync<GroupCreatorAndRetrieverResponse>(
+                            nameof(GroupCreatorAndRetrieverFunction),
+                            new GroupCreatorAndRetrieverRequest
+                            {
+                                GroupName = $"LoadTesting_DestinationGroup_{groupSize}_{i + j + 1}",
+                                TestGroupType = TestGroupType.LoadTesting,
+                                GroupOwnersIds = new List<Guid>() { options.DestinationGroupOwnerId },
+                                RetrieveMembers = false,
+                                RunId = runId
+                            }));
+                    }
+
+                    var batchResults = await Task.WhenAll(batchTasks);
+                    groupIds.AddRange(batchResults.Select(result => result.TargetGroup.ObjectId));
                 }
+
                 groupSizesAndIds.Add(groupSize, groupIds);
             }
 
