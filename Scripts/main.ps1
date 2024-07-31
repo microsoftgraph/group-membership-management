@@ -18,12 +18,4 @@ function Update-GmmMigrationIfNeeded {
 
   	Set-AzContext -SubscriptionName $SubscriptionName
 
-	Write-Verbose "Set-UpdateSqlDatabaseNames starting..."
-	. ($scriptsDirectory + '\Scripts\Set-UpdateSqlDatabaseNames.ps1')
-	Set-UpdateSqlDatabaseNames	-SubscriptionName $SubscriptionName  `
-								-SolutionAbbreviation $SolutionAbbreviation `
-								-EnvironmentAbbreviation $EnvironmentAbbreviation `
-								-Verbose
-
-	Write-Verbose "Set-UpdateSqlDatabaseNames completed."
 }
