@@ -2,12 +2,13 @@
 // Licensed under the MIT license.
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { OperationStatus } from '../models/OperationStatus';
-import { fetchOperationStatus, stopOperation, restartOperation } from './operations.api';
+import { ServiceStatuses } from '../models/ServiceStatuses';
+import { fetchServiceStatus, processOperation } from './operations.api';
+import { Operations } from '../models/Operations';
 import type { RootState } from './store';
 
 interface OperationsState {
-  status: OperationStatus | null;
+  status: ServiceStatuses | null;
   isLoading: boolean;
   error: string | null;
 }
@@ -28,40 +29,50 @@ const operationsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchOperationStatus.pending, (state) => {
+      .addCase(fetchServiceStatus.pending, (state) => {
         state.isLoading = true;
         state.error = null;
       })
-      .addCase(fetchOperationStatus.fulfilled, (state, action: PayloadAction<OperationStatus>) => {
+      .addCase(fetchServiceStatus.fulfilled, (state, action: PayloadAction<ServiceStatuses>) => {
         state.status = action.payload;
         state.isLoading = false;
       })
-      .addCase(fetchOperationStatus.rejected, (state, action) => {
+      .addCase(fetchServiceStatus.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = 'Failed to fetch operation status.';
+        state.error = 'Failed to fetch service status.';
       })
-      .addCase(stopOperation.pending, (state) => {
+      .addCase(processOperation.pending, (state, action) => {
         state.isLoading = true;
-        state.status = OperationStatus.Stopping; 
+        state.error = null;
+        switch (action.meta.arg) {
+          case Operations.Stop:
+            state.status = ServiceStatuses.Stopping;
+            break;
+          case Operations.Reset:
+            state.status = ServiceStatuses.Resetting;
+            break;
+          case Operations.Start:
+            state.status = ServiceStatuses.Starting;
+            break;
+        }
       })
-      .addCase(stopOperation.fulfilled, (state) => {
+      .addCase(processOperation.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.status = OperationStatus.Stopped; 
+        switch (action.meta.arg) {
+          case Operations.Stop:
+            state.status = ServiceStatuses.Stopped;
+            break;
+          case Operations.Reset:
+            state.status = ServiceStatuses.Running;
+            break;
+          case Operations.Start:
+            state.status = ServiceStatuses.Running;
+            break;
+        }
       })
-      .addCase(stopOperation.rejected, (state, action) => {
+      .addCase(processOperation.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = 'Failed to stop the operation.';
-      })
-      .addCase(restartOperation.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(restartOperation.fulfilled, (state) => {
-        state.isLoading = false;
-        state.status = OperationStatus.Running;
-      })
-      .addCase(restartOperation.rejected, (state, action) => {
-        state.isLoading = false;
-        state.error = 'Failed to restart the operation.';
+        state.error = `Failed to process the ${action.meta.arg} operation.`;
       });
   }
 });

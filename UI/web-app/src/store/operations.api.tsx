@@ -2,42 +2,36 @@
 // Licensed under the MIT license.
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { OperationStatus } from '../models/OperationStatus';
+import { ServiceStatuses } from '../models/ServiceStatuses';
 import { ThunkConfig } from './store';
+import { Operations } from '../models/Operations';
 
-export const fetchOperationStatus = createAsyncThunk<OperationStatus, void, ThunkConfig>(
-  'operations/fetchOperationStatus',
+export const fetchServiceStatus = createAsyncThunk<ServiceStatuses, void, ThunkConfig>(
+  'operations/fetchServiceStatus',
   async (_, { extra }) => {
     const { gmmApi } = extra.apis;
 
     try {
-      return await gmmApi.operationsApi.fetchOperationStatus();
+      return await gmmApi.operationsApi.fetchServiceStatus();
     } catch (error) {
-      throw new Error('Failed to fetch settings data!');
+      throw new Error('Failed to fetch service status data!');
     }
   }
 );
 
-export const stopOperation = createAsyncThunk<void, void, ThunkConfig>(
-    'operations/stopOperation',
-    async (_, { extra }) => {
-      const { gmmApi } = extra.apis;
-      try {
-        await gmmApi.operationsApi.stopOperation();
-      } catch (error) {
-        throw new Error('Failed to stop the operation!');
-      }
+export const processOperation = createAsyncThunk<void, Operations, ThunkConfig>(
+  'operations/processOperation',
+  async (operation, { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      await gmmApi.operationsApi.processOperation(operation);
+    } catch (error) {
+      throw new Error(`Failed to process the ${operation} operation!`);
     }
-  );
-  
-  export const resetOperation = createAsyncThunk<void, void, ThunkConfig>(
-    'operations/resetOperation',
-    async (_, { extra }) => {
-      const { gmmApi } = extra.apis;
-      try {
-        await gmmApi.operationsApi.resetOperation();
-      } catch (error) {
-        throw new Error('Failed to reset the operation!');
-      }
-    }
-  );
+  }
+);
+
+// Usage examples:
+export const resetOperation = () => processOperation(Operations.Reset);
+export const stopOperation = () => processOperation(Operations.Stop);
+export const startOperation = () => processOperation(Operations.Start);

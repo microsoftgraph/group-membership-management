@@ -1,26 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { OperationStatus } from '../../models/OperationStatus';
+import { ServiceStatuses, Operations } from '../../models';
 import { ApiBase } from '../ApiBase';
 import { IOperationsApi } from './IOperationsApi';
 
 
 export class OperationsApi extends ApiBase implements IOperationsApi {
-  public async fetchOperationStatus(): Promise<OperationStatus> {
-    const response = await this.httpClient.get<OperationStatus>('/');
+
+  public async processOperation(operation: Operations): Promise<void> {
+    const response = await this.httpClient.post(`/operations/${operation}`, {});
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
-  public async stopOperation(): Promise<void> {
-    const response = await this.httpClient.post('/stop', {});
+
+  public async fetchServiceStatus(): Promise<ServiceStatuses> {
+    const response = await this.httpClient.get<ServiceStatuses>('/operations/servicestatus');
     this.ensureSuccessStatusCode(response);
-    return response.data;  
-  }
-  public async resetOperation(): Promise<void> {
-    const response = await this.httpClient.post('/reset', {});
-    this.ensureSuccessStatusCode(response);
-    return response.data; 
+    return response.data;
   }
 
 }
