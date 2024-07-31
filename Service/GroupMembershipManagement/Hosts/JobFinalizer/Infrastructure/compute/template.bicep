@@ -22,9 +22,6 @@ param tenantId string
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'NotifierJobFinalizer'),0,8)}'
 
-@description('Service plan sku')
-param servicePlanSku string = 'Y1'
-
 @description('Resource location.')
 param location string
 
@@ -38,21 +35,6 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'container'
 ])
 param functionAppKind string = 'functionapp'
-
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
-
-@description('Enter application insights name.')
-param appInsightsName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Resource group where Application Insights is located.')
-param appInsightsResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-
-@description('Enter storage account name.')
-param storageAccountName string
-
-@description('Resource group where storage account is located.')
-param storageAccountResourceGroup string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -92,7 +74,6 @@ var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKe
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var jobFinalizerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobFinalizerStorageAccountProd')
-var jobFinalizerStorageAccountStaging = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobFinalizerStorageAccountStaging')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 
@@ -132,29 +113,6 @@ var appSettings = {
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-}
-
-var stagingSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountStaging, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobFinalizerStaging'
-  'AzureWebJobs.StarterFunction.Disabled': 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 1
-  'AzureWebJobs.SubOrchestratorFunction.Disabled': 1
-  'AzureWebJobs.DeltaUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.DeltaUsersSenderFunction.Disabled': 1
-  'AzureWebJobs.EmailSenderFunction.Disabled': 1
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 1
-  'AzureWebJobs.GroupsReaderFunction.Disabled': 1
-  'AzureWebJobs.GroupValidatorFunction.Disabled': 1
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 1
-  'AzureWebJobs.MembersReaderFunction.Disabled': 1
-  'AzureWebJobs.SourceGroupsReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentMembersReaderFunction.Disabled': 1
-  'AzureWebJobs.SubsequentUsersReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersReaderFunction.Disabled': 1
-  'AzureWebJobs.UsersSenderFunction.Disabled': 1
-  AzureFunctionsWebHost__hostid: 'JobFinalizerStaging'
 }
 
 var productionSettings = {
@@ -212,23 +170,6 @@ module functionAppTemplate_JobFinalizer 'functionApp.bicep' = {
   ]
 }
 
-module functionAppSlotTemplate_JobFinalizer 'functionAppSlot.bicep' = {
-  name: 'functionAppSlotTemplate-JobFinalizer'
-  params: {
-    name: '${functionAppName}-JobFinalizer/staging'
-    kind: functionAppKind
-    location: location
-    servicePlanName: servicePlanName
-    secretSettings: commonSettings
-    userManagedIdentities:{
-      '${graphUAMI.id}' : {}
-    }
-    logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-  }
-  dependsOn: [
-    functionAppTemplate_JobFinalizer
-  ]
-}
 
 module functionAppRBAC 'functionAppRBAC.bicep' = {
   name: 'functionAppsRBAC-JobFinalizer'
@@ -240,11 +181,9 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionAppTemplate_JobFinalizer.outputs.msi
-    stagingSlotPrincipalId: functionAppSlotTemplate_JobFinalizer.outputs.msi
   }
   dependsOn: [
     functionAppTemplate_JobFinalizer
-    functionAppSlotTemplate_JobFinalizer
   ]
 }
 
@@ -257,12 +196,3 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   ]
 }
 
-resource functionAppStagingSettings 'Microsoft.Web/sites/slots/config@2022-09-01' = {
-  name: '${functionAppName}-JobFinalizer/staging/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, stagingSettings)
-  dependsOn: [
-    functionAppRBAC
-    functionAppSettings
-  ]
-}

@@ -16,9 +16,6 @@ param setRBACPermissions bool
 @description('The principalId of the function app for the production slot.')
 param productionSlotPrincipalId string
 
-@description('The principalId of the function app for the staging slot.')
-param stagingSlotPrincipalId string
-
 param functionName string
 
 module functionAppPrereqsRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
@@ -41,22 +38,3 @@ module functionAppDataRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
   }
 }
 
-module functionAppSlotPrereqsRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
-  name: 'prereqsKV-rbac-${functionName}Slot'
-  scope: resourceGroup(prereqsKeyVaultResourceGroup)
-  params: {
-    keyVaultName: prereqsKeyVaultName
-    principalId: stagingSlotPrincipalId
-    roleName: 'Key Vault Secrets User'
-  }
-}
-
-module functionAppSlotDataRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
-  name: 'dataKV-rbac-${functionName}Slot'
-  scope: resourceGroup(dataKeyVaultResourceGroup)
-  params: {
-    keyVaultName: dataKeyVaultName
-    principalId: stagingSlotPrincipalId
-    roleName: 'Key Vault Secrets User'
-  }
-}
