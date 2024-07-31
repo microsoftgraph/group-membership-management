@@ -57,6 +57,13 @@ namespace Hosts.AzureUserReader
                     RequestId = context.InstanceId
                 };
 
+                if (!context.IsReplaying)
+                    _ = _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"UserCreatorRequest: {Newtonsoft.Json.JsonConvert.SerializeObject(userCreatorRequest)}",
+                        RunId = null
+                    });
+
                 var newProfiles = await context.CallActivityAsync<List<GraphProfileInformation>>(nameof(AzureUserCreatorFunction), userCreatorRequest);
                 profiles.AddRange(newProfiles);
 

@@ -465,6 +465,16 @@ namespace Repositories.GraphGroups
 
                 }
             }
+            catch (ODataError ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"ODataError: {ex.GetBaseException().ToString()}",
+                    RunId = runId
+                });
+
+                throw;
+            }
             catch (Exception ex)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage

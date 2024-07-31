@@ -28,6 +28,12 @@ namespace Hosts.AzureUserReader
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" }, VerbosityLevel.DEBUG);
 
+            if (request == null)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} exception, request is null" }, VerbosityLevel.DEBUG);
+                throw new ArgumentNullException(nameof(request));
+            }
+
             var newUsers = request.PersonnelNumbers.Select(x => new GraphUser
             {
                 DisplayName = $"{request.TenantInformation.EmailPrefix} {x}",
