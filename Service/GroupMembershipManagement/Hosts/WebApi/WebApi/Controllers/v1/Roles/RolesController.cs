@@ -50,7 +50,7 @@ namespace WebApi.Controllers.v1.Roles
                 IsJobTenantWriter = isJobTenantWriter,
                 IsSubmissionReviewer = isSubmissionReviewer,
                 IsHyperlinkAdministrator = isHyperlinkAdministrator,
-                IsCustomMembershipProviderAdministrator = isCustomMembershipProviderAdministrator
+                IsCustomMembershipProviderAdministrator = isCustomMembershipProviderAdministrator,
                 IsOperationsResetAdministrator = isOperationsResetAdministrator
             };
 
