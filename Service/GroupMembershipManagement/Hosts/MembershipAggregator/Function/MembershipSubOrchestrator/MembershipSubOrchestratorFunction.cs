@@ -252,6 +252,7 @@ namespace Hosts.MembershipAggregator
                                 {
                                     SyncJob = request.SyncJob,
                                     Status = SyncStatus.Idle,
+                                    ThresholdViolations = 0,
                                     DeltaStatus = MembershipDeltaStatus.NoChanges
                                 });
             }
