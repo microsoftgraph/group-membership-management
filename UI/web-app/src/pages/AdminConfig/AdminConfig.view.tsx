@@ -101,7 +101,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings} />
                 </PivotItem>
               }
-              {true &&
+              {false &&
                 <PivotItem
                   headerText={strings.Operations.labels.operations}
                   headerButtonProps={{
