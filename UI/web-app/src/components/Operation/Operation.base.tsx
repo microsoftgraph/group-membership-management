@@ -22,15 +22,15 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
   const strings = useStrings();
 
   const [isStopped, setIsStopped] = useState(false);
-  const [isRestarting, setIsRestarting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleStop = () => {
     setIsStopped(true);
-    setIsRestarting(false);
+    setIsResetting(false);
   };
 
-  const handleRestart = () => {
-    setIsRestarting(true);
+  const handleReset = () => {
+    setIsResetting(true);
     setIsStopped(false);
   };
 
@@ -41,15 +41,15 @@ return (
     <div className={classNames.buttonContainer}>
       
       <DefaultButton
-        text={isStopped ? 'Stopped' : 'Stop GMM'}
+        text={isStopped ? 'Stopping...' : 'Stop GMM'}
         onClick={handleStop}
         disabled={isStopped}
         className={classNames.button}
       />
       <DefaultButton
-        text={isRestarting ? 'Restarting...' : 'Restart GMM'}
-        onClick={handleRestart}
-        disabled={isRestarting}
+        text={isResetting ? 'Resetting...' : 'Reset GMM'}
+        onClick={handleReset}
+        disabled={isResetting}
         className={classNames.button}
       />
     </div>
