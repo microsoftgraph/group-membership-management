@@ -62,16 +62,16 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
       <div className={classNames.title}>{title}</div>
       <div className={classNames.description}>{description}</div>
       <div className={classNames.buttonContainer}>
-        {status === ServiceStatuses.Stopped ? (
+        {status === ServiceStatuses.Stopped || status === ServiceStatuses.Starting ? (
           <DefaultButton
-            text="Start GMM"
+            text={status === ServiceStatuses.Starting ? 'Starting...' : 'Start GMM'} 
             onClick={handleStart}
             disabled={isButtonDisabled}
             className={classNames.button}
           />
         ) : (
           <DefaultButton
-            text="Stop GMM"
+            text={status === ServiceStatuses.Stopping ? 'Stopping...' : 'Stop GMM'} 
             onClick={handleStop}
             disabled={isButtonDisabled || status !== ServiceStatuses.Running}
             className={classNames.button}
@@ -80,7 +80,7 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
         <DefaultButton
           text={status === ServiceStatuses.Resetting ? 'Resetting...' : 'Reset GMM'}
           onClick={handleReset}
-          disabled={isButtonDisabled || status !== ServiceStatuses.Stopped}
+          disabled={isButtonDisabled || status !== ServiceStatuses.Running}
           className={classNames.button}
         />
       </div>

@@ -29,3 +29,4 @@ export * from './GroupOwnershipSourcePart';
 export * from './PlaceMembershipSourcePart';
 export * from './ServiceStatuses';
 export * from './Operations';
+export * from './GetServiceStatusResponse';

@@ -37,7 +37,7 @@ const operationsSlice = createSlice({
         state.status = action.payload;
         state.isLoading = false;
       })
-      .addCase(fetchServiceStatus.rejected, (state, action) => {
+      .addCase(fetchServiceStatus.rejected, (state) => {
         state.isLoading = false;
         state.error = 'Failed to fetch service status.';
       })
@@ -58,17 +58,6 @@ const operationsSlice = createSlice({
       })
       .addCase(processOperation.fulfilled, (state, action) => {
         state.isLoading = false;
-        switch (action.meta.arg) {
-          case Operations.Stop:
-            state.status = ServiceStatuses.Stopped;
-            break;
-          case Operations.Reset:
-            state.status = ServiceStatuses.Running;
-            break;
-          case Operations.Start:
-            state.status = ServiceStatuses.Running;
-            break;
-        }
       })
       .addCase(processOperation.rejected, (state, action) => {
         state.isLoading = false;
