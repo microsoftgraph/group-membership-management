@@ -398,6 +398,16 @@ namespace Repositories.GraphGroups
 
                 var group = await _graphServiceClient.Groups.PostAsync(groupDefinition);
             }
+            catch (ODataError ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
             catch (Exception e)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
@@ -469,7 +479,7 @@ namespace Repositories.GraphGroups
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"ODataError: {ex.GetBaseException().ToString()}",
+                    Message = ex.GetBaseException().ToString(),
                     RunId = runId
                 });
 

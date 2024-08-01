@@ -41,6 +41,17 @@ namespace Hosts.AzureUserReader
                     RunId = null
                 });
 
+            if (request.PersonnelNumbers == null || !request.PersonnelNumbers.Any())
+            {
+                if (!context.IsReplaying)
+                    _ = _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = "No personnel numbers provided. Skipping user creation.",
+                        RunId = null
+                    });
+                return new List<GraphProfileInformation>();
+            }
+
             while ((batch = request.PersonnelNumbers.Skip(skip).Take(take).ToList()).Count > 0)
             {
                 if (!context.IsReplaying)

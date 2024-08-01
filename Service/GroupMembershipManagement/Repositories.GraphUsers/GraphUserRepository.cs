@@ -104,7 +104,19 @@ namespace Repositories.GraphAzureADUsers
                     limit = pnQueue.Count >= FILTER_CONDITION_LIMIT ? 10 : pnQueue.Count;
                     for (var i = 0; i < limit; i++)
                     {
-                        requestPersonnelNumbers.Add(pnQueue.Dequeue());
+                        var personnelNumber = pnQueue.Dequeue();
+                        if (!string.IsNullOrEmpty(personnelNumber))
+                        {
+                            requestPersonnelNumbers.Add(personnelNumber);
+                        }
+                        else
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Skipped empty onPremisesImmutableId.",
+                                RunId = runId
+                            });
+                        }
                     }
 
                     // build filter expression

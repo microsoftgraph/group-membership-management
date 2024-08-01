@@ -16,7 +16,7 @@ namespace Hosts.NonProdService
     public class LoadTestingGroupCalculatorFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly List<int> _groupSizes = new List<int> { 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 200000 };
+        private readonly List<int> _groupSizes = new List<int> { 10, 50, 100, 500, 1000, 5000, 10000, 50000, 100000, 200000, 250000 };
 
         public LoadTestingGroupCalculatorFunction(ILoggingRepository loggingRepository)
         {

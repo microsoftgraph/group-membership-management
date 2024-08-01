@@ -34,17 +34,19 @@ namespace Hosts.AzureUserReader
                 throw new ArgumentNullException(nameof(request));
             }
 
-            var newUsers = request.PersonnelNumbers.Select(x => new GraphUser
-            {
-                DisplayName = $"{request.TenantInformation.EmailPrefix} {x}",
-                AccountEnabled = true,
-                Password = PasswordGenerator.GeneratePassword(),
-                MailNickname = $"{request.TenantInformation.EmailPrefix}{x}",
-                UsageLocation = request.TenantInformation.CountryCode,
-                UserPrincipalName = $"{request.TenantInformation.EmailPrefix}{x}@{request.TenantInformation.TenantDomain}",
-                OnPremisesImmutableId = x
-            })
-            .ToList();
+            var newUsers = request.PersonnelNumbers
+                .Where(x => long.TryParse(x, out _))
+                .Select(x => new GraphUser
+                {
+                    DisplayName = $"{request.TenantInformation.EmailPrefix} {x}",
+                    AccountEnabled = true,
+                    Password = PasswordGenerator.GeneratePassword(),
+                    MailNickname = $"{request.TenantInformation.EmailPrefix}{x}",
+                    UsageLocation = request.TenantInformation.CountryCode,
+                    UserPrincipalName = $"{request.TenantInformation.EmailPrefix}{x}@{request.TenantInformation.TenantDomain}",
+                    OnPremisesImmutableId = x
+                })
+                .ToList();
 
             var newProfiles = await _graphUserRepository.AddUsersAsync(newUsers, null);
 
