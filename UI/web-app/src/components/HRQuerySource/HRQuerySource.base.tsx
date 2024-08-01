@@ -71,7 +71,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
   let options: IComboBoxOption[] = [];
-  let valueOptions: IComboBoxOption[] = [];
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [groupingEnabled, setGroupingEnabled] = useState(false);
@@ -1205,7 +1204,7 @@ const checkType = (value: string, type: string | undefined): string => {
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index)}
               allowFreeInput
               autoComplete="off"
-              useComboBoxAsMenuWidth={true}
+              useComboBoxAsMenuWidth={false}
               />
           } else {
             return <TextField
@@ -1437,6 +1436,8 @@ const checkType = (value: string, type: string | undefined): string => {
     setSelectedIndices([]);
     selection.setAllSelected(false);
     setGroupingEnabled(true);
+    setFilteredOptions({});
+    setFilteredValueOptions({});
   }
 
   const renderItems = (items: IFilterPart[], isUpDownEnabled: boolean, groupIndex: number, childIndex?: number) => {
