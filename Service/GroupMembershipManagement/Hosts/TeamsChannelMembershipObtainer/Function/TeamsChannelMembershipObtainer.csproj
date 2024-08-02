@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <AssemblyName>Hosts.$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>Hosts.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
@@ -10,10 +10,10 @@
     <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
 </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.0" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.11.0" />
-    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="6.0.16" />
-    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.2.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.4" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.16.2" />
+    <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="8.0.7" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.4.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
