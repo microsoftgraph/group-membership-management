@@ -415,6 +415,14 @@ namespace Services.Tests
                     })
                     .ReturnsAsync(() => _isValid);
 
+            List<Guid> filteredGroupIds = new List<Guid>();
+            _groupOwnershipObtainerService.Setup(x => x.FilterSyncJobsBySourceTypes(It.IsAny<HashSet<string>>(), It.IsAny<List<JobsFilterSyncJob>>()))
+                                   .Callback<HashSet<string>, List<JobsFilterSyncJob>>((requestedSourceTypes, syncJobs) =>
+                                   {
+                                       filteredGroupIds = _realGroupOwnershipObtainerService.FilterSyncJobsBySourceTypes(requestedSourceTypes, syncJobs);
+                                   }).
+                                   Returns(() => filteredGroupIds);
+
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object);
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
