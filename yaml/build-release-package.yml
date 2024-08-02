@@ -78,7 +78,7 @@ stages:
       inputs:
         command: custom
         custom: 'tool'
-        arguments: 'update --global dotnet-ef --version 6.0.22'
+        arguments: 'update --global dotnet-ef --version 8.0.7'
 
     - task: PowerShell@2
       displayName: 'Create migrations bundle'
