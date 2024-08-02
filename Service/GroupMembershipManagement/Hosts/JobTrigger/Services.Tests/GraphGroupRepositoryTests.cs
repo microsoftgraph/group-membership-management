@@ -213,7 +213,7 @@ namespace Services.Tests
             };
             var graphServiceClient = CreateCustomGraphServiceClient(chaosHandlerOption);
             _graphGroupRepository = new GraphGroupRepository(graphServiceClient, _telemetryClient, _loggingRepository.Object);
-            var exception = await Assert.ThrowsExceptionAsync<InvalidOperationException>(() => _graphGroupRepository.GroupExists(Guid.NewGuid()));
+            var exception = await Assert.ThrowsExceptionAsync<AggregateException>(() => _graphGroupRepository.GroupExists(Guid.NewGuid()));
 
             Assert.IsTrue(exception.Message.Contains("Too many retries performed"));
         }
