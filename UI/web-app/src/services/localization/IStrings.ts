@@ -105,6 +105,14 @@ export type IStrings = {
         description: string;
         title: string;
       };
+      buttons: {
+        stop: string;
+        stopping: string;
+        reset: string;
+        resetting: string;
+        start: string;
+        starting: string;
+      };
     };
     CustomSourceSettings: {
       labels: {

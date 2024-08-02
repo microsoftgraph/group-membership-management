@@ -107,6 +107,14 @@ export const strings: IStrings = {
         operations: "Operations",
         title: "GMM Control Panel",
         description: "Use the stop button to halt GMM operations and the reset button to reboot GMM at any time.",
+      },      
+      buttons: {
+        stop: "Stop GMM",
+        stopping: "Stopping",
+        reset: "Reset GMM",
+        resetting: "Resetting",
+        start: "Start GMM",
+        starting: "Starting",
       }
     },
     CustomSourceSettings: {

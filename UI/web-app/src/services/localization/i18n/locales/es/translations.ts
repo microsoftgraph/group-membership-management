@@ -109,6 +109,14 @@ export const strings: IStrings = {
         operations: "Operaciones",
         title: "Panel de Control GMM",
         description: "Utilice el botón Detener para detener las operaciones de GMM y el botón Restablecer para restablecer GMM en cualquier momento."
+      },
+      buttons: {
+        stop: "Detener GMM",
+        stopping: "Deteniendo",
+        reset: "Restablecer GMM",
+        resetting: "Restableciendo",
+        start: "Iniciar GMM",
+        starting: "Iniciando",
       }
     },
     CustomSourceSettings: {

@@ -135,6 +135,7 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
       <Operation
           title={strings.Operations.labels.title}
           description={strings.Operations.labels.description}
+          buttonText={strings.Operations.buttons}
         ></Operation>
       </div>
   );

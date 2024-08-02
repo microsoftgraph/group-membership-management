@@ -24,4 +24,14 @@ export type OperationProps = React.AllHTMLAttributes<HTMLDivElement> & {
   styles?: IStyleFunctionOrObject<OperationStyleProps, OperationStyles>;
   title: string;
   description: string;
+  buttonText: ButtonTexts;
+};
+
+export type ButtonTexts = {
+  stop: string;
+  stopping: string;
+  reset: string;
+  resetting: string;
+  start: string;
+  starting: string;
 };
