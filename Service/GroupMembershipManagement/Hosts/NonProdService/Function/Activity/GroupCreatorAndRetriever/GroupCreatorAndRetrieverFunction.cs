@@ -33,8 +33,8 @@ namespace Hosts.NonProdService
             var attempts = 0;
             while(group == null && attempts < 5)
             {
-                group = await _graphGroupRepository.GetGroup(request.GroupName);
                 attempts++;
+                group = await _graphGroupRepository.GetGroup(request.GroupName);
                 await Task.Delay(5000);
             }
 

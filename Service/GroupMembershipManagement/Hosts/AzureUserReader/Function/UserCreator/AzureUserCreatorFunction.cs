@@ -28,10 +28,10 @@ namespace Hosts.AzureUserReader
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            if (request == null)
+            if (request == null || request.TenantInformation == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} exception, request is null" }, VerbosityLevel.DEBUG);
-                throw new ArgumentNullException(nameof(request));
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserCreatorFunction)} exception, request or TenantInformation is null" }, VerbosityLevel.DEBUG);
+                throw new ArgumentNullException(request == null ? nameof(request) : nameof(request.TenantInformation));
             }
 
             var newUsers = request.PersonnelNumbers
