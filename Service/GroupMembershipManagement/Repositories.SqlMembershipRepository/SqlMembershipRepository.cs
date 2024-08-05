@@ -409,9 +409,9 @@ namespace Repositories.SqlMembershipRepository
             return tableExists;
         }
 
-        public async Task<List<(string Code, string Description)>> GetAttributeValuesAsync(string attribute, string tableName)
+        public async Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName)
         {
-            var attributeValues = new List<(string Code, string Description)>();
+            var attributeMappings = new List<(string Code, string Description)>();
             var retryPolicy = GetRetryPolicy();
 
             try
@@ -435,7 +435,7 @@ namespace Repositories.SqlMembershipRepository
 
                                     var code = reader.IsDBNull(codeOrdinal) ? null : reader.GetString(codeOrdinal).Trim();
                                     var description = reader.IsDBNull(descriptionOrdinal) ? null : reader.GetString(descriptionOrdinal).Trim();
-                                    attributeValues.Add((code, description));
+                                    attributeMappings.Add((code, description));
                                 }
                                 await reader.CloseAsync();
                             }
@@ -449,7 +449,7 @@ namespace Repositories.SqlMembershipRepository
                 throw ex;
             }
 
-            return attributeValues;
+            return attributeMappings;
         }
 
         private RetryPolicy GetRetryPolicy()

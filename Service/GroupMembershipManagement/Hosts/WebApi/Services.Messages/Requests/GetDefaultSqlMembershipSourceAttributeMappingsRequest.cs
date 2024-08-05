@@ -5,9 +5,9 @@ using Services.Messages.Contracts.Requests;
 
 namespace Services.Messages.Requests
 {
-    public class GetDefaultSqlMembershipSourceAttributeValuesRequest : RequestBase
+    public class GetDefaultSqlMembershipSourceAttributeMappingsRequest : RequestBase
     {
-        public GetDefaultSqlMembershipSourceAttributeValuesRequest(string attribute)
+        public GetDefaultSqlMembershipSourceAttributeMappingsRequest(string attribute)
         {
             Attribute = attribute;
         }

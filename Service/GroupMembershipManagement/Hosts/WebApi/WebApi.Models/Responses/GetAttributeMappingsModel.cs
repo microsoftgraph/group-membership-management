@@ -3,9 +3,9 @@
 
 namespace WebApi.Models.Responses
 {
-    public class GetAttributeValuesModel : List<DTOs.SqlMembershipAttributeValue>
+    public class GetAttributeMappingsModel : List<DTOs.SqlMembershipAttributeMapping>
     {
-        public GetAttributeValuesModel()
+        public GetAttributeMappingsModel()
         {
 
         }

@@ -17,6 +17,6 @@ namespace Repositories.Contracts
         Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName);
         Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName);
         Task<bool> CheckIfMappingsTableExistsAsync(string tableName);
-        Task<List<(string Code, string Description)>> GetAttributeValuesAsync(string attribute, string tableName);
+        Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName);
     }
 }

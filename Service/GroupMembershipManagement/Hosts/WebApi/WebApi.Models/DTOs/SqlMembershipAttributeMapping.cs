@@ -3,9 +3,9 @@
 
 namespace WebApi.Models.DTOs
 {
-    public class SqlMembershipAttributeValue
+    public class SqlMembershipAttributeMapping
     {
-        public SqlMembershipAttributeValue(string code, string description)
+        public SqlMembershipAttributeMapping(string code, string description)
         {
             Code = code;
             Description = description;

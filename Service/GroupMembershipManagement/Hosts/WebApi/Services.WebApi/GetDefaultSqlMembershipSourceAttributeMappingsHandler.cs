@@ -7,17 +7,17 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using SqlMembershipAttributeValueDTO = WebApi.Models.DTOs.SqlMembershipAttributeValue;
+using SqlMembershipAttributeValueDTO = WebApi.Models.DTOs.SqlMembershipAttributeMapping;
 
 namespace Services
 {
-    public class GetDefaultSqlMembershipSourceAttributeValuesHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse>
+    public class GetDefaultSqlMembershipSourceAttributeMappingsHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse>
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
-        public GetDefaultSqlMembershipSourceAttributeValuesHandler(ILoggingRepository loggingRepository,
+        public GetDefaultSqlMembershipSourceAttributeMappingsHandler(ILoggingRepository loggingRepository,
                               IDataFactoryRepository dataFactoryRepository,
                               ISqlMembershipRepository sqlMembershipRepository) : base(loggingRepository)
         {
@@ -26,13 +26,13 @@ namespace Services
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
         }
 
-        protected override async Task<GetDefaultSqlMembershipSourceAttributeValuesResponse> ExecuteCoreAsync(GetDefaultSqlMembershipSourceAttributeValuesRequest request)
+        protected override async Task<GetDefaultSqlMembershipSourceAttributeMappingsResponse> ExecuteCoreAsync(GetDefaultSqlMembershipSourceAttributeMappingsRequest request)
         {
             try
             {
-                var response = new GetDefaultSqlMembershipSourceAttributeValuesResponse();
-                var attributeValues = await GetSqlAttributeValuesAsync(request.Attribute);
-                foreach (var attributeValue in attributeValues)
+                var response = new GetDefaultSqlMembershipSourceAttributeMappingsResponse();
+                var attributeMappings = await GetSqlAttributeMappingsAsync(request.Attribute);
+                foreach (var attributeValue in attributeMappings)
                 {
                     var dto = new SqlMembershipAttributeValueDTO(attributeValue.Code, attributeValue.Description);
 
@@ -42,33 +42,33 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve Sql Filter Attribute Values: {ex.Message}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve Sql Filter Attribute Mappings: {ex.Message}" });
                 throw ex;
             }
         }
 
-        private async Task<List<(string Code, string Description)>> GetSqlAttributeValuesAsync(string attribute)
+        private async Task<List<(string Code, string Description)>> GetSqlAttributeMappingsAsync(string attribute)
         {
             var tableName = await GetTableNameAsync();
-            var attributes = await GetAttributeValuesAsync(attribute, tableName);
+            var attributes = await GetAttributeMappingsAsync(attribute, tableName);
             return attributes;
         }
 
-        private async Task<List<(string Code, string Description)>> GetAttributeValuesAsync(string attribute, string tableName)
+        private async Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName)
         {
-            var attributeValues = new List<(string Code, string Description)>();
+            var attributeMappings = new List<(string Code, string Description)>();
 
             try
             {
-                attributeValues = await _sqlMembershipRepository.GetAttributeValuesAsync(attribute, tableName);
+                attributeMappings = await _sqlMembershipRepository.GetAttributeMappingsAsync(attribute, tableName);
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get Sql Filter Attribute Values from mappings table '{tableName}': {ex.Message}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get Sql Filter Attribute Mappings from mappings table '{tableName}': {ex.Message}" });
                 throw ex;
             }
 
-            return attributeValues;
+            return attributeMappings;
         }
 
         private async Task<string> GetTableNameAsync()

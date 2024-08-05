@@ -6,8 +6,8 @@ using WebApi.Models.Responses;
 
 namespace Services.Messages.Responses
 {
-    public class GetDefaultSqlMembershipSourceAttributeValuesResponse : ResponseBase
+    public class GetDefaultSqlMembershipSourceAttributeMappingsResponse : ResponseBase
     {
-        public GetAttributeValuesModel Model { get; set; } = new GetAttributeValuesModel();
+        public GetAttributeMappingsModel Model { get; set; } = new GetAttributeMappingsModel();
     }
 }

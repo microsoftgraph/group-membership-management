@@ -26,7 +26,7 @@ namespace Services.Tests
 
         private GetDefaultSqlMembershipSourceHandler _getDefaultSqlMembershipSourceHandler = null!;
         private GetDefaultSqlMembershipSourceAttributesHandler _getDefaultSqlMembershipSourceAttributesHandler = null!;
-        private GetDefaultSqlMembershipSourceAttributeValuesHandler _getDefaultSqlMembershipSourceAttributeValuesHandler = null!;
+        private GetDefaultSqlMembershipSourceAttributeMappingsHandler _getDefaultSqlMembershipSourceAttributeMappingsHandler = null!;
         private PatchDefaultSqlMembershipSourceCustomLabelHandler _patchDefaultSqlMembershipSourceCustomLabelHandler = null!;
         private PatchDefaultSqlMembershipSourceAttributesHandler _patchDefaultSqlMembershipSourceAttributesHandler = null!;
         private SqlMembershipSourcesController _sqlMembershipSourcesController = null!;
@@ -41,11 +41,11 @@ namespace Services.Tests
 
             _getDefaultSqlMembershipSourceHandler = new GetDefaultSqlMembershipSourceHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object);
             _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(_loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(_loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
             _patchDefaultSqlMembershipSourceCustomLabelHandler = new PatchDefaultSqlMembershipSourceCustomLabelHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object);
             _patchDefaultSqlMembershipSourceAttributesHandler = new PatchDefaultSqlMembershipSourceAttributesHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object);
 
-            _sqlMembershipSourcesController = new SqlMembershipSourcesController(_getDefaultSqlMembershipSourceHandler, _getDefaultSqlMembershipSourceAttributesHandler, _getDefaultSqlMembershipSourceAttributeValuesHandler, _patchDefaultSqlMembershipSourceCustomLabelHandler, _patchDefaultSqlMembershipSourceAttributesHandler)
+            _sqlMembershipSourcesController = new SqlMembershipSourcesController(_getDefaultSqlMembershipSourceHandler, _getDefaultSqlMembershipSourceAttributesHandler, _getDefaultSqlMembershipSourceAttributeMappingsHandler, _patchDefaultSqlMembershipSourceCustomLabelHandler, _patchDefaultSqlMembershipSourceAttributesHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -73,7 +73,7 @@ namespace Services.Tests
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAsync()).ReturnsAsync(() => _defaultSource);
             _databaseSqlMembershipSourcesRepository.Setup(x => x.GetDefaultSourceAttributesAsync()).ReturnsAsync(() => _storedAttributeSettings);
             _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).ReturnsAsync(new List<(string Name, string Type)> { ("Name1", "nvarchar"), ("Name2", "int"), ("Name3_Code", "nvarchar") });
-            _sqlMembershipRepository.Setup(x => x.GetAttributeValuesAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new List<(string Code, string Description)> { ("Code1", "Description1"), ("Code2", "Description2"), ("Code3", "Description3") });
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsAsync(It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(new List<(string Code, string Description)> { ("Code1", "Description1"), ("Code2", "Description2"), ("Code3", "Description3") });
             _sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(true);
             _dataFactoryRepository.Setup(x => x.GetMostRecentSucceededRunIdAsync()).ReturnsAsync("RUN ID");
@@ -263,29 +263,29 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task SuccessfulGetHRFilterattributeValuesTestAsync()
+        public async Task SuccessfulGetHRFilterattributeMappingsTestAsync()
         {
-            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeValuesAsync("attribute");
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeMappingsAsync("attribute");
             Assert.IsNotNull(response);
             var okResult = response as OkObjectResult;
 
             Assert.IsNotNull(okResult);
             Assert.IsNotNull(okResult.Value);
 
-            var attributeValues = okResult.Value as GetAttributeValuesModel;
-            Assert.IsNotNull(attributeValues);
-            Assert.AreEqual(attributeValues.Count, 3);
-            Assert.AreEqual(attributeValues[0].Code, "Code1");
-            Assert.AreEqual(attributeValues[0].Description, "Description1");
+            var attributeMappings = okResult.Value as GetAttributeMappingsModel;
+            Assert.IsNotNull(attributeMappings);
+            Assert.AreEqual(attributeMappings.Count, 3);
+            Assert.AreEqual(attributeMappings[0].Code, "Code1");
+            Assert.AreEqual(attributeMappings[0].Description, "Description1");
         }
 
         [TestMethod]
-        public async Task ExceptionGetHRFilterattributeValuesTestAsync()
+        public async Task ExceptionGetHRFilterattributeMappingsTestAsync()
         {
             _sqlMembershipRepository.Setup(x => x.CheckIfMappingsTableExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
-            _sqlMembershipRepository.Setup(x => x.GetAttributeValuesAsync(It.IsAny<string>(), It.IsAny<string>())).Throws(new Exception("Unexpected exception triggered for testing"));
+            _sqlMembershipRepository.Setup(x => x.GetAttributeMappingsAsync(It.IsAny<string>(), It.IsAny<string>())).Throws(new Exception("Unexpected exception triggered for testing"));
 
-            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeValuesAsync("attribute");
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributeMappingsAsync("attribute");
 
             Assert.IsNotNull(response);
 
@@ -295,7 +295,7 @@ namespace Services.Tests
             Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
-                                            It.Is<LogMessage>(m => m.Message.StartsWith("Unable to retrieve Sql Filter Attribute Values")),
+                                            It.Is<LogMessage>(m => m.Message.StartsWith("Unable to retrieve Sql Filter Attribute Mappings")),
                                             It.IsAny<VerbosityLevel>(),
                                             It.IsAny<string>(),
                                             It.IsAny<string>()), Times.Once());
