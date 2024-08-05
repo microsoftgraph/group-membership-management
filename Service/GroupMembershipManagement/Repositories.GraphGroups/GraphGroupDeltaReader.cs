@@ -4,6 +4,7 @@
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Abstractions.Serialization;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -162,15 +163,24 @@ namespace Repositories.GraphGroups
 
             if (group != null && group.AdditionalData.TryGetValue("members@delta", out object membersJson))
             {
-                var memberArray = JsonArray.Parse(membersJson.ToString()).AsArray();
-                foreach (var member in memberArray)
+                var members = (membersJson as UntypedArray)?.GetValue();
+                if (members == null) return users;
+
+                foreach (UntypedObject memberObject in members)
                 {
-                    if (member["@odata.type"].ToString().Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
+                    var member = memberObject.GetValue();
+                    if (member == null) continue;
+
+                    var memberType = (member["@odata.type"] as UntypedString)?.GetValue();
+                    var memberId = (member["id"] as UntypedString)?.GetValue();
+                    if (memberType == null || memberId == null) continue;
+
+                    if (memberType.Equals("#microsoft.graph.user", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        if (member["@removed"] == null)
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)member["id"]), MembershipAction = MembershipAction.Add });
+                        if (!member.ContainsKey("@removed"))
+                            users.Add(new AzureADUser { ObjectId = Guid.Parse(memberId), MembershipAction = MembershipAction.Add });
                         else if (includeMembersToRemove)
-                            users.Add(new AzureADUser { ObjectId = Guid.Parse((string)member["id"]), MembershipAction = MembershipAction.Remove });
+                            users.Add(new AzureADUser { ObjectId = Guid.Parse(memberId), MembershipAction = MembershipAction.Remove });
                     }
                 }
             }
