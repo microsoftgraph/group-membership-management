@@ -73,20 +73,36 @@ namespace Services
 
             if (thresholdNotification.Status != ThresholdNotificationStatus.Resolved)
             {
-                var resolvedByMail = request.UserIdentifier;
-
+                var resolvedByValue = request.UserIdentifier;
                 Guid userId;
-                if (Guid.TryParse(resolvedByMail, out userId))
+
+                if (isInAuthorizedGroup)
+                {
+                    try
+                    {
+                        var groupName = await _graphGroupRepository.GetGroupNameAsync(_gmmEmailReceivers.ActionableMessageViewerGroupId);
+                        resolvedByValue = groupName;
+                    }
+                    catch(Exception e)
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Error getting group name: {e.Message}"
+                        });
+                        resolvedByValue = "GMM Support";
+                    }
+                }
+                else if (Guid.TryParse(resolvedByValue, out userId))
                 {
                     var user = await _graphGroupRepository.GetUserByUpnOrIdAsync(userId.ToString(), true);
-                    resolvedByMail = user.Mail;
+                    resolvedByValue = user != null ?  user.Mail : request.UserIdentifier;
                 }
 
                 var resolution = Enum.Parse<ThresholdNotificationResolution>(request.Resolution);
                 thresholdNotification.Status = ThresholdNotificationStatus.Resolved;
                 thresholdNotification.CardState = ThresholdNotificationCardState.NoCard;
                 thresholdNotification.Resolution = resolution;
-                thresholdNotification.ResolvedBy = isInAuthorizedGroup ? "GMM Support" : resolvedByMail;
+                thresholdNotification.ResolvedBy = resolvedByValue;
                 thresholdNotification.ResolvedTime = DateTime.UtcNow;
 
                 await handleSyncJobResolution(thresholdNotification);
