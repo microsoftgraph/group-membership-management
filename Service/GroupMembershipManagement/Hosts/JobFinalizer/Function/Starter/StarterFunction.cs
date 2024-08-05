@@ -25,7 +25,7 @@ namespace Hosts.JobFinalizer
 
         [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
-            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "SyncJobStatus", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger("%serviceBusJobFinalizerQueue", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body));
