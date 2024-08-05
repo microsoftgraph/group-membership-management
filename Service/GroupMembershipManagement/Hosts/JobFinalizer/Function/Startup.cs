@@ -8,6 +8,7 @@ using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.Contracts;
+using Repositories.ServiceBusQueue;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.JobFinalizer.Startup))]
@@ -29,6 +30,14 @@ namespace Hosts.JobFinalizer
                     services.GetRequiredService<IDatabaseSyncJobsRepository>(),
                     services.GetRequiredService<ILoggingRepository>()
                 );
+            });
+            builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var JobFinalizerQueue = configuration["serviceBusJobFinalizerQueue"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(JobFinalizerQueue);
+                return new ServiceBusQueueRepository(sender);
             });
         }
     }
