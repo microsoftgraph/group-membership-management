@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Hosts.JobFInalizer;
+using Hosts.JobFinalizer;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;

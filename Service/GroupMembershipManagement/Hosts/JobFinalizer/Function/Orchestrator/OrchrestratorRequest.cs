@@ -3,7 +3,7 @@
 
 using Models;
 
-namespace Hosts.JobFInalizer
+namespace Hosts.JobFinalizer
 {
     public class OrchestratorRequest
     {

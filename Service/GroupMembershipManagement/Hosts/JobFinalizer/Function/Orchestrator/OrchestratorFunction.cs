@@ -17,7 +17,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Repositories.Contracts.InjectConfig;
 using Models.Notifications;
-using Hosts.JobFInalizer;
+using Hosts.JobFinalizer;
 
 namespace Hosts.JobFinalizer
 {
