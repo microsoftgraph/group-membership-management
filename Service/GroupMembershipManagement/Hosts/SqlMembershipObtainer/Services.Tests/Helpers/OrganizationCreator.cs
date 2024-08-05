@@ -1,4 +1,4 @@
-﻿// Copyright(c) Microsoft Corporation.
+// Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using SqlMembershipObtainer.Entities;
 using System;
@@ -22,7 +22,7 @@ namespace Services.Tests.Helpers
             {
                 foreach (var entity in level.Entities)
                 {
-                    var childCount = levels.Where(l => l.LevelId == (level.LevelId + 1)).SelectMany(e => e.Entities).Count(e => e.ReportsToPersonnelNbr == entity.RowKey);
+                    var childCount = levels.Where(l => l.LevelId == (level.LevelId + 1)).SelectMany(e => e.Entities).Count(e => e.ReportsToPersonnelNbr == entity.PersonnelNumber);
                     entity.Childcount = childCount;
                     entity.HaschildrenInd = childCount > 0 ? "1" : "0";
                 }
@@ -90,7 +90,7 @@ namespace Services.Tests.Helpers
 
             foreach (var entity in level.Entities)
             {
-                var childLevels = GenerateOrganizationHierarchyLevel(currentLevel + 1, maxLevel, entity.RowKey);
+                var childLevels = GenerateOrganizationHierarchyLevel(currentLevel + 1, maxLevel, entity.PersonnelNumber);
                 if (childLevels != null)
                     levels.AddRange(childLevels.Where(x => x != null));
             }

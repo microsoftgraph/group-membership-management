@@ -34,7 +34,7 @@ namespace SqlMembershipObtainer
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ManagerOrgReaderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var profiles = response.Select(x => new GraphProfileInformation { PersonnelNumber = x.RowKey, Id = x.AzureObjectId }).ToList();
+            var profiles = response.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).ToList();
 
             return new GraphProfileInformationResponse
             {

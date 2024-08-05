@@ -3,7 +3,6 @@
 using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.Documents.SystemFunctions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;

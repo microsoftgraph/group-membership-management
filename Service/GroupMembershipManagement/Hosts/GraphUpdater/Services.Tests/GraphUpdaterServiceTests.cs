@@ -3,30 +3,17 @@
 using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Graph;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.Notifications;
+using Models.ServiceBus;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Mocks;
 using Services.Tests.Mocks;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
 using System.Threading.Tasks;
-using Models.ServiceBus;
-using Repositories.Contracts.InjectConfig;
-using Repositories.GraphGroups;
-using Repositories.Logging;
-using Repositories.EntityFramework.Contexts.Migrations;
-using Services.Contracts;
-using Microsoft.Graph.Models.Security;
-using Microsoft.IdentityModel.Abstractions;
-using System.Security.Cryptography;
-using Models.Notifications;
-using Repositories.ServiceBusQueue;
-using Microsoft.Azure.Documents.SystemFunctions;
 
 namespace Services.Tests
 {

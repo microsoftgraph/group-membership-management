@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
 using Hosts.Notifier;
 using Microsoft.ApplicationInsights;
@@ -9,6 +8,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -18,8 +18,8 @@ using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Localization;
+using Repositories.Mail;
 using Repositories.RetryPolicyProvider;
-using Repositories.ServiceBusQueue;
 using Services.Contracts.Notifications;
 using Services.Tests;
 using System;
@@ -29,16 +29,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
-using DIConcreteTypes;
-using Repositories.Logging;
-using Models.Entities;
-using Repositories.Mail;
-using Microsoft.Graph;
-using Microsoft.Azure.Documents.SystemFunctions;
-using Microsoft.Graph.Me.SendMail;
-using static Microsoft.Graph.Me.SendMail.SendMailRequestBuilder;
-using System.Threading;
-using Microsoft.Kiota.Abstractions;
 using System.Threading;
 using System.Threading.Tasks;
 

@@ -34,7 +34,7 @@ namespace SqlMembershipObtainer
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.RowKey, Id = x.AzureObjectId }).Distinct().ToList();
+            var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).Distinct().ToList();
 
             return new GraphProfileInformationResponse
             {

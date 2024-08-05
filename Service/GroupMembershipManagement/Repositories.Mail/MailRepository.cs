@@ -1,24 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using AdaptiveCards.Templating;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Kiota.Abstractions;
 using Models;
 using Models.AdaptiveCards;
+using Polly.Wrap;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security;
-using System.Threading.Tasks;
-using AdaptiveCards.Templating;
-using System.Text.RegularExpressions;
 using System.Net.Http;
-using Polly.Wrap;
-using Microsoft.Kiota.Abstractions;
-using Microsoft.Azure.Documents;
-using System.Net;
+using System.Security;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Repositories.Mail
 {

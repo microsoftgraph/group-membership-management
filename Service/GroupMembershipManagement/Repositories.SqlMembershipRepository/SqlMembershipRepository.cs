@@ -61,7 +61,7 @@ namespace Repositories.SqlMembershipRepository
                                 {
                                     var response = new PersonEntity
                                     {
-                                        RowKey = reader.IsDBNull(id) ? null : reader.GetInt32(id).ToString(),
+                                        PersonnelNumber = reader.IsDBNull(id) ? null : reader.GetInt32(id).ToString(),
                                         AzureObjectId = reader.IsDBNull(azureObjectId) ? null : reader.GetString(azureObjectId)
                                     };
                                     children.Add(response);
@@ -175,7 +175,7 @@ namespace Repositories.SqlMembershipRepository
                                 {
                                     var response = new PersonEntity
                                     {
-                                        RowKey = reader.IsDBNull(personnelNumber) ? null : reader.GetInt32(personnelNumber).ToString(),
+                                        PersonnelNumber = reader.IsDBNull(personnelNumber) ? null : reader.GetInt32(personnelNumber).ToString(),
                                         AzureObjectId = reader.IsDBNull(azureObjectId) ? null : reader.GetString(azureObjectId)
                                     };
                                     filteredChildren.Add(response);

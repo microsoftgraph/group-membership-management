@@ -180,7 +180,7 @@ namespace Services.Tests
                     var isEven = index++ % 2 == 0;
                     entity.CompanyCode = isEven ? "2" : "1";
                     entity.StandardTitle = isEven ? "PM" : "Engineer";
-                    entity.RowKey = Guid.NewGuid().ToString();
+                    entity.PersonnelNumber = Guid.NewGuid().ToString();
                 }
             }
         }
