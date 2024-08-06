@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SqlMembershipAttribute, SqlMembershipAttributeValue, SqlMembershipSource } from '../../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeMapping, SqlMembershipSource } from '../../models';
 import { ApiBase } from '../ApiBase';
 import { ISqlMembershipSourcesApi } from './ISqlMembershipSourcesApi';
 
@@ -20,8 +20,8 @@ export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSo
     return response.data;
   }
 
-  public async fetchDefaultSqlMembershipSourceAttributeValues(attribute: string): Promise<SqlMembershipAttributeValue[]> {
-    const response = await this.httpClient.get<SqlMembershipAttributeValue[]>('/attributeValues/' + attribute);
+  public async fetchDefaultSqlMembershipSourceAttributeMappings(attribute: string): Promise<SqlMembershipAttributeMapping[]> {
+    const response = await this.httpClient.get<SqlMembershipAttributeMapping[]>('/attributeMappings/' + attribute);
     this.ensureSuccessStatusCode(response);
     return response.data;
   }

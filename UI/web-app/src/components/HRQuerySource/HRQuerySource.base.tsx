@@ -20,10 +20,10 @@ import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
-import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource, selectAttributeValues, setAttributeValues } from '../../store/sqlMembershipSources.slice';
+import { fetchAttributeMappings } from '../../store/sqlMembershipSources.api';
+import { selectAttributes, selectSource, selectAttributeMappings, setAttributeMappings } from '../../store/sqlMembershipSources.slice';
 import { selectIsJobWriter } from '../../store/roles.slice';
-import { SqlMembershipAttribute, SqlMembershipAttributeValue } from '../../models';
+import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, parseGroup, stringifyGroups } from './QuerySerializer';
@@ -65,7 +65,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [children, setChildren] = useState<ChildType[]>([]);
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
-  const attributeValues = useSelector(selectAttributeValues);
+  const attributeMappings = useSelector(selectAttributeMappings);
   const hrSource = useSelector(selectSource);
   const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
   const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
@@ -106,9 +106,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     let att = mappedItems.map(item => item.attribute);
     let distinctAttributes = [...new Set(att)];
     for (let i = 0; i < distinctAttributes.length; i++) {
-      if (attributeValues && attributeValues[distinctAttributes[i]] === undefined) {
+      if (attributeMappings && attributeMappings[distinctAttributes[i]] === undefined) {
         const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === distinctAttributes[i]) || (!hasMapping && name === distinctAttributes[i])));
-        dispatch(fetchAttributeValues({attribute: distinctAttributes[i] as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
+        dispatch(fetchAttributeMappings({attribute: distinctAttributes[i] as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
       }
     }
     if (!groupingEnabled) {
@@ -204,10 +204,10 @@ const checkType = (value: string, type: string | undefined): string => {
     return options;
   };
 
-  const getValueOptions = (attributeValues?: SqlMembershipAttributeValue[]): IComboBoxOption[] => {
-    let valueOptions = attributeValues?.map((attributeValue, index) => ({
-      key: attributeValue.code,
-      text: attributeValue.description ? attributeValue.description : attributeValue.code
+  const getValueOptions = (attributeMappings?: SqlMembershipAttributeMapping[]): IComboBoxOption[] => {
+    let valueOptions = attributeMappings?.map((attributeMapping, index) => ({
+      key: attributeMapping.code,
+      text: attributeMapping.description ? attributeMapping.description : attributeMapping.code
     })) || [];
     valueOptions.sort((a, b) => a.text.localeCompare(b.text));
     return valueOptions;
@@ -704,8 +704,8 @@ const checkType = (value: string, type: string | undefined): string => {
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number): void => {
     if (item) {
       const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === item.key) || (!hasMapping && name === item.key)));
-      if (attributeValues && attributeValues[item.key] === undefined) {
-        dispatch(fetchAttributeValues({attribute: item.key as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
+      if (attributeMappings && attributeMappings[item.key] === undefined) {
+        dispatch(fetchAttributeMappings({attribute: item.key as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
       }
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
@@ -808,7 +808,7 @@ const checkType = (value: string, type: string | undefined): string => {
   const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
     if (item) {
       const selectedValue = item.key.toString();
-      const selectedValueAfterConversion = attributeValues[attribute] ? checkType(selectedValue, attributeValues[attribute.toString()].type) : selectedValue;
+      const selectedValueAfterConversion = attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue;
 
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
@@ -1012,12 +1012,12 @@ const checkType = (value: string, type: string | undefined): string => {
   const onAttributeValueChange = (text: string, index: number) => {
     let newFilteredValueOptions = { ...filteredValueOptions };
     if (groupingEnabled && groups.length > 1) return;
-    const currentAttributeValues = attributeValues[items[index].attribute].values || [];
-    if (currentAttributeValues.length > 0) {
+    const currentAttributeMappings = attributeMappings[items[index].attribute].mappings || [];
+    if (currentAttributeMappings.length > 0) {
       if (!text) {
-          newFilteredValueOptions[index] = getValueOptions(currentAttributeValues);
+          newFilteredValueOptions[index] = getValueOptions(currentAttributeMappings);
       } else {
-          let valueOptions = getValueOptions(currentAttributeValues);
+          let valueOptions = getValueOptions(currentAttributeMappings);
           newFilteredValueOptions[index] = valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
       }
       setFilteredValueOptions(newFilteredValueOptions);
@@ -1196,10 +1196,10 @@ const checkType = (value: string, type: string | undefined): string => {
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
         />;
         case 'value':
-          if (attributeValues && attributeValues[items[index].attribute] && attributeValues[items[index].attribute].values.length > 0) {
+          if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
             return <ComboBox
               selectedKey={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-              options={filteredValueOptions[index] || getValueOptions(attributeValues[items[index].attribute].values)}
+              options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings)}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index)}
               allowFreeInput

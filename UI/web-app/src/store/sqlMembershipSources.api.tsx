@@ -4,8 +4,8 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { ThunkConfig } from './store';
 import { SqlMembershipAttribute, SqlMembershipSource } from '../models';
-import { GetAttributeValuesResponse } from '../models/GetAttributeValuesResponse';
-import { GetAttributeValuesRequest } from '../models/GetAttributeValuesRequest';
+import { GetAttributeMappingsResponse } from '../models/GetAttributeMappingsResponse';
+import { GetAttributeMappingsRequest } from '../models/GetAttributeMappingsRequest';
 
 export const fetchDefaultSqlMembershipSource = createAsyncThunk<SqlMembershipSource, void, ThunkConfig>(
     'sqlMembershipSources/fetchDefaultSqlMembershipSource',
@@ -33,25 +33,25 @@ export const fetchDefaultSqlMembershipSourceAttributes = createAsyncThunk<SqlMem
     }
   );
 
-export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse, GetAttributeValuesRequest, ThunkConfig>(
-  'fetchSqlFilterAttributeValues',
+export const fetchAttributeMappings = createAsyncThunk<GetAttributeMappingsResponse, GetAttributeMappingsRequest, ThunkConfig>(
+  'fetchSqlFilterAttributeMappings',
   async (request, { extra }) => {
     const { gmmApi } = extra.apis;
-    let payload: GetAttributeValuesResponse;
+    let payload: GetAttributeMappingsResponse;
     try {
       if (request.hasMapping && request.attribute.endsWith("_Code")) {
-        const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(request.attribute.slice(0, -5));
-        payload = { values: response, attribute: request.attribute, type: request.type };
+        const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeMappings(request.attribute.slice(0, -5));
+        payload = { mappings: response, attribute: request.attribute, type: request.type };
       }
       else if (request.type === "bit") {
-        payload = { values: [{ description: "Yes", code: "1" }, { description: "No", code: "0" }], attribute: request.attribute, type: request.type };
+        payload = { mappings: [{ description: "Yes", code: "1" }, { description: "No", code: "0" }], attribute: request.attribute, type: request.type };
       }
       else {
-        payload = { values: [], attribute: request.attribute, type: request.type };
+        payload = { mappings: [], attribute: request.attribute, type: request.type };
       }
       return payload;
     } catch (error) {
-      payload = { values: [], attribute: request.attribute, type: request.type };
+      payload = { mappings: [], attribute: request.attribute, type: request.type };
       return payload;
     }
   }

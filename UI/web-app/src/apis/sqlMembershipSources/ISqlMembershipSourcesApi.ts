@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SqlMembershipAttribute, SqlMembershipSource, SqlMembershipAttributeValue } from '../../models';
+import { SqlMembershipAttribute, SqlMembershipSource, SqlMembershipAttributeMapping } from '../../models';
 
 export interface ISqlMembershipSourcesApi {
   fetchDefaultSqlMembershipSource(): Promise<SqlMembershipSource>;
   fetchDefaultSqlMembershipSourceAttributes(): Promise<SqlMembershipAttribute[]>;
-  fetchDefaultSqlMembershipSourceAttributeValues(attribute: string): Promise<SqlMembershipAttributeValue[]>;
+  fetchDefaultSqlMembershipSourceAttributeMappings(attribute: string): Promise<SqlMembershipAttributeMapping[]>;
   patchDefaultSqlMembershipSourceCustomLabel(customLabel: string): Promise<void>;
   patchDefaultSqlMembershipSourceAttributes(attributes: SqlMembershipAttribute[]): Promise<void>;
 }
