@@ -356,6 +356,7 @@ export const strings: IStrings = {
       placeMembership: 'Membresía de lugar',
       clickHere: 'Haz click aquí',
       requestor: 'Solicitante',
+      requestorInfo: 'El solicitante es la persona que inicialmente solicitó que GMM gestione la membresía de este destino. Esta persona debe ser propietaria del destino. Esto nos ayuda a rastrear a quién contactar si tenemos preguntas sobre la sincronización inicial. De lo contrario, el solicitante no tiene más derechos sobre el destino que cualquier otro propietario.'
     }
   },
   copy: 'Copiar',

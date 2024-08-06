@@ -23,8 +23,8 @@ import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { AppDispatch } from '../../store';
-import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
-import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
+import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
+import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import {
   setFilterActionRequired,
   setFilterStatus,
@@ -135,7 +135,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
   const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
+  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
@@ -209,7 +209,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
 
   const handleOwnersInputChanged = (input: string): string => {
     if (input.trim()) {
-      dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+      dispatch(getPeoplePickerSuggestions({displayName: input, alias: input}))
     }
     return input;
   }

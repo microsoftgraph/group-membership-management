@@ -4,7 +4,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { fetchJobDetails, patchJobDetails, removeGMM } from './jobDetails.api';
-import { fetchJobs, postJob, getJobOwnerFilterSuggestions } from './jobs.api';
+import { fetchJobs, postJob, getPeoplePickerSuggestions } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { type JobDetails } from '../models/JobDetails';
@@ -115,7 +115,7 @@ export const jobsSlice = createSlice({
     });
 
     // jobOwnerFilterSuggestions
-    builder.addCase(getJobOwnerFilterSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
+    builder.addCase(getPeoplePickerSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
       state.jobOwnerFilterSuggestions = payload;
     });
 
@@ -161,7 +161,7 @@ export const selectPatchJobDetailsError = (state: RootState) => state.jobs.patch
 
 export const selectPostJobLoading = (state: RootState) => state.jobs.postJobLoading;
 export const selectPostJobError = (state: RootState) => state.jobs.postJobError;
-export const selectJobOwnerFilterSuggestions = (state: RootState) => state.jobs.jobOwnerFilterSuggestions;
+export const selectPeoplePickerSuggestions = (state: RootState) => state.jobs.jobOwnerFilterSuggestions;
 
 export const selectRemoveGMMLoading = (state: RootState) => state.jobs.removeGMMLoading;
 export const selectRemoveGMMResponse = (state: RootState) => state.jobs.removeGMMResponse;

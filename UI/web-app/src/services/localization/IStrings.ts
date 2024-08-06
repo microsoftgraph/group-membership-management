@@ -347,6 +347,7 @@ export type IStrings = {
       placeMembership: string;
       clickHere: string;
       requestor: string;
+      requestorInfo: string;
     }
   };
   copy: string;

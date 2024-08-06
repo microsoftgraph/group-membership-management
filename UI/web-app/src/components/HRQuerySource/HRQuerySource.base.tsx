@@ -16,9 +16,9 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOrgLeaderDetails, fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
-import { getJobOwnerFilterSuggestions } from '../../store/jobs.api';
+import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
-import { selectJobOwnerFilterSuggestions } from '../../store/jobs.slice';
+import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeValues } from '../../store/sqlMembershipSources.api';
 import { selectAttributes, selectSource, selectAttributeValues, setAttributeValues } from '../../store/sqlMembershipSources.slice';
@@ -53,7 +53,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const dispatch = useDispatch<AppDispatch>();
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
-  const ownerPickerSuggestions = useSelector(selectJobOwnerFilterSuggestions);
+  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
   const isJobWriter = useSelector(selectIsJobWriter);
   const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
   const [isDisabled, setIsDisabled] = useState(true);
@@ -298,7 +298,7 @@ const checkType = (value: string, type: string | undefined): string => {
   const handleOrgLeaderInputChange = (input: string): string => {
     setIncludeOrg(true);
     setOrgErrorMessage('');
-    dispatch(getJobOwnerFilterSuggestions({displayName: input, alias: input}))
+    dispatch(getPeoplePickerSuggestions({displayName: input, alias: input}))
     return input;
   }
 

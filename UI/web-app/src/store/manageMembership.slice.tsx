@@ -65,7 +65,7 @@ const initialState: ManageMembershipState = {
     compositeQuery: {} as SyncJobQuery,
     advancedViewQuery: '',
     sourceParts: [],
-    isEditingExistingJob: false
+    isEditingExistingJob: false,
 };
 
 const manageMembershipSlice = createSlice({

@@ -352,6 +352,7 @@ export const strings: IStrings = {
       placeMembership: 'Place Membership',
       clickHere: 'Click here',
       requestor: 'Requestor',
+      requestorInfo: 'The requestor is the person who initially requested that GMM manage this destination\'s membership. This person must be an owner of the destination. This helps us track who to reach out to if we have questions about the initial onboarding. Otherwise, the requestor has no additional rights to the destination than any other owner.',
     }
   },
   copy: 'Copy',

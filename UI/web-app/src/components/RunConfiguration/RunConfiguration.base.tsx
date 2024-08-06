@@ -7,8 +7,13 @@ import {
   classNamesFunction,
   useTheme,
   ChoiceGroup, IChoiceGroupOption, DatePicker, Dropdown, Checkbox,
-  TextField,
   MessageBar, MessageBarType,
+  Label,
+  TooltipHost,
+  IconButton,
+  NormalPeoplePicker,
+  IPersonaProps,
+  DirectionalHint,
 } from '@fluentui/react';
 import {
   IRunConfigurationProps,
@@ -35,11 +40,13 @@ import {
   setShowIncreaseDropdown,
   setStartDateOption,
   setUseThresholdLimits,
-  manageMembershipRequestor
+  manageMembershipRequestor,
 } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { getPeoplePickerSuggestions } from '../../store/jobs.api';
+import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
 
 const getClassNames = classNamesFunction<
   IRunConfigurationStyleProps,
@@ -56,10 +63,24 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
       theme: useTheme(),
     }
   );
+
+  const mapRequestorToPersonaProps = (requestor: string): IPersonaProps[] => {
+    if (!requestor) return [];
+    return [{
+      key: requestor,
+      text: requestor,
+      secondaryText: requestor,
+    }];
+  };
+
   const dispatch = useDispatch<AppDispatch>();
   const period: number = useSelector(manageMembershipPeriod);
   const startDate: string = useSelector(manageMembershipStartDate);
   const requestor: string = useSelector(manageMembershipRequestor);
+  const requestorPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
+  const requestorPersona = mapRequestorToPersonaProps(requestor);
+  const [requestorPersonaState, setRequestorPersonaState] = React.useState<IPersonaProps[]>(mapRequestorToPersonaProps(requestor));
+
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
 
@@ -97,22 +118,52 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   const increaseOptions = Array.from({ length: 10 }, (_, i) => ({ key: `${(i + 1) * 10}`, text: `${(i + 1) * 10}%` }));
   const decreaseOptions = Array.from({ length: 11 }, (_, i) => ({ key: `${i * 5}`, text: `${i * 5}%` }));
 
-  const handleRequestorChange = (ev: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
-    dispatch(setNewJobRequestor(newValue || ''));
+  const getPickerSuggestions = async (
+    text: string
+  ): Promise<IPersonaProps[]> => {
+    return text && requestorPickerSuggestions ? requestorPickerSuggestions : [];
+  };
+
+  const handleRequestorInputChange = (input: string): string => {
+    if (input.trim() !== "") {
+      dispatch(getPeoplePickerSuggestions({ displayName: input, alias: input }));
+    }
+    return input;
+  };
+
+  const handleRequestorChange = (items?: IPersonaProps[] | undefined) => {
+    if (items && items.length > 0) {
+      dispatch(setNewJobRequestor(items[0].secondaryText || items[0].text || '' ));
+    } else {
+      dispatch(setNewJobRequestor(''));
+    }
+    setRequestorPersonaState(items || []);
   };
 
   return (
     <div className={classNames.root}>
       {isJobTenantWriter &&
-        <TextField
-          label={strings.ManageMembership.labels.requestor}
-          value={requestor}
-          placeholder={strings.ManageMembership.labels.requestor}
-          onChange={handleRequestorChange}
-          styles={{
-            fieldGroup: classNames.textFieldFieldGroup,
-          }}
-        />
+      <div>
+        <div className={classNames.labelContainer}>
+          <Label>{strings.ManageMembership.labels.requestor}</Label>
+          <TooltipHost content={strings.ManageMembership.labels.requestorInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
+            <IconButton title={strings.ManageMembership.labels.requestorInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
+          </TooltipHost>
+        </div>
+          <NormalPeoplePicker
+              aria-label={strings.ManageMembership.labels.requestor}
+              onResolveSuggestions={getPickerSuggestions}
+              key={'normal'}
+              resolveDelay={300}
+              itemLimit={1}
+              selectedItems={requestorPersona}
+              onInputChange={handleRequestorInputChange}
+              onChange={handleRequestorChange}
+              styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
+              pickerCalloutProps={{directionalHint: DirectionalHint.bottomLeftEdge}}
+              disabled={!isJobWriter}
+            />
+      </div>
       }
       <ChoiceGroup
         styles={{

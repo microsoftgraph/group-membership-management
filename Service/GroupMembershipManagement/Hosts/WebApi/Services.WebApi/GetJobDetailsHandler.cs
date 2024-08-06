@@ -59,15 +59,12 @@ namespace Services
                 });
             }
 
-            bool isRequestorOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(job.Requestor, job.TargetOfficeGroupId);
-            string requestor = isRequestorOwner ? job.Requestor : job.Requestor + " (Not an Owner)";
-
             var dto = new SyncJobDetailsDTO
                 (
                     startDate: job.StartDate,
                     lastSuccessfulStartTime: job.LastSuccessfulStartTime,
                     source: job.Query,
-                    requestor: requestor,
+                    requestor: job.Requestor,
                     thresholdViolations: job.ThresholdViolations,
                     thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
                     thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals,

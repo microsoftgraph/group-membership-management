@@ -20,6 +20,9 @@ import {
     dropdownTitle: IStyle;
     textFieldFieldGroup: IStyle;
     thresholdWarning: IStyle;
+    labelContainer: IStyle;
+    textField: IStyle;
+    textFieldGroup: IStyle;
   }
   
   export interface IRunConfigurationStyleProps {

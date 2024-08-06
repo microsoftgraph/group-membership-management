@@ -173,7 +173,7 @@ namespace Services.Tests
             var job = result.Value as SyncJobDetails;
 
             Assert.IsNotNull(job);
-            Assert.AreEqual("example@microsoft.com (Not an Owner)", job.Requestor);
+            Assert.AreEqual("example@microsoft.com", job.Requestor);
         }
 
         [TestMethod]
