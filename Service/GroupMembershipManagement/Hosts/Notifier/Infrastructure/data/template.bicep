@@ -20,10 +20,10 @@ param storageAccountSku string = 'Standard_LRS'
 param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('ntf${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('n${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
 module notifierStorageAccountProd 'storageAccount.bicep' = {
-  name: 'ntfProdstorageAccountTemplate'
+  name: 'nProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
