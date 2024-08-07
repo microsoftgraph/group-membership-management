@@ -45,7 +45,7 @@ stages:
       repoToCheckout: self
       checkoutPath: '$(Build.BuildNumber)'
       buildRelease: ${{variables.buildRelease}}
-#TODO: Modify the function here
+
   - template: yaml/build-functionapps.yml
     parameters:
       dependsOn: Build_Common
@@ -101,7 +101,7 @@ stages:
          coverageThreshold: 80
       - function:
          name: 'JobFinalizer'
-         coverageThreshold: 0
+         coverageThreshold: 40
 
   - template: yaml/build-release-package.yml
     parameters:
