@@ -20,11 +20,11 @@ param storageAccountSku string = 'Standard_LRS'
 param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('gmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('gmo${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('jf${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
+var stagingStorageAccountName = substring('jf${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
-module gmoStorageAccountProd 'storageAccount.bicep' = {
-  name: 'gmoProdstorageAccountTemplate'
+module jfStorageAccountProd 'storageAccount.bicep' = {
+  name: 'jfProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
@@ -34,8 +34,8 @@ module gmoStorageAccountProd 'storageAccount.bicep' = {
   }
 }
 
-module gmoStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'gmoStagingstorageAccountTemplate'
+module jfStorageAccountStaging 'storageAccount.bicep' = {
+  name: 'jfStagingstorageAccountTemplate'
   params: {
     name: stagingStorageAccountName
     sku: storageAccountSku
