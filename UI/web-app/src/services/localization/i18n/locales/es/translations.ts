@@ -131,6 +131,13 @@ export const strings: IStrings = {
         customLabelInputPlaceHolder: "Entre un nombre personalizado",
       },
     },
+    GeneralSettings: {
+      labels: {
+        general: "General",
+        reviewOwnSubmissionTitle: "Permisos de los Verificadores de Solicitud",
+        reviewOwnSubmissionDescription: "¿Pueden los Verificadores de Solicitud aceptar o rechazar su propia solicitud?"
+      }
+    }
   },
   Authentication: {
     loginFailed: 'Ocurrió un error inesperado durante el inicio de sesión.'

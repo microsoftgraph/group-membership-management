@@ -69,11 +69,13 @@ The roles are:
     - _Note: for Submission Reviewers to be able to see all pending requests, they need to also have the Job Tenant Reader role_
 
 - Hyperlink Administrator
-    - Users with this role can **add, update, and remove** custom urls from the Admin Settings page.
+    - Users with this role can **add, update, and remove** custom urls from the Admin Center page.
 
 - Custom Membership Provider Administrator
-    - Users with this role can **add, update, and remove** custom field names from the Admin Settings page.
+    - Users with this role can **add, update, and remove** custom field names from the Admin Center page.
 
+- General Settings Administrator
+    - Users with this role can **update** general settings from the Admin Center page.
 
 
 ## Add a role to a group

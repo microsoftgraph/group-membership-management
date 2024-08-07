@@ -37,6 +37,7 @@ namespace Services.Tests
                 new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR),
                 new Claim(ClaimTypes.Role, Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR),
                 new Claim(ClaimTypes.Role, Roles.RESET_ADMINISTRATOR),
+                new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
             };
 
             _rolesController.ControllerContext = CreateControllerContext(claims);
@@ -58,6 +59,7 @@ namespace Services.Tests
             Assert.IsTrue(rolesStatuses.IsHyperlinkAdministrator);
             Assert.IsTrue(rolesStatuses.IsCustomMembershipProviderAdministrator);
             Assert.IsTrue(rolesStatuses.IsOperationsResetAdministrator);
+            Assert.IsTrue(rolesStatuses.IsGeneralSettingsAdministrator);
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)

@@ -5,7 +5,7 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import { getAllRoles } from './roles.api';
 
-// Define a type for the slice stat
+// Define a type for the slice state
 export type Roles = {
   isJobOwnerReader: boolean;
   isJobOwnerEnabler: boolean;
@@ -17,10 +17,11 @@ export type Roles = {
   isHyperlinkAdministrator: boolean;
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;
+  isGeneralSettingsAdministrator: boolean;
   isFetchingRoles: boolean;
 }
 
-// Define the initial state using that ty
+// Define the initial state using that type
 const initialState: Roles = {
   isJobOwnerReader: false,
   isJobOwnerEnabler: false,
@@ -32,6 +33,7 @@ const initialState: Roles = {
   isHyperlinkAdministrator: false,
   isCustomMembershipProviderAdministrator: false,
   isOperationsResetAdministrator: false,
+  isGeneralSettingsAdministrator: false,
   isFetchingRoles: false,
 };
 
@@ -63,6 +65,7 @@ export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSu
 export const selectIsHyperlinkAdministrator = (state: RootState) => state.roles.isHyperlinkAdministrator;
 export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
 export const selectIsOperationsResetAdministrator = (state: RootState) => state.roles.isOperationsResetAdministrator;
+export const selectIsGeneralSettingsAdministrator = (state: RootState) => state.roles.isGeneralSettingsAdministrator;
 
 export const selectHasAccess = (state: RootState) => {
   return state.roles.isJobOwnerReader || state.roles.isJobOwnerWriter || state.roles.isJobTenantReader || state.roles.isJobTenantWriter;
@@ -74,6 +77,13 @@ export const selectHasJobWritePermissions = (state: RootState) => {
 
 export const selectIsJobWriter = (state: RootState) => {
   return state.roles.isJobOwnerWriter || state.roles.isJobTenantWriter;
+};
+
+export const selectHasAdminCenterPermissions = (state: RootState) => {
+  return state.roles.isHyperlinkAdministrator || 
+          state.roles.isCustomMembershipProviderAdministrator ||
+          state.roles.isOperationsResetAdministrator || 
+          state.roles.isGeneralSettingsAdministrator;
 };
 
 export default rolesSlice.reducer;

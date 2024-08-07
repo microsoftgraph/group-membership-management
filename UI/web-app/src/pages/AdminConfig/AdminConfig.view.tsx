@@ -4,19 +4,32 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import { AdminConfigStyleProps, AdminConfigStyles, AdminConfigViewProps, CustomLabelCellProps, CustomSourceSettingsProps, HyperlinkSettingsProps, OperationsProps } from './AdminConfig.types';
+import { 
+  AdminConfigStyleProps, 
+  AdminConfigStyles,
+  AdminConfigViewProps,
+  CustomLabelCellProps,
+  CustomSourceSettingsProps,
+  HyperlinkSettingsProps,
+  OperationsProps,
+  GeneralSettingsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkSetting } from '../../components/HyperlinkSetting';
 import { Operation } from '../../components/Operation';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import { GeneralSetting } from '../../components/GeneralSetting';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
-  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, isHyperlinkAdmin, isCustomMembershipProviderAdmin, isOperationsResetAdministrator } = props;
+  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, 
+    isHyperlinkAdmin, 
+    isCustomMembershipProviderAdmin,
+    isOperationsResetAdministrator,
+    isGeneralSettingsAdministrator } = props;
 
   // generate class names
   const classNames: IProcessedStyleSet<AdminConfigStyles> = getClassNames(styles, {
@@ -114,6 +127,19 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     strings={strings} />
                 </PivotItem>
               }
+              {isGeneralSettingsAdministrator &&
+                <PivotItem
+                  headerText={strings.GeneralSettings.labels.general}
+                  headerButtonProps={{
+                    'data-order': 1,
+                    'data-title': strings.GeneralSettings.labels.general,
+                  }}
+                >
+                  <GeneralSettings
+                    classNames={classNames}
+                    strings={strings} />
+                </PivotItem>
+              }
             </Pivot>
           </PageSection>
         </div>
@@ -128,6 +154,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     </Page>
   );
 };
+
 const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsProps) => {
   const { classNames, strings} = props;
   return (
@@ -140,6 +167,19 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
       </div>
   );
 }
+
+const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: GeneralSettingsProps) => {
+  const { strings} = props;
+  return (
+    <div>
+      <GeneralSetting
+        title={strings.GeneralSettings.labels.reviewOwnSubmissionTitle}
+        description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
+      />
+    </div>
+  );
+}
+
 const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (props: HyperlinkSettingsProps) => {
 
   const { classNames, strings, settings, setSettings, setHasValidationErrors } = props;

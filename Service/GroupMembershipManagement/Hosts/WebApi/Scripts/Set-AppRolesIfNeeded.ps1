@@ -129,6 +129,14 @@ function Set-AppRolesIfNeeded {
             AllowedMemberTypes = @($memberTypes)
         },
         @{
+            DisplayName        = "General Settings Administrator"
+            Description        = "Can update general settings."
+            Value              = "GeneralSettings.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
             DisplayName        = "Reset Administrator"
             Description        = "Can reset or stop GMM."
             Value              = "Operations.Reset"

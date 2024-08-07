@@ -129,6 +129,13 @@ export const strings: IStrings = {
         customLabelInputPlaceHolder: "Enter a custom label",
       },
     },
+    GeneralSettings: {
+      labels: {
+        general: "General",
+        reviewOwnSubmissionTitle: "Submission Reviewers permissions",
+        reviewOwnSubmissionDescription: "Can submission reviewers review their own submissions?"
+      }
+    }
   },
   Authentication: {
     loginFailed: 'An unexpected error occurred during login.'

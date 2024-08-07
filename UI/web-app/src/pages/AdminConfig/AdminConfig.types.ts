@@ -50,6 +50,7 @@ export type AdminConfigViewProps = AdminConfigProps & {
   isHyperlinkAdmin: boolean;
   isCustomMembershipProviderAdmin: boolean;
   isOperationsResetAdministrator: boolean;
+  isGeneralSettingsAdministrator: boolean;
 };
 
 export type HyperlinkSettingsProps = {
@@ -61,6 +62,11 @@ export type HyperlinkSettingsProps = {
 };
 
 export type OperationsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+};
+
+export type GeneralSettingsProps = {
   classNames: IProcessedStyleSet<AdminConfigStyles>;
   strings: IStrings['AdminConfig'];
 };

@@ -16,5 +16,6 @@ namespace WebApi.Models
         public const string HYPERLINK_ADMINISTRATOR = "Hyperlink.ReadWrite.All";
         public const string CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR = "CustomSource.ReadWrite.All";
         public const string RESET_ADMINISTRATOR = "Operations.Reset";
+        public const string GENERAL_SETTINGS_ADMINISTRATOR = "GeneralSettings.ReadWrite.All";
     }
 }

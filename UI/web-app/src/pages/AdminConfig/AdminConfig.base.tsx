@@ -19,7 +19,12 @@ import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectSource, selectAttributes, selectIsSourceSaving, selectAreAttributesSaving, setSource, setAttributes } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
-import { selectIsCustomMembershipProviderAdministrator, selectIsHyperlinkAdministrator, selectIsOperationsResetAdministrator} from '../../store/roles.slice';
+import { 
+  selectIsCustomMembershipProviderAdministrator, 
+  selectIsHyperlinkAdministrator, 
+  selectIsOperationsResetAdministrator,
+  selectIsGeneralSettingsAdministrator,
+} from '../../store/roles.slice';
 
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
@@ -41,6 +46,8 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isHyperlinkAdmin = useSelector(selectIsHyperlinkAdministrator);
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
   const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
+  const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
+
   const strings = useStrings().AdminConfig;
 
   const generateSettings = () => ({
@@ -116,6 +123,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       isHyperlinkAdmin={isHyperlinkAdmin}
       isCustomMembershipProviderAdmin={isCustomMembershipProviderAdmin}
       isOperationsResetAdministrator={isOperationsResetAdministrator}
+      isGeneralSettingsAdministrator={isGeneralSettingsAdministrator}
     />
   );
 };

@@ -113,7 +113,7 @@ export type IStrings = {
         start: string;
         starting: string;
       };
-    };
+    },
     CustomSourceSettings: {
       labels: {
         customSource: string;
@@ -126,6 +126,13 @@ export type IStrings = {
         customLabelInputPlaceHolder: string;
       },
     },
+    GeneralSettings: {
+      labels: {
+        general: string;
+        reviewOwnSubmissionTitle: string;
+        reviewOwnSubmissionDescription: string;
+      }
+    }
   },
   Authentication: {
     loginFailed: string;
