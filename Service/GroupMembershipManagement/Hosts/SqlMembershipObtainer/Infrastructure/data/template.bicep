@@ -23,7 +23,7 @@ param storageAccountSku string = 'Standard_LRS'
 /* This creates the internal storage accounts used by SqlMemberhipObtainer function */
 
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('sqlmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('smo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
 module smoStorageAccountProd 'storageAccount.bicep' = {
   name: 'smoProdstorageAccountTemplate'
