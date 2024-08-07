@@ -82,33 +82,4 @@ resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
   }
 }
 
-resource functionAppSlotConfig 'Microsoft.Web/sites/config@2021-03-01' = {
-  name: 'slotConfigNames'
-  parent: functionApp
-  properties: {
-    appSettingNames: [
-      'AzureFunctionsJobHost__extensions__durableTask__hubName'
-      'AzureWebJobs.StarterFunction.Disabled'
-      'AzureWebJobs.OrchestratorFunction.Disabled'
-      'AzureWebJobs.SubOrchestratorFunction.Disabled'
-      'AzureWebJobs.DeltaUsersReaderFunction.Disabled'
-      'AzureWebJobs.DeltaUsersSenderFunction.Disabled'
-      'AzureWebJobs.EmailSenderFunction.Disabled'
-      'AzureWebJobs.FileDownloaderFunction.Disabled'
-      'AzureWebJobs.GroupsReaderFunction.Disabled'
-      'AzureWebJobs.GroupValidatorFunction.Disabled'
-      'AzureWebJobs.JobStatusUpdaterFunction.Disabled'
-      'AzureWebJobs.MembersReaderFunction.Disabled'
-      'AzureWebJobs.SourceGroupsReaderFunction.Disabled'
-      'AzureWebJobs.SubsequentDeltaUsersReaderFunction.Disabled'
-      'AzureWebJobs.SubsequentMembersReaderFunction.Disabled'
-      'AzureWebJobs.SubsequentUsersReaderFunction.Disabled'
-      'AzureWebJobs.UsersReaderFunction.Disabled'
-      'AzureWebJobs.UsersSenderFunction.Disabled'
-      'AzureWebJobsStorage'
-      'AzureFunctionsWebHost__hostid'
-    ]
-  }
-}
-
 output msi string = functionApp.identity.principalId
