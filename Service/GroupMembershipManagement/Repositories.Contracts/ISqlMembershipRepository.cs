@@ -18,5 +18,6 @@ namespace Repositories.Contracts
         Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName);
         Task<bool> CheckIfMappingsTableExistsAsync(string tableName);
         Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName);
+        Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName);
     }
 }

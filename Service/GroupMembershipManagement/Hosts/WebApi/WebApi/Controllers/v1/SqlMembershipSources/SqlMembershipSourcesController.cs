@@ -18,6 +18,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> _getDefaultSqlMembershipSourceHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse> _getDefaultSqlMembershipSourceAttributesHandler;
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> _getDefaultSqlMembershipSourceAttributeMappingsHandler;
+        private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> _getDefaultSqlMembershipSourceAttributeValuesHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> _patchDefaultSqlMembershipSourceCustomLabelHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> _patchDefaultSqlMembershipSourceAttributesHandler;
 
@@ -25,12 +26,14 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> getDefaultSqlMembershipSourceHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse> getDefaultSqlMembershipSourceAttributesHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> getDefaultSqlMembershipSourceAttributeMappingsHandler,
+            IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> getDefaultSqlMembershipSourceAttributeValuesHandler,
             IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> patchDefaultSqlMembershipSourceCustomLabelHandler,
             IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> patchDefaultSqlMembershipSourceAttributesHandler)
         {
             _getDefaultSqlMembershipSourceHandler = getDefaultSqlMembershipSourceHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceHandler));
             _getDefaultSqlMembershipSourceAttributesHandler = getDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributesHandler));
             _getDefaultSqlMembershipSourceAttributeMappingsHandler = getDefaultSqlMembershipSourceAttributeMappingsHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeMappingsHandler));
+            _getDefaultSqlMembershipSourceAttributeValuesHandler = getDefaultSqlMembershipSourceAttributeValuesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeValuesHandler));
             _patchDefaultSqlMembershipSourceCustomLabelHandler = patchDefaultSqlMembershipSourceCustomLabelHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceCustomLabelHandler));
             _patchDefaultSqlMembershipSourceAttributesHandler = patchDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceAttributesHandler));
         }
@@ -73,6 +76,21 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             {
                 var response = await _getDefaultSqlMembershipSourceAttributeMappingsHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeMappingsRequest(attribute));
                 return Ok(response.Model);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        [Authorize(Roles = Models.Roles.CUSTOM_MEMBERSHIP_PROVIDER_ADMINISTRATOR)]
+        [HttpGet("attributeValues/{attribute}")]
+        public async Task<IActionResult> GetDefaultSourceAttributeValuesAsync([FromRoute] string attribute, [FromQuery] bool hasMapping)
+        {
+            try
+            {
+                var response = await _getDefaultSqlMembershipSourceAttributeValuesHandler.ExecuteAsync(new GetDefaultSqlMembershipSourceAttributeValuesRequest(attribute, hasMapping));
+                return Ok(response.Values);
             }
             catch (Exception ex)
             {

@@ -1,0 +1,109 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Microsoft.Data.SqlClient;
+using Models;
+using Repositories.Contracts;
+using Services.Contracts;
+using Services.Messages.Requests;
+using Services.Messages.Responses;
+
+namespace Services
+{
+    public class GetDefaultSqlMembershipSourceAttributeValuesHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse>
+    {
+        private readonly ILoggingRepository _loggingRepository;
+        private readonly IDataFactoryRepository _dataFactoryRepository;
+        private readonly ISqlMembershipRepository _sqlMembershipRepository;
+
+        public GetDefaultSqlMembershipSourceAttributeValuesHandler(ILoggingRepository loggingRepository,
+                              IDataFactoryRepository dataFactoryRepository,
+                              ISqlMembershipRepository sqlMembershipRepository) : base(loggingRepository)
+        {
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
+            _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
+        }
+
+        protected override async Task<GetDefaultSqlMembershipSourceAttributeValuesResponse> ExecuteCoreAsync(GetDefaultSqlMembershipSourceAttributeValuesRequest request)
+        {
+            try
+            {
+                var response = new GetDefaultSqlMembershipSourceAttributeValuesResponse();
+                var attributeValues = await GetSqlAttributeValuesAsync(request.Attribute, request.HasMapping);
+                response.Values = attributeValues;
+
+                return response;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve Sql Filter Attribute Values: {ex.Message}" });
+                throw ex;
+            }
+        }
+
+        private async Task<List<string>> GetSqlAttributeValuesAsync(string attribute, bool hasMapping)
+        {
+            var tableName = await GetTableNameAsync();
+            var attributes = await GetAttributeValuesAsync(attribute, hasMapping, tableName);
+            return attributes;
+        }
+
+        private async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
+        {
+            var attributeValues = new List<string>();
+
+            try
+            {
+                attributeValues = await _sqlMembershipRepository.GetAttributeValuesAsync(attribute, hasMapping, tableName);
+            }
+            catch (SqlException ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get Sql Filter Attribute Values from table '{tableName}': {ex.Message}" });
+                throw ex;
+            }
+
+            return attributeValues;
+        }
+
+        private async Task<string> GetTableNameAsync()
+        {
+            var adfRunId = await GetADFRunIdAsync();
+            var tableName = adfRunId.Replace("-", "");
+            var tableExists = await CheckIfTableExistsAsync(tableName);
+
+            return tableExists ? tableName : "";
+        }
+
+        private async Task<bool> CheckIfTableExistsAsync(string tableName)
+        {
+            bool tableExists = false;
+
+            try
+            {
+                tableExists = await _sqlMembershipRepository.CheckIfTableExistsAsync(tableName);
+            }
+            catch (SqlException ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while checking if table '{tableName}' exists: {ex.Message}" });
+                throw ex;
+            }
+
+            return tableExists;
+        }
+
+        private async Task<string> GetADFRunIdAsync()
+        {
+            var lastSqlMembershipRunId = await _dataFactoryRepository.GetMostRecentSucceededRunIdAsync();
+
+            if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
+            {
+                var message = $"No SqlMembershipObtainer pipeline run has been found";
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get the latest ADF pipeline run: {message}" });
+                throw new ArgumentException(message);
+            }
+
+            return lastSqlMembershipRunId;
+        }
+    }
+}

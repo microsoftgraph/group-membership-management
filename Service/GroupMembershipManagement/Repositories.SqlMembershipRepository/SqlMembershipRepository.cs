@@ -452,6 +452,53 @@ namespace Repositories.SqlMembershipRepository
             return attributeMappings;
         }
 
+        public async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
+        {
+            var attributeValues = new List<string>();
+            var retryPolicy = GetRetryPolicy();
+
+            var schema = hasMapping ? "mappings" : "users";
+            var column = hasMapping ? "Description" : $"{attribute}";
+            var whereClause = hasMapping ? $" WHERE ColumnName = '{attribute}'" : "";
+
+            try
+            {
+                var selectQuery = $"SELECT DISTINCT TOP(10) {column} FROM [{schema}].[{tableName}]" + whereClause;
+
+                await retryPolicy.Execute(async () =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                int valueOrdinal = reader.GetOrdinal($"{column}");
+
+                                while (reader.Read())
+                                {
+                                    var value = reader.IsDBNull(valueOrdinal) ? null : reader.GetValue(valueOrdinal)?.ToString()?.Trim();
+
+                                    if (value != null)
+                                    {
+                                        attributeValues.Add(value);
+                                    }                               
+                                }
+                                await reader.CloseAsync();
+                            }
+                        }
+                        await conn.CloseAsync();
+                    }
+                });
+            }
+            catch (SqlException ex)
+            {
+                throw ex;
+            }
+
+            return attributeValues;
+        }
         private RetryPolicy GetRetryPolicy()
         {
             return Policy.Handle<SqlException>()
