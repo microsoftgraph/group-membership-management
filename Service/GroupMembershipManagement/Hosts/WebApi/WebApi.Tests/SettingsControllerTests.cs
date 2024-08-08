@@ -12,6 +12,7 @@ using System.Security.Claims;
 using WebApi.Models;
 using Services.WebApi;
 using WebApi.Controllers.v1.Jobs;
+using System.Net;
 
 namespace Services.Tests
 {
@@ -76,6 +77,17 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetSettingByKeyNotFoundTestAsync()
+        {
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(_settingKey)).ReturnsAsync(() => null);
+            var response = await _settingsController.GetSettingByKeyAsync(_settingKey);
+            Assert.IsNotNull(response);
+
+            var result = response as ObjectResult;
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
         public async Task GetAllSettingsTestAsync()
         {
             var response = await _settingsController.GetAllSettingsAsync();
@@ -89,6 +101,38 @@ namespace Services.Tests
             var settingsResult = okResult.Value as List<SettingDTO>;
             Assert.IsNotNull(settingsResult);
             Assert.AreEqual(settingsResult.Count, _settings.Count);
+        }
+
+        [TestMethod]
+        public async Task GetSettingByKeyExceptionTestAsync()
+        {
+            var nonExistentSettingKey = new SettingKey();
+
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(nonExistentSettingKey))
+                               .ThrowsAsync(new Exception());
+
+            var response = await _settingsController.GetSettingByKeyAsync(nonExistentSettingKey);
+            Assert.IsNotNull(response);
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        [TestMethod]
+        public async Task GetAllSettingsExceptionTestAsync()
+        {
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync())
+                               .ThrowsAsync(new Exception());
+
+            var response = await _settingsController.GetAllSettingsAsync();
+            Assert.IsNotNull(response);
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
         }
 
         [TestMethod]
@@ -113,6 +157,19 @@ namespace Services.Tests
 
             _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Once());
         }
+
+        [TestMethod]
+        public async Task PatchSettingNotFoundTestAsync()
+        {
+            var nonExistentSettingKey = SettingKey.UIUrl;
+            _settingsRepository.Setup(x => x.PatchSettingAsync(nonExistentSettingKey, It.IsAny<string>()))
+                               .ThrowsAsync(new KeyNotFoundException());
+
+            var response = await _settingsController.PatchSettingAsync(nonExistentSettingKey, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(NotFoundResult));
+        }
+
         private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };

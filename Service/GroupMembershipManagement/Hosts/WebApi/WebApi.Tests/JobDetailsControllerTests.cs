@@ -355,6 +355,33 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task PatchJobThrowsExceptionReturnsInternalServerError()
+        {
+            var userId = Guid.NewGuid().ToString();
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>())).ThrowsAsync(new Exception());
+
+            _patchJobHandler = new PatchJobHandler(_loggingRepository.Object, _graphGroupRepository.Object, _syncJobRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, "Idle");
+
+            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var result = response as ObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+        }
+
+        [TestMethod]
         [DataRow(Roles.JOB_OWNER_DELETER)]
         public async Task RemoveGMMAsyncWhenIsAnAuthorizedUser(string role)
         {
@@ -428,6 +455,57 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual(404, result.StatusCode);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task RemoveGMMAsyncWhenIsClaimIsNotFound(string role)
+        {
+            var syncJobId = Guid.NewGuid();
+
+            var context = CreateHttpContext(new List<Claim> {
+                        new Claim(ClaimTypes.Name, "user@domain.com"),
+                        new Claim(ClaimTypes.Role, role)
+                    });
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            {
+                ControllerContext = CreateControllerContext(context)
+            };
+
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => false);
+
+            var response = await _jobDetailsController.RemoveGMMAsync(syncJobId);
+            var result = response as ForbidResult;
+
+            Assert.IsInstanceOfType(result, typeof(ForbidResult));
+
+            _syncJobRepository.Verify(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task RemoveGMMThrowsExceptionReturnsInternalServerError()
+        {
+            var userId = Guid.NewGuid().ToString();
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_OWNER_DELETER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object, _graphGroupRepository.Object, _syncJobRepository.Object);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
+
+            _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>())).ThrowsAsync(new Exception());
+            var response = await _jobDetailsController.RemoveGMMAsync(Guid.NewGuid());
+            var result = response as ObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)

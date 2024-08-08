@@ -379,6 +379,40 @@ namespace Services.Tests
             var result = response as ObjectResult;
             Assert.IsNotNull(result);
         }
+
+        [TestMethod]
+        public async Task PostJobCreationWhenClaimIsNotFoundTestAsync()
+        {
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            _databaseSyncJobsRepository.Setup(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                                       .ReturnsAsync(Guid.Empty);
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            var result = response as ForbidResult;
+            Assert.IsInstanceOfType(result, typeof(ForbidResult));
+
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+        }
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
         {
             foreach (var value in await Task.FromResult(input))

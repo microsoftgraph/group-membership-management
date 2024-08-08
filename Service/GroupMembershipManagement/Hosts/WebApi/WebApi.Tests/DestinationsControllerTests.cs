@@ -167,6 +167,103 @@ namespace Services.Tests
             Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus);
         }
 
+        [TestMethod]
+        public async Task GetGroupAppIdNotOwnerStatusAsync()
+        {
+            Guid groupNotOnboarded = Guid.NewGuid();
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+
+            var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.AppIdNotOwner, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetGroupUserNotOwnerStatusAsync()
+        {
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+
+            Guid groupNotOnboarded = Guid.NewGuid();
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
+
+            var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.UserNotOwner, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOnboardingStatusWhenClaimIsNotFoundAsync()
+        {
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                })
+            };
+
+            Guid groupId = Guid.NewGuid();
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupId))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupId))).ReturnsAsync(false);
+
+            var response = await _destinationController.GetGroupOnboardingStatusAsync(groupId);
+            var result = response.Result as ForbidResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+        }
+
+        [TestMethod]
+        public async Task GetGroupOnboardingStatusThrowsExceptionAsync()
+        {
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+
+            Guid groupNotOnboarded = Guid.NewGuid();
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ThrowsAsync(new Exception("Database error"));
+
+            var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
+            var result = response.Result as ObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result?.StatusCode);
+        }
+
         private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };
