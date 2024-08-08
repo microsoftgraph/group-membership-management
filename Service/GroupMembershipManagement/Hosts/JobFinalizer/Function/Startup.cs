@@ -31,14 +31,6 @@ namespace Hosts.JobFinalizer
                     services.GetRequiredService<ILoggingRepository>()
                 );
             });
-            builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
-            {
-                var configuration = services.GetRequiredService<IConfiguration>();
-                var JobFinalizerQueue = configuration["serviceBusJobFinalizerQueue"];
-                var client = services.GetRequiredService<ServiceBusClient>();
-                var sender = client.CreateSender(JobFinalizerQueue);
-                return new ServiceBusQueueRepository(sender);
-            });
         }
     }
 }
