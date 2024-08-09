@@ -78,7 +78,7 @@ The roles are:
     - Users with this role can **update** general settings from the Admin Center page.
 
 - Reset Administrator
-    - Users with this role can **reset, stop** GMM from the Admin Operations page.
+    - Users with this role can **reset, stop** GMM from the Admin Center page.
 
 ## Add a role to a group
 
