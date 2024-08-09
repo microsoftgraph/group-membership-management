@@ -233,6 +233,12 @@ namespace Hosts.GroupMembershipObtainer
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.TransientError });
                 throw;
             }
+            catch (Exception ex)
+            {
+                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught Exception, marking sync job status as error. Exception:\n{ex}", RunId = request.RunId });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.Error });
+                throw;
+            }
         }
 
         private void TrackCachedUsersEvent(Guid runId, int cachedUsersCount, Guid groupId)

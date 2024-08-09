@@ -1059,6 +1059,31 @@ namespace Tests.Services
                                             ), Times.Once);
         }
 
+        [TestMethod]
+        public async Task TestOtherExceptionAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
+                                        .Throws<OutOfMemoryException>();
+
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+
+            await Assert.ThrowsExceptionAsync<OutOfMemoryException>(async () => await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object));
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                        It.Is<LogMessage>(m => m.Message.StartsWith("Caught Exception")),
+                        It.IsAny<VerbosityLevel>(),
+                        It.IsAny<string>(),
+                        It.IsAny<string>()
+                    ), Times.Once);
+
+
+            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
+                                                It.IsAny<IEnumerable<SyncJob>>(),
+                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
+                                            ), Times.Once);
+        }
+
         private async Task<bool> CallGroupValidatorFunctionAsync(GroupValidatorRequest request)
         {
             var function = new GroupValidatorFunction(_loggingRepository.Object, _membershipCalculator, _emailSenderRecipient.Object);
