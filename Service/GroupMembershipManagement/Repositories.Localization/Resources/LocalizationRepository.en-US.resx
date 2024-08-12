@@ -1,17 +1,17 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <!-- 
-    Microsoft ResX Schema 
-    
+  <!--
+    Microsoft ResX Schema
+
     Version 2.0
-    
-    The primary goals of this format is to allow a simple XML format 
-    that is mostly human readable. The generation and parsing of the 
-    various data types are done through the TypeConverter classes 
+
+    The primary goals of this format is to allow a simple XML format
+    that is mostly human readable. The generation and parsing of the
+    various data types are done through the TypeConverter classes
     associated with the data types.
-    
+
     Example:
-    
+
     ... ado.net/XML headers & schema ...
     <resheader name="resmimetype">text/microsoft-resx</resheader>
     <resheader name="version">2.0</resheader>
@@ -26,36 +26,36 @@
         <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
         <comment>This is a comment</comment>
     </data>
-                
-    There are any number of "resheader" rows that contain simple 
+
+    There are any number of "resheader" rows that contain simple
     name/value pairs.
-    
-    Each data row contains a name, and value. The row also contains a 
-    type or mimetype. Type corresponds to a .NET class that support 
-    text/value conversion through the TypeConverter architecture. 
-    Classes that don't support this are serialized and stored with the 
+
+    Each data row contains a name, and value. The row also contains a
+    type or mimetype. Type corresponds to a .NET class that support
+    text/value conversion through the TypeConverter architecture.
+    Classes that don't support this are serialized and stored with the
     mimetype set.
-    
-    The mimetype is used for serialized objects, and tells the 
-    ResXResourceReader how to depersist the object. This is currently not 
+
+    The mimetype is used for serialized objects, and tells the
+    ResXResourceReader how to depersist the object. This is currently not
     extensible. For a given mimetype the value must be set accordingly:
-    
-    Note - application/x-microsoft.net.object.binary.base64 is the format 
-    that the ResXResourceWriter will generate, however the reader can 
+
+    Note - application/x-microsoft.net.object.binary.base64 is the format
+    that the ResXResourceWriter will generate, however the reader can
     read any of the formats listed below.
-    
+
     mimetype: application/x-microsoft.net.object.binary.base64
-    value   : The object must be serialized with 
+    value   : The object must be serialized with
             : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
             : and then encoded with base64 encoding.
-    
+
     mimetype: application/x-microsoft.net.object.soap.base64
-    value   : The object must be serialized with 
+    value   : The object must be serialized with
             : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
             : and then encoded with base64 encoding.
 
     mimetype: application/x-microsoft.net.object.bytearray.base64
-    value   : The object must be serialized into a byte array 
+    value   : The object must be serialized into a byte array
             : using a System.ComponentModel.TypeConverter
             : and then encoded with base64 encoding.
     -->
@@ -1028,9 +1028,9 @@ The group **{1}** with Object Id: {0} **has started its initial sync**.
 
 {4} requested that GMM systematically manage this group's membership based on predefined rules. You can find more specifics on the predefined rules in the GMM UI.
 
-The group **{1}** with Id: {0} **has completed its initial sync**. 
+The group **{1}** with Id: {0} **has completed its initial sync**.
 
-**{2} users were added.** 
+**{2} users were added.**
 
 **{3} users were removed.**
     </value>
@@ -1064,21 +1064,20 @@ Please reach out to support to update the source definition and re-enable the me
   Contact support if you would like to re-enable GMM.
     </value>
   </data>
-  <data name="SyncDisabledInactivityEmailBody" xml:space="preserve">
+  <data name="SyncPurgedForInactivityEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as the owner of **{1}**.
 
-Your group's membership synchronizations are currently disabled due to one of the following reasons:
+Your group's affiliation with GMM has been removed for inactivity due to one of the following reasons:
 
-•	Source and/or destination group(s) no longer exist.
-•	Group owner did not take action on a drastic membership change alert.
-•	Membership syncs were paused by owner for more than 30 days.
+* Source and/or destination group(s) no longer exist.
+*	Group owner did not take action on a drastic membership change alert.
+*	Membership syncs were paused by owner for more than 30 days.
 
-If you believe this group should still be managed by Group Membership Management (GMM), please take the necessary actions via the GMM UI or reach out to support to request assistance before {2}.
-
-If not remediated by {2}, your group's membership will still remain, but its affiliation with GMM (including its membership definition) will be removed. You will need to re-onboard if you still want GMM to manage your group after that date.</value>
+Please reach out to the **CC'ed alias** for inquiries about re-onboarding or any questions you may have.
+You can click on the "Go to GMM UI" option below to check the status of other groups you own and currently manage through GMM.</value>
   </data>
-  <data name="SyncDisabledInactivityEmailSubject" xml:space="preserve">
-    <value>[Final Notice] Sync disabled</value>
+  <data name="SyncPurgedForInactivityEmailSubject" xml:space="preserve">
+    <value>[Final Notice] Sync purged</value>
   </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
@@ -1152,7 +1151,7 @@ The group sync will be PAUSED until your response is received.
   <data name="GuestUserFailureEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
 
-The group **{1}** with Id: {0} **has been set to the status "GuestUsersCannotBeAddedToUnifiedGroup"** because GMM failed to add guest users to the destination, due to the destination not having the right settings to allow guest users to be added by GMM. 
+The group **{1}** with Id: {0} **has been set to the status "GuestUsersCannotBeAddedToUnifiedGroup"** because GMM failed to add guest users to the destination, due to the destination not having the right settings to allow guest users to be added by GMM.
 
 Even though GMM couldn't add the guest users, it still **added the remaining {2} users** and **removed the expected {3} users** from the destination.</value>
   </data>

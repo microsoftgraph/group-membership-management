@@ -95,8 +95,8 @@ namespace Hosts.Notifier
                     break;
 
                 case nameof(NotificationMessageType.InactiveSyncJobNotification):
-                    message.SubjectTemplate = NotificationConstants.SyncDisabledInactivityEmailSubject;
-                    message.ContentTemplate = NotificationConstants.SyncDisabledInactivityEmailBody;
+                    message.SubjectTemplate = NotificationConstants.SyncPurgedForInactivityEmailSubject;
+                    message.ContentTemplate = NotificationConstants.SyncPurgedForInactivityEmailBody;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 

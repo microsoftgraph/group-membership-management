@@ -24,8 +24,8 @@ namespace Services.Contracts
         public const string SyncThresholdEmailSubject = "SyncThresholdEmailSubject";
         public const string SyncThresholdBothEmailBody = "SyncThresholdBothEmailBody";
         public const string SyncThresholdDisablingJobEmailSubject = "SyncThresholdDisablingJobEmailSubject";
-        public const string SyncDisabledInactivityEmailBody = "SyncDisabledInactivityEmailBody";
-        public const string SyncDisabledInactivityEmailSubject = "SyncDisabledInactivityEmailSubject";
+        public const string SyncPurgedForInactivityEmailBody = "SyncPurgedForInactivityEmailBody";
+        public const string SyncPurgedForInactivityEmailSubject = "SyncPurgedForInactivityEmailSubject";
         public const string GuestUserFailureEmailBody = "GuestUserFailureEmailBody";
     }
 }
