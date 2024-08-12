@@ -244,9 +244,16 @@ namespace Hosts.MembershipAggregator
                                            RunId = request.SyncJob.RunId.GetValueOrDefault()
                                        });
 
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    JobStatus = SyncStatus.Idle,
+                    ResultStatus = ResultStatus.Success,
+                    RunId = runId
+                });
+
                 if (!context.IsReplaying)
                     TrackSyncCompleteEvent(context, dbSyncJob, syncCompleteEvent, "Success");
-
+                
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                 new JobStatusUpdaterRequest
                                 {
