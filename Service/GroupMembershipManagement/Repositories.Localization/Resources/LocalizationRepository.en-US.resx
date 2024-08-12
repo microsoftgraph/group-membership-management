@@ -991,7 +991,7 @@
                                     "actions": [
                                         {
                                             "type": "Action.OpenUrl",
-                                            "title": "View in GMM UI",
+                                            "title": "Go to GMM UI",
                                             "url": "${$root.UIUrl}"
                                         }
                                     ],
