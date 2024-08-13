@@ -9,7 +9,7 @@ using Models;
 using Models.Helpers;
 using Newtonsoft.Json;
 using Repositories.Contracts;
-using Hosts.JobFinalizer;
+using Hosts.SyncJobUpdater;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -17,9 +17,9 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Repositories.Contracts.InjectConfig;
 using Models.Notifications;
-using Hosts.JobFinalizer;
+using Hosts.SyncJobUpdater;
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
     public class OrchestratorFunction
     {

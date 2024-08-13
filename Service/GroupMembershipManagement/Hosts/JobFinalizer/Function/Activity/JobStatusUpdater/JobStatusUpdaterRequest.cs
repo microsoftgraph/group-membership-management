@@ -3,7 +3,7 @@
 using Models;
 using System;
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
     public class JobStatusUpdaterRequest
     {

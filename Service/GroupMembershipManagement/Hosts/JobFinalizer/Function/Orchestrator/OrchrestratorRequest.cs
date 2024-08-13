@@ -3,7 +3,7 @@
 
 using Models;
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
     public class OrchestratorRequest
     {

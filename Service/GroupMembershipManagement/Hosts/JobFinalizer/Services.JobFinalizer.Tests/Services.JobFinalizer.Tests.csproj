@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Function\JobFinalizer.csproj" />
+    <ProjectReference Include="..\Function\SyncJobUpdater.csproj" />
   </ItemGroup>
 
 </Project>

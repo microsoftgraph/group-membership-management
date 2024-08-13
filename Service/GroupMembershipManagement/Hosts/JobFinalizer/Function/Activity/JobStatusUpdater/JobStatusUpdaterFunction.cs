@@ -7,17 +7,17 @@ using Repositories.Contracts;
 using System.Threading.Tasks;
 using Services.Contracts;
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
     public class JobStatusUpdaterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IJobFinalizerService _jobFinalizerService;
+        private readonly ISyncJobUpdaterService _syncJobUpdaterService;
 
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, IJobFinalizerService jobFinalizerService)
+        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, ISyncJobUpdaterService syncJobUpdaterService)
         {
             _loggingRepository = loggingRepository;
-            _jobFinalizerService = jobFinalizerService;
+            _syncJobUpdaterService = syncJobUpdaterService;
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
@@ -26,7 +26,7 @@ namespace Hosts.JobFinalizer
             if (request.SyncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-                await _jobFinalizerService.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
+                await _syncJobUpdaterService.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
             }
         }

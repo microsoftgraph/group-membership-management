@@ -105,7 +105,7 @@ param serviceBusNotificationsQueue string = 'notifications'
 param serviceBusFailedNotificationsQueue string = 'failedNotifications'
 
 @description('Enter job finalizer service bus queue name')
-param serviceBusJobFinalizerQueue string = 'jobFinalizer'
+param serviceBusSyncJobUpdaterQueue string = 'syncJobUpdater'
 
 @description('Enter storage account name.')
 @minLength(1)
@@ -548,10 +548,10 @@ module failedNotificationsQueue 'serviceBusQueue.bicep' = {
   ]
 }
 
-module jobFinalizerQueue 'serviceBusQueue.bicep' = {
-  name: 'jobFinalizerQueue'
+module syncJobUpdaterQueue 'serviceBusQueue.bicep' = {
+  name: 'syncJobUpdaterQueue'
   params: {
-    queueName: serviceBusJobFinalizerQueue
+    queueName: serviceBusSyncJobUpdaterQueue
     serviceBusName: serviceBusName
     requiresSession: false
     maxDeliveryCount: 5
@@ -702,8 +702,8 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: serviceBusFailedNotificationsQueue
       }
       {
-        name: 'serviceBusJobFinalizerQueue'
-        value: serviceBusJobFinalizerQueue
+        name: 'serviceBusSyncJobUpdaterQueue'
+        value: serviceBusSyncJobUpdaterQueue
       }
       {
         name: 'graphUserAssignedManagedIdentityName'

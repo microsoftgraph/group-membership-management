@@ -29,7 +29,7 @@ module jfStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'jobFinalizerStorageAccountProd'
+    storageAccountConnectionStringSettingName: 'syncJobUpdaterStorageAccountProd'
   }
 }
 

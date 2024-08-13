@@ -467,9 +467,9 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
   ]
 }
 
-// ----------------- JobFinalizer
-module jobFinalizerDataResources '../Service/GroupMembershipManagement/Hosts/JobFinalizer/Infrastructure/data/template.bicep' = {
-  name: 'jobFinalizerDataResourcesTemplate'
+// ----------------- SyncJobUpdater
+module syncJobUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/SyncJobUpdater/Infrastructure/data/template.bicep' = {
+  name: 'syncJobUpdaterDataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
     location: location
@@ -480,8 +480,8 @@ module jobFinalizerDataResources '../Service/GroupMembershipManagement/Hosts/Job
   }
 }
 
-module jobFinalizerComputeResources '../Service/GroupMembershipManagement/Hosts/JobFinalizer/Infrastructure/compute/template.bicep' = {
-  name: 'jobFinalizerComputeResourcesTemplate'
+module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/SyncJobUpdater/Infrastructure/compute/template.bicep' = {
+  name: 'syncJobUpdaterComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
     location: location
@@ -494,7 +494,7 @@ module jobFinalizerComputeResources '../Service/GroupMembershipManagement/Hosts/
     setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
-    jobFinalizerDataResources
+    syncJobUpdaterDataResources
   ]
 }
 

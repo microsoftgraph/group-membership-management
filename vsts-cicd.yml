@@ -100,7 +100,7 @@ stages:
          name: 'GroupOwnershipObtainer'
          coverageThreshold: 80
       - function:
-         name: 'JobFinalizer'
+         name: 'SyncJobUpdater'
          coverageThreshold: 40
 
   - template: yaml/build-release-package.yml

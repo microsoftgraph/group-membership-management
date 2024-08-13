@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JobFinalizer", "JobFinalizer.csproj", "{D6DC947C-D41D-4DB5-A712-5CDF8DA827A0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SyncJobUpdater", "SyncJobUpdater.csproj", "{D6DC947C-D41D-4DB5-A712-5CDF8DA827A0}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj", "{A54477AB-BD0E-492F-91F1-C70EB4FEDB11}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JobFinalizerService", "..\Services\JobFinalizerService.csproj", "{B84FE7BA-3798-4287-8356-6FAD64166217}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SyncJobUpdaterService", "..\Services\SyncJobUpdaterService.csproj", "{B84FE7BA-3798-4287-8356-6FAD64166217}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Contracts", "..\Services.Contracts\Services.Contracts.csproj", "{9D98B058-0BF5-40C3-86FD-075E1A2E38BB}"
 EndProject
@@ -15,7 +15,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Contracts", ".
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{F7C85A82-C663-4E0A-9016-693DE824A0E7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.JobFinalizer.Tests", "..\Services.JobFinalizer.Tests\Services.JobFinalizer.Tests.csproj", "{DFDF0FF1-54E0-4F16-B1A2-7FD0474FB2C8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.SyncJobUpdater.Tests", "..\Services.SyncJobUpdater.Tests\Services.SyncJobUpdater.Tests.csproj", "{DFDF0FF1-54E0-4F16-B1A2-7FD0474FB2C8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

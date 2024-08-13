@@ -23,7 +23,7 @@ param storageAccountName string
 param tenantId string
 
 @description('Service plan name.')
-param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'NotifierJobFinalizer'),0,8)}'
+param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'NotifierSyncJobUpdater'),0,8)}'
 
 @description('Resource location.')
 param location string
@@ -69,15 +69,15 @@ var senderUsername = resourceId(subscription().subscriptionId, prereqsKeyVaultRe
 var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'senderPassword')
 var syncDisabledCCEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'syncDisabledCCEmailAddresses')
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
-var jobFinalizerStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
+var syncJobUpdaterStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var jobFinalizerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobFinalizerStorageAccountProd')
+var syncJobUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'syncJobUpdaterStorageAccountProd')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
-var serviceBusJobFinalizerQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusJobFinalizerQueue')
+var serviceBusSyncJobUpdaterQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobUpdaterQueue')
 
 var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
@@ -89,13 +89,13 @@ var commonSettings = {
 }
 
 var appSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobFinalizer'
-  AzureFunctionsWebHost__hostid: 'JobFinalizer'
+  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(syncJobUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}SyncJobUpdater'
+  AzureFunctionsWebHost__hostid: 'SyncJobUpdater'
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobFinalizer')
+  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(syncJobUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  WEBSITE_CONTENTSHARE: toLower('functionApp-SyncJobUpdater')
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
@@ -112,12 +112,12 @@ var appSettings = {
   senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
   syncDisabledCCEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(syncDisabledCCEmailAddresses, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
-  jobFinalizerStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(jobFinalizerStorageAccountName, '2019-09-01').secretUriWithVersion})'
+  syncJobUpdaterStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(syncJobUpdaterStorageAccountName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-  serviceBusJobFinalizerQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusJobFinalizerQueue, '2019-09-01').secretUriWithVersion})'
+  serviceBusSyncJobUpdaterQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobUpdaterQueue, '2019-09-01').secretUriWithVersion})'
 }
 
 var activityFunctionSettings = {
@@ -136,7 +136,7 @@ resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 }
 
 module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
-  name: 'uamiNameReader-JobFinalizer'
+  name: 'uamiNameReader-SyncJobUpdater'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
   }
@@ -160,10 +160,10 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   }
 }
 
-module functionAppTemplate_JobFinalizer 'functionApp.bicep' = {
-  name: 'functionAppTemplate-JobFinalizer'
+module functionAppTemplate_SyncJobUpdater 'functionApp.bicep' = {
+  name: 'functionAppTemplate-SyncJobUpdater'
   params: {
-    name: '${functionAppName}-JobFinalizer'
+    name: '${functionAppName}-SyncJobUpdater'
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -181,23 +181,23 @@ module functionAppTemplate_JobFinalizer 'functionApp.bicep' = {
 
 
 module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-JobFinalizer'
+  name: 'functionAppsRBAC-SyncJobUpdater'
   params: {
-    functionName: 'JobFinalizer'
+    functionName: 'SyncJobUpdater'
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_JobFinalizer.outputs.msi
+    productionSlotPrincipalId: functionAppTemplate_SyncJobUpdater.outputs.msi
   }
   dependsOn: [
-    functionAppTemplate_JobFinalizer
+    functionAppTemplate_SyncJobUpdater
   ]
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-JobFinalizer/appsettings'
+  name: '${functionAppName}-SyncJobUpdater/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [

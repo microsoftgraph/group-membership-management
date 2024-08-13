@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Services.Contracts
 {
-    public interface IJobFinalizerService
+    public interface ISyncJobUpdaterService
     {
         Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status);
     }

@@ -15,16 +15,16 @@ using System.Threading.Tasks;
 using Models.Helpers;
 using Services.Contracts;
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
-    public class JobFinalizerService : IJobFinalizerService
+    public class SyncJobUpdaterService : ISyncJobUpdaterService
     {
 
         private readonly ILoggingRepository _log;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
 
 
-        public JobFinalizerService(
+        public SyncJobUpdaterService(
                                       IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                                       ILoggingRepository logging
                                       )

@@ -11,14 +11,14 @@ using Repositories.Contracts;
 using Repositories.ServiceBusQueue;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
-[assembly: FunctionsStartup(typeof(Hosts.JobFinalizer.Startup))]
+[assembly: FunctionsStartup(typeof(Hosts.SyncJobUpdater.Startup))]
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
     public class Startup : CommonStartup
     {
-        protected override string FunctionName => nameof(JobFinalizer);
-        protected override string DryRunSettingName => "JobFinalizer:IsDryRunEnabled";
+        protected override string FunctionName => nameof(SyncJobUpdater);
+        protected override string DryRunSettingName => "SyncJobUpdater:IsDryRunEnabled";
 
         public override void Configure(IFunctionsHostBuilder builder)
         {
@@ -26,7 +26,7 @@ namespace Hosts.JobFinalizer
 
             builder.Services.AddScoped(services =>
             {
-                return new JobFinalizerService(
+                return new SyncJobUpdaterService(
                     services.GetRequiredService<IDatabaseSyncJobsRepository>(),
                     services.GetRequiredService<ILoggingRepository>()
                 );
