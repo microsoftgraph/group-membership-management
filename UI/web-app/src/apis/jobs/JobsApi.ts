@@ -37,11 +37,15 @@ export class JobsApi extends ApiBase implements IJobsApi {
   }
 
   private mapPagingOptionsToODataQueryOptions(pagingOptions?: PagingOptions): ODataQueryOptions | undefined {
+    const capitalizeFirstLetter = (input: string): string => {
+      return input.charAt(0).toUpperCase() + input.slice(1);
+    };
+
     const queryOptions: ODataQueryOptions = pagingOptions
       ? {
           $skip: pagingOptions.itemsToSkip,
           $top: pagingOptions.pageSize,
-          $orderBy: pagingOptions.orderBy,
+          $orderBy: pagingOptions.orderBy ? capitalizeFirstLetter(pagingOptions.orderBy) : undefined,
           $filter: pagingOptions.filter,
           customSortBy: pagingOptions.customSortBy 
         }
