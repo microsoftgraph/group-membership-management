@@ -15,9 +15,22 @@ using Services.Notifier;
 using Services.Notifier.Contracts;
 using System;
 using Hosts.FunctionBase;
+using Azure.Identity;
+using System.Runtime.CompilerServices;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
+    .ConfigureAppConfiguration((context, config) =>
+     {
+        var settings = config.Build();
+        var appConfigEndpoint = GetValueOrThrow("appConfigurationEndpoint");
+
+        config.AddAzureAppConfiguration(options =>
+        {
+            options.Connect(new Uri(appConfigEndpoint), new DefaultAzureCredential())
+                   .UseFeatureFlags();
+         });
+     })
     .ConfigureServices((context, services) =>
     {
         var configuration = context.Configuration;
@@ -100,4 +113,12 @@ static int GetIntSetting(IConfiguration configuration, string settingName, int d
     if (checkParse)
         return value;
     return defaultValue;
+}
+
+static string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
+{
+    var value = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process);
+    if (string.IsNullOrWhiteSpace(value))
+        throw new ArgumentNullException($"Could not start because of missing configuration option: {key}. Requested by file {callerFile}:{callerLine}.");
+    return value;
 }
