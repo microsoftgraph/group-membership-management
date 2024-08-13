@@ -21,4 +21,6 @@ export type GeneralSettingProps = React.AllHTMLAttributes<HTMLDivElement> & {
   styles?: IStyleFunctionOrObject<GeneralSettingStyleProps, GeneralSettingStyles>;
   title: string;
   description: string;
+  onGeneralSettingChange: (value: string) => void;
+  generalSettingValue: string;
 };

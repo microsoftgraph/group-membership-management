@@ -64,7 +64,7 @@ namespace WebApi.Controllers.v1.Settings
             }
         }
 
-        [Authorize(Roles = Models.Roles.HYPERLINK_ADMINISTRATOR)]
+        [Authorize(Roles = $"{Models.Roles.HYPERLINK_ADMINISTRATOR}, {Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR}")]
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {

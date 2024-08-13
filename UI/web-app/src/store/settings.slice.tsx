@@ -115,6 +115,24 @@ export const selectPrivacyPolicyUrl = (state: RootState) => {
   return privacyPolicySetting ? privacyPolicySetting.settingValue : undefined;
 };
 
+export const selectUIUrl = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const uiSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.UIUrl);
+  return uiSetting ? uiSetting.settingValue : undefined;
+}
+
+export const selectCanReviewOwnSubmissions = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const canReviewOwnSubmissionSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.CanReviewOwnSubmissions);
+  return canReviewOwnSubmissionSetting ? canReviewOwnSubmissionSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

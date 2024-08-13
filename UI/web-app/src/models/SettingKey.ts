@@ -5,4 +5,6 @@ export const enum SettingKey {
     DashboardUrl = 0,
     OutlookWarningUrl = 1,
     PrivacyPolicyUrl = 2,
+    UIUrl = 3,
+    CanReviewOwnSubmissions = 4,
 }

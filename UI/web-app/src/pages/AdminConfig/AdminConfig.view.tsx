@@ -137,7 +137,9 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                 >
                   <GeneralSettings
                     classNames={classNames}
-                    strings={strings} />
+                    strings={strings}
+                    settings={newSettings}
+                    setSettings={setNewSettings} />
                 </PivotItem>
               }
             </Pivot>
@@ -169,12 +171,19 @@ const Operations: React.FunctionComponent<OperationsProps> = (props: OperationsP
 }
 
 const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: GeneralSettingsProps) => {
-  const { strings} = props;
+  const { strings, settings, setSettings } = props;
+
+  const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
+    setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
+  };
+
   return (
     <div>
       <GeneralSetting
         title={strings.GeneralSettings.labels.reviewOwnSubmissionTitle}
         description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
+        generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
       />
     </div>
   );
@@ -187,7 +196,9 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
   const [urlValidations, setUrlValidations] = useState<{ readonly [key in SettingKey]: boolean }>({
     [SettingKey.DashboardUrl]: true,
     [SettingKey.OutlookWarningUrl]: true,
-    [SettingKey.PrivacyPolicyUrl]: true
+    [SettingKey.PrivacyPolicyUrl]: true,
+    [SettingKey.UIUrl]: true,
+    [SettingKey.CanReviewOwnSubmissions]: true,
   });
 
   useEffect(() => {

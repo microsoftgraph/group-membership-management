@@ -7,18 +7,20 @@ import { useStrings } from '../../store/hooks';
 export const getClassNames = classNamesFunction<GeneralSettingStyleProps, GeneralSettingStyles>();
 
 export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = (props: GeneralSettingProps) => {
-  const { title, description, className, styles} = props;
+  const { title, description, className, generalSettingValue, onGeneralSettingChange, styles} = props;
   const classNames = getClassNames(styles, {
     className,
     theme: useTheme(),
   });
   const strings = useStrings();
 
-  const [isReviewingOwnSubmissionsEnabled, setIsReviewingOwnSubmissionsEnabled] = useState(true);
+  const isGeneralSettingEnabled = generalSettingValue === 'true';
+  const [isToggleEnabled, setIsToggleEnabled] = useState<boolean>(isGeneralSettingEnabled);
 
   const handleSubmissionReviewerSettingChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
-    const newStatus = isReviewingOwnSubmissionsEnabled ? false : true;
-    setIsReviewingOwnSubmissionsEnabled(newStatus);
+    const wrappedValue = checked ? '"true"' : '"false"';
+    onGeneralSettingChange(wrappedValue);
+    setIsToggleEnabled(checked ?? false);
   };
 
   return (
@@ -28,7 +30,7 @@ export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = 
       <Toggle
           title={strings.AdminConfig.GeneralSettings.labels.reviewOwnSubmissionDescription}
           inlineLabel={true}
-          checked={isReviewingOwnSubmissionsEnabled}
+          checked={isToggleEnabled}
           onChange={handleSubmissionReviewerSettingChange}
         />
     </div>

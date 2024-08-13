@@ -12,7 +12,9 @@ namespace Models
         {
             { SettingKey.DashboardUrl, Guid.Parse("63BA3339-639A-4104-AC63-E1376F0445C9") },
             { SettingKey.OutlookWarningUrl, Guid.Parse("DFF1D616-E1E7-4642-B37F-FDE617158A90")},
-            { SettingKey.PrivacyPolicyUrl, Guid.Parse("6328107C-7332-47D1-A29C-CF9A49109AB0")}
+            { SettingKey.PrivacyPolicyUrl, Guid.Parse("6328107C-7332-47D1-A29C-CF9A49109AB0")},
+            { SettingKey.UIUrl, Guid.Parse("446FDA16-C27B-4E0C-BF4D-5E563F47FC61")},
+            { SettingKey.CanReviewOwnSubmissions, Guid.Parse("F901FC06-E92E-4361-B4CF-7F7283FB312B")}
         };
     }
 }

@@ -9,6 +9,8 @@ import {
   selectIsSaving,
   selectOutlookWarningUrl,
   selectPrivacyPolicyUrl,
+  selectUIUrl,
+  selectCanReviewOwnSubmissions,
 } from '../../store/settings.slice';
 import { patchSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -38,6 +40,8 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const dashboardUrl = useSelector(selectDashboardUrl);
   const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
   const privacyPolicyUrl = useSelector(selectPrivacyPolicyUrl);
+  const UIUrl = useSelector(selectUIUrl);
+  const canReviewOwnSubmissions = useSelector(selectCanReviewOwnSubmissions);
   const sqlMembershipSource = useSelector(selectSource);
   const sqlMembershipSourceAttributes = useSelector(selectAttributes);
   const isSourceSaving = useSelector(selectIsSourceSaving);
@@ -53,14 +57,16 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const generateSettings = () => ({
     [SettingKey.DashboardUrl]: dashboardUrl ?? '',
     [SettingKey.OutlookWarningUrl]: outlookWarningUrl ?? '',
-    [SettingKey.PrivacyPolicyUrl]: privacyPolicyUrl ?? ''
+    [SettingKey.PrivacyPolicyUrl]: privacyPolicyUrl ?? '',
+    [SettingKey.UIUrl]: UIUrl ?? '',
+    [SettingKey.CanReviewOwnSubmissions]: canReviewOwnSubmissions ? 'true' : 'false',
   });
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
   useEffect(() => { 
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions]);
 
   // Create an event handler that should be called when the user clicks the save button.
   const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
@@ -84,6 +90,12 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         patchSetting({
           settingKey: SettingKey.PrivacyPolicyUrl,
           settingValue: newSettings[SettingKey.PrivacyPolicyUrl],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CanReviewOwnSubmissions,
+          settingValue: newSettings[SettingKey.CanReviewOwnSubmissions],
         })
       );
     }
