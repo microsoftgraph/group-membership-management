@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
 using Models;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.Notifier
 {
@@ -22,7 +21,7 @@ namespace Hosts.Notifier
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
-        [FunctionName(nameof(UpdateNotificationStatusFunction))]
+        [Function(nameof(UpdateNotificationStatusFunction))]
         public async Task UpdateNotificationStatusAsync([ActivityTrigger] UpdateNotificationStatusRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UpdateNotificationStatusFunction)} function started at: {DateTime.UtcNow}" });
