@@ -11,8 +11,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
 using Repositories.Contracts;
-using Hosts.JobFinalizer;
-using Services.JobFinalizer.Tests.Mocks;
+using Services.SyncJobUpdater.Tests.Mocks;
+using Hosts.SyncJobUpdater;
 
 namespace Services.Tests
 {
