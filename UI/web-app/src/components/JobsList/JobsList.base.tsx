@@ -206,22 +206,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
   ];
 
-  const sortedItems = [...(items ? items : [])].sort((a, b) => {
-    if (
-      sortKey === 'enabledOrNot' ||
-      sortKey === 'lastSuccessfulRunTime' ||
-      sortKey === 'estimatedNextRunTime' ||
-      sortKey === 'targetGroupName' ||
-      sortKey === 'targetGroupType' ||
-      sortKey === 'actionRequired'
-    ) {
-      return isSortedDescending
-        ? (b[sortKey] || '').toString().localeCompare((a[sortKey] || '').toString())
-        : (a[sortKey] || '').toString().localeCompare((b[sortKey] || '').toString());
-    }
-    return 0;
-  });
-
   const onContextualItemClicked = (
     ev?: React.MouseEvent | React.KeyboardEvent,
     item?: IContextualMenuItem
@@ -397,7 +381,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <ShimmeredDetailsList
               setKey="set"
               onColumnHeaderClick={onColumnHeaderClick}
-              items={sortedItems || []}
+              items={items || []}
               columns={columns}
               enableShimmer={!jobs || isShimmerEnabled}
               layoutMode={DetailsListLayoutMode.justified}
