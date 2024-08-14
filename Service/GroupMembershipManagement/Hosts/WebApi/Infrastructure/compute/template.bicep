@@ -80,6 +80,7 @@ var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, d
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var sqlServerMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerMSIConnectionString')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
+var azureSignalRConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'azureSignalRConnectionString')
 
 var serviceBusFQN = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
 var serviceBusMembershipAggregatorQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipAggregatorQueue')
@@ -179,6 +180,10 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(sqlServerMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   }
   {
+    name: 'Settings:AzureSignalRConnectionString'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(azureSignalRConnectionString, '2019-09-01').secretUriWithVersion})'
+  }
+  {
     name: 'ADF:Pipeline'
     value: adfPipeline
   }
@@ -242,6 +247,27 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
   scope: resourceGroup(dataResourceGroup)
+}
+
+resource signalR 'Microsoft.SignalRService/signalR@2021-06-01-preview' = {
+  name: '${solutionAbbreviation}-compute-${environmentAbbreviation}-signalr'
+  location: location
+  sku: {
+    name: 'Standard_S1'
+    tier: 'Standard'
+    capacity: 1
+  }
+  properties: {
+    cors: {
+      allowedOrigins: ['https://microsoft.com', 'http://localhost:3000']
+    }
+    features: [
+      {
+        flag: 'ServiceMode'
+        value: 'Default'
+      }
+    ]
+  }
 }
 
 module servicePlanTemplate 'servicePlan.bicep' = {
