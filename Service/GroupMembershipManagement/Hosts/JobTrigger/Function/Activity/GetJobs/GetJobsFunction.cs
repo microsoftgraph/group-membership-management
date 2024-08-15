@@ -2,14 +2,13 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System;
 using System.Threading.Tasks;
 using Services.Contracts;
 using Repositories.Contracts;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.JobTrigger
 {
@@ -23,7 +22,7 @@ namespace Hosts.JobTrigger
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
         }
 
-        [FunctionName(nameof(GetJobsFunction))]
+        [Function(nameof(GetJobsFunction))]
         public async Task<List<SyncJob>> GetJobsToUpdateAsync([ActivityTrigger] object obj)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
