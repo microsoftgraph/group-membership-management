@@ -64,6 +64,9 @@ param adfPipeline string
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('Allowed origins for the SignalR service.')
+param signalrCORS array = ['https://microsoft.com']
+
 var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
@@ -249,7 +252,7 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
   scope: resourceGroup(dataResourceGroup)
 }
 
-resource signalR 'Microsoft.SignalRService/signalR@2021-06-01-preview' = {
+resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
   name: '${solutionAbbreviation}-compute-${environmentAbbreviation}-signalr'
   location: location
   sku: {
@@ -257,10 +260,15 @@ resource signalR 'Microsoft.SignalRService/signalR@2021-06-01-preview' = {
     tier: 'Standard'
     capacity: 1
   }
+  kind: 'SignalR'
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     cors: {
-      allowedOrigins: ['https://microsoft.com', 'http://localhost:3000']
+      allowedOrigins: signalrCORS
     }
+    disableLocalAuth: true
     features: [
       {
         flag: 'ServiceMode'

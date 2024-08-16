@@ -398,7 +398,7 @@ namespace WebApi
 
             app.UseEndpoints(routes =>
             {
-                routes.MapHub<SignalRService>("/hub");
+                routes.MapHub<SignalRService>("/servicestatus");
             });
 
             app.MapControllers();
