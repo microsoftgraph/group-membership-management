@@ -7,7 +7,7 @@ import { updateServiceStatus } from '../../store/operations.slice';
 import { ServiceStatuses } from '../../models';
 
 const connection = new signalR.HubConnectionBuilder()
-    .withUrl("https://localhost:7224/hub") // Change this back once done testing locally
+    .withUrl("https://gmm-compute-ag-signalr.service.signalr.net") // Change this to be configurable
     .build();
 
 connection.start()

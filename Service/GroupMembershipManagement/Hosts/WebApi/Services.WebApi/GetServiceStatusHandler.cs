@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Graph.Models;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -32,6 +33,8 @@ namespace Services.WebApi
             {
                 Message = $"Retrieving service status."
             });
+
+            await _hubContext.Clients.All.SendAsync("ServiceStatusChanged", "test");
 
             var currentStatus = await _serviceStatusRepository.GetCurrentServiceStatusAsync();
 

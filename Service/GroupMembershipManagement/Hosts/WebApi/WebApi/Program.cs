@@ -325,7 +325,7 @@ namespace WebApi
                 return settings.Value;
             });
 
-            builder.Services.AddSignalR();
+            builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);
 
             builder.WebHost.ConfigureServices(services =>
             {
@@ -382,8 +382,6 @@ namespace WebApi
             app.UseStaticFiles();
             app.UseRouting();
 
-            app.MapHub<SignalRService>("/hub");
-
             var allowedOrigins = new[] { "https://*.microsoft.com", "http://localhost:3000" };
             app.UseCors(x => x
                 .SetIsOriginAllowedToAllowWildcardSubdomains()
@@ -397,6 +395,11 @@ namespace WebApi
 
             app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseEndpoints(routes =>
+            {
+                routes.MapHub<SignalRService>("/hub");
+            });
 
             app.MapControllers();
 
