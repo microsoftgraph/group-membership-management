@@ -27,6 +27,9 @@ const operationsSlice = createSlice({
     resetError(state) {
       state.error = null;
     },
+    updateServiceStatus: (state, action) => {
+      state.status = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -79,6 +82,7 @@ const operationsSlice = createSlice({
 });
 
 export const { resetError } = operationsSlice.actions;
+export const { updateServiceStatus } = operationsSlice.actions;
 
 export const selectOperationStatus = (state: RootState) => state.operations.status;
 export const selectOperationDisplayStatus = (state: RootState) => state.operations.displayStatus; 

@@ -325,6 +325,8 @@ namespace WebApi
                 return settings.Value;
             });
 
+            builder.Services.AddSignalR();
+
             builder.WebHost.ConfigureServices(services =>
             {
                 services.AddHostedService<OperationsBackgroundService>();
@@ -379,6 +381,8 @@ namespace WebApi
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
+
+            app.MapHub<SignalRService>("/hub");
 
             var allowedOrigins = new[] { "https://*.microsoft.com", "http://localhost:3000" };
             app.UseCors(x => x

@@ -51,7 +51,7 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
           <DefaultButton
             text={displayStatus === ServiceStatuses.Starting ? buttonText.starting : buttonText.start}
             onClick={() => handleOperation(Operations.Start)}
-            disabled={isButtonDisabled || displayStatus == ServiceStatuses.Starting}
+            disabled={isButtonDisabled || displayStatus === ServiceStatuses.Starting}
             className={classNames.button}
           />
         ) : (

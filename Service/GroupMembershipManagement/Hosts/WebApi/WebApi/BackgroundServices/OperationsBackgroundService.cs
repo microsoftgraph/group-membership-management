@@ -5,12 +5,14 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Azure.Storage.Queues;
+using Microsoft.AspNetCore.SignalR;
 using Models;
 using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Entities;
+using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -132,6 +134,8 @@ namespace WebApi.BackgroundServices
             {
                 var scopedStatusRepository = scope.ServiceProvider.GetRequiredService<IServiceStatusRepository>();
                 await scopedStatusRepository.SetServiceStatusAsync(status, requestorId);
+                var signalRHubContext = scope.ServiceProvider.GetRequiredService<IHubContext<SignalRService>>();
+                await signalRHubContext.Clients.All.SendAsync("ServiceStatusChanged", status);
             }
         }
 
