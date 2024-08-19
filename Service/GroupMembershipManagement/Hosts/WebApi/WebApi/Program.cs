@@ -396,10 +396,7 @@ namespace WebApi
             app.UseAuthentication();
             app.UseAuthorization();
 
-            app.UseEndpoints(routes =>
-            {
-                routes.MapHub<SignalRService>("/servicestatus");
-            });
+            app.MapHub<SignalRService>("/servicestatus");
 
             app.MapControllers();
 

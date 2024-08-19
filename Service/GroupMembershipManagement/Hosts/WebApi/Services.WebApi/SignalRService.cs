@@ -9,7 +9,5 @@ namespace Services.WebApi
     [ExcludeFromCodeCoverage]
     public class SignalRService : Hub
     {
-        public async Task NewMessage(long username, string message) =>
-            await Clients.All.SendAsync("messageReceived", username, message);
     }
 }
