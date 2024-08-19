@@ -12,7 +12,7 @@ namespace Services.Contracts
     public interface IJobTriggerService
     {
         public Guid RunId { get; set; }
-        Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded, int maxJobsAllowed)> GetSyncJobsAsync();
+        Task<List<SyncJob>> GetSyncJobsAsync();
         Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
         Task<string> GetDestinationNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);

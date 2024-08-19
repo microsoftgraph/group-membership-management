@@ -325,8 +325,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-            var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -345,8 +344,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-            var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
             var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -365,8 +363,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
 			var jobsToProcessCount = _serviceBusTopicsRepository.Subscriptions.Sum(x => x.Value.Count);
 
@@ -510,8 +507,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-            var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
             foreach (var job in jobs)
             {
@@ -560,8 +556,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
 			foreach (var job in jobs)
             {
@@ -602,8 +597,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
 			foreach (var job in jobs)
             {
@@ -643,8 +637,7 @@ namespace Services.Tests
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
 
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-			var jobs = response.jobs;
+            var jobs = await _jobTriggerService.GetSyncJobsAsync();
 
 			foreach (var job in jobs)
             {
@@ -653,57 +646,6 @@ namespace Services.Tests
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
-
-		[TestMethod]
-        public async Task VerifyJobsCountExceedMinimalNumberHigherThanThreshold()
-        {
-            var jobsProceedNow = 5;
-            var jobsNotProceedNow = 3;
-
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
-
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
-
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-            var jobTriggerThresholdExceeded = response.jobTriggerThresholdExceeded;
-            Assert.AreEqual(true, jobTriggerThresholdExceeded);
-        }
-
-        [TestMethod]
-        public async Task VerifyJobsCountExceedMinimalNumberLowerThanThreshold()
-        {
-            var jobsProceedNow = 5;
-            var jobsNotProceedNow = 20;
-
-			_syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
-            _syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
-
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
-
-            var response = await _jobTriggerService.GetSyncJobsAsync();
-            var jobTriggerThresholdExceeded = response.jobTriggerThresholdExceeded;
-            Assert.AreEqual(false, jobTriggerThresholdExceeded);
-        }
-
-		[TestMethod]
-		public async Task VerifyJobsCountLowerThanMinimalHigherThanThreshold()
-		{
-			var jobsProceedNow = 3;
-			var jobsNotProceedNow = 3;
-
-			_syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsProceedNow, Organization));
-			_syncJobRepository.Jobs.AddRange(SampleDataHelper.CreateSampleSyncJobs(jobsNotProceedNow, Organization, startDateBase: DateTime.UtcNow.AddDays(5)));
-
-			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.TargetOfficeGroupId));
-			_syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.TargetOfficeGroupId));
-
-			var response = await _jobTriggerService.GetSyncJobsAsync();
-			var jobTriggerThresholdExceeded = response.jobTriggerThresholdExceeded;
-			Assert.AreEqual(false, jobTriggerThresholdExceeded);
-		}
 
 		private class MockEmail<T> : IEmailSenderRecipient
         {

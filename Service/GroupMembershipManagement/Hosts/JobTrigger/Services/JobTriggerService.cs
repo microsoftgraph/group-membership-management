@@ -25,8 +25,10 @@ namespace Services
 
         enum Metric
         {
-            SyncJobsCount,
-            TotalSyncJobsCount
+            PotentialSyncJobCount,
+            TotalSyncJobsCount,
+            ActiveInProgressJobCount,
+            JobsDueToRunCount
         }
 
         private readonly ILoggingRepository _loggingRepository;
@@ -91,18 +93,29 @@ namespace Services
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        public async Task<(List<SyncJob> jobs, bool jobTriggerThresholdExceeded, int maxJobsAllowed)> GetSyncJobsAsync()
+        public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsAsync(false, SyncStatus.Idle, SyncStatus.InProgress, SyncStatus.StuckInProgress, SyncStatus.TransientError);
-            var filteredJobs = ApplyJobTriggerFilters(jobs).ToList();
-            var jobsExcludingFiltered = jobs.Except(filteredJobs).ToList();
+            var jobsDueToRun = ApplyJobTriggerFilters(jobs).ToList();
+            var jobsExcludingFiltered = jobs.Except(jobsDueToRun).ToList();
             var activeInProgressJobs = jobsExcludingFiltered.Where(job => job.Status == SyncStatus.InProgress.ToString()).ToList();
-            var syncJobsCount = filteredJobs.Count + activeInProgressJobs.Count;
+            var potentialSyncJobCount = jobsDueToRun.Count + activeInProgressJobs.Count;
             var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(SyncStatus.All);
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobsCount), syncJobsCount);
+            _telemetryClient.TrackMetric(nameof(Metric.PotentialSyncJobCount), potentialSyncJobCount);
             _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
-            var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(syncJobsCount, totalSyncJobsCount);
-            return (filteredJobs, jobTriggerThresholdExceeded, _jobTriggerConfig.JobCountThreshold);
+            _telemetryClient.TrackMetric(nameof(Metric.ActiveInProgressJobCount), activeInProgressJobs.Count);
+            _telemetryClient.TrackMetric(nameof(Metric.JobsDueToRunCount), jobsDueToRun.Count);
+            _telemetryClient.TrackMetric(nameof(Metric.JobsDueToRunCount), jobsDueToRun.Count);
+
+            var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(potentialSyncJobCount, totalSyncJobsCount);
+
+            var jobsToBeStarted = jobsDueToRun;
+            if (jobTriggerThresholdExceeded)
+            {
+                jobsToBeStarted = jobsToBeStarted.OrderBy(job => job.StartDate).Take(_jobTriggerConfig.JobCountThreshold).ToList();
+            }
+
+            return jobsDueToRun;
         }
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
