@@ -15,7 +15,7 @@ namespace Repositories.Mocks
         {
             GMMHasGroupReadWriteAllPermissions = false;
             GMMHasChannelReadWriteAllPermissions = false;
-            JobCountThreshold = 4;
+            JobCountThreshold = 5;
             JobPerMilleThreshold = 250;
 
 		}
