@@ -28,7 +28,8 @@ namespace Services
             PotentialSyncJobCount,
             TotalSyncJobsCount,
             ActiveInProgressJobCount,
-            JobsDueToRunCount
+            JobsDueToRunCount,
+            JobsToBeStarted
         }
 
         private readonly ILoggingRepository _loggingRepository;
@@ -101,11 +102,11 @@ namespace Services
             var activeInProgressJobs = jobsExcludingFiltered.Where(job => job.Status == SyncStatus.InProgress.ToString()).ToList();
             var potentialSyncJobCount = jobsDueToRun.Count + activeInProgressJobs.Count;
             var totalSyncJobsCount = await _databaseSyncJobsRepository.GetSyncJobCountAsync(SyncStatus.All);
-            _telemetryClient.TrackMetric(nameof(Metric.PotentialSyncJobCount), potentialSyncJobCount);
-            _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
+
             _telemetryClient.TrackMetric(nameof(Metric.ActiveInProgressJobCount), activeInProgressJobs.Count);
             _telemetryClient.TrackMetric(nameof(Metric.JobsDueToRunCount), jobsDueToRun.Count);
-            _telemetryClient.TrackMetric(nameof(Metric.JobsDueToRunCount), jobsDueToRun.Count);
+            _telemetryClient.TrackMetric(nameof(Metric.PotentialSyncJobCount), potentialSyncJobCount);
+            _telemetryClient.TrackMetric(nameof(Metric.TotalSyncJobsCount), totalSyncJobsCount);
 
             var jobTriggerThresholdExceeded = HasJobTriggerThresholdExceeded(potentialSyncJobCount, totalSyncJobsCount);
 
@@ -114,8 +115,9 @@ namespace Services
             {
                 jobsToBeStarted = jobsToBeStarted.OrderBy(job => job.StartDate).Take(_jobTriggerConfig.JobCountThreshold).ToList();
             }
+            _telemetryClient.TrackMetric(nameof(Metric.JobsToBeStarted), jobsToBeStarted.Count);
 
-            return jobsDueToRun;
+            return jobsToBeStarted;
         }
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
