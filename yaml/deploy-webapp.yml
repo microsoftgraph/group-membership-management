@@ -79,6 +79,8 @@ steps:
       REACT_APP_SHAREPOINTDOMAIN: $(sharepoint_domain)
       REACT_APP_DOMAINNAME: $(tenant_domain)
       REACT_APP_ENVIRONMENT_ABBREVIATION: ${{parameters.environmentAbbreviation}}
+      REACT_APP_SIGNALR_SERVICE_BASE_URI: https://${{parameters.solutionAbbreviation}}-compute-${{parameters.environmentAbbreviation}}-signalr.service.signalr.net
+
 
   - task: AzureStaticWebApp@0
     name: DeployStaticWebApp
