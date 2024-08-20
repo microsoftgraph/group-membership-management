@@ -100,7 +100,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
-  const canEditJob: boolean = isJobWriter && (job.status !== SyncStatus.PendingReview && job.status !== SyncStatus.SubmissionRejected);
+  const canEditJob: boolean = isJobWriter && job.status !== SyncStatus.PendingReview;
   const showLoader: boolean = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
@@ -529,7 +529,7 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
     fontWeight: 100
   }
   const SQL_MIN_DATE = new Date('1753-01-01T00:00:00');
-  
+
   function splitDateString(value: string) {
     const isEmpty = value === '';
     if (isEmpty) {
