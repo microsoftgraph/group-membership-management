@@ -8,6 +8,9 @@ import { AppDispatch } from '../../store';
 import { ServiceStatuses } from '../../models/ServiceStatuses';
 import { Operations } from '../../models/Operations';
 import type { OperationProps, OperationStyles, OperationStyleProps } from './Operation.types';
+import { SignalRStatusService } from '../../services/signalR/SignalRStatusService';
+
+const signalRStatusService = new SignalRStatusService();
 
 export const getClassNames = classNamesFunction<OperationStyleProps, OperationStyles>();
 
@@ -29,8 +32,10 @@ export const OperationBase: React.FunctionComponent<OperationProps> = (props: Op
   }, [dispatch]);
 
   const handleOperation = (operation: Operations) => {
-    dispatch(processOperation(operation))
+    signalRStatusService.startConnection().then(() => {
+      dispatch(processOperation(operation))
       .then(() => dispatch(fetchServiceStatus()));
+    });
   };
 
   useEffect(() => {

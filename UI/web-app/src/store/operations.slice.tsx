@@ -29,6 +29,7 @@ const operationsSlice = createSlice({
     },
     updateServiceStatus: (state, action) => {
       state.status = action.payload;
+      state.displayStatus = action.payload;
     },
   },
   extraReducers: (builder) => {

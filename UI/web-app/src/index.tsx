@@ -12,7 +12,6 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { App } from './App';
 import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership, NotFound } from './pages';
 import { store } from './store';
-import './services/signalR/SignalRService';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
 if (!connectionString || connectionString === '') {
