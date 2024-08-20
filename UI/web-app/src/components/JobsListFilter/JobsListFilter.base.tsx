@@ -123,6 +123,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     {
       key: SyncStatus.PendingReview,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
+    },
+    {
+      key: SyncStatus.SubmissionRejected,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.submissionRejected,
     }
   ];
 

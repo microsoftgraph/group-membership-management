@@ -263,10 +263,10 @@ export const strings: IStrings = {
             customerPaused: 'Pausado por el cliente',
             membershipDataNotFound: 'Datos de membresía no encontrados',
             destinationGroupNotFound: 'Grupo de destino no encontrado',
-            notOwnerOfDestinationGroup:
-              'No es propietario del grupo de destino',
+            notOwnerOfDestinationGroup: 'No es propietario del grupo de destino',
             securityGroupNotFound: 'Grupo de seguridad no encontrado',
             pendingReview: 'Revisión pendiente',
+            submissionRejected: 'Solicitud rechazada',
           },
         },
         destinationType: {

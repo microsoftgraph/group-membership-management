@@ -107,7 +107,7 @@ export const strings: IStrings = {
         operations: "Operations",
         title: "GMM Control Panel",
         description: "Use the stop button to halt GMM operations and the reset button to reboot GMM at any time.",
-      },      
+      },
       buttons: {
         stop: "Stop GMM",
         stopping: "Stopping",
@@ -263,6 +263,7 @@ export const strings: IStrings = {
             notOwnerOfDestinationGroup: 'Not Owner Of Destination Group',
             securityGroupNotFound: 'Security Group Not Found',
             pendingReview: 'Pending Review',
+            submissionRejected: 'Submission Rejected',
           },
         },
         destinationType: {
