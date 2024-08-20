@@ -1149,6 +1149,7 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_ENVIRONMENT_ABBREVIATION=$EnvironmentAbbreviation`n"
     $envContent += "AZURE_SUBSCRIPTION_ID=$SubscriptionId`n"
     $envContent += "AZURE_TENANT_ID=$MainTenantId`n"
+    $envContent += "REACT_APP_SIGNALR_SERVICE_BASE_URI=https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-signalr.service.signalr.net`n"
 
     Set-Content -Path "$WebAppDirectory\.env" -Value $envContent -Force
     $currentLocation = Get-Location
