@@ -104,28 +104,5 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		}
 	}
 
-	$currentSubscription = (Get-AzContext).Subscription
-	$resourceGroups = @("$SolutionAbbreviation-data-$EnvironmentAbbreviation","$SolutionAbbreviation-compute-$EnvironmentAbbreviation")
-
-	foreach ($resourceGroup in $resourceGroups) {
-		$scope = "/subscriptions/$($currentSubscription.Id)/resourceGroups/$resourceGroup"
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $scope -RoleDefinitionName "Reader")) {
-			New-AzRoleAssignment -ObjectId $webApiSP -Scope $scope -RoleDefinitionName "Reader";
-			Write-Host "Added role assignment Reader to $($webApi.Name) with scope $scope.";
-		}
-		else {
-			Write-Host "$($webApi.Name) can already Reader with scope $scope.";
-		}
-	}
-
-	$scope = "/subscriptions/$($currentSubscription.Id)/resourceGroups/$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-	if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $scope -RoleDefinitionName "Website Contributor")) {
-		New-AzRoleAssignment -ObjectId $webApiSP -Scope $scope -RoleDefinitionName "Website Contributor";
-		Write-Host "Added role assignment Website Contributor to $($webApi.Name) with scope $scope.";
-	}
-	else {
-		Write-Host "$($webApi.Name) can already Website Contributor with scope $scope.";
-	}
-
 	Write-Host "Done attempting to add Storage role assignments.";
 }

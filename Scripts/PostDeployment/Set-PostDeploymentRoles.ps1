@@ -82,4 +82,12 @@ function Set-PostDeploymentRoles {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -Verbose
+
+    . ($scriptsDirectory + '\PostDeployment\Set-WebAPIAccessRoles.ps1')
+    Set-WebAPIAccessRoles `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ComputeResourceGroupName $ComputeResourceGroupName `
+        -DataResourceGroupName $DataResourceGroupName `
+        -Verbose
 }
