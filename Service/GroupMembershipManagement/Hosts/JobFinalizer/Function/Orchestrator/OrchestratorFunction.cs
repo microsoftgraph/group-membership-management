@@ -23,14 +23,8 @@ namespace Hosts.JobFinalizer
 {
     public class OrchestratorFunction
     {
-        private readonly ILoggingRepository _log;
-
-        public OrchestratorFunction(
-            ILoggingRepository loggingRepository
-            )
+        public OrchestratorFunction()
         {
-            _log = loggingRepository;
-
         }
 
         [FunctionName(nameof(OrchestratorFunction))]
