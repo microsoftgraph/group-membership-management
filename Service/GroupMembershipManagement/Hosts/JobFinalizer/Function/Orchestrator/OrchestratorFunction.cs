@@ -50,7 +50,6 @@ namespace Hosts.JobFinalizer
                             Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
                             Verbosity = VerbosityLevel.DEBUG
                         });
-
                 if (!string.Equals(syncjobStatus, "unknown", StringComparison.OrdinalIgnoreCase))
                 {
                     status = (SyncStatus)Enum.Parse(typeof(SyncStatus), syncjobStatus, true);
@@ -62,11 +61,7 @@ namespace Hosts.JobFinalizer
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"{syncJob.TargetOfficeGroupId} pass an unknown status. Marking job as {SyncStatus.Error}.", Verbosity = VerbosityLevel.DEBUG });
                     return;
                 }
-
-                    
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = status });
-                    
-                
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"{nameof(OrchestratorFunction)} function completed", Verbosity = VerbosityLevel.DEBUG });
             }
         }
