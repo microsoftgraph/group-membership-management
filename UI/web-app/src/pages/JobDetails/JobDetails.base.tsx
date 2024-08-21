@@ -50,8 +50,9 @@ import {
   type IJobDetailsProps,
   type IJobDetailsStyleProps,
   type IJobDetailsStyles,
+  type IContentProps,
+  type IStatusContentProps,
 } from './JobDetails.types';
-import { JobDetails } from '../../models/JobDetails';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
@@ -60,19 +61,6 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
 import { Loader } from '../../components/Loader';
 import { setIsEditingExistingJob } from '../../store/manageMembership.slice';
-
-
-export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
-  job: Job,
-  jobDetails?: JobDetails,
-  classNames: IProcessedStyleSet<IJobDetailsStyles>
-}
-
-export interface IStatusContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
-  job: Job,
-  resolveReview: () => void,
-  classNames: IProcessedStyleSet<IJobDetailsStyles>
-}
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,

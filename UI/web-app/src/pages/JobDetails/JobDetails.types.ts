@@ -5,8 +5,12 @@ import {
     type IStyle,
     type IStyleFunctionOrObject,
     type ITheme,
+    type IProcessedStyleSet
 } from '@fluentui/react';
 import type React from 'react';
+
+import { type Job } from '../../models/Job';
+import { JobDetails } from '../../models/JobDetails';
 
 export interface IJobDetailsStyles {
     root: IStyle;
@@ -43,4 +47,16 @@ export interface IJobDetailsProps
      * Call to provide customized styling that will layer on top of the variant rules.
      */
     styles?: IStyleFunctionOrObject<IJobDetailsStyleProps, IJobDetailsStyles>;
+}
+
+export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
+    job: Job,
+    jobDetails?: JobDetails,
+    classNames: IProcessedStyleSet<IJobDetailsStyles>
+}
+
+export interface IStatusContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
+    job: Job,
+    resolveReview: () => void,
+    classNames: IProcessedStyleSet<IJobDetailsStyles>
 }
