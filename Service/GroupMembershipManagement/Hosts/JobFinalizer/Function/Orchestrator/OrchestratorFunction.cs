@@ -43,6 +43,13 @@ namespace Hosts.JobFinalizer
                 var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
                 var syncjobStatus = mainRequest.Status;
                 SyncStatus status;
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                        {
+                            RunId = runId,
+                            Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                            Verbosity = VerbosityLevel.DEBUG
+                        });
 
                 if (!string.Equals(syncjobStatus, "unknown", StringComparison.OrdinalIgnoreCase))
                 {
@@ -52,16 +59,15 @@ namespace Hosts.JobFinalizer
                 else
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"{syncJob.TargetOfficeGroupId} pass an unknown status. Marking job as {SyncStatus.Error}."}, VerbosityLevel.DEBUG);
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"{syncJob.TargetOfficeGroupId} pass an unknown status. Marking job as {SyncStatus.Error}.", Verbosity = VerbosityLevel.DEBUG });
                     return;
                 }
 
-                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
                     
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = status });
                     
-                if (!context.IsReplaying)
-                    _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function completed", RunId = runId, DynamicProperties = syncJob.ToDictionary() }, VerbosityLevel.DEBUG);
+                
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"{nameof(OrchestratorFunction)} function completed", Verbosity = VerbosityLevel.DEBUG });
             }
         }
     }
