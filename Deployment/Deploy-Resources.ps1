@@ -1043,7 +1043,7 @@ function Set-ConfigureWebApps {
     try {
         $customDomain = Get-AzStaticWebAppCustomDomain -Name $UIWebAppName -ResourceGroupName $ComputeResourceGroup
         if (-not [string]::IsNullOrEmpty($customDomain)) {
-            $allowedOrigins += $customDomain.HostName
+            $allowedOrigins += "https://$($customDomain.DomainName)"
         }
     }
     catch {
@@ -1052,6 +1052,17 @@ function Set-ConfigureWebApps {
 
     $staticWebApp = Get-AzStaticWebApp -Name $UIWebAppName -ResourceGroupName $ComputeResourceGroup
     $allowedOrigins += "https://$($staticWebApp.DefaultHostname)"
+
+    # Set CORS for SignalR service
+    try {
+        Update-AzSignalR `
+            -ResourceGroupName $ComputeResourceGroup `
+            -Name "$ComputeResourceGroup-signalr" `
+            -AllowedOrigin $allowedOrigins
+    }
+    catch {
+        Write-Output "Unable to update SignalR service CORS settings."
+    }
 
     $webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $WebApiName
     $currentCORs = $webApi.SiteConfig.Cors.AllowedOrigins
