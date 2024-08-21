@@ -8,7 +8,7 @@ using Models;
 using Repositories.Contracts;
 using Hosts.JobFinalizer;
 using Services.Tests;
-using Services.Notifier.Tests.Mocks;
+using Services.JobFinalizer.Tests.Mocks;
 
 namespace Services.Tests
 {

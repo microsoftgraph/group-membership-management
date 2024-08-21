@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace Services.Notifier.Tests.Mocks
+namespace Services.JobFinalizer.Tests.Mocks
 {
     public class MockLoggingRepository : ILoggingRepository
     {
