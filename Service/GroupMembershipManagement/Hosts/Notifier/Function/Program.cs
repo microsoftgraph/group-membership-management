@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 using Microsoft.Extensions.Hosting;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
@@ -30,7 +33,7 @@ namespace Hosts.JobTrigger
             .ConfigureAppConfiguration((context, config) =>
             {
                 var settings = config.Build();
-                var appConfigEndpoint = GetValueOrThrow("appConfigurationEndpoint");
+                var appConfigEndpoint = CommonServices.GetValueOrThrowBase("appConfigurationEndpoint");
 
                 config.AddAzureAppConfiguration(options =>
                 {
@@ -47,8 +50,8 @@ namespace Hosts.JobTrigger
                 CommonServices.ConfigureCommonServices(services, configuration, "Notifier", dryRunSettingName, rootPath);
                 services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
                 {
-                    settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
-                    settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
+                    settings.HandleInactiveJobsEnabled = CommonServices.GetBoolSettingBase(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
+                    settings.NumberOfDaysBeforeDeletion = CommonServices.GetIntSettingBase(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
                 });
                 services.AddSingleton<IHandleInactiveJobsConfig>(services =>
                 {
@@ -72,10 +75,10 @@ namespace Hosts.JobTrigger
                 });
                 services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
                 {
-                    settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MaximumNumberOfThresholdRecipients", 10);
-                    settings.NumberOfThresholdViolationsToNotify = GetIntSetting(configuration, "NumberOfThresholdViolationsToNotify", 3);
-                    settings.NumberOfThresholdViolationsFollowUps = GetIntSetting(configuration, "NumberOfThresholdViolationsFollowUps", 3);
-                    settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
+                    settings.MaximumNumberOfThresholdRecipients = CommonServices.GetIntSettingBase(configuration, "MaximumNumberOfThresholdRecipients", 10);
+                    settings.NumberOfThresholdViolationsToNotify = CommonServices.GetIntSettingBase(configuration, "NumberOfThresholdViolationsToNotify", 3);
+                    settings.NumberOfThresholdViolationsFollowUps = CommonServices.GetIntSettingBase(configuration, "NumberOfThresholdViolationsFollowUps", 3);
+                    settings.NumberOfThresholdViolationsToDisableJob = CommonServices.GetIntSettingBase(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
                 });
                 services.AddSingleton<IThresholdConfig>(services =>
                 {
@@ -106,29 +109,6 @@ namespace Hosts.JobTrigger
             .Build();
                 
         host.Run();
-        }
-        static bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
-        {
-            var checkParse = bool.TryParse(configuration[settingName], out bool value);
-            if (checkParse)
-                return value;
-            return defaultValue;
-        }
-
-        static int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
-        {
-            var checkParse = int.TryParse(configuration[settingName], out int value);
-            if (checkParse)
-                return value;
-            return defaultValue;
-        }
-
-        static string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
-        {
-            var value = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process);
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException($"Could not start because of missing configuration option: {key}. Requested by file {callerFile}:{callerLine}.");
-            return value;
         }
     }
 }
