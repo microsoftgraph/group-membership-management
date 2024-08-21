@@ -68,6 +68,12 @@ export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
   classNames: IProcessedStyleSet<IJobDetailsStyles>
 }
 
+export interface IStatusContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
+  job: Job,
+  resolveReview: () => void,
+  classNames: IProcessedStyleSet<IJobDetailsStyles>
+}
+
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
   IJobDetailsStyles
@@ -100,10 +106,14 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
-  const canEditJob: boolean = isJobWriter && job.status !== SyncStatus.PendingReview;
+  const [canEditJob, setCanEditJob] = useState<boolean>(isJobWriter && job.status !== SyncStatus.PendingReview);
   const showLoader: boolean = jobsLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
+
+  const resolveReview = () => {
+    setCanEditJob(isJobWriter);
+  };
 
   const onMessageBarDismiss = (): void => {
     dispatch(setGetJobDetailsError());
@@ -191,7 +201,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             <MembershipDetails job={job} classNames={classNames} />
             <ContentContainer
               title={strings.JobDetails.labels.membershipStatus}
-              children={<MembershipStatusContent job={job} classNames={classNames} />}
+              children={<MembershipStatusContent job={job} resolveReview={resolveReview} classNames={classNames} />}
               removeButton={true}
             />
             <ContentContainer
@@ -282,12 +292,12 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
   )
 }
 
-const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
-  props: IContentProps
+const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
+  props: IStatusContentProps
 ) => {
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
-  const { job, classNames } = props;
+  const { job, resolveReview, classNames } = props;
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const patchError = useSelector(selectPatchJobDetailsError);
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
@@ -331,6 +341,7 @@ const MembershipStatusContent: React.FunctionComponent<IContentProps> = (
   const handleApproveSubmission = (approved: boolean) => {
     const statusBasedOnReview = approved ? SyncStatus.Idle : SyncStatus.SubmissionRejected;
     updateJobStatus(statusBasedOnReview);
+    resolveReview();
   };
 
   const displayMessage = (errorCode: string | undefined): string | undefined => {
