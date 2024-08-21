@@ -67,7 +67,7 @@ steps:
     displayName: 'pnpm run build'
     inputs:
       targetType: 'inline'
-      script: pnpm install && pnpm run build
+      script: pnpm install --no-frozen-lockfile && pnpm run build
       workingDirectory: '${{ parameters.root }}/webapp_package/web-app'
     env:
       REACT_APP_AAD_UI_APP_CLIENT_ID: $(ui_app_client_id)
