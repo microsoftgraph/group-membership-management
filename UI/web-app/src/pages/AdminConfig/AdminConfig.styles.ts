@@ -45,8 +45,8 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             borderRadius: 4,
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
-            backgroud: theme.palette.white,
-            width: 150,
+            background: theme.palette.white,
+            width: 150
         },
         defaultColumnSpan: {
             display: 'flex',
@@ -63,7 +63,7 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             borderRadius: 4,
             border: '1px solid',
             borderColor: theme.palette.neutralQuaternary,
-            backgroud: theme.palette.white,
+            background: theme.palette.white,
             width: 266,
         },
         sourceNameDescriptionContainer: {
@@ -81,6 +81,21 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
         descriptionText: {
             fontWeight: 400,
             color: theme.palette.black
+        },
+        valuesDropdown: {
+            maxWidth: 150
+        },
+        valuesDropdownTitle: {
+            borderRadius: 4,
+            borderStyle: 'solid',
+            borderWidth: 1,
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            maxWidth: 150
+        },
+        valuesDropdownSpinner: {
+            marginTop: 10,
+            marginBottom: 10
         }
 
 

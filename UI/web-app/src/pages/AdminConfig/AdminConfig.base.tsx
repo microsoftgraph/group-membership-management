@@ -20,14 +20,13 @@ import { SettingKey } from '../../models/SettingKey';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectSource, selectAttributes, selectIsSourceSaving, selectAreAttributesSaving, setSource, setAttributes } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipSource } from '../../models';
-import { patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
+import { fetchAttributeValues, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
 import { 
   selectIsCustomMembershipProviderAdministrator, 
   selectIsHyperlinkAdministrator, 
   selectIsOperationsResetAdministrator,
   selectIsGeneralSettingsAdministrator,
 } from '../../store/roles.slice';
-
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
@@ -67,6 +66,10 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   useEffect(() => { 
     setSettings(generateSettings())
   }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions]);
+
+  const handleGetValues = (attribute: SqlMembershipAttribute) => {
+    dispatch(fetchAttributeValues(attribute));
+  }
 
   // Create an event handler that should be called when the user clicks the save button.
   const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
@@ -130,6 +133,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       settings={settings}
       strings={strings}
       onSave={handleSave}
+      handleGetValues={handleGetValues}
       sqlMembershipSource={sqlMembershipSource}
       sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
       isHyperlinkAdmin={isHyperlinkAdmin}

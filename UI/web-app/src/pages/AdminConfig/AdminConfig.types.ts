@@ -5,6 +5,7 @@ import { IProcessedStyleSet, type IStyle, type IStyleFunctionOrObject, type IThe
 import type React from 'react';
 import type { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import type { IStrings } from '../../services/localization';
+import { MouseEventHandler } from 'react';
 
 export type AdminConfigStyles = {
   root: IStyle;
@@ -21,6 +22,9 @@ export type AdminConfigStyles = {
   listOfAttributesTitleDescriptionContainer: IStyle;
   detailsListContainer: IStyle;
   descriptionText: IStyle;
+  valuesDropdown: IStyle;
+  valuesDropdownTitle: IStyle;
+  valuesDropdownSpinner: IStyle;
 };
 
 export type AdminConfigStyleProps = {
@@ -43,6 +47,7 @@ export type AdminConfigProps = React.AllHTMLAttributes<HTMLDivElement> & {
 export type AdminConfigViewProps = AdminConfigProps & {
   isSaving: boolean;
   onSave: (settings: { readonly [key in SettingKey]: string }, sqlMembershipSource: SqlMembershipSource | undefined, sqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => void;
+  handleGetValues: (attribute: SqlMembershipAttribute) => void;
   settings: { readonly [key in SettingKey]: string };
   sqlMembershipSource: SqlMembershipSource | undefined;
   sqlMembershipSourceAttributes: SqlMembershipAttribute[] | undefined;
@@ -80,6 +85,7 @@ export type CustomSourceSettingsProps = {
   strings: IStrings['AdminConfig'];
   setNewSource: React.Dispatch<React.SetStateAction<SqlMembershipSource | undefined>>;
   setNewAttributes: React.Dispatch<React.SetStateAction<SqlMembershipAttribute[] | undefined>>;
+  handleGetValues: (attribute: SqlMembershipAttribute) => void;
 };
 
 export type CustomLabelCellProps = {
@@ -88,3 +94,11 @@ export type CustomLabelCellProps = {
   onChange: ((event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string | undefined) => void) | undefined;
   className: string;
 };
+
+export type AttributeValuesCellProps = {
+  values: string[];
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+  onDropdownClick: MouseEventHandler<HTMLDivElement> | undefined;
+};
+

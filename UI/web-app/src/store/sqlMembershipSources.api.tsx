@@ -6,6 +6,7 @@ import { ThunkConfig } from './store';
 import { SqlMembershipAttribute, SqlMembershipSource } from '../models';
 import { GetAttributeMappingsResponse } from '../models/GetAttributeMappingsResponse';
 import { GetAttributeMappingsRequest } from '../models/GetAttributeMappingsRequest';
+import { GetAttributeValuesResponse } from '../models/GetAttributeValuesResponse';
 
 export const fetchDefaultSqlMembershipSource = createAsyncThunk<SqlMembershipSource, void, ThunkConfig>(
     'sqlMembershipSources/fetchDefaultSqlMembershipSource',
@@ -52,6 +53,22 @@ export const fetchAttributeMappings = createAsyncThunk<GetAttributeMappingsRespo
       return payload;
     } catch (error) {
       payload = { mappings: [], attribute: request.attribute, type: request.type };
+      return payload;
+    }
+  }
+);
+
+export const fetchAttributeValues = createAsyncThunk<GetAttributeValuesResponse, SqlMembershipAttribute, ThunkConfig>(
+  'fetchSqlFilterAttributeValues',
+  async (attribute, { extra }) => { 
+    const { gmmApi } = extra.apis;
+    let payload: GetAttributeValuesResponse;
+    try {
+      const response = await gmmApi.sqlMembershipSources.fetchDefaultSqlMembershipSourceAttributeValues(attribute);
+      payload = { values: response, attribute: attribute.name };
+      return payload;
+    } catch (error) {
+      payload = { values: [], attribute: attribute.name };
       return payload;
     }
   }

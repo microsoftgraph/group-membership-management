@@ -7,6 +7,7 @@ export interface ISqlMembershipSourcesApi {
   fetchDefaultSqlMembershipSource(): Promise<SqlMembershipSource>;
   fetchDefaultSqlMembershipSourceAttributes(): Promise<SqlMembershipAttribute[]>;
   fetchDefaultSqlMembershipSourceAttributeMappings(attribute: string): Promise<SqlMembershipAttributeMapping[]>;
+  fetchDefaultSqlMembershipSourceAttributeValues(attribute: SqlMembershipAttribute): Promise<string[]>;
   patchDefaultSqlMembershipSourceCustomLabel(customLabel: string): Promise<void>;
   patchDefaultSqlMembershipSourceAttributes(attributes: SqlMembershipAttribute[]): Promise<void>;
 }

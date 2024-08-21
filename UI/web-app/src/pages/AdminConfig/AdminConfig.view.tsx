@@ -2,13 +2,14 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList } from '@fluentui/react';
+import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { 
   AdminConfigStyleProps, 
   AdminConfigStyles,
   AdminConfigViewProps,
   CustomLabelCellProps,
+  AttributeValuesCellProps,
   CustomSourceSettingsProps,
   HyperlinkSettingsProps,
   OperationsProps,
@@ -25,7 +26,7 @@ const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyle
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
-  const { className, isSaving, onSave, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, 
+  const { className, isSaving, onSave, handleGetValues, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, 
     isHyperlinkAdmin, 
     isCustomMembershipProviderAdmin,
     isOperationsResetAdministrator,
@@ -111,6 +112,7 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     sqlMembershipSourceAttributes={sqlMembershipSourceAttributes}
                     setNewAttributes={setNewAttributes}
                     setNewSource={setNewSource}
+                    handleGetValues={handleGetValues}
                     strings={strings} />
                 </PivotItem>
               }
@@ -248,7 +250,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
 
 const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> = (props: CustomSourceSettingsProps) => {
 
-  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, strings } = props;
+  const { classNames, sqlMembershipSource, sqlMembershipSourceAttributes, setNewAttributes, setNewSource, handleGetValues, strings } = props;
 
   const [attributeMap, setAttributeMap] = useState<{ [key: string]: SqlMembershipAttribute } | undefined>(undefined);
   const [isSortedDescending, setIsSortedDescending] = useState(false);
@@ -267,7 +269,10 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
   useEffect(() => {
     const newAttributeMap = attributes?.reduce((acc: { [key: string]: SqlMembershipAttribute }, currentItem: SqlMembershipAttribute) => {
       const { name } = currentItem;
-      acc[name] = { ...currentItem };
+      acc[name] = { 
+          ...currentItem,
+          customLabel: (attributeMap && attributeMap[name]?.customLabel) || currentItem.customLabel
+       };
       return acc;
     }, {});
 
@@ -306,6 +311,15 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
     [setAttributeMap]
   );
 
+  const handleDropdownClick = useCallback(
+    (attribute: SqlMembershipAttribute): any => {
+      if (attribute && !attribute.values) {
+        handleGetValues(attribute);
+      }
+    },
+    [attributeMap]
+  );
+
   const onRenderItemColumn = (item?: any, index?: number, column?: IColumn): JSX.Element => {
 
     if (!item || !column || !attributeMap) {
@@ -324,6 +338,17 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
               handleFieldChange(item.name, column.fieldName, newValue);
             }}
             className={classNames.customLabelTextField}
+          />
+        );
+      case 'attributeValues':
+        return (
+          <AttributeValuesCell
+            classNames={classNames}
+            values={attributeMap[item.name].values}
+            strings={strings}
+            onDropdownClick={() => { 
+              handleDropdownClick(attributeMap[item.name]);
+            }}
           />
         );
       default:
@@ -357,6 +382,13 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       isSorted: sortKey === 'customLabel',
       isSortedDescending,
       showSortIconWhenUnsorted: true,
+    },
+    {
+      key: 'attributeValues',
+      name: strings.CustomSourceSettings.labels.valuesColumn,
+      fieldName: 'attributeValues',
+      minWidth: 160,
+      maxWidth: 170,
     }
   ];
 
@@ -422,6 +454,51 @@ const CustomLabelCell = React.memo((props: CustomLabelCellProps) => {
       styles={{ fieldGroup: className }}
       placeholder={placeholder}
       onChange={onChange}
+    />
+  );
+});
+
+const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
+  const { classNames, values, onDropdownClick, strings } = props;
+
+  const getDropdownOptions = (values : string[]) => {
+    if (!values) {
+      return [];
+    }
+
+    return values.map((value) => {
+      return {
+        key: value,
+        text: value,
+        disabled: true,
+        title: value
+      }
+    });
+  }
+
+  const onRenderList: IRenderFunction<ISelectableDroppableTextProps<IDropdown, HTMLDivElement>> = (props, defaultRender) => {
+
+    const isLoading = props?.options?.length === 0;
+
+    return (
+      <div >
+        {isLoading ? (
+                <Spinner styles={{ root: classNames.valuesDropdownSpinner }} label={strings.CustomSourceSettings.labels.valuesDropdownSpinnerLabel} />
+            ) : (
+                defaultRender!(props)
+            )}
+      </div>
+    );
+};
+
+  return (
+    <Dropdown
+      placeholder={strings.CustomSourceSettings.labels.valuesDropdownPlaceholder}
+      onRenderList={onRenderList}
+      onClick={onDropdownClick}
+      options={getDropdownOptions(values)}
+      dropdownWidth={'auto'}
+      styles={{ dropdown: classNames.valuesDropdown, title: classNames.valuesDropdownTitle }}
     />
   );
 });

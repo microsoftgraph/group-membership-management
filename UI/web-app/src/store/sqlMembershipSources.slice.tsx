@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchAttributeMappings, fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
+import { fetchAttributeMappings, fetchAttributeValues, fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from './sqlMembershipSources.api';
 import type { RootState } from './store';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping, SqlMembershipSource } from '../models';
 
@@ -98,6 +98,14 @@ const sqlMembershipSourcesSlice = createSlice({
     builder.addCase(fetchAttributeMappings.rejected, (state, action) => {
       state.areAttributeMappingsLoading = false;
       state.error = action.error.message;
+    });
+
+    builder.addCase(fetchAttributeValues.fulfilled, (state, action) => {
+      state.areAttributeMappingsLoading = false;
+      const { attribute, values} = action.payload;
+      state.attributes = state.attributes?.map(attr => 
+        attr.name === attribute ? { ...attr, values: values } : attr
+      );
     });
 
     builder.addCase(patchDefaultSqlMembershipSourceCustomLabel.pending, (state) => {

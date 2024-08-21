@@ -128,6 +128,9 @@ export const strings: IStrings = {
         attributeColumn: "Attribute",
         customLabelColumn: "Custom Label",
         customLabelInputPlaceHolder: "Enter a custom label",
+        valuesColumn: "Values",
+        valuesDropdownSpinnerLabel: "Loading values...",
+        valuesDropdownPlaceholder: "View values"
       },
     },
     GeneralSettings: {

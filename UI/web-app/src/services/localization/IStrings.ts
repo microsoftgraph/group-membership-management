@@ -125,6 +125,9 @@ export type IStrings = {
         attributeColumn: string;
         customLabelColumn: string;
         customLabelInputPlaceHolder: string;
+        valuesColumn: string;
+        valuesDropdownSpinnerLabel: string;
+        valuesDropdownPlaceholder: string;
       },
     },
     GeneralSettings: {
