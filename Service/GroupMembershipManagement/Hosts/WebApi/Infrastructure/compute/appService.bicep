@@ -42,6 +42,11 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     httpsOnly: true
     reserved: false
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
+    siteConfig: {
+      cors: {
+        supportCredentials: true
+      }
+    }
   }
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
