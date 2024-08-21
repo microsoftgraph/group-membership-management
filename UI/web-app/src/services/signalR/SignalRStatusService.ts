@@ -11,9 +11,11 @@ export class SignalRStatusService implements ISignalRService {
     private _connection: signalR.HubConnection | null = null;
 
     public startConnection() {
-        if (!this._connection) {
+        if (!this._connection
+            || (this._connection && (this._connection.state !== signalR.HubConnectionState.Connected
+                                        && this._connection.state !== signalR.HubConnectionState.Connecting))) {
             this._connection = new signalR.HubConnectionBuilder()
-                .withUrl(`${process.env.REACT_APP_SIGNALR_SERVICE_BASE_URI}/servicestatus`)
+                .withUrl(`${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/servicestatus`)
                 .withAutomaticReconnect()
                 .build();
 
