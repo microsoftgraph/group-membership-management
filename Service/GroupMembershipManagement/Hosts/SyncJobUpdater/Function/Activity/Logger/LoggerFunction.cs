@@ -8,7 +8,7 @@ using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 
-namespace Hosts.JobFinalizer
+namespace Hosts.SyncJobUpdater
 {
     public class LoggerFunction
     {

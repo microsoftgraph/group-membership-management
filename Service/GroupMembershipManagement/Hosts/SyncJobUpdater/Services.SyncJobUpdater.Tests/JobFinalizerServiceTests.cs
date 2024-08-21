@@ -8,7 +8,7 @@ using Models;
 using Repositories.Contracts;
 using Hosts.SyncJobUpdater;
 using Services.Tests;
-using Services.JobFinalizer.Tests.Mocks;
+using Services.SyncJobUpdater.Tests.Mocks;
 
 namespace Services.Tests
 {
