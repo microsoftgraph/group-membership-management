@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 using Microsoft.Extensions.Hosting;
 using Azure.Core;
 using Azure.Messaging.ServiceBus;
@@ -35,7 +38,7 @@ namespace Hosts.JobTrigger
             .ConfigureAppConfiguration((context, config) =>
             {
                 var settings = config.Build();
-                var appConfigEndpoint = GetValueOrThrow("appConfigurationEndpoint");
+                var appConfigEndpoint = CommonServices.GetValueOrThrowBase("appConfigurationEndpoint");
 
                 config.AddAzureAppConfiguration(options =>
                 {
@@ -53,10 +56,10 @@ namespace Hosts.JobTrigger
                 CommonServices.ConfigureCommonServices(services, configuration, "JobTrigger", dryRunSettingName, rootPath);
                 services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
                 {
-                    settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
-                    settings.GMMHasChannelReadWriteAllPermissions = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
-                    settings.JobCountThreshold = GetIntSetting(configuration, "JobTrigger:JobCountThreshold", 10);
-                    settings.JobPerMilleThreshold = GetIntSetting(configuration, "JobTrigger:JobPerMilleThreshold", 10);
+                    settings.GMMHasGroupReadWriteAllPermissions = CommonServices.GetBoolSettingBase(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
+                    settings.GMMHasChannelReadWriteAllPermissions = CommonServices.GetBoolSettingBase(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+                    settings.JobCountThreshold = CommonServices.GetIntSettingBase(configuration, "JobTrigger:JobCountThreshold", 10);
+                    settings.JobPerMilleThreshold = CommonServices.GetIntSettingBase(configuration, "JobTrigger:JobPerMilleThreshold", 10);
                 });
 
                 services.AddSingleton<IJobTriggerConfig>(services => services.GetService<IOptions<JobTriggerConfig>>().Value);
@@ -84,7 +87,7 @@ namespace Hosts.JobTrigger
                     var configuration = services.GetService<IConfiguration>();
                     var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
 
-                    var channelReadWriteApplicationPermissionGranted = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+                    var channelReadWriteApplicationPermissionGranted = CommonServices.GetBoolSettingBase(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
 
                     TokenCredential graphTokenCredential;
 
@@ -106,7 +109,7 @@ namespace Hosts.JobTrigger
 
                 services.AddSingleton<IServiceBusTopicsRepository>(services =>
                 {
-                    var serviceBusSyncJobTopic = GetValueOrThrow("serviceBusSyncJobTopic");
+                    var serviceBusSyncJobTopic = CommonServices.GetValueOrThrowBase("serviceBusSyncJobTopic");
                     var client = services.GetRequiredService<ServiceBusClient>();
                     var sender = client.CreateSender(serviceBusSyncJobTopic);
                     return new ServiceBusTopicsRepository(sender);
@@ -139,23 +142,6 @@ namespace Hosts.JobTrigger
             .Build();
 
             host.Run();
-        }
-        static bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
-        {
-            var checkParse = bool.TryParse(configuration[settingName], out bool value);
-            return checkParse ? value : defaultValue;
-        }
-        static int GetIntSetting(IConfiguration configuration, string settingName, int defaultValue)
-        {
-            var checkParse = int.TryParse(configuration[settingName], out int value);
-            return checkParse ? value : defaultValue;
-        }
-        static string GetValueOrThrow(string key, [CallerFilePath] string callerFile = "", [CallerLineNumber] int callerLine = 0)
-        {
-            var value = Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process);
-            if (string.IsNullOrWhiteSpace(value))
-                throw new ArgumentNullException($"Could not start because of missing configuration option: {key}. Requested by file {callerFile}:{callerLine}.");
-            return value;
         }
     }
 }

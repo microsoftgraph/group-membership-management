@@ -38,9 +38,8 @@ namespace Services.Tests
             int maxJobsAllowed = syncJobs.Count;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
 											.ReturnsAsync(syncJobs);
-			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
+            context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<TaskName>(x => x.ToString() == nameof(GetJobsFunction)),null))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
-
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<TaskName>(x => x.ToString() == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>(), null));
 
             var orchestrator = new OrchestratorFunction(loggingRepository.Object);
@@ -68,7 +67,7 @@ namespace Services.Tests
             int maxJobsAllowed = syncJobs.Count;
 			jobTriggerService.Setup(x => x.GetSyncJobsAsync())
 											.ReturnsAsync((syncJobs));
-			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<string>(x => x == nameof(GetJobsFunction)), It.IsAny<object>()))
+			context.Setup(x => x.CallActivityAsync<List<SyncJob>>(It.Is<TaskName>(x => x.ToString() == nameof(GetJobsFunction)), null))
                         .Returns(() => CallGetSyncJobsAsync(loggingRepository.Object, jobTriggerService.Object));
 
             context.Setup(x => x.CallSubOrchestratorAsync(It.Is<TaskName>(x => x.ToString() == nameof(SubOrchestratorFunction)), It.IsAny<SyncJob>(), null));
