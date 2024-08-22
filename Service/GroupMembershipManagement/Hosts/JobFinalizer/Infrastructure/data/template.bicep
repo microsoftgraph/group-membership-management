@@ -21,7 +21,6 @@ param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('jf${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
-var stagingStorageAccountName = substring('jf${solutionAbbreviation}${environmentAbbreviation}staging${uniqueString(resourceGroup().id)}',0,23)
 
 module jfStorageAccountProd 'storageAccount.bicep' = {
   name: 'jfProdstorageAccountTemplate'
@@ -34,14 +33,4 @@ module jfStorageAccountProd 'storageAccount.bicep' = {
   }
 }
 
-module jfStorageAccountStaging 'storageAccount.bicep' = {
-  name: 'jfStagingstorageAccountTemplate'
-  params: {
-    name: stagingStorageAccountName
-    sku: storageAccountSku
-    keyVaultName: keyVaultName
-    location: location
-    storageAccountConnectionStringSettingName: 'jobFinalizerStorageAccountStaging'
-  }
-}
 
