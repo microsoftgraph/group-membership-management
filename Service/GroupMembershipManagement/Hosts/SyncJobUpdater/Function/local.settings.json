@@ -10,7 +10,7 @@
     "supportEmailAddresses": "",
     "AzureFunctionsWebHost__hostid": "",
     "graphCredentials:TenantId": "",
-    "jobFinalizerStorageAccountName": "",
+    "syncJobUpdaterStorageAccountName": "",
     "senderAddress": "",
     "WEBSITE_CONTENTSHARE": "",
     "AzureWebJobsStorage": "",
@@ -29,7 +29,7 @@
     "ConnectionStrings:JobsContextReadOnly": "",
     "senderPassword": "",
     "serviceBusNotificationsQueue": "",
-    "serviceBusJobFinalizerQueue": "",
+    "serviceBusSyncJobUpdaterQueue": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": ""
   }
 }
