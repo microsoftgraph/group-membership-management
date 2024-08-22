@@ -21,7 +21,7 @@ using Hosts.FunctionBase;
 using Azure.Identity;
 using System.Runtime.CompilerServices;
 
-namespace Hosts.JobTrigger
+namespace Hosts.Notifier
 {
 
     public class Program
@@ -47,7 +47,7 @@ namespace Hosts.JobTrigger
                 var functionName = "Notifier";
                 var dryRunSettingName = string.Empty;
                 var rootPath = context.HostingEnvironment.ContentRootPath;
-                CommonServices.ConfigureCommonServices(services, configuration, "Notifier", dryRunSettingName, rootPath);
+                CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
                 services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
                 {
                     settings.HandleInactiveJobsEnabled = CommonServices.GetBoolSettingBase(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
