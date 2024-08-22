@@ -53,7 +53,7 @@ namespace Hosts.JobTrigger
                 var functionName = "JobTrigger";
                 var dryRunSettingName = string.Empty;
                 var rootPath = context.HostingEnvironment.ContentRootPath;
-                CommonServices.ConfigureCommonServices(services, configuration, "JobTrigger", dryRunSettingName, rootPath);
+                CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
                 services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
                 {
                     settings.GMMHasGroupReadWriteAllPermissions = CommonServices.GetBoolSettingBase(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
