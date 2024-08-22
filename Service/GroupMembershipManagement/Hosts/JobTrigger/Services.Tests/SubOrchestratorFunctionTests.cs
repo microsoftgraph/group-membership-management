@@ -6,7 +6,6 @@ using JobTrigger.Activity.EmailSender;
 using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -16,7 +15,6 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Services.Contracts;
 using Services.Tests.Helpers;
-using Repositories.ServiceBusQueue;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
@@ -166,7 +164,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -189,7 +187,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -211,7 +209,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -240,7 +238,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.SchemaError), It.IsAny<SyncJob>()), Times.Once());
@@ -263,7 +261,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("No json schemas have been loaded")),
@@ -284,7 +282,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Skipping schema validation for property")),
@@ -304,7 +302,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.SchemaError, It.IsAny<SyncJob>()), Times.Once());
@@ -326,7 +324,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.ErroredDueToStuckInProgress, It.IsAny<SyncJob>()), Times.Once());
         }
 
@@ -341,7 +339,7 @@ namespace Services.Tests
                                                     _telemetryClient,
                                                     _emailSenderAndRecipients.Object,
                                                     _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -370,7 +368,7 @@ namespace Services.Tests
                                                     _telemetryClient,
                                                     _emailSenderAndRecipients.Object,
                                                     _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
@@ -446,7 +444,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
@@ -528,7 +526,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
@@ -570,7 +568,7 @@ namespace Services.Tests
                                         _telemetryClient,
                                         _emailSenderAndRecipients.Object,
                                         _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(),null), Times.Once());
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _syncStatus);
             _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.DestinationNotExistNotification), null), Times.Once());
@@ -587,7 +585,7 @@ namespace Services.Tests
                                         _telemetryClient,
                                         _emailSenderAndRecipients.Object,
                                         _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), null), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
             _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.NotOwnerNotification), null), Times.Once());
@@ -610,7 +608,7 @@ namespace Services.Tests
                             _telemetryClient,
                             _emailSenderAndRecipients.Object,
                             _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), null), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
 
@@ -621,7 +619,7 @@ namespace Services.Tests
                             _telemetryClient,
                             _emailSenderAndRecipients.Object,
                             _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), null), Times.Exactly(2));
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
         }
@@ -637,7 +635,7 @@ namespace Services.Tests
 																_telemetryClient,
 																_emailSenderAndRecipients.Object,
 																_gmmResources.Object);
-			await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext);
+			await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
 
 
             _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(LoggerFunction)),

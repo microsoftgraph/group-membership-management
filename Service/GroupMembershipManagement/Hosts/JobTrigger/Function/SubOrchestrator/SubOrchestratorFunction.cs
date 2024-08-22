@@ -42,7 +42,7 @@ namespace Hosts.JobTrigger
         }
 
         [Function(nameof(SubOrchestratorFunction))]
-        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context, ExecutionContext executionContext)
+        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
 
             var syncJob = context.GetInput<SyncJob>();
