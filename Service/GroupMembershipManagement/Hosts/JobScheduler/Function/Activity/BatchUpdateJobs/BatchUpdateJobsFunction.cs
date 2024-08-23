@@ -1,14 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.Functions.Worker;
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Services.Contracts;
 using Repositories.Contracts;
+using Services.Contracts;
+using System;
+using System.Threading.Tasks;
 
 namespace Hosts.JobScheduler
 {
@@ -22,7 +20,7 @@ namespace Hosts.JobScheduler
             _jobSchedulingService = jobSchedulingService ?? throw new ArgumentNullException(nameof(jobSchedulingService));
         }
 
-        [FunctionName(nameof(BatchUpdateJobsFunction))]
+        [Function(nameof(BatchUpdateJobsFunction))]
         public async Task BatchUpdateJobsAsync([ActivityTrigger] BatchUpdateJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BatchUpdateJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
