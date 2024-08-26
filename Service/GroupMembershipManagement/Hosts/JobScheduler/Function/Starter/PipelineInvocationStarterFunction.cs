@@ -42,9 +42,11 @@ namespace Hosts.JobScheduler
                 {
                     StartTimeDelayMinutes = delayForDeploymentInMinutes
                 });
-            var response = starter.CreateCheckStatusResponse(req, instanceId);
-            var responseBody = string.Empty;
 
+            var response = starter.CreateCheckStatusResponse(req, instanceId);
+            response.Body.Position = 0;
+
+            var responseBody = string.Empty;
             using (var reader = new StreamReader(response.Body))
             {
                 responseBody = await reader.ReadToEndAsync();
