@@ -234,9 +234,6 @@ namespace Services.Notifier
                 ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
             }
 
-            if (contentTemplate.Contains("disabled", StringComparison.InvariantCultureIgnoreCase))
-                ccAddress = _emailSenderAndRecipients.SyncDisabledCCAddresses;
-
             var message = new EmailMessage
             {
                 Subject = subjectTemplate,
@@ -423,7 +420,7 @@ namespace Services.Notifier
             contentTemplate = thresholdEmail.ContentTemplate;
             additionalContent = thresholdEmail.AdditionalContent;
 
-            var recipients = _emailSenderAndRecipients.SupportEmailAddresses ?? _emailSenderAndRecipients.SyncDisabledCCAddresses;
+            var recipients = _emailSenderAndRecipients.SupportEmailAddresses;
 
             if (!string.IsNullOrWhiteSpace(job.Requestor))
             {

@@ -27,7 +27,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -60,7 +60,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();

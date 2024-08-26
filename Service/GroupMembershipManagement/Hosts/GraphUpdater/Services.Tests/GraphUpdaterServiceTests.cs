@@ -27,7 +27,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
             var mockNotificationType = new MockNotificationTypesRepository();
             var mockJobNotification = new MockJobNotificationRepository();
@@ -56,7 +56,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -83,7 +83,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -108,7 +108,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -134,7 +134,7 @@ namespace Services.Tests
 		{
 			var mockLogs = new MockLoggingRepository();
 			var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 			var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var lastRunTime = DateTime.UtcNow.AddDays(-1);
 			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
@@ -168,7 +168,7 @@ namespace Services.Tests
 		{
 			var mockLogs = new MockLoggingRepository();
 			var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+			var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 			var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var runId = Guid.NewGuid();
 			var lastRunTime = DateTime.UtcNow.AddDays(-1);
@@ -198,7 +198,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -227,7 +227,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -255,7 +255,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new MockGraphGroupRepository();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -280,7 +280,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -324,7 +324,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
@@ -346,7 +346,7 @@ namespace Services.Tests
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var mockGraphGroup = new Mock<IGraphGroupRepository>();
             var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
 			var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();

@@ -62,8 +62,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -156,8 +155,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockDatabaseSyncJobRepository();
@@ -267,8 +265,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -392,8 +389,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -490,8 +486,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -580,8 +575,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -640,8 +634,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -720,8 +713,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockDatabaseSyncJobRepository();
@@ -804,8 +796,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
 
             mockGroupRepo = new MockGraphGroupRepository();
@@ -924,8 +915,7 @@ namespace Services.Tests
             mockGraphUpdaterService = new MockGraphUpdaterService(mockServiceBusQueueRepository.Object);
             dryRun = new DryRunValue(false);
             thresholdConfig = new ThresholdConfig(5, 3, 3, 10);
-            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass",
-                                            "recipient@domain.com", "recipient@domain.com", "recipient@domain.com");
+            mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
 
             mockGroupRepo = new MockGraphGroupRepository();
             mockSyncJobRepo = new MockDatabaseSyncJobRepository();
