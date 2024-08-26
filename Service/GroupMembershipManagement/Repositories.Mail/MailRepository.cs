@@ -232,6 +232,9 @@ namespace Repositories.Mail
             var template = new AdaptiveCardTemplate(adaptiveCardJson);
             var adaptiveCard = template.Expand(cardData);
 
+            var simpleMessage = GetSimpleMessage(emailMessage);
+            var fallbackHTMLContent = simpleMessage.Body.Content;
+
             var htmlTemplate = @"<html>
                 <head
                   <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
@@ -240,10 +243,13 @@ namespace Repositories.Mail
                   </script>
                 </head>
                 <body>
+                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
+                <h1>Original Message</h1>
+                <pre>{1}</pre>
                 </body>
                 </html>";
 
-            var htmlContent = string.Format(htmlTemplate, adaptiveCard);
+            var htmlContent = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent);
 
             var message = new Message
             {
