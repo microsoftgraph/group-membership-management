@@ -430,7 +430,7 @@ namespace Tests.Services
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
-            _blobStorageRepository.Verify(x => x.DeleteFilesAsync(It.IsAny<string>()), Times.Exactly(2));
+            _blobStorageRepository.Verify(x => x.DeleteFilesByPrefixAsync(It.IsAny<string>(), It.IsAny<bool>()), Times.Exactly(2));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),

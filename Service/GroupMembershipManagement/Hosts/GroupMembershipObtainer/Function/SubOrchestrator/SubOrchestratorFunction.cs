@@ -155,6 +155,7 @@ namespace Hosts.GroupMembershipObtainer
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
                                 var compressedDeltaResponse = await GetDeltaUsersReaderFunction(context, deltaFileContent, request);
                                 var deltaResponse = JsonConvert.DeserializeObject<DeltaUserReaderResponse>(TextCompressor.Decompress(compressedDeltaResponse));
+                                var shouldClearCache = false;
 
                                 deltaUsersToAdd.AddRange(deltaResponse.UsersToAdd);
                                 deltaUsersToRemove = deltaResponse.UsersToRemove;
@@ -177,8 +178,7 @@ namespace Hosts.GroupMembershipObtainer
                                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {countOfUsersFromAADGroup} users but cache has {countOfUsersFromCache} users. Running delta query..." });
 
                                     // clear cache
-                                    await ClearCacheFunction(context, filePath, request.SyncJob);
-                                    await ClearCacheFunction(context, deltaFilePath, request.SyncJob);
+                                    shouldClearCache = true;
 
                                     var compressedResponse = await GetUsersReaderFunction(context, request);
                                     var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
@@ -195,6 +195,13 @@ namespace Hosts.GroupMembershipObtainer
                                 }
 
                                 await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.DeltaUrl);
+
+                                if (shouldClearCache)
+                                {
+                                    // delete old cache files, only after new cache file is created
+                                    await ClearCacheFunction(context, filePath, request.SyncJob);
+                                    await ClearCacheFunction(context, deltaFilePath, request.SyncJob);
+                                }
                             }
                             catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                             {

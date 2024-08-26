@@ -53,5 +53,10 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task DeleteFilesByPrefixAsync(string prefix, bool excludeLatest = false)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

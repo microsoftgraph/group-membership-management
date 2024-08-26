@@ -58,6 +58,17 @@ namespace Repositories.BlobStorage
             }
         }
 
+        public async Task DeleteFilesByPrefixAsync(string prefix, bool excludeLatest = false)
+        {
+            var blobs = _containerClient.GetBlobs(prefix: prefix).OrderByDescending(m => m.Properties.LastModified);
+            foreach (var blob in blobs)
+            {
+                if (excludeLatest) continue;
+                var blobClient = _containerClient.GetBlobClient(blob.Name);
+                await blobClient.DeleteIfExistsAsync();
+            }
+        }
+
         public async Task<BlobResult> DownloadCacheFileAsync(string path)
         {
             var latest = _containerClient.GetBlobs(prefix: path).OrderByDescending(m => m.Properties.LastModified).FirstOrDefault();
