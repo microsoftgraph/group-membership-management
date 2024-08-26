@@ -379,9 +379,9 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
-      
+
             foreach (var job in _syncJobRepository.Jobs)
-            {                
+            {
                 var canWriteToGroup = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
                 await _jobTriggerService.UpdateSyncJobAsync(canWriteToGroup == DestinationVerifierResult.Success ? SyncStatus.InProgress : SyncStatus.NotOwnerOfDestinationGroup, job);
                 Assert.AreEqual(job.Status, SyncStatus.InProgress.ToString());
@@ -397,7 +397,7 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(getDestinationObjectId(x)));
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(getDestinationObjectId(x)));
-           
+
             foreach (var job in _syncJobRepository.Jobs)
             {
                 job.Status = SyncStatus.InProgress.ToString();
@@ -582,7 +582,7 @@ namespace Services.Tests
                 _mockTeamsChannelRepository.Object,
                 new MockKeyVaultSecret<IJobTriggerService>(),
                 new MockKeyVaultSecret<IJobTriggerService, Guid>(),
-                new MockEmail<IEmailSenderRecipient>(), 
+                new MockEmail<IEmailSenderRecipient>(),
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
@@ -652,10 +652,6 @@ namespace Services.Tests
             public string SenderAddress => "";
 
             public string SenderPassword => "";
-
-            public string SyncCompletedCCAddresses => "";
-
-            public string SyncDisabledCCAddresses => "";
 
             public string SupportEmailAddresses => "";
         }

@@ -159,8 +159,6 @@ namespace Hosts.FunctionBase
             {
                 settings.SenderAddress = configuration.GetValue<string>("senderAddress");
                 settings.SenderPassword = configuration.GetValue<string>("senderPassword");
-                settings.SyncDisabledCCAddresses = configuration.GetValue<string>("syncDisabledCCEmailAddresses");
-                settings.SyncCompletedCCAddresses = configuration.GetValue<string>("syncCompletedCCEmailAddresses");
                 settings.SupportEmailAddresses = configuration.GetValue<string>("supportEmailAddresses");
             });
 
@@ -170,8 +168,6 @@ namespace Hosts.FunctionBase
                 return new EmailSenderRecipient(
                     creds.Value.SenderAddress,
                     creds.Value.SenderPassword,
-                    creds.Value.SyncCompletedCCAddresses,
-                    creds.Value.SyncDisabledCCAddresses,
                     creds.Value.SupportEmailAddresses);
             });
 

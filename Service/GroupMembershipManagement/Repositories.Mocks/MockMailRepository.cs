@@ -31,10 +31,6 @@ namespace Repositories.Mocks
 
 		public string SenderPassword => "";
 
-		public string SyncCompletedCCAddresses => "";
-
-		public string SyncDisabledCCAddresses => "";
-
         public string SupportEmailAddresses => "";
     }
 }

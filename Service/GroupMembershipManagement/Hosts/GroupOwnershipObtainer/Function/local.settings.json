@@ -18,7 +18,6 @@
     "ConnectionStrings:JobsContextReadOnly": "",
     "senderAddress": "",
     "senderPassword": "",
-    "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",

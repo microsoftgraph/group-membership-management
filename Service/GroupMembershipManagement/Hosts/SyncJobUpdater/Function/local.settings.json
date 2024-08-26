@@ -13,11 +13,9 @@
     "syncJobUpdaterStorageAccountName": "",
     "senderAddress": "",
     "WEBSITE_CONTENTSHARE": "",
-    "AzureWebJobsStorage": "",
     "graphCredentials:KeyVaultName": "",
     "AzureFunctionsJobHost__extensions__durableTask__hubName": "",
     "logAnalyticsPrimarySharedKey": "",
-    "syncDisabledCCEmailAddresses": "",
     "ConnectionStrings:JobsContext": "",
     "graphCredentials:ClientCertificateName": "",
     "logAnalyticsCustomerId": "",
@@ -30,6 +28,5 @@
     "senderPassword": "",
     "serviceBusNotificationsQueue": "",
     "serviceBusSyncJobUpdaterQueue": "",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
   }
 }

@@ -9,8 +9,6 @@ param tenantId string
 param senderPassword string
 param senderUsername string
 param supportEmailAddresses string
-param syncDisabledCCEmailAddresses string
-param syncCompletedCCEmailAddresses string
 param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
@@ -45,14 +43,6 @@ module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecretsSecure.bicep
         {
           name: 'supportEmailAddresses'
           value: supportEmailAddresses
-        }
-        {
-          name: 'syncDisabledCCEmailAddresses'
-          value: syncDisabledCCEmailAddresses
-        }
-        {
-          name: 'syncCompletedCCEmailAddresses'
-          value: syncCompletedCCEmailAddresses
         }
         {
           name: 'teamsChannelServiceAccountObjectId'

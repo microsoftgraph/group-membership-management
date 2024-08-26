@@ -26,8 +26,6 @@ param certificateName string = 'not-set'
 param senderPassword string
 param senderUsername string
 param supportEmailAddresses string
-param syncDisabledCCEmailAddresses string
-param syncCompletedCCEmailAddresses string
 param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
@@ -89,8 +87,6 @@ module gmmResources 'commonResources.bicep' = {
     senderPassword: senderPassword
     senderUsername: senderUsername
     supportEmailAddresses: supportEmailAddresses
-    syncDisabledCCEmailAddresses: syncDisabledCCEmailAddresses
-    syncCompletedCCEmailAddresses: syncCompletedCCEmailAddresses
     teamsChannelServiceAccountObjectId: teamsChannelServiceAccountObjectId
     teamsChannelServiceAccountPassword: teamsChannelServiceAccountPassword
     teamsChannelServiceAccountUsername: teamsChannelServiceAccountUsername

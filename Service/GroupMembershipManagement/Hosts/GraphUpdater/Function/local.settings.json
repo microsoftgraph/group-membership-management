@@ -15,8 +15,6 @@
     "logAnalyticsPrimarySharedKey": "",
     "senderAddress": "",
     "senderPassword": "",
-    "syncCompletedCCEmailAddresses": "",
-    "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",

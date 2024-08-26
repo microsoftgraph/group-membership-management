@@ -20,8 +20,6 @@
     "graphCredentials:TenantId": "",
     "senderAddress": "",
     "senderPassword": "",
-    "syncCompletedCCEmailAddresses": "",
-    "syncDisabledCCEmailAddresses": "",
     "supportEmailAddresses": "",
     "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": "",

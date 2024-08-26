@@ -18,8 +18,6 @@ param isMailApplicationPermissionGranted bool
 param senderPassword string
 param senderUsername string
 param supportEmailAddresses string
-param syncDisabledCCEmailAddresses string
-param syncCompletedCCEmailAddresses string
 param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
@@ -72,8 +70,6 @@ module prereqResources 'prereqResources.bicep' = {
     senderPassword: senderPassword
     senderUsername: senderUsername
     supportEmailAddresses: supportEmailAddresses
-    syncCompletedCCEmailAddresses: syncCompletedCCEmailAddresses
-    syncDisabledCCEmailAddresses: syncDisabledCCEmailAddresses
     teamsChannelServiceAccountObjectId: teamsChannelServiceAccountObjectId
     teamsChannelServiceAccountPassword: teamsChannelServiceAccountPassword
     teamsChannelServiceAccountUsername: teamsChannelServiceAccountUsername

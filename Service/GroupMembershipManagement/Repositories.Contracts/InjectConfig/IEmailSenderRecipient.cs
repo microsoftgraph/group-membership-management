@@ -6,8 +6,6 @@ namespace Repositories.Contracts.InjectConfig
     {
         string SenderAddress { get; }
         string SenderPassword { get; }
-        string SyncCompletedCCAddresses { get; }
-        string SyncDisabledCCAddresses { get; }
         string SupportEmailAddresses { get; }
     }
 }

@@ -5,7 +5,7 @@
     "skipMailNotifications": {
       "value": false,
       "metadata": {
-        "description": "If you don't want to send email notifications set this to true. When this is true, 'senderUsername','senderPassword','supportEmailAddresses','syncDisabledCCEmailAddresses','syncCompletedCCEmailAddresses' should be set to 'not-set'."
+        "description": "If you don't want to send email notifications set this to true. When this is true, 'senderUsername','senderPassword','supportEmailAddresses' should be set to 'not-set'."
       }
     },
     "isMailApplicationPermissionGranted": {
@@ -30,18 +30,6 @@
       "value": "",
       "metadata": {
         "description": "The email addresses of the users that will receive support emails."
-      }
-    },
-    "syncDisabledCCEmailAddresses": {
-      "value": "",
-      "metadata": {
-        "description": "The email addresses of the users that will receive emails when a sync job is disabled."
-      }
-    },
-    "syncCompletedCCEmailAddresses": {
-      "value": "",
-      "metadata": {
-        "description": "The email addresses of the users that will receive emails when a sync job is completed."
       }
     },
     "teamsChannelServiceAccountObjectId": {
