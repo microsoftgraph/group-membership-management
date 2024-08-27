@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -21,7 +20,7 @@ namespace Hosts.GroupMembershipObtainer
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
         }
 
-        [FunctionName(nameof(EmailSenderFunction))]
+        [Function(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
             if (request.SyncJob != null)

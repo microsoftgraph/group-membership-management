@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -23,7 +22,7 @@ namespace Hosts.GroupMembershipObtainer
             _calculator = calculator;
         }
 
-        [FunctionName(nameof(UsersSenderFunction))]
+        [Function(nameof(UsersSenderFunction))]
         public async Task<string> SendUsersAsync([ActivityTrigger] UsersSenderRequest request)
         {
             string filePath = null;

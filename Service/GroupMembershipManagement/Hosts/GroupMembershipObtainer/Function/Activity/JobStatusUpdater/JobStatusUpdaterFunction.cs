@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -20,7 +19,7 @@ namespace Hosts.GroupMembershipObtainer
             _membershipCalculator = membershipCalculator;
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
+        [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             if (request.SyncJob != null)

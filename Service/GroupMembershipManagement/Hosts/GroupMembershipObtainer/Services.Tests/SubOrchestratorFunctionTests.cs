@@ -3,7 +3,7 @@
 using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
@@ -34,7 +34,7 @@ namespace Tests.Services
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository;
@@ -64,7 +64,7 @@ namespace Tests.Services
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
@@ -140,75 +140,75 @@ namespace Tests.Services
 
             _durableOrchestrationContext.Setup(x => x.GetInput<GroupMembershipRequest>()).Returns(() => _groupMembershipRequest);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                                        });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _groupExists = await CallGroupValidatorFunctionAsync(request as GroupValidatorRequest);
                                         })
                                         .ReturnsAsync(() => _groupExists);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<DeltaUsersSenderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<DeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            await CallDeltaUsersSenderFunctionAsync(request as DeltaUsersSenderRequest);
                                        });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<FileDeleterRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<FileDeleterRequest>(), It.IsAny<TaskOptions>()))
+                                      .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                       {
                                           await CallFileDeleterFunctionAsync(request as FileDeleterRequest);
                                       });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                                    It.IsAny<DeltaUsersReaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<TaskName>(),
+                                                                                                                                    It.IsAny<DeltaUsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUsersReaderResponse = await CallDeltaUsersReaderFunctionAsync(request as DeltaUsersReaderRequest);
                                        })
                                        .ReturnsAsync(() => _deltaUsersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                                    It.IsAny<SubsequentDeltaUsersReaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<TaskName>(),
+                                                                                                                                    It.IsAny<SubsequentDeltaUsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUsersReaderResponse = await CallSubsequentDeltaUsersReaderFunctionAsync(request as SubsequentDeltaUsersReaderRequest);
                                        })
                                        .ReturnsAsync(() => _deltaUsersReaderResponse);
 
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(),
-                                                                                                                                     It.IsAny<MembersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<TaskName>(),
+                                                                                                                                     It.IsAny<MembersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _membersReaderResponse = await CallMembersReaderFunctionAsync(request as MembersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _membersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(),
-                                                                                                                         It.IsAny<SubsequentMembersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<TaskName>(),
+                                                                                                                         It.IsAny<SubsequentMembersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _membersReaderResponse = await CallSubsequentMembersReaderFunctionAsync(request as SubsequentMembersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _membersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                                    It.IsAny<UsersReaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<TaskName>(),
+                                                                                                                                    It.IsAny<UsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _usersReaderResponse = await CallUsersReaderFunctionAsync(request as UsersReaderRequest);
                                        })
                                        .ReturnsAsync(() => _usersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                         It.IsAny<SubsequentUsersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<TaskName>(),
+                                                                                                                         It.IsAny<SubsequentUsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _usersReaderResponse = await CallSubsequentUsersReaderFunctionAsync(request as SubsequentUsersReaderRequest);
                                         })
@@ -307,15 +307,15 @@ namespace Tests.Services
         {
             string content = null;
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            var fileDownloaderRequest = request as FileDownloaderRequest;
 
@@ -374,23 +374,23 @@ namespace Tests.Services
             string content = null;
             _groupCount = 0;
             _blobStorageRepository.Setup(x => x.DownloadCacheFileAsync(It.IsAny<string>())).ReturnsAsync(() => _extraUserBlobResult);
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetUserCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetUserCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _userCount = await CallUsersReaderFunctionAsync(request as GetUserCountRequest);
                                        })
                                        .ReturnsAsync(() => _userCount);
 
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            var fileDownloaderRequest = request as FileDownloaderRequest;
 
@@ -399,10 +399,10 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => content);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDeleterRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          var fileDeleterRequest = request as FileDeleterRequest;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDeleterRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           var fileDeleterRequest = request as FileDeleterRequest;
 
                                           await CallFileDeleterFunctionAsync(fileDeleterRequest);
                                       });
@@ -456,21 +456,21 @@ namespace Tests.Services
         {
             _groupCount = 0;
             _userCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetUserCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetUserCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _userCount = await CallUsersReaderFunctionAsync(request as GetUserCountRequest);
                                        })
                                        .ReturnsAsync(() => _userCount);
             _deltaUrl = "http://delta-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
@@ -514,16 +514,16 @@ namespace Tests.Services
         public async Task ProcessDeltaLinkSinglePageRequestTestAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
             _deltaUrl = "http://delta-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
@@ -575,21 +575,21 @@ namespace Tests.Services
         public async Task HandleDeltaLinkExceptionAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
                                        .ReturnsAsync(() => _groupCount);
             _deltaUrl = "http://delta-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
                                        .ReturnsAsync(() => _deltaUrl);
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<DeltaUsersReaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<TaskName>(), It.IsAny<DeltaUsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUsersReaderResponse = await CallDeltaUsersReaderFunctionAsync(request as DeltaUsersReaderRequest);
                                        })
@@ -637,8 +637,8 @@ namespace Tests.Services
         public async Task ProcessTMSinglePageRequestTestAsync()
         {
             _groupCount = 2;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                        })
@@ -693,17 +693,17 @@ namespace Tests.Services
 
             _usersReaderNextPageUrl = "http://next-page-url";
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                           .Callback<string, object>(async (name, request) =>
-                           {
-                               var fileDownloaderRequest = request as FileDownloaderRequest;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           var fileDownloaderRequest = request as FileDownloaderRequest;
 
                                if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
                                    content = string.Empty;
@@ -758,24 +758,24 @@ namespace Tests.Services
         public async Task ProcessDeltaLinkMultiplePageRequestTestAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
             _deltaUrl = "http://delta-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
                                        .ReturnsAsync(() => _deltaUrl);
 
             _deltaUrl = "http://delta-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
@@ -821,10 +821,10 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 2;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -878,17 +878,17 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-               .Callback<string, object>(async (name, request) =>
-               {
-                   var fileDownloaderRequest = request as FileDownloaderRequest;
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           var fileDownloaderRequest = request as FileDownloaderRequest;
 
                    if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
                        content = string.Empty;
@@ -923,10 +923,10 @@ namespace Tests.Services
         public async Task ProcessDeltaLinkMultiplePagesRequestTestAsync()
         {
             _groupCount = 0;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -945,8 +945,8 @@ namespace Tests.Services
                                 });
 
             _deltaUrl = "http://delta-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
@@ -967,10 +967,10 @@ namespace Tests.Services
             _usersReaderNextPageUrl = "http://next-page-url";
             _deltaUrl = "http://delta-url";
             _groupCount = 2;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
-                                      .Callback<string, object>(async (name, request) =>
-                                      {
-                                          _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                                       {
+                                           _groupCount = await CallGroupsReaderFunctionAsync(request as GetTransitiveGroupCountRequest);
                                       })
                                       .ReturnsAsync(() => _groupCount);
 
@@ -1037,7 +1037,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestTransientExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
                                         .Throws<HttpRequestException>();
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -1062,7 +1062,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestOtherExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<GetTransitiveGroupCountRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
                                         .Throws<OutOfMemoryException>();
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
