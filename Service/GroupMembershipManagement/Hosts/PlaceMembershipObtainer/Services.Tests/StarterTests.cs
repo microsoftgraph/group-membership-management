@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.PlaceMembershipObtainer;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
@@ -13,6 +12,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.DurableTask;
+using Repositories.Mocks;
+using System.Threading;
 
 namespace Tests.Services
 {
@@ -22,7 +24,7 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
-        private Mock<IDurableOrchestrationClient> _durableOrchestrationClient;
+        private Mock<MockDurableTaskClient> _durableOrchestrationClient;
         private SyncJob _syncJob;
 
         [TestInitialize]
@@ -31,7 +33,7 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-            _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
+            _durableOrchestrationClient = new Mock<MockDurableTaskClient>();
 
             _syncJob = new SyncJob
             {
@@ -57,10 +59,12 @@ namespace Tests.Services
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
-            _durableOrchestrationClient.Verify(x => x.StartNewAsync(
-                                                        It.IsAny<string>(),
-                                                        It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3)
-                                                ), Times.Once);
+            _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
+                It.IsAny<TaskName>(),
+                It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3),
+                null,
+                It.IsAny<CancellationToken>()
+            ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                     It.Is<LogMessage>(m => m.Message.StartsWith("InstanceId")),
@@ -95,7 +99,13 @@ namespace Tests.Services
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
 
-            _durableOrchestrationClient.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<OrchestratorRequest>()), Times.Never);
+            _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
+                It.IsAny<TaskName>(),
+                It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3),
+                null,
+                It.IsAny<CancellationToken>()
+            ), Times.Never);
+
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(

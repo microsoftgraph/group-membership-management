@@ -3,13 +3,13 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Contracts;
 using Azure.Messaging.ServiceBus;
 using Models;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 
 namespace Hosts.PlaceMembershipObtainer
 {
@@ -26,10 +26,10 @@ namespace Hosts.PlaceMembershipObtainer
             _isPlaceMembershipObtainerDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "PlaceMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-           [DurableClient] IDurableOrchestrationClient starter)
+           [DurableClient] DurableTaskClient client)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -52,7 +52,7 @@ namespace Hosts.PlaceMembershipObtainer
                     TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 1 
                 };
 
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
+                var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey} ", RunId = runId });
             }
 

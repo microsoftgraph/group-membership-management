@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Services;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.PlaceMembershipObtainer
 {
@@ -20,7 +19,7 @@ namespace Hosts.PlaceMembershipObtainer
             _membershipProviderService = membershipProviderService;
         }
 
-        [FunctionName(nameof(UsersSenderFunction))]
+        [Function(nameof(UsersSenderFunction))]
         public async Task<string> SendUsersAsync([ActivityTrigger] UsersSenderRequest request)
         {
             string filePath = null;

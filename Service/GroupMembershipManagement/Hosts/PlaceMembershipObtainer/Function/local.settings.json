@@ -20,6 +20,7 @@
     "membershipContainerName": "",
     "ConnectionStrings:JobsContext": "",
     "ConnectionStrings:JobsContextReadOnly": "",
-    "serviceBusMembershipAggregatorQueue": ""
+    "serviceBusMembershipAggregatorQueue": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
   }
 }
