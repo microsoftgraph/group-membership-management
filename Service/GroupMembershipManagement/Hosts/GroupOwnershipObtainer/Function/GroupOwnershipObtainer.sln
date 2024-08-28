@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Entities", "..\Services.Entities\Services.Entities.csproj", "{120A9907-B240-4D64-866E-D00612C18625}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mocks", "..\..\..\Repositories.Mocks\Repositories.Mocks.csproj", "{F2608B30-6D04-4302-A8BD-FAD1F89F91D2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -99,6 +101,10 @@ Global
 		{120A9907-B240-4D64-866E-D00612C18625}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{120A9907-B240-4D64-866E-D00612C18625}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{120A9907-B240-4D64-866E-D00612C18625}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F2608B30-6D04-4302-A8BD-FAD1F89F91D2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2608B30-6D04-4302-A8BD-FAD1F89F91D2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2608B30-6D04-4302-A8BD-FAD1F89F91D2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2608B30-6D04-4302-A8BD-FAD1F89F91D2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

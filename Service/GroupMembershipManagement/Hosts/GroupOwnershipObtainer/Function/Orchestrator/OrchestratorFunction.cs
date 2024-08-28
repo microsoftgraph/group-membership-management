@@ -2,8 +2,6 @@
 // Licensed under the MIT license.
 using Azure;
 using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Graph;
@@ -18,6 +16,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 
 namespace Hosts.GroupOwnershipObtainer
 {
@@ -30,9 +30,9 @@ namespace Hosts.GroupOwnershipObtainer
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
+        [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
-         [OrchestrationTrigger] IDurableOrchestrationContext context)
+         [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
@@ -213,7 +213,7 @@ namespace Hosts.GroupOwnershipObtainer
                 new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
         }
 
-        private List<Task<List<Guid>>> GenerateOwnerRetrievalTasks(IDurableOrchestrationContext context, Guid[] groupIds, SyncJob syncJob)
+        private List<Task<List<Guid>>> GenerateOwnerRetrievalTasks(TaskOrchestrationContext context, Guid[] groupIds, SyncJob syncJob)
         {
             var tasks = new List<Task<List<Guid>>>();
             foreach (var groupId in groupIds)

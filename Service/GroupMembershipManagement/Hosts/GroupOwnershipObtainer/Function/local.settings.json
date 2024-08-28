@@ -7,7 +7,7 @@
     "appConfigurationEndpoint": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "serviceBusSyncJobTopic": "syncJobs",
-    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
+    "gmmServiceBus__fullyQualifiedNamespace": "\u003Cservice_bus_namespace\u003E.servicebus.windows.net",
     "graphCredentials:ClientCertificateName": "not-set",
     "graphCredentials:ClientSecret": "",
     "graphCredentials:ClientId": "",
@@ -22,7 +22,8 @@
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
     "actionableEmailProviderId": "",
-    "serviceBusMembershipAggregatorQueue": ""
+    "serviceBusMembershipAggregatorQueue": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
   },
   "ConnectionStrings": {}
 }

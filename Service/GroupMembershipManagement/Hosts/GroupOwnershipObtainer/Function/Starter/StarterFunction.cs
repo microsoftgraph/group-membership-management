@@ -1,16 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
 using Newtonsoft.Json;
 using System.Text;
 using System.Threading.Tasks;
 using System;
-using Entities;
 using Models;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Azure.Messaging.ServiceBus;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 
 namespace Hosts.GroupOwnershipObtainer
 {
@@ -27,10 +26,10 @@ namespace Hosts.GroupOwnershipObtainer
             _isDryRunEnabled = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
         [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupOwnership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-        [DurableClient] IDurableOrchestrationClient starter)
+        [DurableClient] DurableTaskClient client)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -58,7 +57,7 @@ namespace Hosts.GroupOwnershipObtainer
                     TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 0
                 };
 
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
+                var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey}", RunId = runId });
             }
 
