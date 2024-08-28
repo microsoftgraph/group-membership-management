@@ -390,7 +390,7 @@ namespace Repositories.GraphGroups
 
                     await _graphServiceClient.Users.GetAsync(requestConfiguration =>
                     {
-                        requestConfiguration.QueryParameters.Filter = $"Mail eq '{userIdentifier}' or UserPrincipalName eq '{userIdentifier}' or id eq '{userIdentifier}'";
+                        requestConfiguration.QueryParameters.Filter = $"Mail eq '{userIdentifier}' or UserPrincipalName eq '{userIdentifier}'";
                         requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                     });
 
