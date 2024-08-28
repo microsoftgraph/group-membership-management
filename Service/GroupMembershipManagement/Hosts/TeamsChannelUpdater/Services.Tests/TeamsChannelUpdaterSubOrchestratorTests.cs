@@ -6,7 +6,7 @@ using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Hosts.TeamsChannelUpdater;
@@ -19,7 +19,7 @@ namespace Services.Tests
     [TestClass]
     public class TeamsChannelUpdaterSubOrchestratorTests
     {
-        private Mock<IDurableOrchestrationContext> _mockDurableOrchestrationContext = null!;
+        private Mock<TaskOrchestrationContext> _mockDurableOrchestrationContext = null!;
         private Mock<ExecutionContext> _mockExecutionContext = null!;
         private TelemetryClient _mockTelemetryClient = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
@@ -62,17 +62,17 @@ namespace Services.Tests
                 TeamsChannelInfo = _teamsChannelInfo 
             };
 
-            _mockDurableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _mockDurableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _mockDurableOrchestrationContext.Setup(x => x.GetInput<TeamsChannelUpdaterSubOrchestratorRequest>())
                 .Returns(_input);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), null))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     await CallLoggerFunctionAsync(request as LoggerRequest);
                 });
             TeamsUpdaterResponse response = new TeamsUpdaterResponse();
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>(), null))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     response = await CallTeamsUpdaterFunctionAsync(request as TeamsUpdaterRequest);
                 })
@@ -143,7 +143,7 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _mockDurableOrchestrationContext.Verify(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>()),
+            _mockDurableOrchestrationContext.Verify(x => x.CallActivityAsync<TeamsUpdaterResponse>(nameof(TeamsUpdaterFunction), It.IsAny<TeamsUpdaterRequest>(), null),
                 Times.Exactly(2));
 
             Assert.AreEqual(response.SuccessCount, 1);

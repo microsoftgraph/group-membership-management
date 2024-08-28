@@ -1,7 +1,5 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
@@ -9,6 +7,8 @@ using System;
 using Microsoft.ApplicationInsights;
 using Repositories.Contracts;
 using Models.Entities;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -22,8 +22,8 @@ namespace Hosts.TeamsChannelUpdater
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [FunctionName(nameof(TeamsChannelUpdaterSubOrchestratorFunction))]
-        public async Task<TeamsChannelUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(TeamsChannelUpdaterSubOrchestratorFunction))]
+        public async Task<TeamsChannelUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var skip = 0;
             var request = context.GetInput<TeamsChannelUpdaterSubOrchestratorRequest>();

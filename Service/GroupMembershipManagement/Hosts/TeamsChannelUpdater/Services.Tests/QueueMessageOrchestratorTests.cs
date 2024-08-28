@@ -2,7 +2,8 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.TeamsChannelUpdater;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -17,7 +18,7 @@ namespace Services.Tests
     {
         private MembershipHttpRequest _request;
         private Mock<ILoggingRepository> _loggerMock;
-        private Mock<IDurableOrchestrationContext> _context;
+        private Mock<TaskOrchestrationContext> _context;
         private Mock<ServiceBusReceiver> _serviceBusReceiverMock;
 
         [TestInitialize]
@@ -35,11 +36,11 @@ namespace Services.Tests
             };
 
             _loggerMock = new Mock<ILoggingRepository>();
-            _context = new Mock<IDurableOrchestrationContext>();
+            _context = new Mock<TaskOrchestrationContext>();
             _serviceBusReceiverMock = new Mock<ServiceBusReceiver>();
 
             MembershipHttpRequest response = null;
-            _context.Setup(x => x.CallActivityAsync<MembershipHttpRequest>(nameof(MessageReaderFunction), (object)null))
+            _context.Setup(x => x.CallActivityAsync<MembershipHttpRequest>(nameof(MessageReaderFunction), (object)null, null))
                 .Callback(async () => response = await CallMessageReaderFunctionAsync())
                 .ReturnsAsync(() => response);
 
@@ -60,12 +61,12 @@ namespace Services.Tests
             await orchestrator.RunOrchestratorAsync(_context.Object);
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                   It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time.")), Times.Never());
+                   It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time."), null), Times.Never());
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.SyncJob.TargetOfficeGroupId}")), Times.Once());
+                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.SyncJob.TargetOfficeGroupId}"), null), Times.Once());
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
+            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>(), null), Times.Once());
 
             _context.Verify(x => x.ContinueAsNew((object)null, false), Times.Once());
         }
@@ -79,30 +80,50 @@ namespace Services.Tests
             await orchestrator.RunOrchestratorAsync(_context.Object);
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                               It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time.")), Times.Once());
+                               It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time."), null), Times.Once());
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                              It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group"))), Times.Never());
+                                              It.Is<LoggerRequest>(r => r.Message == "Processing message for group"), null), Times.Never());
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>(), null), Times.Never());
         }
 
         [TestMethod]
         public async Task MainOrchestratorFailsAsync()
         {
-            _context.Setup(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()))
+            _context.Setup(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>(), null))
                 .Throws(new Exception("Main orchestrator failed."));
 
             var orchestrator = new QueueMessageOrchestratorFunction(_loggerMock.Object);
             await orchestrator.RunOrchestratorAsync(_context.Object);
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                               It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time.")), Times.Never());
+                               It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time."), null), Times.Never());
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.SyncJob.TargetOfficeGroupId}")), Times.Once());
+                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.SyncJob.TargetOfficeGroupId}"), null), Times.Once());
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time."), null), Times.Once());
+
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time."), null), Times.Once());
+
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+                It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group")), null), Times.Never());
+            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>(), null), Times.Once());
         }
 
         private async Task<MembershipHttpRequest> CallMessageReaderFunctionAsync()

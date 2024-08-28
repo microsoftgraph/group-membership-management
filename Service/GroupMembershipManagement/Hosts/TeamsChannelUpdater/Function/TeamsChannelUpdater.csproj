@@ -4,24 +4,30 @@
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <AssemblyName>Hosts.$(MSBuildProjectName)</AssemblyName>
     <RootNamespace>Hosts.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enabled</ImplicitUsings>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Prevent the Microsoft.Extensions.Http package from getting deleted on publish https://github.com/Azure/azure-functions-host/issues/5894  -->
     <_FunctionsSkipCleanOutput>true</_FunctionsSkipCleanOutput>
-</PropertyGroup>
+  </PropertyGroup>
   <ItemGroup>
-	<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.1" />
-	<PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
-	<PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.4" />
-	<PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.4.1" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.2.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.4" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.23.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.1.4" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.21.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
-	  <ProjectReference Include="..\..\..\Models\Models.csproj" />
-	  <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
-	  <ProjectReference Include="..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj" />
-	  <ProjectReference Include="..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj" />
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
+    <ProjectReference Include="..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj" />
+    <ProjectReference Include="..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
@@ -31,5 +37,8 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       <CopyToPublishDirectory>Never</CopyToPublishDirectory>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
   </ItemGroup>
 </Project>

@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using Services.TeamsChannelUpdater.Contracts;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -21,7 +20,7 @@ namespace Hosts.TeamsChannelUpdater
             _teamsChannelUpdaterService = teamsChannelUpdaterService ?? throw new ArgumentNullException(nameof(teamsChannelUpdaterService));
         }
 
-        [FunctionName(nameof(GroupNameReaderFunction))]
+        [Function(nameof(GroupNameReaderFunction))]
         public async Task<string> GetGroupNameAsync([ActivityTrigger] GroupNameReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
