@@ -44,7 +44,7 @@ namespace TeamsChannelMembershipObtainer.Service
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
-        public async Task<(AzureADTeamsChannel parsedChannel, bool isValid)> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
+        public async Task<ValidateChannelResponse> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
@@ -61,7 +61,9 @@ namespace TeamsChannelMembershipObtainer.Service
             {
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId} is not a destination.", RunId = runId });
                 await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.TeamsChannelNotDestination);
-                return (azureADTeamsChannel, isValid: false);
+                return new ValidateChannelResponse {
+                    ParsedChannel = azureADTeamsChannel, 
+                    IsValid = false };
             }
 
             var destType = await _teamsChannelRepository.GetChannelTypeAsync(azureADTeamsChannel, runId);
@@ -70,12 +72,21 @@ namespace TeamsChannelMembershipObtainer.Service
             {
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, channel {azureADTeamsChannel.ChannelId} from group {azureADTeamsChannel.ObjectId} is a standard channel.", RunId = runId });
                 await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.StandardTeamsChannel);
-                return (azureADTeamsChannel, isValid: false);
+                return new ValidateChannelResponse
+                {
+                    ParsedChannel = azureADTeamsChannel,
+                    IsValid = false
+                };
             }
 
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, Channel {azureADTeamsChannel.ChannelId} of group {azureADTeamsChannel.ObjectId} is of type {destType}.", RunId = runId });
 
-            return (azureADTeamsChannel, isValid: true);
+            return new ValidateChannelResponse
+            {
+                ParsedChannel = azureADTeamsChannel,
+                IsValid = true
+            };
+
         }
 
         public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId)

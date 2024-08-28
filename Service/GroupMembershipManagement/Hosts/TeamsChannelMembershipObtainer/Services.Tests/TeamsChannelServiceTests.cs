@@ -114,7 +114,7 @@ namespace Services.Tests
 
             var verification = await _service.VerifyChannelAsync(_syncInfo);
 
-            Assert.IsFalse(verification.isValid);
+            Assert.IsFalse(verification.IsValid);
         }
 
         [TestMethod]
@@ -138,7 +138,7 @@ namespace Services.Tests
 
             var verification = await _service.VerifyChannelAsync(badSyncInfo);
 
-            Assert.IsFalse(verification.isValid);
+            Assert.IsFalse(verification.IsValid);
          }
 
 
@@ -147,7 +147,7 @@ namespace Services.Tests
         {
             var verification = await _service.VerifyChannelAsync(_syncInfo);
 
-            Assert.IsTrue(verification.isValid);
+            Assert.IsTrue(verification.IsValid);
             Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncInfo.SyncJob.Status);
         }
 

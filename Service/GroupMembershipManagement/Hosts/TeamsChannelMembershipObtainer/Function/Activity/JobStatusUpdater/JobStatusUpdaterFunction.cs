@@ -2,12 +2,11 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -22,7 +21,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
+        [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);

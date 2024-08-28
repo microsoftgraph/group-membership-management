@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
@@ -11,6 +9,8 @@ using System;
 using System.Text;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -27,10 +27,10 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusSyncJobTopic%", "TeamsChannelMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] DurableTaskClient client)
         {
 
             var channelSyncInfo = new ChannelSyncInfo
@@ -48,7 +48,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
 
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), channelSyncInfo);
+            var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), channelSyncInfo);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {channelSyncInfo.SyncJob.RowKey} ", RunId = runId });
 

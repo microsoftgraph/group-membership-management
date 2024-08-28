@@ -2,14 +2,13 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 using Models.Entities;
 using System.Collections.Generic;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -24,7 +23,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
-        [FunctionName(nameof(UserReaderFunction))]
+        [Function(nameof(UserReaderFunction))]
         public async Task<List<AzureADTeamsUser>> ReadUsersAsync([ActivityTrigger] UserReaderRequest request)
         {
             var runId = request.RunId;

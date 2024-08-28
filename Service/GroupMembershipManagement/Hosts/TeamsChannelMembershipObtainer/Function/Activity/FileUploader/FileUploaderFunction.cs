@@ -2,12 +2,11 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -22,7 +21,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
-        [FunctionName(nameof(FileUploaderFunction))]
+        [Function(nameof(FileUploaderFunction))]
         public async Task<string> UploadFileAsync([ActivityTrigger] FileUploaderRequest request)
         {
             var runId = request.ChannelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
