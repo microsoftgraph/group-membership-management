@@ -17,7 +17,7 @@
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Models\Models.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
-    <ProjectReference Include="..\Services\SyncJobUpdaterService.csproj" />
+    <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
@@ -29,3 +29,4 @@
     </None>
   </ItemGroup>
 </Project>
+

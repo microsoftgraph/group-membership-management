@@ -26,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Function\SyncJobUpdater.csproj" />
+    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
-
 </Project>

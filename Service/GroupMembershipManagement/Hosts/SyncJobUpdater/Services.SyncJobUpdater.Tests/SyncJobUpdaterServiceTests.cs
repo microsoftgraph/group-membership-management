@@ -6,9 +6,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
 using Repositories.Contracts;
-using Hosts.SyncJobUpdater;
-using Services.Tests;
 using Services.SyncJobUpdater.Tests.Mocks;
+using Services.Contracts;
+using Hosts.SyncJobUpdater;
 
 namespace Services.Tests
 {
