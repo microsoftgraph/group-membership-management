@@ -232,7 +232,6 @@ namespace Hosts.JobTrigger
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
-                                                        _emailSenderAndRecipients.SyncDisabledCCAddresses,
                                                         destinationName
                                                         }
                                                     });
