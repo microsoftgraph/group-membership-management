@@ -47,7 +47,7 @@ namespace Tests.Services
         private OrchestratorRequest _orchestratorRequest;
         private SyncStatus _subOrchestratorResponseStatus;
         private SGMembershipCalculator _membershipCalculator;
-        private DurableHttpResponse _membershipAgregatorResponse;
+        private DurableHttpResponse _membershipAggregatorResponse;
         private TelemetryClient _telemetryClient;
         SchemaProvider _schemaProvider;
         private bool _isValid = true;
@@ -176,8 +176,8 @@ namespace Tests.Services
                                         })
                                         .ReturnsAsync(() => _filePath);
 
-            _membershipAgregatorResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
-            _durableOrchestrationContext.Setup(r => r.CallActivityAsync<DurableHttpResponse>(It.IsAny<TaskName>(), It.IsAny<object>(), It.IsAny<TaskOptions>())).ReturnsAsync(_membershipAgregatorResponse);
+            _membershipAggregatorResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
+            _durableOrchestrationContext.Setup(r => r.CallActivityAsync<DurableHttpResponse>(It.IsAny<TaskName>(), It.IsAny<object>(), It.IsAny<TaskOptions>())).ReturnsAsync(_membershipAggregatorResponse);
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
                                         .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
