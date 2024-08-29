@@ -2,14 +2,16 @@
 // Licensed under the MIT license.
 
 using Hosts.AzureUserReader;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Repositories.Contracts;
 using System.Net;
-using System.Net.Http;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Repositories.Mocks;
 
 namespace Services.Tests
 {
@@ -18,13 +20,13 @@ namespace Services.Tests
     {
         private string _instanceId;
         private Mock<ILoggingRepository> _loggerMock;
-        private Mock<IDurableOrchestrationClient> _durableClientMock;
+        private Mock<DurableTaskClient> _durableClientMock;
 
         [TestInitialize]
         public void SetupTest()
         {
             _instanceId = "1234567890";
-            _durableClientMock = new Mock<IDurableOrchestrationClient>();
+            _durableClientMock = new Mock<DurableTaskClient>();
             _loggerMock = new Mock<ILoggingRepository>();
         }
 
@@ -35,50 +37,36 @@ namespace Services.Tests
         [DataRow("{ 'BlobPath':'folder1/folder2/myfile.csv' }")]
         public async Task PostInvalidRequest(string content)
         {
-            var durableClientMock = new Mock<IDurableOrchestrationClient>();
+            var durableClientMock = new Mock<MockDurableTaskClient>();
             var loggerMock = new Mock<ILoggingRepository>();
 
-            durableClientMock
-                    .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<AzureUserReaderRequest>()))
-                    .ReturnsAsync(_instanceId);
+            var mockContext = new Mock<FunctionContext>();
 
+            var mockRequest = new MockHttpRequestData(mockContext.Object,
+                            content);
             var starterFunction = new StarterFunction(loggerMock.Object);
-            var result = await starterFunction.HttpStart(
-                new HttpRequestMessage()
-                {
-                    Content = new StringContent(content, Encoding.UTF8, "application/json")
-                },
-                durableClientMock.Object
-               );
 
+            var result = await starterFunction.HttpStart(mockRequest, durableClientMock.Object);
             Assert.AreEqual(HttpStatusCode.BadRequest, result.StatusCode);
         }
 
-        [TestMethod]
         public async Task PostValidRequest()
         {
-            _durableClientMock
-                    .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<AzureUserReaderRequest>()))
-                    .ReturnsAsync(_instanceId);
+            var instanceId = "test-instance-id";
+            var durableClientMock = new Mock<MockDurableTaskClient>();
+            var loggerMock = new Mock<ILoggingRepository>();
 
-            _durableClientMock
-                .Setup(x => x.CreateCheckStatusResponse(It.IsAny<HttpRequestMessage>(), _instanceId, It.IsAny<bool>()))
-                .Returns(new HttpResponseMessage
-                {
-                    StatusCode = HttpStatusCode.OK,
-                    Content = new StringContent(string.Empty)
-                });
+            durableClientMock
+                .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<AzureUserReaderRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(instanceId);
 
-            var starterFunction = new StarterFunction(_loggerMock.Object);
-            var result = await starterFunction.HttpStart(
-                new HttpRequestMessage()
-                {
-                    Content = new StringContent(
-                        "{ 'ContainerName':'myContainer','BlobPath':'folder1/folder2/myfile.csv'}",
-                                Encoding.UTF8, "application/json")
-                },
-                _durableClientMock.Object
-               );
+            var mockContext = new Mock<FunctionContext>();
+
+            var mockRequest = new MockHttpRequestData(mockContext.Object, "{ 'ContainerName':'myContainer','BlobPath':'folder1/folder2/myfile.csv'}");
+
+            var starterFunction = new StarterFunction(loggerMock.Object);
+
+            var result = await starterFunction.HttpStart(mockRequest, durableClientMock.Object);
 
             Assert.AreEqual(HttpStatusCode.OK, result.StatusCode);
         }

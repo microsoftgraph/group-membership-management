@@ -2,15 +2,17 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
+using Microsoft.Azure.Functions.Worker.Http;
+using System.IO;
+using Microsoft.AspNetCore.Http;
 
 namespace Hosts.AzureUserReader
 {
@@ -23,24 +25,24 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(StarterFunction))]
-        public async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter)
+        [Function(nameof(StarterFunction))]
+        public async Task<HttpResponseData> HttpStart(
+            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+            [DurableClient] DurableTaskClient client)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            HttpResponseMessage response;
+            HttpResponseData response;
             var result = await ValidateRequestAsync(req);
 
             if (result.StatusCode == HttpStatusCode.OK)
             {
-                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), result.Request);
-                response = starter.CreateCheckStatusResponse(req, instanceId);
+                var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), result.Request);
+                response = client.CreateCheckStatusResponse(req, instanceId);
             }
             else
             {
-                response = new HttpResponseMessage { StatusCode = result.StatusCode };
+                response = req.CreateResponse(result.StatusCode);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
@@ -48,17 +50,17 @@ namespace Hosts.AzureUserReader
             return response;
         }
 
-        private async Task<(HttpStatusCode StatusCode, AzureUserReaderRequest Request)> ValidateRequestAsync(HttpRequestMessage request)
+        private async Task<(HttpStatusCode StatusCode, AzureUserReaderRequest Request)> ValidateRequestAsync(HttpRequestData request)
         {
             AzureUserReaderRequest userReaderRequest = null;
 
             try
             {
-                var content = await request.Content.ReadAsStringAsync();
+                var content = await new StreamReader(request.Body).ReadToEndAsync();
 
                 if (string.IsNullOrWhiteSpace(content))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body was not provided." });
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body was not provided." });
                     return (HttpStatusCode.BadRequest, null);
                 }
 
@@ -66,7 +68,7 @@ namespace Hosts.AzureUserReader
 
                 if (string.IsNullOrWhiteSpace(userReaderRequest.ContainerName) || string.IsNullOrWhiteSpace(userReaderRequest.BlobPath))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body is not valid." });
                     return (HttpStatusCode.BadRequest, null);
                 }
 
@@ -75,22 +77,26 @@ namespace Hosts.AzureUserReader
                     if (userReaderRequest.TenantInformation == null ||
                         string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.TenantDomain) ||
                         string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.EmailPrefix) ||
-                        string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.CountryCode)
-                        )
+                        string.IsNullOrWhiteSpace(userReaderRequest.TenantInformation.CountryCode))
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid. TenantInformation is missing." });
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body is not valid. TenantInformation is missing." });
                         return (HttpStatusCode.BadRequest, null);
                     }
                 }
             }
-            catch (Exception ex) when (ex.GetType() == typeof(JsonReaderException) || ex.GetType() == typeof(JsonSerializationException))
+            catch (JsonReaderException)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body is not valid." });
+                return (HttpStatusCode.BadRequest, null);
+            }
+            catch (JsonSerializationException)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body is not valid." });
                 return (HttpStatusCode.BadRequest, null);
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unexpected error occured when processing the request.\n{ex}" });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unexpected error occurred when processing the request.\n{ex}" });
                 return (HttpStatusCode.InternalServerError, null);
             }
 
