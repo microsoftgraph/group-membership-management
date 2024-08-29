@@ -44,60 +44,59 @@ namespace Hosts.AzureMaintenance
             .ConfigureServices((context, services) =>
             {
                 var configuration = context.Configuration;
-                var SCHEMA_DIRECTORY = "JsonSchemas";
                 var functionName = "AzureMaintenance";
                 var dryRunSettingName = string.Empty;
                 var rootPath = context.HostingEnvironment.ContentRootPath;
                 CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
-                           services.AddScoped<IDatabasePurgedSyncJobsRepository, DatabasePurgedSyncJobsRepository>();
+                services.AddScoped<IDatabasePurgedSyncJobsRepository, DatabasePurgedSyncJobsRepository>();
 
-            services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.HandleInactiveJobsEnabled = CommonServices.GetBoolSettingBase(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
-                settings.NumberOfDaysBeforeDeletion = CommonServices.GetIntSettingBase(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
-            });
-            services.AddSingleton<IHandleInactiveJobsConfig>(services =>
-            {
-                return new HandleInactiveJobsConfig(
-                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
-                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
-            });
+                services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
+                {
+                    settings.HandleInactiveJobsEnabled = CommonServices.GetBoolSettingBase(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
+                    settings.NumberOfDaysBeforeDeletion = CommonServices.GetIntSettingBase(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
+                });
+                services.AddSingleton<IHandleInactiveJobsConfig>(services =>
+                {
+                    return new HandleInactiveJobsConfig(
+                        services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
+                        services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
+                });
 
-            services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.IsThresholdNotificationEnabled = CommonServices.GetBoolSettingBase(configuration, "ThresholdNotification:IsThresholdNotificationEnabled", false);
-            });
-            services.AddSingleton<IThresholdNotificationConfig>(services =>
-            {
-                return new ThresholdNotificationConfig(
-                    services.GetService<IOptions<ThresholdNotificationConfig>>().Value.IsThresholdNotificationEnabled);
-            });
+                services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
+                {
+                    settings.IsThresholdNotificationEnabled = CommonServices.GetBoolSettingBase(configuration, "ThresholdNotification:IsThresholdNotificationEnabled", false);
+                });
+                services.AddSingleton<IThresholdNotificationConfig>(services =>
+                {
+                    return new ThresholdNotificationConfig(
+                        services.GetService<IOptions<ThresholdNotificationConfig>>().Value.IsThresholdNotificationEnabled);
+                });
 
-            services.AddSingleton<INotificationRepository, NotificationRepository>();
+                services.AddSingleton<INotificationRepository, NotificationRepository>();
 
 
-            services
-            .AddGraphAPIClient()
-            .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
+                services
+                .AddGraphAPIClient()
+                .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
-            services.AddScoped<IAzureMaintenanceService>(services =>
-            {
-                var configuration = services.GetRequiredService<IConfiguration>();
-                var notificationsQueue = configuration["serviceBusNotificationsQueue"];
-                var client = services.GetRequiredService<ServiceBusClient>();
-                var sender = client.CreateSender(notificationsQueue);
-                var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
+                services.AddScoped<IAzureMaintenanceService>(services =>
+                {
+                    var configuration = services.GetRequiredService<IConfiguration>();
+                    var notificationsQueue = configuration["serviceBusNotificationsQueue"];
+                    var client = services.GetRequiredService<ServiceBusClient>();
+                    var sender = client.CreateSender(notificationsQueue);
+                    var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
 
-                return new AzureMaintenanceService(services.GetService<IDatabaseSyncJobsRepository>(),
-                    services.GetService<IDatabasePurgedSyncJobsRepository>(),
-                    services.GetService<IGraphGroupRepository>(),
-                    services.GetService<IHandleInactiveJobsConfig>(),
-                    services.GetService<INotificationRepository>(),
-                    notificationsQueueRepository,
-                    services.GetService<ILoggingRepository>());
-        });
+                    return new AzureMaintenanceService(services.GetService<IDatabaseSyncJobsRepository>(),
+                        services.GetService<IDatabasePurgedSyncJobsRepository>(),
+                        services.GetService<IGraphGroupRepository>(),
+                        services.GetService<IHandleInactiveJobsConfig>(),
+                        services.GetService<INotificationRepository>(),
+                        notificationsQueueRepository,
+                        services.GetService<ILoggingRepository>());
+                });
             })
-    .       Build();
+            .Build();
             host.Run();
         }
     }
