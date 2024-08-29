@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -22,7 +22,7 @@ namespace Hosts.NonProdService
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
-        [FunctionName(nameof(GroupUpdaterFunction))]
+        [Function(nameof(GroupUpdaterFunction))]
         public async Task<int> UpdateGroupAsync([ActivityTrigger] GroupUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

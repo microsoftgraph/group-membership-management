@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
 using NonProdService.Activity.LoadTestingSyncJobCreator;
 using Repositories.Contracts;
 using System;
+using System.Data.SqlTypes;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Data.SqlTypes;
 
 namespace Hosts.NonProdService
 {
@@ -27,7 +27,7 @@ namespace Hosts.NonProdService
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        [FunctionName(nameof(LoadTestingSyncJobCreatorFunction))]
+        [Function(nameof(LoadTestingSyncJobCreatorFunction))]
         public async Task CreateLoadTestingSyncJobs([ActivityTrigger] LoadTestingSyncJobCreatorRequest request, ILogger log)
         {
             var runId = request.RunId;
@@ -36,7 +36,7 @@ namespace Hosts.NonProdService
             var options = _options.Value;
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(LoadTestingSyncJobCreatorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            
+
             // spread out jobs evenly across 1 day
             var totalJobsToCreate = groupSizesAndIds.Keys.Sum(groupSize => groupSizesAndIds[groupSize].Count);
             var minutesInADay = 60 * 24;

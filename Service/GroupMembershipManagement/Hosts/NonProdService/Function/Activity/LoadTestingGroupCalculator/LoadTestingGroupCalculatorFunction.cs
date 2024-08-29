@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Amqp.Framing;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
@@ -27,13 +26,13 @@ namespace Hosts.NonProdService
         /// Creates a dictionary of group sizes and the number of groups of that size to create.
         /// It attempts to create many more smaller groups than larger groups to more closely resemble production usage.
         /// </summary>
-        [FunctionName(nameof(LoadTestingGroupCalculatorFunction))]
+        [Function(nameof(LoadTestingGroupCalculatorFunction))]
         public async Task<LoadTestingGroupCalculatorResponse> GenerateGroup([ActivityTrigger] LoadTestingGroupCalculatorRequest request, ILogger log)
         {
             var runId = request.RunId;
             var numberOfUsers = request.NumberOfUsers;
             var numberOfGroups = request.NumberOfGroups;
-            
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(LoadTestingGroupCalculatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             var groupSizesAndCounts = new Dictionary<int, int>();
@@ -58,7 +57,7 @@ namespace Hosts.NonProdService
                 if (groupCount > 0) {
                     totalGroupCount += groupCount;
                     groupSizesAndCounts.Add(_groupSizes[maxGroupSizeIndex-i], groupCount);
-                }    
+                }
             }
 
             // Smallest group size gets the remaining number of groups that need to be created to match the requested number of groups

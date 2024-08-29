@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
-using Repositories.EntityFramework;
 using System;
 using System.Threading.Tasks;
 
@@ -22,7 +21,7 @@ namespace Hosts.NonProdService
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
         }
 
-        [FunctionName(nameof(LoadTestingSyncJobRetrieverFunction))]
+        [Function(nameof(LoadTestingSyncJobRetrieverFunction))]
         public async Task<LoadTestingSyncJobRetrieverResponse> GenerateGroup([ActivityTrigger] LoadTestingSyncJobRetrieverRequest request, ILogger log)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(LoadTestingSyncJobRetrieverFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
