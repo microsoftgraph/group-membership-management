@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -20,7 +20,7 @@ namespace Hosts.MembershipAggregator
             _syncJobRepository = syncJobRespository ?? throw new ArgumentNullException(nameof(syncJobRespository));
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
+        [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

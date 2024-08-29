@@ -1,7 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -45,12 +45,12 @@ namespace Hosts.MembershipAggregator
 
         public virtual async Task Delete()
         {
-            Entity.Current.DeleteState();
+            JobState = null;
             await Task.CompletedTask;
         }
 
-        [FunctionName(nameof(JobTrackerEntity))]
-        public static Task RunAsync([EntityTrigger] IDurableEntityContext ctx)
+        [Function(nameof(JobTrackerEntity))]
+        public static Task RunAsync([EntityTrigger] TaskEntityDispatcher ctx)
         {
             return ctx.DispatchAsync<JobTrackerEntity>();
         }

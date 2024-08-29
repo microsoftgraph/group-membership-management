@@ -4,7 +4,7 @@
 using Hosts.MembershipAggregator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
@@ -15,6 +15,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 
 namespace Services.Tests
 {
@@ -27,20 +29,18 @@ namespace Services.Tests
         private TelemetryClient _telemetryClient;
 
         private Mock<IConfiguration> _configuration;
-        private Mock<JobTrackerEntity> _jobTrackerEntity;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
-        private Mock<IDurableOrchestrationContext> _durableContext;
+        private Mock<TaskOrchestrationContext> _durableContext;
         private Mock<IServiceBusTopicsRepository> _serviceBusTopicsRepository;
 
         [TestInitialize]
         public void SetupTest()
         {
             _configuration = new Mock<IConfiguration>();
-            _jobTrackerEntity = new Mock<JobTrackerEntity>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-            _durableContext = new Mock<IDurableOrchestrationContext>();
+            _durableContext = new Mock<TaskOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
 
@@ -84,25 +84,22 @@ namespace Services.Tests
             _durableContext.Setup(x => x.GetInput<MembershipAggregatorHttpRequest>())
                             .Returns(() => _membershipAggregatorHttpRequest);
 
-            _durableContext.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>()))
-                            .Returns(() => _jobTrackerEntity.Object);
-
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         var telemetryRequest = request as TelemetryTrackerRequest;
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 var loggerRequest = request as LoggerRequest;
                                 await CallLoggerFunctionAsync(loggerRequest);
                             });
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 var updateRequest = request as JobStatusUpdaterRequest;
                                 await CallJobStatusUpdaterFunctionAsync(updateRequest);
@@ -110,17 +107,23 @@ namespace Services.Tests
 
             _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
                                                 (
-                                                    It.Is<string>(x => x == nameof(MembershipSubOrchestratorFunction)),
-                                                    It.IsAny<MembershipSubOrchestratorRequest>())
+                                                    It.Is<TaskName>(x => x.Name == nameof(MembershipSubOrchestratorFunction)),
+                                                    It.IsAny<MembershipSubOrchestratorRequest>(),
+                                                    It.IsAny<TaskOptions>())
                                                 )
                             .ReturnsAsync(() => _membershipSubOrchestratorResponse);
 
-            _durableContext.Setup(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<MembershipHttpRequest>()))
-                           .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<MembershipHttpRequest>(), It.IsAny<TaskOptions>()))
+                           .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                            {
                                var membershipRequest = request as MembershipHttpRequest;
                                await CallTopicMessageSenderFunctionAsync(membershipRequest);
                            });
+
+            var entitiesMock = new Mock<TaskOrchestrationEntityFeature>();
+            entitiesMock.Setup(x => x.CallEntityAsync<bool>(It.IsAny<EntityInstanceId>(), It.Is<string>(x => x == "IsComplete"), null, null))
+                        .ReturnsAsync(() => true);
+            _durableContext.Setup(x => x.Entities).Returns(entitiesMock.Object);
         }
 
         [TestMethod]
@@ -129,24 +132,25 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
-            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         [TestMethod]
         public async Task TestMissingPartAsync()
         {
+            var entitiesMock = new Mock<TaskOrchestrationEntityFeature>();
+            entitiesMock.Setup(x => x.CallEntityAsync<bool>(It.IsAny<EntityInstanceId>(), It.Is<string>(x => x == "IsComplete"), null, null))
+                        .ReturnsAsync(() => false);
+            _durableContext.Setup(x => x.Entities).Returns(entitiesMock.Object);
+
             _membershipAggregatorHttpRequest.PartsCount = 2;
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
-            _jobTrackerEntity.Verify(x => x.Delete(), Times.Never());
         }
 
         [TestMethod]
@@ -157,11 +161,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
-            Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
-            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         [TestMethod]
@@ -175,7 +176,6 @@ namespace Services.Tests
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
-            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         [TestMethod]
@@ -183,8 +183,9 @@ namespace Services.Tests
         {
             _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
                                                (
-                                                   It.Is<string>(x => x == nameof(MembershipSubOrchestratorFunction)),
-                                                   It.IsAny<MembershipSubOrchestratorRequest>())
+                                                   nameof(MembershipSubOrchestratorFunction),
+                                                   It.IsAny<MembershipSubOrchestratorRequest>(), 
+                                                   It.IsAny<TaskOptions>())
                                                )
                             .Throws<FileNotFoundException>();
 
@@ -194,12 +195,11 @@ namespace Services.Tests
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _durableContext.Verify(x => x.CallActivityAsync(
-                                                            It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)),
-                                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FileNotFound)
+                                                            It.Is<TaskName>(x => x.Name == nameof(JobStatusUpdaterFunction)),
+                                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FileNotFound),
+                                                            It.IsAny<TaskOptions>()
                                                            )
                                             , Times.Once());
-
-            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         [TestMethod]
@@ -207,8 +207,9 @@ namespace Services.Tests
         {
             _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
                                                (
-                                                   It.Is<string>(x => x == nameof(MembershipSubOrchestratorFunction)),
-                                                   It.IsAny<MembershipSubOrchestratorRequest>())
+                                                   It.Is<TaskName>(x => x.Name == nameof(MembershipSubOrchestratorFunction)),
+                                                   It.IsAny<MembershipSubOrchestratorRequest>(),
+                                                   It.IsAny<TaskOptions>())
                                                )
                             .Throws<Exception>();
 
@@ -219,12 +220,11 @@ namespace Services.Tests
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unexpected exception")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _durableContext.Verify(x => x.CallActivityAsync(
-                                                            It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)),
-                                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error)
+                                                            It.Is<TaskName>(x => x.Name == nameof(JobStatusUpdaterFunction)),
+                                                            It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error),
+                                                            It.IsAny<TaskOptions>()
                                                            )
                                             , Times.Once());
-
-            _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)

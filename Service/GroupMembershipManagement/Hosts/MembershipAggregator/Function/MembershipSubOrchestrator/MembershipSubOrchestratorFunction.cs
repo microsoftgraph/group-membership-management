@@ -3,8 +3,8 @@
 using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Helpers;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Models.Helpers;
 using Models.Notifications;
@@ -36,13 +36,12 @@ namespace Hosts.MembershipAggregator
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [FunctionName(nameof(MembershipSubOrchestratorFunction))]
-        public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(MembershipSubOrchestratorFunction))]
+        public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
-            var state = await proxy.GetState();
+            var state = await context.Entities.CallEntityAsync<JobState>(request.EntityId, "GetState");
             var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
 
             foreach (var part in state.CompletedParts)
@@ -299,7 +298,7 @@ namespace Hosts.MembershipAggregator
             return (sourceGroupMembership, destinationGroupMembership);
         }
 
-        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, IDurableOrchestrationContext context)
+        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, TaskOrchestrationContext context)
         {
             var membersToAdd = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
             var membersToRemove = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));
@@ -321,13 +320,13 @@ namespace Hosts.MembershipAggregator
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }
 
-        private string GenerateFileName(SyncJob syncJob, string suffix, IDurableOrchestrationContext context)
+        private string GenerateFileName(SyncJob syncJob, string suffix, TaskOrchestrationContext context)
         {
             var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
             return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
 
-        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
+        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
             _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);

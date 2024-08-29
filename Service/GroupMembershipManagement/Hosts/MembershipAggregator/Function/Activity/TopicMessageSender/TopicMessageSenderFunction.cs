@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Models.ServiceBus;
 using Newtonsoft.Json;
@@ -23,7 +23,7 @@ namespace Hosts.MembershipAggregator
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
         }
 
-        [FunctionName(nameof(TopicMessageSenderFunction))]
+        [Function(nameof(TopicMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] MembershipHttpRequest request)
         {
 
