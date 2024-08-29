@@ -55,8 +55,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                 {
                                                                 request.SyncJob.TargetOfficeGroupId.ToString(),
 																targetGroupName,
-                                                                request.ObjectId.ToString(),
-                                                                _emailSenderAndRecipients.SyncDisabledCCAddresses
+                                                                request.ObjectId.ToString()
                                                                 });
                     }
                     else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)
