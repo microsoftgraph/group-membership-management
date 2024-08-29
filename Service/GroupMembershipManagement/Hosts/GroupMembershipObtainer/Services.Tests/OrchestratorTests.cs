@@ -122,7 +122,7 @@ namespace Tests.Services
 
             AzureADGroup sourceGroup = null;
             string id = null;
-
+            GroupReaderResponse groupReaderResponse = null;
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(),It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
@@ -130,24 +130,25 @@ namespace Tests.Services
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADGroup, string)>(
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupReaderResponse>(
                 It.Is<TaskName>(x => x.ToString() == nameof(GroupReaderFunction)),
                 It.IsAny<GroupReaderRequest>(),
                 It.IsAny<TaskOptions>())
             )
             .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
             {
-                // Retrieve the result asynchronously
                 var result = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
 
-                // Assign the result values to sourceGroup and id
-                sourceGroup = result.Item1;
-                id = result.Item2;
+                groupReaderResponse = new GroupReaderResponse
+                {
+                    SourceGroup = result.Item1,
+                    SourceGroupId = result.Item2
+                };
+
             })
             .Returns((TaskName name, object request, TaskOptions options) =>
             {
-                // Return the result as a completed Task
-                return Task.FromResult((sourceGroup, id));
+                return Task.FromResult(groupReaderResponse);
             });
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.Is<TaskName>(x => x.ToString() == nameof(SubOrchestratorFunction)), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))

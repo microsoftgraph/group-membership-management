@@ -1,14 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Extensions.Hosting;
+
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
-using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
@@ -16,7 +17,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using System;
-using Azure.Identity;
+
 namespace Hosts.GroupMembershipObtainer
 {
 

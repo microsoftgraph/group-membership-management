@@ -22,7 +22,7 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         [Function(nameof(GroupReaderFunction))]
-        public async Task<(AzureADGroup, string)> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
+        public async Task<GroupReaderResponse> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             if (request.IsDestinationPart)
@@ -60,7 +60,11 @@ namespace Hosts.GroupMembershipObtainer
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return (azureAdGroup, groupId);
+            return new GroupReaderResponse
+            {
+                SourceGroup = azureAdGroup,
+                SourceGroupId = groupId
+            };
         }
 
         public (AzureADGroup Group, string GroupId) GetSourceGroup(GroupReaderRequest request)

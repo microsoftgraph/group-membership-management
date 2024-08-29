@@ -62,7 +62,7 @@ namespace Hosts.GroupMembershipObtainer
                     }
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-                    var (sourceGroup, sourceGroupId) = await context.CallActivityAsync<(AzureADGroup, string)>(nameof(GroupReaderFunction),
+                    var groupReaderResult = await context.CallActivityAsync<GroupReaderResponse>(nameof(GroupReaderFunction),
                                                                                         new GroupReaderRequest
                                                                                         {
                                                                                             SyncJob = syncJob,
@@ -70,6 +70,8 @@ namespace Hosts.GroupMembershipObtainer
                                                                                             IsDestinationPart = mainRequest.IsDestinationPart,
                                                                                             RunId = runId
                                                                                         });
+                    var sourceGroup = groupReaderResult.SourceGroup;
+                    var sourceGroupId = groupReaderResult.SourceGroupId;
 
                     if (sourceGroup.ObjectId == Guid.Empty)
                     {
