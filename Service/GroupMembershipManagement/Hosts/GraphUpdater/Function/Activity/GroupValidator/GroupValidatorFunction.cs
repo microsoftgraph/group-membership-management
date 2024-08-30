@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 using Models.Notifications;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GraphUpdater
 {
@@ -26,7 +25,7 @@ namespace Hosts.GraphUpdater
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
         }
 
-        [FunctionName(nameof(GroupValidatorFunction))]
+        [Function(nameof(GroupValidatorFunction))]
         public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

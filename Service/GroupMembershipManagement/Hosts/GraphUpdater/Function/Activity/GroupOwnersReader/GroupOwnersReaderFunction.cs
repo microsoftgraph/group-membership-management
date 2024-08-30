@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GraphUpdater
 {
@@ -22,7 +21,7 @@ namespace Hosts.GraphUpdater
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
-        [FunctionName(nameof(GroupOwnersReaderFunction))]
+        [Function(nameof(GroupOwnersReaderFunction))]
         public async Task<List<AzureADUser>> GetGroupOwnersAsync([ActivityTrigger] GroupOwnersReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupOwnersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using System;
@@ -60,7 +61,7 @@ namespace Repositories.Mocks
             return Task.FromResult(new OrchestrationMetadata(Guid.NewGuid().ToString(), instanceId));
         }
 
-        public override AsyncPageable<OrchestrationMetadata> GetAllInstancesAsync(OrchestrationQuery filter = null)
+        public override Microsoft.DurableTask.AsyncPageable<OrchestrationMetadata> GetAllInstancesAsync(OrchestrationQuery filter = null)
         {
             return new MockOrchestrationMetadataAsyncPageable();
         }
@@ -81,7 +82,7 @@ namespace Repositories.Mocks
         }
 
     }
-    internal class MockOrchestrationMetadataAsyncPageable : AsyncPageable<OrchestrationMetadata>
+    internal class MockOrchestrationMetadataAsyncPageable : Microsoft.DurableTask.AsyncPageable<OrchestrationMetadata>
     {
         public override IAsyncEnumerable<Microsoft.DurableTask.Page<OrchestrationMetadata>> AsPages(string continuationToken = null, int? pageSizeHint = null)
         {
