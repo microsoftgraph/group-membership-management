@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
+using System.Linq;
 
 namespace Hosts.DestinationAttributesUpdater
 {
@@ -23,7 +23,7 @@ namespace Hosts.DestinationAttributesUpdater
             _destinationAttributeUpdater = destinationAttributeUpdater ?? throw new ArgumentNullException(nameof(destinationAttributeUpdater));
         }
 
-        [FunctionName(nameof(DestinationReaderFunction))]
+        [Function(nameof(DestinationReaderFunction))]
         public async Task<List<(string Destination, Guid TableId)>> GetDestinationsAsync([ActivityTrigger] string destinationType)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationReaderFunction)} function started"}, VerbosityLevel.DEBUG);

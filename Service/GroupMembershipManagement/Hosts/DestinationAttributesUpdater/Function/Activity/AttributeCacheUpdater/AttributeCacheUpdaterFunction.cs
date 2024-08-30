@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.DestinationAttributesUpdater
 {
@@ -22,7 +21,7 @@ namespace Hosts.DestinationAttributesUpdater
             _destinationAttributeUpdaterService = destinationAttributeUpdater ?? throw new ArgumentNullException(nameof(destinationAttributeUpdater));
         }
 
-        [FunctionName(nameof(AttributeCacheUpdaterFunction))]
+        [Function(nameof(AttributeCacheUpdaterFunction))]
         public async Task UpdateAttributesAsync([ActivityTrigger] DestinationAttributes destinationAttributes)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeCacheUpdaterFunction)} function started" }, VerbosityLevel.DEBUG);
