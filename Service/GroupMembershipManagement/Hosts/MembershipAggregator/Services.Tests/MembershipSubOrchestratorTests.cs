@@ -232,7 +232,7 @@ namespace Services.Tests
 
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
                             .Returns(() => _membershipSubOrchestratorRequest);
-            
+
             _durableContext.Setup(x => x.CallActivityAsync<(string FilePath, string Content)>(It.Is<TaskName>(x => x.Name == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
                             .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
@@ -274,8 +274,8 @@ namespace Services.Tests
 
             var entitiesMock = new Mock<TaskOrchestrationEntityFeature>();
             entitiesMock.Setup(x => x.CallEntityAsync<JobState>(It.IsAny<EntityInstanceId>(), "GetState", null, null))
-                        .ReturnsAsync(() => _jobState);
-            
+                        .Returns(async () => await _jobTrackerEntity.GetState());
+
             _durableContext.Setup(x => x.Entities).Returns(entitiesMock.Object);
         }
 

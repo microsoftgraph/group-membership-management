@@ -4,19 +4,18 @@
 using Hosts.MembershipAggregator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Moq;
 using Repositories.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Entities;
 
 namespace Services.Tests
 {
@@ -24,6 +23,7 @@ namespace Services.Tests
     public class OrchestratorTests
     {
         private SyncJob _syncJob;
+        private JobTrackerEntity _jobTrackerEntity;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
         private TelemetryClient _telemetryClient;
@@ -43,6 +43,7 @@ namespace Services.Tests
             _durableContext = new Mock<TaskOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
+            _jobTrackerEntity = new JobTrackerEntity();
 
             var targetOfficeGroupId = Guid.NewGuid();
             _syncJob = new SyncJob
@@ -121,8 +122,34 @@ namespace Services.Tests
                            });
 
             var entitiesMock = new Mock<TaskOrchestrationEntityFeature>();
+
+            entitiesMock.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), "SetTotalParts", It.IsAny<int>(), null))
+                        .Callback<EntityInstanceId, string, object, CallEntityOptions>(async (entityId, operationName, request, options) =>
+                        {
+                            await _jobTrackerEntity.SetTotalParts((int)request);
+                        });
+
+            entitiesMock.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), "AddCompletedPart", It.IsAny<string>(), null))
+                        .Callback<EntityInstanceId, string, object, CallEntityOptions>(async (entityId, operationName, request, options) =>
+                        {
+                            await _jobTrackerEntity.AddCompletedPart((string)request);
+                        });
+
+            entitiesMock.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), "SetDestinationPart", It.IsAny<string>(), null))
+                        .Callback<EntityInstanceId, string, object, CallEntityOptions>(async (entityId, operationName, request, options) =>
+                        {
+                            await _jobTrackerEntity.SetDestinationPart((string)request);
+                        });
+
+            entitiesMock.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), "Delete", null, null))
+                        .Callback<EntityInstanceId, string, object, CallEntityOptions>(async (entityId, operationName, request, options) =>
+                        {
+                            await _jobTrackerEntity.Delete();
+                        });
+
+
             entitiesMock.Setup(x => x.CallEntityAsync<bool>(It.IsAny<EntityInstanceId>(), It.Is<string>(x => x == "IsComplete"), null, null))
-                        .ReturnsAsync(() => true);
+                        .Returns(async () => await _jobTrackerEntity.IsComplete());
             _durableContext.Setup(x => x.Entities).Returns(entitiesMock.Object);
         }
 
@@ -184,7 +211,7 @@ namespace Services.Tests
             _durableContext.Setup(x => x.CallSubOrchestratorAsync<MembershipSubOrchestratorResponse>
                                                (
                                                    nameof(MembershipSubOrchestratorFunction),
-                                                   It.IsAny<MembershipSubOrchestratorRequest>(), 
+                                                   It.IsAny<MembershipSubOrchestratorRequest>(),
                                                    It.IsAny<TaskOptions>())
                                                )
                             .Throws<FileNotFoundException>();

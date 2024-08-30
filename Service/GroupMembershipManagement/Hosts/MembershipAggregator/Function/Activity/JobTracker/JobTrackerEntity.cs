@@ -1,7 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
