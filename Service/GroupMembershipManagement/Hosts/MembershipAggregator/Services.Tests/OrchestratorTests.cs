@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Hosts.MembershipAggregator;
+using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
@@ -11,7 +12,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -194,7 +194,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestNotSuccessMembershipDeltaStatusAsync()
         {
-            _membershipSubOrchestratorResponse.MembershipDeltaStatus = Entities.MembershipDeltaStatus.Error;
+            _membershipSubOrchestratorResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);

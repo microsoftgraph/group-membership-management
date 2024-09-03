@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using MembershipAggregator.Services.Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
 using Models;
@@ -38,7 +39,7 @@ namespace Hosts.MembershipAggregator
                 {
                     syncJob.LastRunTime = currentDate;
 
-                    if (request.DeltaStatus == Services.Entities.MembershipDeltaStatus.NoChanges)
+                    if (request.DeltaStatus == MembershipDeltaStatus.NoChanges)
                     {
                         if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 

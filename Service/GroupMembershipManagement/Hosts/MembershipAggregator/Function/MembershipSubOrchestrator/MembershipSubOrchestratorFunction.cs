@@ -13,13 +13,13 @@ using Models.ServiceBus;
 using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using MembershipAggregator.Services.Entities;
 
 namespace Hosts.MembershipAggregator
 {
@@ -220,7 +220,7 @@ namespace Hosts.MembershipAggregator
 
                 var sourceTypeCounts = JsonParser.GetQueryTypes(request.SyncJob.Query);
                 var destination = JsonParser.GetDestination(request.SyncJob.Destination);
-                var syncCompleteEvent = new SyncCompleteCustomEvent
+                var syncCompleteEvent = new MembershipAggretatorEntities.SyncCompleteCustomEvent
                 {
                     Type = destination.Type.ToString(),
                     SourceTypesCounts = sourceTypeCounts,

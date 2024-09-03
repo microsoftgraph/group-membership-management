@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models.ServiceBus;
-using Services.Entities;
+using MembershipAggregator.Services.Entities;
 using System;
 using System.Threading.Tasks;
 
