@@ -30,7 +30,7 @@ namespace Services.Tests
         private const string TeamsChannelMemberhsipDestinationType = "TeamsChannelMembership";
 
         private List<DestinationAttributes> _attributeReaderResponse;
-        List<(string Destination, Guid JobId)> _destinationReaderResponse;
+        List<DestinationReaderResponse> _destinationReaderResponse;
 
 
         private const string EmailSubject = "EmailSubject";
@@ -59,17 +59,17 @@ namespace Services.Tests
                      })
                      .ReturnsAsync(() => _attributeReaderResponse);
 
-            _context.Setup(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<TaskName>(x => x.ToString()  == nameof(DestinationReaderFunction)), It.Is<string>(x => x  == GroupMembershipDestinationType), It.IsAny<TaskOptions>()))
+            _context.Setup(x => x.CallActivityAsync<List<DestinationReaderResponse>>(It.Is<TaskName>(x => x.ToString()  == nameof(DestinationReaderFunction)), It.Is<string>(x => x  == GroupMembershipDestinationType), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         _destinationReaderResponse = await CallDestinationReaderAsync(request as string);
                     })
                     .ReturnsAsync(() => _destinationReaderResponse);
 
-            _context.Setup(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<TaskName>(x => x.ToString()  == nameof(DestinationReaderFunction)), It.Is<string>(x => x == TeamsChannelMemberhsipDestinationType), It.IsAny<TaskOptions>()))
+            _context.Setup(x => x.CallActivityAsync<List<DestinationReaderResponse>>(It.Is<TaskName>(x => x.ToString()  == nameof(DestinationReaderFunction)), It.Is<string>(x => x == TeamsChannelMemberhsipDestinationType), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
-                        _destinationReaderResponse = new List<(string Destination, Guid JobId)>();
+                        _destinationReaderResponse = new List<DestinationReaderResponse>();
                     })
                     .ReturnsAsync(() => _destinationReaderResponse);
 
@@ -93,7 +93,7 @@ namespace Services.Tests
             var destination1 = new DestinationObject() { Type = "GroupMembership", Value = new GroupDestinationValue() { ObjectId = Guid.NewGuid() } };
             var serializedDestination1 = SerializeDestination(destination1);
             var jobId1 = Guid.NewGuid();
-            var destinations = new List<(string Destination, Guid JobId)>() { (serializedDestination1, jobId1) };
+            var destinations = new List<DestinationReaderResponse>() { new DestinationReaderResponse { Destination = serializedDestination1, GroupId = jobId1 } };
             _mockDestinationAttributeUpdaterService.Setup(x => x.GetDestinationsAsync(It.IsAny<string>())).ReturnsAsync(() => destinations);
 
             var destinationAttributes1 = new DestinationAttributes
@@ -102,12 +102,12 @@ namespace Services.Tests
                 Name = "Name",
                 Owners = new List<Guid>() { Guid.NewGuid() }
             };
-            _mockDestinationAttributeUpdaterService.Setup(x => x.GetBulkDestinationAttributesAsync(It.IsAny<List<(string Destination, Guid JobId)>>(), It.IsAny<string>())).ReturnsAsync(() => new List<DestinationAttributes>() { destinationAttributes1 });
+            _mockDestinationAttributeUpdaterService.Setup(x => x.GetBulkDestinationAttributesAsync(It.IsAny<List<DestinationReaderResponse>>(), It.IsAny<string>())).ReturnsAsync(() => new List<DestinationAttributes>() { destinationAttributes1 });
 
             var orchestrator = new OrchestratorFunction();
             await orchestrator.RunOrchestratorAsync(_context.Object);
 
-            _context.Verify(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<TaskName>(x => x.ToString()  == nameof(DestinationReaderFunction)), It.IsAny<string>(),null),
+            _context.Verify(x => x.CallActivityAsync<List<DestinationReaderResponse>>(It.Is<TaskName>(x => x.ToString()  == nameof(DestinationReaderFunction)), It.IsAny<string>(),null),
                                 Times.Exactly(2));
             _context.Verify(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<TaskName>(x => x.ToString()  == nameof(AttributeReaderFunction)), It.Is<AttributeReaderRequest>(x => DeserializeDestination(x.Destinations[0].Destination).Value.ObjectId == DeserializeDestination(destinations[0].Destination).Value.ObjectId),null),
                                 Times.Once());
@@ -128,7 +128,7 @@ namespace Services.Tests
             return response;
         }
 
-        private async Task<List<(string Destination, Guid JobId)>> CallDestinationReaderAsync(string destinationType)
+        private async Task<List<DestinationReaderResponse>> CallDestinationReaderAsync(string destinationType)
         {
             var DestinationReaderFunction = new DestinationReaderFunction(_mockLoggingRepository.Object, _mockDestinationAttributeUpdaterService.Object);
             var response = await DestinationReaderFunction.GetDestinationsAsync(destinationType);

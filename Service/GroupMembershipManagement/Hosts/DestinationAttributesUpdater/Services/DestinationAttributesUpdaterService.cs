@@ -33,10 +33,10 @@ namespace Services
             _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
 
-        public async Task<List<(string Destination, Guid JobId)>> GetDestinationsAsync(string destinationType)
+        public async Task<List<DestinationReaderResponse>> GetDestinationsAsync(string destinationType)
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsByDestinationAsync(destinationType);
-            var destinations = new List<(string Destination, Guid JobId)>();
+            var destinations = new List<DestinationReaderResponse>();
 
             foreach (var job in jobs)
             {
@@ -71,19 +71,18 @@ namespace Services
                 }
 
                 var serializedDestination = JsonSerializer.Serialize(destination, _destinationObjectSerializerOptions);
-
-                destinations.Add((serializedDestination, job.Id));
+                destinations.Add(new DestinationReaderResponse { Destination = serializedDestination, GroupId = job.Id });
             }
 
             return destinations;
         }
 
-        public async Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<(string Destination, Guid JobId)> destinations, string destinationType)
+        public async Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<DestinationReaderResponse> destinations, string destinationType)
         {
             
             var destinationAttributesList = new List<DestinationAttributes>();
             List<(DestinationObject? Destination, Guid JobId)> destinationObjectsMap = destinations
-                .Select(d => (JsonSerializer.Deserialize<DestinationObject>(d.Destination, _destinationObjectSerializerOptions), d.JobId))
+                .Select(d => (JsonSerializer.Deserialize<DestinationObject>(d.Destination, _destinationObjectSerializerOptions), d.GroupId))
                 .ToList();
             
             var destinationObjects = destinationObjectsMap.Select(d => d.Destination).ToList();
