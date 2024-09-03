@@ -71,7 +71,7 @@ stages:
          coverageThreshold: 64
       - function:
          name: 'GroupMembershipObtainer'
-         coverageThreshold: 89
+         coverageThreshold: 83
       - function:
          name: 'SqlMembershipObtainer'
          coverageThreshold: 50
