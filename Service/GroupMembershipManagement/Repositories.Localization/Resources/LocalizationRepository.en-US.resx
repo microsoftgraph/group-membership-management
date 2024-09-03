@@ -1155,4 +1155,11 @@ The group **{1}** with Id: {0} **has been set to the status "GuestUsersCannotBeA
 
 Even though GMM couldn't add the guest users, it still **added the remaining {2} users** and **removed the expected {3} users** from the destination.</value>
   </data>
+  <data name="ThresholdNotificationFallbackBody" xml:space="preserve">
+    <value>The most recent attempt to update the membership of your GMM managed group '**{0}**' with Id: {1} exceeded the configured alert threshold.
+
+**{2}% increase** and **{3}% decrease** alerts are configured for this group.
+
+Please forward this message to the CC'ed email for support and they will guide you through the actions.</value>
+  </data>
 </root>

@@ -93,6 +93,13 @@ namespace Services.Notifier
             var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
             var adaptiveCard = await _thresholdNotificationService.CreateNotificationCardAsync(notification);
+
+            var fallbackHTMLContent = _localizationRepository.TranslateSetting(NotificationConstants.ThresholdNotificationFallbackBody,
+                groupName,
+                notification.TargetOfficeGroupId.ToString(),
+                notification.ThresholdPercentageForAdditions.ToString(),
+                notification.ThresholdPercentageForRemovals.ToString());
+            
             var htmlTemplate = @"<html>
                 <head
                   <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
@@ -101,6 +108,9 @@ namespace Services.Notifier
                   </script>
                 </head>
                 <body>
+                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
+                <h1>Fallback Message</h1>
+                <pre>{1}</pre>
                 </body>
                 </html>";
 
@@ -115,7 +125,7 @@ namespace Services.Notifier
             var message = new EmailMessage
             {
                 Subject = subject,
-                Content = string.Format(htmlTemplate, adaptiveCard),
+                Content = string.Format(htmlTemplate, adaptiveCard, fallbackHTMLContent),
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = ownerEmails,

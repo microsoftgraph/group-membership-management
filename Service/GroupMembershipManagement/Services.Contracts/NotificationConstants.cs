@@ -27,5 +27,6 @@ namespace Services.Contracts
         public const string SyncPurgedForInactivityEmailBody = "SyncPurgedForInactivityEmailBody";
         public const string SyncPurgedForInactivityEmailSubject = "SyncPurgedForInactivityEmailSubject";
         public const string GuestUserFailureEmailBody = "GuestUserFailureEmailBody";
+        public const string ThresholdNotificationFallbackBody = "ThresholdNotificationFallbackBody";
     }
 }
