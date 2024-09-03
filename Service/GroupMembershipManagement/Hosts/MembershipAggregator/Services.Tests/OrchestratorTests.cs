@@ -19,11 +19,13 @@ using System.Threading.Tasks;
 
 namespace Services.Tests
 {
+
     [TestClass]
     public class OrchestratorTests
     {
         private SyncJob _syncJob;
-        private JobTrackerEntity _jobTrackerEntity;
+        private JobState _jobState;
+        private JobTrackerEntityFake _jobTrackerEntity;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
         private TelemetryClient _telemetryClient;
@@ -43,7 +45,10 @@ namespace Services.Tests
             _durableContext = new Mock<TaskOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
-            _jobTrackerEntity = new JobTrackerEntity();
+            _jobState = new JobState();
+            _jobTrackerEntity = new JobTrackerEntityFake();
+            _jobTrackerEntity.SetState(_jobState);
+
 
             var targetOfficeGroupId = Guid.NewGuid();
             _syncJob = new SyncJob
@@ -141,15 +146,9 @@ namespace Services.Tests
                             await _jobTrackerEntity.SetDestinationPart((string)request);
                         });
 
-            entitiesMock.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), "Delete", null, null))
-                        .Callback<EntityInstanceId, string, object, CallEntityOptions>(async (entityId, operationName, request, options) =>
-                        {
-                            await _jobTrackerEntity.Delete();
-                        });
-
-
             entitiesMock.Setup(x => x.CallEntityAsync<bool>(It.IsAny<EntityInstanceId>(), It.Is<string>(x => x == "IsComplete"), null, null))
                         .Returns(async () => await _jobTrackerEntity.IsComplete());
+
             _durableContext.Setup(x => x.Entities).Returns(entitiesMock.Object);
         }
 

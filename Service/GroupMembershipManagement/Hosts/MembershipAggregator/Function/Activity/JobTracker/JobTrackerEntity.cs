@@ -1,57 +1,55 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Entities;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
-    public class JobTrackerEntity : IJobTracker
+    public class JobTrackerEntity : TaskEntity<JobState>, IJobTracker
     {
-        public JobState JobState { get; set; } = new JobState();
-
         public Task AddCompletedPart(string filePath)
         {
-            if (!JobState.CompletedParts.Contains(filePath))
-                JobState.CompletedParts.Add(filePath);
+            if (!State.CompletedParts.Contains(filePath))
+                State.CompletedParts.Add(filePath);
 
             return Task.CompletedTask;
         }
 
         public Task SetDestinationPart(string filePath)
         {
-            JobState.DestinationPart = filePath;
+            State.DestinationPart = filePath;
             return Task.CompletedTask;
         }
 
         public Task<JobState> GetState()
         {
-            return Task.FromResult(JobState);
+            return Task.FromResult(State);
         }
 
         public Task<bool> IsComplete()
         {
-            var allPartsCompleted = JobState.TotalParts > 0
-                                    && JobState.CompletedParts.Count == JobState.TotalParts;
+            var allPartsCompleted = State.TotalParts > 0
+                                    && State.CompletedParts.Count == State.TotalParts;
 
             return Task.FromResult(allPartsCompleted);
         }
 
         public Task SetTotalParts(int totalParts)
         {
-            JobState.TotalParts = totalParts;
+            State.TotalParts = totalParts;
             return Task.CompletedTask;
         }
 
-        public virtual async Task Delete()
-        {
-            JobState = null;
-            await Task.CompletedTask;
-        }
-
         [Function(nameof(JobTrackerEntity))]
-        public static Task RunAsync([EntityTrigger] TaskEntityDispatcher ctx)
+        public static Task Run([EntityTrigger] TaskEntityDispatcher ctx)
         {
             return ctx.DispatchAsync<JobTrackerEntity>();
+        }
+
+        protected override JobState InitializeState(TaskEntityOperation entityOperation)
+        {
+            return new JobState();
         }
     }
 }

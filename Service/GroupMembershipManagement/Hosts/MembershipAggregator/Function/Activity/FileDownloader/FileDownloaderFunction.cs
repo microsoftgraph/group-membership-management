@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
@@ -23,7 +22,7 @@ namespace Hosts.MembershipAggregator
         }
 
         [Function(nameof(FileDownloaderFunction))]
-        public async Task<(string FilePath, string Content)> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
+        public async Task<FileDownloaderResponse> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
@@ -37,7 +36,11 @@ namespace Hosts.MembershipAggregator
             var compressedContent = TextCompressor.Compress(content);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-            return (request.FilePath, compressedContent);
+            return new FileDownloaderResponse
+            {
+                FilePath = request.FilePath,
+                Content = compressedContent
+            };
         }
     }
 }

@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.using System;
 
-namespace Services.Entities
+namespace MembershipAggregator.Services.Entities
 {
     public class SyncCompleteCustomEvent
     {

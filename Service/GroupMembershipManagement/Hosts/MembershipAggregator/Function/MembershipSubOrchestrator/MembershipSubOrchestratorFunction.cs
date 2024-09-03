@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Helpers;
+using MembershipAggretatorEntities = MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
@@ -42,12 +43,12 @@ namespace Hosts.MembershipAggregator
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             var state = await context.Entities.CallEntityAsync<JobState>(request.EntityId, "GetState");
-            var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
+            var downloadFileTasks = new List<Task<FileDownloaderResponse>>();
 
             foreach (var part in state.CompletedParts)
             {
                 var downloadRequest = new FileDownloaderRequest { FilePath = part, SyncJob = request.SyncJob };
-                downloadFileTasks.Add(context.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), downloadRequest));
+                downloadFileTasks.Add(context.CallActivityAsync<FileDownloaderResponse>(nameof(FileDownloaderFunction), downloadRequest));
             }
 
             var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
@@ -252,7 +253,7 @@ namespace Hosts.MembershipAggregator
 
                 if (!context.IsReplaying)
                     TrackSyncCompleteEvent(context, dbSyncJob, syncCompleteEvent, "Success");
-                
+
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                 new JobStatusUpdaterRequest
                                 {
@@ -270,7 +271,7 @@ namespace Hosts.MembershipAggregator
         }
 
         private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
-                ExtractMembershipInformationAsync((string FilePath, string Content)[] allGroupMemberships, string destinationPath)
+                ExtractMembershipInformationAsync(FileDownloaderResponse[] allGroupMemberships, string destinationPath)
         {
             var sourceGroupsMemberships = allGroupMemberships
                                             .Where(x => x.FilePath != destinationPath)
@@ -329,7 +330,7 @@ namespace Hosts.MembershipAggregator
         private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+            _telemetryClient.TrackMetric(nameof(MembershipAggretatorEntities.Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
             syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
             syncCompleteEvent.Result = successStatus;
@@ -338,7 +339,7 @@ namespace Hosts.MembershipAggregator
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
 
-            _telemetryClient.TrackEvent(nameof(Services.Entities.Metric.SyncComplete), syncCompleteDict);
+            _telemetryClient.TrackEvent(nameof(MembershipAggretatorEntities.Metric.SyncComplete), syncCompleteDict);
         }
     }
 }

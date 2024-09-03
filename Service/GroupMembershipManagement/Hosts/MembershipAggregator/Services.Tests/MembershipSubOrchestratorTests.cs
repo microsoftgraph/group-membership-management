@@ -36,12 +36,12 @@ namespace Services.Tests
         private int _numberOfUsersForSourcePart;
         private int _numberOfUsersForSourcePartOne;
         private int _numberOfUsersForSourcePartTwo;
-        private JobTrackerEntity _jobTrackerEntity;
+        private JobTrackerEntityFake _jobTrackerEntity;
         private int _numberOfUsersForDestinationPart;
         private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
         private DeltaCalculatorResponse _deltaCalculatorResponse;
-        private (string FilePath, string Content) _downloaderResponse;
+        private FileDownloaderResponse _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
         private TelemetryClient _telemetryClient;
         private SyncJobGroup _groupInformation;
@@ -140,12 +140,10 @@ namespace Services.Tests
                 TotalParts = 3
             };
 
-            _jobTrackerEntity = new JobTrackerEntity
-            {
-                JobState = _jobState
-            };
+            _jobTrackerEntity = new JobTrackerEntityFake();
+            _jobTrackerEntity.SetState(_jobState);
 
-            _downloaderResponse = (null, null);
+            _downloaderResponse = new FileDownloaderResponse();
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
@@ -233,7 +231,7 @@ namespace Services.Tests
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
                             .Returns(() => _membershipSubOrchestratorRequest);
 
-            _durableContext.Setup(x => x.CallActivityAsync<(string FilePath, string Content)>(It.Is<TaskName>(x => x.Name == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+            _durableContext.Setup(x => x.CallActivityAsync<FileDownloaderResponse>(It.Is<TaskName>(x => x.Name == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
                             .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 _downloaderResponse = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
@@ -823,7 +821,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
         }
 
-        private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
+        private async Task<FileDownloaderResponse> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
         {
             var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
             return await function.DownloadFileAsync(request);
