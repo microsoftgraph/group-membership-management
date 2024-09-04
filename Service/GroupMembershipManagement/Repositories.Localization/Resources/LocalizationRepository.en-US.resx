@@ -122,6 +122,7 @@
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
     "type": "AdaptiveCard",
     "version": "1.0",
+    "hideOriginalBody": true,
     "originator": "${$root.providerId}",
     "createdUtc": "${$root.cardCreatedTime}",
     "body": [
@@ -273,6 +274,7 @@
  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
  "type": "AdaptiveCard",
  "version": "1.0",
+ "hideOriginalBody": true,
  "originator": "${$root.providerId}",
  "createdUtc": "${$root.cardCreatedTime}",
  "body": [
@@ -424,6 +426,7 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
   "version": "1.0",
+  "hideOriginalBody": true,
   "createdUtc": "${$root.cardCreatedTime}",
   "body": [
     {
@@ -525,6 +528,7 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
   "version": "1.0",
+  "hideOriginalBody": true,
   "createdUtc": "${$root.cardCreatedTime}",
   "body": [
     {
@@ -673,6 +677,7 @@
   "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
   "type": "AdaptiveCard",
   "version": "1.0",
+  "hideOriginalBody": true,
   "createdUtc": "${$root.cardCreatedTime}",
   "body": [
     {
@@ -773,6 +778,7 @@
       "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
       "type": "AdaptiveCard",
       "version": "1.0",
+      "hideOriginalBody": true,
       "createdUtc": "${$root.cardCreatedTime}",
       "body": [
         {
@@ -880,6 +886,7 @@
     "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
     "type": "AdaptiveCard",
     "version": "1.4",
+    "hideOriginalBody": true,
     "createdUtc": "${$root.cardCreatedTime}",
     "body": [
         {
