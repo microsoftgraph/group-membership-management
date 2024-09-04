@@ -63,7 +63,12 @@ namespace Repositories.BlobStorage
             var blobs = _containerClient.GetBlobs(prefix: prefix).OrderByDescending(m => m.Properties.LastModified);
             foreach (var blob in blobs)
             {
-                if (excludeLatest) continue;
+                if (excludeLatest)
+                {
+                    excludeLatest = false;
+                    continue;
+                }
+
                 var blobClient = _containerClient.GetBlobClient(blob.Name);
                 await blobClient.DeleteIfExistsAsync();
             }

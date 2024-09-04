@@ -1,11 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Entities;
+using Azure;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Tests.FunctionApps.Mocks
@@ -13,6 +17,23 @@ namespace Tests.FunctionApps.Mocks
     public class MockBlobStorageRepository : IBlobStorageRepository
     {
         public List<(string Path, string Content)> Sent { get; set; } = new List<(string Path, string Content)>();
+
+        public List<BlobItem> Blobs { get; set; } = new List<BlobItem>();
+
+        public MockBlobContainerClient ContainerClient { get; set; }
+
+        public MockBlobStorageRepository()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                var prefix = i % 2 == 0 ? "even" : "odd";
+                var blobProperties = BlobsModelFactory.BlobItemProperties(false, lastModified: DateTimeOffset.UtcNow.AddDays(-i));
+                Blobs.Add(BlobsModelFactory.BlobItem(name: $"{prefix}_{i}.json", properties: blobProperties));
+            }
+
+            ContainerClient = new MockBlobContainerClient(Blobs);
+        }
+
         public Task DeleteFileAsync(string path)
         {
             throw new NotImplementedException();
@@ -54,9 +75,69 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
-        public Task DeleteFilesByPrefixAsync(string prefix, bool excludeLatest = false)
+        public async Task DeleteFilesByPrefixAsync(string prefix, bool excludeLatest = false)
         {
-            throw new NotImplementedException();
+            var blobs = ContainerClient.GetBlobs(prefix: prefix).OrderByDescending(m => m.Properties.LastModified);
+            foreach (var blob in blobs)
+            {
+                if (excludeLatest)
+                {
+                    excludeLatest = false;
+                    continue;
+                }
+
+                var blobClient = ContainerClient.GetBlobClient(blob.Name);
+                await blobClient.DeleteIfExistsAsync();
+            }
+        }
+    }
+
+    public class MockBlobContainerClient : BlobContainerClient
+    {
+        private List<BlobItem> _blobs;
+
+        public MockBlobContainerClient(List<BlobItem> blobs)
+        {
+            _blobs = blobs;
+        }
+
+        public override Pageable<BlobItem> GetBlobs(BlobTraits traits = BlobTraits.None, BlobStates states = BlobStates.None, string prefix = null, CancellationToken cancellationToken = default)
+        {
+            var filteredBlobs = prefix != null 
+                                ? _blobs.Where(x => x.Name.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase)).ToList()
+                                : _blobs;
+
+            var page = Azure.Page<BlobItem>.FromValues(filteredBlobs, null, null);
+            return Pageable<BlobItem>.FromPages([page]);
+        }
+
+        public override BlobClient GetBlobClient(string blobName)
+        {
+            return new MockBlobClient(_blobs, blobName);
+        }
+    }
+
+    public class MockBlobClient : BlobClient
+    {
+        private List<BlobItem> _blobs;
+        private string _blobName;
+
+        public MockBlobClient(List<BlobItem> blobs, string blobName)
+        {
+            _blobs = blobs;
+            _blobName = blobName;
+        }
+
+        public override Task<Response<bool>> DeleteIfExistsAsync(DeleteSnapshotsOption snapshotsOption = DeleteSnapshotsOption.None, BlobRequestConditions conditions = null, CancellationToken cancellationToken = default)
+        {
+            var blob = _blobs.Where(x => x.Name == _blobName).FirstOrDefault();
+            if (blob != null)
+            {
+                _blobs.Remove(blob);
+                return Task.FromResult(Response.FromValue(true, null));
+            }
+
+            return Task.FromResult(Response.FromValue(false, null));
         }
     }
 }
