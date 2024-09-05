@@ -47,6 +47,7 @@ export type IStrings = {
     orgLeaderMissingErrorMessage: string;
     source: string;
     invalidInputErrorMessage: string;
+    valueComboBoxOptionCodeLabel: string;
   },
   Components: {
     AppHeader: {

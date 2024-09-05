@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator} from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption} from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -1170,6 +1170,23 @@ const checkType = (value: string, type: string | undefined): string => {
     setItemsBasedOnGroups(newGroups);
   }
 
+  const onRenderValueComboBoxOptions = (props?: ISelectableOption, defaultRender?: (props?: ISelectableOption) => JSX.Element | null): JSX.Element | null => {
+    return (
+      <div className = {classNames.comboBoxOptionContainer}>
+        <div>
+          <Text>
+            {props?.text}
+          </Text>
+        </div>
+        <div>
+          <Text variant='tiny' styles={{root: classNames.comboBoxOptionCodeText}}>
+           {strings.HROnboarding.valueComboBoxOptionCodeLabel + props?.key}
+          </Text>
+        </div>
+      </div>
+    );
+  }
+
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
@@ -1202,6 +1219,7 @@ const checkType = (value: string, type: string | undefined): string => {
               options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings)}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index)}
+              onRenderOption={onRenderValueComboBoxOptions}
               allowFreeInput
               autoComplete="off"
               useComboBoxAsMenuWidth={false}

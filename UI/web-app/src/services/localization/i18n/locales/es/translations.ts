@@ -50,7 +50,8 @@ export const strings: IStrings = {
     customOrgLeaderMissingErrorMessage: " no existe en ",
     orgLeaderMissingErrorMessage: "Este usuario no existe en la fuente de datos de RR.HH.",
     source: " fuente",
-    invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números."
+    invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números.",
+    valueComboBoxOptionCodeLabel: "Codigo: ",
   },
   Components: {
     AppHeader: {

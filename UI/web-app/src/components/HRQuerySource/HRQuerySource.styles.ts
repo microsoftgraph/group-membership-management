@@ -127,6 +127,13 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       lineHeight: 16,
       fontFamily: 'Segoe UI',
       color: theme.semanticColors.errorText
-    }
+    },
+    comboBoxOptionCodeText: { 
+      fontStyle: 'italic',
+    },
+    comboBoxOptionContainer: { 
+      paddingTop: 3,
+      paddingBottom: 3,
+    },
   };
 };

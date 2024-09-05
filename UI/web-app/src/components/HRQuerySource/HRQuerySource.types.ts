@@ -28,6 +28,8 @@ export type HRQuerySourceStyles = {
   separator: IStyle;
   cardHeader: IStyle;
   cardTitle: IStyle;
+  comboBoxOptionCodeText: IStyle;
+  comboBoxOptionContainer: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {

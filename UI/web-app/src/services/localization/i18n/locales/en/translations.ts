@@ -49,7 +49,8 @@ export const strings: IStrings = {
     customOrgLeaderMissingErrorMessage: " doesn't exist in the ",
     source: " source",
     orgLeaderMissingErrorMessage: " doesn't exist in the HR Data source",
-    invalidInputErrorMessage: "Invalid input. Please enter only numbers."
+    invalidInputErrorMessage: "Invalid input. Please enter only numbers.",
+    valueComboBoxOptionCodeLabel: "Code: ",
   },
   Components: {
     AppHeader: {
