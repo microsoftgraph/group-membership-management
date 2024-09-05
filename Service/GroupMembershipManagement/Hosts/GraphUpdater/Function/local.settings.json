@@ -19,7 +19,7 @@
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
     "actionableEmailProviderId": "",
-    "gmmServiceBus__fullyQualifiedNamespace": "\u003Cservice_bus_namespace\u003E.servicebus.windows.net",
+    "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "serviceBusMembershipUpdatersTopic": "",
     "serviceBusNotificationsQueue": "",
     "triggerSchedule": "0,30 * * * * *",
