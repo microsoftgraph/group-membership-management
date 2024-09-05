@@ -6,6 +6,9 @@ using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Polly.Retry;
+using Polly;
 
 namespace SqlMembershipObtainer
 {
@@ -25,11 +28,20 @@ namespace SqlMembershipObtainer
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(syncJob.RunId, syncJob.TargetOfficeGroupId);
+            string sqlMembershipObtainerTableName = null;
+
+            await _retryPolicy.ExecuteAsync(async () =>
+            {
+                sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(syncJob.RunId, syncJob.TargetOfficeGroupId);
+            });
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
 
             return sqlMembershipObtainerTableName;
         }
+
+        private readonly AsyncRetryPolicy _retryPolicy = Policy
+            .Handle<SqlException>(ex => ex.Number == -2) // SQL timeout exception number
+            .WaitAndRetryAsync(3, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
     }
 }
