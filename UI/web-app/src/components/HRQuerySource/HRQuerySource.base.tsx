@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption} from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps} from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -1187,6 +1187,14 @@ const checkType = (value: string, type: string | undefined): string => {
     );
   }
 
+  const onRenderValueComboBoxList = (props?: ISelectableDroppableTextProps<IComboBox, IComboBox>, defaultRender?: (props?: ISelectableDroppableTextProps<IComboBox, IComboBox>) => JSX.Element | null): JSX.Element | null => {
+    return (
+      <div className = {classNames.comboBoxOptionList}>
+        {defaultRender!(props)}
+      </div>
+    );
+  }
+
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       switch (column?.key) {
@@ -1201,9 +1209,11 @@ const checkType = (value: string, type: string | undefined): string => {
           options={filteredOptions[index] || getOptions(attributes)}
           onInputValueChange={(text) => onAttributeChange(text, index)}
           onChange={(event, option) => handleAttributeChange(event, option, index, groupIndex)}
+          onRenderList={onRenderValueComboBoxList}
           allowFreeInput
           autoComplete="off"
           useComboBoxAsMenuWidth={true}
+          dropdownMaxWidth={500}
         />;
         case 'equalityOperator':
           return <Dropdown
@@ -1220,9 +1230,11 @@ const checkType = (value: string, type: string | undefined): string => {
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index)}
               onRenderOption={onRenderValueComboBoxOptions}
+              onRenderList={onRenderValueComboBoxList}
               allowFreeInput
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
+              dropdownMaxWidth={500}
               />
           } else {
             return <TextField

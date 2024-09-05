@@ -135,5 +135,8 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       paddingTop: 3,
       paddingBottom: 3,
     },
+    comboBoxOptionList: { 
+      maxHeight: 300,
+    },
   };
 };

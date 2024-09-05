@@ -30,6 +30,7 @@ export type HRQuerySourceStyles = {
   cardTitle: IStyle;
   comboBoxOptionCodeText: IStyle;
   comboBoxOptionContainer: IStyle;
+  comboBoxOptionList: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {
