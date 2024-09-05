@@ -6,13 +6,11 @@ using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Microsoft.Azure.Functions.Worker.Http;
 using System.IO;
-using Microsoft.AspNetCore.Http;
 
 namespace Hosts.AzureUserReader
 {

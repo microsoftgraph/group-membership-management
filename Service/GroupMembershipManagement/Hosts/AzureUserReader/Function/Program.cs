@@ -42,7 +42,12 @@ namespace Hosts.AzureUserReader
                 });
             })
             .ConfigureServices((context, services) =>
-            {
+            {   
+                var configuration = context.Configuration;
+                var functionName = "AzureUserReader";
+                var dryRunSettingName = string.Empty;
+                var rootPath = context.HostingEnvironment.ContentRootPath;
+                CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
                 services.AddGraphAPIClient();
 
                 services.AddSingleton<IStorageAccountSecret>(services =>
