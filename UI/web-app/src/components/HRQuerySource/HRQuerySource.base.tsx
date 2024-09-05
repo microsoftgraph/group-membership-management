@@ -1018,7 +1018,7 @@ const checkType = (value: string, type: string | undefined): string => {
           newFilteredValueOptions[index] = getValueOptions(currentAttributeMappings);
       } else {
           let valueOptions = getValueOptions(currentAttributeMappings);
-          newFilteredValueOptions[index] = valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
+          newFilteredValueOptions[index] = valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()) || opt.key.toString().toLowerCase().startsWith(text.toLowerCase()));
       }
       setFilteredValueOptions(newFilteredValueOptions);
     }
