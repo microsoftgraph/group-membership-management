@@ -20,10 +20,10 @@ param storageAccountSku string = 'Standard_LRS'
 param location string
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('jf${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('sju${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
-module jfStorageAccountProd 'storageAccount.bicep' = {
-  name: 'jfProdstorageAccountTemplate'
+module sjuStorageAccountProd 'storageAccount.bicep' = {
+  name: 'sjuProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
