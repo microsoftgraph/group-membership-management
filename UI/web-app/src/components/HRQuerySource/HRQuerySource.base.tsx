@@ -72,6 +72,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [items, setItems] = useState<IFilterPart[]>([]);
   let options: IComboBoxOption[] = [];
   const [groups, setGroups] = useState<Group[]>([]);
+  const [selectedItems, setSelectedItems] = useState<IFilterPart[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [groupingEnabled, setGroupingEnabled] = useState(false);
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
@@ -1315,9 +1316,8 @@ const checkType = (value: string, type: string | undefined): string => {
   function onUnGroupClick() {
     let newGroups = [...groups];
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
-    const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
-
-    selectedItems.forEach((selectedItem, index) => {
+    const si = selectedIndices.includes(-1) ? selectedItems : items.filter((item, index) => selectedIndices.includes(index));
+    si.forEach((selectedItem, index) => {
       const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
       const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
 
@@ -1358,17 +1358,17 @@ const checkType = (value: string, type: string | undefined): string => {
     const allSameChildIndex = childIndices.every((childIndex, index, array) => childIndex === array[0]);
 
     let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
-    const childItems = selectedItems;
+    const childItems = si;
 
     if (allSameGroupIndex && allSameChildIndex && childIndices[0] >= 0) {
       clonedNewGroups[groupIndices[0]].items = [...clonedNewGroups[groupIndices[0]].items, ...childItems];
-      clonedNewGroups = filterChildren(clonedNewGroups, selectedItems, groupIndices[0], childIndices[0]);
+      clonedNewGroups = filterChildren(clonedNewGroups, si, groupIndices[0], childIndices[0]);
     }
 
     else if (allSameGroupIndex && groupIndices[0] > 0 && childIndices[0] === -1) {
       if (groups[groupIndices[0]] && groups[groupIndices[0]].children && groups[groupIndices[0]].children.length > 0) { return; }
       clonedNewGroups[0].items = [...clonedNewGroups[0].items, ...childItems];
-      clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndices[0]);
+      clonedNewGroups = filterItems(clonedNewGroups, si, groupIndices[0]);
     }
 
     clonedNewGroups = clonedNewGroups.filter((group: { items: any[]; children: any[]; }) =>
@@ -1382,6 +1382,7 @@ const checkType = (value: string, type: string | undefined): string => {
     setGroups(clonedNewGroups);
     getGroupLabels(clonedNewGroups);
     setSelectedIndices([]);
+    setSelectedItems([]);
     selection.setAllSelected(false);
     setGroupingEnabled(true);
   }
@@ -1389,15 +1390,15 @@ const checkType = (value: string, type: string | undefined): string => {
   function onGroupClick() {
     let newGroups = [...groups];
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
-    const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
-    selectedItems.forEach((selectedItem, index) => {
+    const si = selectedIndices.includes(-1) ? selectedItems : items.filter((item, index) => selectedIndices.includes(index));
+    si.forEach((selectedItem, index) => {
       const groupIndex = groups.findIndex(group => isGroupItem(group, selectedItem));
       if (groupIndex >= 0) {
         indices.push({ selectedItemIndex: index, groupIndex, childIndex: -1 });
       }
     });
 
-    selectedItems.forEach((selectedItem, index) => {
+    si.forEach((selectedItem, index) => {
       const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
       if (ifGroupChild) {
         return;
@@ -1408,14 +1409,14 @@ const checkType = (value: string, type: string | undefined): string => {
     const allSameGroupIndex = groupIndices.every((groupIndex, index, array) => groupIndex === array[0]);
 
     let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(newGroups));
-    const childItems = selectedItems.map(selectedItem => ({ attribute: selectedItem.attribute, equalityOperator: selectedItem.equalityOperator, value: selectedItem.value, andOr: selectedItem.andOr }));
+    const childItems = si.map(selectedItem => ({ attribute: selectedItem.attribute, equalityOperator: selectedItem.equalityOperator, value: selectedItem.value, andOr: selectedItem.andOr }));
     const filterItems = (groupIndex: number) => {
       clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
         !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
     };
 
     if (allSameGroupIndex && groupIndices[0] === 0) {
-      if (clonedNewGroups[groupIndices[0]].items.length === selectedItems.length) { return; }
+      if (clonedNewGroups[groupIndices[0]].items.length === si.length) { return; }
       const newGroup: Group = {
         name: "",
         items: childItems,
@@ -1431,7 +1432,7 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     else if (allSameGroupIndex && groupIndices[0] > 0) {
-      if (clonedNewGroups[groupIndices[0]].items.length === selectedItems.length) { return; }
+      if (clonedNewGroups[groupIndices[0]].items.length === si.length) { return; }
       clonedNewGroups[groupIndices[0]].children = [
         ...(clonedNewGroups[groupIndices[0]].children || []),
         {
@@ -1464,6 +1465,7 @@ const checkType = (value: string, type: string | undefined): string => {
     setGroups(clonedNewGroups);
     getGroupLabels(clonedNewGroups);
     setSelectedIndices([]);
+    setSelectedItems([]);
     selection.setAllSelected(false);
     setGroupingEnabled(true);
     setFilteredOptions({});
@@ -1552,6 +1554,7 @@ const checkType = (value: string, type: string | undefined): string => {
         item.andOr === selectedItem.andOr);
     });
     setSelectedIndices(selectedIndices);
+    setSelectedItems(selectedItems);
   }
 
   return (
