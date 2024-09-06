@@ -41,7 +41,7 @@ namespace Services
 
                 if (storedAttributeSettings != null)
                 {
-                    storedAttributeSettings.RemoveAll(attribute => !sqlFilterAttributes.Any(t => t.Name == attribute.Name && t.Type == attribute.Type));
+                    storedAttributeSettings.RemoveAll(attribute => !sqlFilterAttributes.Any(t => t.Name == attribute.Name));
 
                     await _databaseSqlMembershipSourcesRepository.UpdateDefaultSourceAttributesAsync(storedAttributeSettings);
                 }
@@ -49,10 +49,12 @@ namespace Services
                 var attributesToReturn = sqlFilterAttributes.Select(sqlAttribute =>
                 {
                     var storedAttribute = storedAttributeSettings?.FirstOrDefault(attribute =>
-                        attribute.Name == sqlAttribute.Name && attribute.Type == sqlAttribute.Type
+                        attribute.Name == sqlAttribute.Name
                     );
 
-                    return storedAttribute ?? sqlAttribute;
+                    sqlAttribute.CustomLabel = (storedAttribute != null) ? storedAttribute.CustomLabel : "";
+
+                    return sqlAttribute;
 
                 }).ToList();
 
