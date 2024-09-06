@@ -1,15 +1,15 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
+using Models.Helpers;
 using Newtonsoft.Json;
+using Repositories.Contracts;
 using SqlMembershipObtainer.SubOrchestrator;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Repositories.Contracts;
 
 namespace SqlMembershipObtainer
 {
@@ -19,8 +19,8 @@ namespace SqlMembershipObtainer
         {
         }
 
-        [FunctionName(nameof(OrganizationProcessorFunction))]
-        public async Task<GraphProfileInformationResponse> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(OrganizationProcessorFunction))]
+        public async Task<GraphProfileInformationResponse> ProcessQueryAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             List<GraphProfileInformation> graphProfileInformation = null;
             var response = new GraphProfileInformationResponse();

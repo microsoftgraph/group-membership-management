@@ -1,17 +1,16 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
-using System.Text;
-using System.Threading.Tasks;
 using Azure.Messaging.ServiceBus;
-using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
+using System;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
@@ -28,10 +27,10 @@ namespace SqlMembershipObtainer
             _isSqlMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
         [ServiceBusTrigger("%serviceBusTopicName%", "SqlMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-        [DurableClient] IDurableOrchestrationClient starter)
+        [DurableClient] DurableTaskClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -55,7 +54,7 @@ namespace SqlMembershipObtainer
                 TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 1,
             };
 
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
+            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {syncJob.Id} ", RunId = runId });
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
