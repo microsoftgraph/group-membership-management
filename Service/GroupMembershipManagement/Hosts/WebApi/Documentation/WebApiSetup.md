@@ -99,9 +99,9 @@ Note: Individual users can be added and granted the proper permission, if you de
 
 ## Add trusted client applications
 
-The WebpAPI will be called by the GMM UI. In order to allow it to call the WebAPI, it needs to be added as trusted client application.
+The WebAPI will be called by the GMM UI. In order to allow it to call the WebAPI, it needs to be added as trusted client application.
 
-Create UI application by following `UI\Documentation\UISetup.md`.
+Create UI application by following [UI\Documentation\UISetup.md](../../../../../UI/Documentation/UISetup.md).
 
 1. From the Azure Portal locate and open "Microsoft Entra ID"
 2. On the left menu select "App Registrations"
@@ -125,55 +125,8 @@ Make sure to select the Authorized scope.
 9. Check "user_impersonation" on and click "Add permissions"
 10. Click "Grant admin consent for <tenant-name>"
 
-*The following steps need to be completed after a successful deployment*
-
-## Grant Permissions
-
-This step needs to be completed after all the resources have been deployed to your Azure tenant.
-
-See [Post-Deployment tasks](../../../../../README.md#post-deployment-tasks)
-
-Running the script mentioned in the Post-Deployment tasks section will grant the WebAPI system identity access to the resources it needs.
-
-To properly setup the WebAPI you will need to configure the parameters in the `WebApi/Infrastructure/compute/parameters` for your environment.
-If you have a custom domain, follow the instructions [here](WebApiSetup.md/#setting-up-a-custom-domain). If not, skip on to the instructions [here](WebApiSetup.md/#using-the-default).
-
-### Grant access to the SQL Server Database
-
-WebAPI will access the database using its system identity to authenticate with the database to prevent the use of credentials.
-
-Once the WebAPI is deployed (`<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi`)and has been created we need to grant it access to the SQL Server DB.
-
-Server name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-r` for the replica server.
-Database name follows this naming convention `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>` and `<SolutionAbbreviation>-data-<EnvironmentAbbreviation>-r` for the replica database.
-
-1. Connect to your SQL Server Database using Sql Server Management Studio (SSMS) or Azure Data Studio.
-- Server name : `<server-name>.database.windows.net`
-- User name: Use your Azure account.
-- Authentication: Microsoft Entra ID - Universal with MFA
-- Database name: `<database-name>`
-
-2. Run these SQL command
-
-- This script needs to run only once per database.
-- Make sure you are connected to right database. Sometimes SSMS will default to the master database.
-
-```
-IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi')
-BEGIN
- CREATE USER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi] FROM EXTERNAL PROVIDER;
- ALTER ROLE db_datareader ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi];
- ALTER ROLE db_datawriter ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi];
- ALTER ROLE db_ddladmin ADD MEMBER [<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi];
-END
-```
-
-Verify it ran successufully by running:
-```
-SELECT * FROM sys.database_principals WHERE name = N'<SolutionAbbreviation>-compute-<EnvironmentAbbreviation>-webapi'
-```
-You should see one record for your webapi app.
-Repeat the steps for both databases.
+* To properly setup the WebAPI you will need to configure the parameters in the `WebApi/Infrastructure/compute/parameters` for your environment.
+If you have a custom domain, follow the instructions [here](#setting-up-a-custom-domain). If not, skip on to the instructions [here](#using-the-default-domain).
 
 ## Setting up a custom domain
 If you have a custom domain ('contoso.com', for example) and want to use it, you will need to upgrade your App Service Plan. You can set the API custom domain in the `apiHostname` parameter as `api.contoso.com`.
