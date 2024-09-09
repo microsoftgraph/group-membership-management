@@ -31,7 +31,7 @@ namespace Repositories.EntityFramework
             return sources;
         }
 
-        public async Task<List<SqlMembershipAttribute>> GetSourceAttributesAsync(string sourceName)
+        public async Task<List<SqlMembershipAttribute>?> GetSourceAttributesAsync(string sourceName)
         {
             var source = await _readContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == sourceName);
             return source?.Attributes;
@@ -40,14 +40,14 @@ namespace Repositories.EntityFramework
         public async Task UpdateSourceAttributesAsync(string sourceName, List<SqlMembershipAttribute> attributes)
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == sourceName);
-            source.Attributes = attributes;
+            source!.Attributes = attributes;
             await _writeContext.SaveChangesAsync();
         }
 
         public async Task UpdateSourceCustomLabelAsync(string sourceName, string newCustomLabel)
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == sourceName);
-            source.CustomLabel = newCustomLabel;
+            source!.CustomLabel = newCustomLabel;
             await _writeContext.SaveChangesAsync();
         }
 
@@ -55,7 +55,7 @@ namespace Repositories.EntityFramework
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == "SqlMembership");
             return new SqlMembershipSource {
-                Name = source.Name,
+                Name = source!.Name,
                 CustomLabel = source.CustomLabel
             };
         }
@@ -63,20 +63,20 @@ namespace Repositories.EntityFramework
         public async Task<List<SqlMembershipAttribute>> GetDefaultSourceAttributesAsync()
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == "SqlMembership");
-            return source.Attributes;
+            return source!.Attributes;
         }
 
         public async Task UpdateDefaultSourceCustomLabelAsync(string newCustomLabel)
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == "SqlMembership");
-            source.CustomLabel = newCustomLabel;
+            source!.CustomLabel = newCustomLabel;
             await _writeContext.SaveChangesAsync();
         }
 
         public async Task UpdateDefaultSourceAttributesAsync(List<SqlMembershipAttribute> attributes)
         {
             var source = await _writeContext.SqlMembershipSources.FirstOrDefaultAsync(s => s.Name == "SqlMembership");
-            source.Attributes = attributes;
+            source!.Attributes = attributes;
             await _writeContext.SaveChangesAsync();
         }
     }

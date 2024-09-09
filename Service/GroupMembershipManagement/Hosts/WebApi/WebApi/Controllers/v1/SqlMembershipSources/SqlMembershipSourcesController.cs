@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Models;
@@ -21,6 +22,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
         private readonly IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> _getDefaultSqlMembershipSourceAttributeValuesHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> _patchDefaultSqlMembershipSourceCustomLabelHandler;
         private readonly IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> _patchDefaultSqlMembershipSourceAttributesHandler;
+        private readonly IRequestHandler<GetSqlValidationRequest, GetSqlValidationResponse> _getSqlValidationHandler;
 
         public SqlMembershipSourcesController(
             IRequestHandler<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse> getDefaultSqlMembershipSourceHandler,
@@ -28,7 +30,8 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             IRequestHandler<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse> getDefaultSqlMembershipSourceAttributeMappingsHandler,
             IRequestHandler<GetDefaultSqlMembershipSourceAttributeValuesRequest, GetDefaultSqlMembershipSourceAttributeValuesResponse> getDefaultSqlMembershipSourceAttributeValuesHandler,
             IRequestHandler<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse> patchDefaultSqlMembershipSourceCustomLabelHandler,
-            IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> patchDefaultSqlMembershipSourceAttributesHandler)
+            IRequestHandler<PatchDefaultSqlMembershipSourceAttributesRequest, NullResponse> patchDefaultSqlMembershipSourceAttributesHandler,
+            IRequestHandler<GetSqlValidationRequest, GetSqlValidationResponse> getSqlValidationHandler)
         {
             _getDefaultSqlMembershipSourceHandler = getDefaultSqlMembershipSourceHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceHandler));
             _getDefaultSqlMembershipSourceAttributesHandler = getDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributesHandler));
@@ -36,6 +39,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             _getDefaultSqlMembershipSourceAttributeValuesHandler = getDefaultSqlMembershipSourceAttributeValuesHandler ?? throw new ArgumentNullException(nameof(getDefaultSqlMembershipSourceAttributeValuesHandler));
             _patchDefaultSqlMembershipSourceCustomLabelHandler = patchDefaultSqlMembershipSourceCustomLabelHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceCustomLabelHandler));
             _patchDefaultSqlMembershipSourceAttributesHandler = patchDefaultSqlMembershipSourceAttributesHandler ?? throw new ArgumentNullException(nameof(patchDefaultSqlMembershipSourceAttributesHandler));
+            _getSqlValidationHandler = getSqlValidationHandler ?? throw new ArgumentNullException(nameof(getSqlValidationHandler));
         }
 
         [Authorize()]
@@ -109,7 +113,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
             catch (Exception)
             {
-                return StatusCode(500);
+                return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
 
@@ -124,7 +128,22 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
             }
             catch (Exception)
             {
-                return StatusCode(500);
+                return StatusCode((int)HttpStatusCode.InternalServerError);
+            }
+        }
+
+        [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpPost("validateFilters")]
+        public async Task<IActionResult> ValidateSqlFiltersAsync([FromBody] string[] sqlFilters)
+        {
+            try
+            {
+                var response = await _getSqlValidationHandler.ExecuteAsync(new GetSqlValidationRequest(sqlFilters));
+                return Ok(response);
+            }
+            catch (Exception)
+            {
+                return StatusCode((int)HttpStatusCode.InternalServerError);
             }
         }
     }

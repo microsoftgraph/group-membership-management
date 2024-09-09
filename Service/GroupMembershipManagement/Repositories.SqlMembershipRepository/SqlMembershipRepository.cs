@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core.Pipeline;
 using Azure.Identity;
 using Microsoft.Data.SqlClient;
 using Polly;
@@ -7,6 +8,8 @@ using Polly.Retry;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using SqlMembershipObtainer.Entities;
+using System;
+using System.Collections.Concurrent;
 using System.Data;
 
 namespace Repositories.SqlMembershipRepository
@@ -341,7 +344,7 @@ namespace Repositories.SqlMembershipRepository
             try
             {
                 var selectQuery = $@"
-                    SELECT c.name, t.name AS type 
+                    SELECT c.name, t.name AS type
                     FROM sys.columns AS c
                     JOIN sys.types AS t ON c.user_type_id = t.user_type_id
                     WHERE c.object_id = OBJECT_ID('[users].[{tableName}]')
@@ -483,7 +486,7 @@ namespace Repositories.SqlMembershipRepository
                                     if (value != null)
                                     {
                                         attributeValues.Add(value);
-                                    }                               
+                                    }
                                 }
                                 await reader.CloseAsync();
                             }
@@ -499,6 +502,37 @@ namespace Repositories.SqlMembershipRepository
 
             return attributeValues;
         }
+        public async Task<Dictionary<int, string>> ValidateFiltersAsync(string[] sqlFilters, string tableName)
+        {
+            var exceptionsList = new ConcurrentDictionary<int, string>();
+
+            var tasks = sqlFilters.Select(async (sqlFilter, index) =>
+            {
+                try
+                {
+                    var selectQuery = $@"SET NOEXEC ON; SELECT * FROM [users].[{tableName}] WHERE {sqlFilter}";
+
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        await conn.OpenAsync();
+
+                        var cmd = new SqlCommand(selectQuery, conn);
+                        await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
+
+                        await conn.CloseAsync();
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    exceptionsList.TryAdd(index, ex.Message);
+                }
+            });
+
+            await Task.WhenAll(tasks);
+
+            return exceptionsList.ToDictionary();
+        }
+
         private AsyncRetryPolicy GetRetryPolicyAsync()
         {
             return Policy.Handle<SqlException>()
