@@ -71,7 +71,7 @@ namespace Services
                 }
 
                 var serializedDestination = JsonSerializer.Serialize(destination, _destinationObjectSerializerOptions);
-                destinations.Add(new DestinationReaderResponse { Destination = serializedDestination, GroupId = job.Id });
+                destinations.Add(new DestinationReaderResponse { Destination = serializedDestination, JobId = job.Id });
             }
 
             return destinations;
@@ -82,7 +82,7 @@ namespace Services
             
             var destinationAttributesList = new List<DestinationAttributes>();
             List<(DestinationObject? Destination, Guid JobId)> destinationObjectsMap = destinations
-                .Select(d => (JsonSerializer.Deserialize<DestinationObject>(d.Destination, _destinationObjectSerializerOptions), d.GroupId))
+                .Select(d => (JsonSerializer.Deserialize<DestinationObject>(d.Destination, _destinationObjectSerializerOptions), d.JobId))
                 .ToList();
             
             var destinationObjects = destinationObjectsMap.Select(d => d.Destination).ToList();

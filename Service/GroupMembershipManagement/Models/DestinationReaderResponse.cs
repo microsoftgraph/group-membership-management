@@ -8,7 +8,7 @@ namespace Models
 {
     public class DestinationReaderResponse
     {
-        public Guid GroupId { get; set; }
+        public Guid JobId { get; set; }
         public string Destination { get; set; }
     }
 }

@@ -93,7 +93,7 @@ namespace Services.Tests
             var destination1 = new DestinationObject() { Type = "GroupMembership", Value = new GroupDestinationValue() { ObjectId = Guid.NewGuid() } };
             var serializedDestination1 = SerializeDestination(destination1);
             var jobId1 = Guid.NewGuid();
-            var destinations = new List<DestinationReaderResponse>() { new DestinationReaderResponse { Destination = serializedDestination1, GroupId = jobId1 } };
+            var destinations = new List<DestinationReaderResponse>() { new DestinationReaderResponse { Destination = serializedDestination1, JobId = jobId1 } };
             _mockDestinationAttributeUpdaterService.Setup(x => x.GetDestinationsAsync(It.IsAny<string>())).ReturnsAsync(() => destinations);
 
             var destinationAttributes1 = new DestinationAttributes
