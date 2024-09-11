@@ -43,8 +43,24 @@ namespace Hosts.MembershipAggregator
             if (request.ReadFromBlobs)
             {
                 var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage 
+                    { 
+                        Message = $"Source blob download result: {sourceBlobResult.BlobStatus} for path {request.SourceMembershipFilePath}", 
+                        RunId = request.RunId 
+                    }, 
+                    VerbosityLevel.INFO
+                );
                 var destinationBlobResult = await _blobStorageRepository.DownloadFileAsync(request.DestinationMembershipFilePath);
 
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage 
+                    { 
+                        Message = $"Destination blob download result: {destinationBlobResult.BlobStatus} for path {request.DestinationMembershipFilePath}", 
+                        RunId = request.RunId 
+                    }, 
+                    VerbosityLevel.INFO
+                );
                 await _blobStorageRepository.DeleteFileAsync(request.SourceMembershipFilePath);
                 await _blobStorageRepository.DeleteFileAsync(request.DestinationMembershipFilePath);
 
