@@ -49,7 +49,7 @@ namespace Hosts.MembershipAggregator
                         Message = $"Source blob download result: {sourceBlobResult.BlobStatus} for path {request.SourceMembershipFilePath}", 
                         RunId = request.RunId 
                     }, 
-                    VerbosityLevel.INFO
+                    VerbosityLevel.DEBUG
                 );
                 var destinationBlobResult = await _blobStorageRepository.DownloadFileAsync(request.DestinationMembershipFilePath);
 
@@ -59,7 +59,7 @@ namespace Hosts.MembershipAggregator
                         Message = $"Destination blob download result: {destinationBlobResult.BlobStatus} for path {request.DestinationMembershipFilePath}", 
                         RunId = request.RunId 
                     }, 
-                    VerbosityLevel.INFO
+                    VerbosityLevel.DEBUG
                 );
                 await _blobStorageRepository.DeleteFileAsync(request.SourceMembershipFilePath);
                 await _blobStorageRepository.DeleteFileAsync(request.DestinationMembershipFilePath);
