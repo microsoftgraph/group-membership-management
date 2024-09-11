@@ -232,14 +232,20 @@ function parseSegment(segment: string, groupOperator?: string): Group {
       const contentOutsideParentheses = segment.replace(/\s*\([^)]*\)\s*/g, '||').split('||');
         if (innerSegments) {
           innerSegments.forEach((innerSegment, index) => {
-            const childGroup = parseSegment(innerSegment, contentOutsideParentheses && contentOutsideParentheses.length >= 0 ? contentOutsideParentheses[index+1] : "");
+            const childGroup = parseSegment(innerSegment, contentOutsideParentheses && contentOutsideParentheses.length >= 0 ? contentOutsideParentheses[index+1].trim().split(/\s+/)[0] : "");
             children.push(childGroup);
           });
         }
-
-        let start = segment.indexOf('(');
-        let end = segment.lastIndexOf(')');
-        let remainingSegment = segment.substring(0, start) + segment.substring(end + 1);
+        let remainingSegment = "";
+        contentOutsideParentheses.forEach((content) => {
+          const trimmedItem = content.trim();
+          if (trimmedItem !== "" && trimmedItem.toLowerCase() !== "or" && trimmedItem.toLowerCase() !== "and") {
+            if (trimmedItem.toLowerCase().trim().startsWith("or") || trimmedItem.toLowerCase().trim().startsWith("and")) {
+              remainingSegment = remainingSegment.toLowerCase().trim().endsWith("or") || remainingSegment.toLowerCase().trim().endsWith("and") ? remainingSegment.trim().replace(/(?:Or|And)$/i, '') : remainingSegment;
+            }
+            remainingSegment += trimmedItem + " ";
+          }
+        });
         var matchOperator  = remainingSegment.match(/^\s*(Or|And)|\s*(Or|And)\s*$/gi);
         var operator = matchOperator ? matchOperator[0].trim() : null;
         remainingSegment = remainingSegment.replace(/^\s*(Or|And)|\s*(Or|And)\s*$/gi, '').trim();
