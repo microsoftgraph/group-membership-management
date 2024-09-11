@@ -64,7 +64,7 @@ resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/link
     annotations: []
     type: 'AzureSqlDatabase'
     typeProperties: {
-      connectionString: 'Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=${sqlServerUrl};Initial Catalog=${sqlDataBaseName}'
+      connectionString: 'Integrated Security=False;Encrypt=True;Connection Timeout=90;Data Source=${sqlServerUrl};Initial Catalog=${sqlDataBaseName}'
     }
   }
   dependsOn: [
