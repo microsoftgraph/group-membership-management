@@ -27,7 +27,7 @@ module adfForHRData '../Infrastructure/adf/pipeline/template.bicep' = {
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     sqlServerName: sqlServerName
-    sqlDataBaseName: sqlDataBaseName
+    sqlDatabaseName: sqlDataBaseName
   }
   dependsOn: [
     sqlForHRData
