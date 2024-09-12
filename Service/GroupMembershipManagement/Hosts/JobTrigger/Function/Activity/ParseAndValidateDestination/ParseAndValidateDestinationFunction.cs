@@ -8,6 +8,8 @@ using Services.Contracts;
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
+using Azure;
+
 
 namespace Hosts.JobTrigger
 {
@@ -22,10 +24,14 @@ namespace Hosts.JobTrigger
         }
 
         [Function(nameof(ParseAndValidateDestinationFunction))]
-        public async Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync([ActivityTrigger] SyncJob syncJob)
         {
 
-            if (syncJob == null) return (false, null);
+            if (syncJob == null) return new ParsedAndValidateDestinationResponse
+            {
+                IsValid = false,
+                DestinationObject = null
+            };
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ParseAndValidateDestinationFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
             _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;

@@ -13,7 +13,7 @@ namespace Services.Contracts
     {
         public Guid RunId { get; set; }
         Task<List<SyncJob>> GetSyncJobsAsync();
-        Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob);
+        Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob);
         Task<string> GetDestinationNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
         Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job);

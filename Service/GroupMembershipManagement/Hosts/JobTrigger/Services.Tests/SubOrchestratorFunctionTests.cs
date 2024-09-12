@@ -81,7 +81,7 @@ namespace Services.Tests
             var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
             var serializedDestinationObject = JsonSerializer.Serialize(destinationObject, options);
 
-            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => (true, serializedDestinationObject));
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => new ParsedAndValidateDestinationResponse { IsValid = true, DestinationObject = serializedDestinationObject });
 
             _jobTriggerService.Setup(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus?>(), It.IsAny<SyncJob>()))
                               .Callback<SyncStatus?, SyncJob>((status, job) =>
@@ -96,7 +96,7 @@ namespace Services.Tests
                                         })
                                         .ReturnsAsync(() => _frequency);
 
-            _context.Setup(x => x.CallActivityAsync<(bool IsValid, string DestinationObject)>(It.Is<TaskName>(x => x.ToString() == nameof(ParseAndValidateDestinationFunction)), It.IsAny<SyncJob>(), null))
+            _context.Setup(x => x.CallActivityAsync<ParsedAndValidateDestinationResponse>(It.Is<TaskName>(x => x.ToString() == nameof(ParseAndValidateDestinationFunction)), It.IsAny<SyncJob>(), null))
                    .Returns(async () => await CallParseAndValidateDestinationFunction());
 
             _context.Setup(x => x.CallActivityAsync(
@@ -181,7 +181,11 @@ namespace Services.Tests
         {
             _syncJob.Destination = "{invalid destination}";
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => (false, null));
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => new ParsedAndValidateDestinationResponse
+            {
+                IsValid = false,
+                DestinationObject = null
+            });
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,
@@ -646,7 +650,7 @@ namespace Services.Tests
 				It.Is<TelemetryTrackerRequest>(req => req.JobStatus == SyncStatus.Error && req.ResultStatus == ResultStatus.Failure), null), Times.Once());
 		}
 
-		private async Task<(bool IsValid, string DestinationObject)> CallParseAndValidateDestinationFunction()
+		private async Task<ParsedAndValidateDestinationResponse> CallParseAndValidateDestinationFunction()
         {
             var parseAndValidateDestinationFunction = new ParseAndValidateDestinationFunction(_loggingRespository.Object, _jobTriggerService.Object);
             return await parseAndValidateDestinationFunction.ParseAndValidateDestinationAsync(new SyncJob());

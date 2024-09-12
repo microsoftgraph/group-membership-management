@@ -221,20 +221,27 @@ namespace Services
             var destinationObjectId =  DestinationParser.ParseDestination(job).Value.ObjectId;
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
-        public async Task<(bool IsValid, string DestinationObject)> ParseAndValidateDestinationAsync(SyncJob syncJob)
+        public async Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
             var destinationObject = DestinationParser.ParseDestination(syncJob);
 
             if (destinationObject == null)
             {
-                return (false, null);
+                return new ParsedAndValidateDestinationResponse{
+                    IsValid = false,
+                    DestinationObject = null
+                };
             }
             else
             {
                 var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
                 var serializedDestinationObject = JsonSerializer.Serialize(destinationObject, options);
 
-                return (true, serializedDestinationObject);
+                return new ParsedAndValidateDestinationResponse
+                {
+                    IsValid = true,
+                    DestinationObject = serializedDestinationObject
+                };
             }
         }
         private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)

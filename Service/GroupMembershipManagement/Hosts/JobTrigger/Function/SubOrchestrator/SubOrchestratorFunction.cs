@@ -77,7 +77,7 @@ namespace Hosts.JobTrigger
 
                 try
                 {
-                    var parsedAndValidatedDestination = await context.CallActivityAsync<(bool IsValid, string DestinationObject)>(nameof(ParseAndValidateDestinationFunction), syncJob);
+                    var parsedAndValidatedDestination = await context.CallActivityAsync<ParsedAndValidateDestinationResponse>(nameof(ParseAndValidateDestinationFunction), syncJob);
 
                     if (!parsedAndValidatedDestination.IsValid)
                     {
