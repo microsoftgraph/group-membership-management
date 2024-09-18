@@ -779,6 +779,9 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         {
           name: 'join'
         }
+        {
+          name: 'CastColumns'
+        }
       ]
       scriptLines: [
         'source(output('
@@ -807,7 +810,13 @@ resource dataFlow_PopulateDestinationDataFlow 'Microsoft.DataFactory/factories/d
         '     matchType:\'exact\','
         '     ignoreSpaces: false,'
         '     broadcast: \'auto\')~> join'
-        'join sink(allowSchemaDrift: true,'
+        'join cast(output('
+        '          PersonnelNumber as integer,'
+        '          EmployeeIdentificationNumber as integer,'
+        '          ManagerIdentificationNumber as integer'
+        '     ),'
+        '     errors: true) ~> CastColumns'
+        'CastColumns sink(allowSchemaDrift: true,'
         '     validateSchema: false,'
         '     deletable:false,'
         '     insertable:true,'
