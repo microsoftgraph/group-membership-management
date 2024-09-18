@@ -43,6 +43,11 @@ namespace Common.DependencyInjection
             return new ClientCertificateCredential(creds.TenantId, creds.ClientId, GetCertificate(creds.ClientCertificateName, creds.KeyVaultName));
         }
 
+        public static TokenCredential CreateAuthProviderFromCertificate(string tenantId, string clientId, string certificateName, string KeyVaultName)
+        {
+            return new ClientCertificateCredential(tenantId, clientId, GetCertificate(certificateName, KeyVaultName));
+        }
+
         public static TokenCredential CreateServiceAccountAuthProvider(GraphCredentials creds)
         {
             return new UsernamePasswordCredential(creds.ServiceAccountUserName, creds.ServiceAccountPassword, creds.TenantId, creds.ClientId);
