@@ -88,7 +88,7 @@ namespace Hosts.PlaceMembershipObtainer
                     }
                 }
 
-                var response = await context.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(nameof(SubOrchestratorFunction), 
+                var response = await context.CallSubOrchestratorAsync<SubOrchestratorResponse>(nameof(SubOrchestratorFunction), 
                     new SubOrchestratorRequest { SyncJob = syncJob, Url = currentQueryAsString, RunId = runId });
 
                 if (response.Status != SyncStatus.InProgress)

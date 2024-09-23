@@ -163,7 +163,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -181,9 +181,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         [TestMethod]
@@ -236,7 +236,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -254,9 +254,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         [TestMethod]
@@ -308,7 +308,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -326,9 +326,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         [TestMethod]
@@ -391,7 +391,7 @@ namespace Tests.Services
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
-            var (Users, Status) = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+            var subOrchestratorResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                     It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
@@ -410,9 +410,9 @@ namespace Tests.Services
                         It.IsAny<string>()
                     ), Times.Once);
 
-            Assert.IsNotNull(Users);
-            Assert.AreEqual(_userCount, Users.Count);
-            Assert.AreEqual(SyncStatus.InProgress, Status);
+            Assert.IsNotNull(subOrchestratorResponse.Users);
+            Assert.AreEqual(_userCount, subOrchestratorResponse.Users.Count);
+            Assert.AreEqual(SyncStatus.InProgress, subOrchestratorResponse.Status);
         }
 
         private async Task<PlaceInformation> CallRoomsReaderFunctionAsync(RoomsReaderRequest request)

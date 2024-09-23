@@ -13,8 +13,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.DurableTask;
-using Repositories.Mocks;
 using System.Threading;
+using Repositories.Mocks;
 
 namespace Tests.Services
 {

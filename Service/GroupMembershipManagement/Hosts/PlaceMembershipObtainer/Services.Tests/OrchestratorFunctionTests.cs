@@ -101,7 +101,7 @@ namespace Tests.Services
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
 
-            _context.Setup(x => x.CallSubOrchestratorAsync<(List<AzureADUser> Users, SyncStatus Status)>(It.IsAny<TaskName>(), It.IsAny<object>(), null))
+            _context.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<object>(), null))
                 .ReturnsAsync(() =>
                 {
                     var users = new List<AzureADUser>();
@@ -110,7 +110,7 @@ namespace Tests.Services
                         users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                     }
 
-                    var response = (Users: users, Status: _subOrchestratorResponseStatus);
+                    var response = new SubOrchestratorResponse { Users = users, Status = _subOrchestratorResponseStatus };
                     return response;
                 });
 

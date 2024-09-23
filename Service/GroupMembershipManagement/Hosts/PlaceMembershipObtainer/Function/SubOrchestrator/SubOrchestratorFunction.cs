@@ -24,7 +24,7 @@ namespace Hosts.PlaceMembershipObtainer
         }
 
         [Function(nameof(SubOrchestratorFunction))]
-        public async Task<(List<AzureADUser> Users, SyncStatus Status)> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<SubOrchestratorRequest>();
             var allUsers = new List<AzureADUser>();
@@ -66,12 +66,12 @@ namespace Hosts.PlaceMembershipObtainer
                 else
                 {
                     _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Url {request.Url} not supported" });
-                    return (allUsers, SyncStatus.Error);
+                    return ( new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.Error });
                 }
                 _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Read {allUsers.Count} users" });
             }
             _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return (allUsers, SyncStatus.InProgress);
+            return (new SubOrchestratorResponse { Users = allUsers, Status = SyncStatus.InProgress });
         }
     }
 }
