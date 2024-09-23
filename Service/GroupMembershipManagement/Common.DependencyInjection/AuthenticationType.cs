@@ -8,6 +8,7 @@ namespace Common.DependencyInjection
         Unknown = 0,
         ClientSecret = 1,
         Certificate = 2,
-        UserAssignedManagedIdentity = 3
+        UserAssignedManagedIdentity = 3, 
+        FederatedIdentity = 4
     }
 }
