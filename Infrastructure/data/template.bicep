@@ -458,10 +458,10 @@ var allTopics = [for topic in serviceBusTopicSubscriptions: topic.topicName ]
 var uniqueTopics = union(allTopics, [])
 
 module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [for topic in uniqueTopics: {
-    name: '${topic.topicName}-serviceBusTopicTemplate'
+    name: '${topic}-Template'
     params: {
       serviceBusName: serviceBusName
-      topicName: topic.topicName
+      topicName: topic
     }
     dependsOn: [
       serviceBusTemplate
@@ -471,7 +471,7 @@ module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [for topic in uniqueTop
 ]
 
 module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [ for topic in serviceBusTopicSubscriptions: {
-    name: '${topic.topicName}-${topic.subscriptionName}-serviceBusSubscriptionsTemplate'
+    name: '${topic.topicName}-${topic.subscriptionName}-Template'
     params: {
       serviceBusName: serviceBusName
       topicSubscriptions: serviceBusTopicSubscriptions

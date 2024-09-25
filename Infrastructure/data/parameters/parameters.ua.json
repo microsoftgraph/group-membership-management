@@ -5,27 +5,72 @@
     "serviceBusTopicSubscriptions": {
       "value": [
         {
-          "name": "GroupMembership",
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater",
+          "ruleName": "updaterType",
+          "ruleSqlExpression": "Type = 'GroupMembership'"
+        },
+        {
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "TeamsChannelUpdater",
+          "ruleName": "updaterType",
+          "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "PlaceMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'PlaceMembership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "GroupMembership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'GroupMembership'"
         },
         {
-          "name": "TeamsChannelMembership",
+          "topicName": "syncJobs",
+          "subscriptionName": "TeamsChannelMembership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
         },
         {
-          "name": "GroupOwnership",
+          "topicName": "syncJobs",
+          "subscriptionName": "GroupOwnership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'GroupOwnership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "SqlMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'SqlMembership'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Small",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Medium",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Medium'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Large",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Onboarding",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Onboarding'"
         }
       ]
-    },
-    "serviceBusTopicName": {
-      "value": "syncJobs"
-    },
-    "serviceBusQueueName": {
-      "value": "membership"
     },
     "notifierProviderId": {
       "value": ""
@@ -47,23 +92,6 @@
     },
     "sqlSkuCapacity": {
       "value": 4
-    },
-    "serviceBusMembershipUpdatersTopicSubscriptions": {
-      "value": {
-        "topicName": "membershipUpdaters",
-        "subscriptions": [
-          {
-            "name": "GraphUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'GroupMembership'"
-          },
-          {
-            "name": "TeamsChannelUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
-          }
-        ]
-      }
     }
   }
 }
