@@ -1,3 +1,10 @@
+type topicSubscription = {
+  topicName: string
+  subscriptionName: string
+  ruleName: string
+  ruleSqlExpression: string
+}
+
 @description('Enter an abbreviation for the solution.')
 @minLength(2)
 @maxLength(3)
@@ -75,25 +82,8 @@ param serviceBusName string = '${solutionAbbreviation}-${resourceGroupClassifica
 ])
 param serviceBusSku string = 'Standard'
 
-@description('Enter service bus topic name.')
-param serviceBusTopicName string = 'syncJobs'
-
 @description('Enter service bus topic\'s subscriptions.')
-param serviceBusTopicSubscriptions array = [
-  {
-    name: 'GroupMembership'
-    ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'GroupMembership\''
-  }
-  {
-    name: 'PlaceMembership'
-    ruleName: 'syncType'
-    ruleSqlExpression: 'Type = \'PlaceMembership\''
-  }
-]
-
-@description('Enter service bus membership updaters topic\'s and subscriptions details.')
-param serviceBusMembershipUpdatersTopicSubscriptions object
+param serviceBusTopicSubscriptions topicSubscription[]
 
 @description('Enter membership aggregator service bus queue name')
 param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'
@@ -397,7 +387,9 @@ param sqlAdministratorsGroupName string
 @description('Failed notifications alert threshold.')
 param notificationAlertThreshold int = 10
 
-module sqlServer 'sqlServer.bicep' =  {
+var syncJobsTopicName = 'syncJobs'
+
+module sqlServer 'sqlServer.bicep' = {
   name: 'sqlServerTemplate'
   params: {
     solutionAbbreviation: solutionAbbreviation
@@ -412,15 +404,20 @@ module sqlServer 'sqlServer.bicep' =  {
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
     tenantId: tenantId
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
 
-var isDataKVPresent = !empty(existingDataResources) ? !empty(filter(json(existingDataResources), x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults')) : false
+var isDataKVPresent = !empty(existingDataResources)
+  ? !empty(filter(
+      json(existingDataResources),
+      x => x.Name == keyVaultName && x.ResourceType == 'Microsoft.KeyVault/vaults'
+    ))
+  : false
 var graphUserAssignedManagedIdentityName = '${solutionAbbreviation}-identity-${environmentAbbreviation}-Graph'
 
-module dataKeyVaultTemplate 'keyVault.bicep' = if(!isDataKVPresent) {
+module dataKeyVaultTemplate 'keyVault.bicep' = if (!isDataKVPresent) {
   name: 'dataKeyVaultTemplate'
   params: {
     name: keyVaultName
@@ -437,7 +434,7 @@ module graphUserAssignedManagedIdentity 'userAssignedIdentity.bicep' = {
     identityName: graphUserAssignedManagedIdentityName
     location: location
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
@@ -457,55 +454,34 @@ module serviceBusTemplate 'serviceBus.bicep' = {
   ]
 }
 
-module serviceBusTopicTemplate 'serviceBusTopic.bicep' = {
-  name: 'serviceBusTopicTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusTopicName
-  }
-  dependsOn: [
-    serviceBusTemplate
-    logAnalyticsTemplate
-  ]
-}
+var allTopics = [for topic in serviceBusTopicSubscriptions: topic.topicName ]
+var uniqueTopics = union(allTopics, [])
 
-module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
-  name: 'serviceBusSubscriptionsTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusTopicName
-    topicSubscriptions: serviceBusTopicSubscriptions
+module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [for topic in uniqueTopics: {
+    name: '${topic.topicName}-serviceBusTopicTemplate'
+    params: {
+      serviceBusName: serviceBusName
+      topicName: topic.topicName
+    }
+    dependsOn: [
+      serviceBusTemplate
+      logAnalyticsTemplate
+    ]
   }
-  dependsOn: [
-    serviceBusTopicTemplate
-    logAnalyticsTemplate
-  ]
-}
+]
 
-module serviceBusMembershipUpdatersTopicTemplate 'serviceBusTopic.bicep' = {
-  name: 'serviceBusMembershipUpdatersTopicTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusMembershipUpdatersTopicSubscriptions.topicName
-  }
-  dependsOn: [
-    serviceBusTemplate
-    logAnalyticsTemplate
-  ]
-}
-
-module serviceBusMembershipUpdatersSubscriptionsTemplate 'serviceBusSubscription.bicep' = {
-  name: 'serviceBusMembershipUpdatersSubscriptionsTemplate'
-  params: {
-    serviceBusName: serviceBusName
-    topicName: serviceBusMembershipUpdatersTopicSubscriptions.topicName
-    topicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions.subscriptions
-  }
-  dependsOn: [
-    serviceBusMembershipUpdatersTopicTemplate
-    logAnalyticsTemplate
-  ]
-}
+module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [ for topic in serviceBusTopicSubscriptions: {
+    name: '${topic.topicName}-${topic.subscriptionName}-serviceBusSubscriptionsTemplate'
+    params: {
+      serviceBusName: serviceBusName
+      topicSubscriptions: serviceBusTopicSubscriptions
+    }
+    dependsOn: [
+      serviceBusTopicTemplate
+      logAnalyticsTemplate
+    ]
+ }
+]
 
 module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
   name: 'membershipAggregatorQueue'
@@ -515,7 +491,7 @@ module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
     logAnalyticsTemplate
   ]
@@ -529,7 +505,7 @@ module notificationsQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
     logAnalyticsTemplate
   ]
@@ -543,7 +519,7 @@ module failedNotificationsQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
   ]
 }
@@ -556,7 +532,7 @@ module syncJobUpdaterQueue 'serviceBusQueue.bicep' = {
     requiresSession: false
     maxDeliveryCount: 5
   }
-  dependsOn:[
+  dependsOn: [
     serviceBusTemplate
   ]
 }
@@ -568,7 +544,7 @@ module storageAccountTemplate 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
@@ -582,7 +558,7 @@ module jobsStorageAccountTemplate 'storageAccount.bicep' = {
     addJobsStorageAccountPolicies: true
     location: location
   }
-  dependsOn:[
+  dependsOn: [
     dataKeyVaultTemplate
   ]
 }
@@ -675,11 +651,15 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       }
       {
         name: 'serviceBusSyncJobTopic'
-        value: serviceBusTopicName
+        value: syncJobsTopicName
       }
       {
         name: 'serviceBusMembershipUpdatersTopic'
-        value: serviceBusMembershipUpdatersTopicSubscriptions.topicName
+        value: 'membershipUpdaters'
+      }
+      {
+        name: 'serviceBusMessageSplipperTopic'
+        value: 'messageSplitter'
       }
       {
         name: 'logAnalyticsCustomerId'
@@ -759,5 +739,5 @@ module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
 
 output storageAccountName string = storageAccountName
 output serviceBusName string = serviceBusName
-output serviceBusTopicName string = serviceBusTopicName
+output serviceBusTopicName string = syncJobsTopicName
 output isDataKVPresent bool = isDataKVPresent
