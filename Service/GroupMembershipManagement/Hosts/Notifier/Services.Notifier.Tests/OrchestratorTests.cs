@@ -7,7 +7,6 @@ using Models;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models.Notifications;
 using Models.ThresholdNotifications;
 using Repositories.Contracts;
