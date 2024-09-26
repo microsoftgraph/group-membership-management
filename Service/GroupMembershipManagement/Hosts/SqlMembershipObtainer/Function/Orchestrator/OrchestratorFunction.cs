@@ -46,7 +46,7 @@ namespace SqlMembershipObtainer
                 var currentQuery = currentPart.Value<JObject>("source");
                 var currentQueryAsString = Convert.ToString(currentQuery);
 
-                if (string.IsNullOrWhiteSpace(currentQueryAsString) || currentQueryAsString.Contains("ids"))
+                if (string.IsNullOrWhiteSpace(currentQueryAsString))
                 {
                     await context.CallActivityAsync(
                            nameof(LoggerFunction),
