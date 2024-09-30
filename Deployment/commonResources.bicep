@@ -25,7 +25,6 @@ param teamsChannelServiceAccountUsername string
 
 // data parameters
 param notifierProviderId string
-param serviceBusMembershipUpdatersTopicSubscriptions object
 param serviceBusTopicSubscriptions array
 param sqlAdministratorsGroupId string
 param sqlAdministratorsGroupName string
@@ -85,7 +84,6 @@ module dataResources 'dataResources.bicep' = {
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     notifierProviderId: notifierProviderId
-    serviceBusMembershipUpdatersTopicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlAdministratorsGroupName: sqlAdministratorsGroupName

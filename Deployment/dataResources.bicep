@@ -2,7 +2,6 @@ param location string
 param environmentAbbreviation string
 param solutionAbbreviation string
 param notifierProviderId string
-param serviceBusMembershipUpdatersTopicSubscriptions object
 param serviceBusTopicSubscriptions array
 param sqlAdministratorsGroupId string
 param sqlAdministratorsGroupName string
@@ -23,7 +22,6 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     notifierProviderId: notifierProviderId
-    serviceBusMembershipUpdatersTopicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlAdministratorsGroupName: sqlAdministratorsGroupName

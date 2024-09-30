@@ -101,53 +101,72 @@
     "serviceBusTopicSubscriptions": {
       "value": [
         {
-          "name": "Organization",
-          "ruleName": "syncType",
-          "ruleSqlExpression": "Type = 'Organization'"
-        },
-        {
-          "name": "GroupMembership",
-          "ruleName": "syncType",
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater",
+          "ruleName": "updaterType",
           "ruleSqlExpression": "Type = 'GroupMembership'"
         },
         {
-          "name": "PlaceMembership",
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "TeamsChannelUpdater",
+          "ruleName": "updaterType",
+          "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "PlaceMembership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'PlaceMembership'"
         },
         {
-          "name": "TeamsChannelMembership",
-          "rulename": "syncType",
-          "rulesqlexpression": "Type = 'TeamsChannelMembership'"
+          "topicName": "syncJobs",
+          "subscriptionName": "GroupMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'GroupMembership'"
         },
         {
-          "name": "GroupOwnership",
+          "topicName": "syncJobs",
+          "subscriptionName": "TeamsChannelMembership",
+          "ruleName": "syncType",
+          "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
+        },
+        {
+          "topicName": "syncJobs",
+          "subscriptionName": "GroupOwnership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'GroupOwnership'"
         },
         {
-          "name": "SqlMembership",
+          "topicName": "syncJobs",
+          "subscriptionName": "SqlMembership",
           "ruleName": "syncType",
           "ruleSqlExpression": "Type = 'SqlMembership'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Small",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Medium",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Medium'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Large",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Onboarding",
+          "ruleName": "jobSize",
+          "ruleSqlExpression": "laneSize = 'Onboarding'"
         }
       ]
-    },
-    "serviceBusMembershipUpdatersTopicSubscriptions": {
-      "value": {
-        "topicName": "membershipUpdaters",
-        "subscriptions": [
-          {
-            "name": "GraphUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'GroupMembership'"
-          },
-          {
-            "name": "TeamsChannelUpdater",
-            "ruleName": "updaterType",
-            "ruleSqlExpression": "Type = 'TeamsChannelMembership'"
-          }
-        ]
-      }
     },
     "sharepointDomain": {
       "value": "m365x00000000.sharepoint.com",
@@ -185,7 +204,7 @@
       }
     },
     "pipeline": {
-      "value": "PopulateDestinationPipeline"
+      "value": "PopulateDestinationPipeline_demo"
     },
     "setRBACPermissions": {
       "value": true,

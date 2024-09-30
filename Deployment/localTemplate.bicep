@@ -33,7 +33,6 @@ param teamsChannelServiceAccountUsername string
 
 // data parameters
 param notifierProviderId string
-param serviceBusMembershipUpdatersTopicSubscriptions object
 param serviceBusTopicSubscriptions array
 param sqlAdministratorsGroupId string
 param sqlAdministratorsGroupName string
@@ -91,7 +90,6 @@ module gmmResources 'commonResources.bicep' = {
     teamsChannelServiceAccountPassword: teamsChannelServiceAccountPassword
     teamsChannelServiceAccountUsername: teamsChannelServiceAccountUsername
     notifierProviderId: notifierProviderId
-    serviceBusMembershipUpdatersTopicSubscriptions: serviceBusMembershipUpdatersTopicSubscriptions
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlAdministratorsGroupName: sqlAdministratorsGroupName
