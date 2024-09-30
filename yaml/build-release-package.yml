@@ -45,9 +45,18 @@ stages:
         targetType: inline
         workingDirectory: 'Deployment'
         script: |
-          $templateFiles = Get-ChildItem -Path . -Filter "*.bicep"
-          foreach ($templateFile in $templateFiles) {
-            az bicep build --file $templateFile.FullName
+          try {
+            $templateFiles = Get-ChildItem -Path . -Filter "*.bicep"
+            foreach ($templateFile in $templateFiles) {
+              az bicep build --file $templateFile.FullName
+              if ($LASTEXITCODE -ne 0) {
+                Write-Error "az bicep build failed with exit code $LASTEXITCODE"
+                exit $LASTEXITCODE
+              }
+            }
+          } catch {
+            Write-Error "An error occurred: $_"
+            exit 1
           }
         pwsh: true
 
