@@ -259,7 +259,7 @@ This email notifies the user that a notification has expired. The time period to
 This email is sent as a fallback notification when an Outlook Actionable Message fails to render. It provides users with a warning message about the failure and displays the content of the fallback message, ensuring the recipient is still informed about the threshold notification.
 
 ### Email Format:
-- Adaptive Card: Yes
+- Adaptive Card: No
 - Visual Example:
 
 ![ThresholdNotificationFallback](/Documentation/NotificationImages/ThresholdNotificationFallback.png)
