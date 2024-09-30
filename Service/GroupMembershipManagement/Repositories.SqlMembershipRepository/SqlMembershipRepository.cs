@@ -24,7 +24,7 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth)
         {
             var children = new List<PersonEntity>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
 
             try
             {
@@ -45,7 +45,7 @@ namespace Repositories.SqlMembershipRepository
                         SELECT *
                         FROM emp e {depthQuery} {filterQuery}";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -83,7 +83,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, int id)> GetOrgLeaderDetailsAsync(string azureObjectId, string tableName)
         {
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
             int employeeId = 0;
 
@@ -107,7 +107,7 @@ namespace Repositories.SqlMembershipRepository
 
                 var selectIdQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = '{azureObjectId}'";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -155,12 +155,12 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName)
         {
             var filteredChildren = new List<PersonEntity>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
                 var selectQuery = $"SELECT EmployeeId, AzureObjectId FROM [users].[{tableName}] WHERE {query}";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -198,10 +198,10 @@ namespace Repositories.SqlMembershipRepository
         public async Task<bool> CheckIfTableExistsAsync(string tableName)
         {
             bool tableExists = false;
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -227,12 +227,12 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<string>> GetColumnNamesAsync(string tableName)
         {
             var HRColumns = new List<string>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
                 var selectQuery = $"SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('[users].[{tableName}]') ORDER BY name";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -265,7 +265,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName)
         {
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
             string azureObjectId = "";
 
@@ -289,7 +289,7 @@ namespace Repositories.SqlMembershipRepository
 
                 var selectIdQuery = $"SELECT AzureObjectId FROM [users].[{tableName}] WHERE EmployeeId = {employeeId}";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -337,7 +337,7 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
         {
             var columnDetails = new List<(string Name, string Type)>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
                 var selectQuery = $@"
@@ -347,7 +347,7 @@ namespace Repositories.SqlMembershipRepository
                     WHERE c.object_id = OBJECT_ID('[users].[{tableName}]')
                     ORDER BY c.name";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -383,10 +383,10 @@ namespace Repositories.SqlMembershipRepository
         public async Task<bool> CheckIfMappingsTableExistsAsync(string tableName)
         {
             bool tableExists = false;
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
             try
             {
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -412,13 +412,13 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName)
         {
             var attributeMappings = new List<(string Code, string Description)>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
 
             try
             {
                 var selectQuery = $"SELECT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -455,7 +455,7 @@ namespace Repositories.SqlMembershipRepository
         public async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
         {
             var attributeValues = new List<string>();
-            var retryPolicy = GetRetryPolicy();
+            var retryPolicy = GetRetryPolicyAsync();
 
             var schema = hasMapping ? "mappings" : "users";
             var column = hasMapping ? "Description" : $"{attribute}";
@@ -465,7 +465,7 @@ namespace Repositories.SqlMembershipRepository
             {
                 var selectQuery = $"SELECT DISTINCT TOP(10) {column} FROM [{schema}].[{tableName}]" + whereClause;
 
-                await retryPolicy.Execute(async () =>
+                await retryPolicy.ExecuteAsync(async () =>
                 {
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -499,12 +499,12 @@ namespace Repositories.SqlMembershipRepository
 
             return attributeValues;
         }
-        private RetryPolicy GetRetryPolicy()
+        private AsyncRetryPolicy GetRetryPolicyAsync()
         {
             return Policy.Handle<SqlException>()
-                         .WaitAndRetry(
-                             3,
-                             _ => TimeSpan.FromMinutes(1)
+                         .WaitAndRetryAsync(
+                             5,
+                             attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))
                          );
         }
     }
