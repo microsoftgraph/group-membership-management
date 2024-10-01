@@ -658,7 +658,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
         value: 'membershipUpdaters'
       }
       {
-        name: 'serviceBusMessageSplipperTopic'
+        name: 'serviceBusMessageSplitterTopic'
         value: 'messageSplitter'
       }
       {
