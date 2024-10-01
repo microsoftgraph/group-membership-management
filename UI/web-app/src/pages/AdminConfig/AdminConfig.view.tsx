@@ -351,6 +351,25 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
             }}
           />
         );
+        case 'description':
+          return (
+            <TextField
+              value={fieldContent}
+              placeholder={strings.CustomSourceSettings.labels.customLabelInputPlaceHolder}
+              onChange={(e, newValue) => {
+                handleFieldChange(item.name, column.fieldName, newValue);
+              }}
+              className={classNames.customLabelTextField} 
+            />
+          );
+        case 'enabled':
+          return (
+            <input
+              type="checkbox"
+              checked={Boolean(fieldContent)}
+              onChange={(e) => handleFieldChange(item.name, column.fieldName, e.target.checked)}
+            />
+          );
       default:
         return (
           <div className={classNames.defaultColumnSpan}>
@@ -389,6 +408,28 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       fieldName: 'attributeValues',
       minWidth: 160,
       maxWidth: 170,
+    },
+    {
+      key: 'description',
+      name: strings.CustomSourceSettings.labels.descriptionColumn,
+      fieldName: 'description',
+      minWidth: 160,
+      maxWidth: 240,
+      isResizable: true,
+      isSorted: sortKey === 'description',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
+    },
+    {
+      key: 'enabled',
+      name: strings.CustomSourceSettings.labels.enabledColumn,
+      fieldName: 'enabled',
+      minWidth: 100,
+      maxWidth: 120,
+      isResizable: true,
+      isSorted: sortKey === 'enabled',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
     }
   ];
 

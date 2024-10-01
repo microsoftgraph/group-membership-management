@@ -52,7 +52,18 @@ namespace Services
                         attribute.Name == sqlAttribute.Name
                     );
 
-                    sqlAttribute.CustomLabel = (storedAttribute != null) ? storedAttribute.CustomLabel : "";
+                    if (storedAttribute != null)
+                    {
+                        sqlAttribute.CustomLabel = storedAttribute.CustomLabel;
+                        sqlAttribute.Description = storedAttribute.Description; 
+                        sqlAttribute.Enabled = storedAttribute.Enabled;         
+                    }
+                    else
+                    {
+                        sqlAttribute.CustomLabel = "";
+                        sqlAttribute.Description = "";
+                        sqlAttribute.Enabled = true;
+                    }
 
                     return sqlAttribute;
 
@@ -88,6 +99,8 @@ namespace Services
                     Name = attributeName,
                     Type = column.Type,
                     CustomLabel = "",
+                    Description = "",
+                    Enabled = true,
                     HasMapping = hasMapping
                 };
             }).ToList();

@@ -132,7 +132,10 @@ export const strings: IStrings = {
         customLabelInputPlaceHolder: "Entre un nombre personalizado",
         valuesColumn: "Valores",
         valuesDropdownSpinnerLabel: "Cargando valores",
-        valuesDropdownPlaceholder: "Ver valores"
+        valuesDropdownPlaceholder: "Ver valores",
+        descriptionColumn: "Descripción",
+        descriptionPlaceHolder: "Ingrese una etiqueta personalizada",
+        enabledColumn: "Habilitado"
       },
     },
     GeneralSettings: {

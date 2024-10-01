@@ -128,6 +128,9 @@ export type IStrings = {
         valuesColumn: string;
         valuesDropdownSpinnerLabel: string;
         valuesDropdownPlaceholder: string;
+        descriptionColumn: string;
+        enabledColumn: string;
+        descriptionPlaceHolder: string;
       },
     },
     GeneralSettings: {

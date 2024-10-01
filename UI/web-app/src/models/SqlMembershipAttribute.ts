@@ -7,5 +7,7 @@ export type SqlMembershipAttribute = {
     type: string;
     hasMapping: boolean;
     values: string[];
+    description: string;
+    enabled: boolean;
 };
   
