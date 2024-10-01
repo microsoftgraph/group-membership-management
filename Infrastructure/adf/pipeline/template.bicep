@@ -24,7 +24,7 @@ param sqlDatabaseName string = '${solutionAbbreviation}-data-${environmentAbbrev
 param azureDataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 
 @description('Resource name suffix')
-param resourceSuffix string = 'DEMO'
+param resourceSuffix string = 'demo'
 
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
