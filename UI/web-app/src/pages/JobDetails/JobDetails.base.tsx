@@ -194,28 +194,29 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             />
             <ContentContainer
               title={strings.JobDetails.labels.destination}
-              actionText={strings.JobDetails.openInAzure}
-              actionIcon={OpenInNewWindowIcon}
-              actionOnClick={openInAzure}
+              actionButtons={[
+                { text: strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInAzure }
+              ]}
               children={<MembershipDestination job={job} jobDetails={jobDetails} classNames={classNames} />}
             />
             <ContentContainer
               title={strings.JobDetails.labels.configuration}
               children={<MembershipConfiguration job={job} classNames={classNames} />}
-              removeButton={true}
-              editButton={canEditJob}
-              actionText={canEditJob ? strings.JobDetails.editButton : ''}
-              useLinkButton={true}
-              actionOnClick={openRunConfiguration}
+              actionButtons={
+                canEditJob
+                ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openRunConfiguration }]
+                : []
+              }
             />
             <ContentContainer
               title={strings.JobDetails.labels.sourceParts}
               children={<label>{jobDetails?.source}</label>}
-              removeButton={isJobWriter}
-              editButton={canEditJob}
-              actionText={canEditJob ? strings.JobDetails.editButton : isJobWriter ? strings.JobDetails.viewDetails : ''}
-              useLinkButton={true}
-              actionOnClick={openMembershipConfiguration}
+              actionButtons={
+                canEditJob
+                ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration },
+                  { text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
+                : []
+              }
             />
             <div className={classNames.removeGMM}>
               {canDeleteJob &&

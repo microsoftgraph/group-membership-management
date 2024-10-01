@@ -33,9 +33,7 @@ import {
      */
     styles?: IStyleFunctionOrObject<IContentContainerStyleProps, IContentContainerStyles>;
     title: string;
-    actionOnClick?: () => void;
-    actionText?:  string | null;
-    actionIcon?: IIconProps;
+    actionButtons?: IActionButtonProps[];
     useLinkButton?: boolean;
     linkButtonIconName?: string;
     hideSeparator?: boolean;
@@ -44,3 +42,8 @@ import {
   }
 
 
+  export interface IActionButtonProps {
+    text: string;
+    icon?: IIconProps;
+    onClick: () => void;
+  }
