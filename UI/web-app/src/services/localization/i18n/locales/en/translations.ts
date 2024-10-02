@@ -133,7 +133,7 @@ export const strings: IStrings = {
         valuesDropdownPlaceholder: "View values",
         descriptionColumn: "Description",
         descriptionPlaceHolder: "Enter a custom description",
-        enabledColumn: "Enabled"
+        enabledColumn: "Filter Status"
       },
     },
     GeneralSettings: {

@@ -52,19 +52,9 @@ namespace Services
                         attribute.Name == sqlAttribute.Name
                     );
 
-                    if (storedAttribute != null)
-                    {
-                        sqlAttribute.CustomLabel = storedAttribute.CustomLabel;
-                        sqlAttribute.Description = storedAttribute.Description; 
-                        sqlAttribute.Enabled = storedAttribute.Enabled;         
-                    }
-                    else
-                    {
-                        sqlAttribute.CustomLabel = "";
-                        sqlAttribute.Description = "";
-                        sqlAttribute.Enabled = true;
-                    }
-
+                    sqlAttribute.CustomLabel = storedAttribute?.CustomLabel ?? ""; 
+                    sqlAttribute.Description = storedAttribute?.Description ?? ""; 
+                    sqlAttribute.Enabled = storedAttribute?.Enabled ?? true; 
                     return sqlAttribute;
 
                 }).ToList();

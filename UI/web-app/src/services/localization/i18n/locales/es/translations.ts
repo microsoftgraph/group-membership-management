@@ -135,7 +135,7 @@ export const strings: IStrings = {
         valuesDropdownPlaceholder: "Ver valores",
         descriptionColumn: "Descripción",
         descriptionPlaceHolder: "Ingrese una etiqueta personalizada",
-        enabledColumn: "Habilitado"
+        enabledColumn: "Estado del Filtro"
       },
     },
     GeneralSettings: {

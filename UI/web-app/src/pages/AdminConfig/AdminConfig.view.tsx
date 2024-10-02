@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { classNamesFunction, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { 
   AdminConfigStyleProps, 
@@ -355,19 +355,20 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
           return (
             <TextField
               value={fieldContent}
-              placeholder={strings.CustomSourceSettings.labels.customLabelInputPlaceHolder}
+              placeholder={strings.CustomSourceSettings.labels.descriptionPlaceHolder}
               onChange={(e, newValue) => {
                 handleFieldChange(item.name, column.fieldName, newValue);
               }}
-              className={classNames.customLabelTextField} 
+              multiline rows={3}
             />
           );
         case 'enabled':
           return (
-            <input
-              type="checkbox"
-              checked={Boolean(fieldContent)}
-              onChange={(e) => handleFieldChange(item.name, column.fieldName, e.target.checked)}
+            <Toggle
+              checked={fieldContent !== undefined ? Boolean(fieldContent) : true} 
+              onText="Enabled"
+              offText="Disabled"
+              onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
           );
       default:

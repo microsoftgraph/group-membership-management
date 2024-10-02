@@ -97,8 +97,6 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
             marginTop: 10,
             marginBottom: 10
         }
-
-
     };
 };
 
