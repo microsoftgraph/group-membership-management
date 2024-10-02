@@ -5,7 +5,7 @@ param solutionAbbreviation string
 param tenantId string
 
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-hr'
+var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
 
 module sqlForHRData '../Infrastructure/adf/sql/template.bicep' = {
   name: 'sqlForHRDataTemplate'

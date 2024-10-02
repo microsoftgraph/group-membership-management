@@ -15,10 +15,10 @@ param location string
 param tenantId string
 
 @description('Name of SQL Server')
-param sqlServerName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
+param sqlServerName string
 
 @description('Name of SQL database name')
-param sqlDatabaseName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
+param sqlDatabaseName string
 
 @description('Name of Azure Data Factory')
 param azureDataFactoryName string = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
