@@ -28,7 +28,7 @@ namespace Services
 
         protected override async Task<GetSqlValidationResponse> ExecuteCoreAsync(GetSqlValidationRequest request)
         {
-            if (request.SqlFilters == null || request.SqlFilters.Length == 0)
+            if (request.SqlFilters == null || request.SqlFilters.Count == 0)
             {
                 return new GetSqlValidationResponse
                 {

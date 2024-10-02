@@ -7,9 +7,9 @@ namespace Services.Messages.Requests
 {
     public class GetSqlValidationRequest : RequestBase
     {
-        public string[] SqlFilters { get; }
+        public Dictionary<int, string> SqlFilters { get; }
 
-        public GetSqlValidationRequest(string[] sqlFilters)
+        public GetSqlValidationRequest(Dictionary<int, string> sqlFilters)
         {
             SqlFilters = sqlFilters;
         }

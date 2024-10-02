@@ -19,6 +19,6 @@ namespace Repositories.Contracts
         Task<bool> CheckIfMappingsTableExistsAsync(string tableName);
         Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName);
         Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName);
-        Task<Dictionary<int, string>> ValidateFiltersAsync(string[] sqlFilters, string tableName);
+        Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName);
     }
 }

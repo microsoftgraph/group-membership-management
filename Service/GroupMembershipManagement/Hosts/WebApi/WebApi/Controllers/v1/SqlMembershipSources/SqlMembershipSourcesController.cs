@@ -134,7 +134,7 @@ namespace WebApi.Controllers.v1.SqlMembershipSources
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpPost("validateFilters")]
-        public async Task<IActionResult> ValidateSqlFiltersAsync([FromBody] string[] sqlFilters)
+        public async Task<IActionResult> ValidateSqlFilterAsync([FromBody] Dictionary<int, string> sqlFilters)
         {
             try
             {

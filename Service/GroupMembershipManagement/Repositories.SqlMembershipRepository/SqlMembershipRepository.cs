@@ -10,6 +10,7 @@ using Repositories.Contracts.InjectConfig;
 using SqlMembershipObtainer.Entities;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Data;
 
 namespace Repositories.SqlMembershipRepository
@@ -502,15 +503,15 @@ namespace Repositories.SqlMembershipRepository
 
             return attributeValues;
         }
-        public async Task<Dictionary<int, string>> ValidateFiltersAsync(string[] sqlFilters, string tableName)
+        public async Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName)
         {
             var exceptionsList = new ConcurrentDictionary<int, string>();
 
-            var tasks = sqlFilters.Select(async (sqlFilter, index) =>
+            var tasks = sqlFilters.Select(async sqlFilter =>
             {
                 try
                 {
-                    var selectQuery = $@"SET NOEXEC ON; SELECT * FROM [users].[{tableName}] WHERE {sqlFilter}";
+                    var selectQuery = $@"SET NOEXEC ON; SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
 
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
@@ -532,7 +533,7 @@ namespace Repositories.SqlMembershipRepository
                     }
 
                     var errorMessage = string.Join(", ", uniqueErrors);
-                    exceptionsList.TryAdd(index, errorMessage);
+                    exceptionsList.TryAdd(sqlFilter.Key, errorMessage);
                 }
             });
 
