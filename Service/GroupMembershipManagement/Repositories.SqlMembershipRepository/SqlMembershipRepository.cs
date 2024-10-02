@@ -524,7 +524,15 @@ namespace Repositories.SqlMembershipRepository
                 }
                 catch (SqlException ex)
                 {
-                    exceptionsList.TryAdd(index, ex.Message);
+                    var uniqueErrors = new HashSet<string>();
+
+                    foreach (SqlError error in ex.Errors)
+                    {
+                        uniqueErrors.Add(error.Message);
+                    }
+
+                    var errorMessage = string.Join(", ", uniqueErrors);
+                    exceptionsList.TryAdd(index, errorMessage);
                 }
             });
 
