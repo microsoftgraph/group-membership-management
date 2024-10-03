@@ -200,7 +200,8 @@ const checkType = (value: string, type: string | undefined): string => {
 };
 
   const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
-    options = attributes?.map((attribute, index) => ({
+    const filteredAttributes = attributes?.filter(attribute => attribute.enabled !== false) || [];
+    options = filteredAttributes?.map((attribute, index) => ({
       key: attribute.hasMapping ? attribute.name + '_Code' : attribute.name,
       text: attribute.customLabel ? attribute.customLabel : attribute.name,
     })) || [];

@@ -93,8 +93,7 @@ export const HRFilterBase: React.FunctionComponent<HRFilterProps> = (props: HRFi
   }, [attributes]);
 
   const getOptions = (attributes: SqlMembershipAttribute[]): IComboBoxOption[] => {
-    const enabledAttributes = attributes.filter(attribute => attribute.enabled);
-    options = enabledAttributes?.map((attribute, index) => ({
+    options = attributes?.map((attribute, index) => ({
       key: attribute.name,
       text: attribute.name,
     })) || [];
