@@ -320,6 +320,7 @@ export type IStrings = {
       validQuery: string;
       invalidQuery: string;
       invalidGroups: string;
+      invalidSqlFilters: string;
       step3title: string;
       step3description: string;
       selectStartDate: string;

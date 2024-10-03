@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping, SqlMembershipSource } from '../../models';
+import { ValidateSqlFiltersResponse } from '../../models/ValidateSqlFiltersResponse';
 import { ApiBase } from '../ApiBase';
 import { ISqlMembershipSourcesApi } from './ISqlMembershipSourcesApi';
 
@@ -44,6 +45,12 @@ export class SqlMembershipSourcesApi extends ApiBase implements ISqlMembershipSo
   public async patchDefaultSqlMembershipSourceAttributes(attributes: SqlMembershipAttribute[]): Promise<void> {
     const response = await this.httpClient.patch<void>('/defaultAttributes', attributes);
     this.ensureSuccessStatusCode(response);
+  }
+
+  public async validateSqlFilters(filters: Map<number, string>): Promise<ValidateSqlFiltersResponse> {
+    const response = await this.httpClient.post<ValidateSqlFiltersResponse>('/validateFilters', Object.fromEntries(filters));
+    this.ensureSuccessStatusCode(response);
+    return response.data;
   }
 
 }
