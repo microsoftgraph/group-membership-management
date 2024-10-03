@@ -27,6 +27,7 @@ import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../mod
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, parseGroup, stringifyGroups } from './QuerySerializer';
+import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -552,22 +553,6 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
-  const nullOptions: IComboBoxOption[] = [
-    { key: 'NULL', text: 'NULL' },
-    { key: 'NOT NULL', text: 'NOT NULL' }
-  ];
-
-  const yesNoOptions: IChoiceGroupOption[] = [
-    { key: 'Yes', text: strings.yes },
-    { key: 'No', text: strings.no }
-  ];
-
-  const orAndOperatorOptions: IDropdownOption[] = [
-    { key: '', text: '' },
-    { key: 'Or', text: strings.or },
-    { key: 'And', text: strings.and }
-  ];
-
   const handleIncludeOrgChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
     if (option?.key === "No") {
       setIncludeOrg(false);
@@ -650,17 +635,6 @@ const checkType = (value: string, type: string | undefined): string => {
       return newSource;
     });
   }
-
-  const equalityOperatorOptions: IDropdownOption[] = [
-    { key: '=', text: '=' },
-    { key: '<', text: '<' },
-    { key: '<=', text: '<=' },
-    { key: '>', text: '>'},
-    { key: '>=', text: '>=' },
-    { key: '<>', text: '<>' },
-    { key: 'IS', text: 'IS' },
-    { key: 'IN', text: 'IN' }
-  ];
 
   interface UpdateParam {
     property: "attribute" | "value" | "andOr" | "equalityOperator";
