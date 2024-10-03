@@ -1,6 +1,30 @@
 
 # GMM Notification Documentation
 
+## Table of Contents
+
+1. [Introduction](#introduction)
+2. [Key Areas of Focus](#key-areas-of-focus)
+3. [Notifications](#notifications)
+   - [1. SyncStartedNotification](#1-notification-name-syncstartednotification)
+   - [2. SyncCompletedNotification](#2-notification-name-synccompletednotification)
+   - [3. DestinationNotExistNotification](#3-notification-name-destinationnotexistnotification)
+   - [4. NoDataNotification](#4-notification-name-nodatanotification)
+   - [5. NotOwnerNotification](#5-notification-name-notownernotification)
+   - [6. NotValidSourceNotification](#6-notification-name-notvalidsourcenotification)
+   - [7. SourceNotExistNotification](#7-notification-name-sourcenotexistnotification)
+   - [8. InactiveSyncJobNotification](#8-notification-name-inactivesyncjobnotification)
+   - [9. GuestUserFailureNotification](#9-notification-name-guestuserfailurenotification)
+   - [10. ThresholdNotification](#10-notification-name-thresholdnotification)
+   - [11. ThresholdNotificationDisabled](#11-notification-name-thresholdnotificationdisabled)
+   - [12. ThresholdNotificationNotFound](#12-notification-name-thresholdnotificationnotfound)
+   - [13. ThresholdNotificationResolved](#13-notification-name-thresholdnotificationresolved)
+   - [14. ThresholdNotificationUnauthorized](#14-notification-name-thresholdnotificationunauthorized)
+   - [15. ThresholdNotificationExpired](#15-notification-name-thresholdnotificationexpired)
+   - [16. ThresholdNotificationFallback](#16-notification-name-thresholdnotificationfallback)
+4. [Conclusion](#conclusion)
+---
+
 ## Introduction
 
 This document provides a detailed overview of all notifications sent by GMM. It includes information on each notification type, the purpose behind each message, the format used (adaptive card or basic email), and a visual example. This will serve as a comprehensive guide for understanding the structure and role of notifications within the GMM product.
@@ -21,6 +45,7 @@ This email notifies the user that a synchronization job has started. It ensures 
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example: 
 
 ![SyncStartedNotification](/Documentation/NotificationImages/SyncStartedNotification.png)
@@ -37,6 +62,7 @@ Sent to inform the user when a synchronization job is successfully completed. It
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example: 
 
 ![SyncCompletedNotification](/Documentation/NotificationImages/SyncCompletedNotification.png)
@@ -53,6 +79,7 @@ This email informs the user that synchronization was disabled because the destin
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example: 
 
 ![DestinationNotExistNotification](/Documentation/NotificationImages/DestinationNotExistNotification.png)
@@ -69,6 +96,7 @@ Informs the user that no data was found for the requested sync, providing clarit
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example: 
 
 ![NoDataNotification](/Documentation/NotificationImages/NoDataNotification.png)
@@ -85,6 +113,7 @@ Alerts the user that a synchronization job has been paused due to GMM is not an 
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example: 
 
 ![NotOwnerNotification](/Documentation/NotificationImages/NotOwnerNotification.png)
@@ -101,6 +130,7 @@ This email informs the user that synchronization was disabled because the source
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example: 
 
 ![NotValidSourceNotification](/Documentation/NotificationImages/NotValidSourceNotification.png)
@@ -117,6 +147,7 @@ This email informs the user that synchronization was disabled because the source
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example:
 
 ![SourceNotExistNotification](/Documentation/NotificationImages/SourceNotExistNotification.png)
@@ -133,6 +164,7 @@ This email informs the user that their group’s synchronization with GMM has be
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example:
 
 ![InactiveSyncJobNotification](/Documentation/NotificationImages/InactiveSyncJobNotification.png)
@@ -149,6 +181,7 @@ This email informs the user that GMM was unable to add guest users to the destin
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example:
 
 ![GuestUserFailureNotification](/Documentation/NotificationImages/GuestUserFailureNotification.png)
@@ -165,6 +198,7 @@ This email informs the user that the most recent attempt to update the membershi
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example:
 
 ![ThresholdNotification](/Documentation/NotificationImages/ThresholdNotification.png)
@@ -180,6 +214,7 @@ This email informs the user that synchronization of their GMM group has been dis
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: Yes
 - Visual Example:
 
 ![ThresholdNotificationDisabled](/Documentation/NotificationImages/ThresholdNotificationDisabled.png)
@@ -189,13 +224,14 @@ This email informs the user that synchronization of their GMM group has been dis
 
 ---
 
-## 11. Notification Name: `ThresholdNotificationNotFound`
+## 12. Notification Name: `ThresholdNotificationNotFound`
 
 ### Purpose:
 This email notifies the user that the notification no longer exists in the system. This typically occurs when an older notification is pruned and is no longer available.
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: No
 - Visual Example:
 
 ![ThresholdNotificationNotFound](/Documentation/NotificationImages/ThresholdNotificationNotFound.png)
@@ -212,6 +248,7 @@ This email informs the user that a previously sent threshold notification has be
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: No
 - Visual Example:
 
 ![ThresholdNotificationResolved](/Documentation/NotificationImages/ThresholdNotificationResolved.png)
@@ -228,6 +265,7 @@ This email informs the user that they are no longer authorized to view the notif
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: No
 - Visual Example:
 
 ![ThresholdNotificationUnauthorized](/Documentation/NotificationImages/ThresholdNotificationUnauthorized.png)
@@ -244,6 +282,7 @@ This email notifies the user that a notification has expired. The time period to
 
 ### Email Format:
 - Adaptive Card: Yes
+- ActionableMessage: No
 - Visual Example:
 
 ![ThresholdNotificationExpired](/Documentation/NotificationImages/ThresholdNotificationExpired.png)
@@ -260,6 +299,7 @@ This email is sent as a fallback notification when an Outlook Actionable Message
 
 ### Email Format:
 - Adaptive Card: No
+- ActionableMessage: No
 - Visual Example:
 
 ![ThresholdNotificationFallback](/Documentation/NotificationImages/ThresholdNotificationFallback.png)
