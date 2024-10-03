@@ -6,22 +6,22 @@
 1. [Introduction](#introduction)
 2. [Key Areas of Focus](#key-areas-of-focus)
 3. [Notifications](#notifications)
-   - [1. SyncStartedNotification](#1-notification-name-syncstartednotification)
-   - [2. SyncCompletedNotification](#2-notification-name-synccompletednotification)
-   - [3. DestinationNotExistNotification](#3-notification-name-destinationnotexistnotification)
-   - [4. NoDataNotification](#4-notification-name-nodatanotification)
-   - [5. NotOwnerNotification](#5-notification-name-notownernotification)
-   - [6. NotValidSourceNotification](#6-notification-name-notvalidsourcenotification)
-   - [7. SourceNotExistNotification](#7-notification-name-sourcenotexistnotification)
-   - [8. InactiveSyncJobNotification](#8-notification-name-inactivesyncjobnotification)
-   - [9. GuestUserFailureNotification](#9-notification-name-guestuserfailurenotification)
-   - [10. ThresholdNotification](#10-notification-name-thresholdnotification)
-   - [11. ThresholdNotificationDisabled](#11-notification-name-thresholdnotificationdisabled)
-   - [12. ThresholdNotificationNotFound](#12-notification-name-thresholdnotificationnotfound)
-   - [13. ThresholdNotificationResolved](#13-notification-name-thresholdnotificationresolved)
-   - [14. ThresholdNotificationUnauthorized](#14-notification-name-thresholdnotificationunauthorized)
-   - [15. ThresholdNotificationExpired](#15-notification-name-thresholdnotificationexpired)
-   - [16. ThresholdNotificationFallback](#16-notification-name-thresholdnotificationfallback)
+   - [1. SyncStartedNotification](#notification-name-syncstartednotification)
+   - [2. SyncCompletedNotification](#notification-name-synccompletednotification)
+   - [3. DestinationNotExistNotification](#notification-name-destinationnotexistnotification)
+   - [4. NoDataNotification](#notification-name-nodatanotification)
+   - [5. NotOwnerNotification](#notification-name-notownernotification)
+   - [6. NotValidSourceNotification](#notification-name-notvalidsourcenotification)
+   - [7. SourceNotExistNotification](#notification-name-sourcenotexistnotification)
+   - [8. InactiveSyncJobNotification](#notification-name-inactivesyncjobnotification)
+   - [9. GuestUserFailureNotification](#notification-name-guestuserfailurenotification)
+   - [10. ThresholdNotification](#notification-name-thresholdnotification)
+   - [11. ThresholdNotificationDisabled](#notification-name-thresholdnotificationdisabled)
+   - [12. ThresholdNotificationNotFound](#notification-name-thresholdnotificationnotfound)
+   - [13. ThresholdNotificationResolved](#notification-name-thresholdnotificationresolved)
+   - [14. ThresholdNotificationUnauthorized](#notification-name-thresholdnotificationunauthorized)
+   - [15. ThresholdNotificationExpired](#notification-name-thresholdnotificationexpired)
+   - [16. ThresholdNotificationFallback](#notification-name-thresholdnotificationfallback)
 4. [Conclusion](#conclusion)
 ---
 
@@ -38,7 +38,7 @@ This document provides a detailed overview of all notifications sent by GMM. It 
 
 ---
 
-## 1. Notification Name: SyncStartedNotification
+## Notification Name: SyncStartedNotification
 
 ### Purpose:
 This email notifies the user that a synchronization job has started. It ensures the user is aware of the process initiation.
@@ -55,7 +55,7 @@ This email notifies the user that a synchronization job has started. It ensures 
 
 ---
 
-## 2. Notification Name: SyncCompletedNotification
+## Notification Name: SyncCompletedNotification
 
 ### Purpose:
 Sent to inform the user when a synchronization job is successfully completed. It helps the user know when their job has finished processing.
@@ -72,7 +72,7 @@ Sent to inform the user when a synchronization job is successfully completed. It
 
 ---
 
-## 3. Notification Name: DestinationNotExistNotification
+## Notification Name: DestinationNotExistNotification
 
 ### Purpose:
 This email informs the user that synchronization was disabled because the destination group does not exist. It helps in troubleshooting group-based issues during sync.
@@ -89,7 +89,7 @@ This email informs the user that synchronization was disabled because the destin
 
 ---
 
-## 4. Notification Name: NoDataNotification
+## Notification Name: NoDataNotification
 
 ### Purpose:
 Informs the user that no data was found for the requested sync, providing clarity on the results of the sync operation.
@@ -106,7 +106,7 @@ Informs the user that no data was found for the requested sync, providing clarit
 
 ---
 
-## 5. Notification Name: NotOwnerNotification
+## Notification Name: NotOwnerNotification
 
 ### Purpose:
 Alerts the user that a synchronization job has been paused due to GMM is not an owner of the group, helping keep users informed about the status of their jobs.
@@ -123,7 +123,7 @@ Alerts the user that a synchronization job has been paused due to GMM is not an 
 
 ---
 
-## 6. Notification Name: NotValidSourceNotification
+## Notification Name: NotValidSourceNotification
 
 ### Purpose:
 This email informs the user that synchronization was disabled because the source group is a not valid guid. It helps in troubleshooting group-based issues during sync.
@@ -140,7 +140,7 @@ This email informs the user that synchronization was disabled because the source
 
 ---
 
-## 7. Notification Name: SourceNotExistNotification
+## Notification Name: SourceNotExistNotification
 
 ### Purpose:
 This email informs the user that synchronization was disabled because the source group no longer exist. It helps in troubleshooting group-based issues during sync.
@@ -157,7 +157,7 @@ This email informs the user that synchronization was disabled because the source
 
 ---
 
-## 8. Notification Name: InactiveSyncJobNotification
+## Notification Name: InactiveSyncJobNotification
 
 ### Purpose:
 This email informs the user that their group’s synchronization with GMM has been disabled due to inactivity. It helps the user understand that their group no longer syncs with GMM and provides reasons for the inactivity, including the possibility that the source or destination group no longer exists, or that syncs were paused for too long.
@@ -174,7 +174,7 @@ This email informs the user that their group’s synchronization with GMM has be
 
 ---
 
-## 9. Notification Name: GuestUserFailureNotification
+## Notification Name: GuestUserFailureNotification
 
 ### Purpose:
 This email informs the user that GMM was unable to add guest users to the destination group due to restrictions in the destination group’s settings, but it still processed the remaining user changes. It helps the user identify configuration issues related to guest user addition and informs them of actions that were still successfully performed by GMM.
@@ -191,7 +191,7 @@ This email informs the user that GMM was unable to add guest users to the destin
 
 ---
 
-## 10. Notification Name: ThresholdNotification
+## Notification Name: ThresholdNotification
 
 ### Purpose:
 This email informs the user that the most recent attempt to update the membership of their GMM-managed group exceeded the configured alert threshold, prompting the user to either approve the changes or pause the sync job.
@@ -207,7 +207,7 @@ This email informs the user that the most recent attempt to update the membershi
 - **MembershipAggregator Function**: This notification is triggered when membership changes (additions or removals) exceed the preconfigured threshold for a group.
 
 ---
-## 11. Notification Name: ThresholdNotificationDisabled
+## Notification Name: ThresholdNotificationDisabled
 
 ### Purpose:
 This email informs the user that synchronization of their GMM group has been disabled. If no action is taken, the sync job will be deleted on the specified expiration date. The user is prompted to either proceed with pausing or re-enabling the sync.
@@ -224,7 +224,7 @@ This email informs the user that synchronization of their GMM group has been dis
 
 ---
 
-## 12. Notification Name: ThresholdNotificationNotFound
+## Notification Name: ThresholdNotificationNotFound
 
 ### Purpose:
 This email notifies the user that the notification no longer exists in the system. This typically occurs when an older notification is pruned and is no longer available.
@@ -241,7 +241,7 @@ This email notifies the user that the notification no longer exists in the syste
 
 ---
 
-## 13. Notification Name: ThresholdNotificationResolved
+## Notification Name: ThresholdNotificationResolved
 
 ### Purpose:
 This email informs the user that a previously sent threshold notification has been resolved. It provides details on who resolved the issue and when the action was taken.
@@ -258,7 +258,7 @@ This email informs the user that a previously sent threshold notification has be
 
 ---
 
-## 14. Notification Name: ThresholdNotificationUnauthorized
+## Notification Name: ThresholdNotificationUnauthorized
 
 ### Purpose:
 This email informs the user that they are no longer authorized to view the notifications for a particular group, as they are no longer an owner of the group.
@@ -275,7 +275,7 @@ This email informs the user that they are no longer authorized to view the notif
 
 ---
 
-## 15. Notification Name: ThresholdNotificationExpired
+## Notification Name: ThresholdNotificationExpired
 
 ### Purpose:
 This email notifies the user that a notification has expired. The time period to address a threshold violation has passed, and the sync has been purged. The email also prompts the user to re-onboard if necessary.
@@ -292,7 +292,7 @@ This email notifies the user that a notification has expired. The time period to
 
 ---
 
-## 16. Notification Name: ThresholdNotificationFallback
+## Notification Name: ThresholdNotificationFallback
 
 ### Purpose:
 This email is sent as a fallback notification when an Outlook Actionable Message fails to render. It provides users with a warning message about the failure and displays the content of the fallback message, ensuring the recipient is still informed about the threshold notification.
