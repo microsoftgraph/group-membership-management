@@ -2,7 +2,7 @@ import { Group } from "../../models/Group";
 import { IFilterPart } from "../../models/IFilterPart";
 
 export function containsSqlExpression(filter: string): boolean {
-  const sqlExpressions = ['IN', 'BETWEEN', 'NOT', 'LIKE', 'IS NULL', 'IS NOT NULL'];
+  const sqlExpressions = [' IN ', ' NOT IN ', ' BETWEEN ', ' LIKE ', ' NOT LIKE '];
   const regex = new RegExp(`\\b(${sqlExpressions.join('|')})\\b`, 'i');
   return regex.test(filter);
 };
@@ -58,7 +58,7 @@ export function stringifyGroups(groups: Group[]): string {
 }
 
 function parseFilterPart(part: string): IFilterPart {
-  const operators = ["<=", ">=", "<>", "=", ">", "<"];
+  const operators = ["<=", ">=", "<>", "=", ">", "<", "IS"];
   let operatorFound = '';
   let operatorIndex = -1;
 

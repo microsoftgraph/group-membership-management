@@ -537,6 +537,11 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
+  const nullOptions: IComboBoxOption[] = [
+    { key: 'NULL', text: 'NULL' },
+    { key: 'NOT NULL', text: 'NOT NULL' }
+  ];
+
   const yesNoOptions: IChoiceGroupOption[] = [
     { key: 'Yes', text: strings.yes },
     { key: 'No', text: strings.no }
@@ -637,7 +642,8 @@ const checkType = (value: string, type: string | undefined): string => {
     { key: '<=', text: '<=' },
     { key: '>', text: '>'},
     { key: '>=', text: '>=' },
-    { key: '<>', text: '<>' }
+    { key: '<>', text: '<>' },
+    { key: 'IS', text: 'IS' }
   ];
 
   interface UpdateParam {
@@ -806,11 +812,10 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
-  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number): void => {
+  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, operator?: string): void => {
     if (item) {
       const selectedValue = item.key.toString();
-      const selectedValueAfterConversion = attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue;
-
+      const selectedValueAfterConversion = operator && operator.toString().toUpperCase() === "IS" ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
           return { ...it, value: selectedValueAfterConversion || selectedValue };
@@ -1218,14 +1223,27 @@ const checkType = (value: string, type: string | undefined): string => {
         />;
         case 'equalityOperator':
           return <Dropdown
-          selectedKey={item.equalityOperator}
+          selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
           onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
           options={equalityOperatorOptions}
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
         />;
         case 'value':
-          if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
-            return <ComboBox
+          if (item.equalityOperator && item.equalityOperator.toString().toUpperCase() === 'IS') {
+            return (
+              <ComboBox
+                selectedKey={items[index].value.toUpperCase()}
+                options={nullOptions}
+                onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index, item.equalityOperator)}
+                allowFreeInput
+                autoComplete="off"
+                dropdownMaxWidth={500}
+              />
+            );
+          }
+          else {
+            if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
+              return <ComboBox
               selectedKey={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings)}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
@@ -1236,17 +1254,18 @@ const checkType = (value: string, type: string | undefined): string => {
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
               dropdownMaxWidth={500}
-              />
-          } else {
-            return <TextField
+            />
+            } else {
+              return <TextField
               value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index)}
               onBlur={(event) => handleBlur(item.attribute, event, index)}
               styles={{ fieldGroup: classNames.textField }}
               validateOnLoad={false}
               validateOnFocusOut={false}
-          ></TextField>;
+            ></TextField>;
           }
+        }
         case 'andOr':
           return (
             (groups.length <= 0) ? (
