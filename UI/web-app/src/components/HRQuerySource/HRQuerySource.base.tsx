@@ -26,7 +26,7 @@ import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
-import { containsSqlExpression, parseGroup, stringifyGroups } from './QuerySerializer';
+import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
@@ -225,10 +225,32 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     if (props.source.filter && !groupingEnabled) {
+
+      let parseFilter = false;
+      let numberOfOpenParenthesis = countOccurrences(props.source.filter, "(");
+      var numberOfCloseParenthesis = countOccurrences(props.source.filter, ")");
+      var numberOfInClause = countOccurrences(props.source.filter, " IN ");
+
       setSelectedKeys([]);
       const hasParentheses = props.source.filter.includes("(") || props.source.filter.includes(")");
       const hasInClause = props.source.filter.includes(" IN ");
-      if (hasParentheses && !hasInClause) {
+      if (hasParentheses && hasInClause) {
+        if (numberOfOpenParenthesis > numberOfInClause && numberOfCloseParenthesis > numberOfInClause) {
+          // grouping + IN clause
+          console.log("grouping + IN clause");
+          setFilterTextEnabled(true);
+          return;
+        }
+
+        else if (numberOfOpenParenthesis === numberOfInClause && numberOfCloseParenthesis === numberOfInClause) {
+          // no grouping, only IN clause
+          console.log("no grouping, only IN clause");
+          parseFilter = true;
+        }
+      }
+      else if (hasParentheses && !hasInClause) {
+        // only grouping, no IN clause
+        console.log("only grouping, no IN clause");
         const groups = parseGroup(props.source.filter);
         if (groups.length <= 0) {
           setFilterTextEnabled(true);
@@ -239,6 +261,12 @@ const checkType = (value: string, type: string | undefined): string => {
         setGroupingEnabled(true);
       }
       else {
+        // no grouping, no IN clause
+        console.log("no grouping, no IN clause");
+        parseFilter = true;
+      }
+
+      if (parseFilter) {
         const regex = /( And | Or )/gi;
         if (props.source.filter != undefined) {
           const parts = props.source.filter.split(regex);

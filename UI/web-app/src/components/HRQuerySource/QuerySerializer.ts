@@ -7,6 +7,16 @@ export function containsSqlExpression(filter: string): boolean {
   return regex.test(filter);
 };
 
+export function countOccurrences(str: string, subStr: string): number {
+  let count = 0;
+  let pos = str.indexOf(subStr);
+  while (pos !== -1) {
+      count++;
+      pos = str.indexOf(subStr, pos + subStr.length);
+  }
+  return count;
+}
+
 export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: number, childrenLength?: number): string {
 
     let result = '(';
