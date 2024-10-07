@@ -25,6 +25,7 @@ export type AdminConfigStyles = {
   valuesDropdown: IStyle;
   valuesDropdownTitle: IStyle;
   valuesDropdownSpinner: IStyle;
+  descriptionTextField: IStyle;
 };
 
 export type AdminConfigStyleProps = {

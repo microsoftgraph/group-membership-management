@@ -91,6 +91,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         let items: IFilterPart[] = children.map((child, index) => {
           const parts = child.filter.split(' ');
           var result = findValueAndOr(parts);
+          const attributeKey = parts[0];
+          const attribute = attributes?.find(
+            (attr) =>
+              (attr.hasMapping ? `${attr.name}_Code` : attr.name) === attributeKey
+          );
+          const isDisabled = attribute?.enabled === false;
           const filterPart: IFilterPart = {
             attribute: parts[0],
             equalityOperator: parts[1],
@@ -102,7 +108,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         setItems(items);
       }
     }
-  }, [children]);
+  }, [children, attributes]);
 
   useEffect(() => {
     let mappedItems = items.map((item) => ({ attribute: item.attribute, equalityOperator: item.equalityOperator, value: item.value, andOr: item.andOr }));
@@ -198,15 +204,34 @@ const checkType = (value: string, type: string | undefined): string => {
       return value;
   }
 };
+const getOptions = (
+  attributes?: SqlMembershipAttribute[],
+  currentAttributeKey?: string
+): IComboBoxOption[] => {
+  let filteredAttributes = attributes || [];
 
-  const getOptions = (attributes?: SqlMembershipAttribute[]): IComboBoxOption[] => {
-    const filteredAttributes = attributes?.filter(attribute => attribute.enabled !== false) || [];
-    options = filteredAttributes?.map((attribute, index) => ({
-      key: attribute.hasMapping ? attribute.name + '_Code' : attribute.name,
+  filteredAttributes = filteredAttributes.filter((attribute) => {
+    const attributeKey = attribute.hasMapping ? `${attribute.name}_Code` : attribute.name;
+    if (attribute.enabled !== false) {
+      // Attribute is enabled, include it
+      return true;
+    } else if (attributeKey === currentAttributeKey) {
+      // Attribute is disabled, but matches the current attribute, include it
+      return true;
+    } else {
+      // Attribute is disabled and does not match the current attribute, exclude it
+      return false;
+    }
+  });
+
+  const options =
+    filteredAttributes?.map((attribute) => ({
+      key: attribute.hasMapping ? `${attribute.name}_Code` : attribute.name,
       text: attribute.customLabel ? attribute.customLabel : attribute.name,
+      data: { isDisabled: attribute.enabled === false },
     })) || [];
-    return options;
-  };
+  return options;
+};
 
   const getValueOptions = (attributeMappings?: SqlMembershipAttributeMapping[], selectedKeys?: string[]): IComboBoxOption[] => {
     const valueOptions = attributeMappings?.map(attributeMapping => ({
@@ -1048,10 +1073,12 @@ const checkType = (value: string, type: string | undefined): string => {
     let newFilteredOptions = { ...filteredOptions };
     if (groupingEnabled && groups.length > 1) return;
     if (attributes && attributes.length > 0) {
+      const currentAttributeKey = items[index].attribute;
+  
       if (!text) {
-        newFilteredOptions[index] = getOptions(attributes);
+        newFilteredOptions[index] = getOptions(attributes, currentAttributeKey);
       } else {
-        let options = getOptions(attributes);
+        let options = getOptions(attributes, currentAttributeKey);
         newFilteredOptions[index] = options.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
       }
       setFilteredOptions(newFilteredOptions);
@@ -1246,6 +1273,12 @@ const checkType = (value: string, type: string | undefined): string => {
 
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
+      const currentAttributeKey = items[index].attribute;
+      const attribute = attributes?.find(
+        (attr) =>
+          (attr.hasMapping ? `${attr.name}_Code` : attr.name) === currentAttributeKey
+      );
+      const isAttributeDisabled = attribute?.enabled === false;
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
@@ -1253,23 +1286,40 @@ const checkType = (value: string, type: string | undefined): string => {
             <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
           </div>;
         case 'attribute':
-          return <ComboBox
-          selectedKey={item.attribute}
-          options={filteredOptions[index] || getOptions(attributes)}
-          onInputValueChange={(text) => onAttributeChange(text, index)}
-          onChange={(event, option) => handleAttributeChange(event, option, index, groupIndex)}
-          onRenderList={onRenderValueComboBoxList}
-          allowFreeInput
-          autoComplete="off"
-          useComboBoxAsMenuWidth={true}
-          dropdownMaxWidth={500}
-        />;
+          return (
+            <ComboBox
+              selectedKey={currentAttributeKey}
+              options={
+                filteredOptions[index] ||
+                getOptions(attributes, currentAttributeKey) 
+              }
+              onInputValueChange={(text) => onAttributeChange(text, index)}
+              onChange={(event, option) =>
+                handleAttributeChange(event, option, index, groupIndex)
+              }
+              onRenderList={onRenderValueComboBoxList}
+              allowFreeInput
+              autoComplete="off"
+              useComboBoxAsMenuWidth={true}
+              dropdownMaxWidth={500}
+              disabled={isAttributeDisabled}
+              errorMessage={
+                isAttributeDisabled
+                  ? strings.HROnboarding.attributeDisabledErrorMessage
+                  : undefined
+              }
+              styles={{
+                errorMessage: classNames.errorMessageStyles,
+              }}
+            />
+          );
         case 'equalityOperator':
           return <Dropdown
           selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
           onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
           options={equalityOperatorOptions}
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
+          disabled={isAttributeDisabled || !isJobWriter}
         />;
         case 'value':
           if (item.equalityOperator && item.equalityOperator.toString().toUpperCase() === 'IS') {
@@ -1298,16 +1348,18 @@ const checkType = (value: string, type: string | undefined): string => {
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
               dropdownMaxWidth={500}
-            />
-            } else {
-              return <TextField
+              disabled={isAttributeDisabled || !isJobWriter}
+              />
+          } else {
+            return <TextField
               value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index)}
               onBlur={(event) => handleBlur(item.attribute, event, index)}
               styles={{ fieldGroup: classNames.textField }}
               validateOnLoad={false}
               validateOnFocusOut={false}
-            ></TextField>;
+              disabled={isAttributeDisabled || !isJobWriter}
+          ></TextField>;
           }
         }
         case 'andOr':
@@ -1318,6 +1370,7 @@ const checkType = (value: string, type: string | undefined): string => {
                 onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                 options={orAndOperatorOptions}
                 styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+                disabled={isAttributeDisabled || !isJobWriter}
               />
             ) : (
               index >= 0 && index < items.length - 1 ? (
@@ -1326,12 +1379,14 @@ const checkType = (value: string, type: string | undefined): string => {
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+                  disabled={isAttributeDisabled || !isJobWriter}
                 />
               ) : (
                 <Dropdown
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+                  disabled={isAttributeDisabled || !isJobWriter}
                 />
               )
             )
@@ -1342,7 +1397,8 @@ const checkType = (value: string, type: string | undefined): string => {
             <ActionButton
             className={classNames.removeButton}
             iconProps={{ iconName: "Blocked2" }}
-            onClick={() => removeComponent(index ?? -1)}>
+            onClick={() => removeComponent(index ?? -1)}
+            disabled={!isJobWriter}>
             {strings.remove}
           </ActionButton>
 

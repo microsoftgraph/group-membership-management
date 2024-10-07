@@ -96,6 +96,10 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
         valuesDropdownSpinner: {
             marginTop: 10,
             marginBottom: 10
+        },
+        descriptionTextField: {
+            flexBasis: '30%',
+            maxWidth: 300 
         }
     };
 };

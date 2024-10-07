@@ -360,14 +360,13 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
                 handleFieldChange(item.name, column.fieldName, newValue);
               }}
               multiline rows={3}
+              styles={{ fieldGroup: classNames.descriptionTextField }} 
             />
           );
         case 'enabled':
           return (
             <Toggle
               checked={fieldContent !== undefined ? Boolean(fieldContent) : true} 
-              onText="Enabled"
-              offText="Disabled"
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
           );
@@ -381,6 +380,17 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
   };
 
   const columns = [
+    {
+      key: 'enabled',
+      name: strings.CustomSourceSettings.labels.enabledColumn,
+      fieldName: 'enabled',
+      minWidth: 100,
+      maxWidth: 120,
+      isResizable: true,
+      isSorted: sortKey === 'enabled',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
+    },
     {
       key: 'name',
       name: strings.CustomSourceSettings.labels.attributeColumn,
@@ -418,17 +428,6 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       maxWidth: 240,
       isResizable: true,
       isSorted: sortKey === 'description',
-      isSortedDescending,
-      showSortIconWhenUnsorted: true,
-    },
-    {
-      key: 'enabled',
-      name: strings.CustomSourceSettings.labels.enabledColumn,
-      fieldName: 'enabled',
-      minWidth: 100,
-      maxWidth: 120,
-      isResizable: true,
-      isSorted: sortKey === 'enabled',
       isSortedDescending,
       showSortIconWhenUnsorted: true,
     }
