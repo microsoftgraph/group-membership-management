@@ -3,7 +3,7 @@ import { IFilterPart } from "../../models/IFilterPart";
 
 export function containsSqlExpression(filter: string): boolean {
   const sqlExpressions = [' NOT IN ', ' BETWEEN ', ' LIKE ', ' NOT LIKE '];
-  const regex = new RegExp(`\\b(${sqlExpressions.join('|')})\\b`, 'i');
+  const regex = new RegExp(`(${sqlExpressions.join('|').trim()})`, 'i');
   return regex.test(filter);
 };
 
