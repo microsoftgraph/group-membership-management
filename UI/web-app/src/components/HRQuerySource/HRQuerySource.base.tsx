@@ -78,6 +78,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [filterTextEnabled, setFilterTextEnabled] = useState(false);
   const [expanded, setExpanded] = useState(true);
   const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
+  const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -222,32 +223,37 @@ const checkType = (value: string, type: string | undefined): string => {
       }
     }
 
-    if (props.source.filter && !groupingEnabled && (props.source.filter.includes("(") || props.source.filter.includes(")"))) {
-      const groups = parseGroup(props.source.filter);
-      if (groups.length <= 0) {
-        setFilterTextEnabled(true);
-        return;
-      }
-      const b = setItemsBasedOnGroups(groups);
-      setGroups(groups);
-      setGroupingEnabled(true);
-    }
-    else {
-      const regex = /( And | Or )/gi;
-      if (props.source.filter != undefined) {
-        const parts = props.source.filter.split(regex);
-        let childFilters = [];
-        let currentFilter = "";
-        for (let i = 0; i < parts.length; i += 2) {
-          currentFilter = parts[i].trim();
-          if (i + 1 < parts.length) {
-            currentFilter += parts[i + 1];
-          }
-          childFilters.push(currentFilter);
+    if (props.source.filter && !groupingEnabled) {
+      setSelectedKeys([]);
+      const hasParentheses = props.source.filter.includes("(") || props.source.filter.includes(")");
+      const hasInClause = props.source.filter.includes(" IN ");
+      if (hasParentheses && !hasInClause) {
+        const groups = parseGroup(props.source.filter);
+        if (groups.length <= 0) {
+          setFilterTextEnabled(true);
+          return;
         }
-        setChildren(childFilters.map(filter => ({
-          filter
-        })));
+        const b = setItemsBasedOnGroups(groups);
+        setGroups(groups);
+        setGroupingEnabled(true);
+      }
+      else {
+        const regex = /( And | Or )/gi;
+        if (props.source.filter != undefined) {
+          const parts = props.source.filter.split(regex);
+          let childFilters = [];
+          let currentFilter = "";
+          for (let i = 0; i < parts.length; i += 2) {
+            currentFilter = parts[i].trim();
+            if (i + 1 < parts.length) {
+              currentFilter += parts[i + 1];
+            }
+            childFilters.push(currentFilter);
+          }
+          setChildren(childFilters.map(filter => ({
+            filter
+          })));
+        }
       }
     }
   }, [props.source.filter]);
@@ -289,6 +295,15 @@ const checkType = (value: string, type: string | undefined): string => {
       orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
     }
   }, [orgLeaderDetails]);
+
+  const getSelectedKeys = (input: string): string[] => {
+    const matches = input.match(/'([^']+)'|([^(),\s]+)/g);
+    if (matches) {
+        const keys = matches.map(match => match.replace(/'/g, ''));
+        return keys;
+    }
+    return [];
+  };
 
   const getPickerSuggestions = async (
     filterText: string
@@ -643,7 +658,8 @@ const checkType = (value: string, type: string | undefined): string => {
     { key: '>', text: '>'},
     { key: '>=', text: '>=' },
     { key: '<>', text: '<>' },
-    { key: 'IS', text: 'IS' }
+    { key: 'IS', text: 'IS' },
+    { key: 'IN', text: 'IN' }
   ];
 
   interface UpdateParam {
@@ -812,10 +828,31 @@ const checkType = (value: string, type: string | undefined): string => {
     }
   };
 
-  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, operator?: string): void => {
+  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, existingValues?: string, item?: IComboBoxOption, index?: number, operator?: string): void => {
+    let selectedValues = "";
+    if (operator && operator.toString().toUpperCase() === "IN") {
+      let selected = item?.selected;
+      if (item) {
+        setSelectedKeys(prevSelectedKeys => {
+          const isNVarChar = attribute && attributeMappings[attribute] && attributeMappings[attribute.toString()].type === "nvarchar";
+          if (prevSelectedKeys.length === 0 && existingValues && existingValues.length > 0) {
+            prevSelectedKeys = getSelectedKeys(existingValues);
+          }
+          const newSelectedKeys = selected
+            ? [...prevSelectedKeys, item!.key as string]
+            : prevSelectedKeys.filter(k => k !== item!.key);
+          const quotedKeys = isNVarChar
+            ? newSelectedKeys.map(key => `'${key}'`)
+            : newSelectedKeys;
+          selectedValues = `(${quotedKeys.join(', ')})`;
+          return newSelectedKeys;
+        });
+      }
+    }
+
     if (item) {
-      const selectedValue = item.key.toString();
-      const selectedValueAfterConversion = operator && operator.toString().toUpperCase() === "IS" ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
+      const selectedValue = operator && operator.toString().toUpperCase() === "IN" ? selectedValues : item.key.toString();
+      const selectedValueAfterConversion = operator && (operator.toString().toUpperCase() === "IS" || operator.toString().toUpperCase() === "IN") ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
           return { ...it, value: selectedValueAfterConversion || selectedValue };
@@ -1234,7 +1271,7 @@ const checkType = (value: string, type: string | undefined): string => {
               <ComboBox
                 selectedKey={items[index].value.toUpperCase()}
                 options={nullOptions}
-                onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index, item.equalityOperator)}
+                onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
                 allowFreeInput
                 autoComplete="off"
                 dropdownMaxWidth={500}
@@ -1244,13 +1281,14 @@ const checkType = (value: string, type: string | undefined): string => {
           else {
             if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
               return <ComboBox
-              selectedKey={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+              selectedKey={item.equalityOperator === 'IN' ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings)}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
-              onChange={(event, option) => handleAttributeValueChange(item.attribute, event, option, index)}
+              onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
               onRenderOption={onRenderValueComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
               allowFreeInput
+              multiSelect={item.equalityOperator === 'IN' ? true : false}
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
               dropdownMaxWidth={500}
