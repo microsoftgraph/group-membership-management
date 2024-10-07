@@ -91,12 +91,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         let items: IFilterPart[] = children.map((child, index) => {
           const parts = child.filter.split(' ');
           var result = findValueAndOr(parts);
-          const attributeKey = parts[0];
-          const attribute = attributes?.find(
-            (attr) =>
-              (attr.hasMapping ? `${attr.name}_Code` : attr.name) === attributeKey
-          );
-          const isDisabled = attribute?.enabled === false;
           const filterPart: IFilterPart = {
             attribute: parts[0],
             equalityOperator: parts[1],

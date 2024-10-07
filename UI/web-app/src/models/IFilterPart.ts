@@ -6,5 +6,4 @@ export type IFilterPart = {
     equalityOperator: string;
     value: string;
     andOr: string;
-    isDisabled?: boolean;
 };
