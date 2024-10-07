@@ -225,8 +225,8 @@ const checkType = (value: string, type: string | undefined): string => {
     }
 
     if (props.source.filter && !groupingEnabled) {
-
-      let parseFilter = false;
+      let isParsingFilter = false;
+      let isParsingGroup = false;
       let numberOfOpenParenthesis = countOccurrences(props.source.filter, "(");
       var numberOfCloseParenthesis = countOccurrences(props.source.filter, ")");
       var numberOfInClause = countOccurrences(props.source.filter, " IN ");
@@ -236,22 +236,22 @@ const checkType = (value: string, type: string | undefined): string => {
       const hasInClause = props.source.filter.includes(" IN ");
       if (hasParentheses && hasInClause) {
         if (numberOfOpenParenthesis > numberOfInClause && numberOfCloseParenthesis > numberOfInClause) {
-          // grouping + IN clause
-          console.log("grouping + IN clause");
-          setFilterTextEnabled(true);
-          return;
+          isParsingGroup = true; // grouping, IN clause
         }
 
         else if (numberOfOpenParenthesis === numberOfInClause && numberOfCloseParenthesis === numberOfInClause) {
-          // no grouping, only IN clause
-          console.log("no grouping, only IN clause");
-          parseFilter = true;
+          isParsingFilter = true; // no grouping, only IN clause
         }
       }
       else if (hasParentheses && !hasInClause) {
-        // only grouping, no IN clause
-        console.log("only grouping, no IN clause");
-        const groups = parseGroup(props.source.filter);
+        isParsingGroup = true; // only grouping, no IN clause
+      }
+      else {
+        isParsingFilter = true; // no grouping, no IN clause
+      }
+
+      if (isParsingGroup) {
+        const groups = parseGroup(props.source.filter, hasInClause);
         if (groups.length <= 0) {
           setFilterTextEnabled(true);
           return;
@@ -260,13 +260,8 @@ const checkType = (value: string, type: string | undefined): string => {
         setGroups(groups);
         setGroupingEnabled(true);
       }
-      else {
-        // no grouping, no IN clause
-        console.log("no grouping, no IN clause");
-        parseFilter = true;
-      }
 
-      if (parseFilter) {
+      if (isParsingFilter) {
         const regex = /( And | Or )/gi;
         if (props.source.filter != undefined) {
           const parts = props.source.filter.split(regex);
@@ -326,9 +321,15 @@ const checkType = (value: string, type: string | undefined): string => {
   }, [orgLeaderDetails]);
 
   const getSelectedKeys = (input: string): string[] => {
-    const matches = input.match(/'([^']+)'|([^(),\s]+)/g);
+    const matches = input.match(/'([^']+)'|([^(),\s\[\]]+)|\[(.+?)\]|\((.+?)\)/g);
     if (matches) {
-        const keys = matches.map(match => match.replace(/'/g, ''));
+        const keys = matches.flatMap(match => {
+            const cleaned = match.replace(/'/g, '').trim();
+            if (cleaned.startsWith('[') || cleaned.startsWith('(')) {
+                return cleaned.slice(1, -1).split(',').map(v => v.trim());
+            }
+            return [cleaned];
+        });
         return keys;
     }
     return [];

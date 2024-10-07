@@ -51,8 +51,20 @@ export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: num
       result += ` ${group.children[group.children.length-1].andOr} `;
     }
 
+    result = result.includes(" IN ") ? replaceBracketsWithParentheses(result) : result;
     return result;
 }
+
+function replaceBracketsWithParentheses(input: string): string {
+  return input.replace(/\[/g, '(').replace(/\]/g, ')');
+};
+
+function replaceInClause(input: string): string {
+  const regex = /IN\s*\(\s*('([^']+)')(?:,\s*('([^']+)'))*\s*\)/g;
+  return input.replace(regex, (match) => {
+      return match.replace('(', '[').replace(')', ']');
+  });
+};
 
 export function stringifyGroups(groups: Group[]): string {
     let result = '';
@@ -178,7 +190,8 @@ function appendAndOr(allParts: { currentSegment: string; start: number; end: num
   return allParts;
 }
 
-export function parseGroup(input: string): Group[] {
+export function parseGroup(input: string, hasInClause: boolean): Group[] {
+  input = hasInClause ? replaceInClause(input) : input;
   const groups: Group[] = [];
   let subStrings: { currentSegment: string, start: number; end: number}[] = [];
   let depth = 0;
