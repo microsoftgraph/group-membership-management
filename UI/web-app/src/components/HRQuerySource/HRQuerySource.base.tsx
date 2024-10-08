@@ -207,13 +207,15 @@ const checkType = (value: string, type: string | undefined): string => {
     return options;
   };
 
-  const getValueOptions = (attributeMappings?: SqlMembershipAttributeMapping[]): IComboBoxOption[] => {
-    let valueOptions = attributeMappings?.map((attributeMapping, index) => ({
+  const getValueOptions = (attributeMappings?: SqlMembershipAttributeMapping[], selectedKeys?: string[]): IComboBoxOption[] => {
+    const valueOptions = attributeMappings?.map(attributeMapping => ({
       key: attributeMapping.code,
       text: attributeMapping.description ? attributeMapping.description : attributeMapping.code
     })) || [];
-    valueOptions.sort((a, b) => a.text.localeCompare(b.text));
-    return valueOptions;
+    const selectedOptions = valueOptions.filter(option => selectedKeys?.includes(option.key));
+    const unselectedOptions = valueOptions.filter(option => !selectedKeys?.includes(option.key));
+    unselectedOptions.sort((a, b) => a.text.localeCompare(b.text));
+    return [...selectedOptions, ...unselectedOptions];
   };
 
   useEffect(() => {
@@ -1285,12 +1287,12 @@ const checkType = (value: string, type: string | undefined): string => {
             if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
               return <ComboBox
               selectedKey={item.equalityOperator === 'IN' ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-              options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings)}
+              options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings, getSelectedKeys(items[index].value))}
               onInputValueChange={(text) => onAttributeValueChange(text, index)}
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
               onRenderOption={onRenderValueComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
-              allowFreeInput
+              allowFreeInput={item.equalityOperator === 'IN' ? false : true}
               multiSelect={item.equalityOperator === 'IN' ? true : false}
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
