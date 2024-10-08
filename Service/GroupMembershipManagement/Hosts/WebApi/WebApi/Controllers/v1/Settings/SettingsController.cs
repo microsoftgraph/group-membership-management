@@ -19,15 +19,18 @@ namespace WebApi.Controllers.v1.Settings
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
         private readonly IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> _getAllSettingsRequestHandler;
         private readonly IRequestHandler<PatchSettingRequest, NullResponse> _patchSettingRequestHandler;
+        private readonly IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> _getSupportEmailHandler;
 
         public SettingsController(
             IRequestHandler<GetSettingRequest, GetSettingResponse> getSettingRequestHandler,
             IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> getAllSettingsRequestHandler,
-            IRequestHandler<PatchSettingRequest, NullResponse> patchSettingRequestHandler)
+            IRequestHandler<PatchSettingRequest, NullResponse> patchSettingRequestHandler,
+            IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> getSupportEmailHandler)
         {
             _getSettingRequestHandler = getSettingRequestHandler ?? throw new ArgumentNullException(nameof(getSettingRequestHandler));
             _getAllSettingsRequestHandler = getAllSettingsRequestHandler ?? throw new ArgumentNullException(nameof(getAllSettingsRequestHandler));
             _patchSettingRequestHandler = patchSettingRequestHandler ?? throw new ArgumentNullException(nameof(patchSettingRequestHandler));
+            _getSupportEmailHandler = getSupportEmailHandler ?? throw new ArgumentNullException(nameof(getSupportEmailHandler));
         }
 
         [Authorize()]
@@ -81,6 +84,15 @@ namespace WebApi.Controllers.v1.Settings
             {
                 return StatusCode(500);
             }
+        }
+
+        [Authorize()]
+        [HttpGet("supportEmail")]
+        public async Task<IActionResult> GetSupportEmailAddress()
+        {
+            var request = new GetSupportEmailRequest();
+            var response = await _getSupportEmailHandler.ExecuteAsync(request);
+            return Ok(response.SupportEmailAddress);
         }
     }
 }
