@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchSettingByKey, fetchSettings, patchSetting } from './settings.api';
+import { fetchSettingByKey, fetchSettings, patchSetting, getSupportEmailAddress } from './settings.api';
 import type { RootState } from './store';
 import { Setting } from '../models/Setting';
 import { SettingKey } from '../models/SettingKey';
@@ -16,6 +16,9 @@ export interface SettingsState {
   patchSettingResponse: any | undefined;
   patchSettingError: string | undefined;
   isSaving: boolean;
+  supportEmail: string;
+  supportEmailLoading: boolean;
+  supportEmailError: string | undefined;
 }
 
 const initialState: SettingsState = {
@@ -27,6 +30,9 @@ const initialState: SettingsState = {
   patchSettingResponse: undefined,
   patchSettingError: undefined,
   isSaving: false,
+  supportEmail: '',
+  supportEmailLoading: false,
+  supportEmailError: undefined,
 };
 
 const settingsSlice = createSlice({
@@ -79,6 +85,18 @@ const settingsSlice = createSlice({
       state.error = action.error.message;
       state.patchSettingResponse = action.payload;
       state.patchSettingError = action.error.message;
+    });
+    builder.addCase(getSupportEmailAddress.pending, (state) => {
+      state.supportEmailLoading = true;
+      state.supportEmailError = undefined;
+    });
+    builder.addCase(getSupportEmailAddress.fulfilled, (state, action) => {
+      state.supportEmailLoading = false;
+      state.supportEmail = action.payload;
+    });
+    builder.addCase(getSupportEmailAddress.rejected, (state, action) => {
+      state.supportEmailLoading = false;
+      state.supportEmailError = action.error.message;
     });
   },
 });
@@ -139,3 +157,6 @@ export const selectPatchSettingError = (state: RootState) => state.settings.patc
 export const selectIsSaving = (state: RootState) => state.settings.isSaving;
 
 export default settingsSlice.reducer;
+export const selectSupportEmail = (state: RootState) => state.settings.supportEmail;
+export const selectSupportEmailLoading = (state: RootState) => state.settings.supportEmailLoading;
+export const selectSupportEmailError = (state: RootState) => state.settings.supportEmailError;

@@ -33,4 +33,9 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
+  public async getSupportEmailAddress(): Promise<string> {
+    const response = await this.httpClient.get<string>('supportEmail');
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
 }

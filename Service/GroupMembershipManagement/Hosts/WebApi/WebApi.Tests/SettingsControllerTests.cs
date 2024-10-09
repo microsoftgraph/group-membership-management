@@ -18,6 +18,8 @@ using Azure;
 using Services.Messages.Requests;
 using Services.Contracts;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Options;
+using WebApi.Configuration;
 
 namespace Services.Tests
 {
@@ -36,7 +38,7 @@ namespace Services.Tests
         private GetSupportEmailHandler _getSupportEmailHandler = null!;
         private SettingKey _settingKey;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
-
+        private Mock<IOptions<WebApiSettings>> _webApiSettings = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -47,7 +49,7 @@ namespace Services.Tests
             _getAllSettingsHandler = new GetAllSettingsHandler(_loggingRepository.Object, _settingsRepository.Object);
             _getSettingHandler = new GetSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
             _patchSettingHandler = new PatchSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _getSupportEmailHandler = new GetSupportEmailHandler(_loggingRepository.Object);
+            _getSupportEmailHandler = new GetSupportEmailHandler(_loggingRepository.Object, _webApiSettings.Object);
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
@@ -196,7 +198,7 @@ namespace Services.Tests
         })
             };
 
-            var result = await controller.GetSupportEmailAddress();
+            var result = await controller.GetSupportEmailAddressAsync();
 
             var okResult = result as OkObjectResult;
             Assert.IsNotNull(okResult);

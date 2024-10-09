@@ -5,11 +5,13 @@ using System;
 using System.Threading.Tasks;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.Extensions.Options;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using WebApi.Models;
 
 namespace Services
 {
@@ -17,16 +19,26 @@ namespace Services
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly SecretClient _keyVaultClient;
+        private readonly IOptions<WebApiSettings> _webApiSettings;
 
-        public GetSupportEmailHandler(ILoggingRepository loggingRepository) : base(loggingRepository)
+        public GetSupportEmailHandler(ILoggingRepository loggingRepository, IOptions<WebApiSettings> webApiSettings) : base(loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _keyVaultClient = CreateSecretClient();
+            if (webApiSettings?.Value == null)
+                {
+                    throw new ArgumentNullException(nameof(webApiSettings));
+                }
+            _keyVaultClient = CreateSecretClient(webApiSettings.Value.KeyVaultName);
         }
 
-        protected virtual SecretClient CreateSecretClient()
-        {
-            var keyVaultUri = "https://prereqs.vault.azure.net/";
+        protected virtual SecretClient CreateSecretClient(string keyVaultName)
+        {   
+            if (string.IsNullOrEmpty(keyVaultName))
+            {
+                throw new ArgumentException("KeyVaultName cannot be null or empty", nameof(keyVaultName));
+            }
+            
+            var keyVaultUri = $"https://{keyVaultName}.vault.azure.net/";
             return new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential());
         }
 
@@ -59,7 +71,8 @@ namespace Services
         {
             try
             {
-                KeyVaultSecret secret = await _keyVaultClient.GetSecretAsync(secretName);
+                KeyVaultSecret secret = await _keyVaultClient.GetSecretAsync(secretName, cancellationToken: CancellationToken.None);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved secret '{secretName}' successfully." });
                 return secret.Value;
             }
             catch (Exception ex)

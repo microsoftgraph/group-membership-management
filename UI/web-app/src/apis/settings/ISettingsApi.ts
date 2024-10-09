@@ -7,4 +7,5 @@ export interface ISettingsApi {
   fetchSettings(): Promise<Setting[]>;
   fetchSettingByKey(settingKey: string): Promise<Setting>;
   patchSetting(setting: Setting): Promise<Setting>;
+  getSupportEmailAddress(): Promise<string>;
 }

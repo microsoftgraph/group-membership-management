@@ -19,18 +19,18 @@ namespace WebApi.Controllers.v1.Settings
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
         private readonly IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> _getAllSettingsRequestHandler;
         private readonly IRequestHandler<PatchSettingRequest, NullResponse> _patchSettingRequestHandler;
-        private readonly IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> _getSupportEmailHandler;
+        private readonly IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> _getSupportEmailRequestHandler;
 
         public SettingsController(
             IRequestHandler<GetSettingRequest, GetSettingResponse> getSettingRequestHandler,
             IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> getAllSettingsRequestHandler,
             IRequestHandler<PatchSettingRequest, NullResponse> patchSettingRequestHandler,
-            IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> getSupportEmailHandler)
+            IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> getSupportEmailRequestHandler)
         {
             _getSettingRequestHandler = getSettingRequestHandler ?? throw new ArgumentNullException(nameof(getSettingRequestHandler));
             _getAllSettingsRequestHandler = getAllSettingsRequestHandler ?? throw new ArgumentNullException(nameof(getAllSettingsRequestHandler));
             _patchSettingRequestHandler = patchSettingRequestHandler ?? throw new ArgumentNullException(nameof(patchSettingRequestHandler));
-            _getSupportEmailHandler = getSupportEmailHandler ?? throw new ArgumentNullException(nameof(getSupportEmailHandler));
+            _getSupportEmailRequestHandler = getSupportEmailRequestHandler ?? throw new ArgumentNullException(nameof(getSupportEmailRequestHandler));
         }
 
         [Authorize()]
@@ -88,10 +88,10 @@ namespace WebApi.Controllers.v1.Settings
 
         [Authorize()]
         [HttpGet("supportEmail")]
-        public async Task<IActionResult> GetSupportEmailAddress()
+        public async Task<IActionResult> GetSupportEmailAddressAsync()
         {
             var request = new GetSupportEmailRequest();
-            var response = await _getSupportEmailHandler.ExecuteAsync(request);
+            var response = await _getSupportEmailRequestHandler.ExecuteAsync(request);
             return Ok(response.SupportEmailAddress);
         }
     }

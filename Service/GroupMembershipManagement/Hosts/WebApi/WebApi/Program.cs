@@ -263,8 +263,8 @@ namespace WebApi
             builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.ApiHostname = configuration.GetValue<string>("Settings:apiHostname");
+                settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
             });
-
             builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
             {
                 return new HandleInactiveJobsConfig(

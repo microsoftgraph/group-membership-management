@@ -16,6 +16,7 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchOrgLeaderDetails, fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
+import { getSupportEmailAddress } from '../../store/settings.api';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
 import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
@@ -28,10 +29,12 @@ import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
+import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError } from '../../store/settings.slice';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
 export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (props: HRQuerySourceProps) => {
+
   const { className, styles, partId, onSourceChange } = props;
   const classNames: IProcessedStyleSet<HRQuerySourceStyles> = getClassNames(styles, {
     className,
@@ -80,6 +83,13 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [expanded, setExpanded] = useState(true);
   const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+
+  const email = useSelector(selectSupportEmail);
+  const emailLoading = useSelector(selectSupportEmailLoading);
+  const emailError = useSelector(selectSupportEmailError);
+  useEffect(() => {
+    dispatch(getSupportEmailAddress());
+  }, [dispatch]);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -1299,7 +1309,7 @@ const getOptions = (
               disabled={isAttributeDisabled}
               errorMessage={
                 isAttributeDisabled
-                  ? strings.HROnboarding.attributeDisabledErrorMessage
+                  ? strings.HROnboarding.attributeDisabledErrorMessage.replace('{email}', email)
                   : undefined
               }
               styles={{

@@ -51,7 +51,7 @@ export const strings: IStrings = {
     orgLeaderMissingErrorMessage: " doesn't exist in the HR Data source",
     invalidInputErrorMessage: "Invalid input. Please enter only numbers.",
     valueComboBoxOptionCodeLabel: "Code: ",
-    attributeDisabledErrorMessage: 'This attribute has been disabled. If you remove it and later want to add it back, you will need to reach out to admin for assistance.',    
+    attributeDisabledErrorMessage: 'This attribute has been disabled. If you remove it and later want to add it back, you will need to reach out to {email} for assistance.',    
   },
   Components: {
     AppHeader: {
