@@ -87,6 +87,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
   const emailError = useSelector(selectSupportEmailError);
+  const displayEmail = (!emailLoading && !emailError && email && email.trim() !== '') ? email : strings.HROnboarding.supportPlaceHolder;
+
   useEffect(() => {
     dispatch(getSupportEmailAddress());
   }, [dispatch]);
@@ -1309,7 +1311,7 @@ const getOptions = (
               disabled={isAttributeDisabled}
               errorMessage={
                 isAttributeDisabled
-                  ? strings.HROnboarding.attributeDisabledErrorMessage.replace('{email}', email)
+                  ? strings.HROnboarding.attributeDisabledErrorMessage.replace('{email}', displayEmail)
                   : undefined
               }
               styles={{

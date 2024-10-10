@@ -49,6 +49,7 @@ export type IStrings = {
     invalidInputErrorMessage: string;
     valueComboBoxOptionCodeLabel: string;
     attributeDisabledErrorMessage: string;
+    supportPlaceHolder: string;
   },
   Components: {
     AppHeader: {

@@ -53,6 +53,7 @@ export const strings: IStrings = {
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números.",
     valueComboBoxOptionCodeLabel: "Codigo: ",
     attributeDisabledErrorMessage: 'Este atributo ha sido deshabilitado. Si lo elimina y luego desea volver a agregarlo, deberá ponerse en contacto con {email} para obtener ayuda.',
+    supportPlaceHolder: 'Administrador'
   },
   Components: {
     AppHeader: {
