@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -916,7 +916,7 @@
                             "items": [
                                 {
                                     "type": "TextBlock",
-                                    "text": "${$root.subjectContent}",
+                                    "text": "${$root.titleContent}",
                                     "wrap": true,
                                     "weight": "Bolder"
                                 },
@@ -1019,8 +1019,11 @@
     "originator": "${$root.providerId}"
 }</value>
   </data>
-  <data name="EmailSubject" xml:space="preserve">
-    <value>[Awareness] Onboarding notification</value>
+  <data name="OnboardingStartedEmailTitle" xml:space="preserve">
+    <value>Initial Sync Started</value>
+  </data>
+  <data name="OnboardingStartedEmailSubject" xml:space="preserve">
+    <value>[Awareness] Initial Sync Started for {1}</value>
   </data>
   <data name="SyncStartedEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
@@ -1029,6 +1032,12 @@
 
 The group **{1}** with Object Id: {0} **has started its initial sync**.
     </value>
+  </data>
+  <data name="OnboardingCompleteEmailTitle" xml:space="preserve">
+    <value>Onboarding Complete</value>
+  </data>
+  <data name="OnboardingCompleteEmailSubject" xml:space="preserve">
+    <value>[Awareness] Onboarding Complete for {1}</value>
   </data>
   <data name="SyncCompletedEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
@@ -1043,7 +1052,7 @@ The group **{1}** with Id: {0} **has completed its initial sync**.
     </value>
   </data>
   <data name="DisabledJobEmailSubject" xml:space="preserve">
-    <value>[Action Required] Sync disabled</value>
+    <value>[Action Required] Sync Disabled</value>
   </data>
   <data name="SyncDisabledNoGroupEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.

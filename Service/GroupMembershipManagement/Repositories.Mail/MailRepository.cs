@@ -204,7 +204,9 @@ namespace Repositories.Mail
 
         public async Task<Message> GetAdaptiveCardMessage(EmailMessage emailMessage)
         {
-            var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalSubjectParams);
+            var titleContent = string.IsNullOrEmpty(emailMessage?.Title) ? _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams) :
+                                                                           _localizationRepository.TranslateSetting(emailMessage?.Title, emailMessage?.AdditionalContentParams);
+            var subjectContent = _localizationRepository.TranslateSetting(emailMessage?.Subject, emailMessage?.AdditionalContentParams);
             var messageContent = _localizationRepository.TranslateSetting(emailMessage?.Content, emailMessage?.AdditionalContentParams);
 
             string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
@@ -220,6 +222,7 @@ namespace Repositories.Mail
             var cardData = new DefaultCardTemplate
             {
                 ProviderId = _actionableEmailProviderId,
+                TitleContent = titleContent,
                 SubjectContent = subjectContent,
                 MessageContent = messageContent,
                 GroupId = groupId,

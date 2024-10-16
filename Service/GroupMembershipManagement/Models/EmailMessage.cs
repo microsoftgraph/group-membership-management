@@ -7,6 +7,7 @@ namespace Models
     [ExcludeFromCodeCoverage]
     public class EmailMessage
     {
+        public string Title { get; set; }
         public string Subject { get; set; }
         public string Content { get; set; }
         public string SenderAddress { get; set; }

@@ -210,7 +210,7 @@ namespace Services.Notifier
 
             return (job, additionalContentParameters);
         }
-        public async Task SendEmailAsync(string messageType, string messageBody, string subjectTemplate, string contentTemplate)
+        public async Task SendEmailAsync(string messageType, string messageBody, string messageTitle, string subjectTemplate, string contentTemplate)
         {
             var (job, additionalContentParameters) = ParseMessageContentAsync(messageBody);
 
@@ -246,6 +246,7 @@ namespace Services.Notifier
 
             var message = new EmailMessage
             {
+                Title = messageTitle,
                 Subject = subjectTemplate,
                 Content = contentTemplate,
                 SenderAddress = _emailSenderAndRecipients.SenderAddress,

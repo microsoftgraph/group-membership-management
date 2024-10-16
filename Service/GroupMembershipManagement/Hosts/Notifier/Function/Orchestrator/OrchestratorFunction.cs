@@ -53,7 +53,8 @@ namespace Hosts.Notifier
                     break;
 
                 case nameof(NotificationMessageType.SyncStartedNotification):
-                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.MessageTitle = NotificationConstants.OnboardingStartedEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.OnboardingStartedEmailSubject;
                     message.ContentTemplate = NotificationConstants.SyncStartedContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
@@ -71,13 +72,14 @@ namespace Hosts.Notifier
                     break;
 
                 case nameof(NotificationMessageType.SyncCompletedNotification):
-                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.MessageTitle = NotificationConstants.OnboardingCompleteEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.OnboardingCompleteEmailSubject;
                     message.ContentTemplate = NotificationConstants.SyncCompletedContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NotValidSourceNotification):
-                    message.SubjectTemplate = NotificationConstants.OnboardingSubject;
+                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.NoValidGroupIdsContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;

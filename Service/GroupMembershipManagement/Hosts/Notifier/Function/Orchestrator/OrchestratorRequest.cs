@@ -7,6 +7,7 @@ namespace Hosts.Notifier
 {
     public class OrchestratorRequest
     {
+        public string MessageTitle { get; set; }
         public string MessageBody { get; set; }
         public string MessageType { get; set; }
         public string SubjectTemplate { get; set; }

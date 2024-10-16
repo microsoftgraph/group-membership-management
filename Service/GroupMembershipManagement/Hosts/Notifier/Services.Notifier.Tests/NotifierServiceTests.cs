@@ -223,7 +223,7 @@ namespace Services.Notifier.Tests
                 ContentTemplate = contentTemplate
             };
 
-            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.SubjectTemplate, request.ContentTemplate);
+            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.MessageTitle, request.SubjectTemplate, request.ContentTemplate);
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once());
         }
         [TestMethod]
@@ -354,6 +354,7 @@ namespace Services.Notifier.Tests
             var job = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "requestor@example.com", TargetOfficeGroupId = Guid.NewGuid() };
             var messageBody = JsonSerializer.Serialize(new { SyncJob = job });
             var messageType = NotificationMessageType.SyncStartedNotification.ToString();
+            var messageTitle = "OnboardingStartedEmailTitle";
             var subjectTemplate = "TestSubjectTemplate";
             var contentTemplate = "SyncDisabledNoGroupEmailBody";
 
@@ -364,7 +365,7 @@ namespace Services.Notifier.Tests
 
             _mailRepository.Setup(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()))
                 .ReturnsAsync(responseMessage);
-            await _notifierService.SendEmailAsync(messageType, messageBody, subjectTemplate, contentTemplate);
+            await _notifierService.SendEmailAsync(messageType, messageBody, messageTitle, subjectTemplate, contentTemplate);
 
             _mailRepository.Verify(x => x.SendMailAsync(It.IsAny<EmailMessage>(), It.IsAny<Guid?>()), Times.Once);
 
@@ -448,7 +449,7 @@ namespace Services.Notifier.Tests
                 ContentTemplate = contentTemplate
             };
 
-            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.SubjectTemplate, request.ContentTemplate);
+            await _notifierService.SendEmailAsync(request.MessageType, request.MessageBody, request.MessageTitle, request.SubjectTemplate, request.ContentTemplate);
             _loggerMock.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Equals("Email notifications are disabled.")), 
                                                         VerbosityLevel.INFO, 
                                                         It.IsAny<string>(), 

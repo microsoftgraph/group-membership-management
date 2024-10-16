@@ -8,7 +8,10 @@ namespace Services.Contracts
 {
     public static class NotificationConstants
     {
-        public const string OnboardingSubject = "EmailSubject";
+        public const string OnboardingStartedEmailTitle = "OnboardingStartedEmailTitle";
+        public const string OnboardingStartedEmailSubject = "OnboardingStartedEmailSubject";
+        public const string OnboardingCompleteEmailTitle = "OnboardingCompleteEmailTitle";
+        public const string OnboardingCompleteEmailSubject = "OnboardingCompleteEmailSubject";
         public const string SyncStartedContent = "SyncStartedEmailBody";
         public const string DisabledNotificationSubject = "DisabledJobEmailSubject";
         public const string NotOwnerContent = "SyncDisabledNoOwnerEmailBody";

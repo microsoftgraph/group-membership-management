@@ -25,7 +25,7 @@ namespace Hosts.Notifier
         public async Task SendNotificationAsync([ActivityTrigger] OrchestratorRequest message)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function started at: {DateTime.UtcNow}" });
-            await _notifierService.SendEmailAsync(message.MessageType, message.MessageBody, message.SubjectTemplate, message.ContentTemplate);
+            await _notifierService.SendEmailAsync(message.MessageType, message.MessageBody, message.MessageTitle, message.SubjectTemplate, message.ContentTemplate);
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function completed at: {DateTime.UtcNow}" });
         }
     }
