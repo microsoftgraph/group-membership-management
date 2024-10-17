@@ -211,7 +211,8 @@ namespace Hosts.JobTrigger
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
-                                                        $"'{destinationName}'"
+                                                        $"'{destinationName}'",
+                                                        DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification]
                                                         }
                                                     });
 
@@ -232,7 +233,8 @@ namespace Hosts.JobTrigger
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
-                                                        destinationName
+                                                        destinationName,
+                                                        DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotOwnerNotification]
                                                         }
                                                     });
 

@@ -54,7 +54,8 @@ namespace Hosts.GroupMembershipObtainer
                                                                 {
                                                                 request.SyncJob.TargetOfficeGroupId.ToString(),
 																targetGroupName,
-                                                                request.ObjectId.ToString()
+                                                                request.ObjectId.ToString(),
+                                                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.SourceNotExistNotification]
                                                                 });
                     }
                     else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)

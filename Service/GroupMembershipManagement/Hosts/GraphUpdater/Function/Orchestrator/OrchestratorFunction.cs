@@ -168,6 +168,7 @@ namespace Hosts.GraphUpdater
                                 groupName,
                                 membersAddedResponse.SuccessCount.ToString(),
                                 membersRemovedResponse.SuccessCount.ToString(),
+                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.GuestUserFailureNotification]
                     };
 
                     await context.CallActivityAsync(nameof(EmailSenderFunction),

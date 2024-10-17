@@ -46,8 +46,8 @@ namespace Hosts.GraphUpdater
                     await _graphUpdaterService.SendEmailAsync(
                         syncJob,
                         NotificationMessageType.DestinationNotExistNotification,
-                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses }
-						);
+                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses, DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification] }
+                        );
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupValidatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);

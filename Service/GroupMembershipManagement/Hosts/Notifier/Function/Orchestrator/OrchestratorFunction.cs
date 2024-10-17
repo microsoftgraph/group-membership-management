@@ -60,12 +60,14 @@ namespace Hosts.Notifier
                     break;
 
                 case nameof(NotificationMessageType.DestinationNotExistNotification):
-                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.MessageTitle = NotificationConstants.DestinationNotExistTitle;
+                    message.SubjectTemplate = NotificationConstants.DestinationNotExistSubject;
                     message.ContentTemplate = NotificationConstants.DestinationNotExistContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NotOwnerNotification):
+                    message.MessageTitle = NotificationConstants.NotOwnerTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.NotOwnerContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
@@ -79,30 +81,35 @@ namespace Hosts.Notifier
                     break;
 
                 case nameof(NotificationMessageType.NotValidSourceNotification):
+                    message.MessageTitle = NotificationConstants.NotValidSourceTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.NoValidGroupIdsContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.SourceNotExistNotification):
+                    message.MessageTitle = NotificationConstants.SourceNotExistTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.SyncDisabledNoGroupContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.NoDataNotification):
+                    message.MessageTitle = NotificationConstants.NoDataTitle;
                     message.SubjectTemplate = NotificationConstants.NoDataSubject;
                     message.ContentTemplate = NotificationConstants.NoDataContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.InactiveSyncJobNotification):
+                    message.MessageTitle = NotificationConstants.SyncPurgedForInactivityEmailTitle;
                     message.SubjectTemplate = NotificationConstants.SyncPurgedForInactivityEmailSubject;
                     message.ContentTemplate = NotificationConstants.SyncPurgedForInactivityEmailBody;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
                 case nameof(NotificationMessageType.GuestUserFailureNotification):
+                    message.MessageTitle = NotificationConstants.GuestUserFailureTitle;
                     message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
                     message.ContentTemplate = NotificationConstants.GuestUserFailureEmailBody;
                     await context.CallActivityAsync(nameof(SendNotification), message);

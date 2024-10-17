@@ -92,6 +92,7 @@ namespace Hosts.GroupMembershipObtainer
                             destinationName.ToString(), 
                             syncJob.TargetOfficeGroupId.ToString(),
                             sourceGroupId.ToString(),
+                            DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotValidSourceNotification]
                         };
                         await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest {                                                         
                                                         SyncJob = syncJob,

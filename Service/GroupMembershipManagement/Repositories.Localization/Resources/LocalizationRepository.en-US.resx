@@ -156,7 +156,7 @@
                 "items": [
                   {
                     "type": "TextBlock",
-                    "text": "Membership Change Alert",
+                    "text": "Membership Change Alert Review",
                     "wrap": true,
                     "weight": "Bolder"
                   },
@@ -308,7 +308,7 @@
        "items": [
         {
          "type": "TextBlock",
-         "text": "Membership Change Alert",
+         "text": "Synchronization Job Disabled",
          "wrap": true,
          "weight": "Bolder"
         },
@@ -558,7 +558,7 @@
               "items": [
                 {
                   "type": "TextBlock",
-                  "text": "Membership Change Alert",
+                  "text": "Membership Change Alert Review",
                   "wrap": true,
                   "weight": "Bolder"
                 },
@@ -707,7 +707,7 @@
               "items": [
                 {
                   "type": "TextBlock",
-                  "text": "Membership Change Alert",
+                  "text": "Membership Change Alert Review",
                   "wrap": true,
                   "weight": "Bolder"
                 },
@@ -1052,7 +1052,13 @@ The group **{1}** with Id: {0} **has completed its initial sync**.
     </value>
   </data>
   <data name="DisabledJobEmailSubject" xml:space="preserve">
-    <value>[Action Required] Sync Disabled</value>
+    <value>[Action Required] Sync Disabled for {1}</value>
+  </data>
+  <data name="DestinationNotExistTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {2}</value>
+  </data>
+   <data name="DestinationNotExistSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {1}</value>
   </data>
   <data name="SyncDisabledNoGroupEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
@@ -1064,6 +1070,9 @@ If this is an intended deletion, there's no further action needed.
 Otherwise, contact support for further help.
     </value>
   </data>
+  <data name="SourceNotExistTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {3}</value>
+  </data>
   <data name="SyncDisabledNoSourceGroupEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
 
@@ -1071,6 +1080,9 @@ Membership syncs for group **{1}**, are now **disabled** because its pre-defined
 
 Please reach out to support to update the source definition and re-enable the membership syncs.
 </value>
+  </data>
+  <data name="NotOwnerTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {2}</value>
   </data>
   <data name="SyncDisabledNoOwnerEmailBody" xml:space="preserve">
     <value> You received this notification because you are listed as an owner of **{1}**.
@@ -1092,8 +1104,11 @@ Your group's affiliation with GMM has been removed for inactivity due to one of 
 Please reach out to the **CC'ed alias** for inquiries about re-onboarding or any questions you may have.
 You can click on the "Go to GMM UI" option below to check the status of other groups you own and currently manage through GMM.</value>
   </data>
+  <data name="SyncPurgedForInactivityEmailTitle" xml:space="preserve">
+    <value>Sync Disabled due to Inactivity</value>
+  </data>
   <data name="SyncPurgedForInactivityEmailSubject" xml:space="preserve">
-    <value>[Final Notice] Sync purged</value>
+    <value>[Final Notice] Sync Disabled due to Inactivity</value>
   </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
@@ -1110,8 +1125,14 @@ Please review your membership definition by visiting the GMM UI.
 
 </value>
   </data>
+  <data name="NoDataEmailTitle" xml:space="preserve">
+    <value>No Data Found</value>
+  </data>
   <data name="NoDataEmailSubject" xml:space="preserve">
-    <value>[Action Required] No data found for group {1}</value>
+    <value>[Action Required] No Data Found for {1}</value>
+  </data>
+   <data name="NotValidSourceTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {3}</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{0}**.
@@ -1153,16 +1174,19 @@ The group sync will be PAUSED until your response is received.
 </value>
   </data>
   <data name="SyncThresholdDisablingJobEmailSubject" xml:space="preserve">
-    <value>[Action Required] Synchronization job for group {0} has been disabled.</value>
+    <value>[Action Required] Synchronization Job Disabled for {0}</value>
   </data>
   <data name="SyncThresholdEmailSubject" xml:space="preserve">
-    <value>[Action Required] Membership Change Alert review for {0}.</value>
+    <value>[Action Required] Membership Change Alert Review for {0}</value>
   </data>
   <data name="ThresholdNotificationResolution.IgnoreOnce" xml:space="preserve">
     <value>Ignore Thresholds Once</value>
   </data>
   <data name="ThresholdNotificationResolution.Paused" xml:space="preserve">
     <value>Sync Job Paused</value>
+  </data>
+  <data name="GuestUserFailureTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {4}</value>
   </data>
   <data name="GuestUserFailureEmailBody" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{1}**.
