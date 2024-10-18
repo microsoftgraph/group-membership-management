@@ -1325,6 +1325,7 @@ const getOptions = (
                 allowFreeInput
                 autoComplete="off"
                 dropdownMaxWidth={500}
+                disabled={isAttributeDisabled || !isJobWriter}
               />
             );
           }

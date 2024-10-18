@@ -138,10 +138,6 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     comboBoxOptionList: { 
       maxHeight: 300,
     },
-    disabledFieldGroup: {
-      backgroundColor: '#f3f2f1',
-      cursor: 'not-allowed',
-    },
     errorMessageStyles: {
       whiteSpace: 'normal',
       wordWrap: 'break-word',

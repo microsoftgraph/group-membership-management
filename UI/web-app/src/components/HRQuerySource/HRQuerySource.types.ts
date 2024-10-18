@@ -31,7 +31,6 @@ export type HRQuerySourceStyles = {
   comboBoxOptionCodeText: IStyle;
   comboBoxOptionContainer: IStyle;
   comboBoxOptionList: IStyle;
-  disabledFieldGroup: IStyle;
   errorMessageStyles : IStyle;
 };
 
