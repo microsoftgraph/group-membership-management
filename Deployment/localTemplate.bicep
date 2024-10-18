@@ -43,12 +43,7 @@ param sqlSkuTier string
 
 // UI parameters
 param customDomainName string = ''
-param apiAppClientId string
 param apiServiceBaseUri string
-param uiAppTenantId string
-param uiAppClientId string
-param sharepointDomain string
-param tenantDomain string
 param uiLocation string = location
 
 // ADF parameters
@@ -98,12 +93,7 @@ module gmmResources 'commonResources.bicep' = {
     sqlSkuName: sqlSkuName
     sqlSkuTier: sqlSkuTier
     customDomainName: customDomainName
-    apiAppClientId: apiAppClientId
     apiServiceBaseUri: apiServiceBaseUri
-    uiAppTenantId: uiAppTenantId
-    uiAppClientId: uiAppClientId
-    sharepointDomain: sharepointDomain
-    tenantDomain: tenantDomain
     pipeline: pipeline
     skipADFDeployment: skipADFDeployment
     appConfigurationName: appConfigurationName

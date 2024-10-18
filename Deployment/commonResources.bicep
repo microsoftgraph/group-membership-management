@@ -35,12 +35,7 @@ param sqlSkuTier string
 
 // UI parameters
 param customDomainName string
-param apiAppClientId string
 param apiServiceBaseUri string
-param uiAppTenantId string
-param uiAppClientId string
-param sharepointDomain string
-param tenantDomain string
 param uiLocation string
 
 // ADF parameters
@@ -114,12 +109,7 @@ module computeResources 'computeResources.bicep' = {
     managedResourceGroupName: managedResourceGroupName
     isManagedApplication: isManagedApplication
     customDomainName: customDomainName
-    apiAppClientId: apiAppClientId
     apiServiceBaseUri: apiServiceBaseUri
-    uiAppTenantId: uiAppTenantId
-    uiAppClientId: uiAppClientId
-    sharepointDomain: sharepointDomain
-    tenantDomain: tenantDomain
     pipeline: pipeline
     appConfigurationName: appConfigurationName
     setRBACPermissions: setRBACPermissions

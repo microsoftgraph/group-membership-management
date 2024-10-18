@@ -10,12 +10,7 @@ param setRBACPermissions bool
 
 // UI parameters
 param customDomainName string = ''
-param apiAppClientId string
 param apiServiceBaseUri string
-param uiAppTenantId string
-param uiAppClientId string
-param sharepointDomain string
-param tenantDomain string
 param uiLocation string
 
 // API parameters
@@ -537,12 +532,7 @@ module uiComputeResources '../Service/GroupMembershipManagement/Hosts/UI/Infrast
     branch: 'not-set'
     repositoryUrl: 'https://url'
     customDomainName: customDomainName
-    apiAppClientId: apiAppClientId
     apiServiceBaseUri: apiServiceBaseUri
-    uiAppTenantId: uiAppTenantId
-    uiAppClientId: uiAppClientId
-    sharepointDomain: sharepointDomain
-    tenantDomain: tenantDomain
     dataResourceGroupName: dataResourceGroupName
     computeResourceGroupName: computeResourceGroupName
     provider: 'Custom'
