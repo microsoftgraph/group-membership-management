@@ -97,12 +97,18 @@ namespace Hosts.FunctionBase
             });
 
             builder.Services.AddDbContext<GMMContext>(options =>
-                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext")),
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContext"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }),
                 ServiceLifetime.Scoped
             );
 
             builder.Services.AddDbContext<GMMReadContext>(options =>
-                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContextReadOnly")),
+                options.UseSqlServer(GetValueOrThrow("ConnectionStrings:JobsContextReadOnly"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }),
                 ServiceLifetime.Scoped
             );
 
