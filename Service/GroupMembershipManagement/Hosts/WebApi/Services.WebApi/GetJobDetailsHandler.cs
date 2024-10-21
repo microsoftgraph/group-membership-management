@@ -59,18 +59,46 @@ namespace Services
                 });
             }
 
+            var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
+            var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+            var currentTime = DateTime.UtcNow;
+            var jobStartsInFuture = currentTime < job.StartDate;
+            var jobScheduledForFuture = currentTime < job.ScheduledDate;
+
+            DateTime estimatedNextRunTime;
+            if (!jobStartsInFuture && !jobScheduledForFuture)
+            {
+                estimatedNextRunTime = job.LastRunTime.AddHours(job.Period);
+            }
+            else if (jobStartsInFuture)
+            {
+                estimatedNextRunTime = job.StartDate;
+            }
+            else
+            {
+                estimatedNextRunTime = job.ScheduledDate;
+            }
+
             var dto = new SyncJobDetailsDTO
-                (
-                    startDate: job.StartDate,
-                    lastSuccessfulStartTime: job.LastSuccessfulStartTime,
-                    source: job.Query,
-                    requestor: job.Requestor,
-                    thresholdViolations: job.ThresholdViolations,
-                    thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
-                    thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals,
-                    endpoints: endpoints,
-                    period: job.Period
-                );
+            (
+                startDate: job.StartDate,
+                lastSuccessfulStartTime: job.LastSuccessfulStartTime,
+                query: job.Query,
+                requestor: job.Requestor,
+                thresholdViolations: job.ThresholdViolations,
+                thresholdPercentageForAdditions: job.ThresholdPercentageForAdditions,
+                thresholdPercentageForRemovals: job.ThresholdPercentageForRemovals,
+                endpoints: endpoints,
+                period: job.Period
+            )
+            {
+                TargetGroupId = job.TargetOfficeGroupId,
+                TargetGroupName = targetGroupName,
+                TargetGroupType = type,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                EstimatedNextRunTime = estimatedNextRunTime,
+                Status = job.Status
+            };
 
             response.Model = dto;
 

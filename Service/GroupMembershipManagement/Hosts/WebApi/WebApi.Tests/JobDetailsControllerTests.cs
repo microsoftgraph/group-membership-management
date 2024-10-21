@@ -49,6 +49,7 @@ namespace Services.Tests
             {
                 Id = Guid.NewGuid(),
                 Status = SyncStatus.Idle.ToString(),
+                Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]",
                 TargetOfficeGroupId = Guid.NewGuid(),
                 LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-4),
                 LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-5),
@@ -134,7 +135,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(job.StartDate);
             Assert.IsNotNull(job.Requestor);
-            Assert.IsNotNull(job.Source);
+            Assert.IsNotNull(job.Query);
         }
 
         [TestMethod]
