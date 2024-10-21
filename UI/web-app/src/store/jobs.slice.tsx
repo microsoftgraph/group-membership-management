@@ -7,7 +7,6 @@ import { fetchJobDetails, patchJobDetails, removeGMM } from './jobDetails.api';
 import { fetchJobs, postJob, getPeoplePickerSuggestions } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
-import { type JobDetails } from '../models/JobDetails';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
 import { PatchJobResponse, RemoveGMMResponse } from '../models';
 
@@ -16,7 +15,7 @@ export interface JobsState {
   jobsLoading: boolean;
   jobs?: Job[];
   totalNumberOfPages?: number;
-  selectedJob: JobDetails | undefined;
+  selectedJob?: Job;
   selectedJobLoading: boolean;
   getJobsError: string | undefined;
   getJobDetailsError: string | undefined;
@@ -84,6 +83,7 @@ export const jobsSlice = createSlice({
     builder.addCase(fetchJobDetails.fulfilled, (state, action) => {
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
+      console.log("state.selectedJob", state.selectedJob);
     });
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
       state.getJobDetailsError = action.error.message;

@@ -19,4 +19,5 @@ export type JobEntity = {
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
   endpoints: string[];
+  requestor: string;
 };

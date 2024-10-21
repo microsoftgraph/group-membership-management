@@ -10,7 +10,6 @@ import {
 import type React from 'react';
 
 import { type Job } from '../../models/Job';
-import { JobDetails } from '../../models/JobDetails';
 
 export interface IJobDetailsStyles {
     root: IStyle;
@@ -51,7 +50,6 @@ export interface IJobDetailsProps
 
 export interface IContentProps extends React.AllHTMLAttributes<HTMLDivElement> {
     job: Job,
-    jobDetails?: JobDetails,
     classNames: IProcessedStyleSet<IJobDetailsStyles>
 }
 

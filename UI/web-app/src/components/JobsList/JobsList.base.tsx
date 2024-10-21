@@ -241,8 +241,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   ): void => {
     if(item.targetGroupName === null){
       navigate('/NotFound', { replace: true, state: { item: item} });
-    } else {
-      navigate('/JobDetails', { replace: false, state: { item: item } });
+    }
+    if (item && item.syncJobId) {
+      navigate(`/JobDetails/${item.syncJobId}`);
     }
   };
 

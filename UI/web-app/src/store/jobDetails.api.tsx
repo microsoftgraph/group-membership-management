@@ -4,16 +4,15 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import { config } from '../authConfig';
-import { type GetJobDetailsRequest } from '../models/GetJobDetailsRequest';
-import { type JobDetails } from '../models/JobDetails';
 import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { RemoveGMMResponse } from '../models';
+import { GetJobDetailsRequest, Job, RemoveGMMResponse } from '../models';
 import { PatchJobRequest } from '../models/PatchJobRequest';
+import { processJob } from '../utils/jobUtils';
 
 export const fetchJobDetails = createAsyncThunk<
-  JobDetails,
+  Job,
   GetJobDetailsRequest,
   ThunkConfig
 >('jobs/fetchJobDetails', async (jobDetailsRequest, { extra }) => {
@@ -30,12 +29,15 @@ export const fetchJobDetails = createAsyncThunk<
   try {
     const response = await fetch(
       config.getJobDetails +
-        `?syncJobId=${encodeURIComponent(jobDetailsRequest.syncJobId)}`,
+        `/${encodeURIComponent(jobDetailsRequest.syncJobId)}`,
       options
-    ).then(async (response) => await response.json());
+    );
+    if (!response.ok) {
+      throw new Error('Failed to fetch job details data!');
+    }
 
-    const payload: JobDetails = response;
-    return payload;
+    const job: Job = await response.json();
+    return processJob(job);
   } catch (error) {
     throw new Error('Failed to fetch job details data!');
   }

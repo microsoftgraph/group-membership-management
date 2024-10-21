@@ -19,4 +19,5 @@ export type Job = {
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;
   endpoints: string[];
+  requestor: string;
 };

@@ -73,6 +73,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
       thresholdPercentageForAdditions: entity.thresholdPercentageForAdditions,
       thresholdPercentageForRemovals: entity.thresholdPercentageForRemovals,
       endpoints: entity.endpoints,
+      requestor: entity.requestor,
     };
   }
 }

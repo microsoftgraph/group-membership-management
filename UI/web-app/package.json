@@ -2,6 +2,7 @@
   "name": "web-app",
   "version": "0.1.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
     "@azure/msal-browser": "3.3.0",
     "@azure/msal-common": "14.2.0",

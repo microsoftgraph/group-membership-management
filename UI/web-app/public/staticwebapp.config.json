@@ -1,0 +1,102 @@
+{
+  "routes": [
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/static/js/*",
+      "headers": {
+        "cache-control": "must-revalidate, max-age=15770000"
+      }
+    },
+    {
+      "route": "/static/css/*",
+      "headers": {
+        "cache-control": "must-revalidate, max-age=15770000"
+      }
+    },
+    {
+      "route": "/static/media/*",
+      "headers": {
+        "cache-control": "must-revalidate, max-age=15770000"
+      }
+    },
+    {
+      "route": "/Admin",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/JobDetails",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/JobDetails/*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/OwnerPage",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/ManageMembership",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/NotFound",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/manifest.json",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    },
+    {
+      "route": "/*.png",
+      "headers": {
+        "cache-control": "must-revalidate, max-age=15770000"
+      }
+    },
+    {
+      "route": "/*.ico",
+      "headers": {
+        "cache-control": "must-revalidate, max-age=15770000"
+      }
+    },
+    {
+      "route": "/*.svg",
+      "headers": {
+        "cache-control": "must-revalidate, max-age=15770000"
+      }
+    },
+    {
+      "route": "/*",
+      "rewrite": "/index.html",
+      "headers": {
+        "cache-control": "no-cache"
+      }
+    }
+  ],
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/static/*",
+      "/manifest.json",
+      "/*.png",
+      "/*.ico",
+      "/*.svg",
+      "/*.js",
+      "/*.css"
+    ]
+  },
+  "mimeTypes": {
+    ".json": "text/json",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".html": "text/html",
+    ".ico": "image/x-icon",
+    ".png": "image/png",
+    ".svg": "image/svg+xml"
+  }
+ }

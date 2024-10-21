@@ -47,11 +47,11 @@ ReactDOM.render(
   <ThemeProvider>
     <React.StrictMode>
       <Provider store={store}>
-        <BrowserRouter>
+        <BrowserRouter basename="/">
           <Routes>
             <Route path="" element={<App />}>
               <Route path="/" element={<JobsPage />} />
-              <Route path="/JobDetails" element={<JobDetails />} />
+              <Route path="/JobDetails/:jobId" element={<JobDetails />} />
               <Route path="/OwnerPage" element={<OwnerPage />} />
               <Route path="/Admin" element={<AdminConfig />} />
               <Route path="/ManageMembership" element={<ManageMembership />} />

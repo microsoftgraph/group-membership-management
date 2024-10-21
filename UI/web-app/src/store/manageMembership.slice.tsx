@@ -12,7 +12,7 @@ import {
 } from './manageMembership.api';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
-import { DestinationPickerPersona, JobDetails } from '../models';
+import { DestinationPickerPersona, Job } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
@@ -248,11 +248,11 @@ const manageMembershipSlice = createSlice({
         clearSourceParts: (state) => {
             state.sourceParts = [];
         },
-        setJobDetailsForExistingJob: (state, action: PayloadAction<JobDetails>) => {
-            const { source, requestor, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
-            state.advancedViewQuery = JSON.stringify(source);
-            state.compositeQuery = buildCompositeQuery(JSON.parse(source));
-            state.sourceParts = JSON.parse(source).map((query: SourcePartQuery, index: number) => ({
+        setJobDetailsForExistingJob: (state, action: PayloadAction<Job>) => {
+            const { query, requestor, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
+            state.advancedViewQuery = JSON.stringify(query);
+            state.compositeQuery = buildCompositeQuery(JSON.parse(query));
+            state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
                 ...query,
                 id: index + 1,
                 query: query,

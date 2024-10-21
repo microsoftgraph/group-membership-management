@@ -5,7 +5,6 @@ export * from './Destination';
 export * from './GetJobDetailsRequest';
 export * from './GroupOnboardingStatus';
 export * from './Job';
-export * from './JobDetails';
 export * from './NewJob';
 export * from './ODataQueryOptions';
 export * from './Page';

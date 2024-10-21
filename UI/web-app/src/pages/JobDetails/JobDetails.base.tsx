@@ -25,7 +25,7 @@ import {
 } from '@fluentui/react/lib/Stack';
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
@@ -39,7 +39,7 @@ import {
   selectPatchJobDetailsError,
   selectRemoveGMMError,
   selectRemoveGMMLoading,
-  selectJobsLoading
+  selectSelectedJobLoading
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -80,22 +80,23 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   );
   const location = useLocation();
-  const job: Job = location.state.item;
+  const job: Job = useSelector(selectSelectedJobDetails) ?? location.state?.item ?? {}; 
   const navigate = useNavigate();
 
+  const { jobId } = useParams<{ jobId: string }>();
   const dispatch = useDispatch<AppDispatch>();
-  const jobDetails = useSelector(selectSelectedJobDetails);
   const error = useSelector(selectGetJobDetailsError);
+  const selectedJob = useSelector(selectSelectedJobDetails);
   const [showRemoveGMMDialog, setShowRemoveGMMDialog] = useState(false);
   const [showRemoveGMMError, setShowRemoveGMMError] = useState(false);
   const removeGMMError = useSelector(selectRemoveGMMError);
-  const jobsLoading = useSelector(selectJobsLoading);
+  const jobLoading = useSelector(selectSelectedJobLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
-  const [canEditJob, setCanEditJob] = useState<boolean>(isJobWriter && job.status !== SyncStatus.PendingReview);
-  const showLoader: boolean = jobsLoading || removeGMMPending;
+  const [canEditJob, setCanEditJob] = useState<boolean>(isJobWriter && job?.status !== SyncStatus.PendingReview);
+  const showLoader: boolean = jobLoading || removeGMMPending;
 
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
@@ -108,18 +109,18 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   };
 
   const openInAzure = (): void => {
-    var url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job.targetGroupId}`;
+    var url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job?.targetGroupId}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const openRunConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job.syncJobId } });
+    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job?.syncJobId } });
   };
 
   const openMembershipConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job.syncJobId } });
+    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
   };
 
   const onRemoveGMMButtonClick = (): void => {
@@ -132,10 +133,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const onConfirmRemove = async () => {
     try {
-      await dispatch(removeGMM({ syncJobId: job.syncJobId }));
+      await dispatch(removeGMM({ syncJobId: job?.syncJobId }));
       await dispatch(fetchJobs());
       setShowRemoveGMMDialog(false);
-      var url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job.targetGroupId}/menuId/`;
+      var url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
       window.open(url, '_blank', 'noopener,noreferrer');
       navigate('/');
     } catch (error) {
@@ -146,12 +147,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
-    dispatch(
-      fetchJobDetails({
-        syncJobId: job.syncJobId
-      })
-    );
-  }, [dispatch]);
+    dispatch(fetchJobDetails({ syncJobId: jobId ?? '' }));
+  }, [dispatch, jobId]);
 
   return (
     <Page>
@@ -185,50 +182,52 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               </MessageBar>
             )}
           </div>
+          { selectedJob && (
           <div className={classNames.root}>
-            <MembershipDetails job={job} classNames={classNames} />
-            <ContentContainer
-              title={strings.JobDetails.labels.membershipStatus}
-              children={<MembershipStatusContent job={job} resolveReview={resolveReview} classNames={classNames} />}
-              removeButton={true}
-            />
-            <ContentContainer
-              title={strings.JobDetails.labels.destination}
-              actionButtons={[
-                { text: strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInAzure }
-              ]}
-              children={<MembershipDestination job={job} jobDetails={jobDetails} classNames={classNames} />}
-            />
-            <ContentContainer
-              title={strings.JobDetails.labels.configuration}
-              children={<MembershipConfiguration job={job} classNames={classNames} />}
-              actionButtons={
-                canEditJob
-                ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openRunConfiguration }]
-                : []
-              }
-            />
-            <ContentContainer
-              title={strings.JobDetails.labels.sourceParts}
-              children={<label>{jobDetails?.source}</label>}
-              actionButtons={
-                canEditJob
-                ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration },
-                  { text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
-                : []
-              }
-            />
-            <div className={classNames.removeGMM}>
-              {canDeleteJob &&
-                <ActionButton
-                  iconProps={{ iconName: 'Delete' }}
-                  title={strings.JobDetails.labels.removeGMM}
-                  ariaLabel={strings.JobDetails.labels.removeGMM}
-                  onClick={onRemoveGMMButtonClick}>
-                  {strings.JobDetails.labels.removeGMM}
-                </ActionButton>}
+              <MembershipDetails job={job} classNames={classNames} />
+              <ContentContainer
+                title={strings.JobDetails.labels.membershipStatus}
+                children={<MembershipStatusContent job={job} resolveReview={resolveReview} classNames={classNames} />}
+                removeButton={true}
+              />
+              <ContentContainer
+                title={strings.JobDetails.labels.destination}
+                actionButtons={[
+                  { text: strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInAzure }
+                ]}
+                children={<MembershipDestination job={job} classNames={classNames} />}
+              />
+              <ContentContainer
+                title={strings.JobDetails.labels.configuration}
+                children={<MembershipConfiguration job={job} classNames={classNames} />}
+                actionButtons={
+                  canEditJob
+                  ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openRunConfiguration }]
+                  : []
+                }
+              />
+              <ContentContainer
+                title={strings.JobDetails.labels.sourceParts}
+                children={<label>{job?.query}</label>}
+                actionButtons={
+                  canEditJob
+                  ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration },
+                    { text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
+                  : []
+                }
+              />
+              <div className={classNames.removeGMM}>
+                {canDeleteJob &&
+                  <ActionButton
+                    iconProps={{ iconName: 'Delete' }}
+                    title={strings.JobDetails.labels.removeGMM}
+                    ariaLabel={strings.JobDetails.labels.removeGMM}
+                    onClick={onRemoveGMMButtonClick}>
+                    {strings.JobDetails.labels.removeGMM}
+                  </ActionButton>}
+              </div>
             </div>
-          </div>
+          )}
           <Dialog
             hidden={!showRemoveGMMDialog}
             onDismiss={onDialogClose}
@@ -297,8 +296,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const canEnableJob = isJobEnabler || isJobWriter;
 
   useEffect(() => {
-    setJobStatus(job.status);
-    setIsJobEnabled(job.enabledOrNot);
+    setJobStatus(job?.status ?? '');
+    setIsJobEnabled(job?.enabledOrNot ?? false);
   }, [job]);
 
   const updateJobStatus = async (newStatus: string) => {
@@ -398,7 +397,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const strings = useStrings();
-  const { job, jobDetails, classNames } = props;
+  const { job, classNames } = props;
 
   const itemAlignmentsStackTokens: IStackTokens = {
     childrenGap: 30,
@@ -446,7 +445,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               description={strings.JobDetails.descriptions.type}
             />
             <Text className={classNames.itemData} block>
-              {job.targetGroupType}
+              {job?.targetGroupType}
             </Text>
           </Stack.Item>
 
@@ -455,7 +454,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               {strings.JobDetails.labels.name}
             </Text>
             <Text className={classNames.itemData} block>
-              {job.targetGroupName ?? '-'}
+              {job?.targetGroupName ?? '-'}
             </Text>
           </Stack.Item>
 
@@ -465,12 +464,12 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               description={strings.JobDetails.descriptions.id}
             />
             <Text className={classNames.itemData} block>
-              {job.targetGroupId}
+              {job?.targetGroupId}
             </Text>
           </Stack.Item>
         </Stack>
       </Stack.Item>
-      {jobDetails?.endpoints ? (
+      {job?.endpoints ? (
         <Stack.Item align="start">
           <Text className={classNames.itemTitle} block>
             {strings.JobDetails.labels.groupLinks}
@@ -481,7 +480,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               horizontal
               tokens={itemAlignmentsStackTokens}
             >
-              {jobDetails?.endpoints?.includes("Outlook") && (
+              {job?.endpoints?.includes("Outlook") && (
                 <ActionButton
                   iconProps={{ iconName: 'OutlookLogo' }}
                   onClick={() => openOutlookLink()}
@@ -489,7 +488,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
                   Outlook
                 </ActionButton>
               )}
-              {jobDetails?.endpoints?.includes("SharePoint") && (
+              {job?.endpoints?.includes("SharePoint") && (
                 <ActionButton
                   iconProps={{ iconName: 'SharePointLogo' }}
                   onClick={() => openSharePointLink()}
@@ -497,7 +496,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
                   SharePoint
                 </ActionButton>
               )}
-              {jobDetails?.endpoints?.includes("Yammer") && (
+              {job?.endpoints?.includes("Yammer") && (
                 <ActionButton
                   iconProps={{ iconName: 'YammerLogo' }}
                   onClick={() => openYammerLink()}
@@ -547,8 +546,8 @@ const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
     return [isMinDate ? '' : datePart, isMinDate ? '-' : hoursPart];
   }
 
-  const lastRunDetails = splitDateString(job.lastSuccessfulRunTime);
-  const nextRunDetails = splitDateString(job.estimatedNextRunTime);
+  const lastRunDetails = splitDateString(job?.lastSuccessfulRunTime ?? '');
+  const nextRunDetails = splitDateString(job?.estimatedNextRunTime ?? '');
 
   return (
     <Stack
