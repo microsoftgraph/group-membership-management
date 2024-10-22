@@ -47,6 +47,10 @@ Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
 							-SolutionAbbreviation "<solution-abbreviation>" `
 							-EnvironmentAbbreviation "<environment-abbreviation>" `
 							-TenantId "<tenant-id>" `
+							-DevTenantId "<dev-tenant-id>" `
+							-TenantDomain "<tenant-domain>" `
+							-SharepointDomain "<sharepoint-domain>" `
+							-SkipPrompts $true `
 							-Clean $false `
 							-Verbose
 #>
@@ -66,6 +70,10 @@ function Set-UIAzureADApplication {
 		[System.Nullable[Guid]] $DevTenantId,
 		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
+		[Parameter(Mandatory = $False)]
+		[string] $TenantDomain,
+		[Parameter(Mandatory = $False)]
+		[string] $SharepointDomain,
 		[Parameter(Mandatory = $False)]
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory = $False)]
@@ -296,6 +304,46 @@ function Set-UIKeyVaultSecrets {
 							 -SecretValue $uiTenantSecret
 
 		Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
+
+		# Store tenantDomain in KeyVault
+		if($null -eq $TenantDomain) {
+			$TenantDomain = "not-set"
+		}
+		$tenantDomainSecretName = "tenantDomain"
+
+		Write-Verbose "Tenant Domain is $TenantDomain"
+		if($SkipPrompts){
+			$tenantDomainSecret = New-Object System.Security.SecureString
+			$TenantDomain.ToString().ToCharArray() | ForEach-Object { $tenantDomainSecret.AppendChar($_) }
+		} else {
+			$tenantDomainSecret = Read-Host -AsSecureString -Prompt "Please take the Tenant Domain from above and paste it here"
+		}
+
+		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+							-Name $tenantDomainSecretName `
+							-SecretValue $tenantDomainSecret
+
+		Write-Verbose "$tenantDomainSecretName added to vault for UI Group Links."
+
+		# Store sharepointDomain in KeyVault
+		if($null -eq $SharepointDomain) {
+			$SharepointDomain = "not-set"
+		}
+		$sharepointDomainSecretName = "sharepointDomain"
+
+		Write-Verbose "SharePoint Domain is $SharepointDomain"
+		if($SkipPrompts){
+			$sharepointDomainSecret = New-Object System.Security.SecureString
+			$SharepointDomain.ToString().ToCharArray() | ForEach-Object { $sharepointDomainSecret.AppendChar($_) }
+		} else {
+			$sharepointDomainSecret = Read-Host -AsSecureString -Prompt "Please take the SharePoint Domain from above and paste it here"
+		}
+
+		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
+							-Name $sharepointDomainSecretName `
+							-SecretValue $sharepointDomainSecret
+
+		Write-Verbose "$sharepointDomainSecretName added to vault for UI Group Links."
 
 		Write-Verbose "Set-UIAzureADApplication completed."
 }
