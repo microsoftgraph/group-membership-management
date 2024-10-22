@@ -405,6 +405,8 @@ function Set-GMMResources {
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
     $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
     $certificateName = $parameterObject.parameters["certificateName"].value ?? "not-set";
+    $tenantDomain = $parameterObject.parameters["tenantDomain"].value ?? "not-set";
+    $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
 
     # deploy resource groups
     Write-Host "`nCreating resource groups"
@@ -440,7 +442,9 @@ function Set-GMMResources {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -SecondaryTenantId $SecondaryTenantId `
-        -CertificateName $certificateName
+        -CertificateName $certificateName `
+        -TenantDomain $tenantDomain `
+        -SharepointDomain $sharepointDomain
 
     # add app registrations to common parameters
     $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
@@ -499,6 +503,8 @@ function Set-GMMResources {
 
     return @{
         AppRegistrations = $appRegistrations
+        TenantDomain = $tenantDomain
+        SharepointDomain = $sharepointDomain
     }
 }
 
@@ -957,7 +963,11 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $False)]
         [boolean] $SkipIfApplicationExists = $True,
         [Parameter(Mandatory = $False)]
-        [string] $CertificateName
+        [string] $CertificateName,
+        [Parameter(Mandatory = $False)]
+        [string] $TenantDomain,
+        [Parameter(Mandatory = $False)]
+        [string] $SharepointDomain
     )
 
     Write-Host "`nSetting GMM App Registrations"
@@ -973,6 +983,8 @@ function Set-GMMAppRegistrations {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -TenantId $mainTenantId `
         -DevTenantId $SecondaryTenantId `
+        -TenantDomain $TenantDomain `
+        -SharepointDomain $SharepointDomain `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
         -SkipIfApplicationExists $true `
@@ -1146,6 +1158,10 @@ function Set-PublishUICode {
         [Parameter(Mandatory = $true)]
         [string]$MainTenantId,
         [Parameter(Mandatory = $true)]
+        [string]$TenantDomain,
+        [Parameter(Mandatory = $true)]
+        [string]$SharepointDomain,
+        [Parameter(Mandatory = $true)]
         [string]$SubscriptionId
     )
 
@@ -1158,6 +1174,8 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_AAD_APP_SERVICE_BASE_URI=$WebApiBaseUri`n"
     $envContent += "REACT_APP_APPINSIGHTS_CONNECTIONSTRING=$appInsightsConnectionString`n"
     $envContent += "REACT_APP_ENVIRONMENT_ABBREVIATION=$EnvironmentAbbreviation`n"
+    $envContent += "REACT_APP_SHAREPOINTDOMAIN=$SharepointDomain`n"
+    $envContent += "REACT_APP_DOMAINNAME=$TenantDomain`n"
     $envContent += "AZURE_SUBSCRIPTION_ID=$SubscriptionId`n"
     $envContent += "AZURE_TENANT_ID=$MainTenantId`n"
 
@@ -1227,7 +1245,7 @@ function Deploy-Resources {
         -ParameterFilePath $ParameterFilePath
 
     Start-Sleep -Seconds 30
-    
+
     Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
@@ -1292,6 +1310,8 @@ function Deploy-Resources {
         -ComputeResourceGroup $computeResourceGroup `
         -WebAppDirectory "$scriptsDirectory\webapp_package\web-app" `
         -MainTenantId $context.Tenant.Id `
+        -TenantDomain $response.TenantDomain `
+        -SharepointDomain $response.SharepointDomain `
         -SubscriptionId $SubscriptionId
 
     Deploy-PostDeploymentUpdates `
