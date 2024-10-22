@@ -57,7 +57,7 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 
@@ -140,6 +140,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
+  const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
     if (!sourcePartsQuery || sourcePartsQuery.length === 0) {
@@ -296,6 +297,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     isNextDisabled = true;
   } else if (currentStep === OnboardingSteps.Confirmation || !isJobWriter) {
     isNextDisabled = true;
+  }
+
+  if (!isTenantJobWriter) {
+    return <></>;
   }
 
   return (

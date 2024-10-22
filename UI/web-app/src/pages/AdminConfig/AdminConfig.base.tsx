@@ -26,6 +26,7 @@ import {
   selectIsHyperlinkAdministrator, 
   selectIsOperationsResetAdministrator,
   selectIsGeneralSettingsAdministrator,
+  selectHasAdminCenterPermissions,
 } from '../../store/roles.slice';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
@@ -50,6 +51,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
   const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
   const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
+  const canViewSettings = useSelector(selectHasAdminCenterPermissions);
 
   const strings = useStrings().AdminConfig;
 
@@ -125,6 +127,10 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
   };
 
+  if (!canViewSettings) {
+    return <></>;
+  }
+  
   // render the view with the data from the store and the event handler
   return (
     <AdminConfigView
