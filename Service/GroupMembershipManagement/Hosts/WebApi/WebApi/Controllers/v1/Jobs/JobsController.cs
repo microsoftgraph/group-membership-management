@@ -49,6 +49,7 @@ namespace WebApi.Controllers.v1.Jobs
                 var user = User;
                 var claimsIdentity = User.Identity as ClaimsIdentity;
                 var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+                var displayName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
 
                 if (string.IsNullOrEmpty(userId))
                 {
@@ -57,7 +58,7 @@ namespace WebApi.Controllers.v1.Jobs
 
                 var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
 
-                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter));
+                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter, displayName));
 
                 switch (response.StatusCode)
                 {

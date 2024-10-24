@@ -12,13 +12,17 @@ namespace Services.Messages.Requests
         public Guid SyncJobId { get; }
         public string UserIdentity { get; }
         public JsonPatchDocument<SyncJobPatch> PatchDocument { get; }
+        public string UserDisplayName { get; set; }
+        public string ChangeReason { get; set; }
 
-        public PatchJobRequest(bool isAllowed, string userIdentity, Guid syncJobId, JsonPatchDocument<SyncJobPatch> patchDocument)
+        public PatchJobRequest(bool isAllowed, string userIdentity, Guid syncJobId, JsonPatchDocument<SyncJobPatch> patchDocument, string userDisplayName, string changeReason)
         {
             IsAllowed = isAllowed;
             UserIdentity = userIdentity;
             SyncJobId = syncJobId;
             PatchDocument = patchDocument;
+            UserDisplayName = userDisplayName;
+            ChangeReason = changeReason;
         }
     }
 }
