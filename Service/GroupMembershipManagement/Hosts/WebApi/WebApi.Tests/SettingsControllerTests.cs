@@ -35,10 +35,10 @@ namespace Services.Tests
         private GetAllSettingsHandler _getAllSettingsHandler = null!;
         private GetSettingHandler _getSettingHandler = null!;
         private PatchSettingHandler _patchSettingHandler = null!;
-        private GetSupportEmailHandler _getSupportEmailHandler = null!;
         private SettingKey _settingKey;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
-        private Mock<IOptions<WebApiSettings>> _webApiSettings = null!;
+        private Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>> _getSupportEmailHandlerMock = null!;
+        private IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse> _getSupportEmailHandler = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -46,10 +46,14 @@ namespace Services.Tests
             _context = new DefaultHttpContext();
             _loggingRepository = new Mock<ILoggingRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            _getSupportEmailHandlerMock = new Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>>();
+            _getSupportEmailHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<GetSupportEmailRequest>()))
+                                       .ReturnsAsync(new GetSupportEmailResponse { SupportEmailAddress = "support@example.com" });
+
+            _getSupportEmailHandler = _getSupportEmailHandlerMock.Object;
             _getAllSettingsHandler = new GetAllSettingsHandler(_loggingRepository.Object, _settingsRepository.Object);
             _getSettingHandler = new GetSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
             _patchSettingHandler = new PatchSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _getSupportEmailHandler = new GetSupportEmailHandler(_loggingRepository.Object, _webApiSettings.Object);
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
@@ -148,7 +152,7 @@ namespace Services.Tests
         [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
         public async Task PatchSettingWhenHyperlinkAdminTestAsync(string role)
         {
-            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler,_getSupportEmailHandler)
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -182,27 +186,11 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetSupportEmailAddress_ReturnsSupportEmailAddress()
         {
-            var expectedEmail = "support@example.com";
-            var responseMock = new GetSupportEmailResponse { SupportEmailAddress = expectedEmail };
-            var handlerMock = new Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>>();
-            handlerMock.Setup(h => h.ExecuteAsync(It.IsAny<GetSupportEmailRequest>()))
-                .ReturnsAsync(responseMock);
-
-            var controller = new SettingsController(
-                _getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, handlerMock.Object)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, "user@domain.com"),
-            new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
-        })
-            };
-
-            var result = await controller.GetSupportEmailAddressAsync();
+            var result = await _settingsController.GetSupportEmailAddressAsync();
 
             var okResult = result as OkObjectResult;
             Assert.IsNotNull(okResult);
-            Assert.AreEqual(expectedEmail, okResult.Value);
+            Assert.AreEqual("support@example.com", okResult.Value);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)
