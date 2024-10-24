@@ -75,87 +75,87 @@
         },
         {
           "topicName": "membershipUpdaters",
-          "subscriptionName": "GraphUpdater_onboarding",
+          "subscriptionName": "GraphUpdater_onboarding_1",
           "ruleName": "GraphUpdater_onboarding_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Onboarding'"
+          "ruleSqlExpression": "Type = 'groupmembership_onboarding_1'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_small_1",
           "ruleName": "GraphUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Small'"
+          "ruleSqlExpression": "Type = 'groupmembership_small_1'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_small_2",
           "ruleName": "GraphUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Small'"
+          "ruleSqlExpression": "Type = 'groupmembership_small_2'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_small_3",
           "ruleName": "GraphUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Small'"
+          "ruleSqlExpression": "Type = 'groupmembership_small_3'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_medium_1",
           "ruleName": "GraphUpdater_medium_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Medium'"
+          "ruleSqlExpression": "Type = 'groupmembership_medium_1'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_medium_2",
           "ruleName": "GraphUpdater_medium_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Medium'"
+          "ruleSqlExpression": "Type = 'groupmembership_medium_2'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_large_1",
           "ruleName": "GraphUpdater_large_rule",
-          "ruleSqlExpression": "Type = 'GroupMembership' AND LaneSize = 'Large'"
+          "ruleSqlExpression": "Type = 'groupmembership_large_1'"
         },
         {
           "topicName": "membershipUpdaters",
-          "subscriptionName": "TeamsChannelUpdater_onboarding",
+          "subscriptionName": "TeamsChannelUpdater_onboarding_1",
           "ruleName": "TeamsChannelUpdater_onboarding_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Onboarding'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_onboarding_1'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "TeamsChannelUpdater_small_1",
           "ruleName": "TeamsChannelUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Small'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_small_1'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "TeamsChannelUpdater_small_2",
           "ruleName": "TeamsChannelUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Small'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_small_2'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "TeamsChannelUpdater_small_3",
           "ruleName": "TeamsChannelUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Small'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_small_3'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "TeamsChannelUpdater_medium_1",
           "ruleName": "TeamsChannelUpdater_medium_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Medium'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_medium_1'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "TeamsChannelUpdater_medium_2",
           "ruleName": "TeamsChannelUpdater_medium_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Medium'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_medium_2'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "TeamsChannelUpdater_large_1",
           "ruleName": "TeamsChannelUpdater_large_rule",
-          "ruleSqlExpression": "Type = 'TeamsChannelMembership' AND LaneSize = 'Large'"
+          "ruleSqlExpression": "Type = 'teamschannelmembership_large_1'"
         }
       ]
     },
