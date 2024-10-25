@@ -211,7 +211,7 @@ namespace Hosts.JobTrigger
                                                         AdditionalContentParams = new[]
                                                         {
                                                         destinationObject.Value.ObjectId.ToString(),
-                                                        $"'{destinationName}'",
+                                                        destinationName,
                                                         DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification]
                                                         }
                                                     });
@@ -259,12 +259,12 @@ namespace Hosts.JobTrigger
                                                             _gmmResources.LearnMoreAboutGMMUrl,
                                                             syncJob.Requestor
                                                         }
-                   
+
                                                     });
 
                 var statusValue = syncJob.Status == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
                 await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = statusValue, SyncJob = syncJob });
-                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);    
+                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
 
             }
             catch (Exception ex)

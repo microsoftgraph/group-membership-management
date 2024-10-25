@@ -82,7 +82,7 @@ namespace Hosts.Notifier
 
                 case nameof(NotificationMessageType.NotValidSourceNotification):
                     message.MessageTitle = NotificationConstants.NotValidSourceTitle;
-                    message.SubjectTemplate = NotificationConstants.DisabledNotificationSubject;
+                    message.SubjectTemplate = NotificationConstants.NotValidSourceSubject;
                     message.ContentTemplate = NotificationConstants.NoValidGroupIdsContent;
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;

@@ -15,6 +15,7 @@ namespace Services.Contracts
         public const string SyncStartedContent = "SyncStartedEmailBody";
         public const string NotOwnerTitle = "NotOwnerTitle";
         public const string NotValidSourceTitle = "NotValidSourceTitle";
+        public const string NotValidSourceSubject = "NotValidSourceSubject";
         public const string SourceNotExistTitle = "SourceNotExistTitle";
         public const string GuestUserFailureTitle = "GuestUserFailureTitle";
         public const string DestinationNotExistTitle = "DestinationNotExistTitle";

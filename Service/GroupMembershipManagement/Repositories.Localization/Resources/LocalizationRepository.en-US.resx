@@ -1108,7 +1108,7 @@ You can click on the "Go to GMM UI" option below to check the status of other gr
     <value>Sync Disabled due to Inactivity</value>
   </data>
   <data name="SyncPurgedForInactivityEmailSubject" xml:space="preserve">
-    <value>[Final Notice] Sync Disabled due to Inactivity</value>
+    <value>[Final Notice] Sync Disabled for {1} due to Inactivity</value>
   </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
@@ -1133,6 +1133,9 @@ Please review your membership definition by visiting the GMM UI.
   </data>
    <data name="NotValidSourceTitle" xml:space="preserve">
     <value>Sync Disabled with Status {3}</value>
+  </data>
+  <data name="NotValidSourceSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {0}</value>
   </data>
   <data name="SyncDisabledNoValidGroupIds" xml:space="preserve">
     <value>You received this notification because you are listed as an owner of **{0}**.
