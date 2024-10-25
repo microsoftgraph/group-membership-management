@@ -33,7 +33,7 @@ import {
   manageMembershipThresholdPercentageForRemovals
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
@@ -78,6 +78,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
 
   const location = useLocation();
   const locationState = location.state as { currentStep?: number, jobId?: string };
+  const { jobId: urlJobId } = useParams<{ jobId: string }>();
+  const jobId = locationState?.jobId ?? urlJobId;
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
@@ -105,7 +107,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
       <PageSection>
         <div className={classNames.ConfirmationContainer}>
 
-        {!locationState.jobId && (<div>
+        {!jobId && (<div>
           <div className={classNames.cardHeader}>
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.destination}

@@ -115,12 +115,12 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const openRunConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job?.syncJobId } });
+    navigate(`/ManageMembership/${jobId}`, { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job?.syncJobId } });
   };
 
   const openMembershipConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate('/ManageMembership', { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
+    navigate(`/ManageMembership/${jobId}`, { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
   };
 
   const onRemoveGMMButtonClick = (): void => {
@@ -286,6 +286,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
   const { job, resolveReview, classNames } = props;
+  const { jobId } = useParams<{ jobId: string }>();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const patchError = useSelector(selectPatchJobDetailsError);
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
@@ -313,7 +314,11 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     }];
 
     try {
-      await dispatch(patchJobDetails({ syncJobId: updatedJob.syncJobId, patchOperation: patchOperation }));
+      if (jobId === undefined) {
+        throw new Error('Job ID is not defined');
+      }
+
+      await dispatch(patchJobDetails({ syncJobId: jobId, patchOperation: patchOperation }));
       setIsJobEnabled(newStatus === SyncStatus.Idle);
       setJobStatus(newStatus);
     } catch (error) {

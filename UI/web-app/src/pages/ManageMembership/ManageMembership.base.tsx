@@ -13,7 +13,7 @@ import {
   Dialog, DialogType, DialogFooter,
   Spinner,
 } from '@fluentui/react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
 import { IManageMembershipProps, IManageMembershipStyleProps, IManageMembershipStyles } from './ManageMembership.types';
@@ -81,7 +81,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const strings = useStrings();
   const navigate = useNavigate();
   const location = useLocation();
+  const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const locationState = location.state as { currentStep?: number, jobId?: string };
+  const jobId = locationState?.jobId ?? urlJobId;
 
   const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
@@ -102,7 +104,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isLoading = useSelector(selectSelectedJobLoading);
 
   useEffect(() => {
-    let editingExistingJob = !!locationState?.jobId;
+    let editingExistingJob = !!jobId;
     dispatch(setIsEditingExistingJob(editingExistingJob));
 
     if (!editingExistingJob) {
@@ -113,14 +115,14 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(setCurrentStep(locationState.currentStep));
     }
 
-    if (locationState?.jobId) {
+    if (jobId) {
       dispatch(fetchJobDetails({
-        syncJobId: locationState.jobId
+        syncJobId: jobId
       }));
     } else {
       dispatch(resetManageMembership());
     }
-  }, [dispatch, locationState]);
+  }, [dispatch, jobId, locationState]);
 
   useEffect(() => {
     if (jobDetailsRef.current) {
@@ -202,7 +204,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleSaveButtonClick = async () => {
-    if (locationState.jobId !== undefined) {
+    if (jobId !== undefined) {
       const patchOperation = [{
         op: "replace",
         path: "/Query",
@@ -243,7 +245,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       setIsEditingJob(true);
 
       try {
-        await dispatch(patchJobDetails({syncJobId: locationState.jobId, patchOperation: patchOperation}));
+        await dispatch(patchJobDetails({syncJobId: jobId, patchOperation: patchOperation}));
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
         await dispatch(fetchJobs());
@@ -338,8 +340,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.Confirmation && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step4title}
             stepDescription={strings.ManageMembership.labels.step4description}
-            destinationType={selectedDestination?.type}
-            destinationName={selectedDestination?.name}
+            destinationType={selectedDestination?.type ?? jobDetailsRef.current?.targetGroupType}
+            destinationName={selectedDestination?.name ?? jobDetailsRef.current?.targetGroupName}
             children={
               <Confirmation
                 onEditButtonClick={onEditButtonClick}
