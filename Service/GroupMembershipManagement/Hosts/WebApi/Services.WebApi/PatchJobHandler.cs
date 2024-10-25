@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -18,14 +19,21 @@ namespace Services.WebApi
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly ISyncJobChangeRepository _syncJobChangeRepository;
+        private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
 
         public PatchJobHandler(
             ILoggingRepository loggingRepository,
             IGraphGroupRepository graphGroupRepository,
-            IDatabaseSyncJobsRepository databaseSyncJobsRepository) : base(loggingRepository)
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            ISyncJobChangeRepository syncJobChangeRepository,
+            IDatabaseSettingsRepository databaseSettingsRepository)
+            : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
+            _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }
 
         protected override async Task<PatchJobResponse> ExecuteCoreAsync(PatchJobRequest request)
@@ -39,21 +47,16 @@ namespace Services.WebApi
                 return response;
             }
 
+            if (request.ChangeReason == null || request.ChangeReason == "") {
+                response.StatusCode = HttpStatusCode.BadRequest;
+                response.ErrorCode = "ChangeReasonIsRequired";
+                return response;
+            }
+
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, syncJob.TargetOfficeGroupId);
             if (!(isGroupOwner || request.IsAllowed))
             {
                 response.StatusCode = HttpStatusCode.Forbidden;
-                return response;
-            }
-
-            var syncJobPatch = MapEntityToDto(request.SyncJobId, syncJob);
-            request.PatchDocument.ApplyTo(syncJobPatch);
-
-            var validationResult = Validate(syncJobPatch);
-            if (!validationResult.IsValid)
-            {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                response.ErrorCode = validationResult.ErrorCode;
                 return response;
             }
 
@@ -64,10 +67,82 @@ namespace Services.WebApi
                 return response;
             }
 
-            var updatedSyncJob = MapDtoToEntity(syncJob, syncJobPatch, request.SyncJobId);
-            await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { updatedSyncJob });
+            var status = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Status")?.value?.ToString();
+            if (status == null)
+            {
+                response.StatusCode = HttpStatusCode.BadRequest;
+                response.ErrorCode = "StatusIsRequired";
+                return response;
+            }
+
+            var syncJobChange = new SyncJobChange
+            {
+                SyncJobId = request.SyncJobId,
+                ChangeTime = DateTime.UtcNow,
+                ChangedByObjectId = Guid.Parse(request.UserIdentity),
+                ChangedByDisplayName = request.UserDisplayName,
+                ChangeSource = SyncJobChangeSource.WebApp,
+            };
+
+            var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
+
+            // Enabling or disabling a job status update change
+            if (request.ChangeReason == SyncJobChangeReason.StatusUpdate.ToString())
+            {
+                var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, request.ChangeReason, status);
+                if (result != null) return result;
+            }
+
+            // Approving or rejecting a submission
+            if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() || request.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())
+            {
+                var canReviewOwnSubmissions = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions);
+                var canReviewOwnSubmissionsValue = bool.Parse(canReviewOwnSubmissions.SettingValue);
+                var requestorUserId = Guid.Parse(request.UserIdentity);
+
+                if (canReviewOwnSubmissionsValue == false && (requestorUserId == syncJobChange.ChangedByObjectId))
+                {
+                    response.StatusCode = HttpStatusCode.Forbidden;
+                    return response;
+                }
+
+                var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, request.ChangeReason, status);
+                if (result != null) return result;
+            }
+
+            // Updating a job
+            if (request.ChangeReason == SyncJobChangeReason.Update.ToString())
+            {
+                var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, SyncJobChangeReason.Update.ToString(), SyncStatus.PendingReview.ToString());
+                if (result != null) return result;
+            }
 
             return response;
+        }
+
+        private async Task<PatchJobResponse?> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJobPatch syncJobToPatch, SyncJob syncJob, SyncJobChange syncJobChange, string changeReason, string status)
+        {
+            var response = new PatchJobResponse();
+
+            request.PatchDocument.ApplyTo(syncJobToPatch);
+
+            var validationResult = Validate(syncJobToPatch);
+            if (!validationResult.IsValid)
+            {
+                response.StatusCode = HttpStatusCode.BadRequest;
+                response.ErrorCode = validationResult.ErrorCode;
+                return response;
+            }
+
+            var updatedSyncJob = MapDtoToEntity(syncJob, syncJobToPatch, request.SyncJobId);
+            updatedSyncJob.Status = status;
+            await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { updatedSyncJob });
+
+            syncJobChange.ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(updatedSyncJob);
+            syncJobChange.ChangeReason = changeReason;
+            
+            await _syncJobChangeRepository.Save(syncJobChange);
+            return null;
         }
 
         private ValidationResponse Validate(SyncJobPatch syncJobPatch)

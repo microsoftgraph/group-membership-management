@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.SyncJobChange;
@@ -81,6 +82,22 @@ namespace Repositories.EntityFramework
         {
             _writeContext.Set<Entities.SyncJobChange>().Add(MapModelToEntity(syncJobChange));
             await _writeContext.SaveChangesAsync();
+        }
+
+        public async Task<SyncJobChange?> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId)
+        {
+            var sqlQuery = @"
+                SELECT TOP 1 *
+                FROM [dbo].[SyncJobChanges]
+                WHERE SyncJobId = @syncJobId
+                AND ChangeReason IN ('Onboarding', 'Update', 'SubmissionRejected')
+                ORDER BY ChangeTime DESC";
+
+            var entity = await _readContext.SyncJobChanges
+                .FromSqlRaw(sqlQuery, new SqlParameter("@syncJobId", syncJobId))
+                .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
         }
 
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.

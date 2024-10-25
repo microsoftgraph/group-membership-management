@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using MockQueryable.Moq;
 using Models;
+using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
 using Services.WebApi;
@@ -23,12 +24,15 @@ namespace Services.Tests
     public class JobDetailsControllerTests
     {
         private SyncJob _jobEntity = null!;
+        private SyncJobChange _syncJobChange = null!;
         private JobDetailsController _jobDetailsController = null!;
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
         private PatchJobHandler _patchJobHandler = null!;
         private RemoveGMMHandler _removeGMMHandler = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
+        private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
@@ -39,6 +43,8 @@ namespace Services.Tests
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            _settingsRepository = new Mock<IDatabaseSettingsRepository>();
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
@@ -62,6 +68,20 @@ namespace Services.Tests
                 Requestor = "example@microsoft.com",
             };
 
+            _syncJobChange = new SyncJobChange
+            {
+                Id = new Guid(),
+                ChangedByDisplayName = "Test",
+                ChangedByObjectId = Guid.NewGuid(),
+                ChangeReason = SyncJobChangeReason.Update.ToString(),
+                SyncJobId = _jobEntity.Id,
+                ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(_jobEntity),
+                ChangeSource = SyncJobChangeSource.WebApp
+            };
+
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => _syncJobChange);
+
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                               .ReturnsAsync(() => _jobEntity);
 
@@ -81,7 +101,9 @@ namespace Services.Tests
 
             _patchJobHandler = new PatchJobHandler(_loggingRepository.Object,
                                                    _graphGroupRepository.Object,
-                                                   _syncJobRepository.Object);
+                                                   _syncJobRepository.Object,
+                                                   _syncJobChangeRepository.Object,
+                                                   _settingsRepository.Object);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object,
                                                     _graphGroupRepository.Object,
@@ -186,8 +208,8 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim> { 
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.StatusUpdate.ToString())
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -199,6 +221,7 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
             Assert.AreEqual("StatusIsNotValid", result.Value);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -210,7 +233,8 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim> { 
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.StatusUpdate.ToString())
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -222,6 +246,7 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
             Assert.AreEqual("StatusIsRequired", result.Value);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -232,10 +257,14 @@ namespace Services.Tests
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { 
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+                ControllerContext = CreateControllerContext(
+                    new List<Claim> {
+                        new Claim(ClaimTypes.Name, "user@domain.com"),
+                        new Claim(ClaimTypes.Role, role),
+                        new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                    },
+                    "Testing status change"
+                )
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -251,6 +280,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(details);
             Assert.AreEqual("JobInProgress", details.Detail);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -275,6 +305,7 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual(404, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -287,7 +318,8 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim> { 
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.Update.ToString())
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -297,6 +329,7 @@ namespace Services.Tests
             var result = response as ForbidResult;
 
             Assert.IsNotNull(result);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -309,7 +342,8 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim> { 
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.Update.ToString())
             };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -319,6 +353,7 @@ namespace Services.Tests
             var result = response as OkResult;
 
             Assert.IsNotNull(result);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 
         [TestMethod]
@@ -337,7 +372,8 @@ namespace Services.Tests
             var context = CreateHttpContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.Update.ToString());
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
@@ -353,6 +389,7 @@ namespace Services.Tests
             var result = response as OkResult;
 
             Assert.IsNotNull(result);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 
         [TestMethod]
@@ -369,7 +406,11 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>())).ThrowsAsync(new Exception());
 
-            _patchJobHandler = new PatchJobHandler(_loggingRepository.Object, _graphGroupRepository.Object, _syncJobRepository.Object);
+            _patchJobHandler = new PatchJobHandler(_loggingRepository.Object,
+                                                   _graphGroupRepository.Object,
+                                                   _syncJobRepository.Object,
+                                                   _syncJobChangeRepository.Object,
+                                                   _settingsRepository.Object);
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -380,6 +421,32 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual(500, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        public async Task PatchJobWhenChangeReasonIsEmpty(string role)
+        {
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    null)
+            };
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, "InvalidStatus");
+
+            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var result = response as BadRequestObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
+            Assert.AreEqual("ChangeReasonIsRequired", result.Value);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -514,17 +581,22 @@ namespace Services.Tests
             return new ControllerContext { HttpContext = httpContext };
         }
 
-        private ControllerContext CreateControllerContext(List<Claim> claims)
+        private ControllerContext CreateControllerContext(List<Claim> claims, string changeReason = null)
         {
-            return new ControllerContext { HttpContext = CreateHttpContext(claims) };
+            return new ControllerContext { HttpContext = CreateHttpContext(claims, changeReason) };
         }
 
-        private HttpContext CreateHttpContext(List<Claim> claims)
+        private HttpContext CreateHttpContext(List<Claim> claims, string changeReason = null)
         {
             var identity = new ClaimsIdentity(claims, "TestAuthType");
             var principal = new ClaimsPrincipal(identity);
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
+
+            if (!string.IsNullOrEmpty(changeReason))
+            {
+                httpContext.Request.Headers["X-Change-Reason"] = changeReason;
+            }
 
             return httpContext;
         }

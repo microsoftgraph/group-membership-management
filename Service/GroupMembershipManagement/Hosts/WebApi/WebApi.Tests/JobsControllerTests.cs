@@ -11,6 +11,7 @@ using Microsoft.Kiota.Abstractions;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OData.UriParser;
 using Models;
+using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
 using System.Data;
@@ -38,6 +39,7 @@ namespace Services.Tests
         private Mock<IRequestAdapter> _requestAdapter = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
+        private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository = null!;
         private Mock<GraphServiceClient> _graphServiceClient = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
@@ -52,6 +54,7 @@ namespace Services.Tests
             _requestAdapter = new Mock<IRequestAdapter>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
 
@@ -168,7 +171,8 @@ namespace Services.Tests
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object);
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -299,7 +303,8 @@ namespace Services.Tests
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object);
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -310,6 +315,7 @@ namespace Services.Tests
             var response = await _jobsController.PostJobAsync(_newSyncJob);
             var result = response as CreatedResult;
             Assert.IsNotNull(result);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 
         [TestMethod]
@@ -327,7 +333,8 @@ namespace Services.Tests
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object);
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -345,6 +352,7 @@ namespace Services.Tests
             var result = response as ObjectResult;
             Assert.IsNotNull(result);
             Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -362,7 +370,8 @@ namespace Services.Tests
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object);
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -378,6 +387,7 @@ namespace Services.Tests
             Assert.IsInstanceOfType(response, typeof(ObjectResult));
             var result = response as ObjectResult;
             Assert.IsNotNull(result);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
@@ -394,7 +404,8 @@ namespace Services.Tests
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object);
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -412,6 +423,7 @@ namespace Services.Tests
             Assert.IsInstanceOfType(result, typeof(ForbidResult));
 
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
         {

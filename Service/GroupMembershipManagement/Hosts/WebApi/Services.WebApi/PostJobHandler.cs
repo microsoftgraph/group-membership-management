@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.SyncJobChange;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -19,17 +19,20 @@ namespace Services
         private readonly IDatabaseDestinationAttributesRepository _destinationAttributesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly ISyncJobChangeRepository _syncJobChangeRepository;
 
         public PostJobHandler(
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabaseDestinationAttributesRepository destinationAttributesRepository,
             IGraphGroupRepository graphGroupRepository,
-            ILoggingRepository loggingRepository) : base(loggingRepository)
+            ILoggingRepository loggingRepository,
+            ISyncJobChangeRepository syncJobChangeRepository) : base(loggingRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
         }
 
         protected override async Task<PostJobResponse> ExecuteCoreAsync(PostJobRequest request)
@@ -48,18 +51,7 @@ namespace Services
                     return response;
                 }
 
-                var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
-                var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid> { destinationId });
-
                 var newSyncJobId = await _syncJobRepository.CreateSyncJobAsync(newSyncJobEntity);
-
-                var destinationAttributes = new DestinationAttributes
-                {
-                    Id = newSyncJobId,
-                    Name = destinationName,
-                    Owners = ownersDictionary.GetValueOrDefault(destinationId)
-                };
-                await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
 
                 if (newSyncJobId != Guid.Empty)
                 {
@@ -69,6 +61,27 @@ namespace Services
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
                         Message = $"PostJobHandler created job: {request}."
+                    });
+
+                    var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
+                    var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid> { destinationId });
+                    var destinationAttributes = new DestinationAttributes
+                    {
+                        Id = newSyncJobId,
+                        Name = destinationName,
+                        Owners = ownersDictionary.GetValueOrDefault(destinationId)
+                    };
+                    await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
+
+                    await _syncJobChangeRepository.Save(new SyncJobChange
+                    {
+                        SyncJobId = newSyncJobId,
+                        ChangeTime = DateTime.UtcNow,
+                        ChangedByObjectId = Guid.Parse(request.UserIdentity),
+                        ChangedByDisplayName = request.UserDisplayName,
+                        ChangeSource = SyncJobChangeSource.WebApp,
+                        ChangeReason = SyncJobChangeReason.Onboarding.ToString(),
+                        ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(newSyncJobEntity)
                     });
                 }
                 else
