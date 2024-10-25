@@ -1,11 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Job } from "./Job";
-
 export interface PatchJobRequest {
   syncJobId: string;
   patchOperation: PatchOperation[];
+  changeReason: string;
 }
 
 export interface PatchOperation {

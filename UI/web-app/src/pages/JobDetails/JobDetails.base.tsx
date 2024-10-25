@@ -61,6 +61,8 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { fetchJobs } from '../../store/jobs.api';
 import { Loader } from '../../components/Loader';
 import { setIsEditingExistingJob } from '../../store/manageMembership.slice';
+import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
+import { PatchJobRequest } from '../../models/PatchJobRequest';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -300,11 +302,10 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     setIsJobEnabled(job?.enabledOrNot ?? false);
   }, [job]);
 
-  const updateJobStatus = async (newStatus: string) => {
-    const updatedJob = {
-      ...job,
-      status: newStatus,
-    };
+  const updateJobStatus = async (newStatus: string, changeReason: SyncJobChangeReason) => {
+    if (jobId === undefined) {
+      throw new Error('Job ID is not defined');
+    }
 
     const patchOperation = [{
       op: "replace",
@@ -312,14 +313,19 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       value: newStatus
     }];
 
-    try {
-      if (jobId === undefined) {
-        throw new Error('Job ID is not defined');
-      }
+    const patchRequest: PatchJobRequest = {
+      syncJobId: jobId,
+      patchOperation,
+      changeReason
+    };
 
-      await dispatch(patchJobDetails({ syncJobId: jobId, patchOperation: patchOperation }));
-      setIsJobEnabled(newStatus === SyncStatus.Idle);
-      setJobStatus(newStatus);
+    try {
+      await dispatch(patchJobDetails(patchRequest));
+      
+      if (patchResponse?.ok) {
+        setJobStatus(newStatus);
+        setIsJobEnabled(newStatus === SyncStatus.Idle);
+      }
     } catch (error) {
       throw new Error('Failed to update job status');
     };
@@ -327,12 +333,12 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
 
   const handleStatusChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
     const newStatus = isJobEnabled ? SyncStatus.CustomerPaused : SyncStatus.Idle;
-    updateJobStatus(newStatus);
+    updateJobStatus(newStatus, SyncJobChangeReason.StatusUpdate);
   };
 
   const handleApproveSubmission = (approved: boolean) => {
     const statusBasedOnReview = approved ? SyncStatus.Idle : SyncStatus.SubmissionRejected;
-    updateJobStatus(statusBasedOnReview);
+    updateJobStatus(statusBasedOnReview, approved ? SyncJobChangeReason.SubmissionApproved : SyncJobChangeReason.SubmissionRejected);
     resolveReview();
   };
 

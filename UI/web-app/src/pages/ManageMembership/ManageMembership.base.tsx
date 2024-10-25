@@ -60,6 +60,8 @@ import { Loader } from '../../components/Loader';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
+import { PatchJobRequest } from '../../models/PatchJobRequest';
+import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -243,9 +245,14 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     ];
 
       setIsEditingJob(true);
+      const patchRequest: PatchJobRequest = {
+        syncJobId: jobId,
+        patchOperation,
+        changeReason: SyncJobChangeReason.Update
+      };
 
       try {
-        await dispatch(patchJobDetails({syncJobId: jobId, patchOperation: patchOperation}));
+        await dispatch(patchJobDetails(patchRequest));
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
         await dispatch(fetchJobs());
