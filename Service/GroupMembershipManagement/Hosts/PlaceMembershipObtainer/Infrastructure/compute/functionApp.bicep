@@ -39,6 +39,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     siteConfig: {
       use32BitWorkerProcess : false
       appSettings: secretSettings
+      minTlsVersion: '1.2'
     }
   }
   identity: {

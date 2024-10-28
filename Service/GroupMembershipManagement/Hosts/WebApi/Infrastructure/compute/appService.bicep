@@ -43,6 +43,7 @@ resource websiteTemplate 'Microsoft.Web/sites@2022-03-01' = {
     reserved: false
     serverFarmId: resourceId('Microsoft.Web/serverfarms', servicePlanName)
     siteConfig: {
+      minTlsVersion: '1.2'
       cors: {
         supportCredentials: true
       }

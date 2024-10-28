@@ -41,6 +41,7 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
       use32BitWorkerProcess : false
       appSettings: secretSettings
       ftpsState: 'Disabled'
+      minTlsVersion: '1.2'
     }
   }
   identity: {
