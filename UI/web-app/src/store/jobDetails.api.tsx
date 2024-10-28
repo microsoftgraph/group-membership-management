@@ -7,9 +7,10 @@ import { config } from '../authConfig';
 import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { GetJobDetailsRequest, Job, RemoveGMMResponse } from '../models';
+import { GetJobDetailsRequest, Job, RemoveGMMResponse, SyncJobChange } from '../models';
 import { PatchJobRequest } from '../models/PatchJobRequest';
 import { processJob } from '../utils/jobUtils';
+import { GetJobChangesRequest } from '../models/GetJobChangesRequest';
 
 export const fetchJobDetails = createAsyncThunk<
   Job,
@@ -179,3 +180,30 @@ export const removeGMM = createAsyncThunk<
   }
 });
 
+export const fetchJobChanges = createAsyncThunk<
+  SyncJobChange[],
+  GetJobChangesRequest,
+  ThunkConfig
+>('jobs/fetchJobChanges', async (request, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+
+    const options = {
+      method: 'GET',
+      headers
+    };
+
+    try {
+      const response = await fetch(`${config.getJobChanges}/${encodeURIComponent(request.syncJobId)}`, options)
+        .then(async (response) => await response.json());
+
+      return response.items;
+    } catch (error) {
+      throw new Error('Failed to fetch job changes data!');
+    }
+  }
+);

@@ -28,6 +28,7 @@ export interface IJobDetailsStyles {
     membershipStatusActionButtons: IStyle;
     membershipStatusPendingLabel: IStyle;
     removeGMM: IStyle;
+    historyButtonContainer: IStyle;
 }
 
 export interface IJobDetailsStyleProps {

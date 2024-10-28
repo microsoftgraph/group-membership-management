@@ -206,7 +206,22 @@ export type IStrings = {
       forbidden: string;
       internalError: string;
       removeGMMError: string;
-    }
+    };
+    Panel: {
+      dismissButtonAriaLabel: string;
+      changeTimeColumnLabel: string;
+      changedByColumnLabel: string;
+      changeReasonColumnLabel: string;
+      changeDetailsColumnLabel: string;
+      viewDetails: string;
+      history: string;
+      configurationPivotHeader: string;
+      onboardingRequest: string;
+      statusUpdate: string;
+      update: string;
+      submissionApproved: string;
+      submissionRejected: string;
+    };
     notFound: string;
     openInAzure: string;
     viewDetails: string;

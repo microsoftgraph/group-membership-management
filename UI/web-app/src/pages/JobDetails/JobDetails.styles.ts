@@ -11,7 +11,7 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
 
     return {
         root: [{
-            padding: '9px 36px 0px 36px'
+            padding: '0px 36px 0px 36px'
         }, className],
         itemTitle:{
             fontSize: 14,
@@ -96,6 +96,10 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             display: "flex",
             alignItems: "flex-end",
             justifyContent: "flex-end",
-        }
+        },
+        historyButtonContainer: {
+            display: "flex",
+            justifyContent: "flex-end"
+        },
     };
 };

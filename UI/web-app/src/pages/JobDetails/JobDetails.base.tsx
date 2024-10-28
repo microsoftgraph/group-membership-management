@@ -64,6 +64,7 @@ import { setIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
+import { JobHistoryPanel } from '../../components/JobHistoryPanel/JobHistoryPanel';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -102,6 +103,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const [canEditJob, setCanEditJob] = useState<boolean>(isJobWriter && job?.status !== SyncStatus.PendingReview);
   const showLoader: boolean = jobLoading || removeGMMPending;
 
+  const [isJobHistoryPanelOpen, setIsJobHistoryPanelOpen] = useState(false);
+  
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
   const resolveReview = () => {
@@ -161,6 +164,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   }, [dispatch, jobId, groupId]);
 
+  if(jobId === undefined) {
+    throw new Error('Job ID is not defined');
+  }
+
   return (
     <Page>
       <PageHeader />
@@ -195,6 +202,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           </div>
           { selectedJob && (
           <div className={classNames.root}>
+              <div className={classNames.historyButtonContainer}>
+                <ActionButton
+                  iconProps={{ iconName: 'History' }}
+                  text={strings.JobDetails.Panel.history}
+                  onClick={() => setIsJobHistoryPanelOpen(true)}
+                />
+              </div>
               <MembershipDetails job={job} classNames={classNames} />
               <ContentContainer
                 title={strings.JobDetails.labels.membershipStatus}
@@ -241,6 +255,11 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               </div>
             </div>
           )}
+          <JobHistoryPanel
+            isOpen={isJobHistoryPanelOpen}
+            dismissPanel={() => setIsJobHistoryPanelOpen(false)}
+            jobId={jobId}
+          />
           <Dialog
             hidden={!showRemoveGMMDialog}
             onDismiss={onDialogClose}

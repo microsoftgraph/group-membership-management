@@ -3,12 +3,12 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchJobDetails, patchJobDetails, getGroupDetails, removeGMM } from './jobDetails.api';
+import { fetchJobChanges, fetchJobDetails, patchJobDetails, getGroupDetails, removeGMM } from './jobDetails.api';
 import { fetchJobs, postJob, getPeoplePickerSuggestions } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
-import { PatchJobResponse, RemoveGMMResponse } from '../models';
+import { PatchJobResponse, RemoveGMMResponse, SyncJobChange } from '../models';
 
 // Define a type for the slice state
 export interface JobsState {
@@ -27,6 +27,9 @@ export interface JobsState {
   removeGMMLoading: boolean;
   removeGMMResponse: RemoveGMMResponse | undefined;
   removeGMMError: string | undefined;
+  selectedJobChanges: SyncJobChange[] | undefined;
+  selectedJobChangesLoading: boolean;
+  selectedJobChangesError: string | undefined;
 }
 
 // Define the initial state using that type
@@ -45,6 +48,9 @@ const initialState: JobsState = {
   removeGMMLoading: false,
   removeGMMResponse: undefined,
   removeGMMError: undefined,
+  selectedJobChanges: undefined,
+  selectedJobChangesLoading: false,
+  selectedJobChangesError: undefined,
 };
 
 export const jobsSlice = createSlice({
@@ -146,6 +152,19 @@ export const jobsSlice = createSlice({
       state.removeGMMLoading = false;
       state.removeGMMError = action.error.message;
     });
+
+    // fetchJobChanges
+    builder.addCase(fetchJobChanges.pending, (state) => {
+      state.selectedJobChangesLoading = true;
+      state.selectedJobChanges = undefined;
+    });
+    builder.addCase(fetchJobChanges.fulfilled, (state, action) => {
+      state.selectedJobChangesLoading = false;
+      state.selectedJobChanges = action.payload;
+    });
+    builder.addCase(fetchJobChanges.rejected, (state, action) => {
+      state.selectedJobChangesError = action.error.message;
+    });
   }
 });
 
@@ -166,6 +185,13 @@ export const selectGetJobsError = (state: RootState) => state.jobs.getJobsError;
 
 export const selectGetJobDetailsError = (state: RootState) =>
   state.jobs.getJobDetailsError;
+
+export const selectSelectedJobChanges = (state: RootState) =>
+  state.jobs.selectedJobChanges;
+export const selectSelectedJobChangesLoading = (state: RootState) =>
+  state.jobs.selectedJobChangesLoading;
+export const selectSelectedJobChangesError = (state: RootState) =>
+  state.jobs.selectedJobChangesError;
 
 export const getTotalNumberOfPages = (state: RootState) => state.jobs.totalNumberOfPages;
 
