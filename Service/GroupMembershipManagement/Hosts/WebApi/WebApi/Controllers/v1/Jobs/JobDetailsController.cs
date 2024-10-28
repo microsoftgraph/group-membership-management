@@ -20,16 +20,19 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> _removeGMMRequestHandler;
         private readonly IRequestHandler<PatchJobRequest, PatchJobResponse> _patchJobRequestHandler;
         private readonly IRequestHandler<GetGroupRequest, GetGroupResponse> _getGroupRequestHandler;
+        private readonly IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> _getJobChangesRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
                                     IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
                                     IRequestHandler<PatchJobRequest, PatchJobResponse> patchJobRequestHandler,
-                                    IRequestHandler<GetGroupRequest, GetGroupResponse> getGroupRequestHandler)
+                                    IRequestHandler<GetGroupRequest, GetGroupResponse> getGroupRequestHandler,
+                                    IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> getJobChangesRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
             _getGroupRequestHandler = getGroupRequestHandler ?? throw new ArgumentNullException(nameof(getGroupRequestHandler));
             _patchJobRequestHandler = patchJobRequestHandler;
+            _getJobChangesRequestHandler = getJobChangesRequestHandler ?? throw new ArgumentNullException(nameof(getJobChangesRequestHandler));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -132,6 +135,21 @@ namespace WebApi.Controllers.v1.Jobs
             {
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
             }
+        }
+
+        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpGet("history/configuration/{syncJobId}")]
+        public async Task<ActionResult<IEnumerable<SyncJobChangeDTO>>> GetJobChangesAsync(Guid syncJobId)
+        {
+            var response = await _getJobChangesRequestHandler.ExecuteAsync(new GetJobChangesRequest(syncJobId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response.Changes),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
         }
     }
 }
