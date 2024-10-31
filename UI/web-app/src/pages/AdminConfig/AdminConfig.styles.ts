@@ -99,7 +99,11 @@ export const getStyles = (props: AdminConfigStyleProps): AdminConfigStyles => {
         },
         descriptionTextField: {
             flexBasis: '30%',
-            maxWidth: 300 
+            maxWidth: 300,
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            background: theme.palette.white,
         }
     };
 };
