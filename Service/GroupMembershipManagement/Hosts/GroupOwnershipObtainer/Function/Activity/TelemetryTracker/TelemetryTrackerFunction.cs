@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GroupOwnershipObtainer
 {
@@ -21,7 +22,7 @@ namespace Hosts.GroupOwnershipObtainer
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [Function(nameof(TelemetryTrackerFunction))]
+        [FunctionName(nameof(TelemetryTrackerFunction))]
         public async Task TrackEventAsync([ActivityTrigger] TelemetryTrackerRequest request)
         {
             await _loggingRepository.LogMessageAsync(

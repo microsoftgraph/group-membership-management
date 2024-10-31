@@ -22,8 +22,7 @@
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
     "actionableEmailProviderId": "",
-    "serviceBusMembershipAggregatorQueue": "",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+    "serviceBusMembershipAggregatorQueue": ""
   },
   "ConnectionStrings": {}
 }

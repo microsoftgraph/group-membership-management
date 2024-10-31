@@ -22,7 +22,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
     <ProjectReference Include="..\Function\GroupOwnershipObtainer.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
