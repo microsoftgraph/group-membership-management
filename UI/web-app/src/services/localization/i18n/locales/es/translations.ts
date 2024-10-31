@@ -20,7 +20,8 @@ export const strings: IStrings = {
     'Aprenda cómo funciona Membership Management en su organización',
   permissionDenied: 'No tiene permiso para ver esta pagina. Por favor contacte a su administrador.',
   HROnboarding: {
-    orgLeader: "Proporcionar organización. líder",
+    orgLeader: "Líder de la organización",
+    provideOrgLeader: "Proporcionar líder de la organización",
     orgLeaderPlaceHolder: "Por favor ingrese Org. líder",
     orgLeaderInfo: "Proporcionar organización. líder",
     depth: "Profundidad",

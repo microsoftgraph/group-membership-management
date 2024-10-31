@@ -1701,12 +1701,12 @@ const getOptions = (
         disabled={!isJobWriter}
       />
 
-      {(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && objectIdEmployeeIdMapping[source.manager.id].text !== undefined)) && (
+{(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
       <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <div>
             <div className={classNames.labelContainer}>
-              <Label>{strings.HROnboarding.orgLeader}</Label>
+              <Label>{strings.HROnboarding.provideOrgLeader}</Label>
               <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
                 <IconButton title={strings.HROnboarding.orgLeaderInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
               </TooltipHost>
@@ -1719,8 +1719,8 @@ const getOptions = (
               itemLimit={1}
               selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled ? [
                 {
-                  key: objectIdEmployeeIdMapping[source.manager.id]?.objectId.toString() || "",
-                  text: objectIdEmployeeIdMapping[source.manager.id]?.text.toString() || ""
+                  key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
+                  text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
                 },
               ] : undefined}
               onInputChange={handleOrgLeaderInputChange}
@@ -1729,6 +1729,10 @@ const getOptions = (
               pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
               disabled={!isJobWriter}
             />
+            {source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id].text == undefined && 
+             <div className={classNames.error}>
+              {strings.HROnboarding.orgLeader} {strings.HROnboarding.orgLeaderMissingErrorMessage}
+             </div>}
           </div>
         </Stack.Item>
 
@@ -1770,8 +1774,8 @@ const getOptions = (
           </div>
         </Stack.Item>
       </Stack>
-      )}
-
+       )}
+       
 
       <div className={classNames.error}>
         {orgErrorMessage}

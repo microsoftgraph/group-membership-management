@@ -83,7 +83,6 @@ export const jobsSlice = createSlice({
     builder.addCase(fetchJobDetails.fulfilled, (state, action) => {
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
-      console.log("state.selectedJob", state.selectedJob);
     });
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
       state.getJobDetailsError = action.error.message;

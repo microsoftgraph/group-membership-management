@@ -17,6 +17,7 @@ export type IStrings = {
   permissionDenied: string;
   HROnboarding: {
     orgLeader: string;
+    provideOrgLeader: string;
     orgLeaderPlaceHolder: string;
     orgLeaderInfo: string;
     depth: string;
