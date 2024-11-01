@@ -42,6 +42,10 @@ namespace Hosts.NonProdService
             var minutesInADay = 60 * 24;
             var minutesBetweenJobs = minutesInADay / totalJobsToCreate;
 
+            // For ensuring no-op enforcement
+            var P = 4; // Thus %no op = 1 - 1/4 = 75%
+            var jobIndex = 0;
+
             var nextJobTime = DateTime.UtcNow;
 
             foreach (var groupSize in groupSizesAndIds.Keys)
@@ -57,7 +61,7 @@ namespace Hosts.NonProdService
 
                     var offset = (int)(groupSize * ((decimal)options.SyncJobChangePercent / 100));
                     var offsetProbabilityAsMS = (int)(1000 * ((decimal)options.SyncJobProbabilityOfChangePercent / 100));
-                    var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND DATEPART(ms, GETDATE()) < {offsetProbabilityAsMS}) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND DATEPART(ms, GETDATE()) >= {offsetProbabilityAsMS})";
+                    var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2*P}) < {P}) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2 * P}) >= {P})";
                     var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\"}}]";
 
                     nextJobTime = nextJobTime.AddMinutes(minutesBetweenJobs);
@@ -80,6 +84,8 @@ namespace Hosts.NonProdService
                     };
 
                     await _databaseSyncJobsRepository.CreateSyncJobAsync(syncJob);
+
+                    jobIndex++;
                 }
             }
 
