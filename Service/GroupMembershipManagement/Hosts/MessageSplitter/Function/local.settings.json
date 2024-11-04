@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "appConfigurationEndpoint": "",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "gmmServiceBus__fullyQualifiedNamespace": "",
+    "instanceIdentifier": "",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "membershipContainerName": "membership",
+    "membershipStorageAccountName": "",
+    "messageSplitterSubscription": "",
+    "serviceBusMembershipUpdatersTopic": "membershipUpdaters",
+    "serviceBusMessageSplitterTopic": "messageSplitter",
+    "ConnectionStrings:JobsContext": "",
+    "ConnectionStrings:JobsContextReadOnly": ""
+  }
+}

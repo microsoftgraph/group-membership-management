@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AzureFunctionsVersion>v4</AzureFunctionsVersion>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.23.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.18.1" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="1.4.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Http" Version="3.2.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.22.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.1.7" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Topics\Repositories.ServiceBusTopics.csproj" />
+    <ProjectReference Include="..\Contracts\MessageSplitter.Contracts.csproj" />
+    <ProjectReference Include="..\Entities\MessageSplitter.Entities.csproj" />
+    <ProjectReference Include="..\Services\MessageSplitter.Services.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="host.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="local.settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
+  </ItemGroup>
+</Project>

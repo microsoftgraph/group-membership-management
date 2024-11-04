@@ -1,0 +1,26 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "availableMessageSplitterSubscriptions": {
+      "value": [
+        {
+          "name": "s1",
+          "subscription": "Small"
+        },
+        {
+          "name": "m1",
+          "subscription": "Medium"
+        },
+        {
+          "name": "l1",
+          "subscription": "Large"
+        },
+        {
+          "name": "o1",
+          "subscription": "Onboarding"
+        }
+      ]
+    }
+  }
+}

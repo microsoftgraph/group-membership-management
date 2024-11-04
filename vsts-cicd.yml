@@ -102,6 +102,9 @@ stages:
       - function:
          name: 'SyncJobUpdater'
          coverageThreshold: 40
+      - function:
+         name: 'MessageSplitter'
+         coverageThreshold: 45
 
   - template: yaml/build-release-package.yml
     parameters:
