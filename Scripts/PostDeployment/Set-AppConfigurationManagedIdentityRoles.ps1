@@ -35,7 +35,8 @@ function Set-AppConfigurationManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$apps = @("WebApi","GraphUpdater","MembershipAggregator","GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","AzureMaintenance","AzureUserReader","JobScheduler","JobTrigger","NonProdService","Notifier","TeamsChannelMembershipObtainer","GroupOwnershipObtainer", "TeamsChannelUpdater", "DestinationAttributesUpdater", "SyncJobUpdater")
+	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+	$apps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	if($DataResourceGroupName)
@@ -46,12 +47,9 @@ function Set-AppConfigurationManagedIdentityRoles
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
 	$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName;
 
-	foreach ($app in $apps)
+	foreach ($appName in $apps)
 	{
 		Write-Host "Granting app service access to app configuration";
-
-		$appName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$app"
-
 		Write-Host "FunctionAppName: $appName"
 
 		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $appName;

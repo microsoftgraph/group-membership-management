@@ -36,21 +36,19 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
-	$functionApps = @("GroupMembershipObtainer","SqlMembershipObtainer","PlaceMembershipObtainer","MembershipAggregator","GraphUpdater","TeamsChannelMembershipObtainer","GroupOwnershipObtainer","TeamsChannelUpdater", "DestinationAttributesUpdater", "SyncJobUpdater")
+	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+	$functionApps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
 
-	foreach ($functionApp in $functionApps)
+	foreach ($functionAppName in $functionApps)
 	{
 
 		Write-Host "Granting app service access to storage account blobs";
-
 
 		$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 		if($DataResourceGroupName)
 		{
 			$resourceGroupName = $DataResourceGroupName
 		}
-
-		$functionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 
 		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
 

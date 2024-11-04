@@ -102,6 +102,11 @@ function Set-WebApiAzureADApplication {
 
 	if ($null -ne $webApiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
 		Write-Host "Application $webApiAppDisplayName already exists. Skipping creation..."
+
+		# Update roles if needed
+		. ($scriptsDirectory + '\Scripts\Set-AppRolesIfNeeded.ps1')
+		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
+
 		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
 	}
 
