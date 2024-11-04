@@ -45,6 +45,11 @@ namespace Tests.Repositories
             throw new System.NotImplementedException();
         }
 
+        public Task AddMessagesAsync(IEnumerable<ServiceBusMessage> messages)
+        {
+            throw new System.NotImplementedException();
+        }
+
         public ServiceBusMessage CreateMessage(SyncJob job)
         {
             var body = JsonSerializer.Serialize(job);

@@ -1,19 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Messaging.ServiceBus;
+using DIConcreteTypes;
 using Hosts.MembershipAggregator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
 using Repositories.Contracts;
+using Repositories.ServiceBusTopics;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -21,6 +26,9 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
+        private const int SMALL = 20;
+        private const int MEDIUM = 60;
+
         private SyncJob _syncJob;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
@@ -32,6 +40,11 @@ namespace Services.Tests
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDurableOrchestrationContext> _durableContext;
         private Mock<IServiceBusTopicsRepository> _serviceBusTopicsRepository;
+        private IOptions<MultiLaneConfig> _multilaneConfig;
+        private ServiceBusTopicsRepository _messageSplitterSender;
+        private Mock<ServiceBusSender> _serviceBusSender;
+
+        private Action<ServiceBusMessage> _onSendingMessage;
 
         [TestInitialize]
         public void SetupTest()
@@ -43,6 +56,18 @@ namespace Services.Tests
             _durableContext = new Mock<IDurableOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
+            _multilaneConfig = Options.Create(new MultiLaneConfig
+            {
+                IsEnabled = false,
+                Small = SMALL,
+                Medium = MEDIUM
+            });
+
+            _serviceBusSender = new Mock<ServiceBusSender>();
+            _serviceBusSender.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()))
+                            .Callback<ServiceBusMessage, CancellationToken>((message, token) => _onSendingMessage?.Invoke(message));
+
+            _messageSplitterSender = new ServiceBusTopicsRepository(_serviceBusSender.Object);
 
             var targetOfficeGroupId = Guid.NewGuid();
             _syncJob = new SyncJob
@@ -227,6 +252,116 @@ namespace Services.Tests
             _jobTrackerEntity.Verify(x => x.Delete(), Times.Once());
         }
 
+        [TestMethod]
+        public async Task SendNewJobToMessageSplitterTopicAsync()
+        {
+            _multilaneConfig = Options.Create(new MultiLaneConfig
+            {
+                IsEnabled = true,
+                Small = SMALL,
+                Medium = MEDIUM
+            });
+
+            _membershipSubOrchestratorResponse.MembersToBeAdded = 100000;
+
+            var laneSize = string.Empty;
+            _onSendingMessage = message =>
+            {
+                laneSize = message.ApplicationProperties["LaneSize"].ToString();
+            };
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            Assert.AreEqual("Onboarding", laneSize);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Onboarding lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task SendSmallJobToMessageSplitterTopicAsync()
+        {
+            _multilaneConfig = Options.Create(new MultiLaneConfig
+            {
+                IsEnabled = true,
+                Small = SMALL,
+                Medium = MEDIUM
+            });
+
+            _membershipSubOrchestratorResponse.MembersToBeAdded = 20;
+
+            _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddDays(-1);
+
+            var laneSize = string.Empty;
+            _onSendingMessage = message =>
+            {
+                laneSize = message.ApplicationProperties["LaneSize"].ToString();
+            };
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            Assert.AreEqual("Small", laneSize);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Small lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task SendMediumJobToMessageSplitterTopicAsync()
+        {
+            _multilaneConfig = Options.Create(new MultiLaneConfig
+            {
+                IsEnabled = true,
+                Small = SMALL,
+                Medium = MEDIUM
+            });
+
+            _membershipSubOrchestratorResponse.MembersToBeAdded = 60;
+
+            _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddDays(-1);
+
+            var laneSize = string.Empty;
+            _onSendingMessage = message =>
+            {
+                laneSize = message.ApplicationProperties["LaneSize"].ToString();
+            };
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            Assert.AreEqual("Medium", laneSize);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Medium lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task SendLargeJobToMessageSplitterTopicAsync()
+        {
+            _multilaneConfig = Options.Create(new MultiLaneConfig
+            {
+                IsEnabled = true,
+                Small = SMALL,
+                Medium = MEDIUM
+            });
+
+            _membershipSubOrchestratorResponse.MembersToBeAdded = 61;
+
+            _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddDays(-1);
+
+            var laneSize = string.Empty;
+            _onSendingMessage = message =>
+            {
+                laneSize = message.ApplicationProperties["LaneSize"].ToString();
+            };
+
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            Assert.AreEqual("Large", laneSize);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Large lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
+        }
+
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
             var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
@@ -247,7 +382,12 @@ namespace Services.Tests
 
         private async Task CallTopicMessageSenderFunctionAsync(MembershipHttpRequest request)
         {
-            var topicMessageSenderFunction = new TopicMessageSenderFunction(_loggingRepository.Object, _serviceBusTopicsRepository.Object);
+            var topicMessageSenderFunction = new TopicMessageSenderFunction(
+                                                    _loggingRepository.Object,
+                                                    _serviceBusTopicsRepository.Object,
+                                                    _messageSplitterSender,
+                                                    _multilaneConfig);
+
             await topicMessageSenderFunction.SendMessageAsync(request);
         }
     }

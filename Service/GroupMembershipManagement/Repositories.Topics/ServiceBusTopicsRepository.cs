@@ -5,6 +5,7 @@ using Models;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -47,7 +48,7 @@ namespace Repositories.ServiceBusTopics
                 await _serviceBusSender.SendMessageAsync(sourceGroupMessage);
             }
 
-            var destinationType = (JArray.Parse(job.Destination)[0] as JObject)["type"].Value<string>(); 
+            var destinationType = (JArray.Parse(job.Destination)[0] as JObject)["type"].Value<string>();
 
             var destinationGroupMessage = CreateMessage(job);
             destinationGroupMessage.ApplicationProperties.Add("Type", destinationType);
@@ -75,6 +76,40 @@ namespace Repositories.ServiceBusTopics
             }
 
             await _serviceBusSender.SendMessageAsync(serviceBusmessage);
+        }
+
+        public async Task AddMessagesAsync(IEnumerable<MessageDTO> messages)
+        {
+            var batch = await _serviceBusSender.CreateMessageBatchAsync();
+
+            foreach (var message in messages)
+            {
+                var serviceBusmessage = new Message
+                {
+                    Body = new BinaryData(message.Body),
+                    MessageId = message.MessageId
+                };
+
+                if (message.ApplicationProperties != null)
+                {
+                    foreach (var property in message.ApplicationProperties)
+                    {
+                        serviceBusmessage.ApplicationProperties.Add(property.Key, property.Value);
+                    }
+                }
+
+                if (!batch.TryAddMessage(serviceBusmessage))
+                {
+                    await _serviceBusSender.SendMessagesAsync(batch);
+                    batch = await _serviceBusSender.CreateMessageBatchAsync();
+                    batch.TryAddMessage(serviceBusmessage);
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                await _serviceBusSender.SendMessagesAsync(batch);
+            }
         }
 
         private Message CreateMessage(SyncJob job)

@@ -80,7 +80,9 @@ namespace Hosts.MembershipAggregator
                         {
                             FilePath = membershipResponse.FilePath,
                             SyncJob = request.SyncJob,
-                            ProjectedMemberCount = membershipResponse.ProjectedMemberCount
+                            ProjectedMemberCount = membershipResponse.ProjectedMemberCount,
+                            MembersToBeAdded = membershipResponse.MembersToBeAdded,
+                            MembersToBeRemoved = membershipResponse.MembersToBeRemoved,
                         };
 
                         await context.CallActivityAsync(nameof(TopicMessageSenderFunction), updateRequestContent);

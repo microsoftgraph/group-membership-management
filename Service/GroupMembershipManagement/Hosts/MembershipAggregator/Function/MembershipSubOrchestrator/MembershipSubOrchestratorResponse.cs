@@ -9,5 +9,7 @@ namespace Hosts.MembershipAggregator
         public string FilePath { get; set; }
         public MembershipDeltaStatus MembershipDeltaStatus { get; set; }
         public int ProjectedMemberCount { get; set; }
+        public int MembersToBeAdded { get; set; }
+        public int MembersToBeRemoved { get; set; }
     }
 }

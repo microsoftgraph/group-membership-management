@@ -145,7 +145,9 @@ namespace Hosts.MembershipAggregator
                 {
                     FilePath = uploadRequest.FilePath,
                     MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
-                    ProjectedMemberCount = SourceMembership.SourceMembers.Count
+                    ProjectedMemberCount = SourceMembership.SourceMembers.Count,
+                    MembersToBeAdded = deltaResponse.MembersToAddCount,
+                    MembersToBeRemoved = deltaResponse.MembersToRemoveCount,
                 };
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.ThresholdExceeded)
@@ -266,7 +268,9 @@ namespace Hosts.MembershipAggregator
 
             return new MembershipSubOrchestratorResponse
             {
-                MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus
+                MembershipDeltaStatus = deltaResponse.MembershipDeltaStatus,
+                MembersToBeAdded = deltaResponse.MembersToAddCount,
+                MembersToBeRemoved = deltaResponse.MembersToRemoveCount
             };
         }
 

@@ -4,10 +4,12 @@ using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph.Models.ExternalConnectors;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -16,7 +18,6 @@ using Repositories.ServiceBusQueue;
 using Repositories.ServiceBusTopics;
 using Services;
 using Services.Contracts;
-using Microsoft.ApplicationInsights;
 
 [assembly: FunctionsStartup(typeof(Hosts.MembershipAggregator.Startup))]
 
@@ -30,6 +31,11 @@ namespace Hosts.MembershipAggregator
         public override void Configure(IFunctionsHostBuilder builder)
         {
             base.Configure(builder);
+
+            builder.Services.AddOptions<MultiLaneConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                configuration.GetSection("MultiLane").Bind(settings);
+            });
 
             builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
@@ -82,6 +88,14 @@ namespace Hosts.MembershipAggregator
                 var membershipAggregatorQueue = configuration["serviceBusMembershipUpdatersTopic"];
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(membershipAggregatorQueue);
+                return new ServiceBusTopicsRepository(sender);
+            })
+            .AddKeyedSingleton<IServiceBusTopicsRepository>("messageSplitterSender", (services, _) =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var messageSplitterTopic = configuration["serviceBusMessageSplitterTopic"];
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(messageSplitterTopic);
                 return new ServiceBusTopicsRepository(sender);
             })
             .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>((services) =>
