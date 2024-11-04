@@ -106,6 +106,8 @@ var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyV
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var membershipAggregatorStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStorageAccountProd')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
+var serviceBusMessageSplitterTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMessageSplitterTopic')
+
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-MembershipAggregator'
@@ -156,6 +158,7 @@ var appSettings = {
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  serviceBusMessageSplitterTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMessageSplitterTopic, '2019-09-01').secretUriWithVersion})'
 }
 
 var activityFunctionSettings = {
@@ -195,7 +198,7 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-magg'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -219,6 +222,9 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     servicePlanTemplate
@@ -227,27 +233,11 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
   ]
 }
 
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-MembershipAggregator'
-  params: {
-    functionName: 'MembershipAggregator'
-    prereqsKeyVaultName: prereqsKeyVaultName
-    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_MembershipAggregator.outputs.msi
-  }
-  dependsOn: [
-    functionAppTemplate_MembershipAggregator
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-MembershipAggregator/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
-    functionAppRBAC
+    functionAppTemplate_MembershipAggregator
   ]
 }

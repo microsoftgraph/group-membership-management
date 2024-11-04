@@ -66,6 +66,11 @@ param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconf
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('Object with flags to determine behaviour')
+param featureFlags object = {
+  skipListingFunctionAppKeys : false
+}
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
@@ -153,7 +158,7 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-aur'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -176,6 +181,10 @@ module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
+    featureFlags: featureFlags
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     servicePlanTemplate
@@ -184,27 +193,11 @@ module functionAppTemplate_AzureUserReader 'functionApp.bicep' = {
   ]
 }
 
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-AzureUserReader'
-  params: {
-    functionName: 'AzureUserReader'
-    prereqsKeyVaultName: prereqsKeyVaultName
-    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_AzureUserReader.outputs.msi
-  }
-  dependsOn: [
-    functionAppTemplate_AzureUserReader
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-AzureUserReader/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
-    functionAppRBAC
+    functionAppTemplate_AzureUserReader
   ]
 }

@@ -169,7 +169,7 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-goo'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -190,6 +190,11 @@ module functionAppTemplate_GroupOwnershipObtainer 'functionApp.bicep' = {
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     servicePlanTemplate
@@ -198,27 +203,11 @@ module functionAppTemplate_GroupOwnershipObtainer 'functionApp.bicep' = {
   ]
 }
 
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-GroupOwnershipObtainer'
-  params: {
-    functionName: 'GroupOwnershipObtainer'
-    prereqsKeyVaultName: prereqsKeyVaultName
-    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_GroupOwnershipObtainer.outputs.msi
-  }
-  dependsOn: [
-    functionAppTemplate_GroupOwnershipObtainer
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
   name: '${functionAppName}-GroupOwnershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
-    functionAppRBAC
+    functionAppTemplate_GroupOwnershipObtainer
   ]
 }

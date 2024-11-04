@@ -166,7 +166,7 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace'
+  name: 'existingLogAnalyticsWorkspace-pmo'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -187,6 +187,11 @@ module functionAppTemplate_PlaceMembershipObtainer 'functionApp.bicep' = {
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     servicePlanTemplate
@@ -195,27 +200,11 @@ module functionAppTemplate_PlaceMembershipObtainer 'functionApp.bicep' = {
   ]
 }
 
-module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-PlaceMembershipObtainer'
-  params: {
-    functionName: 'PlaceMembershipObtainer'
-    prereqsKeyVaultName: prereqsKeyVaultName
-    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    setRBACPermissions: setRBACPermissions
-    productionSlotPrincipalId: functionAppTemplate_PlaceMembershipObtainer.outputs.msi
-  }
-  dependsOn: [
-    functionAppTemplate_PlaceMembershipObtainer
-  ]
-}
-
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
   name: '${functionAppName}-PlaceMembershipObtainer/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
-    functionAppRBAC
+    functionAppTemplate_PlaceMembershipObtainer
   ]
 }

@@ -29,6 +29,18 @@ param dataKeyVaultResourceGroup string
 @description('Log Analytics Workspace Id.')
 param logAnalyticsWorkspaceId string
 
+@description('Object with flags to determine behaviour')
+param featureFlags object
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultName string
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultResourceGroup string
+
+@description('Flag to indicate if the deployment should set RBAC permissions.')
+param setRBACPermissions bool
+
 resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   name: name
   location: location
@@ -49,6 +61,19 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   }
 }
 
+module functionAppRBAC 'functionAppRBAC.bicep' = {
+  name: 'functionAppsRBAC-JobScheduler'
+  params: {
+    functionName: 'JobScheduler'
+    prereqsKeyVaultName: prereqsKeyVaultName
+    prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
+    setRBACPermissions: setRBACPermissions
+    productionSlotPrincipalId: functionApp.identity.principalId
+  }
+}
+
 resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   name: 'functionApp-diagnostics'
   scope: functionApp
@@ -65,6 +90,9 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       }
     ]
   }
+  dependsOn:[
+    functionAppRBAC
+  ]
 }
 
 resource snScmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
@@ -73,6 +101,9 @@ resource snScmBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
   properties: {
     allow: false
   }
+  dependsOn:[
+    diagnosticSettings
+  ]
 }
 
 resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2022-09-01' = {
@@ -81,6 +112,9 @@ resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
   properties: {
     allow: false
   }
+  dependsOn:[
+    snScmBasicAuth
+  ]
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
@@ -95,9 +129,12 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       }
     ]
   }
+  dependsOn:[
+    snFtpBasicAuth
+  ]
 }
 
-module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
+module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = if(!featureFlags.skipListingFunctionAppKeys) {
   name: 'secureSecretsTemplate-JobScheduler'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
@@ -106,11 +143,14 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
       secrets: [
         {
           name: 'jobSchedulerFunctionKey'
-          value: listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
+          value: featureFlags.skipListingFunctionAppKeys ? 'not-set' : listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
         }
       ]
     }
   }
+  dependsOn:[
+    secretsTemplate
+  ]
 }
 
 output msi string = functionApp.identity.principalId
