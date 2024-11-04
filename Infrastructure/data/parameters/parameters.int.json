@@ -50,31 +50,37 @@
           "topicName": "messageSplitter",
           "subscriptionName": "Small",
           "ruleName": "jobSize",
-          "ruleSqlExpression": "laneSize = 'Small'"
+          "ruleSqlExpression": "LaneSize = 'Small'"
         },
         {
           "topicName": "messageSplitter",
           "subscriptionName": "Medium",
           "ruleName": "jobSize",
-          "ruleSqlExpression": "laneSize = 'Medium'"
+          "ruleSqlExpression": "LaneSize = 'Medium'"
         },
         {
           "topicName": "messageSplitter",
           "subscriptionName": "Large",
           "ruleName": "jobSize",
-          "ruleSqlExpression": "laneSize = 'Large'"
+          "ruleSqlExpression": "LaneSize = 'Large'"
         },
         {
           "topicName": "messageSplitter",
           "subscriptionName": "Onboarding",
           "ruleName": "jobSize",
-          "ruleSqlExpression": "laneSize = 'Onboarding'"
+          "ruleSqlExpression": "LaneSize = 'Onboarding'"
         },
         {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_onboarding_1",
           "ruleName": "GraphUpdater_onboarding_rule",
           "ruleSqlExpression": "Type = 'groupmembership_onboarding_1'"
+        },
+        {
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater_onboarding_2",
+          "ruleName": "GraphUpdater_onboarding_rule",
+          "ruleSqlExpression": "Type = 'groupmembership_onboarding_2'"
         },
         {
           "topicName": "membershipUpdaters",
@@ -111,6 +117,12 @@
           "subscriptionName": "GraphUpdater_large_1",
           "ruleName": "GraphUpdater_large_rule",
           "ruleSqlExpression": "Type = 'groupmembership_large_1'"
+        },
+        {
+          "topicName": "membershipUpdaters",
+          "subscriptionName": "GraphUpdater_large_2",
+          "ruleName": "GraphUpdater_large_rule",
+          "ruleSqlExpression": "Type = 'groupmembership_large_2'"
         },
         {
           "topicName": "membershipUpdaters",

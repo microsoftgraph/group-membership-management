@@ -16,6 +16,14 @@ param uiLocation string
 // API parameters
 param pipeline string
 
+// Message Splitter
+param availableMessageSplitterSubscriptions array
+
+@description('Object with flags to determine behaviour')
+param featureFlags object = {
+  skipListingFunctionAppKeys : true
+}
+
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var computeResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-compute-${environmentAbbreviation}'
@@ -299,6 +307,7 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     graphUpdaterDataResources
@@ -362,6 +371,7 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     dataKeyVaultResourceGroup: dataResourceGroupName
     appConfigurationName: appConfigurationName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     nonProdServiceDataResources
@@ -394,6 +404,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     dataKeyVaultResourceGroup: dataResourceGroupName
     storageAccountSecretName: 'storageAccountConnectionString'
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     azureUserReaderDataResources
@@ -425,6 +436,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     notifierDataResources
@@ -456,6 +468,7 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     jobSchedulerDataResources
@@ -493,6 +506,120 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
   ]
 }
 
+// ----------------- MessageSplitter instances
+var instanceIds = [
+  's1'
+  'm1'
+  'l1'
+  'o1'
+]
+
+module messageSplitterDataResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/data/template.bicep' = [for instance in instanceIds: {
+    name: 'messageSplitter${instance}DataResources'
+    scope: resourceGroup(dataResourceGroupName)
+    params: {
+      location: location
+      environmentAbbreviation: environmentAbbreviation
+      solutionAbbreviation: solutionAbbreviation
+      tenantId: tenantId
+      storageAccountName: 'notused'
+      instanceIdentifier: instance
+    }
+  }
+]
+
+module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/compute/template.bicep' = [for instance in instanceIds: {
+  name: 'messageSplitter${instance}ComputeResources'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    storageAccountName: 'notUsed'
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+    availableMessageSplitterSubscriptions: availableMessageSplitterSubscriptions
+    instanceIdentifier: instance
+  }
+  dependsOn: [
+    messageSplitterDataResources
+  ]
+}]
+
+/// Functions Post Compute tasks
+module azureUserReaderPostCompute '../Service/GroupMembershipManagement/Hosts/AzureUserReader/Infrastructure/compute/postCompute.bicep' = {
+  name: 'azureUserReaderPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    azureUserReaderComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module graphUpdaterPostCompute '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/postCompute.bicep' = {
+  name: 'graphUpdaterPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    graphUpdaterComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module jobSchedulerPostCompute '../Service/GroupMembershipManagement/Hosts/JobScheduler/Infrastructure/compute/postCompute.bicep' = {
+  name: 'jobSchedulerPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    jobSchedulerComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module nonProdServicePostCompute '../Service/GroupMembershipManagement/Hosts/NonProdService/Infrastructure/compute/postCompute.bicep' = {
+  name: 'nonProdServicePostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    nonProdServiceComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+module notifierPostCompute '../Service/GroupMembershipManagement/Hosts/Notifier/Infrastructure/compute/postCompute.bicep' = {
+  name: 'notifierPostCompute'
+  params: {
+    dataKeyVaultName: '${solutionAbbreviation}-data-${environmentAbbreviation}'
+    dataKeyVaultResourceGroup: dataResourceGroupName
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+  dependsOn:[
+    notifierComputeResources
+    messageSplitterComputeResources
+  ]
+}
+
+
 // web api
 module webApiDataResources '../Service/GroupMembershipManagement/Hosts/WebApi/Infrastructure/data/template.bicep' = {
   name: 'webApiDataResourcesTemplate'
@@ -519,6 +646,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
   dependsOn: [
     sqlMembershipObtainerComputeResources
     webApiDataResources
+    jobSchedulerPostCompute
   ]
 }
 

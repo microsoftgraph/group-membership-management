@@ -54,6 +54,9 @@ var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName :
 var dataResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var computeResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-compute-${environmentAbbreviation}'
 
+// Message Splitter
+param availableMessageSplitterSubscriptions array
+
 module gmmResourceGroups 'resourceGroups.bicep' = {
   name: 'resourceGroupsTemplate'
   scope: subscription()
@@ -101,6 +104,7 @@ module gmmResources 'commonResources.bicep' = {
     setRBACPermissions: setRBACPermissions
     skipMailNotifications: skipMailNotifications
     isMailApplicationPermissionGranted: isMailApplicationPermissionGranted
+    availableMessageSplitterSubscriptions: availableMessageSplitterSubscriptions
   }
   dependsOn: [
     gmmResourceGroups

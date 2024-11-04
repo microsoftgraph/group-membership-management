@@ -97,6 +97,35 @@ param serviceBusFailedNotificationsQueue string = 'failedNotifications'
 @description('Enter job finalizer service bus queue name')
 param serviceBusSyncJobUpdaterQueue string = 'syncJobUpdater'
 
+@description('Available membership updaters')
+param availableMembershipUpdaters array = [
+  {
+    name: 'GroupMembership'
+    lanes: [
+      {
+        name: 'small'
+        instances: 3
+        messageSize: 20
+      }
+      {
+        name: 'medium'
+        instances: 2
+        messageSize: 60
+      }
+      {
+        name: 'large'
+        instances: 1
+        messageSize: 100
+      }
+      {
+        name: 'onboarding'
+        instances: 1
+        messageSize: 840
+      }
+    ]
+  }
+]
+
 @description('Enter storage account name.')
 @minLength(1)
 @maxLength(24)
@@ -348,6 +377,40 @@ param appConfigurationKeyData array = [
     contentType: 'bool'
     tag: {
       tag1: 'TeamsChannel'
+    }
+  }
+  {
+    key: 'MultiLane:Small'
+    value: 20
+    contentType: 'integer'
+    tag: {
+      tag1: 'MultiLane'
+    }
+    desription: 'small: equal or less than value.'
+  }
+  {
+    key: 'MultiLane:Medium'
+    value: 60
+    contentType: 'integer'
+    tag: {
+      tag1: 'MultiLane'
+    }
+    desription: 'medium: equal or less than value, large will be anything greater.'
+  }
+  {
+    key: 'MultiLane:IsEnabled'
+    value: false
+    contentType: 'bool'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:AvailableMembershipUpdaters'
+    value: string(availableMembershipUpdaters)
+    contentType: 'string'
+    tag: {
+      tag1: 'MultiLane'
     }
   }
 ]

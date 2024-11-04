@@ -12,6 +12,9 @@ param setRBACPermissions bool
 param skipMailNotifications bool
 param isMailApplicationPermissionGranted bool
 
+// Message Splitter
+param availableMessageSplitterSubscriptions array
+
 // prereqs parameters
 // parameters for prereqs key vault
 @secure()
@@ -113,6 +116,7 @@ module computeResources 'computeResources.bicep' = {
     pipeline: pipeline
     appConfigurationName: appConfigurationName
     setRBACPermissions: setRBACPermissions
+    availableMessageSplitterSubscriptions: availableMessageSplitterSubscriptions
   }
   dependsOn: [
     dataResources
