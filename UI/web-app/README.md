@@ -39,13 +39,13 @@ Set default Node version:
 
     ``` bash
     nvs add <version>
-        Example: nvs add 14.19.0
+        Example: nvs add 23.1.0
     nvs link <version>
-        Example: nvs add 14.19.0
+        Example: nvs link 23.1.0
 
 ### PNPM
 Performant Node Package Manager, or pnpm is what we use to manage dependencies. You can get it [here](https://pnpm.io/installation).
-We are using pnpm v7, which is compatible with node v14.
+We are using pnpm v7, which is compatible with this node version.
 
 ## Available Scripts
 
@@ -73,6 +73,10 @@ The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+### `npx eslint .`
+
+Runs ESLint on all files in the project according to the configuration in `eslint.config.mjs`.
 
 ## Learn More
 
