@@ -1288,8 +1288,8 @@ const getOptions = (
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
-            <ActionButton iconProps={{ iconName: 'ChevronUp' }} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
-            <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronUp' }} disabled={!isJobWriter} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronDown' }} disabled={!isJobWriter} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
           </div>;
         case 'attribute':
           return (
@@ -1308,7 +1308,7 @@ const getOptions = (
               autoComplete="off"
               useComboBoxAsMenuWidth={true}
               dropdownMaxWidth={500}
-              disabled={isAttributeDisabled}
+              disabled={isAttributeDisabled || !isJobWriter}
               errorMessage={
                 isAttributeDisabled
                   ? strings.HROnboarding.attributeDisabledErrorMessage.replace('{email}', displayEmail)
@@ -1400,16 +1400,14 @@ const getOptions = (
           );
         case 'remove':
           return (
-
             <ActionButton
-            className={classNames.removeButton}
-            iconProps={{ iconName: "Blocked2" }}
-            onClick={() => removeComponent(index ?? -1)}
-            disabled={!isJobWriter}>
-            {strings.remove}
-          </ActionButton>
-
-        );
+              className={`${classNames.removeButton} ${!isJobWriter ? classNames.removeButtonDisabled : ''}`}
+              iconProps={{ iconName: "Blocked2" }}
+              onClick={() => removeComponent(index ?? -1)}
+              disabled={!isJobWriter}>
+              {strings.remove}
+            </ActionButton>
+          );
         default:
           return (
             <div>
@@ -1617,7 +1615,11 @@ const getOptions = (
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
       />
-      <ActionButton styles={{ root: classNames.addAttribute }} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent(groupIndex, childIndex)}>
+      <ActionButton 
+        styles={{ root: classNames.addAttribute }} 
+        iconProps={{ iconName: "CirclePlus" }} 
+        disabled={!isJobWriter}
+        onClick={() => addComponent(groupIndex, childIndex)}>
         {strings.HROnboarding.addAttribute}
       </ActionButton>
       </div>
@@ -1636,6 +1638,7 @@ const getOptions = (
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex)}
             selectedKey={group.andOr.charAt(0).toUpperCase() + group.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
+            disabled={!isJobWriter}
             styles={group.children && group.children.length > 0 ?  { root: classNames.startOfNestedGroupDropdown } : { root: classNames.betweenGroupsDropdown }}
           />
           </div>
@@ -1659,6 +1662,7 @@ const getOptions = (
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex, childIndex)}
             selectedKey={childGroup.andOr.charAt(0).toUpperCase() + childGroup.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
+            disabled={!isJobWriter}
             styles={parentIndex !== groups.length - 1 && childIndex === children.length - 1 ? { root: classNames.endOfNestedGroupDropdown } : { root: classNames.betweenChildrenDropdown }}
           />
           </div>
@@ -1866,7 +1870,8 @@ const getOptions = (
             />
           )}
 
-          {(!groupingEnabled) && <ActionButton styles={{ root: classNames.addAttribute }} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
+          {(!groupingEnabled) && 
+          <ActionButton styles={{ root: classNames.addAttribute }} disabled={!isJobWriter} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>
