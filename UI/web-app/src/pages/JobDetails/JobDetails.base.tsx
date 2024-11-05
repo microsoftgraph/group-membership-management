@@ -211,9 +211,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 children={<label>{job?.query}</label>}
                 actionButtons={
                   canEditJob
-                  ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration },
-                    { text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
-                  : []
+                  ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration }]
+                    : [{ text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
                 }
               />
               <div className={classNames.removeGMM}>

@@ -301,10 +301,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     isNextDisabled = true;
   }
 
-  if (!isTenantJobWriter) {
-    return <></>;
-  }
-
   return (
     <Page>
       <PageHeader onBackToDashboardButtonClick={isEditingExistingJob ? undefined : handleBackToDashboardButtonClick} />
