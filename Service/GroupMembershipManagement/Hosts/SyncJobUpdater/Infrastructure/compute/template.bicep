@@ -16,9 +16,6 @@ param resourceGroupClassification string = 'compute'
 @maxLength(6)
 param environmentAbbreviation string
 
-@description('Enter storage account name.')
-param storageAccountName string
-
 @description('Tenant id.')
 param tenantId string
 

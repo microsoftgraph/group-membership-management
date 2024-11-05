@@ -37,8 +37,6 @@ module jobTriggerDataResources '../Service/GroupMembershipManagement/Hosts/JobTr
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -50,7 +48,6 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -68,8 +65,6 @@ module destinationAttributesUpdaterDataResources '../Service/GroupMembershipMana
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -81,7 +76,6 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -99,8 +93,6 @@ module groupMembershipObtainerDataResources '../Service/GroupMembershipManagemen
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -112,7 +104,6 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -130,8 +121,6 @@ module sqlMembershipObtainerDataResources '../Service/GroupMembershipManagement/
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -143,7 +132,6 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     authority: 'https://login.windows.net/${tenantId}'
@@ -164,8 +152,6 @@ module groupOwnershipObtainerDataResources '../Service/GroupMembershipManagement
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -177,7 +163,6 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -195,8 +180,6 @@ module placeMembershipObtainerDataResources '../Service/GroupMembershipManagemen
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -208,7 +191,6 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -226,8 +208,6 @@ module teamsChannelMembershipObtainerDataResources '../Service/GroupMembershipMa
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -239,7 +219,6 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -257,8 +236,6 @@ module membershipAggregatorDataResources '../Service/GroupMembershipManagement/H
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -270,7 +247,6 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -288,8 +264,6 @@ module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/Gra
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -301,7 +275,6 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -320,8 +293,6 @@ module teamsChannelUpdaterDataResources '../Service/GroupMembershipManagement/Ho
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -333,7 +304,6 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -351,8 +321,6 @@ module nonProdServiceDataResources '../Service/GroupMembershipManagement/Hosts/N
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -364,7 +332,6 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     appConfigurationName: appConfigurationName
@@ -384,8 +351,6 @@ module azureUserReaderDataResources '../Service/GroupMembershipManagement/Hosts/
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -397,7 +362,6 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     storageAccountSecretName: 'storageAccountConnectionString'
@@ -417,8 +381,6 @@ module notifierDataResources '../Service/GroupMembershipManagement/Hosts/Notifie
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -430,7 +392,6 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notUsed'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -449,8 +410,6 @@ module jobSchedulerDataResources '../Service/GroupMembershipManagement/Hosts/Job
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -462,7 +421,6 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notused'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -481,8 +439,6 @@ module syncJobUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/S
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
-    tenantId: tenantId
-    storageAccountName: 'notused'
   }
 }
 
@@ -494,7 +450,6 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notUsed'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
