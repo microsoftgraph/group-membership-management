@@ -85,3 +85,4 @@ stages:
               subscriptionId: ${{ parameters.subscriptionId }}
               root: $(System.ArtifactsDirectory)/$(Build.BuildNumber)_$(buildType)
               name: ${{ app.function.name }}
+              isFlexConsumption: ${{ app.isFlexConsumption }}
