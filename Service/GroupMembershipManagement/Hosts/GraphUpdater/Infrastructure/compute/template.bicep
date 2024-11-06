@@ -19,8 +19,17 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Instance identifier')
+@allowed([
+  'small'
+  'medium'
+  'large'
+  'onboarding'
+])
+param instanceIdentifier string
+var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
 @description('Service plan name.')
-param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'GraphUpdater'),0,8)}'
+var servicePlanName  = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}${instanceSuffix}-${substring(uniqueString(subscription().id,'GraphUpdater'),0,8)}'
 
 @description('Service plan sku')
 param servicePlanSku string = 'Y1'
@@ -87,7 +96,7 @@ var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dat
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
-  name: 'servicePlanTemplate-GraphUpdater'
+  name: 'servicePlanTemplate-GraphUpdater${instanceSuffix}'
   params: {
     name: servicePlanName
     sku: servicePlanSku
@@ -105,10 +114,14 @@ var commonSettings = {
   FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
 
+var triggerSchedule = instanceIdentifier == 'small' ? 15 : instanceIdentifier == 'medium' ? 30 :instanceIdentifier == 'large' ? 50 :instanceIdentifier == 'onboarding' ? 120 : 30
+
+var triggerDelay = instanceIdentifier == 'onboarding' ? 30 : 0
+
 var appSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater'
-  AzureFunctionsWebHost__hostid: 'GraphUpdater'
+  AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater${instanceIdentifier}'
+  AzureFunctionsWebHost__hostid: 'GraphUpdater${instanceIdentifier}'
   WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
   WEBSITE_CONTENTSHARE: toLower('functionApp-GraphUpdater')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
@@ -132,8 +145,10 @@ var appSettings = {
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   serviceBusMembershipUpdatersTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipUpdatersTopic, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-  triggerSchedule: '0,30 * * * * *'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  instanceIdentifier: instanceIdentifier  
+  triggerSchedule: triggerSchedule  
+  triggerDelay: triggerDelay 
 }
 
 var activityFunctionSettings = {
@@ -162,7 +177,7 @@ resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
 }
 
 module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
-  name: 'uamiNameReader-GraphUpdater'
+  name: 'uamiNameReader-GraphUpdater${instanceSuffix}'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
   }
@@ -177,7 +192,7 @@ resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-
 }
 
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
-  name: 'existingLogAnalyticsWorkspace-gu'
+  name: 'existingLogAnalyticsWorkspace-gu${instanceSuffix}'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
   params: {
     environmentAbbreviation: environmentAbbreviation
@@ -187,9 +202,9 @@ module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
 }
 
 module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
-  name: 'functionAppTemplate-GraphUpdater'
+  name: 'functionAppTemplate-GraphUpdater${instanceSuffix}'
   params: {
-    name: '${functionAppName}-GraphUpdater'
+    name: functionAppName
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
@@ -204,6 +219,7 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
+    instanceIdentifier: instanceIdentifier
   }
   dependsOn: [
     servicePlanTemplate

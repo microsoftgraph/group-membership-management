@@ -46,8 +46,19 @@ param prereqsKeyVaultResourceGroup string
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool
 
+@description('Instance identifier')
+@allowed([
+  'small'
+  'medium'
+  'large'
+  'onboarding'
+])
+param instanceIdentifier string
+var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
+var functionFullName = '${name}-GraphUpdater${instanceSuffix}'
+
 resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
-  name: name
+  name: functionFullName
   location: location
   kind: kind
   properties: {
@@ -68,9 +79,9 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
 }
 
 module functionAppRBAC 'functionAppRBAC.bicep' = {
-  name: 'functionAppsRBAC-GraphUpdater'
+  name: 'functionAppsRBAC-GraphUpdater${instanceSuffix}'
   params: {
-    functionName: 'GraphUpdater'
+    functionName: 'GraphUpdater${instanceIdentifier}'
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     dataKeyVaultName: dataKeyVaultName
@@ -81,10 +92,10 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
 }
 
 resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
-  name: 'functionApp-diagnostics'
+  name: 'functionApp-diagnostics${instanceSuffix}'
   scope: functionApp
   properties: {
-    workspaceId:  logAnalyticsWorkspaceId
+    workspaceId: logAnalyticsWorkspaceId
     logs: [
       {
         category: 'FunctionAppLogs'
@@ -96,7 +107,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       }
     ]
   }
-  dependsOn:[
+  dependsOn: [
     functionAppRBAC
   ]
 }
@@ -124,7 +135,7 @@ resource snFtpBasicAuth 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@
 }
 
 module secretsTemplate 'keyVaultSecrets.bicep' = {
-  name: 'secretsTemplate-GraphUpdater'
+  name: 'secretsTemplate-GraphUpdater${instanceSuffix}'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
@@ -135,7 +146,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       }
       {
         name: 'graphUpdaterFunctionName'
-        value: '${name}-GraphUpdater'
+        value: functionFullName
       }
     ]
   }
@@ -145,7 +156,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
 }
 
 module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = if(!featureFlags.skipListingFunctionAppKeys) {
-  name: 'secureSecretsTemplate-GraphUpdater'
+  name: 'secureSecretsTemplate-GraphUpdater${instanceSuffix}'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
     keyVaultName: dataKeyVaultName
