@@ -18,6 +18,7 @@ export type HRQuerySourceStyles = {
   horizontalChoiceGroup: IStyle;
   horizontalChoiceGroupContainer: IStyle;
   removeButton: IStyle;
+  removeButtonDisabled: IStyle;
   error: IStyle;
   addAttribute: IStyle;
   betweenGroupsDropdown: IStyle;

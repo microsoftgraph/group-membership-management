@@ -121,6 +121,10 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       borderRadius: 4,
       border: 'none'
     },
+    removeButtonDisabled: {
+      opacity: 0.5,
+      cursor: 'not-allowed'
+    },
     error: {
       fontWeight: 400,
       fontSize: 12,
