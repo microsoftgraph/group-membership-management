@@ -3,7 +3,6 @@
   "Values": {
     "appConfigurationEndpoint": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
-    "AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled": "",
     "AzureFunctionsJobHost__extensions__durableTask__hubName": "",
     "AzureWebJobsStorage": "",
     "FUNCTIONS_EXTENSION_VERSION": "",
