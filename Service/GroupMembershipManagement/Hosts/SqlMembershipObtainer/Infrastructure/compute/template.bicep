@@ -63,14 +63,6 @@ param subscriptionId string
 @description('Name of Azure Data Factory Pipeline.')
 param pipeline string
 
-@description('Name of storage account that stores SqlMembership data')
-@secure()
-param sqlMembershipStorageAccountName string
-
-@description('Connection string of storage account that stores SqlMembership data')
-@secure()
-param sqlMembershipStorageAccountConnectionString string
-
 @description('Name of the \'prereqs\' key vault.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
@@ -136,14 +128,12 @@ var appSettings = {
   WEBSITE_CONTENTSHARE: toLower('functionApp-SqlMembershipObtainer')
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  sqlMembershipStorageAccountConnectionString: sqlMembershipStorageAccountConnectionString
   tenantId: tenantId
   authority: authority
   dataFactoryName: dataFactoryName
   pipeline: pipeline
   subscriptionId: subscriptionId
   dataResourceGroup: dataKeyVaultResourceGroup
-  sqlMembershipStorageAccountName: sqlMembershipStorageAccountName
   'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'

@@ -148,8 +148,6 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     dataKeyVaultResourceGroup: dataResourceGroupName
     authority: 'https://login.windows.net/${tenantId}'
     subscriptionId: subscription().subscriptionId
-    sqlMembershipStorageAccountName: 'not-used'
-    sqlMembershipStorageAccountConnectionString: 'not-used'
     pipeline: pipeline
     setRBACPermissions: setRBACPermissions
   }
