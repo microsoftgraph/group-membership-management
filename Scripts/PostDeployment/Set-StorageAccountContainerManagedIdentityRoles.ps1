@@ -37,11 +37,11 @@ function Set-StorageAccountContainerManagedIdentityRoles
 	)
 
 	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-	$functionApps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
+	$functionApps = Get-AzFunctionApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
 
 	foreach ($functionAppName in $functionApps)
 	{
-
+		
 		Write-Host "Granting app service access to storage account blobs";
 
 		$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
@@ -55,28 +55,47 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		# Grant the app service access to the storage account blobs
 		if ($appServicePrincipal)
 		{
-			$resources = Get-AzResource -ResourceGroupName $resourceGroupName
 
-			$filteredStorageAccountsList = $resources | Where-Object {
-				$_.ResourceType -eq "Microsoft.Storage/storageAccounts" -and $_.Name -like "jobs$EnvironmentAbbreviation*"
-			}
+			$functionAbbreviation = ($functionAppName | Select-String -CaseSensitive -AllMatches -Pattern '[A-Z]').Matches.Value -join ''
+			$prefix = $functionAbbreviation + $SolutionAbbreviation + $EnvironmentAbbreviation + "prod"
+			$functionStorageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "$prefix*" }
+			$functionStorageAccountId = $functionStorageAccount.Id
+			$functionStorageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
 
-			$storageAccountObject = $filteredStorageAccountsList[0]
-			$storageAccountName = $storageAccountObject.Name
-
-			if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id))
+			foreach($role in $functionStorageAccountRoles)
 			{
-				$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $storageAccountObject.Id -RoleDefinitionName "Storage Blob Data Contributor";
-				if ($assignment) {
-					Write-Host "Added role assignment to allow $functionAppName to access on the $storageAccountName blobs.";
+				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role)) {
+					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role;
+					if ($assignment) {
+						Write-Host "Added role assignment $role to $functionAppName with scope $functionStorageAccountId.";
+					}
+					else {
+						Write-Host "Failed to add role assignment $role to $functionAppName with scope $functionStorageAccountId. Please double check that you have permission to perform this operation";
+					}
 				}
 				else {
-					Write-Host "Failed to add role assignment to allow $functionAppName to access on the $storageAccountName blobs. Please double check that you have permission to perform this operation";
+					Write-Host "$functionAppName already has role $role with scope $functionStorageAccountId.";
 				}
 			}
-			else
+
+			$jobsStorageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "jobs$EnvironmentAbbreviation*" }
+			$jobsStorageAccountId = $jobsStorageAccount.Id
+			$jobsStorageAccountRoles = @("Storage Blob Data Contributor")
+
+			foreach($role in $jobsStorageAccountRoles)
 			{
-				Write-Host "$functionAppName already has access to $storageAccountName blobs.";
+				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $jobsStorageAccount.Id -RoleDefinitionName $role)) {
+					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $jobsStorageAccount.Id -RoleDefinitionName $role;
+					if ($assignment) {
+						Write-Host "Added role assignment $role to $functionAppName with scope $jobsStorageAccountId.";
+					}
+					else {
+						Write-Host "$functionAppName already has role $role with scope $jobsStorageAccountId.";
+					}
+				}
+				else {
+					Write-Host "$functionAppName already has role $role with scope $jobsStorageAccountId.";
+				}
 			}
 		}
 		elseif ($null -eq $appServicePrincipal) {
@@ -85,20 +104,20 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		}
 	}
 
-	$webApiPermissions = @("Storage Queue Data Contributor","Storage Table Data Contributor")
+	$webApiRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor")
 	$webApi = Get-AzWebApp -ResourceGroupName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation" -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
 	$webApiSP = $webApi.Identity.PrincipalId
 	$dataRG = Get-AzResourceGroup -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$dataRGResourceId = $dataRG.ResourceId
 
-	foreach($permission in $webApiPermissions)
+	foreach($role in $webApiRoles)
 	{
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $permission)) {
-			New-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $permission;
-			Write-Host "Added role assignment $permission to $($webApi.Name) with scope $dataRGResourceId.";
+		if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $role)) {
+			New-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $role;
+			Write-Host "Added role assignment $role to $($webApi.Name) with scope $dataRGResourceId.";
 		}
 		else {
-			Write-Host "$($webApi.Name) can already $permission with scope $dataRGResourceId.";
+			Write-Host "$($webApi.Name) can already $role with scope $dataRGResourceId.";
 		}
 	}
 
