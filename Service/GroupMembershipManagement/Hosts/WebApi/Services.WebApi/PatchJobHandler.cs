@@ -97,7 +97,7 @@ namespace Services.WebApi
             if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() || request.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())
             {
                 var canReviewOwnSubmissions = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions);
-                var canReviewOwnSubmissionsValue = bool.Parse(canReviewOwnSubmissions.SettingValue);
+                var canReviewOwnSubmissionsValue = canReviewOwnSubmissions != null ? bool.Parse(canReviewOwnSubmissions.SettingValue) : true;
                 var requestorUserId = Guid.Parse(request.UserIdentity);
 
                 if (canReviewOwnSubmissionsValue == false && (requestorUserId == syncJobChange.ChangedByObjectId))
