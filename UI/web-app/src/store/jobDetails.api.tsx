@@ -91,7 +91,7 @@ export const patchJobDetails = createAsyncThunk<
         };
 
         if (response.status === 403) {
-          patchResponse.errorCode = 'NotGroupOwner';
+          patchResponse.errorCode = 'Forbidden';
         } else if (response.status === 500) {
           patchResponse.errorCode = 'InternalError';
         }
@@ -141,7 +141,7 @@ export const removeGMM = createAsyncThunk<
       };
 
       if (errorResponse.status === 403) {
-        removeGMMResponse.errorCode = 'NotGroupOwner';
+        removeGMMResponse.errorCode = 'Forbidden';
       } else if (errorResponse.status === 500) {
         removeGMMResponse.errorCode = 'InternalError';
       }

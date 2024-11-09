@@ -211,7 +211,7 @@ export const strings: IStrings = {
     },
     Errors:{
       jobInProgress: 'La sincronización está en progreso. Por favor intente más tarde.',
-      notGroupOwner: 'No eres propietario de este grupo.',
+      forbidden: 'Esta operación no está permitida.',
       internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.',
       removeGMMError: 'Error al dejar de administrar con GMM.',
     },

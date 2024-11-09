@@ -346,8 +346,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     switch (errorCode) {
       case 'JobInProgress':
         return strings.JobDetails.Errors.jobInProgress;
-      case 'NotGroupOwner':
-        return strings.JobDetails.Errors.notGroupOwner;
+      case 'Forbidden':
+        return strings.JobDetails.Errors.forbidden;
       case 'InternalError':
         return strings.JobDetails.Errors.internalError;
       default:

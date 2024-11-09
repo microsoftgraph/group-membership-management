@@ -208,7 +208,7 @@ export const strings: IStrings = {
     },
     Errors:{
       jobInProgress: 'Job is in progress. Please try again later.',
-      notGroupOwner: 'You are not an owner of this group.',
+      forbidden: 'This action is forbidden.',
       internalError: 'We can\'t process your request at this time. Please try again later',
       removeGMMError: 'Error removing GMM management from this group:',
     },

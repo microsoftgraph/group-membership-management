@@ -203,7 +203,7 @@ export type IStrings = {
     };
     Errors:{
       jobInProgress: string;
-      notGroupOwner: string;
+      forbidden: string;
       internalError: string;
       removeGMMError: string;
     }
