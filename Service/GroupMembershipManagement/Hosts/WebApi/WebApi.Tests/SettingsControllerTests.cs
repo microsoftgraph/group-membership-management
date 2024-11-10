@@ -184,6 +184,22 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task PatchSettingExceptionTestAsync()
+        {
+            _settingsRepository.Setup(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()))
+                               .ThrowsAsync(new Exception());
+
+            var response = await _settingsController.PatchSettingAsync(_settingKey, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(StatusCodeResult));
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
+        [TestMethod]
         public async Task GetSupportEmailAddress_ReturnsSupportEmailAddress()
         {
             var result = await _settingsController.GetSupportEmailAddressAsync();
