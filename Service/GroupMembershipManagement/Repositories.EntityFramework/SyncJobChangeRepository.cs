@@ -86,16 +86,13 @@ namespace Repositories.EntityFramework
 
         public async Task<SyncJobChange?> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId)
         {
-            var sqlQuery = @"
-                SELECT TOP 1 *
-                FROM [dbo].[SyncJobChanges]
-                WHERE SyncJobId = @syncJobId
-                AND ChangeReason IN ('Onboarding', 'Update', 'SubmissionRejected')
-                ORDER BY ChangeTime DESC";
-
             var entity = await _readContext.SyncJobChanges
-                .FromSqlRaw(sqlQuery, new SqlParameter("@syncJobId", syncJobId))
-                .FirstOrDefaultAsync();
+                                                .Where(s => s.SyncJobId == syncJobId &&
+                                                            (s.ChangeReason == SyncJobChangeReason.Onboarding.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.Update.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString()))
+                                                .OrderByDescending(s => s.ChangeTime)
+                                                .FirstOrDefaultAsync();
 
             return entity == null ? null : MapEntityToModel(entity);
         }
