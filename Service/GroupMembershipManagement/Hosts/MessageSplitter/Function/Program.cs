@@ -91,7 +91,7 @@ namespace Hosts.MessageSplitter
                                 var containerName = configuration["membershipContainerName"];
                                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
                             })
-                            .AddSingleton<IMessageSplitterService, MessageSplitterService>();
+                            .AddScoped<IMessageSplitterService, MessageSplitterService>();
 
 
 
