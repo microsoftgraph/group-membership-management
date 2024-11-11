@@ -47,7 +47,8 @@ namespace Services.WebApi
                 return response;
             }
 
-            if (request.ChangeReason == null || request.ChangeReason == "") {
+            if (string.IsNullOrWhiteSpace(request.ChangeReason))
+            {
                 response.StatusCode = HttpStatusCode.BadRequest;
                 response.ErrorCode = "ChangeReasonIsRequired";
                 return response;
