@@ -521,8 +521,6 @@ module messageSplitterDataResources '../Service/GroupMembershipManagement/Hosts/
       location: location
       environmentAbbreviation: environmentAbbreviation
       solutionAbbreviation: solutionAbbreviation
-      tenantId: tenantId
-      storageAccountName: 'notused'
       instanceIdentifier: instance
     }
   }
@@ -536,7 +534,6 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
-    storageAccountName: 'notUsed'
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
