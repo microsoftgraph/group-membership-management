@@ -237,13 +237,11 @@ namespace Hosts.GroupMembershipObtainer
             catch (HttpRequestException httpEx)
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught HttpRequestException, marking sync job status as transient error. Exception:\n{httpEx}", RunId = request.RunId });
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.TransientError });
                 throw;
             }
             catch (Exception ex)
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Caught Exception, marking sync job status as error. Exception:\n{ex}", RunId = request.RunId });
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = request.SyncJob, Status = SyncStatus.Error });
                 throw;
             }
         }

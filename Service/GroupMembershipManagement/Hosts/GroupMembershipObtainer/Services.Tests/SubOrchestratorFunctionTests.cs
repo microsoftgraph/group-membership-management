@@ -1051,12 +1051,6 @@ namespace Tests.Services
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
-
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.TransientError)
-                                            ), Times.Once);
         }
 
         [TestMethod]
@@ -1076,12 +1070,6 @@ namespace Tests.Services
                         It.IsAny<string>(),
                         It.IsAny<string>()
                     ), Times.Once);
-
-
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
-                                            ), Times.Once);
         }
 
         private async Task<bool> CallGroupValidatorFunctionAsync(GroupValidatorRequest request)
