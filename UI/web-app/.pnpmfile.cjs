@@ -12,6 +12,15 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('nth-check', ['^1.0.2'], '2.0.1'),
     new PackageUpgradeStrategy('webpack', ['^5.64.4'], '5.76.0'),
     new PackageUpgradeStrategy('postcss', ['^8.4.24'], '8.4.31'),
+    new PackageUpgradeStrategy('webpack-dev-middleware', ['<=5.3.3'], '5.3.4'),
+    new PackageUpgradeStrategy('braces', ['<3.0.3'], '3.0.3'),
+    new PackageUpgradeStrategy('ws', ['>=8.0.0 <8.17.1', '>=7.0.0 <7.5.10'], '8.17.1'),
+    new PackageUpgradeStrategy('semver', ['>=7.0.0 <7.5.2', '<5.7.2'], '7.5.2'),
+    new PackageUpgradeStrategy('axios', ['>=1.3.2 <=1.7.3'], '1.7.4'),
+    new PackageUpgradeStrategy('body-parser', ['<1.20.3'], '1.20.3'),
+    new PackageUpgradeStrategy('path-to-regexp', ['<0.1.10'], '0.1.10'),
+    new PackageUpgradeStrategy('rollup', ['<2.79.2'], '2.79.2'),
+    new PackageUpgradeStrategy('http-proxy-middleware', ['<2.0.7'], '2.0.7')
   ];
 
   const logger = new Logger(context);
