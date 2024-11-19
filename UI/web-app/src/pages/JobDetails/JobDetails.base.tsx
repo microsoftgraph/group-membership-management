@@ -135,8 +135,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const onConfirmRemove = async () => {
     try {
-      await dispatch(removeGMM({ syncJobId: job?.syncJobId }));
-      await dispatch(fetchJobs());
+      if (jobId === undefined) {
+        throw new Error('Job ID is not defined');
+      }
+      await dispatch(removeGMM({ syncJobId: jobId }));
       setShowRemoveGMMDialog(false);
       var url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
       window.open(url, '_blank', 'noopener,noreferrer');

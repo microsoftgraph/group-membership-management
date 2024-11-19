@@ -87,6 +87,14 @@ export const pagingBarSlice = createSlice({
     },
     setCustomSortBy: (state, action) => {
       state.customSortBy = action.payload;
+    },
+    resetFilters: (state) => {
+      state.filterDestinationId = undefined;
+      state.filterDestinationType = undefined;
+      state.filterDestinationName = undefined;
+      state.filterDestinationOwner = undefined;
+      state.filterActionRequired = undefined;
+      state.filterStatus = undefined;
     }
   },
   extraReducers: (builder) => {
@@ -110,7 +118,8 @@ export const {
   setFilterDestinationOwner,
   setFilterActionRequired,
   setFilterStatus,
-  setCustomSortBy
+  setCustomSortBy,
+  resetFilters
 } = pagingBarSlice.actions;
 export const selectPagingBar = (state: RootState) => state.pagingBar;
 export const selectPagingBarVisible = (state: RootState) => state.pagingBar.visible;
