@@ -98,7 +98,7 @@ namespace Repositories.EntityFramework
         }
 
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
-        protected SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
+        private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {
             return new SyncJobChange
             {
@@ -113,7 +113,7 @@ namespace Repositories.EntityFramework
             };
         }
 
-        protected Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
+        private static Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
         {
             return new Entities.SyncJobChange
             {
