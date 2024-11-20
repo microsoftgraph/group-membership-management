@@ -15,6 +15,7 @@ using System.Net.Http;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using GraphAPIDeltaResponse = Microsoft.Graph.Groups.Delta.DeltaResponse;
+using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.GraphGroups
 {

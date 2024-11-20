@@ -27,6 +27,8 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<ServiceStatus> ServiceStatus { get; set; }
         public DbSet<ServiceStatusHistory> ServiceStatusHistory { get; set; }
         public DbSet<MembershipType> MembershipTypes { get; set; }
+        public DbSet<Group> Groups { get; set; }
+        public DbSet<Channel> TeamsChannels { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -218,6 +220,20 @@ namespace Repositories.EntityFramework.Contexts
                     .IsUnicode(false);
                 entity.ToTable("MembershipTypes");
             });
+
+            modelBuilder.Entity<Group>()
+                .HasKey(g => g.SyncJobId);
+
+            modelBuilder.Entity<Group>()
+                .HasIndex(g => new { g.SyncJobId, g.GroupId })
+                .IsUnique();
+
+            modelBuilder.Entity<Channel>()
+                .HasKey(g => g.SyncJobId);
+
+            modelBuilder.Entity<Channel>()
+                .HasIndex(g => new { g.SyncJobId, g.GroupId })
+                .IsUnique();
         }
         private void SeedNotificationTypes(ModelBuilder modelBuilder)
         {

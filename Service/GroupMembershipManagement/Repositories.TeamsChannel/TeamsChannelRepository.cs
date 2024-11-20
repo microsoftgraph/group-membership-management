@@ -13,6 +13,8 @@ using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System.Collections.Immutable;
 using System.Net;
+using Channel = Microsoft.Graph.Models.Channel;
+using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.TeamsChannel
 {

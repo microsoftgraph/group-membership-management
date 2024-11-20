@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.Mocks
 {

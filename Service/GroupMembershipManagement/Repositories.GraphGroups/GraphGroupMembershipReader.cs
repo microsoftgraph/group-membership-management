@@ -17,6 +17,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
 using static Microsoft.Graph.Groups.Item.TransitiveMembers.TransitiveMembersRequestBuilder;
+using Group = Microsoft.Graph.Models.Group;
 
 namespace Repositories.GraphGroups
 {

@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Group = Microsoft.Graph.Models.Group;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
 namespace Services.Tests
