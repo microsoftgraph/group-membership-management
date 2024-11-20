@@ -81,7 +81,7 @@ function Set-AppRolesIfNeeded {
             AllowedMemberTypes = @($memberTypes)
         },
         @{
-            DisplayName        = "Job Writer"
+            DisplayName        = "Job Owner Writer"
             Description        = "Can create, view, and update owned destinations in the tenant."
             Value              = "Job.ReadWrite.OwnedBy"
             Id                 = [Guid]::NewGuid().ToString()

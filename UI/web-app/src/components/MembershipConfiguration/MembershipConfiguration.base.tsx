@@ -29,7 +29,7 @@ import { useStrings } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
-import { selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -50,6 +50,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const compositeQuery = useSelector(manageMembershipCompositeQuery) ?? globalQuery;
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
   const isJobWriter = useSelector(selectIsJobWriter);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
 
   const sourcePartQuery: HRSourcePartSource = {
     manager: {
@@ -121,16 +122,18 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
 
   return (
     <div>
-      <div className={classNames.toggleContainer}>
-        <Toggle
-          inlineLabel
-          onText={strings.ManageMembership.labels.advancedView}
-          offText={strings.ManageMembership.labels.advancedView}
-          onChange={handleToggleChange}
-          checked={isAdvancedView}
-          disabled={!isToggleEnabled}
-        />
-      </div>
+      {isJobTenantWriter && (
+        <div className={classNames.toggleContainer}>
+          <Toggle
+            inlineLabel
+            onText={strings.ManageMembership.labels.advancedView}
+            offText={strings.ManageMembership.labels.advancedView}
+            onChange={handleToggleChange}
+            checked={isAdvancedView}
+            disabled={!isToggleEnabled}
+          />
+        </div>
+      )}
       {!isAdvancedView ? (<>
         <div>
           {sourceParts.map((part, arrayIndex) => (
