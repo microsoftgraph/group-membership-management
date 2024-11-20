@@ -26,6 +26,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<ThresholdNotification> ThresholdNotifications { get; set; } = null!;
         public DbSet<ServiceStatus> ServiceStatus { get; set; }
         public DbSet<ServiceStatusHistory> ServiceStatusHistory { get; set; }
+        public DbSet<MembershipType> MembershipTypes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -205,6 +206,17 @@ namespace Repositories.EntityFramework.Contexts
                         v => (ServiceStatuses)Enum.Parse(typeof(ServiceStatuses), v))
                     .IsUnicode(false);
                 entity.ToTable("ServiceStatuses");
+            });
+
+            modelBuilder.Entity<MembershipType>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name)
+                    .HasConversion(
+                        v => v.ToString(),
+                        v => (MembershipTypes)Enum.Parse(typeof(MembershipTypes), v))
+                    .IsUnicode(false);
+                entity.ToTable("MembershipTypes");
             });
         }
         private void SeedNotificationTypes(ModelBuilder modelBuilder)

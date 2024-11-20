@@ -39,6 +39,7 @@ namespace Models
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
         public bool AllowEmptyDestination { get; set; }
+        public string MembershipType { get; set; }
 
         [IgnoreLogging]
         public string Status { get; set; }
