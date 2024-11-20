@@ -22,11 +22,13 @@ param location string
 ])
 param instanceIdentifier string
 
+var instanceSuffix = empty(instanceIdentifier) ? '' : '${instanceIdentifier}'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
-var prodStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}prod${instanceIdentifier}${uniqueString(resourceGroup().id)}',0,23)
+var prodStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}prod${instanceSuffix}${uniqueString(resourceGroup().id)}',0,23)
 
 module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
-  name: 'gu${instanceIdentifier}ProdstorageAccountTemplate'
+  name: 'gu${instanceSuffix}ProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
     sku: storageAccountSku
