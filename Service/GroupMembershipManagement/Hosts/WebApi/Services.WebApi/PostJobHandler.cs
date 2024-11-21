@@ -114,6 +114,8 @@ namespace Services
 
             var destinationArray = JsonConvert.DeserializeObject<List<dynamic>>(syncJob.Destination);
             string targetOfficeGroupId = destinationArray?.FirstOrDefault()?.value?.objectId;
+            string channelId = destinationArray?.FirstOrDefault()?.value?.channelId;
+            string type = destinationArray?.FirstOrDefault()?.type;
 
             return new SyncJob
             {
@@ -126,7 +128,8 @@ namespace Services
                 Query = convertedQuery,
                 ThresholdPercentageForAdditions = syncJob.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = syncJob.ThresholdPercentageForRemovals,
-                Status = SyncStatus.PendingReview.ToString()
+                Status = SyncStatus.PendingReview.ToString(),
+                MembershipType = !string.IsNullOrEmpty(type) ? type : MembershipTypes.GroupMembership.ToString()
             };
         }
     }

@@ -3,6 +3,7 @@
 
 using Microsoft.EntityFrameworkCore;
 using Models;
+using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
 
@@ -23,6 +24,29 @@ namespace Repositories.EntityFramework
         {
             var entry = await _writeContext.Set<SyncJob>().AddAsync(job);
             await _writeContext.SaveChangesAsync();
+
+            var destinationArray = JsonConvert.DeserializeObject<List<dynamic>>(job.Destination);
+            var channelId = destinationArray?.FirstOrDefault()?.value?.channelId;
+
+            if (job.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = new Group();
+                group.SyncJobId = job.Id;
+                group.GroupId = job.TargetOfficeGroupId;
+                await _writeContext.AddAsync(group);
+                await _writeContext.SaveChangesAsync();
+            }
+
+            else if (job.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = new Channel();
+                channel.SyncJobId = job.Id;
+                channel.GroupId = job.TargetOfficeGroupId;
+                channel.ChannelId = channelId ?? "";
+                await _writeContext.AddAsync(channel);
+                await _writeContext.SaveChangesAsync();
+            }
+
             return entry.Entity.Id;
         }
         
