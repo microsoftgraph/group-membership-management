@@ -257,18 +257,28 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
 }
 
 // ----------------- GraphUpdater
-module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = {
-  name: 'graphUpdaterDataResourcesTemplate'
+
+var guinstanceIds = [
+  'small'
+  'medium'
+  'large'
+  'onboarding'
+]
+
+module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = [for instance in guinstanceIds: {
+  name: 'graphUpdater${instance}DataResources'
   scope: resourceGroup(dataResourceGroupName)
   params: {
     location: location
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
+    instanceIdentifier: instance
   }
 }
+]
 
-module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/template.bicep' = {
-  name: 'graphUpdaterComputeResourcesTemplate'
+module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/template.bicep' = [for instance in guinstanceIds: {
+  name: 'graphUpdater${instance}ComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
     location: location
@@ -279,11 +289,13 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    instanceIdentifier: instance
   }
   dependsOn: [
     graphUpdaterDataResources
   ]
-}
+}]
+
 
 // ----------------- TeamsChannelUpdater
 module teamsChannelUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/TeamsChannelUpdater/Infrastructure/data/template.bicep' = {
