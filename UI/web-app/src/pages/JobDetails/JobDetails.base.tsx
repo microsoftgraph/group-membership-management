@@ -30,7 +30,7 @@ import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
 import { type AppDispatch } from '../../store';
-import { fetchJobDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
+import { fetchJobDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
@@ -82,10 +82,11 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   );
   const location = useLocation();
-  const job: Job = useSelector(selectSelectedJobDetails) ?? location.state?.item ?? {}; 
+  const job: Job = useSelector(selectSelectedJobDetails) ?? location.state?.item ?? {};
   const navigate = useNavigate();
 
   const { jobId } = useParams<{ jobId: string }>();
+  const { groupId } = useParams<{ groupId: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const error = useSelector(selectGetJobDetailsError);
   const selectedJob = useSelector(selectSelectedJobDetails);
@@ -117,12 +118,12 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const openRunConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate(`/ManageMembership/${jobId}`, { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job?.syncJobId } });
+    navigate(`/ManageMembership/${jobId ?? job.syncJobId}`, { state: { currentStep: OnboardingSteps.RunConfiguration, jobId: job?.syncJobId } });
   };
 
   const openMembershipConfiguration = (): void => {
     dispatch(setIsEditingExistingJob(true));
-    navigate(`/ManageMembership/${jobId}`, { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
+    navigate(`/ManageMembership/${jobId ?? job.syncJobId}`, { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
   };
 
   const onRemoveGMMButtonClick = (): void => {
@@ -135,10 +136,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const onConfirmRemove = async () => {
     try {
-      if (jobId === undefined) {
+      if (jobId === undefined && job.syncJobId === undefined) {
         throw new Error('Job ID is not defined');
       }
-      await dispatch(removeGMM({ syncJobId: jobId }));
+      await dispatch(removeGMM({ syncJobId: jobId ?? job.syncJobId }));
       setShowRemoveGMMDialog(false);
       var url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -151,8 +152,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
-    dispatch(fetchJobDetails({ syncJobId: jobId ?? '' }));
-  }, [dispatch, jobId]);
+    if (jobId) {
+      dispatch(fetchJobDetails({ syncJobId: jobId ?? '' }));
+    }
+    if (groupId) {
+      dispatch(getGroupDetails(groupId));
+    }
+  }, [dispatch, jobId, groupId]);
 
   return (
     <Page>
@@ -305,7 +311,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   }, [job]);
 
   const updateJobStatus = async (newStatus: string, changeReason: SyncJobChangeReason) => {
-    if (jobId === undefined) {
+    if (jobId === undefined && job.syncJobId === undefined) {
       throw new Error('Job ID is not defined');
     }
 
@@ -316,14 +322,14 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     }];
 
     const patchRequest: PatchJobRequest = {
-      syncJobId: jobId,
+      syncJobId: jobId ?? job.syncJobId,
       patchOperation,
       changeReason
     };
 
     try {
       await dispatch(patchJobDetails(patchRequest));
-      
+
       if (patchResponse?.ok) {
         setJobStatus(newStatus);
         setIsJobEnabled(newStatus === SyncStatus.Idle);

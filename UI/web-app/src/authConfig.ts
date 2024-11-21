@@ -27,7 +27,7 @@ export const graphRequest: PopupRequest = {
 // endpoints
 export const config = {
   getJobs: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobs`,
-  getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails`,
+  getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/job`,
   getOrgLeaderDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/orgLeaderDetails`,
   settings: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/settings`,
   patchSetting: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/settings`,
@@ -37,5 +37,6 @@ export const config = {
   searchDestinations: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/search`,
   getGroupEndpoints: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/endpoints`,
   getGroupOnboardingStatus: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/onboarding-status`,
+  getGroupDetails: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/group/${groupId}`,
   removeGMM: (syncJobId: string) =>`${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/${syncJobId}/removeGmm`,
 };

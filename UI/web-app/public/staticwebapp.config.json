@@ -35,6 +35,10 @@
       "rewrite": "/index.html"
     },
     {
+      "route": "/Groups/*",
+      "rewrite": "/index.html"
+    },
+    {
       "route": "/OwnerPage",
       "rewrite": "/index.html"
     },

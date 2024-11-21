@@ -43,6 +43,32 @@ export const fetchJobDetails = createAsyncThunk<
   }
 });
 
+export const getGroupDetails = createAsyncThunk<Job, string, ThunkConfig>(
+  'groupDetails',
+  async (groupId: string, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers();
+    const bearer = `Bearer ${token}`;
+    headers.append('Authorization', bearer);
+
+    const options = {
+      method: 'GET',
+      headers,
+    };
+
+    try {
+      const response = await fetch(`${config.getGroupDetails(groupId)}`, options).then(
+        async (response) => await response.json()
+      );
+      const job: Job = response;
+      return processJob(job);
+    } catch (error) {
+      throw new Error('Failed to fetch job details data!');
+    }
+  }
+);
+
 export const patchJobDetails = createAsyncThunk<
   PatchJobResponse,
   PatchJobRequest,
