@@ -266,7 +266,7 @@ var guinstanceIds = [
 ]
 
 module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = [for instance in guinstanceIds: {
-  name: 'graphUpdater${instance}DataResources'
+  name: 'graphUpdater${instance}DataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
     location: location
