@@ -39,6 +39,7 @@ namespace WebApi.Models.DTOs
         public int Period { get; set; }
         public string? TargetGroupName { get; set; }
         public Guid? TargetGroupId { get; set; }
+        public Guid? SyncJobId { get; set; }
         public string? TargetGroupType { get; set; }
         public DateTime? LastSuccessfulRunTime { get; set; }
         public DateTime? EstimatedNextRunTime { get; set; }

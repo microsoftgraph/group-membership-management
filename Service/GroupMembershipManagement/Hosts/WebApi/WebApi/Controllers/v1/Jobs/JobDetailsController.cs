@@ -19,21 +19,39 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
         private readonly IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> _removeGMMRequestHandler;
         private readonly IRequestHandler<PatchJobRequest, PatchJobResponse> _patchJobRequestHandler;
+        private readonly IRequestHandler<GetGroupRequest, GetGroupResponse> _getGroupRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
                                     IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
-                                    IRequestHandler<PatchJobRequest, PatchJobResponse> patchJobRequestHandler)
+                                    IRequestHandler<PatchJobRequest, PatchJobResponse> patchJobRequestHandler,
+                                    IRequestHandler<GetGroupRequest, GetGroupResponse> getGroupRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
+            _getGroupRequestHandler = getGroupRequestHandler ?? throw new ArgumentNullException(nameof(getGroupRequestHandler));
             _patchJobRequestHandler = patchJobRequestHandler;
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
-        [HttpGet("{syncJobId}")]
+        [HttpGet("job/{syncJobId}")]
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobDetailsAsync(Guid syncJobId)
         {
             var response = await _getJobDetailsRequestHandler.ExecuteAsync(new GetJobDetailsRequest(syncJobId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response.Model),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_READER}, {Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_READER}, {Models.Roles.JOB_TENANT_WRITER}")]
+        [HttpGet("group/{groupId}")]
+        public async Task<ActionResult<IEnumerable<SyncJob>>> GetGroupDetailsAsync(Guid groupId)
+        {
+            var response = await _getGroupRequestHandler.ExecuteAsync(new GetGroupRequest(groupId));
 
             return response.StatusCode switch
             {

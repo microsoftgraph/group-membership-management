@@ -24,13 +24,16 @@ namespace Services.Tests
     public class JobDetailsControllerTests
     {
         private SyncJob _jobEntity = null!;
+        private Group _group = null!;
         private SyncJobChange _syncJobChange = null!;
         private JobDetailsController _jobDetailsController = null!;
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
+        private GetGroupHandler _getGroupHandler = null!;
         private PatchJobHandler _patchJobHandler = null!;
         private RemoveGMMHandler _removeGMMHandler = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseGroupsRepository> _groupRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
@@ -43,6 +46,7 @@ namespace Services.Tests
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupRepository = new Mock<IDatabaseGroupsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
 
@@ -68,6 +72,12 @@ namespace Services.Tests
                 Requestor = "example@microsoft.com",
             };
 
+            _group = new Group
+            {
+                GroupId = Guid.NewGuid(),
+                SyncJobId = _jobEntity.Id
+            };
+
             _syncJobChange = new SyncJobChange
             {
                 Id = new Guid(),
@@ -81,6 +91,9 @@ namespace Services.Tests
 
             _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => _syncJobChange);
+
+            _groupRepository.Setup(x => x.GetGroupAsync(It.IsAny<Guid>()))
+                              .ReturnsAsync(() => _group);
 
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                               .ReturnsAsync(() => _jobEntity);
@@ -109,7 +122,13 @@ namespace Services.Tests
                                                     _graphGroupRepository.Object,
                                                    _syncJobRepository.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
+            _getGroupHandler = new GetGroupHandler(_loggingRepository.Object,
+                                                            _syncJobRepository.Object,
+                                                            _groupRepository.Object,
+                                                            _graphGroupRepository.Object,
+                                                            _httpContextAccessor.Object);
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler);
         }
 
         private async IAsyncEnumerable<T> GetItemsAsync<T>(List<T> list)
@@ -161,6 +180,44 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        [DataRow("UserRole")]
+        public async Task GetGroupDetailsTestAsync(string role)
+        {
+            var userId = Guid.NewGuid().ToString();
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+                {
+                    new DestinationOwner
+                    {
+                        ObjectId = Guid.Parse(userId)
+                    }
+                };
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            var response = await _jobDetailsController.GetGroupDetailsAsync(_jobEntity.TargetOfficeGroupId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Value);
+
+            var job = result.Value as SyncJobDetails;
+
+            Assert.IsNotNull(job.StartDate);
+            Assert.IsNotNull(job.Requestor);
+            Assert.IsNotNull(job.Query);
+        }
+
+        [TestMethod]
         [DataRow(Roles.JOB_TENANT_READER)]
         public async Task GetJobDetailsTestRequestorNotAnOwnerAsync(string role)
         {
@@ -184,9 +241,48 @@ namespace Services.Tests
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler);
 
             var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid());
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Value);
+
+            var job = result.Value as SyncJobDetails;
+
+            Assert.IsNotNull(job);
+            Assert.AreEqual("example@microsoft.com", job.Requestor);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        public async Task GetGroupDetailsTestRequestorNotAnOwnerAsync(string role)
+        {
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            _graphGroupRepository = new Mock<IGraphGroupRepository>();
+
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => false);
+
+            _getJobDetailsHandler = new GetJobDetailsHandler(
+                                     _loggingRepository.Object,
+                                     _syncJobRepository.Object,
+                                     _graphGroupRepository.Object,
+                                     _httpContextAccessor.Object);
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler);
+
+            var response = await _jobDetailsController.GetGroupDetailsAsync(Guid.NewGuid());
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -203,9 +299,9 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task PatchJobWithInvalidStatus(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { 
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
@@ -228,9 +324,9 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task PatchJobWithEmptyStatus(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { 
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
@@ -255,7 +351,7 @@ namespace Services.Tests
         {
             _jobEntity.Status = SyncStatus.InProgress.ToString();
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(
                     new List<Claim> {
@@ -289,9 +385,9 @@ namespace Services.Tests
         {
             _jobEntity = null;
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { 
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
@@ -313,9 +409,9 @@ namespace Services.Tests
         public async Task PatchJobWhenIsNotOwnerOfTheGroup(string role)
         {
             _isGroupOwner = false;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { 
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
@@ -337,9 +433,9 @@ namespace Services.Tests
         public async Task PatchJobWhenIsNotOwnerOfTheGroupButIsJobTenantWriter(string role)
         {
             _isGroupOwner = false;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim> { 
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
@@ -377,7 +473,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -411,7 +507,7 @@ namespace Services.Tests
                                                    _syncJobRepository.Object,
                                                    _syncJobChangeRepository.Object,
                                                    _settingsRepository.Object);
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler);
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
@@ -428,7 +524,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenChangeReasonIsEmpty(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -461,7 +557,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -484,7 +580,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -510,7 +606,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -536,7 +632,7 @@ namespace Services.Tests
                         new Claim(ClaimTypes.Role, role)
                     });
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -566,7 +662,7 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object, _graphGroupRepository.Object, _syncJobRepository.Object);
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler);
 
             _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>())).ThrowsAsync(new Exception());
             var response = await _jobDetailsController.RemoveGMMAsync(Guid.NewGuid());
