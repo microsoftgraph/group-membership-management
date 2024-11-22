@@ -31,7 +31,7 @@ import { selectIsJobWriter } from '../../store/roles.slice';
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
 export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: SourcePartProps) => {
-  const { className, styles, index, totalSourceParts, onDelete, query, part } = props;
+  const { className, styles, index, totalSourceParts, onDelete, query, part, isEditable } = props;
   const classNames: IProcessedStyleSet<SourcePartStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -192,7 +192,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               selectedKey={part.query.type}
               onChange={handleSourceTypeChanged}
-              disabled={!isJobWriter}
+              disabled={!isJobWriter || !isEditable}
             />
             <ChoiceGroup
               className={classNames.exclusionaryPart}
@@ -201,40 +201,44 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               required={true}
               onChange={handleExclusionaryChange}
               selectedKey={isExclusionary ? 'Yes' : 'No'}
-              disabled={!isJobWriter}
+              disabled={!isJobWriter || !isEditable}
             />
-            <DefaultButton 
-                iconProps={{ iconName: 'Delete' }} 
-                className={classNames.deleteButton} 
-                onClick={handleDelete}
-                disabled={!isJobWriter}
-              >
-              {strings.delete}
-            </DefaultButton>
+            {isEditable &&
+              <DefaultButton 
+                  iconProps={{ iconName: 'Delete' }} 
+                  className={classNames.deleteButton} 
+                  onClick={handleDelete}
+                  disabled={!isJobWriter || !isEditable}
+                >
+                {strings.delete}
+              </DefaultButton>
+            }
           </div>
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange} />
+              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange} isEditable={isEditable} />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
             <GroupQuerySource part={part} onSourceChange={handleGroupMembershipSourceChange} />
           )}
           {part.query.type === SourcePartType.GroupOwnership && (
-            <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} />
+            <AdvancedViewSourcePart key={SourcePartType.GroupOwnership} part={part} isEditable={isEditable} />
           )}
           {part.query.type === SourcePartType.PlaceMembership && (
-            <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} />
+            <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} isEditable={isEditable} />
           )}
           <div className={classNames.error}>
             {errorMessage}
           </div>
-          {part.query.type === SourcePartType.HR && (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (totalSourceParts === part.id) && (
+          {part.query.type === SourcePartType.HR && 
+            isEditable &&
+            (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (totalSourceParts === part.id) && (
           <ActionButton
             iconProps={{ iconName: "Copy" }}
             onClick={handleCopy}
-            disabled={!isJobWriter}
+            disabled={!isJobWriter || !isEditable}
           >
             {strings.copy}
         </ActionButton>

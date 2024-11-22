@@ -35,7 +35,7 @@ export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuery
 
 export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (props: HRQuerySourceProps) => {
 
-  const { className, styles, partId, onSourceChange } = props;
+  const { className, styles, partId, onSourceChange, isEditable } = props;
   const classNames: IProcessedStyleSet<HRQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -1288,8 +1288,8 @@ const getOptions = (
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
-            <ActionButton iconProps={{ iconName: 'ChevronUp' }} disabled={!isJobWriter} onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
-            <ActionButton iconProps={{ iconName: 'ChevronDown' }} disabled={!isJobWriter} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronUp' }} disabled={!isJobWriter || !isEditable } onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronDown' }} disabled={!isJobWriter || !isEditable} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
           </div>;
         case 'attribute':
           return (
@@ -1308,7 +1308,7 @@ const getOptions = (
               autoComplete="off"
               useComboBoxAsMenuWidth={true}
               dropdownMaxWidth={500}
-              disabled={isAttributeDisabled || !isJobWriter}
+              disabled={isAttributeDisabled || !isJobWriter || !isEditable}
               errorMessage={
                 isAttributeDisabled
                   ? strings.HROnboarding.attributeDisabledErrorMessage.replace('{email}', displayEmail)
@@ -1325,7 +1325,7 @@ const getOptions = (
           onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
           options={equalityOperatorOptions}
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
-          disabled={isAttributeDisabled || !isJobWriter}
+          disabled={isAttributeDisabled || !isJobWriter || !isEditable}
         />;
         case 'value':
           if (item.equalityOperator && item.equalityOperator.toString().toUpperCase() === 'IS') {
@@ -1337,7 +1337,7 @@ const getOptions = (
                 allowFreeInput
                 autoComplete="off"
                 dropdownMaxWidth={500}
-                disabled={isAttributeDisabled || !isJobWriter}
+                disabled={isAttributeDisabled || !isJobWriter || !isEditable}
               />
             );
           }
@@ -1355,7 +1355,7 @@ const getOptions = (
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
               dropdownMaxWidth={500}
-              disabled={isAttributeDisabled || !isJobWriter}
+              disabled={isAttributeDisabled || !isJobWriter || !isEditable}
               />
           } else {
             return <TextField
@@ -1365,7 +1365,7 @@ const getOptions = (
               styles={{ fieldGroup: classNames.textField }}
               validateOnLoad={false}
               validateOnFocusOut={false}
-              disabled={isAttributeDisabled || !isJobWriter}
+              disabled={isAttributeDisabled || !isJobWriter || !isEditable}
           ></TextField>;
           }
         }
@@ -1377,7 +1377,7 @@ const getOptions = (
                 onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                 options={orAndOperatorOptions}
                 styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-                disabled={isAttributeDisabled || !isJobWriter}
+                disabled={isAttributeDisabled || !isJobWriter || !isEditable}
               />
             ) : (
               index >= 0 && index < items.length - 1 ? (
@@ -1386,14 +1386,14 @@ const getOptions = (
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-                  disabled={isAttributeDisabled || !isJobWriter}
+                  disabled={isAttributeDisabled || !isJobWriter || !isEditable}
                 />
               ) : (
                 <Dropdown
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-                  disabled={isAttributeDisabled || !isJobWriter}
+                  disabled={isAttributeDisabled || !isJobWriter || !isEditable}
                 />
               )
             )
@@ -1401,10 +1401,10 @@ const getOptions = (
         case 'remove':
           return (
             <ActionButton
-              className={`${classNames.removeButton} ${!isJobWriter ? classNames.removeButtonDisabled : ''}`}
+              className={`${classNames.removeButton} ${(!isJobWriter || !isEditable) ? classNames.removeButtonDisabled : ''}`}
               iconProps={{ iconName: "Blocked2" }}
               onClick={() => removeComponent(index ?? -1)}
-              disabled={!isJobWriter}>
+              disabled={!isJobWriter || !isEditable}>
               {strings.remove}
             </ActionButton>
           );
@@ -1618,7 +1618,7 @@ const getOptions = (
       <ActionButton 
         styles={{ root: classNames.addAttribute }} 
         iconProps={{ iconName: "CirclePlus" }} 
-        disabled={!isJobWriter}
+        disabled={!isJobWriter || !isEditable}
         onClick={() => addComponent(groupIndex, childIndex)}>
         {strings.HROnboarding.addAttribute}
       </ActionButton>
@@ -1638,7 +1638,7 @@ const getOptions = (
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex)}
             selectedKey={group.andOr.charAt(0).toUpperCase() + group.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
-            disabled={!isJobWriter}
+            disabled={!isJobWriter || !isEditable}
             styles={group.children && group.children.length > 0 ?  { root: classNames.startOfNestedGroupDropdown } : { root: classNames.betweenGroupsDropdown }}
           />
           </div>
@@ -1662,7 +1662,7 @@ const getOptions = (
             onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex, childIndex)}
             selectedKey={childGroup.andOr.charAt(0).toUpperCase() + childGroup.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
-            disabled={!isJobWriter}
+            disabled={!isJobWriter || !isEditable}
             styles={parentIndex !== groups.length - 1 && childIndex === children.length - 1 ? { root: classNames.endOfNestedGroupDropdown } : { root: classNames.betweenChildrenDropdown }}
           />
           </div>
@@ -1698,7 +1698,7 @@ const getOptions = (
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
-        disabled={!isJobWriter}
+        disabled={!isJobWriter || !isEditable}
       />
 
 {(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
@@ -1727,7 +1727,7 @@ const getOptions = (
               onChange={handleOrgLeaderChange}
               styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
               pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
-              disabled={!isJobWriter}
+              disabled={!isJobWriter || !isEditable}
             />
             {source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id].text == undefined && 
              <div className={classNames.error}>
@@ -1746,7 +1746,7 @@ const getOptions = (
             </div>
             <SpinButton
               value={source.manager?.depth?.toString()}
-              disabled={isDisabled ||!isJobWriter}
+              disabled={isDisabled ||!isJobWriter || !isEditable}
               min={0}
               max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}
               step={1}
@@ -1769,7 +1769,7 @@ const getOptions = (
                 root: classNames.horizontalChoiceGroup,
                 flexContainer: classNames.horizontalChoiceGroupContainer
               }}
-              disabled={!isJobWriter}
+              disabled={!isJobWriter || !isEditable}
             />
           </div>
         </Stack.Item>
@@ -1791,7 +1791,7 @@ const getOptions = (
           root: classNames.horizontalChoiceGroup,
           flexContainer: classNames.horizontalChoiceGroupContainer
         }}
-        disabled={!isJobWriter}
+        disabled={!isJobWriter || !isEditable}
       />
 
       {(includeFilter || source.filter) &&
@@ -1827,7 +1827,7 @@ const getOptions = (
           styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
           validateOnLoad={false}
           validateOnFocusOut={false}
-          disabled={!isJobWriter}
+          disabled={!isJobWriter || !isEditable}
         ></TextField></>
         ) : attributes && attributes.length > 0 && expanded && (includeFilter || source.filter) ?
         (
@@ -1835,13 +1835,13 @@ const getOptions = (
             <ActionButton
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onGroupClick}
-              disabled={(!(selectedIndices.length > 1)) || !isJobWriter}>
+              disabled={(!(selectedIndices.length > 1)) || !isJobWriter || !isEditable}>
               {strings.HROnboarding.group}
             </ActionButton>
             <ActionButton
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onUnGroupClick}
-              disabled={(!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)) || !isJobWriter}>
+              disabled={(!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)) || !isJobWriter || !isEditable}>
               {strings.HROnboarding.ungroup}
             </ActionButton>
           <br/>
@@ -1875,7 +1875,7 @@ const getOptions = (
           )}
 
           {(!groupingEnabled) && 
-          <ActionButton styles={{ root: classNames.addAttribute }} disabled={!isJobWriter} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
+          <ActionButton styles={{ root: classNames.addAttribute }} disabled={!isJobWriter || !isEditable} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>

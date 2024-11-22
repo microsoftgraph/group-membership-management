@@ -40,7 +40,7 @@ interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, u
 }
 
 export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (props) => {
-  const { className, styles, query, onQueryChange } = props;
+  const { className, styles, query, onQueryChange, isEditable } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IAdvancedQueryStyles> = getClassNames(
     styles,
@@ -216,7 +216,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
-        disabled={!isJobWriter}
+        disabled={!isJobWriter || !isEditable}
       />
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>

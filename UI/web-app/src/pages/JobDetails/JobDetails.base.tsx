@@ -63,6 +63,7 @@ import { Loader } from '../../components/Loader';
 import { setIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
+import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -209,7 +210,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               />
               <ContentContainer
                 title={strings.JobDetails.labels.configuration}
-                children={<MembershipConfiguration job={job} classNames={classNames} />}
+                children={<RunConfiguration job={job} classNames={classNames} />}
                 actionButtons={
                   canEditJob
                   ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openRunConfiguration }]
@@ -218,12 +219,15 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               />
               <ContentContainer
                 title={strings.JobDetails.labels.sourceParts}
-                children={<label>{job?.query}</label>}
                 actionButtons={
                   canEditJob
                   ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration }]
-                    : [{ text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
+                  : [{ text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
                 }
+                children={
+                  <MembershipConfiguration 
+                    isEditable={false}
+                  />}
               />
               <div className={classNames.removeGMM}>
                 {canDeleteJob &&
@@ -531,7 +535,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   )
 }
 
-const MembershipConfiguration: React.FunctionComponent<IContentProps> = (
+const RunConfiguration: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const strings = useStrings();

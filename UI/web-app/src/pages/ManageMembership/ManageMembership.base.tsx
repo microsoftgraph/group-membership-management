@@ -106,6 +106,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isLoading = useSelector(selectSelectedJobLoading);
 
   useEffect(() => {
+    dispatch(resetManageMembership());
     let editingExistingJob = !!jobId;
     dispatch(setIsEditingExistingJob(editingExistingJob));
 
@@ -124,7 +125,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     } else {
       dispatch(resetManageMembership());
     }
-  }, [dispatch, jobId, locationState]);
+  }, [dispatch, jobId, locationState, location]);
 
   useEffect(() => {
     if (jobDetailsRef.current) {
@@ -337,7 +338,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             destinationType={selectedDestination?.type}
             destinationName={selectedDestination?.name}
             children={
-              <MembershipConfiguration />
+              <MembershipConfiguration isEditable={true} />
             }
           />}
           {currentStep === OnboardingSteps.Confirmation && <OnboardingStep

@@ -39,7 +39,7 @@ interface ExtendedErrorObject extends ErrorObject<string, Record<string, any>, u
 }
 
 export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSourcePartProps> = (props) => {
-  const { className, styles, part } = props;
+  const { className, styles, part, isEditable } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IAdvancedViewSourcePartStyles> = getClassNames(
     styles,
@@ -126,7 +126,7 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
         value={localQuery}
         onChange={handleQueryChange}
         onBlur={handleBlur}
-        disabled={!isJobWriter}
+        disabled={!isJobWriter || !isEditable}
       />
       {validationMessage && (
         <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>

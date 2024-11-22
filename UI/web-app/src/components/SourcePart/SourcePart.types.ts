@@ -37,6 +37,7 @@ export type SourcePartProps = React.AllHTMLAttributes<HTMLDivElement> & {
   query: SourcePartQuery;
   part: ISourcePart;
   isNew?: boolean;
+  isEditable?: boolean;
 
   /**
    * Call to provide customized styling that will layer on top of the variant rules.

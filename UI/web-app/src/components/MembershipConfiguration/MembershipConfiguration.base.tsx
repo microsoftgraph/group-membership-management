@@ -23,6 +23,7 @@ import {
   setCompositeQuery,
   setIsAdvancedView,
   setIsAdvancedQueryValid,
+  setSourceParts,
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
@@ -30,11 +31,13 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectSelectedJobDetails } from '../../store/jobs.slice';
+import { SyncJobQuery } from '../../models/SyncJobQuery';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
 export const MembershipConfigurationBase: React.FunctionComponent<MembershipConfigurationProps> = (props: MembershipConfigurationProps) => {
-  const { className, styles } = props;
+  const { className, styles, isEditable } = props;
   const classNames: IProcessedStyleSet<MembershipConfigurationStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -43,6 +46,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const strings = useStrings();
 
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
+  const jobDetails = useSelector(selectSelectedJobDetails);
   const sourceParts = useSelector(getSourcePartsFromState);
 
   const globalQuery = useSelector(manageMembershipQuery);
@@ -119,6 +123,23 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     const compositeQuery = buildCompositeQuery(sourceParts);
     dispatch(setCompositeQuery(compositeQuery));
   }, [dispatch, sourceParts]);
+  
+  useEffect(() => {
+    if (jobDetails?.query) {
+      try {
+        const parsedQuery: SyncJobQuery = JSON.parse(jobDetails.query);
+        const updatedSourceParts = parsedQuery.map((query, index) => ({
+          id: index + 1,
+          query: query,
+          isValid: true
+        }));
+        dispatch(setSourceParts(updatedSourceParts));
+        dispatch(setAdvancedViewQuery(jobDetails.query));
+      } catch (error) {
+        console.error(`Error parsing job details query:`, error);
+      }
+    }
+  }, [dispatch, jobDetails]);
 
   return (
     <div>
@@ -144,22 +165,26 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               totalSourceParts={sourceParts.length}
               query={part.query}
               part={part}
+              isEditable={isEditable}
             />
           ))}
         </div>
+        {isEditable &&
           <div className={classNames.addButtonContainer}>
             <DefaultButton
               iconProps={{ iconName: 'Add' }}
               onClick={newSourcePart}
-              disabled={!isJobWriter}>
+              disabled={!isJobWriter || !isEditable}>
               {strings.ManageMembership.labels.addSourcePart}
             </DefaultButton>
           </div>
+        }
       </>) : (<div className={classNames.card}>
         <AdvancedQuery
           query={advancedViewQuery}
           onQueryChange={handleAdvancedViewQueryChange}
           partId={1}
+          isEditable={isEditable}
         />
       </div>
       )}

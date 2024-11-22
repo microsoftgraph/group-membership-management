@@ -26,4 +26,5 @@ export type MembershipConfigurationProps = React.AllHTMLAttributes<HTMLDivElemen
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<MembershipConfigurationStyleProps, MembershipConfigurationStyles>;
+  isEditable?: boolean;
 };
