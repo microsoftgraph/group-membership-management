@@ -15,6 +15,7 @@ param location string
 
 @description('Instance identifier')
 @allowed([
+  ''
   'small'
   'medium'
   'large'

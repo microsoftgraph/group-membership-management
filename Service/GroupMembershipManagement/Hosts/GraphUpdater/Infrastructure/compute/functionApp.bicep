@@ -48,6 +48,7 @@ param setRBACPermissions bool
 
 @description('Instance identifier')
 @allowed([
+  ''
   'small'
   'medium'
   'large'

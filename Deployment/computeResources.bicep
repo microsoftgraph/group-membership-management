@@ -259,6 +259,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
 // ----------------- GraphUpdater
 
 var guinstanceIds = [
+  ''
   'small'
   'medium'
   'large'
@@ -266,7 +267,7 @@ var guinstanceIds = [
 ]
 
 module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = [for instance in guinstanceIds: {
-  name: 'graphUpdater${instance}DataResourcesTemplate'
+  name: instance == '' ? 'graphUpdaterDataResourcesTemplate' : 'graphUpdater${instance}DataResourcesTemplate'
   scope: resourceGroup(dataResourceGroupName)
   params: {
     location: location
@@ -278,7 +279,7 @@ module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/Gra
 ]
 
 module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/compute/template.bicep' = [for instance in guinstanceIds: {
-  name: 'graphUpdater${instance}ComputeResourcesTemplate'
+  name: instance == '' ? 'graphUpdaterComputeResourcesTemplate' : 'graphUpdater${instance}ComputeResourcesTemplate'
   scope: resourceGroup(computeResourceGroupName)
   params: {
     location: location
