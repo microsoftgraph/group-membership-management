@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols;
@@ -38,7 +37,6 @@ using Services.Entities;
 using Services.Notifications;
 using Services.WebApi;
 using Services.WebApi.Contracts;
-using System.Security.Claims;
 using WebApi.BackgroundServices;
 using WebApi.Configuration;
 using WebApi.Models;
@@ -50,6 +48,11 @@ namespace WebApi
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            if (builder.Environment.IsDevelopment())
+            {
+                builder.AddServiceDefaults();
+            }
 
             builder.Services.AddHttpContextAccessor();
 
