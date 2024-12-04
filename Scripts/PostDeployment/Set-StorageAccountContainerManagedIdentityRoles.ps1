@@ -55,9 +55,12 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		# Grant the app service access to the storage account blobs
 		if ($appServicePrincipal)
 		{
-
+            $sizeIdentifier = ($functionAppName -split "-")[-1]
+            if ($sizeIdentifier -notin @("large", "medium", "small", "onboarding")) {
+                $sizeIdentifier = ""  
+            }
 			$functionAbbreviation = ($functionAppName | Select-String -CaseSensitive -AllMatches -Pattern '[A-Z]').Matches.Value -join ''
-			$prefix = $functionAbbreviation + $SolutionAbbreviation + $EnvironmentAbbreviation + "prod"
+			$prefix = $functionAbbreviation + $SolutionAbbreviation + $EnvironmentAbbreviation + "prod" + $sizeIdentifier
 			$functionStorageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "$prefix*" }
 			$functionStorageAccountId = $functionStorageAccount.Id
 			$functionStorageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
