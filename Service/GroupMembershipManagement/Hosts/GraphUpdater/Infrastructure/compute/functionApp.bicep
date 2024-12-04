@@ -58,7 +58,7 @@ param instanceIdentifier string
 var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
 var functionFullName = '${name}-GraphUpdater${instanceSuffix}'
 
-resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
+resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: functionFullName
   location: location
   kind: kind
