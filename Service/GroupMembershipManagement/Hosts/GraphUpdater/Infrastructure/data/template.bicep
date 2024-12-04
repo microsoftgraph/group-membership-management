@@ -21,8 +21,7 @@ param location string
   'large'
   'onboarding'
 ])
-param instanceIdentifier string
-
+param instanceIdentifier string = ''
 var instanceSuffix = empty(instanceIdentifier) ? '' : '${instanceIdentifier}'
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -35,6 +34,6 @@ module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'graphUpdater${instanceIdentifier}StorageAccountProd'
+    storageAccountConnectionStringSettingName: 'graphUpdater${instanceSuffix}StorageAccountProd'
   }
 }

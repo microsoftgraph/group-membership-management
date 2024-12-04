@@ -27,7 +27,7 @@ param tenantId string
   'large'
   'onboarding'
 ])
-param instanceIdentifier string
+param instanceIdentifier string = ''
 var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
 @description('Service plan name.')
 var servicePlanName  = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}${instanceSuffix}-${substring(uniqueString(subscription().id,'GraphUpdater'),0,8)}'
