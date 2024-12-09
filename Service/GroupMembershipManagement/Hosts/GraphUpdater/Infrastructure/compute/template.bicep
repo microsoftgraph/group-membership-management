@@ -115,8 +115,8 @@ var commonSettings = {
   FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
 
-var triggerSchedule = instanceIdentifier == 'small' ? '*/15 * * * * *' : instanceIdentifier == 'medium' ? '*/30 * * * * *' : instanceIdentifier == 'large' ? '*/50 * * * * *' : instanceIdentifier == 'onboarding' ? '*/120 * * * * *' :  '*/30 * * * * *' 
-var triggerDelay = instanceIdentifier == 'onboarding' ? '*/30 * * * * *' :  '0 * * * * *'
+var triggerSchedule = instanceIdentifier == 'small' ? '*/15 * * * * *' : instanceIdentifier == 'medium' ? '*/30 * * * * *' : instanceIdentifier == 'large' ? '*/50 * * * * *' : instanceIdentifier == 'onboarding' ? '0 */2 * * * *' :  '*/30 * * * * *' 
+var triggerDelay = instanceIdentifier == 'onboarding' ? 30 : 0
 
 var appSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
