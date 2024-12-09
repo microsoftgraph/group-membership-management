@@ -60,26 +60,64 @@ function Set-StorageAccountContainerManagedIdentityRoles
                 $sizeIdentifier = ""  
             }
 			$functionAbbreviation = ($functionAppName | Select-String -CaseSensitive -AllMatches -Pattern '[A-Z]').Matches.Value -join ''
-			$prefix = $functionAbbreviation + $SolutionAbbreviation + $EnvironmentAbbreviation + "prod" + $sizeIdentifier
-			$functionStorageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "$prefix*" }
-			$functionStorageAccountId = $functionStorageAccount.Id
-			$functionStorageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
+            $prefix = $functionAbbreviation + $SolutionAbbreviation + $EnvironmentAbbreviation + "prod" + $sizeIdentifier
 
-			foreach($role in $functionStorageAccountRoles)
-			{
-				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role)) {
-					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role;
-					if ($assignment) {
-						Write-Host "Added role assignment $role to $functionAppName with scope $functionStorageAccountId.";
+            $allFunctionStorageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName |
+                Where-Object { $_.StorageAccountName -like "$prefix*" }
+
+            if ($allFunctionStorageAccounts.Count -eq 0) {
+                Write-Warning "No storage account found starting with '$prefix'. Skipping..."
+                continue
+            }
+
+            if ($allFunctionStorageAccounts.Count -gt 1) {
+                # Multiple matches found
+                if ($sizeIdentifier -eq "") {
+                    # No size identifier given, try to filter out any accounts with known size keywords
+					$sizeKeywords = "small","medium","large","onboarding"
+					$filteredMatches = $allFunctionStorageAccounts | Where-Object {
+						$acctName = $_.StorageAccountName.ToLower()
+						$matchesSize = $sizeKeywords | ForEach-Object { $acctName -like "*$_*" }
+						-not ($matchesSize -contains $true)
 					}
-					else {
-						Write-Host "Failed to add role assignment $role to $functionAppName with scope $functionStorageAccountId. Please double check that you have permission to perform this operation";
-					}
-				}
-				else {
-					Write-Host "$functionAppName already has role $role with scope $functionStorageAccountId.";
-				}
-			}
+
+                    if ($filteredMatches.Count -eq 1) {
+                        $functionStorageAccount = $filteredMatches[0]
+                    } elseif ($filteredMatches.Count -gt 1) {
+                        Write-Warning "Multiple non-size storage accounts found. Using $($filteredMatches[0].StorageAccountName)."
+                        $functionStorageAccount = $filteredMatches[0]
+                    } else {
+                        Write-Warning "No non-size storage account found. Using $($allFunctionStorageAccounts[0].StorageAccountName)."
+                        $functionStorageAccount = $allFunctionStorageAccounts[0]
+                    }
+                } else {
+                    # If we have a size identifier, just pick the first match
+                    Write-Warning "Multiple matches found. Using $($allFunctionStorageAccounts[0].StorageAccountName)."
+                    $functionStorageAccount = $allFunctionStorageAccounts[0]
+                }
+            } else {
+                # Exactly one match
+                $functionStorageAccount = $allFunctionStorageAccounts[0]
+            }
+
+            $functionStorageAccountId = $functionStorageAccount.Id
+            $functionStorageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
+
+            foreach($role in $functionStorageAccountRoles)
+            {
+                if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role)) {
+                    $assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role;
+                    if ($assignment) {
+                        Write-Host "Added role assignment $role to $functionAppName with scope $functionStorageAccountId.";
+                    }
+                    else {
+                        Write-Host "Failed to add role assignment $role to $functionAppName with scope $functionStorageAccountId. Please double check that you have permission to perform this operation";
+                    }
+                }
+                else {
+                    Write-Host "$functionAppName already has role $role with scope $functionStorageAccountId.";
+                }
+            }
 
 			$jobsStorageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "jobs$EnvironmentAbbreviation*" }
 			$jobsStorageAccountId = $jobsStorageAccount.Id
@@ -126,3 +164,6 @@ function Set-StorageAccountContainerManagedIdentityRoles
 
 	Write-Host "Done attempting to add Storage role assignments.";
 }
+Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation "gmm" `
+												-EnvironmentAbbreviation "ar" `
+												-Verbose
