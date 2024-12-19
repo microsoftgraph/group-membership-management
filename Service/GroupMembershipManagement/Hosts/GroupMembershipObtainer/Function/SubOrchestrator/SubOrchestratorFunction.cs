@@ -85,7 +85,7 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                         // run exisiting code
-                        var compressedResponse = await GetMembersReaderFunction(context, request);
+                        var compressedResponse = await GetTransitiveMembers(context, request);
                         var response = JsonConvert.DeserializeObject<MembersReaderResponse>(TextCompressor.Decompress(compressedResponse));
 
                         allUsers.AddRange(response.Users);
@@ -112,7 +112,7 @@ namespace Hosts.GroupMembershipObtainer
                             try
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
-                                var compressedResponse = await GetUsersReaderFunction(context, request);
+                                var compressedResponse = await GetInitialDeltaUsers(context, request);
                                 var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
 
                                 allUsers.AddRange(response.Users);
@@ -132,7 +132,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                                 // run exisiting code
-                                var compressedResponse = await GetMembersReaderFunction(context, request);
+                                var compressedResponse = await GetTransitiveMembers(context, request);
                                 var response = JsonConvert.DeserializeObject<MembersReaderResponse>(TextCompressor.Decompress(compressedResponse));
 
                                 allUsers.AddRange(response.Users);
@@ -153,7 +153,7 @@ namespace Hosts.GroupMembershipObtainer
                             try
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
-                                var compressedDeltaResponse = await GetDeltaUsersReaderFunction(context, deltaFileContent, request);
+                                var compressedDeltaResponse = await GetDeltaLinkUsers(context, deltaFileContent, request);
                                 var deltaResponse = JsonConvert.DeserializeObject<DeltaUserReaderResponse>(TextCompressor.Decompress(compressedDeltaResponse));
                                 var shouldClearCache = false;
 
@@ -180,7 +180,7 @@ namespace Hosts.GroupMembershipObtainer
                                     // clear cache
                                     shouldClearCache = true;
 
-                                    var compressedResponse = await GetUsersReaderFunction(context, request);
+                                    var compressedResponse = await GetInitialDeltaUsers(context, request);
                                     var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
                                     allUsers = response.Users;
                                 }
@@ -209,7 +209,7 @@ namespace Hosts.GroupMembershipObtainer
                                 allUsers.Clear();
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
-                                var compressedResponse = await GetUsersReaderFunction(context, request);
+                                var compressedResponse = await GetInitialDeltaUsers(context, request);
                                 var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
 
                                 if (response.Users.Any())
@@ -309,7 +309,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="context"></param>
         /// <param name="request"></param>
         /// <returns>Compressed serialized MembersReaderResponse</returns>
-        public async Task<string> GetMembersReaderFunction(IDurableOrchestrationContext context, GroupMembershipRequest request)
+        public async Task<string> GetTransitiveMembers(IDurableOrchestrationContext context, GroupMembershipRequest request)
         {
             var allUsers = new List<AzureADUser>();
             var allNonUserGraphObjects = new Dictionary<string, int>();
@@ -347,7 +347,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="context"></param>
         /// <param name="request"></param>
         /// <returns>Compressed serialized UsersReaderResponse</returns>
-        public async Task<string> GetUsersReaderFunction(
+        public async Task<string> GetInitialDeltaUsers(
                                                     IDurableOrchestrationContext context,
                                                     GroupMembershipRequest request)
         {
@@ -377,7 +377,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="fileContent"></param>
         /// <param name="request"></param>
         /// <returns>Compressed serialized DeltaUserReaderResponse</returns>
-        public async Task<string> GetDeltaUsersReaderFunction(
+        public async Task<string> GetDeltaLinkUsers(
                                                                                         IDurableOrchestrationContext context,
                                                                                         string fileContent,
                                                                                         GroupMembershipRequest request)
