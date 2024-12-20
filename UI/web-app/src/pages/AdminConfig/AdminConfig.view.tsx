@@ -271,7 +271,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
       const { name } = currentItem;
       acc[name] = { 
           ...currentItem,
-          customLabel: (attributeMap && attributeMap[name]?.customLabel) || currentItem.customLabel
+          ...attributeMap?.[currentItem.name]
        };
       return acc;
     }, {});
