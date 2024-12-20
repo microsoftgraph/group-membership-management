@@ -164,10 +164,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   }, [dispatch, jobId, groupId]);
 
-  if(jobId === undefined) {
-    throw new Error('Job ID is not defined');
-  }
-
   return (
     <Page>
       <PageHeader />
@@ -255,11 +251,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               </div>
             </div>
           )}
-          <JobHistoryPanel
-            isOpen={isJobHistoryPanelOpen}
-            dismissPanel={() => setIsJobHistoryPanelOpen(false)}
-            jobId={jobId}
-          />
+          {jobId && (
+            <JobHistoryPanel
+              isOpen={isJobHistoryPanelOpen}
+              dismissPanel={() => setIsJobHistoryPanelOpen(false)}
+              jobId={jobId}
+            />
+          )}
           <Dialog
             hidden={!showRemoveGMMDialog}
             onDismiss={onDialogClose}
