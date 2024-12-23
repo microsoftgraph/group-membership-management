@@ -46,18 +46,31 @@ namespace Repositories.GraphGroups
             return (users, deltaResponse.Response.OdataNextLink, deltaResponse.Response.OdataDeltaLink);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl, Guid? runId)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPagesAsync(string nextPageUrl, Guid? runId, int numberOfPages)
         {
-            var deltaResponse = await GetGroupUsersNextPageAsync(nextPageUrl);
+            var allUsers = new List<AzureADUser>();
 
-            await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
+            var nextLink = nextPageUrl;
+            string deltaLink = null;
 
-            var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
+            for (int i = 0; i < numberOfPages && deltaLink == null; i++) {
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta - {users.Count}", RunId = runId });
+                var deltaResponse = await GetGroupUsersNextPageAsync(nextLink);
 
-            return (users, deltaResponse.Response.OdataNextLink, deltaResponse.Response.OdataDeltaLink);
+                await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
+
+                var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
+
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta - {users.Count}", RunId = runId });
+
+                allUsers.AddRange(users);
+
+                nextLink = deltaResponse.Response.OdataNextLink;
+                deltaLink = deltaResponse.Response.OdataDeltaLink;
+            }
+
+            return (allUsers, nextLink, deltaLink);
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>

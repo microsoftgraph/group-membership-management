@@ -29,7 +29,7 @@ namespace Hosts.GroupMembershipObtainer
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			_calculator.RunId = request.RunId;
-            var response = await _calculator.GetNextUsersPageAsync(request.NextPageUrl);
+            var response = await _calculator.GetNextUsersPagesAsync(request.NextPageUrl, request.PageCount);
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentUsersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			return response;
 		}

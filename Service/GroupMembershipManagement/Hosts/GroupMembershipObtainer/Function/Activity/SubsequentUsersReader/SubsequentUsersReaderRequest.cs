@@ -8,5 +8,6 @@ namespace Hosts.GroupMembershipObtainer
     {
         public Guid RunId { get; set; }
         public string NextPageUrl { get; set; }
+        public int PageCount { get; set; }
     }
 }

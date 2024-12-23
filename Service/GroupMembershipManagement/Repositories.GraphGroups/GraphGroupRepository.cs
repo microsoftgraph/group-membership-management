@@ -217,9 +217,9 @@ namespace Repositories.GraphGroups
             return await _graphGroupDeltaReader.GetFirstUsersPageAsync(groupId, RunId);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
-            return await _graphGroupDeltaReader.GetNextUsersPageAsync(nextPageUrl, RunId);
+            return await _graphGroupDeltaReader.GetNextUsersPagesAsync(nextPageUrl, RunId, numberOfPages);
         }
 
         public async Task<int> GetGroupsCountAsync(Guid objectId)

@@ -123,9 +123,9 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextUsersPageAsync(string nextPageUrl)
+        public async Task<DeltaGroupInformation> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetNextUsersPageAsync(nextPageUrl);
+            var result = await _graphGroupRepository.GetNextUsersPagesAsync(nextPageUrl, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,

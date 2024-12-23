@@ -22,7 +22,7 @@ namespace Hosts.GroupMembershipObtainer
 {
     public class SubOrchestratorFunction
     {
-        private const int MEMBERS_LIMIT = 200000;
+        private const int DELTAQUERY_PAGECOUNT = 5;
         private readonly IDeltaCachingConfig _deltaCachingConfig;
         private readonly ILoggingRepository _log;
         private readonly TelemetryClient _telemetryClient;
@@ -357,7 +357,12 @@ namespace Hosts.GroupMembershipObtainer
             while (!string.IsNullOrEmpty(response.NextPageUrl))
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page using delta query for group {request.SourceGroup.ObjectId}" });
-                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentUsersReaderFunction), new SubsequentUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl });
+                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentUsersReaderFunction),
+                    new SubsequentUsersReaderRequest { 
+                        RunId = request.RunId,
+                        NextPageUrl = response.NextPageUrl,
+                        PageCount = DELTAQUERY_PAGECOUNT
+                    });
                 allUsers.AddRange(response.UsersToAdd);
             }
 

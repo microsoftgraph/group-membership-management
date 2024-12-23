@@ -42,7 +42,7 @@ namespace Repositories.Contracts
         Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(string deltaLink);
         Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPageAsync(string nextPageUrl);
         Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstUsersPageAsync(Guid objectId);
-        Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl);
+        Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages);
         Task<int> GetGroupsCountAsync(Guid objectId);
         Task<int> GetUsersCountAsync(Guid objectId);
         Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds);

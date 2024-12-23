@@ -97,7 +97,7 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
             throw new NotImplementedException();
         }

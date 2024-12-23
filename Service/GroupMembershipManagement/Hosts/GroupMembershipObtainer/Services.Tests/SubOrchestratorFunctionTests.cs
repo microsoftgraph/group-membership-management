@@ -262,7 +262,7 @@ namespace Tests.Services
                                      return (users, _usersReaderNextPageUrl, _deltaUrl);
                                  });
 
-            _graphGroupRepository.Setup(x => x.GetNextUsersPageAsync(It.IsAny<string>()))
+            _graphGroupRepository.Setup(x => x.GetNextUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
@@ -916,7 +916,7 @@ namespace Tests.Services
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Once);
         }
 
         [TestMethod]
