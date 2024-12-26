@@ -26,7 +26,7 @@ import { SourcePartQuery } from '../../models/SourcePartQuery';
 import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
-import { selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -55,6 +55,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const isJobWriter = useSelector(selectIsJobWriter);
+  const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const [expanded, setExpanded] = useState(part.isNew ||isEditingExistingJob);
   const hrSource = useSelector(selectSource);
   
@@ -121,8 +122,10 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       sourceTypeOptions.push( { key: SourcePartType.HR, text: strings.ManageMembership.labels.HR });
     }
     sourceTypeOptions.push( { key: SourcePartType.GroupMembership, text: strings.ManageMembership.labels.groupMembership });
-    sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
-    sourceTypeOptions.push( { key: SourcePartType.PlaceMembership, text: strings.ManageMembership.labels.placeMembership });
+    if (isJobTenantWriter) {
+      sourceTypeOptions.push( { key: SourcePartType.GroupOwnership, text: strings.ManageMembership.labels.groupOwnership });
+      sourceTypeOptions.push( { key: SourcePartType.PlaceMembership, text: strings.ManageMembership.labels.placeMembership });
+    }
     return sourceTypeOptions;
   };
 
