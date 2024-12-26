@@ -80,7 +80,8 @@ namespace Hosts.NonProdService
                         StartDate = nextJobTime,
                         LastRunTime = SqlDateTime.MinValue.Value.AddDays(1),
                         IgnoreThresholdOnce = true,
-                        Query = query
+                        Query = query,
+                        MembershipType = MembershipTypes.GroupMembership.ToString()
                     };
 
                     await _databaseSyncJobsRepository.CreateSyncJobAsync(syncJob);
