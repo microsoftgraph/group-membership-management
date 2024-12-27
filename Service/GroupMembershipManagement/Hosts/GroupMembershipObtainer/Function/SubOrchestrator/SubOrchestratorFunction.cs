@@ -47,8 +47,6 @@ namespace Hosts.GroupMembershipObtainer
         {
             var request = context.GetInput<GroupMembershipRequest>();
             var allUsers = new List<AzureADUser>();
-            var deltaUsersToAdd = new List<AzureADUser>();
-            var deltaUsersToRemove = new List<AzureADUser>();
             var allNonUserGraphObjects = new Dictionary<string, int>();
 
             try
@@ -153,12 +151,11 @@ namespace Hosts.GroupMembershipObtainer
                             try
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
-                                var compressedDeltaResponse = await GetDeltaLinkUsers(context, deltaFileContent, request);
-                                var deltaResponse = JsonConvert.DeserializeObject<DeltaUserReaderResponse>(TextCompressor.Decompress(compressedDeltaResponse));
+                                var deltaResponse = await GetDeltaLinkUsers(context, deltaFileContent, request);
                                 var shouldClearCache = false;
 
-                                deltaUsersToAdd.AddRange(deltaResponse.UsersToAdd);
-                                deltaUsersToRemove = deltaResponse.UsersToRemove;
+                                var deltaUsersToAdd = deltaResponse.UsersToAdd;
+                                var deltaUsersToRemove = deltaResponse.UsersToRemove;
                                 var filePath = $"cache/{request.SourceGroup.ObjectId}";
                                 var compressedCacheFileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
                                 var cacheFileContent = TextCompressor.Decompress(compressedCacheFileContent);
@@ -381,8 +378,8 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="context"></param>
         /// <param name="fileContent"></param>
         /// <param name="request"></param>
-        /// <returns>Compressed serialized DeltaUserReaderResponse</returns>
-        public async Task<string> GetDeltaLinkUsers(
+        /// <returns>Compressed serialized DeltaUserReaderResponse</returns>                                                                                       
+        public async Task<DeltaUserReaderResponse> GetDeltaLinkUsers(
                                                                                         IDurableOrchestrationContext context,
                                                                                         string fileContent,
                                                                                         GroupMembershipRequest request)
@@ -409,7 +406,7 @@ namespace Hosts.GroupMembershipObtainer
                 DeltaUrl = response.DeltaUrl
             };
 
-            return TextCompressor.Compress(JsonConvert.SerializeObject(deltaUserReaderResponse));
+            return deltaUserReaderResponse;
         }
     }
 }
