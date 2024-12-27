@@ -62,6 +62,7 @@ import { SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
+import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -86,6 +87,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const locationState = location.state as { currentStep?: number, jobId?: string };
   const jobId = locationState?.jobId ?? urlJobId;
+  const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
 
   const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
@@ -308,7 +310,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   } else if (currentStep === OnboardingSteps.Confirmation || !isJobWriter) {
     isNextDisabled = true;
   }
-
+  if (orgLeaderDataReturned === false) {
+    isNextDisabled = true;
+  }
   return (
     <Page>
       <PageHeader onBackToDashboardButtonClick={isEditingExistingJob ? undefined : handleBackToDashboardButtonClick} />

@@ -15,6 +15,7 @@ export type orgLeaderDetails = {
   text: string;
   partId: number;
   mapping: ObjectIdEmployeeIdMapping;
+  orgLeaderDataReturned: boolean | undefined; 
 }
 
 // Define the initial state using that type
@@ -25,6 +26,7 @@ const initialState: orgLeaderDetails = {
   text: "",
   partId: 0,
   mapping: {},
+  orgLeaderDataReturned: undefined,
 };
 
 export const orgLeaderDetailsSlice = createSlice({
@@ -47,8 +49,15 @@ export const orgLeaderDetailsSlice = createSlice({
         partId: action.payload.partId,
         objectId: action.payload.objectId,
         text: action.payload.text,
-        mapping: updatedMapping
+        mapping: updatedMapping,
+        orgLeaderDataReturned: true,
       };
+    });
+    builder.addCase(fetchOrgLeaderDetails.pending, (state) => {
+      state.orgLeaderDataReturned = false;
+    });
+    builder.addCase(fetchOrgLeaderDetails.rejected, (state) => {
+      state.orgLeaderDataReturned = false;
     });
   }
 });
@@ -56,4 +65,5 @@ export const orgLeaderDetailsSlice = createSlice({
 export const { updateOrgLeaderDetails } = orgLeaderDetailsSlice.actions;
 export const selectOrgLeaderDetails = (state: RootState) => state.orgLeaderDetails;
 export const selectObjectIdEmployeeIdMapping = (state: RootState) => state.orgLeaderDetails.mapping;
+export const selectOrgLeaderDataReturned = (state: RootState) => state.orgLeaderDetails.orgLeaderDataReturned;
 export default orgLeaderDetailsSlice.reducer;

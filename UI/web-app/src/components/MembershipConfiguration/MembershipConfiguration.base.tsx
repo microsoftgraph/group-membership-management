@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect } from 'react';
+import React, { useEffect,useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -33,6 +33,7 @@ import { SourcePartType } from '../../models/SourcePartType';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
+import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -55,6 +56,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+  const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
 
   const sourcePartQuery: HRSourcePartSource = {
     manager: {
@@ -151,7 +153,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             offText={strings.ManageMembership.labels.advancedView}
             onChange={handleToggleChange}
             checked={isAdvancedView}
-            disabled={!isToggleEnabled}
+            disabled={!isToggleEnabled|| orgLeaderDataReturned === false}
           />
         </div>
       )}
