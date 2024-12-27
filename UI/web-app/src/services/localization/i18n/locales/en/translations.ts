@@ -25,7 +25,7 @@ export const strings: IStrings = {
     orgLeaderInfo: "Provide Org. leader",
     depth: "Depth",
     depthPlaceHolder: "Please enter Depth",
-    depthInfo: "Defines the maximum depth level in the organization hierarchy used to retrieve data. The default value is 0 which means there is no depth limit. If depth 1 is specified, it means only the org leader will be retrieved. If depth 2 is specified, the org leader and everyone directly reporting to the org leader will be retrieved.",
+    depthInfo: "Defines the maximum depth level in the organization hierarchy used to retrieve data. The default value is 'All' which means there is no depth limit and includes everyone under this org leader. If depth is '1 level down' is specified, the org leader and everyone directly reporting to the org leader will be retrieved.",
     incrementButtonAriaLabel: "Increase value by 1",
     decrementButtonAriaLabel: "Decrease value by 1",
     filter: "Filter",
@@ -53,7 +53,11 @@ export const strings: IStrings = {
     invalidInputErrorMessage: "Invalid input. Please enter only numbers.",
     valueComboBoxOptionCodeLabel: "Code: ",
     attributeDisabledErrorMessage: 'This attribute has been disabled. If you remove it and later want to add it back, you will need to reach out to {email} for assistance.',
-    supportPlaceHolder: "Admin",    
+    supportPlaceHolder: "Admin",
+    all: "All",
+    level: "level",
+    levelsPlural: "s",
+    down: "down",
   },
   Components: {
     AppHeader: {

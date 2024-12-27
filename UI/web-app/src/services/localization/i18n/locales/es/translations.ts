@@ -26,7 +26,7 @@ export const strings: IStrings = {
     orgLeaderInfo: "Proporcionar organización. líder",
     depth: "Profundidad",
     depthPlaceHolder: "Por favor ingrese la profundidad",
-    depthInfo: "Define el nivel de profundidad máximo en la jerarquía organizativa utilizada para recuperar datos. El valor predeterminado es 0, lo que significa que no hay límite de profundidad. Si se especifica profundidad 1, significa que solo se recuperará el líder de la organización. Si se especifica profundidad 2, se recuperará el líder de la organización y todos los que reportan directamente al líder de la organización.",
+    depthInfo: "Define el nivel de profundidad máximo en la jerarquía organizativa utilizada para recuperar datos. El valor predeterminado es 'Todos', lo que significa que se incluirán a todos los que estén debajo de este org líder. Si se especifica profundidad '1 nivel abajo', se recuperará el líder de la organización y todos los que le reportan directamente al líder de la organización.",
     incrementButtonAriaLabel: "Aumentar el valor en 1",
     decrementButtonAriaLabel: "Disminuir valor en 1",
     filter: "Filtrar",
@@ -54,7 +54,11 @@ export const strings: IStrings = {
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números.",
     valueComboBoxOptionCodeLabel: "Codigo: ",
     attributeDisabledErrorMessage: 'Este atributo ha sido deshabilitado. Si lo elimina y luego desea volver a agregarlo, deberá ponerse en contacto con {email} para obtener ayuda.',
-    supportPlaceHolder: 'Administrador'
+    supportPlaceHolder: 'Administrador',
+    all: 'Todos',
+    level: "nivel",
+    levelsPlural: "es",
+    down: "abajo",
   },
   Components: {
     AppHeader: {

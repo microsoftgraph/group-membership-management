@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, SpinButton, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps} from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -396,13 +396,11 @@ const getOptions = (
     }
   };
 
-  const handleDepthChange = React.useCallback((event: React.SyntheticEvent<HTMLElement>, newValue?: string) => {
-    const nonNumericRegex = /[^0-9]/g;
-    if (newValue && nonNumericRegex.test(newValue)) {
-      setOrgErrorMessage(strings.HROnboarding.invalidInputErrorMessage);
-      return;
-    }
-    const depth = newValue?.trim() !== '' ? Number(newValue) : undefined;
+  const handleDepthChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+    if (!option) return;
+  
+    const depth = parseInt(option.key as string);
+  
     setSource(prevSource => {
       const newSource = {
         ...prevSource,
@@ -414,7 +412,16 @@ const getOptions = (
       onSourceChange(newSource, partId);
       return newSource;
     });
-  }, []);
+  };
+
+  const depthOptions: IDropdownOption[] = [
+    { key: '0', text: strings.HROnboarding.all },
+  ].concat(
+    Array.from({ length: orgLeaderDetails.maxDepth - 1 }, (_, i) => ({
+      key: (i + 2).toString(), // Start keys from 2 to hide level 1 (leader only)
+      text: `${i + 1} ${strings.HROnboarding.level}${i + 1 === 1 ? '' : `${strings.HROnboarding.levelsPlural}`} ${strings.HROnboarding.down}`,
+    }))
+  );
 
   const handleFilterChange = (_: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '') => {
     const filter = newValue;
@@ -1745,16 +1752,12 @@ const getOptions = (
                 <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
               </TooltipHost>
             </div>
-            <SpinButton
-              value={source.manager?.depth?.toString()}
-              disabled={isDisabled ||!isJobWriter || !isEditable}
-              min={0}
-              max={(partId === orgLeaderDetails.partId) ? orgLeaderDetails.maxDepth : 100}
-              step={1}
+            <Dropdown
+              selectedKey={source.manager?.depth?.toString() ?? '0'}
               onChange={handleDepthChange}
-              incrementButtonAriaLabel={strings.HROnboarding.incrementButtonAriaLabel}
-              decrementButtonAriaLabel={strings.HROnboarding.decrementButtonAriaLabel}
-              styles={{ spinButtonWrapper: classNames.spinButton }}
+              options={depthOptions}
+              styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+              disabled={source?.manager?.id == undefined || isDisabled || !isJobWriter || !isEditable}
             />
           </div>
         </Stack.Item>

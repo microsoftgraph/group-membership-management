@@ -51,6 +51,10 @@ export type IStrings = {
     valueComboBoxOptionCodeLabel: string;
     attributeDisabledErrorMessage: string;
     supportPlaceHolder: string;
+    all: string;
+    level: string;
+    levelsPlural: string;
+    down: string;
   },
   Components: {
     AppHeader: {
