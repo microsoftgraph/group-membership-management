@@ -57,12 +57,12 @@ export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
   }
 );
 
-export const getPeoplePickerSuggestions = createAsyncThunk<PeoplePickerPersona[], {displayName: string; alias: string}, ThunkConfig>(
+export const getPeoplePickerSuggestions = createAsyncThunk<PeoplePickerPersona[], string, ThunkConfig>(
   'filter/getPeoplePickerSuggestions',
   async (input, { extra }) => {
     const { graphApi } = extra.apis;
     try {
-      return await graphApi.getPeoplePickerSuggestions(input.displayName, input.alias);
+      return await graphApi.getPeoplePickerSuggestions(input);
     } catch (error) {
       throw new Error('Failed to call getPeoplePickerSuggestions endpoint');
     }

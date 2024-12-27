@@ -23,23 +23,40 @@ export class GraphApi extends ApiBase implements IGraphApi {
   }
 
   
-  public async getPeoplePickerSuggestions(displayName: string, mail: string): Promise<PeoplePickerPersona[]> {
+  public async getPeoplePickerSuggestions(input: string): Promise<PeoplePickerPersona[]> {
     const response = await this.httpClient.get<GraphResponseEntity<UserEntity[]>>(`/users`, {
       params: {
         $select: 'displayName,mail,id',
-        $search: `"mail:${mail}" OR "displayName:${displayName}" OR "userPrincipalName:${displayName}"`,
-        $orderby: "displayName"
+        $search: `"mail:${input}" OR "displayName:${input}" OR "userPrincipalName:${input}"`,
       },
       headers: {
         'ConsistencyLevel': 'eventual',
       },
     });
-    var users = response.data.value;
-    return users.map((user, index) => ({
+    const users = response.data.value;
+
+    const usersWithPhotos = await Promise.all(users.map(async (user) => {
+        try {
+            const photoResponse = await this.httpClient.get(`/users/${user.id}/photo/$value`, { responseType: 'blob' });
+            const photoUrl = URL.createObjectURL(photoResponse.data);
+            return {
+                ...user,
+                photoUrl
+            };
+        } catch (error) {
+            return {
+                ...user,
+                photoUrl: null
+            };
+        }
+    }));
+
+    return usersWithPhotos.map((user, index) => ({
       key: index,
       text: user.displayName,
       secondaryText: user.mail,
       id: user.id,
+      imageUrl: user.photoUrl
     }));
 
   }

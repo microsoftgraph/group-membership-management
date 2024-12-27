@@ -179,7 +179,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
 
   const handleOwnersInputChanged = (input: string): string => {
     if (input.trim()) {
-      dispatch(getPeoplePickerSuggestions({displayName: input, alias: input}))
+      dispatch(getPeoplePickerSuggestions(input))
     }
     return input;
   }
@@ -359,7 +359,8 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                   }
                   pickerCalloutProps={
                     {
-                      directionalHint: DirectionalHint.bottomCenter,
+                      directionalHint: DirectionalHint.bottomAutoEdge,
+                      calloutWidth: 300
                     }
                   }
                 />

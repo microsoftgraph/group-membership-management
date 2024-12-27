@@ -378,7 +378,7 @@ const getOptions = (
   const handleOrgLeaderInputChange = (input: string): string => {
     setIncludeOrg(true);
     setOrgErrorMessage('');
-    dispatch(getPeoplePickerSuggestions({displayName: input, alias: input}))
+    dispatch(getPeoplePickerSuggestions(input))
     return input;
   }
 
@@ -1726,8 +1726,9 @@ const getOptions = (
               onInputChange={handleOrgLeaderInputChange}
               onChange={handleOrgLeaderChange}
               styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
-              pickerCalloutProps={{directionalHint: DirectionalHint.bottomCenter}}
+              pickerCalloutProps={{directionalHint: DirectionalHint.bottomAutoEdge, calloutWidth: 300 }}
               disabled={!isJobWriter || !isEditable}
+              pickerSuggestionsProps={{ className: classNames.suggestionItems }}
             />
             {source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id].text == undefined && 
              <div className={classNames.error}>

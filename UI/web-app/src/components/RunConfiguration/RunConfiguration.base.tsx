@@ -126,7 +126,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
 
   const handleRequestorInputChange = (input: string): string => {
     if (input.trim() !== "") {
-      dispatch(getPeoplePickerSuggestions({ displayName: input, alias: input }));
+      dispatch(getPeoplePickerSuggestions(input));
     }
     return input;
   };
@@ -160,7 +160,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
               onInputChange={handleRequestorInputChange}
               onChange={handleRequestorChange}
               styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
-              pickerCalloutProps={{directionalHint: DirectionalHint.bottomLeftEdge}}
+              pickerCalloutProps={{directionalHint: DirectionalHint.bottomAutoEdge, calloutWidth: 300}}
               disabled={!isJobWriter}
             />
       </div>

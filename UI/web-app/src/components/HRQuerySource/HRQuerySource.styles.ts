@@ -65,6 +65,13 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     textFieldGroup: {
       border: 'none'
     },
+    suggestionItems: {
+     '.ms-Persona-secondaryText': {
+        whiteSpace: 'normal',
+        overflow: 'visible',
+        textOverflow: 'clip'
+      }
+    },
     detailsList: {
       minWidth: 1200
     },

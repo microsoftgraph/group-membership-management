@@ -11,6 +11,7 @@ export type HRQuerySourceStyles = {
   detailsListWithBorder: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
+  suggestionItems: IStyle;
   spinButton: IStyle;
   labelContainer: IStyle;
   dropdownTitle: IStyle;
