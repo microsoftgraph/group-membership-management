@@ -7,28 +7,19 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json.Nodes;
+using Models;
 
 namespace TeamsChannelUpdater.Helpers
 {
     internal static class JsonParser
     {
-        internal static AzureADTeamsChannel GetDestination(string destinationJson)
+        internal static AzureADTeamsChannel GetDestination(SyncJob synJob)
         {
-            var destinations = JsonNode.Parse(destinationJson).AsArray();
-            var destinationObject = destinations[0].AsObject();
-            var typeNode = destinationObject["type"];
-            var type = Convert.ToString(typeNode);
-            var currentDestination = destinationObject["value"];
-            var objectIdNode = currentDestination["objectId"];
-            var objectId = Convert.ToString(objectIdNode);
-            var channelIdNode = currentDestination.AsObject()["channelId"];
-            var channelId = Convert.ToString(channelIdNode);
-
             var destination = new AzureADTeamsChannel
             {
-                Type = type,
-                ObjectId = Guid.Parse(objectId),
-                ChannelId = channelId
+                Type = synJob.MembershipType.ToString(),
+                ObjectId = synJob.Channel.GroupId,
+                ChannelId = synJob.Channel.ChannelId
             };
 
             return destination;

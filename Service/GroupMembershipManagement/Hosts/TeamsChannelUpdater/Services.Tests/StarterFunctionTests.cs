@@ -6,6 +6,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 
@@ -18,6 +19,7 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggerMock;
         private Mock<IDurableOrchestrationClient> _durableClientMock;
         private SyncJob _syncJob;
+        private Channel _channel;
         private Mock<ServiceBusReceiver> _serviceBusReceiverMock;
 
         [TestInitialize]
@@ -30,13 +32,19 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
-                ThresholdViolations = 0
+                ThresholdViolations = 0,
+                MembershipType = "TeamsChannelMembership"
+            };
+            _channel = new Models.Channel
+            {
+                ChannelId = "channelId",
+                GroupId = Guid.NewGuid(),
+                SyncJobId = _syncJob.Id
             };
         }
 

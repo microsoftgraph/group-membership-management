@@ -18,6 +18,8 @@ namespace Services.TeamsChannelUpdater
 
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
@@ -34,13 +36,43 @@ namespace Services.TeamsChannelUpdater
 
         public TeamsChannelUpdaterService(ITeamsChannelRepository teamsChannelRepository,
             IDatabaseSyncJobsRepository syncJobRepository, 
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             ILoggingRepository loggingRepository,
             IServiceBusQueueRepository serviceBusQueueRepository)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
+        }
+
+        public async Task<string> GetChannelIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.ChannelId;
+            }
+            return string.Empty;
         }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
@@ -73,9 +105,11 @@ namespace Services.TeamsChannelUpdater
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
 
+            var groupId = await GetGroupIdAsync(job);
+
             string message = isDryRunSync
-                                ? $"Dry Run of a sync to {job.TargetOfficeGroupId} is complete. Membership will not be updated."
-                                : $"Syncing to {job.TargetOfficeGroupId} done.";
+                                ? $"Dry Run of a sync to {groupId} is complete. Membership will not be updated."
+                                : $"Syncing to {groupId} done.";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }

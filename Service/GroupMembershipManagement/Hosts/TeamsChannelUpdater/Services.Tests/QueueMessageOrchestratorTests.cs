@@ -25,10 +25,16 @@ namespace Services.Tests
         {
             _request = new MembershipHttpRequest
             {
+                GroupId = Guid.NewGuid(),
                 SyncJob = new SyncJob
                 {
                     RunId = Guid.NewGuid(),
-                    TargetOfficeGroupId = Guid.NewGuid()
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    },
+                    MembershipType = "TeamsChannelMembership"
                 },
                 FilePath = "file-path",
                 ProjectedMemberCount = 1
@@ -63,7 +69,7 @@ namespace Services.Tests
                    It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time.")), Times.Never());
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.SyncJob.TargetOfficeGroupId}")), Times.Once());
+                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.GroupId}")), Times.Once());
 
             _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
 
@@ -100,7 +106,7 @@ namespace Services.Tests
                                It.Is<LoggerRequest>(r => r.Message == "There are no more messages to process at this time.")), Times.Never());
 
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.SyncJob.TargetOfficeGroupId}")), Times.Once());
+                                              It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.GroupId}")), Times.Once());
 
             _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
         }

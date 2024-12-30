@@ -9,6 +9,8 @@ namespace Services.TeamsChannelUpdater.Contracts
     public interface ITeamsChannelUpdaterService
     {
         public Guid RunId { get; set; }
+        Task<Guid> GetGroupIdAsync(SyncJob syncJob);
+        Task<string> GetChannelIdAsync(SyncJob syncJob);
         Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
         Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId);
         public Task MarkSyncJobAsErroredAsync(SyncJob syncJob);

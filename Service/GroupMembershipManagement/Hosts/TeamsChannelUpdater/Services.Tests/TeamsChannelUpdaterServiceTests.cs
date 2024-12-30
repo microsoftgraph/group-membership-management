@@ -9,6 +9,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.TeamsChannelUpdater.Contracts;
 using Services.TeamsChannelUpdater;
 using System.Threading.Channels;
+using Models.ServiceBus;
 
 namespace Services.Tests
 {
@@ -19,6 +20,8 @@ namespace Services.Tests
         private UpdaterChannelSyncInfo _syncInfo = null!;  
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
+        private Mock<IDatabaseGroupsRepository> _mockGroupsRepository = null!;
+        private Mock<IDatabaseChannelsRepository> _mockChannelsRepository = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
 
@@ -51,20 +54,27 @@ namespace Services.Tests
                     RowKey = "00000000-0000-0000-0000-000000000001",
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
-                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]"
+                    Query = @"[{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000000"", ""channel"":""some channel""}},{""type"":""TeamsChannel"",""source"":{""group"":""00000000-0000-0000-0000-000000000001"", ""channel"":""another channel""}}]",
+                    Channel = new Models.Channel
+                    {
+                        ChannelId = "channelId",
+                        GroupId = Guid.Parse("00000000-0000-0000-0000-000000000042")
+                    },
+                    MembershipType = "TeamsChannelMembership"
                 }
             };
 
+            _mockGroupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _mockChannelsRepository = new Mock<IDatabaseChannelsRepository>();
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _mockTeamsChannelRepository.Setup<Task<(int, List<AzureADTeamsUser>, List<AzureADTeamsUser>)>>(repo => repo.AddUsersToChannelAsync(_mockChannels[0], _mockMemberLists[0]))
                 .ReturnsAsync(() => (2, new List<AzureADTeamsUser>(), new List<AzureADTeamsUser>()));
             _mockTeamsChannelRepository.Setup<Task<(int, List<AzureADTeamsUser>)>>(repo => repo.RemoveUsersFromChannelAsync(_mockChannels[1], _mockMemberLists[1]))
                 .ReturnsAsync(() => (2, new List<AzureADTeamsUser>()));
-            _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetGroupNameAsync(_syncInfo.SyncJob.TargetOfficeGroupId, It.IsAny<Guid>()))
+            _mockTeamsChannelRepository.Setup<Task<string>>(repo => repo.GetGroupNameAsync(_syncInfo.SyncJob.Channel.GroupId, It.IsAny<Guid>()))
                 .ReturnsAsync(() => _groupName);
-            _mockTeamsChannelRepository.Setup<Task<List<AzureADUser>>>(repo => repo.GetGroupOwnersAsync(_syncInfo.SyncJob.TargetOfficeGroupId, It.IsAny<Guid>(), 0))
+            _mockTeamsChannelRepository.Setup<Task<List<AzureADUser>>>(repo => repo.GetGroupOwnersAsync(_syncInfo.SyncJob.Channel.GroupId, It.IsAny<Guid>(), 0))
                 .ReturnsAsync(() => _mockOwnerList);
 
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
@@ -85,7 +95,8 @@ namespace Services.Tests
             _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
-            _teamsChannelUpdaterService = new TeamsChannelUpdaterService(_mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object, 
+            _teamsChannelUpdaterService = new TeamsChannelUpdaterService(_mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object,
+                _mockGroupsRepository.Object, _mockChannelsRepository.Object,
                 _mockLoggingRepository.Object, _mockServiceBusQueueRepository.Object);
 
         }
@@ -134,14 +145,14 @@ namespace Services.Tests
         [TestMethod]
         public async Task CanGetGroupName()
         {
-            var groupName = await _teamsChannelUpdaterService.GetGroupNameAsync(_syncInfo.SyncJob.TargetOfficeGroupId, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
+            var groupName = await _teamsChannelUpdaterService.GetGroupNameAsync(_syncInfo.SyncJob.Channel.GroupId, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
             Assert.AreEqual(groupName,_groupName);
         }
 
         [TestMethod]
         public async Task CanGetOwnersName()
         {
-            var owners = await _teamsChannelUpdaterService.GetGroupOwnersAsync(_syncInfo.SyncJob.TargetOfficeGroupId, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
+            var owners = await _teamsChannelUpdaterService.GetGroupOwnersAsync(_syncInfo.SyncJob.Channel.GroupId, _syncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty));
             Assert.AreEqual(owners[0].ObjectId, _mockOwnerList[0].ObjectId);
             Assert.AreEqual(owners[1].ObjectId, _mockOwnerList[1].ObjectId);
         }

@@ -66,11 +66,17 @@ namespace Hosts.TeamsChannelUpdater
                                                            JobId = graphRequest.SyncJob.Id,
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
-                var sourceTypesCounts = JsonParser.GetQueryTypes(syncJob.Query);
-                var destination = JsonParser.GetDestination(syncJob.Destination);
 
-                syncCompleteEvent.Type = destination.Type;
-                syncCompleteEvent.Destination = syncJob.Destination;
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                var channelId = await context.CallActivityAsync<string>(nameof(GetChannelFunction), syncJob);
+
+                var sourceTypesCounts = JsonParser.GetQueryTypes(syncJob.Query);
+                var destination = JsonParser.GetDestination(syncJob);
+
+                syncCompleteEvent.Type = syncJob.MembershipType;
+                syncCompleteEvent.Destination = $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\",\"channelId\":\"{channelId}\"}}}}]";
+                syncCompleteEvent.GroupId = groupId.ToString();
+                syncCompleteEvent.ChannelId = channelId;
                 syncCompleteEvent.SourceTypesCounts = sourceTypesCounts;
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();

@@ -30,6 +30,7 @@ namespace Services.Tests
         private Mock<IGMMResources> _mockGMMResources = null!;
         private Mock<ITeamsChannelUpdaterService> _mockTeamsChannelUpdaterService = null!;
         private SyncJob _syncJob = null!;
+        private Models.Channel _channel = null!;
 
         private string _groupName = "Group 1 Display Name";
         private List<AzureADUser> _groupOwnerList = new List<AzureADUser> { new AzureADUser { ObjectId = Guid.NewGuid() }, new AzureADUser { ObjectId = Guid.NewGuid() } };
@@ -43,20 +44,26 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"e9c0ddc4-5379-42a8-bd35-e2f00b584733\",\"channelId\":\"19:O779DDojg816swmRBSbE23yixpmVyzsRV4QmMip_KBA1@thread.tacv2\"}},\"type\":\"TeamsChannelMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domain.com",
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
-                RunId = groupMembership.RunId
+                RunId = groupMembership.RunId,
+                MembershipType = "TeamsChannelMembership",
+                Channel = new Models.Channel
+                {
+                    GroupId = groupMembership.Destination.ObjectId,
+                    SyncJobId = groupMembership.SyncJobId,
+                    ChannelId = "19:O779DDojg816swmRBSbE23yixpmVyzsRV4QmMip_KBA1@thread.tacv2"
+                }
             };
 
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = _syncJob
+                SyncJob = _syncJob,
+                GroupId = groupMembership.Destination.ObjectId
             };
 
             _mockDurableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
@@ -98,9 +105,9 @@ namespace Services.Tests
             _mockTeamsChannelUpdaterService = new Mock<ITeamsChannelUpdaterService>();
             _mockTeamsChannelUpdaterService.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                 .ReturnsAsync(_syncJob);
-            _mockTeamsChannelUpdaterService.Setup(repo => repo.GetGroupNameAsync(_syncJob.TargetOfficeGroupId, It.IsAny<Guid>()))
+            _mockTeamsChannelUpdaterService.Setup(repo => repo.GetGroupNameAsync(_syncJob.Channel.GroupId, It.IsAny<Guid>()))
                 .ReturnsAsync(() => _groupName);
-            _mockTeamsChannelUpdaterService.Setup(repo => repo.GetGroupOwnersAsync(_syncJob.TargetOfficeGroupId, It.IsAny<Guid>(), 0))
+            _mockTeamsChannelUpdaterService.Setup(repo => repo.GetGroupOwnersAsync(_syncJob.Channel.GroupId, It.IsAny<Guid>(), 0))
                 .ReturnsAsync(() => _groupOwnerList);
 
         }

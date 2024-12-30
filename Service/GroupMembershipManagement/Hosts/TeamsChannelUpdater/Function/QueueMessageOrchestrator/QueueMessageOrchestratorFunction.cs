@@ -45,7 +45,7 @@ namespace Hosts.TeamsChannelUpdater
                 await context.CallActivityAsync(nameof(LoggerFunction),
                                                    new LoggerRequest
                                                    {
-                                                       Message = $"Processing message for group {request.SyncJob.TargetOfficeGroupId}",
+                                                       Message = $"Processing message for group {request.GroupId}",
                                                        RunId = runId,
                                                        Verbosity = VerbosityLevel.INFO,
                                                    });
