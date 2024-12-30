@@ -44,6 +44,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.RetryPolicyProvider", "..\..\..\Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj", "{4A8D801F-F16D-4E3C-BBE1-921109E9F893}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlMembershipObtainer.Entities", "..\..\SqlMembershipObtainer.Common\SqlMembershipObtainer.Entities\SqlMembershipObtainer.Entities.csproj", "{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Entities", "..\..\GraphUpdater\Services.Entities\Services.Entities.csproj", "{58D68258-FCAA-68A1-C847-EF8E18A68995}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -134,6 +138,14 @@ Global
 		{4A8D801F-F16D-4E3C-BBE1-921109E9F893}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4A8D801F-F16D-4E3C-BBE1-921109E9F893}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4A8D801F-F16D-4E3C-BBE1-921109E9F893}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3F6BA44-2DC3-BFCC-0011-A6BD3B9338F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58D68258-FCAA-68A1-C847-EF8E18A68995}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58D68258-FCAA-68A1-C847-EF8E18A68995}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58D68258-FCAA-68A1-C847-EF8E18A68995}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58D68258-FCAA-68A1-C847-EF8E18A68995}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
