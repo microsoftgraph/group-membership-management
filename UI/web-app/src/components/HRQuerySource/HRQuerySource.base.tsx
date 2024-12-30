@@ -400,6 +400,21 @@ const getOptions = (
     if (!option) return;
   
     const depth = parseInt(option.key as string);
+
+    if(depth === 0) {
+      setSource(prevSource => {
+        const newSource = {
+          ...prevSource,
+          manager: {
+            ...prevSource.manager,
+            depth: undefined
+          }
+        };
+        onSourceChange(newSource, partId);
+        return newSource;
+      });
+      return;
+    }
   
     setSource(prevSource => {
       const newSource = {
