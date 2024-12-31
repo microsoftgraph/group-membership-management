@@ -52,7 +52,10 @@ namespace Repositories.EntityFramework
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
-            return await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return await _readContext.SyncJobs
+                .Include(j => j.Group)
+                .Include(j => j.Channel)
+                .SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()

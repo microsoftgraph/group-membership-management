@@ -73,7 +73,7 @@ namespace Repositories.Mocks
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _serviceBusQueueRepository.SendMessageAsync(message);
-    
+
         }
 
         public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
@@ -117,6 +117,11 @@ namespace Repositories.Mocks
         }
 
         public Task SendEmailAsync(string toEmail, string contentTemplate, string[] additionalContentParams, SyncJob syncJob, string ccEmail, string emailSubject, string[] additionalSubjectParams)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
             throw new NotImplementedException();
         }

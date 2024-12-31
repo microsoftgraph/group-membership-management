@@ -49,7 +49,7 @@ namespace Hosts.GraphUpdater
 
                 runId = orchestratorRequest.IsMultiLaneEnabled ? request.GroupMembership.RunId : request.MembershipHttpRequest.SyncJob.RunId.GetValueOrDefault();
                 syncJob = orchestratorRequest.IsMultiLaneEnabled ? request.GroupMembership.SyncJob : request.MembershipHttpRequest.SyncJob;
-                var groupId = syncJob.TargetOfficeGroupId;
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
                 var syncJobProperties = syncJob.ToDictionary();
                 syncJobProperties.Add("Instance", orchestratorRequest.SubscriptionName);
                 _loggingRepository.SetSyncJobProperties(runId, syncJobProperties);

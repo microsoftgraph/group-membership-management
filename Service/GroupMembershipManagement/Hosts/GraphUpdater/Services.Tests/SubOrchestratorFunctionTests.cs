@@ -70,7 +70,11 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
+                Group = new Group
+                {
+                    GroupId = Guid.NewGuid()
+                },
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 Status = "InProgress",
                 Period = 6

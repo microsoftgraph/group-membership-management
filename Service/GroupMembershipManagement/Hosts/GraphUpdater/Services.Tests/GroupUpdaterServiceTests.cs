@@ -29,11 +29,12 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
-			var mockNotificationType = new MockNotificationTypesRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object);
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             mockGraphGroup.GroupsToUsers.Add(groupId, new List<AzureADUser>());
@@ -62,11 +63,12 @@ namespace Services.Tests
             var mockMail = new MockMailRepository();
             var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
             var mockSyncJobs = new MockDatabaseSyncJobRepository();
-			var mockNotificationType = new MockNotificationTypesRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object);
             var runId = Guid.NewGuid();
             var groupId = Guid.NewGuid();
             bool isInitialSync = false;

@@ -12,15 +12,12 @@ namespace GraphUpdater.Helpers
 {
     internal static class JsonParser
     {
-        internal static AzureADGroup GetDestination(string destinationJson)
+        internal static AzureADGroup GetDestination(SyncJob synJob)
         {
-            var destinations = JArray.Parse(destinationJson);
-            var destinationToken = destinations.First();
-
             var destination = new AzureADGroup
             {
-                Type = destinationToken["type"].ToString(),
-                ObjectId = Guid.Parse(destinationToken["value"]["objectId"].Value<string>())
+                Type = synJob.MembershipType.ToString(),
+                ObjectId = synJob.Group.GroupId
             };
 
             return destination;

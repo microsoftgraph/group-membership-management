@@ -66,7 +66,17 @@ namespace Hosts.GraphUpdater
             var groupMembership = request.GroupMembership;
 
             var runId = groupMembership.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var groupId = groupMembership.SyncJob.TargetOfficeGroupId;
+            
+            var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), groupMembership.SyncJob);
+            if (groupId.Equals(Guid.Empty))
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Unable to get group id for job:{groupMembership.SyncJob.Id}", SyncJob = groupMembership.SyncJob });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(groupMembership.SyncJobId, SyncStatus.Error, groupMembership.SyncJob.ThresholdViolations, runId));
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
+                return OrchestrationRuntimeStatus.Failed;
+            }
+            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{groupMembership.SyncJob.Id} is {groupId}", SyncJob = groupMembership.SyncJob });
+
             var entityId = new EntityId(nameof(JobTrackerEntity), $"{groupId}_{runId}");
 
             try
@@ -97,7 +107,7 @@ namespace Hosts.GraphUpdater
                 }
 
                 var sourceTypeCounts = JsonParser.GetQueryTypes(syncJob.Query);
-                var destination = JsonParser.GetDestination(syncJob.Destination);
+                var destination = JsonParser.GetDestination(syncJob);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorMultiLaneFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -170,8 +180,8 @@ namespace Hosts.GraphUpdater
 
                     syncCompleteEvent.Type = destination.Type.ToString();
                     syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
-                    syncCompleteEvent.Destination = syncJob.Destination;
-                    syncCompleteEvent.GroupId = syncJob.TargetOfficeGroupId.ToString();
+                    syncCompleteEvent.Destination = $"[{{\"type\":\"{destination.Type}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]";
+                    syncCompleteEvent.GroupId = groupId.ToString();
                     syncCompleteEvent.RunId = syncJob.RunId.ToString();
                     syncCompleteEvent.IsDryRunEnabled = false.ToString();
                     syncCompleteEvent.ProjectedMemberCount = groupMembership.ProjectedMemberCount.HasValue ? groupMembership.ProjectedMemberCount.ToString() : "Not provided";
@@ -365,7 +375,7 @@ namespace Hosts.GraphUpdater
         {
             if (sourceUsersNotFound != null && destinationUsersNotFound != null)
             {
-                var destination = JsonParser.GetDestination(syncJob.Destination);
+                var destination = JsonParser.GetDestination(syncJob);
                 var totalUsersNotFound = sourceUsersNotFound.Union(destinationUsersNotFound).ToList();
 
                 if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, destination.ObjectId); }

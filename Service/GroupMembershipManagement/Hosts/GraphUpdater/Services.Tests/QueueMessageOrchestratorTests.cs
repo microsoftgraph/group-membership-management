@@ -6,6 +6,7 @@ using Hosts.GraphUpdater;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.ServiceBus;
 using Moq;
 using Newtonsoft.Json;
 using Repositories.Mocks;
@@ -36,7 +37,11 @@ namespace Services.Tests
                 SyncJob = new SyncJob
                 {
                     RunId = Guid.NewGuid(),
-                    TargetOfficeGroupId = Guid.NewGuid()
+                    MembershipType = "GroupMembership",
+                    Group = new Group
+                    {
+                        GroupId = Guid.NewGuid()
+                    }
                 },
                 FilePath = "file-path",
                 ProjectedMemberCount = 10,

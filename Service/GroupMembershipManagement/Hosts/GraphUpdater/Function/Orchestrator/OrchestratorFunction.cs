@@ -78,12 +78,23 @@ namespace Hosts.GraphUpdater
                                                            RunId = graphRequest.SyncJob.RunId.GetValueOrDefault()
                                                        });
 
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                if (groupId.Equals(Guid.Empty))
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Unable to get group id for job:{syncJob.Id}", SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), CreateJobStatusUpdaterRequest(syncJob.Id, SyncStatus.Error, syncJob.ThresholdViolations, syncJob.RunId ?? Guid.Empty));
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    return OrchestrationRuntimeStatus.Failed;
+                }
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob });
+
                 var sourceTypeCounts = JsonParser.GetQueryTypes(syncJob.Query);
-                var destination = JsonParser.GetDestination(syncJob.Destination);
+                var destination = JsonParser.GetDestination(syncJob);
 
                 syncCompleteEvent.Type = destination.Type.ToString();
                 syncCompleteEvent.SourceTypesCounts = sourceTypeCounts;
-                syncCompleteEvent.Destination = syncJob.Destination;
+                syncCompleteEvent.Destination = $"[{{\"type\":\"{destination.Type}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]";
+                syncCompleteEvent.GroupId = groupId.ToString();
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
                 syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
@@ -292,7 +303,7 @@ namespace Hosts.GraphUpdater
         {
             if (sourceUsersNotFound != null && destinationUsersNotFound != null)
             {
-                var destination = JsonParser.GetDestination(syncJob.Destination);
+                var destination = JsonParser.GetDestination(syncJob);
                 var totalUsersNotFound = sourceUsersNotFound.Union(destinationUsersNotFound).ToList();
 
                 if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, destination.ObjectId); }

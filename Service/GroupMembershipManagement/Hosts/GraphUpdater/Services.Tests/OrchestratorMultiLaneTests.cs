@@ -70,7 +70,11 @@ namespace Services.Tests
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 RunId = _groupMembership.RunId,
                 Status = SyncStatus.InProgress.ToString(),
-                Destination = $"[{{\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}},\"type\":\"GroupMembership\"}}]"
+                Group = new Models.Group
+                {
+                    SyncJobId = _groupMembership.SyncJobId,
+                    GroupId = _groupMembership.Destination.ObjectId
+                }
             };
 
             _groupMembership.SyncJob = _syncJob;
@@ -108,7 +112,7 @@ namespace Services.Tests
             _context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(() => _syncJob);
             _context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, _mockLoggingRepo));
-
+            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(_syncJob.Group.GroupId);
             _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(_groupMembership, _mockLoggingRepo, _mockGraphUpdaterService, _mailSenders));
 

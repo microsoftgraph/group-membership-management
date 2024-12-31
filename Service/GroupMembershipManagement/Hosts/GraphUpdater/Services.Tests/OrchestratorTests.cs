@@ -75,14 +75,18 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
                 Requestor = "user@domail.com",
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
-                RunId = Guid.NewGuid()
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                }
             };
 
             mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
@@ -104,6 +108,7 @@ namespace Services.Tests
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
@@ -167,15 +172,19 @@ namespace Services.Tests
             var destinationMembers = GetGroupMembership();
             var syncJob = new SyncJob
             {
-                Id = groupMembership.SyncJobId,   
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                Id = groupMembership.SyncJobId,
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
-                RunId = groupMembership.RunId
+                RunId = groupMembership.RunId,
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                }
             };
 
             mockLoggingRepo.SetSyncJobProperties(syncJob.RunId.Value, syncJob.ToDictionary());
@@ -194,7 +203,7 @@ namespace Services.Tests
 
             var jobReaderRequest = new JobReaderRequest
             {
-                JobId = syncJob.Id,                
+                JobId = syncJob.Id,
                 RunId = syncJob.RunId.Value
             };
 
@@ -215,6 +224,7 @@ namespace Services.Tests
                     });
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))
                     .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
@@ -278,8 +288,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -308,8 +322,8 @@ namespace Services.Tests
 
             var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
-            var groupNameReaderRequest = new GroupNameReaderRequest { GroupId = syncJob.TargetOfficeGroupId };
-            var groupOwnersReaderRequest = new GroupOwnersReaderRequest { GroupId = syncJob.TargetOfficeGroupId };
+            var groupNameReaderRequest = new GroupNameReaderRequest { GroupId = syncJob.Group.GroupId };
+            var groupOwnersReaderRequest = new GroupOwnersReaderRequest { GroupId = syncJob.Group.GroupId };
 
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId,
                                                 new Group
@@ -327,6 +341,7 @@ namespace Services.Tests
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
@@ -402,8 +417,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -432,6 +451,7 @@ namespace Services.Tests
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .ReturnsAsync(await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
@@ -499,8 +519,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -529,6 +553,7 @@ namespace Services.Tests
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
 
@@ -648,8 +673,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -676,6 +705,7 @@ namespace Services.Tests
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
                     .Returns(async () => await DownloadFileAsync(fileDownloaderRequest, mockLoggingRepo, blobStorageRepository));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
@@ -725,8 +755,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -747,6 +781,7 @@ namespace Services.Tests
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
@@ -809,8 +844,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = SqlDateTime.MinValue.Value,
@@ -839,8 +878,8 @@ namespace Services.Tests
 
             var ownerEmails = string.Join(";", owners.Where(x => !string.IsNullOrWhiteSpace(x.Mail)).Select(x => x.Mail));
 
-            var groupNameReaderRequest = new GroupNameReaderRequest { GroupId = syncJob.TargetOfficeGroupId };
-            var groupOwnersReaderRequest = new GroupOwnersReaderRequest { GroupId = syncJob.TargetOfficeGroupId };
+            var groupNameReaderRequest = new GroupNameReaderRequest { GroupId = syncJob.Group.GroupId };
+            var groupOwnersReaderRequest = new GroupOwnersReaderRequest { GroupId = syncJob.Group.GroupId };
 
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId,
                                                 new Group
@@ -859,6 +898,7 @@ namespace Services.Tests
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
@@ -945,8 +985,12 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = groupMembership.SyncJobId,
-                TargetOfficeGroupId = groupMembership.Destination.ObjectId,
-                Destination = $"[{{\"value\":{{\"objectId\":\"{groupMembership.Destination.ObjectId}\"}},\"type\":\"GroupMembership\"}}]",
+                MembershipType = "GroupMembership",
+                Group = new Models.Group
+                {
+                    SyncJobId = groupMembership.SyncJobId,
+                    GroupId = groupMembership.Destination.ObjectId
+                },
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -982,6 +1026,7 @@ namespace Services.Tests
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
+            context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>()))
                     .Returns(async () => await RunJobReaderFunctionAsync(mockLoggingRepo, mockGraphUpdaterService, jobReaderRequest));
             context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))

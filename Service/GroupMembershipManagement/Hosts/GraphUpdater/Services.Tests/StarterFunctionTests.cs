@@ -40,7 +40,11 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
+                Group = new Group
+                {
+                    GroupId = Guid.NewGuid()
+                },
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),

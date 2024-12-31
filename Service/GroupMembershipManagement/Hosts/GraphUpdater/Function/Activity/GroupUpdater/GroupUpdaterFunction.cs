@@ -37,7 +37,7 @@ namespace Hosts.GraphUpdater
             var successCount = 0;
             var usersNotFound = new List<AzureADUser>();
             var usersAlreadyExist = new List<AzureADUser>();
-            var destination = JsonParser.GetDestination(request.SyncJob.Destination);
+            var destination = JsonParser.GetDestination(request.SyncJob);
 
             if (request.Type == RequestType.Add)
             {

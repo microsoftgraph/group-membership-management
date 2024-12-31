@@ -27,7 +27,8 @@ namespace Services
         private readonly IMailRepository _mailRepository;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-		private readonly INotificationTypesRepository _notificationTypesRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly INotificationTypesRepository _notificationTypesRepository;
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private Guid _runId;
@@ -48,7 +49,8 @@ namespace Services
                 IMailRepository mailRepository,
                 IEmailSenderRecipient emailSenderAndRecipients,
                 IDatabaseSyncJobsRepository syncJobRepository,
-				INotificationTypesRepository notificationTypesRepository,
+                IDatabaseGroupsRepository databaseGroupsRepository,
+                INotificationTypesRepository notificationTypesRepository,
 			    IJobNotificationsRepository jobNotificationRepository,
                 IServiceBusQueueRepository serviceBusQueueRepository)
         {
@@ -58,7 +60,8 @@ namespace Services
             _mailRepository = mailRepository ?? throw new ArgumentNullException(nameof(mailRepository));
             _emailSenderAndRecipients = emailSenderAndRecipients ?? throw new ArgumentNullException(nameof(emailSenderAndRecipients));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-			_jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
         }
@@ -91,6 +94,16 @@ namespace Services
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
         {
             return await _graphGroupRepository.GroupExists(groupId);
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
         }
 
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
@@ -138,10 +151,12 @@ namespace Services
             job.RunId = runId;
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            
+            var groupId = await GetGroupIdAsync(job);
 
             string message = isDryRunSync
-                                ? $"Dry Run of a sync to {job.TargetOfficeGroupId} is complete. Membership will not be updated."
-                                : $"Syncing to {job.TargetOfficeGroupId} done.";
+                                ? $"Dry Run of a sync to {groupId} is complete. Membership will not be updated."
+                                : $"Syncing to {groupId} done.";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }
