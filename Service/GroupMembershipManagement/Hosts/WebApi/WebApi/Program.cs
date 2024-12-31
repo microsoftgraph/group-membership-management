@@ -274,6 +274,7 @@ namespace WebApi
                     services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
                     services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
             });
+            builder.Services.AddSingleton<IThresholdConfig, ThresholdConfig>();
 
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
