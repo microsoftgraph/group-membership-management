@@ -156,7 +156,7 @@ namespace WebApi.BackgroundServices
                     break;
                 }
             }
-
+            await receiver.CloseAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Clearing queue {queueName} completed"
@@ -181,6 +181,7 @@ namespace WebApi.BackgroundServices
                 }
             }
 
+            await receiver.CloseAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Clearing topic {topicName} subscription {subscriptionName} completed"
