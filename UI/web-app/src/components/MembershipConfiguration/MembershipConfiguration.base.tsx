@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect,useState } from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
