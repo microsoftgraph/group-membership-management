@@ -31,8 +31,8 @@ export type SourcePartProps = React.AllHTMLAttributes<HTMLDivElement> & {
    * Optional className to apply to the root of the component.
    */
   className?: string;
-  index: number;
-  onDelete: (item?: any, index?: number, ev?: React.FocusEvent<HTMLElement>) => void;
+  partId: string;
+  onDelete: (item?: any, partId?: string, ev?: React.FocusEvent<HTMLElement>) => void;
   totalSourceParts: number;
   query: SourcePartQuery;
   part: ISourcePart;

@@ -5,6 +5,7 @@ import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import { v4 as uuidv4 } from 'uuid';
 import { MembershipConfigurationStyleProps, MembershipConfigurationStyles, MembershipConfigurationProps } from './MembershipConfiguration.types';
 import { AdvancedQuery } from '../AdvancedQuery';
 import { AppDispatch } from '../../store';
@@ -68,7 +69,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
 
   const newSourcePart = () => {
     const newPart: ISourcePart = {
-      id: sourceParts.length + 1,
+      id: uuidv4(),
       query: {
         type: SourcePartType.HR,
         source: sourcePartQuery,
@@ -79,7 +80,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(addSourcePart(newPart));
   };
 
-  const removeSourcePart = (partId: number) => {
+  const removeSourcePart = (partId: string) => {
     dispatch(deleteSourcePart(partId));
   };
 
@@ -95,9 +96,9 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       // When switching back to non-advanced view
       if (compositeQuery) {
         try {
-          const updatedSourceParts: ISourcePart[] = compositeQuery.map((query, index) => {
+          const updatedSourceParts: ISourcePart[] = compositeQuery.map(() => {
             const newPart: ISourcePart = {
-              id: index + 1,
+              id: uuidv4(),
               query: {
                 type: SourcePartType.HR,
                 source: sourcePartQuery,
@@ -130,8 +131,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     if (jobDetails?.query) {
       try {
         const parsedQuery: SyncJobQuery = JSON.parse(jobDetails.query);
-        const updatedSourceParts = parsedQuery.map((query, index) => ({
-          id: index + 1,
+        const updatedSourceParts = parsedQuery.map((query) => ({
+          id: uuidv4(),
           query: query,
           isValid: true
         }));
@@ -159,10 +160,10 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       )}
       {!isAdvancedView ? (<>
         <div>
-          {sourceParts.map((part, arrayIndex) => (
+          {sourceParts.map((part) => (
             <SourcePart
               key={part.id}
-              index={arrayIndex + 1}
+              partId={part.id}
               onDelete={removeSourcePart}
               totalSourceParts={sourceParts.length}
               query={part.query}

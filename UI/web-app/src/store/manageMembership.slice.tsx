@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-
+import { v4 as uuidv4 } from 'uuid';
 import type { RootState } from './store';
 import { NewJob } from '../models/NewJob';
 import {
@@ -151,7 +151,7 @@ const manageMembershipSlice = createSlice({
                             const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
                             state.compositeQuery = parsedQuery;
                             state.sourceParts = parsedQuery.map((query, index) => ({
-                                id: index + 1,
+                                id: uuidv4(),
                                 query: query
                             }));
                             state.newJob.query = parsedQuery;
@@ -169,7 +169,7 @@ const manageMembershipSlice = createSlice({
             const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
             state.newJob.query = parsedQuery;
             state.sourceParts = parsedQuery.map((query, index) => ({
-              id: index + 1,
+              id: uuidv4(),
               query: query,
               isValid: true
             }));
@@ -183,7 +183,7 @@ const manageMembershipSlice = createSlice({
         addSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             state.sourceParts.push(action.payload);
         },
-        updateSourcePartType: (state, action: PayloadAction<{ partId: number; type: SourcePartType}>) => {
+        updateSourcePartType: (state, action: PayloadAction<{ partId: string; type: SourcePartType}>) => {
             const { partId, type } = action.payload;
             const partIndex = state.sourceParts.findIndex(part => part.id === partId);
             const currentQuery = state.sourceParts[partIndex].query;
@@ -240,7 +240,7 @@ const manageMembershipSlice = createSlice({
             state.sourceParts.push(action.payload);
         },
 
-        deleteSourcePart: (state, action: PayloadAction<number>) => {
+        deleteSourcePart: (state, action: PayloadAction<string>) => {
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;

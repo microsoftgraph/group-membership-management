@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice } from '@reduxjs/toolkit';
+import { v4 as uuidv4 } from 'uuid';
 import type { RootState } from './store';
 import { fetchOrgLeaderDetails } from './orgLeaderDetails.api';
 
@@ -13,7 +14,7 @@ export type orgLeaderDetails = {
   employeeId: number;
   objectId: string;
   text: string;
-  partId: number;
+  partId: string;
   mapping: ObjectIdEmployeeIdMapping;
   orgLeaderDataReturned: boolean | undefined; 
 }
@@ -24,7 +25,7 @@ const initialState: orgLeaderDetails = {
   employeeId: -1,
   objectId: "",
   text: "",
-  partId: 0,
+  partId: uuidv4(),
   mapping: {},
   orgLeaderDataReturned: undefined,
 };

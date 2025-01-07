@@ -4,7 +4,7 @@
 import { SourcePartQuery } from "./SourcePartQuery";
 
 export type ISourcePart = {
-    id: number;
+    id: string;
     query: SourcePartQuery;
     isNew?: boolean;
 };

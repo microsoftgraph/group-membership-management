@@ -13,6 +13,7 @@ import {
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
+import { v4 as uuidv4 } from 'uuid';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
 import { manageMembershipIsEditingExistingJob, updateSourcePart, copySourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
@@ -31,7 +32,7 @@ import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.sl
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
 export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: SourcePartProps) => {
-  const { className, styles, index, totalSourceParts, onDelete, query, part, isEditable } = props;
+  const { className, styles, partId, totalSourceParts, onDelete, query, part, isEditable } = props;
   const classNames: IProcessedStyleSet<SourcePartStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -67,7 +68,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
 
-    dispatch(updateSourcePartType({ partId: index, type: item.key as SourcePartType }));
+    dispatch(updateSourcePartType({ partId: partId, type: item.key as SourcePartType }));
 
     if (item.key === SourcePartType.HR) {
       setHRSourcePartSource({ manager: { id: undefined, depth: undefined }, filter: "" });
@@ -88,7 +89,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const handleDelete = () => {
     if (totalSourceParts > 1) {
-      onDelete(index);
+      onDelete(partId);
     } else {
       setErrorMessage(strings.ManageMembership.labels.deleteLastSourcePartWarning);
     }
@@ -101,7 +102,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       exclusionary: isExclusionary
     }
     const newPart: ISourcePart = {
-      id: index + 1,
+      id: uuidv4(),
       query: newQuery
     };
     dispatch(copySourcePart(newPart));
@@ -112,7 +113,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   }, [query, expanded]);
 
   const getOptions = (hrSource?: SqlMembershipSource): IDropdownOption[] => {
-    let sourceTypeOptions: IDropdownOption[] = [];
+    const sourceTypeOptions: IDropdownOption[] = [];
     if (hrSource) {
       sourceTypeOptions.push({
         key: SourcePartType.HR,
@@ -137,7 +138,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   }, [part.query.type, part.query.exclusionary, part.query.source]);
 
 
-  const handleSourceChange = (source: HRSourcePartSource, partId: number) => {
+  const handleSourceChange = (source: HRSourcePartSource, partId: string) => {
     const newQuery: HRSourcePart = {
       type: SourcePartType.HR,
       source: source,
@@ -162,7 +163,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       };
 
       const updatedSourcePart: ISourcePart = {
-        id: index,
+        id: partId,
         query: updatedQuery
       };
 
@@ -176,7 +177,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-          {strings.ManageMembership.labels.sourcePart} {index}
+          {strings.ManageMembership.labels.sourcePart}
         </div>
         <IconButton
           className={classNames.expandButton}
@@ -220,7 +221,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={index} onSourceChange={handleSourceChange} isEditable={isEditable} />
+              <HRQuerySource source={hrSourcePartSource} partId={partId} onSourceChange={handleSourceChange} isEditable={isEditable} />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (
@@ -237,7 +238,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           </div>
           {part.query.type === SourcePartType.HR && 
             isEditable &&
-            (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (totalSourceParts === part.id) && (
+            (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (
           <ActionButton
             iconProps={{ iconName: "Copy" }}
             onClick={handleCopy}

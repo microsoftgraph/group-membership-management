@@ -340,7 +340,7 @@ const getOptions = (
       if (objectIdEmployeeIdMapping[source.manager.id] === undefined) {
         dispatch(fetchOrgLeaderDetailsUsingId({
           employeeId: source.manager.id,
-          partId: partId as number
+          partId: partId as string
         }))
       }
     }
@@ -390,7 +390,7 @@ const getOptions = (
         objectId: items[0].id as string,
         key: items[0].key as number,
         text: items[0].text as string,
-        partId: partId as number
+        partId: partId as string
       }));
       setOrgLeaderUpdated(true);
     }

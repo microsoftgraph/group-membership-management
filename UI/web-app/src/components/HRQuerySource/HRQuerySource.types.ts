@@ -52,7 +52,7 @@ export type HRQuerySourceProps = React.AllHTMLAttributes<HTMLDivElement> & {
    */
   styles?: IStyleFunctionOrObject<HRQuerySourceStyleProps, HRQuerySourceStyles>;
   source: HRSourcePartSource;
-  partId: number;
-  onSourceChange: (source: HRSourcePartSource, partId: number) => void;
+  partId: string;
+  onSourceChange: (source: HRSourcePartSource, partId: string) => void;
   isEditable?: boolean;
 };
