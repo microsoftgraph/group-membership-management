@@ -102,10 +102,15 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         // first check if delta file exists in cache folder
                         var deltaFilePath = $"cache/delta_{request.SourceGroup.ObjectId}";
-                        var compressedDeltaFileContent = await GetFileDownloaderFunction(context, deltaFilePath, request.SyncJob);
+                        var compressedDeltaFileContent = await GetFileDownloaderFunction(context, deltaFilePath, request.SyncJob, true);
                         var deltaFileContent = TextCompressor.Decompress(compressedDeltaFileContent);
 
-                        if (string.IsNullOrEmpty(deltaFileContent))
+                        // check if cache file exists in cache folder
+                        var cacheFilePath = $"cache/{request.SourceGroup.ObjectId}";
+                        var compressedCacheFileContent = await GetFileDownloaderFunction(context, cacheFilePath, request.SyncJob, true);
+                        var cacheFileContent = TextCompressor.Decompress(compressedCacheFileContent);
+
+                        if (string.IsNullOrEmpty(deltaFileContent) || string.IsNullOrEmpty(cacheFileContent))
                         {
                             try
                             {
@@ -157,8 +162,6 @@ namespace Hosts.GroupMembershipObtainer
                                 var deltaUsersToAdd = deltaResponse.UsersToAdd;
                                 var deltaUsersToRemove = deltaResponse.UsersToRemove;
                                 var filePath = $"cache/{request.SourceGroup.ObjectId}";
-                                var compressedCacheFileContent = await GetFileDownloaderFunction(context, filePath, request.SyncJob);
-                                var cacheFileContent = TextCompressor.Decompress(compressedCacheFileContent);
                                 var membership = JsonSerializer.Deserialize<GroupMembership>(cacheFileContent);
                                 var sourceMembers = membership.SourceMembers.Distinct().ToList();
                                 if (!context.IsReplaying) { TrackCachedUsersEvent(request.RunId, sourceMembers.Count, request.SourceGroup.ObjectId); }
@@ -196,7 +199,7 @@ namespace Hosts.GroupMembershipObtainer
                                 if (shouldClearCache)
                                 {
                                     // delete old cache files, only after new cache file is created
-                                    await ClearCacheFunction(context, filePath, request.SyncJob);
+                                    await ClearCacheFunction(context, cacheFilePath, request.SyncJob);
                                     await ClearCacheFunction(context, deltaFilePath, request.SyncJob);
                                 }
                             }
@@ -254,14 +257,16 @@ namespace Hosts.GroupMembershipObtainer
             _telemetryClient.TrackEvent("UsersInCacheCount", cachedUsersEvent);
         }
 
-        public async Task<string> GetFileDownloaderFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)
+        public async Task<string> GetFileDownloaderFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob, bool checkFileAge)
         {
-            return await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
-                                                            new FileDownloaderRequest
-                                                            {
-                                                                FilePath = filePath,
-                                                                SyncJob = syncJob
-                                                            });
+            var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
+                                                              new FileDownloaderRequest
+                                                              {
+                                                                  FilePath = filePath,
+                                                                  SyncJob = syncJob,
+                                                                  CheckFileAge = checkFileAge
+                                                              });
+            return fileContent;
         }
 
         public async Task ClearCacheFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)

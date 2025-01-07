@@ -38,6 +38,12 @@ namespace Hosts.GroupMembershipObtainer
                 return string.Empty;
             }
 
+            if (request.CheckFileAge && blobResult.LastModified.HasValue && (DateTime.UtcNow - blobResult.LastModified.Value).TotalHours > 167)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"File {request.FilePath} is older than 6 days and 23 hours", RunId = request.SyncJob.RunId }, VerbosityLevel.INFO);
+                return string.Empty;
+            }
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             var content = blobResult.Content ?? string.Empty;

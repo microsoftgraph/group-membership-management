@@ -81,6 +81,8 @@ namespace Repositories.BlobStorage
             var name = latest.Name;
             var blobClient = _containerClient.GetBlobClient(name);
             var blobExists = await blobClient.ExistsAsync();
+            var properties = await blobClient.GetPropertiesAsync();
+
             if (blobExists)
             {
                 var content = await blobClient.DownloadContentAsync();
@@ -88,7 +90,8 @@ namespace Repositories.BlobStorage
                 {
                     Content = content.Value.Content == null ? string.Empty : content.Value.Content.ToString(),
                     Metadata = content.Value.Details.Metadata,
-                    BlobStatus = BlobStatus.Found
+                    BlobStatus = BlobStatus.Found,
+                    LastModified = properties.Value.LastModified
                 };
             }
 
