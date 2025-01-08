@@ -7,8 +7,7 @@ import {
   IProcessedStyleSet,
   classNamesFunction,
   useTheme,
-  Dropdown,
-  IDropdownOption,
+  ComboBox,
   Spinner,
   ActionButton,
   MessageBar,
@@ -35,6 +34,7 @@ import {
 import { Destination } from '../../models/Destination';
 import { selectOutlookWarningUrl } from '../../store/settings.slice';
 import { OnboardingStatus } from '../../models';
+import { IComboBoxOption, ISelectableOption, Text } from '@fluentui/react';
 
 const getClassNames = classNamesFunction<
   ISelectDestinationStyleProps,
@@ -52,11 +52,42 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     }
   );
 
-  const optionsDestinationType: IDropdownOption[] = [
-    { key: 'Group', text: 'Group' },
-    { key: 'Channel', text: 'Channel', disabled: true }
+  const optionsDestinationType: IComboBoxOption[] = [
+    {
+      key: 'Group',
+      text: 'Group',
+      data: {
+        description: strings.ManageMembership.labels.groupDescription,
+      },
+    },
+    {
+      key: 'Channel',
+      text: 'Channel',
+      data: {
+        description: strings.ManageMembership.labels.channelDescription,
+      },
+      disabled: true,
+    },
   ];
-
+  const onRenderValueComboBoxOptions = (
+    props?: ISelectableOption, 
+    defaultRender?: (props?: ISelectableOption) => JSX.Element | null
+  ): JSX.Element | null => {
+    return (
+      <div className = {classNames.comboBoxOptionContainer}>
+        <div>
+          <Text>
+            {props?.text}
+          </Text>
+        </div>
+        <div>
+          <Text variant='tiny' styles={{root: classNames.comboBoxOptionCodeText}}>
+            {props?.data?.description}
+          </Text>
+        </div>
+      </div>
+    );
+  }; 
   const mapDestinationToPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
     if (!destination) return [];
 
@@ -95,7 +126,8 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const appIdNotOwnerWarning = onboardingStatus === OnboardingStatus.AppIdNotOwner ? (
     <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.appIdNotOwnerWarning} 
+      {strings.ManageMembership.labels.appIdNotOwnerWarning}
+      {' '} 
         <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
           {strings.ManageMembership.labels.clickHere}
         </a>.
@@ -147,18 +179,21 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   ): Promise<IPersonaProps[]> => {
     return text && groupPickerSuggestions ? groupPickerSuggestions : [];
   };
-
+  const visibleOptionsDestinationType = optionsDestinationType.filter(
+    (option) => !option.disabled
+  );
   return (
     <div className={classNames.root}>
       <PageSection>
         <div className={classNames.selectDestinationContainer}>
-          <Dropdown
+        <ComboBox
             placeholder={strings.ManageMembership.labels.selectDestinationTypePlaceholder}
             label={strings.ManageMembership.labels.selectDestinationType}
-            options={optionsDestinationType}
-            styles={{ title: classNames.dropdownTitle, dropdown: classNames.dropdownField }}
+            options={visibleOptionsDestinationType}
             required
             selectedKey={'Group'}
+            onRenderOption={onRenderValueComboBoxOptions}
+            styles={{root: classNames.peoplePicker }}
           />
           <div>
             {strings.ManageMembership.labels.searchDestination}

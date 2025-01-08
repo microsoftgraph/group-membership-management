@@ -334,6 +334,8 @@ export type IStrings = {
       outlookWarning: string;
       appIdNotOwnerWarning: string;
       userNotOwnerWarning: string;
+      groupDescription: string;
+      channelDescription: string;
       step2title: string;
       step2description: string;
       advancedQuery: string;

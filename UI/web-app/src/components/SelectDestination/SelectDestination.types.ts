@@ -22,6 +22,8 @@ export interface ISelectDestinationStyles {
   outlookContainer: IStyle;
   ownershipWarning: IStyle;
   spinnerContainer: IStyle;
+  comboBoxOptionContainer: IStyle;
+  comboBoxOptionCodeText: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {

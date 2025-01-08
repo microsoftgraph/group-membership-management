@@ -81,6 +81,13 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
       alignItems: 'center',
       justifyContent: 'center',
       minHeight: 20
-    }
+    },
+    comboBoxOptionContainer: { 
+      paddingTop: 3,
+      paddingBottom: 3,
+    },
+    comboBoxOptionCodeText: { 
+      fontStyle: 'italic',
+    },
   };
 };
