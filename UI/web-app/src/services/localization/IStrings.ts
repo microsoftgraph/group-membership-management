@@ -330,6 +330,7 @@ export type IStrings = {
       searchGroupSuggestedText: string;
       noResultsFound: string;
       appsUsed: string;
+      entraSecurityGroup: string;
       outlookWarning: string;
       appIdNotOwnerWarning: string;
       userNotOwnerWarning: string;

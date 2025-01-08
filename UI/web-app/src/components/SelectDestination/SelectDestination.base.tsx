@@ -88,7 +88,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
-    return ["Outlook", "Yammer", "SharePoint"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
+    return ["Outlook", "Yammer", "SharePoint", "SecurityGroup"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
   };
 
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
@@ -190,7 +190,10 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
             )}
             {selectedDestination && hasRequiredEndpoints() && (
               <div className={classNames.endpointsContainer}>
-                {selectedDestinationEndpoints ? strings.ManageMembership.labels.appsUsed : ''}
+                {selectedDestinationEndpoints && selectedDestinationEndpoints.length === 0 ? '' :
+                  selectedDestinationEndpoints && selectedDestinationEndpoints.every(endpoint => endpoint === 'SecurityGroup') ? strings.ManageMembership.labels.entraSecurityGroup :
+                  strings.ManageMembership.labels.appsUsed
+                }
                 {selectedDestinationEndpoints?.includes("Outlook") && (
                   <div className={classNames.outlookContainer}>
                     <ActionButton

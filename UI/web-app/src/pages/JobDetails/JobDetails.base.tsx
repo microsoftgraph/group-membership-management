@@ -508,8 +508,12 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           </Stack.Item>
         </Stack>
       </Stack.Item>
-      {job?.endpoints ? (
+      {job?.endpoints && (
         <Stack.Item align="start">
+        {job.endpoints.every(endpoint => endpoint === 'SecurityGroup') ? (
+          null
+        ) : (
+        <>
           <Text className={classNames.itemTitle} block>
             {strings.JobDetails.labels.groupLinks}
           </Text>
@@ -545,8 +549,10 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               )}
             </Stack>
           </div>
-        </Stack.Item>
-      ) : null}
+      </>
+    )}
+  </Stack.Item>
+)}
 
     </Stack>
   )

@@ -335,6 +335,7 @@ export const strings: IStrings = {
       searchGroupSuggestedText: 'Suggested Groups',
       noResultsFound: 'No results found',
       appsUsed: 'This group uses the following apps:',
+      entraSecurityGroup: 'This is an Entra Security Group',
       outlookWarning: 'There are important settings that should be considered before sending email to this Outlook group. Follow the instructions on your organization.',
       appIdNotOwnerWarning: 'Warning: GMM is not the owner of this group! It will not be able to manage membership for this group until you add it.',
       userNotOwnerWarning: 'Warning: You are not the owner of this group! You can only manage memberships with GMM for groups you own.',

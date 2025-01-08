@@ -83,7 +83,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
-    return ["Outlook", "Yammer", "SharePoint"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
+    return ["Outlook", "Yammer", "SharePoint", "SecurityGroup"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
   };
 
   const openOutlookLink = (): void => {
@@ -150,7 +150,10 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               {selectedDestination && hasRequiredEndpoints() ? (
               <Stack.Item align="start">
                 <Text className={classNames.itemTitle} block>
-                {selectedDestinationEndpoints ? strings.ManageMembership.labels.appsUsed : ''}
+                {selectedDestinationEndpoints && selectedDestinationEndpoints.length === 0 ? '' :
+                  selectedDestinationEndpoints && selectedDestinationEndpoints.every(endpoint => endpoint === 'SecurityGroup') ? strings.ManageMembership.labels.entraSecurityGroup :
+                  strings.ManageMembership.labels.appsUsed
+                }
                 </Text>
                 <Text className={classNames.itemData} block>
                 <div className={classNames.endpointsContainer}>

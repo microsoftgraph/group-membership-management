@@ -338,6 +338,7 @@ export const strings: IStrings = {
       selectDestinationTypePlaceholder: 'Buscar un grupo',
       noResultsFound: 'No se encontraron resultados',
       appsUsed: 'Este grupo utiliza las siguientes aplicaciones.',
+      entraSecurityGroup: 'Este es un grupo de seguridad de Entra',
       outlookWarning: 'Hay configuraciones importantes a considerar antes de enviar correo a este grupo de Outlook. Sigue las instrucciones de tu organización.',
       appIdNotOwnerWarning: 'Atención: GMM no es dueño de este grupo Por favor agrégalo como propietrario antes de continuar.',
       userNotOwnerWarning: 'Atención: No eres dueño de este grupo. Solo los propietarios pueden administrar la membresía.',
