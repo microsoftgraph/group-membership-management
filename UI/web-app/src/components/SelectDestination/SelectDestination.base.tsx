@@ -208,7 +208,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               aria-label={strings.ManageMembership.labels.searchDestination}
               selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
               removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
-              resolveDelay={300}
+              resolveDelay={600}
               itemLimit={1}
               selectedItems={selectedDestinationPersona}
               onInputChange={handleInputChange}

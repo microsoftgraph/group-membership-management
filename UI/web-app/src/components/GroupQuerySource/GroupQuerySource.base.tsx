@@ -108,7 +108,7 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
         aria-label={strings.Components.GroupQuerySource.searchGroupName}
         selectionAriaLabel={strings.Components.GroupQuerySource.selectionAriaLabel}
         removeButtonAriaLabel={strings.Components.GroupQuerySource.removeButtonAriaLabel}
-        resolveDelay={300}
+        resolveDelay={600}
         itemLimit={1}
         onInputChange={handleGroupSearchInputChanged}
         onChange={handleGroupPickerChange}
