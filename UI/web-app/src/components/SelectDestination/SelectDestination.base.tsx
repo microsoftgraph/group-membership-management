@@ -9,12 +9,9 @@ import {
   useTheme,
   ComboBox,
   Spinner,
-  ActionButton,
-  MessageBar,
-  MessageBarType,
-  MessageBarButton,
   NormalPeoplePicker,
-  IPersonaProps
+  IPersonaProps,
+  IComboBoxOption, ISelectableOption, Text
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -32,9 +29,8 @@ import {
   manageMembershipGroupOnboardingStatus
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
-import { selectOutlookWarningUrl } from '../../store/settings.slice';
 import { OnboardingStatus } from '../../models';
-import { IComboBoxOption, ISelectableOption, Text } from '@fluentui/react';
+import { EndpointsList } from '../EndpointsList';
 
 const getClassNames = classNamesFunction<
   ISelectDestinationStyleProps,
@@ -103,7 +99,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
-  const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
 
   const [inputValue, setInputValue] = useState('');
 
@@ -145,30 +140,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       {strings.ManageMembership.labels.alreadyOnboardedWarning}
     </div>
   ) : null;
-
-  const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
-  const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
-  const groupName: string | undefined = selectedDestination?.name.replace(/\s/g, '');
-
-  const openOutlookLink = (): void => {
-    const url = `https://outlook.office.com/mail/group/${domainName}/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const openSharePointLink = (): void => {
-    const url = `https://${SharePointDomain}/sites/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const openYammerLink = (): void => {
-    const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`
-    const url = `https://www.yammer.com/${domainName}/groups/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const onClickOutlookWarning = (): void => {
-    window.open(outlookWarningUrl, '_blank', 'noopener,noreferrer');
-  };
 
   useEffect(() => {
   }, [dispatch, groupPickerSuggestions]);
@@ -223,52 +194,16 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {loadingSearchResults ? <Spinner /> : null}
               </div>
             )}
-            {selectedDestination && hasRequiredEndpoints() && (
-              <div className={classNames.endpointsContainer}>
-                {selectedDestinationEndpoints && selectedDestinationEndpoints.length === 0 ? '' :
-                  selectedDestinationEndpoints && selectedDestinationEndpoints.every(endpoint => endpoint === 'SecurityGroup') ? strings.ManageMembership.labels.entraSecurityGroup :
-                  strings.ManageMembership.labels.appsUsed
-                }
-                {selectedDestinationEndpoints?.includes("Outlook") && (
-                  <div className={classNames.outlookContainer}>
-                    <ActionButton
-                      iconProps={{ iconName: 'OutlookLogo' }}
-                      onClick={() => openOutlookLink()}
-                    >
-                      Outlook
-                    </ActionButton>
-                    {outlookWarningUrl &&
-                      <MessageBar
-                        messageBarType={MessageBarType.warning}
-                        className={classNames.outlookWarning}
-                        isMultiline={false}
-                        actions={
-                          <MessageBarButton onClick={() => onClickOutlookWarning()}>{strings.learnMore}</MessageBarButton>
-                        }>
-                        {strings.ManageMembership.labels.outlookWarning}
-                      </MessageBar>}
-                  </div>)}
-                {selectedDestinationEndpoints?.includes("SharePoint") && (
-                  <ActionButton
-                    iconProps={{ iconName: 'SharePointLogo' }}
-                    onClick={() => openSharePointLink()}
-                  >
-                    SharePoint
-                  </ActionButton>
-                )}
-                {selectedDestinationEndpoints?.includes("Yammer") && (
-                  <ActionButton
-                    iconProps={{ iconName: 'YammerLogo' }}
-                    onClick={() => openYammerLink()}
-                  >
-                    Yammer
-                  </ActionButton>
-                )}
-                {appIdNotOwnerWarning}
-                {userNotOwnerWarning}
-                {alreadyOnboardedWarning}
-              </div>
-            )}
+            {selectedDestination && selectedDestinationEndpoints && (
+              <EndpointsList
+                endpoints={selectedDestinationEndpoints}
+                groupId={selectedDestination.id}
+                groupName={selectedDestination.name}
+                showOutlookWarning={true}
+              />)}
+              {appIdNotOwnerWarning}
+              {userNotOwnerWarning}
+              {alreadyOnboardedWarning}
           </div>
         </div>
       </PageSection>

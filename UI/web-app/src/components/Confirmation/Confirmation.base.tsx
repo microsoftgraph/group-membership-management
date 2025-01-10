@@ -35,6 +35,7 @@ import {
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { EndpointsList } from '../EndpointsList';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -72,35 +73,10 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
 
   const displayQuery: string = isAdvancedView ? JSON.stringify(globalQuery, null, 2) : JSON.stringify(compositeQuery, null, 2);
 
-  const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
-  const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
-  const groupName: string | undefined = selectedDestination?.name.replace(/\s/g, '');
-
   const location = useLocation();
   const locationState = location.state as { currentStep?: number, jobId?: string };
   const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const jobId = locationState?.jobId ?? urlJobId;
-
-  const hasRequiredEndpoints = () => {
-    if (!selectedDestinationEndpoints) return false;
-    return ["Outlook", "Yammer", "SharePoint", "SecurityGroup"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
-  };
-
-  const openOutlookLink = (): void => {
-    const url = `https://outlook.office.com/mail/group/${domainName}/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const openSharePointLink = (): void => {
-    const url = `https://${SharePointDomain}/sites/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const openYammerLink = (): void => {
-    const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`
-    const url = `https://www.yammer.com/${domainName}/groups/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
 
   return (
     <div className={classNames.root}>
@@ -147,44 +123,13 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                   </Text>
                 </Stack.Item>
               </Stack>
-              {selectedDestination && hasRequiredEndpoints() ? (
-              <Stack.Item align="start">
-                <Text className={classNames.itemTitle} block>
-                {selectedDestinationEndpoints && selectedDestinationEndpoints.length === 0 ? '' :
-                  selectedDestinationEndpoints && selectedDestinationEndpoints.every(endpoint => endpoint === 'SecurityGroup') ? strings.ManageMembership.labels.entraSecurityGroup :
-                  strings.ManageMembership.labels.appsUsed
-                }
-                </Text>
-                <Text className={classNames.itemData} block>
-                <div className={classNames.endpointsContainer}>
-                  {selectedDestinationEndpoints?.includes("Outlook") && (
-                    <ActionButton
-                      iconProps={{ iconName: 'OutlookLogo' }}
-                      onClick={() => openOutlookLink()}
-                    >
-                      Outlook
-                    </ActionButton>
-                    )}
-                  {selectedDestinationEndpoints?.includes("SharePoint") && (
-                    <ActionButton
-                      iconProps={{ iconName: 'SharePointLogo' }}
-                      onClick={() => openSharePointLink()}
-                    >
-                      SharePoint
-                    </ActionButton>
-                  )}
-                  {selectedDestinationEndpoints?.includes("Yammer") && (
-                    <ActionButton
-                      iconProps={{ iconName: 'YammerLogo' }}
-                      onClick={() => openYammerLink()}
-                    >
-                      Yammer
-                    </ActionButton>
-                  )}
-                </div>
-                </Text>
-              </Stack.Item>
-              ) : null}
+              {selectedDestination && selectedDestinationEndpoints &&
+                <EndpointsList 
+                  endpoints={selectedDestinationEndpoints}
+                  groupId={selectedDestination.id}
+                  groupName={selectedDestination.name}
+                />
+              }
             </Stack>
           </div>)}
 

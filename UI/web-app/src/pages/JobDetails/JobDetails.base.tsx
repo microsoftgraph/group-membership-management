@@ -65,6 +65,7 @@ import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 import { JobHistoryPanel } from '../../components/JobHistoryPanel/JobHistoryPanel';
+import { EndpointsList } from '../../components/EndpointsList';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -456,27 +457,6 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
     childrenGap: 30,
   };
 
-  const SharePointDomain: string = `${process.env.REACT_APP_SHAREPOINTDOMAIN}`;
-  const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`;
-  const groupName: string = job?.targetGroupName?.replace(/\s/g, '');
-
-  const openOutlookLink = (): void => {
-    const url = `https://outlook.office.com/mail/group/${domainName}/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const openSharePointLink = (): void => {
-    const url = `https://${SharePointDomain}/sites/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const openYammerLink = (): void => {
-    const domainName: string = `${process.env.REACT_APP_DOMAINNAME}`
-    const url = `https://www.yammer.com/${domainName}/groups/${groupName}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-
   return (
     <Stack
       enableScopedSelectors
@@ -518,52 +498,13 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           </Stack.Item>
         </Stack>
       </Stack.Item>
-      {job?.endpoints && (
-        <Stack.Item align="start">
-        {job.endpoints.every(endpoint => endpoint === 'SecurityGroup') ? (
-          null
-        ) : (
-        <>
-          <Text className={classNames.itemTitle} block>
-            {strings.JobDetails.labels.groupLinks}
-          </Text>
-          <div className={classNames.itemData}>
-            <Stack
-              enableScopedSelectors
-              horizontal
-              tokens={itemAlignmentsStackTokens}
-            >
-              {job?.endpoints?.includes("Outlook") && (
-                <ActionButton
-                  iconProps={{ iconName: 'OutlookLogo' }}
-                  onClick={() => openOutlookLink()}
-                >
-                  Outlook
-                </ActionButton>
-              )}
-              {job?.endpoints?.includes("SharePoint") && (
-                <ActionButton
-                  iconProps={{ iconName: 'SharePointLogo' }}
-                  onClick={() => openSharePointLink()}
-                >
-                  SharePoint
-                </ActionButton>
-              )}
-              {job?.endpoints?.includes("Yammer") && (
-                <ActionButton
-                  iconProps={{ iconName: 'YammerLogo' }}
-                  onClick={() => openYammerLink()}
-                >
-                  Yammer
-                </ActionButton>
-              )}
-            </Stack>
-          </div>
-      </>
-    )}
-  </Stack.Item>
-)}
-
+      {job?.endpoints ? (
+        <EndpointsList 
+          endpoints={job.endpoints}
+          groupId={job.targetGroupId}
+          groupName={job.targetGroupName}
+        />
+      ) : null}
     </Stack>
   )
 }

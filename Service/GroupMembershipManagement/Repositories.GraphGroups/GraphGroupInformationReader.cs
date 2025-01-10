@@ -359,7 +359,8 @@ namespace Repositories.GraphGroups
                 }
 
                 var siteResponse = await batchResponse.GetResponseByIdAsync(sharepointRequestId);
-                if (siteResponse.IsSuccessStatusCode)
+
+                if (siteResponse.IsSuccessStatusCode || siteResponse.StatusCode == HttpStatusCode.Forbidden)
                 {
                     endpoints.Add("SharePoint");
                 }

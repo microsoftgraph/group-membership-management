@@ -15,7 +15,6 @@ import {
     cardTitle: IStyle;
     itemTitle: IStyle;
     itemData: IStyle;
-    endpointsContainer: IStyle;
     queryContainer: IStyle;
   }
   

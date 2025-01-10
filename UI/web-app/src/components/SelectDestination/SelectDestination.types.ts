@@ -17,9 +17,6 @@ export interface ISelectDestinationStyles {
   dropdownField: IStyle;
   peoplePicker: IStyle;
   resultsContainer: IStyle;
-  endpointsContainer: IStyle;
-  outlookWarning: IStyle;
-  outlookContainer: IStyle;
   ownershipWarning: IStyle;
   spinnerContainer: IStyle;
   comboBoxOptionContainer: IStyle;

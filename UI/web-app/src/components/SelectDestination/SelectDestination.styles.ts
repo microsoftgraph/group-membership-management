@@ -60,22 +60,6 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
       flexDirection: 'column',
       gap: 16,
     },
-    endpointsContainer: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 23,
-      overflow: 'auto'
-    },
-    outlookWarning: {
-      width: 'fit-content',
-      display: 'flex',
-      alignItems: 'center'
-    },
-    outlookContainer: {
-      display: 'flex',
-      flexDirection: 'row',
-      gap: 70
-    },
     spinnerContainer: {
       display: 'flex',
       alignItems: 'center',

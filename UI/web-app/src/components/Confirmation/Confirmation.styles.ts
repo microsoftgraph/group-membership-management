@@ -45,11 +45,6 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             paddingTop: 10,
             fontSize: 14
         },
-        endpointsContainer: {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 23,
-        },
         queryContainer: {
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',

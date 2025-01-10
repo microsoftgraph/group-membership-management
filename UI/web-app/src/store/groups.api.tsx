@@ -74,4 +74,3 @@ export const validateGroup = createAsyncThunk<ValidateGroupResponse, string, Thu
         }
     }
 );
-
