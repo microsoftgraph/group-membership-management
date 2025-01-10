@@ -279,7 +279,8 @@ namespace Services.Notifier
                 SenderPassword = _emailSenderAndRecipients.SenderPassword,
                 ToEmailAddresses = ownerEmails ?? job.Requestor,
                 CcEmailAddresses = ccAddress,
-                AdditionalContentParams = additionalContentParameters
+                AdditionalContentParams = additionalContentParameters,
+                SyncJobId = job.Id
             };
 
             if (messageType.Equals("NoDataNotification", StringComparison.InvariantCultureIgnoreCase))
@@ -470,7 +471,8 @@ namespace Services.Notifier
                 ToEmailAddresses = recipients,
                 CcEmailAddresses = _emailSenderAndRecipients.SupportEmailAddresses,
                 AdditionalContentParams = additionalContent,
-                AdditionalSubjectParams = additionalSubjectContent
+                AdditionalSubjectParams = additionalSubjectContent,
+                SyncJobId = job.Id
             };
             var response = await _mailRepository.SendMailAsync(message, job.RunId);
 

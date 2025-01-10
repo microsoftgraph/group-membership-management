@@ -218,6 +218,7 @@ namespace Repositories.Mail
 
             string UIUrl = urlSetting?.SettingValue ?? "";
             string dashboardUrl = dashboardUrlSetting?.SettingValue ?? "";
+            string jobUrl = urlSetting?.SettingValue + "/jobdetails/" + emailMessage.SyncJobId.ToString() ?? "";
 
             var cardData = new DefaultCardTemplate
             {
@@ -229,7 +230,8 @@ namespace Repositories.Mail
                 CardCreatedTime = DateTime.UtcNow,
                 DestinationGroupName = destinationGroupName,
                 UIUrl = UIUrl,
-                DashboardUrl = dashboardUrl
+                DashboardUrl = dashboardUrl,
+                JobUrl = jobUrl
             };
 
             var template = new AdaptiveCardTemplate(adaptiveCardJson);

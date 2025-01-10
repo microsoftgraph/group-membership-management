@@ -999,10 +999,10 @@
                                         {
                                             "type": "Action.OpenUrl",
                                             "title": "Go to GMM UI",
-                                            "url": "${$root.UIUrl}"
+                                            "url": "${$root.JobUrl}"
                                         }
                                     ],
-                                    "$when": "${$root.UIUrl != \"\"}"
+                                    "$when": "${$root.JobUrl != \"\"}"
                                 }
                             ]
                         }

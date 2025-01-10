@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Models
@@ -18,5 +19,6 @@ namespace Models
         public string[] AdditionalSubjectParams { get; set; }
         public bool IsHTML { get; set; }
         public string DestinationGroupName { get; set; }
+        public Guid SyncJobId { get; set; }
     }
 }

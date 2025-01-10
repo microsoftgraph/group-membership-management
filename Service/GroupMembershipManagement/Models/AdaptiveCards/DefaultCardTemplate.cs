@@ -16,6 +16,7 @@ namespace Models.AdaptiveCards
         public string DestinationGroupName { get; set; }
         public string UIUrl { get; set; }
         public string DashboardUrl { get; set; }
+        public string JobUrl { get; set; }
     }
 }
                
