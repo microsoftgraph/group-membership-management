@@ -135,8 +135,10 @@ export type IStrings = {
         valuesColumn: string;
         valuesDropdownSpinnerLabel: string;
         valuesDropdownPlaceholder: string;
+        valuesDropdownTitle: string;
         descriptionColumn: string;
         enabledColumn: string;
+        enabledToggleTitle: string;
         descriptionPlaceHolder: string;
       },
     },

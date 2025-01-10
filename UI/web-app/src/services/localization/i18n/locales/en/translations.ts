@@ -138,9 +138,11 @@ export const strings: IStrings = {
         valuesColumn: "Values",
         valuesDropdownSpinnerLabel: "Loading values...",
         valuesDropdownPlaceholder: "View values",
+        valuesDropdownTitle: "Select a value",
         descriptionColumn: "Description",
         descriptionPlaceHolder: "Enter a custom description",
-        enabledColumn: "Enabled"
+        enabledColumn: "Enabled",
+        enabledToggleTitle: "Toggle to enable/disable attribute",
       },
     },
     GeneralSettings: {

@@ -366,6 +366,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
         case 'enabled':
           return (
             <Toggle
+              title={strings.CustomSourceSettings.labels.enabledToggleTitle}
               checked={fieldContent !== undefined ? Boolean(fieldContent) : true} 
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
@@ -534,6 +535,7 @@ const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
 
   return (
     <Dropdown
+      title={strings.CustomSourceSettings.labels.valuesDropdownTitle}
       placeholder={strings.CustomSourceSettings.labels.valuesDropdownPlaceholder}
       onRenderList={onRenderList}
       onClick={onDropdownClick}

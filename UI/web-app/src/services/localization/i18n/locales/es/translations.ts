@@ -140,9 +140,11 @@ export const strings: IStrings = {
         valuesColumn: "Valores",
         valuesDropdownSpinnerLabel: "Cargando valores",
         valuesDropdownPlaceholder: "Ver valores",
+        valuesDropdownTitle: "Seleccione un valor",
         descriptionColumn: "Descripción",
         descriptionPlaceHolder: "Ingrese una etiqueta personalizada",
-        enabledColumn: "Habilitado"
+        enabledColumn: "Habilitado",
+        enabledToggleTitle: "Habilitar o deshabilitar este atributo",
       },
     },
     GeneralSettings: {

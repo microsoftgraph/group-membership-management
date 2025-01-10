@@ -1764,10 +1764,11 @@ const getOptions = (
              <div className={classNames.labelContainer}>
               <Label>{strings.HROnboarding.depth}</Label>
               <TooltipHost content={strings.HROnboarding.depthInfo} id="toolTipDepthId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
+                <IconButton title={strings.HROnboarding.depthInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipDepthId" />
               </TooltipHost>
             </div>
             <Dropdown
+              title={strings.HROnboarding.depth}
               selectedKey={source.manager?.depth?.toString() ?? '0'}
               onChange={handleDepthChange}
               options={depthOptions}
