@@ -312,8 +312,8 @@ export const strings: IStrings = {
           }
         },
         destinationName: {
-          label: 'Nombre de destinación',
-          placeholder: 'Buscar',
+          label: 'Destinación',
+          placeholder: 'Buscar por nombre, correo electrónico o ID de objeto',
         },
         ownerPeoplePicker: {
           label: 'Dueño',
