@@ -11,6 +11,7 @@ import { GetJobDetailsRequest, Job, RemoveGMMResponse, SyncJobChange } from '../
 import { PatchJobRequest } from '../models/PatchJobRequest';
 import { processJob } from '../utils/jobUtils';
 import { GetJobChangesRequest } from '../models/GetJobChangesRequest';
+import { GetChannelRequest } from '../models/GetChannelRequest';
 
 export const fetchJobDetails = createAsyncThunk<
   Job,
@@ -60,6 +61,32 @@ export const getGroupDetails = createAsyncThunk<Job, string, ThunkConfig>(
 
     try {
       const response = await fetch(`${config.getGroupDetails(groupId)}`, options).then(
+        async (response) => await response.json()
+      );
+      const job: Job = response;
+      return processJob(job);
+    } catch (error) {
+      throw new Error('Failed to fetch job details data!');
+    }
+  }
+);
+
+export const getChannelDetails = createAsyncThunk<Job, GetChannelRequest, ThunkConfig>(
+  'channelDetails',
+  async (request, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers();
+    const bearer = `Bearer ${token}`;
+    headers.append('Authorization', bearer);
+
+    const options = {
+      method: 'GET',
+      headers,
+    };
+
+    try {
+      const response = await fetch(`${config.getChannelDetails(request.groupId, request.channelId)}`, options).then(
         async (response) => await response.json()
       );
       const job: Job = response;

@@ -9,6 +9,7 @@ namespace Repositories.Contracts
 {
     public interface IDatabaseChannelsRepository
     {
+        Task<Channel> GetChannelAsync(Guid groupId, string channelId);
         Task<Channel> GetChannelUsingSyncJobIdAsync(Guid syncJobId);
     }
 }

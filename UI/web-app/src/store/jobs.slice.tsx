@@ -3,7 +3,7 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-import { fetchJobChanges, fetchJobDetails, patchJobDetails, getGroupDetails, removeGMM } from './jobDetails.api';
+import { fetchJobChanges, fetchJobDetails, patchJobDetails, getGroupDetails, removeGMM, getChannelDetails } from './jobDetails.api';
 import { fetchJobs, postJob, getPeoplePickerSuggestions } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
@@ -105,6 +105,19 @@ export const jobsSlice = createSlice({
       console.log("state.selectedJob", state.selectedJob);
     });
     builder.addCase(getGroupDetails.rejected, (state, action) => {
+      state.getJobDetailsError = action.error.message;
+    });
+
+    // getChannelDetails
+    builder.addCase(getChannelDetails.pending, (state) => {
+      state.selectedJobLoading = true;
+      state.selectedJob = undefined;
+    });
+    builder.addCase(getChannelDetails.fulfilled, (state, action) => {
+      state.selectedJobLoading = false;
+      state.selectedJob = action.payload;
+    });
+    builder.addCase(getChannelDetails.rejected, (state, action) => {
       state.getJobDetailsError = action.error.message;
     });
 

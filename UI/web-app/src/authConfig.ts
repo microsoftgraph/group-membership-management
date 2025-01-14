@@ -39,5 +39,6 @@ export const config = {
   getGroupEndpoints: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/endpoints`,
   getGroupOnboardingStatus: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/onboarding-status`,
   getGroupDetails: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/group/${groupId}`,
+  getChannelDetails: (groupId: string, channelId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/groups/${groupId}/channels/${channelId}`,
   removeGMM: (syncJobId: string) =>`${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/${syncJobId}/removeGmm`,
 };

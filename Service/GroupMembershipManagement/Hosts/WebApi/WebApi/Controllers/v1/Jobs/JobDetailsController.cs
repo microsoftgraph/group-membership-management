@@ -20,17 +20,20 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> _removeGMMRequestHandler;
         private readonly IRequestHandler<PatchJobRequest, PatchJobResponse> _patchJobRequestHandler;
         private readonly IRequestHandler<GetGroupRequest, GetGroupResponse> _getGroupRequestHandler;
+        private readonly IRequestHandler<GetChannelRequest, GetChannelResponse> _getChannelRequestHandler;
         private readonly IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> _getJobChangesRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
                                     IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
                                     IRequestHandler<PatchJobRequest, PatchJobResponse> patchJobRequestHandler,
                                     IRequestHandler<GetGroupRequest, GetGroupResponse> getGroupRequestHandler,
+                                    IRequestHandler<GetChannelRequest, GetChannelResponse> getChannelRequestHandler,
                                     IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> getJobChangesRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
             _getGroupRequestHandler = getGroupRequestHandler ?? throw new ArgumentNullException(nameof(getGroupRequestHandler));
+            _getChannelRequestHandler = getChannelRequestHandler ?? throw new ArgumentNullException(nameof(getChannelRequestHandler));
             _patchJobRequestHandler = patchJobRequestHandler;
             _getJobChangesRequestHandler = getJobChangesRequestHandler ?? throw new ArgumentNullException(nameof(getJobChangesRequestHandler));
         }
@@ -55,6 +58,21 @@ namespace WebApi.Controllers.v1.Jobs
         public async Task<ActionResult<IEnumerable<SyncJob>>> GetGroupDetailsAsync(Guid groupId)
         {
             var response = await _getGroupRequestHandler.ExecuteAsync(new GetGroupRequest(groupId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response.Model),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_READER}, {Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_READER}, {Models.Roles.JOB_TENANT_WRITER}")]
+        [HttpGet("groups/{groupId}/channels/{channelId}")]
+        public async Task<ActionResult<IEnumerable<SyncJob>>> GetChannelDetailsAsync(Guid groupId, string channelId)
+        {
+            var response = await _getChannelRequestHandler.ExecuteAsync(new GetChannelRequest(groupId, channelId));
 
             return response.StatusCode switch
             {

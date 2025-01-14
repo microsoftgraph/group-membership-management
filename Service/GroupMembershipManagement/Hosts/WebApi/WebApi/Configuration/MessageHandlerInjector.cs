@@ -33,6 +33,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetJobsRequest, GetJobsResponse>, GetJobsHandler>();
             services.AddTransient<IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse>, GetJobDetailsHandler>();
             services.AddTransient<IRequestHandler<GetGroupRequest, GetGroupResponse>, GetGroupHandler>();
+            services.AddTransient<IRequestHandler<GetChannelRequest, GetChannelResponse>, GetChannelHandler>();
 
             services.AddTransient<IRequestHandler<NotificationCardRequest, NotificationCardResponse>, NotificationCardHandler>();
 

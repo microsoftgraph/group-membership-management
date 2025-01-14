@@ -30,7 +30,7 @@ import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
 import { type AppDispatch } from '../../store';
-import { fetchJobDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
+import { fetchJobDetails, getChannelDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
@@ -89,6 +89,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const { jobId } = useParams<{ jobId: string }>();
   const { groupId } = useParams<{ groupId: string }>();
+  const { channelId } = useParams<{ channelId: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const error = useSelector(selectGetJobDetailsError);
   const selectedJob = useSelector(selectSelectedJobDetails);
@@ -159,10 +160,16 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     if (jobId) {
       dispatch(fetchJobDetails({ syncJobId: jobId ?? '' }));
     }
-    if (groupId) {
+    if (groupId && channelId === undefined) {
       dispatch(getGroupDetails(groupId));
     }
-  }, [dispatch, jobId, groupId]);
+    if (groupId && channelId) {
+      dispatch(getChannelDetails({
+        groupId,
+        channelId
+      }));
+    }
+  }, [dispatch, jobId, groupId, channelId]);
 
   return (
     <Page>

@@ -20,6 +20,10 @@ namespace Repositories.Mocks
             return await Task.FromResult(channel);
         }
 
-
+        public async Task<Channel> GetChannelAsync(Guid syncJobId, string channelId)
+        {
+            var channel = Channels.FirstOrDefault(x => x.SyncJobId == syncJobId && x.ChannelId == channelId);
+            return await Task.FromResult(channel);
+        }
     }
 }
