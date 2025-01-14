@@ -17,6 +17,8 @@ namespace Repositories.Contracts
         Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid objectId);
         Task<string> GetGroupNameAsync(Guid objectId);
         Task<Dictionary<Guid, string>> GetGroupNamesAsync(List<Guid> objectIds);
+        Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds);
+
         Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
         Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
         Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId);

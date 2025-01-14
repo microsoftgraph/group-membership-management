@@ -231,6 +231,50 @@ namespace Repositories.GraphGroups
             return groupNames;
         }
 
+        public async Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> groupIds)
+        {
+            var groupEmails = new Dictionary<Guid, string>();
+            var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
+
+            // requestId, groupId
+            var requestIdTracker = new Dictionary<string, Guid>();
+
+            foreach (var groupId in groupIds.Distinct())
+            {
+                var requestInformation = _graphServiceClient
+                                            .Groups[groupId.ToString()]
+                                            .ToGetRequestInformation(requestConfiguration =>
+                                            {
+                                                requestConfiguration.QueryParameters.Select = new[] { "mail" };
+                                            });
+
+
+
+                var requestId = await batchRequest.AddBatchRequestStepAsync(requestInformation);
+                requestIdTracker.Add(requestId, groupId);
+            }
+
+            var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
+
+            foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
+            {
+                using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseHandler = new ResponseHandler<Group>();
+                    var group = await responseHandler.HandleResponseAsync<HttpResponseMessage, Group>(response, null);
+                    if (group != null)
+                        groupEmails.Add(requestIdTracker[statusCodeResponse.Key], group.Mail);
+                }
+                else
+                {
+                    groupEmails.Add(requestIdTracker[statusCodeResponse.Key], null);
+                }
+            }
+
+            return groupEmails;
+        }
+
         public async Task<Dictionary<Guid, List<Guid>>> GetGroupOwnersAsync(List<Guid> groupIds)
         {
             var groupOwners = new Dictionary<Guid, List<Guid>>();

@@ -98,6 +98,8 @@ namespace Services
             {
                 var names = new Dictionary<Guid, string>();
                 var owners = new Dictionary<Guid, List<Guid>>();
+                var emails = new Dictionary<Guid, string>();
+
                 var destinationIdMap = new Dictionary<Guid, Guid>();
 
                 foreach (var destination in destinationObjectsMap)
@@ -109,6 +111,7 @@ namespace Services
                 var destinationGuids = destinationObjects.Select(d => d.Value.ObjectId).ToList();
                 names = await _graphGroupRepository.GetGroupNamesAsync(destinationGuids);
                 owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationGuids);
+                emails = await _graphGroupRepository.GetGroupEmailsAsync(destinationGuids);
 
                 foreach (var destination in destinationObjects)
                 {
@@ -123,6 +126,7 @@ namespace Services
             else if (destinationType == "TeamsChannelMembership")
             {
                 var names = new Dictionary<string, string>();
+                var emails = new Dictionary<string, string>();
                 var owners = new Dictionary<Guid, List<Guid>>();
                 var channelDestinations = destinationObjects.Select((d) => { return new AzureADTeamsChannel() { ObjectId = d.Value.ObjectId, ChannelId = (d.Value as TeamsChannelDestinationValue).ChannelId }; }).ToList();
                 var destinationIdMap = new Dictionary<string, Guid>();
@@ -134,15 +138,32 @@ namespace Services
 
                 var destinationGuids = destinationObjects.Select(d => d.Value.ObjectId).ToList();
                 names = await _teamsChannelRepository.GetTeamsChannelNamesAsync(channelDestinations);
+                emails = await _teamsChannelRepository.GetTeamsChannelEmailsAsync(channelDestinations);
                 owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationGuids);
 
                 foreach (var destination in destinationObjects)
                 {
+                    var channelValue = destination.Value as TeamsChannelDestinationValue;
+                    var channelId = channelValue.ChannelId;     
+                    var groupId = destination.Value.ObjectId;   
+
+                    var channelEmail = emails.ContainsKey(channelId) 
+                                        ? emails[channelId] 
+                                        : null;
+
+                    if (string.IsNullOrEmpty(channelEmail))
+                    {
+                        var mainChannel = await _teamsChannelRepository
+                            .GetMainChannelAsync(groupId);
+                        channelEmail = mainChannel?.Email;
+                    }
+
                     destinationAttributesList.Add(new DestinationAttributes
                     {
                         Name = names[(destination.Value as TeamsChannelDestinationValue).ChannelId],
                         Owners = owners[destination.Value.ObjectId],
-                        Id = destinationIdMap[(destination.Value as TeamsChannelDestinationValue).ChannelId]
+                        Id = destinationIdMap[(destination.Value as TeamsChannelDestinationValue).ChannelId],
+                        Email = channelEmail
                     });
                 }
             }

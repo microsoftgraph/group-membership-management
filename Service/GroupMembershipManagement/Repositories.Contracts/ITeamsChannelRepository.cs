@@ -4,9 +4,8 @@ using Models;
 using Models.Entities;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Channel = Microsoft.Graph.Models.Channel;
 
 namespace Repositories.Contracts
 {
@@ -18,6 +17,8 @@ namespace Repositories.Contracts
         public Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members);
         public Task<(int SuccessCount, List<AzureADTeamsUser> UserRemovesFailed)> RemoveUsersFromChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members);
         public Task<string> GetGroupNameAsync(Guid groupId, Guid runId);
+        public Task<Channel> GetMainChannelAsync(Guid teamObjectId);
+        public Task<Dictionary<string, string>> GetTeamsChannelEmailsAsync(List<AzureADTeamsChannel> channels);
         public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0);
         public Task<Dictionary<string, string>> GetTeamsChannelNamesAsync(List<AzureADTeamsChannel> channels);
         public Task<string> GetTeamsChannelNameAsync(AzureADTeamsChannel channel);

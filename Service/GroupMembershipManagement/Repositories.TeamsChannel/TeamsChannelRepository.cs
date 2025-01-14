@@ -369,6 +369,67 @@ namespace Repositories.TeamsChannel
 
             return channelNames;
         }
+        public async Task<Channel> GetMainChannelAsync(Guid teamObjectId)
+        {
+            var team = await _graphServiceClient.Teams[teamObjectId.ToString()]
+                .GetAsync(requestConfig =>
+                {
+                    requestConfig.QueryParameters.Select = new[] { "internalId" };
+                });
+
+            if (team == null || string.IsNullOrEmpty(team.InternalId))
+            {
+                return null;
+            }
+            var mainChannel = await _graphServiceClient.Teams[teamObjectId.ToString()]
+                .Channels[team.InternalId]
+                .GetAsync(requestConfig =>
+                {
+                    requestConfig.QueryParameters.Select = new[] { "id", "displayName", "email" };
+                });
+            return mainChannel;
+        }
+        public async Task<Dictionary<string,string>> GetTeamsChannelEmailsAsync(List<AzureADTeamsChannel> channels)
+        {
+            var channelEmails = new Dictionary<string, string>();
+            var batchRequest = new BatchRequestContentCollection(_graphServiceClient);
+            var requestIdTracker = new Dictionary<string, string>();
+
+            foreach (var channel in channels.Distinct())
+            {
+                var requestInformation = _graphServiceClient
+                    .Teams[channel.ObjectId.ToString()]
+                    .Channels[channel.ChannelId]
+                    .ToGetRequestInformation(requestConfig =>
+                    {
+                        requestConfig.QueryParameters.Select = new[] { "email" };
+                    });
+
+                var requestId = await batchRequest.AddBatchRequestStepAsync(requestInformation);
+                requestIdTracker.Add(requestId, channel.ChannelId);
+            }
+
+            var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
+
+            foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
+            {
+                using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseHandler = new ResponseHandler<Channel>();
+                    var channelObj = await responseHandler.HandleResponseAsync<HttpResponseMessage, Channel>(response, null);
+
+                    channelEmails[requestIdTracker[statusCodeResponse.Key]] = channelObj?.Email; 
+                }
+                else
+                {
+                    channelEmails[requestIdTracker[statusCodeResponse.Key]] = null;
+                }
+            }
+
+            return channelEmails;
+        }
+
         public async Task<string> GetTeamsChannelNameAsync(AzureADTeamsChannel channel)
         {
             var name = (await GetTeamsChannelNamesAsync(new List<AzureADTeamsChannel>() { channel }))[channel.ChannelId];
