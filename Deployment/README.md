@@ -14,6 +14,11 @@ This script will deploy all resources in the specified environment with minimal 
 - [Static Wb Apps CLI](https://azure.github.io/static-web-apps-cli/)
   - Once Node is installed, install SWA CLI using the following command.  
     ```npm install -g @azure/static-web-apps-cli   --global install```
+- [Install Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli-windows?tabs=azure-cli)
+    - Login with az  
+    ```az login --tenant <tenant id>```
+    - Select the subscription  
+    ```az account set --subscription <name or id>```
 
 
 ### Deployment
@@ -30,8 +35,10 @@ Run the following commands to deploy the resources with a Tenant Admin account.
 
 ```
     Connect-AzAccount
-
     Set-AzContext -SubscriptionId "<subscription-id>"
+
+    az login --tenant <tenant id>
+    az account set --subscription <subscription-id>
 
     . .\Deploy-Resources.ps1
 
@@ -60,16 +67,6 @@ Once the deployment is complete, you will need to gran Admin consent to the depl
 The WebApi provides roles that can be assigned to users. See these relevant sections:  
 - [Roles as policy to gate functionality](https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md#roles-as-policy-to-gate-functionality)
 - [Add a role to a group](https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md#add-a-role-to-a-group)
-
-```
-Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
-                    -EnvironmentAbbreviation "<environment-abbreviation>" `
-                    -Location "<location>" `
-                    -TemplateFilesDirectory "<template-file-path>" `
-                    -ParameterFilePath "<parameter-file-path>" `
-                    -SubscriptionId "<subscription-id>" `
-                    -Verbose
-```
 
 ### Creating and uploading the certificate
 
