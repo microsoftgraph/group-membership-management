@@ -5,7 +5,6 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Models;
-using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
 using Polly.Wrap;
@@ -18,6 +17,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphAzureADUsers
@@ -146,7 +146,7 @@ namespace Repositories.GraphAzureADUsers
                     if (response.Value.IsSuccessStatusCode)
                     {
                         var content = await response.Value.Content.ReadAsStringAsync();
-                        var oDataResponse = JsonConvert.DeserializeObject<ODataResponse<List<User>>>(content);
+                        var oDataResponse = JsonSerializer.Deserialize<ODataResponse<List<User>>>(content);
 
                         // process each user
                         foreach (var user in oDataResponse.Value)
@@ -355,7 +355,7 @@ namespace Repositories.GraphAzureADUsers
         private async Task<GraphProfileInformation> ExtractProfileAsync(HttpResponseMessage response, string personnelNumber)
         {
             var content = await response.Content.ReadAsStringAsync();
-            var user = JsonConvert.DeserializeObject<User>(content);
+            var user = JsonSerializer.Deserialize<User>(content);
             var profile = new GraphProfileInformation
             {
                 Id = user.Id,

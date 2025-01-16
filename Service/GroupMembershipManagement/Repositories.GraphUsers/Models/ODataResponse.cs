@@ -1,16 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Services.Models
 {
     internal class ODataResponse<T>
     {
-        [JsonProperty(PropertyName = "@odata.context")]
+        [JsonPropertyName("@odata.context")]
         public string Context { get; set; }
 
-        [JsonProperty(PropertyName = "value")]
+        [JsonPropertyName("value")]
         public T Value { get; set; }
     }
 }
