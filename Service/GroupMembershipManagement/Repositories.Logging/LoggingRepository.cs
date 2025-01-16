@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -15,6 +14,7 @@ using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -115,7 +115,7 @@ namespace Repositories.Logging
                 properties.Add("operation", Path.GetFileNameWithoutExtension(file));
 
 
-            var serializedMessage = JsonConvert.SerializeObject(properties);
+            var serializedMessage = JsonSerializer.Serialize(properties);
 
             HttpStatusCode[] httpStatusCodesWorthRetrying = {
                 HttpStatusCode.RequestTimeout, // 408

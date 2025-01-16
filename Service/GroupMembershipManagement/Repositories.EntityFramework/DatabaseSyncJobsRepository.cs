@@ -3,9 +3,9 @@
 
 using Microsoft.EntityFrameworkCore;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
+using System.Text.Json;
 
 namespace Repositories.EntityFramework
 {
@@ -25,8 +25,13 @@ namespace Repositories.EntityFramework
             var entry = await _writeContext.Set<SyncJob>().AddAsync(job);
             await _writeContext.SaveChangesAsync();
 
-            var destinationArray = JsonConvert.DeserializeObject<List<dynamic>>(job.Destination);
-            var channelId = destinationArray?.FirstOrDefault()?.value?.channelId;
+            string? channelId = null;
+            var destinationArray = JsonSerializer.Deserialize<List<JsonElement>>(job.Destination);
+            var firstItem = destinationArray?.FirstOrDefault().GetProperty("value");
+            if (firstItem.HasValue && firstItem.Value.TryGetProperty("channelId", out var channelIdJson))
+            {
+                channelId = channelIdJson.GetString();
+            }
 
             if (job.MembershipType == MembershipTypes.GroupMembership.ToString())
             {
@@ -121,7 +126,7 @@ namespace Repositories.EntityFramework
             return await query.CountAsync();
         }
 
-		public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
+        public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {
             await UpdateSyncJobsAsync(jobs, status: status);
         }

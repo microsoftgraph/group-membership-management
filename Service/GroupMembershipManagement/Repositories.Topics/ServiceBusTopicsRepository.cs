@@ -2,13 +2,13 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Models;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Message = Azure.Messaging.ServiceBus.ServiceBusMessage;
 using MessageDTO = Models.ServiceBus.ServiceBusMessage;
@@ -27,7 +27,11 @@ namespace Repositories.ServiceBusTopics
         public async Task AddMessageAsync(SyncJob job)
         {
             var index = 1;
-            var queries = JArray.Parse(job.Query);
+
+            // Parse the JSON array
+            var queries = JsonNode.Parse(job.Query).AsArray();
+
+            // Select the query types
             var queryTypes = queries.Select(x => new
             {
                 type = (string)x["type"],

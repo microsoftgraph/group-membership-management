@@ -2,8 +2,6 @@
 // Licensed under the MIT license.
 using Microsoft.Graph;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Entities;
 using System;
@@ -13,6 +11,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json.Nodes;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -69,11 +69,12 @@ namespace Repositories.GraphGroups
 
         private static string MakeAddRequestBody(List<AzureADUser> users)
         {
-            JObject body = new JObject
+            var body = new JsonObject
             {
-                ["members@odata.bind"] = JArray.FromObject(users.Select(x => $"https://graph.microsoft.com/v1.0/users/{x.ObjectId}"))
+                ["members@odata.bind"] = new JsonArray(users.Select(x => JsonValue.Create($"https://graph.microsoft.com/v1.0/users/{x.ObjectId}")).ToArray())
             };
-            return body.ToString(Newtonsoft.Json.Formatting.None);
+
+            return body.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
         }
 
         public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
@@ -370,12 +371,13 @@ namespace Repositories.GraphGroups
             {
                 var httpMethod = user.MembershipAction == MembershipAction.Add ? HttpMethod.Post : HttpMethod.Delete;
 
-                JObject body = new JObject
+                var body = new JsonObject
                 {
                     ["@odata.id"] = $"https://graph.microsoft.com/v1.0/directoryObjects/{user.ObjectId}"
                 };
 
-                var json = body.ToString(Newtonsoft.Json.Formatting.None);
+                var json = body.ToJsonString(new JsonSerializerOptions { WriteIndented = false });
+
                 var request = new HttpRequestMessage(httpMethod, $"https://graph.microsoft.com/v1.0/groups/{targetGroupId}/members/$ref")
                 {
                     Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json"),
@@ -435,13 +437,15 @@ namespace Repositories.GraphGroups
 
         private static bool IsNotFoundError(string error)
         {
-            error = JObject.Parse(error)["error"]["message"].Value<string>();
+            var jsonDocument = JsonDocument.Parse(error);
+            error = jsonDocument.RootElement.GetProperty("error").GetProperty("message").GetString();
             return error.Contains(_notFoundResponseError);
         }
 
         private static bool IsAlreadyExistsError(string error)
         {
-            error = JObject.Parse(error)["error"]["message"].Value<string>();
+            var jsonDocument = JsonDocument.Parse(error);
+            error = jsonDocument.RootElement.GetProperty("error").GetProperty("message").GetString();
             return error.Contains(_alreadyExistsResponseError);
         }
 
