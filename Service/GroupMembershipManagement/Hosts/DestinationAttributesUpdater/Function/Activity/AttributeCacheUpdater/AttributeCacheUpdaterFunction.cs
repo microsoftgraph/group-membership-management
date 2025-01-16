@@ -31,8 +31,15 @@ namespace Hosts.DestinationAttributesUpdater
 
             var name = string.IsNullOrWhiteSpace(destinationAttributes.Name) ? "N/A" : destinationAttributes.Name;
             var ownersList = destinationAttributes.Owners != null ? string.Join(",", destinationAttributes.Owners) : "N/A";
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeCacheUpdaterFunction)} function: jobId {destinationAttributes.Id} Name: {name} Owners: ({ownersList})" }, VerbosityLevel.DEBUG);
+            var email = string.IsNullOrWhiteSpace(destinationAttributes.Email) ? "N/A" : destinationAttributes.Email;
 
+            await _loggingRepository.LogMessageAsync(
+                new LogMessage
+                {
+                    Message = $"{nameof(AttributeCacheUpdaterFunction)} function: jobId {destinationAttributes.Id}, Name: {name}, Email: {email}, Owners: ({ownersList})"
+                },
+                VerbosityLevel.DEBUG
+            );
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeCacheUpdaterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }

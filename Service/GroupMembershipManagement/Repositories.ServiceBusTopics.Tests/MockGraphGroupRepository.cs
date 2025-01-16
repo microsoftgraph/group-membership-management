@@ -165,7 +165,10 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
-
+        public Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
         public Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
         {
             throw new NotImplementedException();

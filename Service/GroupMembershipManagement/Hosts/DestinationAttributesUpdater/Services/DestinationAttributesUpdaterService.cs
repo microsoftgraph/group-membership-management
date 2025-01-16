@@ -119,7 +119,8 @@ namespace Services
                     {
                         Name = names[destination.Value.ObjectId],
                         Owners = owners[destination.Value.ObjectId],
-                        Id = destinationIdMap[destination.Value.ObjectId]
+                        Id = destinationIdMap[destination.Value.ObjectId],
+                        Email = emails[destination.Value.ObjectId],
                     });
                 }
             }

@@ -33,6 +33,7 @@ namespace Repositories.EntityFramework
                 .Include(p => p.DestinationOwners)
                     .ThenInclude(owner => owner.SyncJobs)
                 .Include(p => p.DestinationName)
+                .Include(p => p.DestinationEmail)
                 .SingleOrDefaultAsync(job => job.Id == destinationAttributes.Id);
 
             if (job == null)
@@ -58,6 +59,23 @@ namespace Repositories.EntityFramework
                 }
             }
 
+            if (destinationAttributes.Email != null)
+            {
+                if (job.DestinationEmail != null)
+                {
+                    job.DestinationEmail.Email = destinationAttributes.Email;
+                }
+                else
+                {
+                    var destinationEmail = new DestinationEmail
+                    {
+                        Email = destinationAttributes.Email,
+                        LastUpdatedTime = DateTime.UtcNow,
+                        SyncJob = job
+                    };
+                    job.DestinationEmail = destinationEmail;
+                }
+            }
             if (destinationAttributes.Owners != null)
             {
                 // Add owners that do not already exist
