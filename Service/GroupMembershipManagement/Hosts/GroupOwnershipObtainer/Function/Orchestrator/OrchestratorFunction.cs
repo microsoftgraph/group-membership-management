@@ -1,22 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
-using Microsoft.Graph;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupOwnershipObtainer
@@ -56,10 +50,9 @@ namespace Hosts.GroupOwnershipObtainer
                     return;
                 }
 
-                var queryParts = JArray.Parse(syncJob.Query);
+                var queryParts = JsonNode.Parse(syncJob.Query).AsArray();
                 var currentPart = queryParts[mainRequest.CurrentPart - 1];
-                var sources = currentPart.Value<JArray>("source").Values<string>()
-                              .Where(x => x != null).Select(x => x.Trim()).ToHashSet();
+                var sources = currentPart["source"].AsArray().Where(x => x != null).Select(x => x.GetValue<string>().Trim()).Distinct().ToHashSet();
 
                 if (!sources.Any())
                 {
@@ -102,7 +95,7 @@ namespace Hosts.GroupOwnershipObtainer
                             return;
                         }
                     }
-                    catch (JsonReaderException)
+                    catch (JsonException)
                     {
                         await context.CallActivityAsync(nameof(LoggerFunction),
                                 new LoggerRequest
@@ -196,7 +189,7 @@ namespace Hosts.GroupOwnershipObtainer
                 var message = $"Caught unexpected exception in Part# {mainRequest.CurrentPart}, marking sync job as errored. Exception:\n{ex}";
                 var status = SyncStatus.Error;
 
-                if (ex.GetType() == typeof(JsonReaderException))
+                if (ex.GetType() == typeof(JsonException) || ex.GetType().Name == "JsonReaderException")
                 {
                     message = $"The job RowKey:{syncJob.RowKey} Part#{mainRequest.CurrentPart} does not have a valid query!";
                     status = SyncStatus.QueryNotValid;

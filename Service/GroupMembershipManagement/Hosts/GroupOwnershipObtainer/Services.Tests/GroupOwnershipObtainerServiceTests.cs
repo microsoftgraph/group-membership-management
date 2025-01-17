@@ -3,10 +3,10 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
+using System.Text.Json.Nodes;
 
 namespace Services.Tests
 {
@@ -72,11 +72,7 @@ namespace Services.Tests
                 {
                     if (x.Query == null) return false;
 
-                    var queryParts = JArray.Parse(x.Query);
-                    var queryTypes = queryParts.SelectTokens("$..type")
-                        .Select(x => x.Value<string>())
-                        .Distinct()
-                        .ToList();
+                    var queryTypes = GetQueryTypes(x.Query);
 
                     return queryTypes.Count() > 1;
 
@@ -91,11 +87,7 @@ namespace Services.Tests
                 {
                     if (x.Query == null) return false;
 
-                    var queryParts = JArray.Parse(x.Query);
-                    var queryTypes = queryParts.SelectTokens("$..type")
-                        .Select(x => x.Value<string>())
-                        .Distinct()
-                        .ToList();
+                    var queryTypes = GetQueryTypes(x.Query);
 
                     return requestedTypes.All(x => queryTypes.Contains(x, StringComparer.InvariantCultureIgnoreCase))
                     && requestedTypes.Count == queryTypes.Count;
@@ -135,11 +127,7 @@ namespace Services.Tests
                 {
                     if (x.Query == null) return false;
 
-                    var queryParts = JArray.Parse(x.Query);
-                    var queryTypes = queryParts.SelectTokens("$..type")
-                        .Select(x => x.Value<string>())
-                        .Distinct()
-                        .ToList();
+                    var queryTypes = GetQueryTypes(x.Query);
 
                     return queryTypes.Count() > 1;
 
@@ -154,11 +142,7 @@ namespace Services.Tests
                 {
                     if (x.Query == null) return false;
 
-                    var queryParts = JArray.Parse(x.Query);
-                    var queryTypes = queryParts.SelectTokens("$..type")
-                        .Select(x => x.Value<string>())
-                        .Distinct()
-                        .ToList();
+                    var queryTypes = GetQueryTypes(x.Query);
 
                     return requestedTypes.All(x => queryTypes.Contains(x, StringComparer.InvariantCultureIgnoreCase))
                     && requestedTypes.Count == queryTypes.Count;
@@ -202,6 +186,18 @@ namespace Services.Tests
             }
 
             return jobs;
+        }
+
+        private List<string> GetQueryTypes(string query)
+        {
+            var queryParts = JsonNode.Parse(query).AsArray();
+            var queryTypes = queryParts.Select(x => x["type"])
+                                       .OfType<JsonValue>()
+                                       .Select(x => x.GetValue<string>())
+                                       .Distinct()
+                                       .ToList();
+
+            return queryTypes;
         }
     }
 }

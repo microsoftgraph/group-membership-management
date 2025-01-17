@@ -1,16 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Entities;
 using Hosts.GroupOwnershipObtainer;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Text;
+using System.Text.Json;
 
 namespace Tests.Services
 {
@@ -33,7 +32,7 @@ namespace Tests.Services
 
             _syncJob = new SyncJob
             {
-                Id = Guid.NewGuid(),             
+                Id = Guid.NewGuid(),
                 Query = "<query>",
                 Status = "InProgress",
                 Period = 6,
@@ -48,7 +47,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestRegularSyncJobRun()
         {
-            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_syncJob));
             var properties = new Dictionary<string, object>
             {
                 { "CurrentPart", 1},
@@ -85,7 +84,7 @@ namespace Tests.Services
             _dryRunValue.SetupGet(x => x.DryRunEnabled).Returns(true);
             _syncJob.DryRunTimeStamp = DateTime.UtcNow.AddHours(-1);
 
-            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_syncJob));
             var properties = new Dictionary<string, object>
             {
                 { "CurrentPart", 1},

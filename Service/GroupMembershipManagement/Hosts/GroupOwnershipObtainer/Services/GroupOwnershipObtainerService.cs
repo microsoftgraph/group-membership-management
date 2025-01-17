@@ -3,13 +3,14 @@
 
 using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
+using SqlMembershipObtainer.Entities;
 using System.Collections.Concurrent;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace Services
 {
@@ -94,7 +95,7 @@ namespace Services
 
             var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmm");
             var fileName = $"/{groupId}/{timeStamp}_{runId}_GroupOwnershipObtainer_{currentPart}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
 
             return fileName;
         }
@@ -109,11 +110,10 @@ namespace Services
                     if (string.IsNullOrWhiteSpace(job.Query))
                         return;
 
-                    var queryParts = JArray.Parse(job.Query);
-                    var queryTypes = queryParts.SelectTokens("$..type")
-                                               .Select(x => x.Value<string>())
-                                               .Where(x => !string.IsNullOrWhiteSpace(x))
-                                               .Cast<string>()
+                    var queryParts = JsonNode.Parse(job.Query).AsArray();
+                    var queryTypes = queryParts.Select(x => x["type"])
+                                               .OfType<JsonValue>()
+                                               .Select(x => x.GetValue<string>())
                                                .Distinct()
                                                .ToList();
 

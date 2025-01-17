@@ -3,12 +3,10 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
+using NJsonSchema;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
-using NJsonSchema;
-using Newtonsoft.Json;
-using System.Collections.Generic;
 
 namespace Hosts.GroupOwnershipObtainer
 {
