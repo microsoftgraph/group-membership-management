@@ -6,8 +6,8 @@ using Azure.Core;
 using Azure.Monitor.Query;
 using Azure.Monitor.Query.Models;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Moq;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Tests.Mocks;
@@ -20,9 +20,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 using MockDatabaseSyncJobRepository = Repositories.SyncJobs.Tests.MockDatabaseSyncJobRepository;
-using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -268,8 +266,8 @@ namespace Services.Tests
                     Id = Guid.NewGuid(),
                     Period = period,
                     ScheduledDate = ScheduledDateBase.AddDays(-1 * i),
-                    Status = SyncStatus.Idle.ToString(),                   
-                    LastRunTime = LastRunTimeBase.AddDays(-1 * i)                   
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = LastRunTimeBase.AddDays(-1 * i)
                 };
 
                 jobs.Add(job);
@@ -294,7 +292,7 @@ namespace Services.Tests
             var rowsList = new List<string>();
             foreach (var group in groupRuntimes)
             {
-                var destinationJson = JsonConvert.ToString(group.Destination);
+                var destinationJson = JsonSerializer.Serialize(group.Destination);
                 rowsList.Add($"[{destinationJson},{group.Max},{group.Avg}]");
             }
 

@@ -1,19 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.Http;
+using Models;
+using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Newtonsoft.Json;
-using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
-using Services.Contracts;
 
 namespace Hosts.JobScheduler
 {
@@ -35,7 +34,7 @@ namespace Hosts.JobScheduler
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            var requestBody = JsonConvert.DeserializeObject<Dictionary<string, string>>(await req.Content.ReadAsStringAsync());
+            var requestBody = JsonSerializer.Deserialize<Dictionary<string, string>>(await req.Content.ReadAsStringAsync());
             var delayForDeploymentInMinutes = int.Parse(requestBody.GetValueOrDefault("DelayForDeploymentInMinutes"));
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction),
@@ -44,8 +43,7 @@ namespace Hosts.JobScheduler
                     StartTimeDelayMinutes = delayForDeploymentInMinutes
                 });
             var response = starter.CreateCheckStatusResponse(req, instanceId);
-
-            var responseDict = JsonConvert.DeserializeObject<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
+            var responseDict = JsonSerializer.Deserialize<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
             var statusQueryGetUri = responseDict.GetValueOrDefault("statusQueryGetUri");
 
             if (req.Headers.Contains("PlanUrl"))
@@ -66,7 +64,7 @@ namespace Hosts.JobScheduler
             var taskInstanceId = req.Headers.GetValues("TaskinstanceId").FirstOrDefault("NULL");
             var authToken = req.Headers.GetValues("AuthToken").FirstOrDefault("NULL");
 
-            var successBody = JsonConvert.SerializeObject(new
+            var successBody = JsonSerializer.Serialize(new
             {
                 name = "TaskCompleted",
                 taskId = taskInstanceId.ToString(),

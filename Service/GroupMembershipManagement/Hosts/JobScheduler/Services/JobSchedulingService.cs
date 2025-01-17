@@ -2,12 +2,12 @@
 // Licensed under the MIT license.
 
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services
@@ -163,8 +163,8 @@ namespace Services
             {
                 DateTime earliestTime = jobThreads.Min();
 
-                var serializedJob = JsonConvert.SerializeObject(job);
-                var updatedJob = JsonConvert.DeserializeObject<DistributionSyncJob>(serializedJob);
+                var serializedJob = JsonSerializer.Serialize(job);
+                var updatedJob = JsonSerializer.Deserialize<DistributionSyncJob>(serializedJob);
 
                 updatedJob.ScheduledDate = earliestTime;
                 var groupRuntime = runtimeMap.ContainsKey(job.Id.ToString()) ? runtimeMap[job.Id.ToString()] : runtimeMap["Default"];

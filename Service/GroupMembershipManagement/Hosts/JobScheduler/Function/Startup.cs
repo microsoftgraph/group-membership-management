@@ -8,11 +8,11 @@ using Hosts.JobScheduler;
 using Services;
 using Services.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Newtonsoft.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Azure.Identity;
 using Azure.Monitor.Query;
+using System.Text.Json;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -39,7 +39,7 @@ namespace Hosts.JobScheduler
             builder.Services.AddScoped<IJobSchedulerConfig>(services =>
             {
                 var jsonString = services.GetService<IOptions<JobSchedulerConfigString>>().Value.Value;
-                var jobSchedulerConfig = JsonConvert.DeserializeObject<JobSchedulerConfig>(jsonString);
+                var jobSchedulerConfig = JsonSerializer.Deserialize<JobSchedulerConfig>(jsonString);
                 jobSchedulerConfig.WorkspaceId = GetValueOrThrow("logAnalyticsCustomerId");
                 return jobSchedulerConfig;
             });
