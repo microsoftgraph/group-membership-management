@@ -252,6 +252,7 @@ export const strings: IStrings = {
       columnNames: {
         name: 'Name',
         type: 'Type',
+        email: 'Email',
         lastRun: 'Last Run',
         nextRun: 'Next Run',
         status: 'Status',

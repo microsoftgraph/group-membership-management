@@ -474,7 +474,7 @@ namespace Repositories.GraphGroups
                     {
                         var getRequestInformation = _graphServiceClient.Groups[groupId.ToString()].ToGetRequestInformation(requestConfiguration =>
                         {
-                            requestConfiguration.QueryParameters.Select = new[] { "id", "mailEnabled", "groupTypes", "securityEnabled", "displayName" };
+                            requestConfiguration.QueryParameters.Select = new[] { "id", "mailEnabled", "groupTypes", "securityEnabled", "displayName", "mail" };
                         });
 
                         var requestId = await batchRequest.AddBatchRequestStepAsync(getRequestInformation);
@@ -513,6 +513,7 @@ namespace Repositories.GraphGroups
                                 group.Type = "Distribution";
 
                             group.Name = graphGroup.DisplayName;
+                            group.Email = graphGroup.Mail;
                         }
 
                         groups.Add(group);

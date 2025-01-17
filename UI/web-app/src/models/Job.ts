@@ -6,6 +6,7 @@ export type Job = {
   targetGroupId: string;
   targetGroupType: string;
   targetGroupName: string;
+  email: string;
   startDate: string;
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;

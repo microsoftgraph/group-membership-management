@@ -6,6 +6,7 @@ export type JobEntity = {
   targetGroupId: string;
   targetGroupType: string;
   targetGroupName: string;
+  targetGroupEmail: string;
   startDate: string;
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;

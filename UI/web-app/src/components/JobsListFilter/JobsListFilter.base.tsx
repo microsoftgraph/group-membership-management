@@ -17,7 +17,7 @@ import {
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { IJobsListFilterProps, IJobsListFilterStyleProps, IJobsListFilterStyles } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
@@ -34,7 +34,6 @@ import {
   setFilterDestinationOwner,
   resetFilters
 } from '../../store/pagingBar.slice';
-import { searchDestinations } from '../../store/manageMembership.api';
 
 const getClassNames = classNamesFunction<IJobsListFilterStyleProps, IJobsListFilterStyles>();
 
@@ -125,34 +124,31 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const [statusSelectedItem, setStatusSelectedItem] = useState<IDropdownOption>(statusDropdownOptions[0]);
   const [actionRequiredSelectedItem, setActionRequiredSelectedItem] = useState<IDropdownOption>(actionRequiredDropdownOptions[0]);
   const [destinationTypeSelectedItem, setDestinationTypeSelectedItem] = useState<IDropdownOption>(typeDropdownOptions[0]);
+  const [destinationName, setDestinationName] = useState<string>();
   const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
-  const [selectedDestinations, setSelectedDestinations] = useState<IPersonaProps[]>([]);
   const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
   const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
   const dispatch = useDispatch<AppDispatch>();
-  const [inputValue, setInputValue] = useState('');
-  const debouncedSearch = useCallback(debounce((input: string) => {
-    dispatch(searchDestinations(input));
-  }, 50), []);
-  // const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
-  //   const inputGuid = newValue || '';
 
-  //   if (inputGuid !== '' && !isGuidValid(inputGuid)) {
-  //     setIdValidationErrorMessage(strings.JobsList.JobsListFilter.filters.ID.validationErrorMessage);
-  //   } else {
-  //     setIdValidationErrorMessage(undefined);
-  //   }
+  const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
+    const inputGuid = newValue || '';
 
-  //   setDestinationId(inputGuid);
-  //   dispatch(setFilterDestinationId(inputGuid));
-  // };
+    if (inputGuid !== '' && !isGuidValid(inputGuid)) {
+      setIdValidationErrorMessage(strings.JobsList.JobsListFilter.filters.ID.validationErrorMessage);
+    } else {
+      setIdValidationErrorMessage(undefined);
+    }
 
-  // const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
-  //   setDestinationName(newValue);
-  //   dispatch(setFilterDestinationName(newValue as string));
-  // };
+    setDestinationId(inputGuid);
+    dispatch(setFilterDestinationId(inputGuid));
+  };
+
+  const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
+    setDestinationName(newValue);
+    dispatch(setFilterDestinationName(newValue as string));
+  };
 
   const handleStatusChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setStatusSelectedItem(item as IDropdownOption);
@@ -188,27 +184,6 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     return input;
   }
 
-  const handleDestinationChanged = (items?: IPersonaProps[]): void => {
-    if (items && items.length > 0) {
-      setSelectedDestinations(items);
-      dispatch(setFilterDestinationName(items[0].id as string));
-    } else {
-      setSelectedDestinations([]);
-      dispatch(setFilterDestinationName(''));
-    }
-  };
-
-  const handleDestinationInputChanged = (input: string): string => {
-    if (input.trim()) {
-      dispatch(getPeoplePickerSuggestions(input));
-    }
-    return input;
-  };
-  const handleInputChange = (input: string): string => {
-    setInputValue(input);
-    debouncedSearch(input);
-    return input;
-  };
   const isGuidValid = (guid: string): boolean => {
     const guidRegex = new RegExp(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/);
     return guidRegex.test(guid);
@@ -222,11 +197,14 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const clearFilters = () => {
+    dispatch(setFilterDestinationId(''));
     dispatch(setFilterDestinationType(''));
     dispatch(setFilterDestinationName(''));
     dispatch(setFilterDestinationOwner(''));
     dispatch(setFilterStatus(''));
     dispatch(setFilterActionRequired(''));
+    setDestinationId('');
+    setDestinationName('');
     setSelectedOwners([]);
     setDestinationTypeSelectedItem(typeDropdownOptions[0]);
     setIdValidationErrorMessage(undefined);
@@ -286,7 +264,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
             horizontal
             tokens={{
               childrenGap: 18,
-              maxWidth: 1200,
+              maxWidth: 1400,
             }}
             horizontalAlign="space-between"
             className={classNames.filterInputsStack}
@@ -305,32 +283,13 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
             </Stack.Item>
 
             <Stack.Item align="start">
-              <Label>{strings.JobsList.JobsListFilter.filters.destinationName.label}</Label>
-              <NormalPeoplePicker
-                onResolveSuggestions={getPickerSuggestions}
-                pickerSuggestionsProps={{
-                  suggestionsHeaderText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.suggestionsHeaderText,
-                  noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
-                  loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
-                }}
-                key={'destination-people-picker'}
-                aria-label={strings.JobsList.JobsListFilter.filters.destinationName.label}
-                selectionAriaLabel={strings.JobsList.JobsListFilter.filters.destinationName.label}
-                removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.destinationName.label}
-                resolveDelay={300}
-                itemLimit={1}
-                selectedItems={selectedDestinations}
-                onInputChange={handleDestinationInputChanged}
-                onChange={handleDestinationChanged}
+              <TextField
+                label={strings.JobsList.JobsListFilter.filters.destinationName.label}
+                value={destinationName}
+                onChange={handleNameChanged}
+                placeholder={strings.JobsList.JobsListFilter.filters.destinationName.placeholder}
                 styles={{
-                  text: classNames.textFieldFieldGroupGuid
-                }}
-                pickerCalloutProps={{
-                  directionalHint: DirectionalHint.bottomAutoEdge,
-                  calloutWidth: 300
-                }}
-                inputProps={{
-                  placeholder: strings.JobsList.JobsListFilter.filters.destinationName.placeholder,
+                  fieldGroup: classNames.textFieldFieldGroupGuid,
                 }}
               />
             </Stack.Item>
@@ -356,6 +315,19 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
                 options={actionRequiredDropdownOptions}
                 styles={{
                   title: classNames.dropdownTitle,
+                }}
+              />
+            </Stack.Item>
+
+            <Stack.Item align="start">
+              <TextField
+                label={strings.JobsList.JobsListFilter.filters.ID.label}
+                value={destinationId}
+                onChange={handleIdChanged}
+                placeholder={strings.JobsList.JobsListFilter.filters.ID.placeholder}
+                errorMessage={idValidationErrorMessage}
+                styles={{
+                  fieldGroup: classNames.textFieldFieldGroupGuid,
                 }}
               />
             </Stack.Item>
@@ -405,11 +377,3 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     </div>
   );
 };
-
-function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
-  let timeout: NodeJS.Timeout;
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}

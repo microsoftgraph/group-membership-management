@@ -163,10 +163,19 @@ export const selectPagingOptions = (state: RootState) => {
   {
     filters.push("contains(Destination, '" + filterDestinationType + "')");
   }
-  if (filterDestinationName)
-  {
-    filters.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
+  if (filterDestinationName) {
+    let subConditions: string[] = [];
+  
+    subConditions.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
+    subConditions.push("contains(tolower(DestinationEmail/Email), tolower('" + filterDestinationName + "'))");
+  
+    if (isGuidValid(filterDestinationName)) {
+      subConditions.push("targetOfficeGroupId eq " + filterDestinationName);
+    }
+    const combinedSubFilter = "(" + subConditions.join(" or ") + ")";
+    filters.push(combinedSubFilter);
   }
+  
   if (filterDestinationOwner)
   {
     filters.push("DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")");
@@ -193,3 +202,8 @@ export const selectPagingOptions = (state: RootState) => {
 };
 
 export default pagingBarSlice.reducer;
+
+function isGuidValid(guid: string): boolean {
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return guidRegex.test(guid);
+}

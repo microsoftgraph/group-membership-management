@@ -111,6 +111,7 @@ namespace Services
                 )
                 {
                     TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null,
+                    TargetGroupEmail = targetGroups.ContainsKey(job.TargetOfficeGroupId)? targetGroups[job.TargetOfficeGroupId].Email : null,
                     TargetGroupType = type
                 };
 

@@ -251,6 +251,7 @@ export type IStrings = {
         nextRun: string;
         status: string;
         actionRequired: string;
+        email: string;
       };
     };
     MessageBar: {

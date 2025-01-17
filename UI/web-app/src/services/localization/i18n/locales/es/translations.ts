@@ -255,6 +255,7 @@ export const strings: IStrings = {
       columnNames: {
         name: 'Nombre',
         type: 'Tipo',
+        email: 'Correo electrónico',
         lastRun: 'Última sincronización',
         nextRun: 'Próxima sincronización',
         status: 'Status',

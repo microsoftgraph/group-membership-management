@@ -152,6 +152,16 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       showSortIconWhenUnsorted: true,
     },
     {
+      key: 'email',
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.email, 
+      fieldName: 'email',
+      minWidth: 439,
+      isResizable: true,
+      isSorted: sortKey === 'email',
+      isSortedDescending,
+      columnActionsMode: 0,
+    },
+    {
       key: 'lastSuccessfulRunTime',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.lastRun,
       fieldName: 'lastSuccessfulRunTime',

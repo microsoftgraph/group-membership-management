@@ -24,6 +24,7 @@ namespace WebApi.Models.DTOs
         public Guid SyncJobId { get; set; }
         public Guid TargetGroupId { get; set; }
         public string? TargetGroupName { get; set; }
+        public string? TargetGroupEmail { get; set; }
         public string? TargetGroupType { get; set; }
         public string Status { get; set; }
         public int Period { get; set; }

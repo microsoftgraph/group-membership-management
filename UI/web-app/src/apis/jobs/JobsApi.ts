@@ -60,6 +60,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
       targetGroupId: entity.targetGroupId,
       targetGroupType: entity.targetGroupType,
       targetGroupName: entity.targetGroupName,
+      email: entity.targetGroupEmail,
       startDate: entity.startDate,
       lastSuccessfulStartTime: entity.lastSuccessfulStartTime,
       lastSuccessfulRunTime: entity.lastSuccessfulRunTime,
