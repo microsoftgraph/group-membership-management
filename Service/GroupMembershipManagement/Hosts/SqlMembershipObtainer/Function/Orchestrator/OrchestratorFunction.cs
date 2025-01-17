@@ -1,24 +1,19 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Newtonsoft.Json;
-using SqlMembershipObtainer.Entities;
-using System.Net.Http;
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
-using System.Net;
-using Newtonsoft.Json.Linq;
-using Microsoft.Extensions.Primitives;
-using Repositories.Contracts;
 using Microsoft.Graph;
 using Models;
+using Repositories.Contracts;
+using SqlMembershipObtainer.Entities;
 using SqlMembershipObtainer.SubOrchestrator;
-using Microsoft.Data.SqlClient;
+using System;
+using System.Net;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
@@ -44,9 +39,9 @@ namespace SqlMembershipObtainer
 
             try
             {
-                var queryParts = JArray.Parse(syncJob.Query);
+                var queryParts = JsonNode.Parse(syncJob.Query).AsArray();
                 var currentPart = queryParts[mainRequest.CurrentPart - 1];
-                var currentQuery = currentPart.Value<JObject>("source");
+                var currentQuery = currentPart.AsObject()["source"];
                 var currentQueryAsString = Convert.ToString(currentQuery);
 
                 if (string.IsNullOrWhiteSpace(currentQueryAsString))
@@ -81,7 +76,7 @@ namespace SqlMembershipObtainer
                             return;
                         }
                     }
-                    catch (JsonReaderException)
+                    catch (Exception)
                     {
                         await context.CallActivityAsync(nameof(LoggerFunction),
                                 new LoggerRequest
@@ -105,7 +100,7 @@ namespace SqlMembershipObtainer
                 }
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob});
-                var query = JsonConvert.DeserializeObject<Query>(currentQueryAsString);
+                var query = JsonSerializer.Deserialize<Query>(currentQueryAsString);
                 var graphProfilesResponse = await context.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
                             nameof(OrganizationProcessorFunction),
                             new OrganizationProcessorRequest
@@ -198,7 +193,7 @@ namespace SqlMembershipObtainer
                 var message = ex.Message;
                 var status = SyncStatus.Error;
 
-                if (ex.GetType() == typeof(JsonReaderException))
+                if (ex.GetType() == typeof(System.Text.Json.JsonException) || ex.GetType().Name == "JsonReaderException")
                 {
                     message = $"The job Id:{syncJob.Id} Part#{mainRequest.CurrentPart} does not have a valid query!";
                     status = SyncStatus.QueryNotValid;

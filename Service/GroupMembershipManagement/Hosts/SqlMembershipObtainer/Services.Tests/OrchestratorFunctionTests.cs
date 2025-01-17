@@ -9,19 +9,19 @@ using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
-using SqlMembershipObtainer;
-using SqlMembershipObtainer.SubOrchestrator;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
 using Polly;
+using SqlMembershipObtainer;
+using SqlMembershipObtainer.SubOrchestrator;
+using System.Net;
 
 namespace Services.Tests
 {
@@ -79,7 +79,7 @@ namespace Services.Tests
 
             _graphProfileInformationResponse = new GraphProfileInformationResponse
             {
-                GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(_profiles)),
+                GraphProfiles = TextCompressor.Compress(JsonSerializer.Serialize(_profiles)),
                 GraphProfileCount = _profiles.Count
             };
 

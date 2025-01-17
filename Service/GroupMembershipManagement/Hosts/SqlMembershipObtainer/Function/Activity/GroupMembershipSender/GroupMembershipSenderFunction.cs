@@ -1,14 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
+using Models.Helpers;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
@@ -29,7 +29,7 @@ namespace SqlMembershipObtainer
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupMembershipSenderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var profiles = JsonConvert.DeserializeObject<List<GraphProfileInformation>>(TextCompressor.Decompress(request.Profiles));
+            var profiles = JsonSerializer.Deserialize<List<GraphProfileInformation>>(TextCompressor.Decompress(request.Profiles));
             var response = await _sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary, request.AdaptiveCardTemplateDirectory);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupMembershipSenderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

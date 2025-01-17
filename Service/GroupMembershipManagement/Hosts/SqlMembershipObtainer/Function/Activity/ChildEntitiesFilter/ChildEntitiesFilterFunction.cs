@@ -1,15 +1,15 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
-using SqlMembershipObtainer.SubOrchestrator;
+using Models.Helpers;
 using Repositories.Contracts;
 using Services.Contracts;
+using SqlMembershipObtainer.SubOrchestrator;
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
@@ -38,7 +38,7 @@ namespace SqlMembershipObtainer
 
             return new GraphProfileInformationResponse
             {
-                GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(profiles)),
+                GraphProfiles = TextCompressor.Compress(JsonSerializer.Serialize(profiles)),
                 GraphProfileCount = profiles.Count
             };
         }

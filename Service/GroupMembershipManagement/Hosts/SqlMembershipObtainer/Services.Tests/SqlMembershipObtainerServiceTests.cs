@@ -6,7 +6,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Tests.Helpers;
@@ -15,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Services.Contracts;
+using System.Text.Json;
 
 namespace Services.Tests
 {
@@ -44,7 +44,7 @@ namespace Services.Tests
             blobStorageRepository.Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
                                     .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
                                     {
-                                        groupMembership = JsonConvert.DeserializeObject<GroupMembership>(content);
+                                        groupMembership = JsonSerializer.Deserialize<GroupMembership>(content);
                                     });
 
             var currentPart = 1;

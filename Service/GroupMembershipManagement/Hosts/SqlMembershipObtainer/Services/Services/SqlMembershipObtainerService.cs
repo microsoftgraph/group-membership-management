@@ -4,12 +4,12 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Data.SqlClient;
 using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using SqlMembershipObtainer.Entities;
 using System.Data;
+using System.Text.Json;
 
 namespace Services
 {
@@ -142,7 +142,7 @@ namespace Services
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             fileName = $"/{groupId}/{timeStamp}_{runId}_SqlMembership_{currentPart}.json";
             var start = DateTime.UtcNow;
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMemberToBeSent));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMemberToBeSent));
             var end = DateTime.UtcNow;
             await _loggingRepository.LogMessageAsync(new LogMessage
             {

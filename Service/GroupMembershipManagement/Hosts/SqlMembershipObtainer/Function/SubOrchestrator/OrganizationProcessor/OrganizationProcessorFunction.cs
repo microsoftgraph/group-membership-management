@@ -1,15 +1,15 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
-using Newtonsoft.Json;
+using Repositories.Contracts;
 using SqlMembershipObtainer.SubOrchestrator;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Repositories.Contracts;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 
 namespace SqlMembershipObtainer
 {
@@ -66,11 +66,11 @@ namespace SqlMembershipObtainer
                                                         TableName = tableName
                                                     });
 
-                graphProfileInformation = JsonConvert.DeserializeObject<List<GraphProfileInformation>>(TextCompressor.Decompress(res.GraphProfiles));
+                graphProfileInformation = JsonSerializer.Deserialize<List<GraphProfileInformation>>(TextCompressor.Decompress(res.GraphProfiles));
                 graphProfileInformation = graphProfileInformation.GroupBy(user => user.Id).Select(userGrp => userGrp.First()).ToList();
                 response = new GraphProfileInformationResponse
                 {
-                    GraphProfiles = TextCompressor.Compress(JsonConvert.SerializeObject(graphProfileInformation)),
+                    GraphProfiles = TextCompressor.Compress(JsonSerializer.Serialize(graphProfileInformation)),
                     GraphProfileCount = res.GraphProfileCount
                 };
             }
