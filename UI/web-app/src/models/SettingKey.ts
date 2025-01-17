@@ -7,4 +7,5 @@ export const enum SettingKey {
     PrivacyPolicyUrl = 2,
     UIUrl = 3,
     CanReviewOwnSubmissions = 4,
+    CreateGroupFeatureEnabled = 5,
 }

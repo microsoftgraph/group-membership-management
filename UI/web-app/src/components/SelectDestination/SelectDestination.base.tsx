@@ -11,7 +11,11 @@ import {
   Spinner,
   NormalPeoplePicker,
   IPersonaProps,
-  IComboBoxOption, ISelectableOption, Text
+  IComboBoxOption,
+  ISelectableOption,
+  Text,
+  ChoiceGroup,
+  IChoiceGroupOption,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -26,27 +30,34 @@ import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipSearchResults,
   manageMembershipLoadingSearchResults,
-  manageMembershipGroupOnboardingStatus
+  manageMembershipGroupOnboardingStatus,
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
+import { selectCreateGroupFeatureEnabled } from '../../store/settings.slice';
 import { OnboardingStatus } from '../../models';
 import { EndpointsList } from '../EndpointsList';
+import { CreateGroup } from '../CreateGroup';
 
-const getClassNames = classNamesFunction<
-  ISelectDestinationStyleProps,
-  ISelectDestinationStyles
->();
+const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
 export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationProps> = (props) => {
-  const { className, styles, selectedDestination, onSearchDestinationChange } = props;
+  const { className, styles, selectedDestination, onSearchDestinationChange, onGroupCreated } = props;
   const strings = useStrings();
-  const classNames: IProcessedStyleSet<ISelectDestinationStyles> = getClassNames(
-    styles,
+  const classNames: IProcessedStyleSet<ISelectDestinationStyles> = getClassNames(styles, {
+    className,
+    theme: useTheme(),
+  });
+
+  const destinationActionOptions: IChoiceGroupOption[] = [
     {
-      className,
-      theme: useTheme(),
-    }
-  );
+      key: 'Create',
+      text: strings.ManageMembership.labels.createNewGroup,
+    },
+    {
+      key: 'Select',
+      text: strings.ManageMembership.labels.selectDestination,
+    },
+  ];
 
   const optionsDestinationType: IComboBoxOption[] = [
     {
@@ -65,32 +76,33 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       disabled: true,
     },
   ];
+
   const onRenderValueComboBoxOptions = (
-    props?: ISelectableOption, 
+    props?: ISelectableOption,
     defaultRender?: (props?: ISelectableOption) => JSX.Element | null
   ): JSX.Element | null => {
     return (
-      <div className = {classNames.comboBoxOptionContainer}>
+      <div className={classNames.comboBoxOptionContainer}>
         <div>
-          <Text>
-            {props?.text}
-          </Text>
+          <Text>{props?.text}</Text>
         </div>
         <div>
-          <Text variant='tiny' styles={{root: classNames.comboBoxOptionCodeText}}>
+          <Text variant="tiny" styles={{ root: classNames.comboBoxOptionCodeText }}>
             {props?.data?.description}
           </Text>
         </div>
       </div>
     );
-  }; 
+  };
   const mapDestinationToPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
     if (!destination) return [];
 
-    return [{
-      key: destination.id,
-      text: destination.name,
-    }];
+    return [
+      {
+        key: destination.id,
+        text: destination.name,
+      },
+    ];
   };
 
   const dispatch = useDispatch<AppDispatch>();
@@ -99,12 +111,17 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
+  const [createNewGroup, setCreateNewGroup] = useState(false);
+  const isCreateGroupEnabled = useSelector(selectCreateGroupFeatureEnabled);
 
   const [inputValue, setInputValue] = useState('');
 
-  const debouncedSearch = useCallback(debounce((input: string) => {
-    dispatch(searchDestinations(input));
-  }, 50), []);
+  const debouncedSearch = useCallback(
+    debounce((input: string) => {
+      dispatch(searchDestinations(input));
+    }, 50),
+    []
+  );
 
   const handleInputChange = (input: string): string => {
     setInputValue(input);
@@ -114,35 +131,35 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const hasRequiredEndpoints = () => {
     if (!selectedDestinationEndpoints) return false;
-    return ["Outlook", "Yammer", "SharePoint", "SecurityGroup"].some(endpoint => selectedDestinationEndpoints.includes(endpoint));
+    return ['Outlook', 'Yammer', 'SharePoint', 'SecurityGroup'].some((endpoint) =>
+      selectedDestinationEndpoints.includes(endpoint)
+    );
   };
 
-  const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`
+  const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`;
 
-  const appIdNotOwnerWarning = onboardingStatus === OnboardingStatus.AppIdNotOwner ? (
-    <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.appIdNotOwnerWarning}
-      {' '} 
+  const appIdNotOwnerWarning =
+    onboardingStatus === OnboardingStatus.AppIdNotOwner ? (
+      <div className={classNames.ownershipWarning}>
+        {strings.ManageMembership.labels.appIdNotOwnerWarning}{' '}
         <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
           {strings.ManageMembership.labels.clickHere}
-        </a>.
-    </div>
-  ) : null;
+        </a>
+        .
+      </div>
+    ) : null;
 
-  const userNotOwnerWarning = onboardingStatus === OnboardingStatus.UserNotOwner ? (
-    <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.userNotOwnerWarning}
-    </div>
-  ) : null;
+  const userNotOwnerWarning =
+    onboardingStatus === OnboardingStatus.UserNotOwner ? (
+      <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.userNotOwnerWarning}</div>
+    ) : null;
 
-  const alreadyOnboardedWarning = onboardingStatus === OnboardingStatus.Onboarded ? (
-    <div className={classNames.ownershipWarning}>
-      {strings.ManageMembership.labels.alreadyOnboardedWarning}
-    </div>
-  ) : null;
+  const alreadyOnboardedWarning =
+    onboardingStatus === OnboardingStatus.Onboarded ? (
+      <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.alreadyOnboardedWarning}</div>
+    ) : null;
 
-  useEffect(() => {
-  }, [dispatch, groupPickerSuggestions]);
+  useEffect(() => {}, [dispatch, groupPickerSuggestions]);
 
   const getPickerSuggestions = async (
     text: string,
@@ -150,60 +167,85 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   ): Promise<IPersonaProps[]> => {
     return text && groupPickerSuggestions ? groupPickerSuggestions : [];
   };
-  const visibleOptionsDestinationType = optionsDestinationType.filter(
-    (option) => !option.disabled
-  );
+  const visibleOptionsDestinationType = optionsDestinationType.filter((option) => !option.disabled);
+
+  const onDestinationActionChange = (
+    ev?: React.FormEvent<HTMLElement | HTMLInputElement>,
+    option?: IChoiceGroupOption
+  ): void => {
+    if (option?.key === 'Create') {
+      setCreateNewGroup(true);
+    } else {
+      setCreateNewGroup(false);
+    }
+  };
+
   return (
     <div className={classNames.root}>
       <PageSection>
         <div className={classNames.selectDestinationContainer}>
-        <ComboBox
-            placeholder={strings.ManageMembership.labels.selectDestinationTypePlaceholder}
-            label={strings.ManageMembership.labels.selectDestinationType}
-            options={visibleOptionsDestinationType}
-            required
-            selectedKey={'Group'}
-            onRenderOption={onRenderValueComboBoxOptions}
-            styles={{root: classNames.peoplePicker }}
-          />
-          <div>
-            {strings.ManageMembership.labels.searchDestination}
-            <NormalPeoplePicker
-              onResolveSuggestions={getPickerSuggestions}
-              pickerSuggestionsProps={{
-                suggestionsHeaderText: strings.ManageMembership.labels.searchGroupSuggestedText,
-                noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
-                loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
-              }}
-              key={'normal'}
-              aria-label={strings.ManageMembership.labels.searchDestination}
-              selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
-              removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
-              resolveDelay={600}
-              itemLimit={1}
-              selectedItems={selectedDestinationPersona}
-              onInputChange={handleInputChange}
-              onChange={onSearchDestinationChange}
-              styles={{ text: classNames.peoplePicker }}
-              pickerCalloutProps={{ calloutMinWidth: 500 }}
+          {isCreateGroupEnabled && (
+            <ChoiceGroup
+              label={strings.ManageMembership.labels.selectOrCreateGroup}
+              options={destinationActionOptions}
+              onChange={(ev, option) => onDestinationActionChange(ev, option)}
+              selectedKey={createNewGroup ? 'Create' : 'Select'}
             />
-          </div>
-          <div className={classNames.resultsContainer}>
-            {!hasRequiredEndpoints() && (
-              <div className={classNames.spinnerContainer}>
-                {loadingSearchResults ? <Spinner /> : null}
+          )}
+          {createNewGroup ? (
+            <CreateGroup onGroupCreated={onGroupCreated} />
+          ) : (
+            <>
+              <ComboBox
+                placeholder={strings.ManageMembership.labels.selectDestinationTypePlaceholder}
+                label={strings.ManageMembership.labels.selectDestinationType}
+                options={visibleOptionsDestinationType}
+                required
+                selectedKey={'Group'}
+                onRenderOption={onRenderValueComboBoxOptions}
+                styles={{ root: classNames.peoplePicker }}
+              />
+              <div>
+                {strings.ManageMembership.labels.searchDestination}
+                <NormalPeoplePicker
+                  onResolveSuggestions={getPickerSuggestions}
+                  pickerSuggestionsProps={{
+                    suggestionsHeaderText: strings.ManageMembership.labels.searchGroupSuggestedText,
+                    noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
+                    loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+                  }}
+                  key={'normal'}
+                  aria-label={strings.ManageMembership.labels.searchDestination}
+                  selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
+                  removeButtonAriaLabel={
+                    strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel
+                  }
+                  resolveDelay={600}
+                  itemLimit={1}
+                  selectedItems={selectedDestinationPersona}
+                  onInputChange={handleInputChange}
+                  onChange={onSearchDestinationChange}
+                  styles={{ text: classNames.peoplePicker }}
+                  pickerCalloutProps={{ calloutMinWidth: 500 }}
+                />
               </div>
-            )}
-            {selectedDestination && selectedDestinationEndpoints && (
-              <EndpointsList
-                endpoints={selectedDestinationEndpoints}
-                groupName={selectedDestination.name}
-                showOutlookWarning={true}
-              />)}
-              {appIdNotOwnerWarning}
-              {userNotOwnerWarning}
-              {alreadyOnboardedWarning}
-          </div>
+              <div className={classNames.resultsContainer}>
+                {!hasRequiredEndpoints() && (
+                  <div className={classNames.spinnerContainer}>{loadingSearchResults ? <Spinner /> : null}</div>
+                )}
+                {selectedDestination && selectedDestinationEndpoints && (
+                  <EndpointsList
+                    endpoints={selectedDestinationEndpoints}
+                    groupName={selectedDestination.name}
+                    showOutlookWarning={true}
+                  />
+                )}
+                {appIdNotOwnerWarning}
+                {userNotOwnerWarning}
+                {alreadyOnboardedWarning}
+              </div>
+            </>
+          )}
         </div>
       </PageSection>
     </div>

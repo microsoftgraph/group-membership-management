@@ -18,6 +18,7 @@ import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
+import { createGroup } from './groups.api';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -37,6 +38,10 @@ export interface ManageMembershipState {
     advancedViewQuery?: string;
     sourceParts: ISourcePart[];
     isEditingExistingJob: boolean;
+    createdGroupId?: string | undefined;
+    createdGroupName?: string | undefined;
+    createGroupLoading: boolean;
+    createGroupErrorMessage?: string | undefined;
 }
 
 const initialState: ManageMembershipState = {
@@ -66,6 +71,10 @@ const initialState: ManageMembershipState = {
     advancedViewQuery: '',
     sourceParts: [],
     isEditingExistingJob: false,
+    createdGroupId: undefined,
+    createdGroupName: undefined,
+    createGroupLoading: false,
+    createGroupErrorMessage: undefined,
 };
 
 const manageMembershipSlice = createSlice({
@@ -270,6 +279,12 @@ const manageMembershipSlice = createSlice({
                 Object.assign(state, initialState);
             }
         },
+        setCreatedGroupName: (state, action: PayloadAction<string | undefined>) => {
+            state.createdGroupName = action.payload;
+        },
+        setCreateGroupErrorMessage: (state, action: PayloadAction<string>) => {
+            state.createGroupErrorMessage = action.payload;
+        }
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
@@ -289,6 +304,29 @@ const manageMembershipSlice = createSlice({
             if (state.selectedDestination?.id === action.meta.arg) {
                 state.selectedDestination.endpoints = action.payload;
             }
+        });
+        builder.addCase(createGroup.pending, (state) => {
+            state.createGroupLoading = true;
+        });
+        builder.addCase(createGroup.fulfilled, (state, action) => {
+            state.createGroupLoading = false;
+            if (action.payload.groupId && state.createdGroupName) {
+                state.createdGroupId = action.payload.groupId;
+                state.selectedDestination = {
+                    ...state.selectedDestination,
+                    id: action.payload.groupId,
+                    name: state.createdGroupName,
+                    type: 'Group',
+                };
+                state.onboardingStatus = OnboardingStatus.ReadyForOnboarding;
+            }
+            if (action.payload.responseData){
+                state.createGroupErrorMessage = action.payload.responseData;
+            }
+        });
+        builder.addCase(createGroup.rejected, (state, action) => {
+            state.createGroupLoading = false;
+            state.createGroupErrorMessage = action.error.message;
         });
     },
 });
@@ -320,7 +358,9 @@ export const {
     deleteSourcePart,
     clearSourceParts,
     setJobDetailsForExistingJob,
-    setIsEditingExistingJob
+    setIsEditingExistingJob,
+    setCreatedGroupName,
+    setCreateGroupErrorMessage
 } = manageMembershipSlice.actions;
 
 // General
@@ -344,6 +384,10 @@ export const manageMembershipSearchResults = (state: RootState) => state.manageM
 export const manageMembershipLoadingSearchResults = (state: RootState) => state.manageMembership.loadingSearchResults;
 export const manageMembershipSelectedDestinationEndpoints = (state: RootState) => state.manageMembership.selectedDestination?.endpoints;
 export const manageMembershipGroupOnboardingStatus = (state: RootState) => state.manageMembership.onboardingStatus;
+export const manageMembershipCreatedGroupId = (state: RootState) => state.manageMembership.createdGroupId;
+export const manageMembershipCreatedGroupName = (state: RootState) => state.manageMembership.createdGroupName;
+export const manageMembershipCreateGroupLoading = (state: RootState) => state.manageMembership.createGroupLoading;
+export const manageMembershipCreateGroupErrorMessage = (state: RootState) => state.manageMembership.createGroupErrorMessage;
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
     return state.manageMembership.onboardingStatus === OnboardingStatus.ReadyForOnboarding;
 };

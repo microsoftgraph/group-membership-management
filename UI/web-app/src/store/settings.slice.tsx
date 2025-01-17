@@ -151,6 +151,15 @@ export const selectCanReviewOwnSubmissions = (state: RootState) => {
   return canReviewOwnSubmissionSetting ? canReviewOwnSubmissionSetting.settingValue === 'true' : undefined;
 }
 
+export const selectCreateGroupFeatureEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const createGroupFeatureEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.CreateGroupFeatureEnabled);
+  return createGroupFeatureEnabledSetting ? createGroupFeatureEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

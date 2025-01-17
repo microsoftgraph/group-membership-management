@@ -150,6 +150,8 @@ export type IStrings = {
         general: string;
         reviewOwnSubmissionTitle: string;
         reviewOwnSubmissionDescription: string;
+        createGroupTitle: string;
+        createGroupDescription: string;
       }
     }
   },
@@ -334,8 +336,11 @@ export type IStrings = {
       pageTitle: string;
       step1title: string;
       step1description: string;
+      selectOrCreateGroup: string;
       selectDestinationType: string;
       selectDestinationTypePlaceholder: string;
+      selectDestination: string;
+      createNewGroup: string;
       searchDestination: string;
       searchGroupSuggestedText: string;
       noResultsFound: string;
@@ -395,6 +400,16 @@ export type IStrings = {
       clickHere: string;
       requestor: string;
       requestorInfo: string;
+    },
+    CreateGroup: {
+      createNewGroup: string;
+      groupName: string;
+      groupNamePlaceholder: string;
+      groupAlias: string;
+      groupAliasPlaceholder: string;
+      creating: string;
+      created: string;
+      createGroup: string;
     }
   };
   copy: string;

@@ -9,6 +9,8 @@ import { ISettingsApi } from './settings/ISettingsApi';
 import { SettingsApi } from './settings/SettingsApi';
 import { ISqlMembershipSourcesApi, SqlMembershipSourcesApi } from './sqlMembershipSources';
 import { IOperationsApi, OperationsApi} from './operations';
+import { IDestinationsApi } from './destinations/IDestinationsApi';
+import { DestinationsApi } from './destinations/DestinationsApi';
 
 export class GMMApi implements IGMMApi {
   private _jobsApi: IJobsApi;
@@ -16,6 +18,7 @@ export class GMMApi implements IGMMApi {
   private _rolesApi: IRolesApi;
   private _sqlMembershipSourcesApi: ISqlMembershipSourcesApi;
   private _operationsApi: IOperationsApi;
+  private _destinationsApi: IDestinationsApi;
 
   constructor(options: ApiOptions) {
     const { baseUrl } = options;
@@ -24,6 +27,7 @@ export class GMMApi implements IGMMApi {
     this._rolesApi = new RolesApi({ ...options, baseUrl: `${baseUrl}/roles` });
     this._sqlMembershipSourcesApi = new SqlMembershipSourcesApi({ ...options, baseUrl: `${baseUrl}/sqlMembershipSources` });
     this._operationsApi = new OperationsApi({ ...options, baseUrl: `${baseUrl}/operations` });
+    this._destinationsApi = new DestinationsApi({ ...options, baseUrl: `${baseUrl}/destinations` });
   }
 
   public get jobs(): IJobsApi {
@@ -40,5 +44,8 @@ export class GMMApi implements IGMMApi {
   }
   public get operationsApi(): IOperationsApi {
     return this._operationsApi;
+  }
+  public get destinations(): IDestinationsApi {
+    return this._destinationsApi;
   }
 }

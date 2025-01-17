@@ -152,7 +152,9 @@ export const strings: IStrings = {
       labels: {
         general: "General",
         reviewOwnSubmissionTitle: "Submission Reviewers permissions",
-        reviewOwnSubmissionDescription: "Can submission reviewers review their own submissions?"
+        reviewOwnSubmissionDescription: "Can submission reviewers review their own submissions?",
+        createGroupTitle: "Create Group feature enabled",
+        createGroupDescription: "Allow users to create groups in your organization.",
       }
     }
   },
@@ -339,8 +341,11 @@ export const strings: IStrings = {
       pageTitle: 'Manage Membership',
       step1title: 'Step 1: Select Destination',
       step1description: 'Please select the destination type and the destination whose membership you want to manage.',
+      selectOrCreateGroup: 'Select or create a group',
       selectDestinationType: 'Select Destination Type',
       selectDestinationTypePlaceholder: 'Select an option',
+      selectDestination: 'Select existing destination',
+      createNewGroup: 'Create a new group',
       searchDestination: 'Search destination',
       searchGroupSuggestedText: 'Suggested Groups',
       noResultsFound: 'No results found',
@@ -400,6 +405,16 @@ export const strings: IStrings = {
       clickHere: 'Click here',
       requestor: 'Requestor',
       requestorInfo: 'The requestor is the person who initially requested that GMM manage this destination\'s membership. This person must be an owner of the destination. This helps us track who to reach out to if we have questions about the initial onboarding. Otherwise, the requestor has no additional rights to the destination than any other owner.',
+    },
+    CreateGroup: {
+      createNewGroup: 'Create New Group',
+      groupName: 'Group Name',
+      groupNamePlaceholder: 'Enter the name of the group',
+      groupAlias: 'Group alias',
+      groupAliasPlaceholder: 'Enter the alias of the group',
+      creating: 'Creating...',
+      created: 'Created',
+      createGroup: 'Create group',
     }
   },
   copy: 'Copy',

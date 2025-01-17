@@ -43,7 +43,10 @@ import {
   manageMembershipCompositeQuery,
   clearSourceParts,
   manageMembershipRequestor,
-  manageMembershipAdvancedViewQuery
+  manageMembershipAdvancedViewQuery,
+  manageMembershipCreatedGroupId,
+  setCreatedGroupName,
+  manageMembershipCreatedGroupName
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -58,11 +61,12 @@ import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
-import { SyncStatus } from '../../models';
+import { PostGroupResponse, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
+import { createGroup } from '../../store/groups.api';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -98,6 +102,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const [isPostingJob, setIsPostingJob] = useState(false);
   const [isEditingJob, setIsEditingJob] = useState(false);
   const currentStep = useSelector(manageMembershipCurrentStep);
+  const [isStep1ConditionsMet, setIsStep1ConditionsMet] = useState(false);  
   const hasChanges = useSelector(manageMembershipHasChanges);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
@@ -134,6 +139,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(setJobDetailsForExistingJob(jobDetailsRef.current));
     }
   }, [dispatch, jobDetailsRef.current]);
+  
+  useEffect(() => {
+    setIsStep1ConditionsMet(!!selectedDestination && isGroupReadyForOnboarding === true);
+  }, [selectedDestination, isGroupReadyForOnboarding]);
 
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
   const allSourcePartsValid = useSelector(areAllSourcePartsValid);
@@ -141,6 +150,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const period = useSelector(manageMembershipPeriod);
   const thresholdPercentageForAdditions = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
+  const createdGroupId = useSelector(manageMembershipCreatedGroupId);
+  const createdGroupName = useSelector(manageMembershipCreatedGroupName);
   const currentUser = useSelector(selectAccountUsername) ?? '';
   const inputRequestor = useSelector(manageMembershipRequestor);
   const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
@@ -175,6 +186,23 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(setSelectedDestination(undefined));
     }
   };
+
+  const handleGroupCreated = async (groupName: string, groupAlias: string) => {
+    await dispatch(setCreatedGroupName(groupName));
+    await dispatch(createGroup({ groupName, groupAlias }));
+  };
+
+  useEffect(() => {
+    if(createdGroupId && createdGroupName){
+      const selectedDestination: Destination = {
+        id: createdGroupId,
+        name: createdGroupName,
+        type: 'GroupMembership' // Make type configurable once we support Teams Channels
+      };
+      dispatch(setSelectedDestination(selectedDestination));
+      dispatch(getGroupEndpoints(createdGroupId));
+    }
+  }, [createdGroupId, createdGroupName, dispatch]);
 
   const handleBackToDashboardButtonClick = () => {
     if (hasChanges){
@@ -297,7 +325,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   };
 
-  const isStep1ConditionsMet = selectedDestination && isGroupReadyForOnboarding === true;
   const isStep3ConditionsMet = isAdvancedQueryValid || allSourcePartsValid;
   let isNextDisabled = false;
 
@@ -326,6 +353,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
               <SelectDestination
                 selectedDestination={selectedDestination}
                 onSearchDestinationChange={handleSearchDestinationChange}
+                onGroupCreated={handleGroupCreated}
               />}
           />}
           {currentStep === OnboardingSteps.RunConfiguration && <OnboardingStep

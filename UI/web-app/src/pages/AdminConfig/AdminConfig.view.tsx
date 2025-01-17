@@ -187,6 +187,12 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
         onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
         generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
       />
+      <GeneralSetting
+        title={strings.GeneralSettings.labels.createGroupTitle}
+        description={strings.GeneralSettings.labels.createGroupDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
+        generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
+      />
     </div>
   );
 }
@@ -201,6 +207,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.PrivacyPolicyUrl]: true,
     [SettingKey.UIUrl]: true,
     [SettingKey.CanReviewOwnSubmissions]: true,
+    [SettingKey.CreateGroupFeatureEnabled]: true,
   });
 
   useEffect(() => {

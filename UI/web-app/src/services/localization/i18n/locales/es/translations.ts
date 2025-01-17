@@ -154,7 +154,9 @@ export const strings: IStrings = {
       labels: {
         general: "General",
         reviewOwnSubmissionTitle: "Permisos de los Verificadores de Solicitud",
-        reviewOwnSubmissionDescription: "¿Pueden los Verificadores de Solicitud aceptar o rechazar su propia solicitud?"
+        reviewOwnSubmissionDescription: "¿Pueden los Verificadores de Solicitud aceptar o rechazar su propia solicitud?",
+        createGroupTitle: "Crear grupo habilitado",
+        createGroupDescription: "¿Debería GMM permitir que los propietarios de grupos creen nuevos grupos?",
       }
     }
   },
@@ -342,9 +344,12 @@ export const strings: IStrings = {
       pageTitle: 'Manejo de Membresía',
       step1title: 'Paso 1: Selecciona el destino',
       step1description: 'Por favor selecciona el tipo de destino y el destino cuya membresía quieres administrar.',
+      selectOrCreateGroup: 'Seleccionar o crear un grupo',
       selectDestinationType: 'Seleccionar tipo de destino',
       searchGroupSuggestedText: 'Grupos sugeridos',
       searchDestination: 'Buscar destino',
+      selectDestination: 'Seleccionar destino existente',
+      createNewGroup: 'Crear un nuevo grupo',
       selectDestinationTypePlaceholder: 'Buscar un grupo',
       noResultsFound: 'No se encontraron resultados',
       appsUsed: 'Este grupo utiliza las siguientes aplicaciones.',
@@ -403,6 +408,16 @@ export const strings: IStrings = {
       clickHere: 'Haz click aquí',
       requestor: 'Solicitante',
       requestorInfo: 'El solicitante es la persona que inicialmente solicitó que GMM gestione la membresía de este destino. Esta persona debe ser propietaria del destino. Esto nos ayuda a rastrear a quién contactar si tenemos preguntas sobre la sincronización inicial. De lo contrario, el solicitante no tiene más derechos sobre el destino que cualquier otro propietario.'
+    },
+    CreateGroup: {
+      createNewGroup: 'Crear un nuevo grupo',
+      groupName: 'Nombre del nuevo grupo',
+      groupNamePlaceholder: 'Nombre del nuevo grupo',
+      groupAlias: 'Alias del nuevo grupo',
+      groupAliasPlaceholder: 'Alias del nuevo grupo',
+      creating: 'Creando...',
+      created: 'Creado',
+      createGroup: 'Crear grupo',
     }
   },
   copy: 'Copiar',

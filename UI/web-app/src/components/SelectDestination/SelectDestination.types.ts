@@ -42,4 +42,5 @@ export interface ISelectDestinationProps
   styles?: IStyleFunctionOrObject<ISelectDestinationStyleProps, ISelectDestinationStyles>;
   onSearchDestinationChange?: (selectedDestinations: IPersonaProps[] | undefined) => void;
   selectedDestination?: Destination;
+  onGroupCreated: (groupName: string, groupAlias: string) => void;
 }
