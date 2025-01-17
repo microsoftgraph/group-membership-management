@@ -91,6 +91,7 @@ export const jobsSlice = createSlice({
       state.selectedJob = action.payload;
     });
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
+      state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
 
@@ -102,9 +103,9 @@ export const jobsSlice = createSlice({
     builder.addCase(getGroupDetails.fulfilled, (state, action) => {
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
-      console.log("state.selectedJob", state.selectedJob);
     });
     builder.addCase(getGroupDetails.rejected, (state, action) => {
+      state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
 
@@ -118,6 +119,7 @@ export const jobsSlice = createSlice({
       state.selectedJob = action.payload;
     });
     builder.addCase(getChannelDetails.rejected, (state, action) => {
+      state.selectedJobLoading = false;
       state.getJobDetailsError = action.error.message;
     });
 
