@@ -1,14 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer

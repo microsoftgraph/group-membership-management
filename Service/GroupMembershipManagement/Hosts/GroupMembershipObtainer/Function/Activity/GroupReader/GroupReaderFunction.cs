@@ -3,10 +3,9 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
@@ -66,9 +65,10 @@ namespace Hosts.GroupMembershipObtainer
 
         public (AzureADGroup Group, string GroupId) GetSourceGroup(GroupReaderRequest request)
         {
-            var queryParts = JArray.Parse(request.SyncJob.Query);
+            var queryParts = JsonNode.Parse(request.SyncJob.Query).AsArray();
             var currentPart = queryParts[request.CurrentPart - 1];
-            var id = currentPart.Value<string>("source");
+            var currentQuery = currentPart.AsObject()["source"];
+            var id = Convert.ToString(currentQuery);
             Guid.TryParse(id, out var parsed);
             return (new AzureADGroup { ObjectId = parsed }, id);
         }

@@ -1,10 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Models.Entities;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
@@ -12,8 +10,8 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading.Tasks;
-using Models.Helpers;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -195,7 +193,7 @@ namespace Hosts.GroupMembershipObtainer
 
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
 
             return fileName;
         }
@@ -210,7 +208,7 @@ namespace Hosts.GroupMembershipObtainer
                 SourceMembers = users ?? new List<AzureADUser>()
             };
             var datafileName = $"/cache/{id}_{timeStamp}.json";
-            await _blobStorageRepository.UploadFileAsync(datafileName, JsonConvert.SerializeObject(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(datafileName, JsonSerializer.Serialize(groupMembership));
         }
 
         public async Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters)
@@ -220,7 +218,7 @@ namespace Hosts.GroupMembershipObtainer
                 { "SyncJob", job },
                 { "AdditionalContentParameters", additionalContentParameters }
             };
-            var body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(messageContent));
             var message = new ServiceBusMessage
             {
                 MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
@@ -268,9 +266,9 @@ namespace Hosts.GroupMembershipObtainer
             {
                 return await _graphGroupRepository.GetGroupNameAsync(objectId);
             }
-            
+
             return null;
-            
+
         }
     }
 }

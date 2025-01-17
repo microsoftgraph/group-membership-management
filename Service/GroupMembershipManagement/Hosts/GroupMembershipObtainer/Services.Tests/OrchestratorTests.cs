@@ -12,15 +12,15 @@ using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Tests.Helpers;
 
 namespace Tests.Services
 {
@@ -159,7 +159,7 @@ namespace Tests.Services
                                                 users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
                                             }
 
-                                            return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse
+                                            return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                             {
                                                 Users = users,
                                                 Status = _subOrchestratorResponseStatus
@@ -525,7 +525,7 @@ namespace Tests.Services
             _schemaProvider = SchemaProviderFactory.CreateMissingGroupMembershipSchemaProvider();
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
-                    .ThrowsAsync(new JsonReaderException());
+                    .ThrowsAsync(new JsonException());
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,

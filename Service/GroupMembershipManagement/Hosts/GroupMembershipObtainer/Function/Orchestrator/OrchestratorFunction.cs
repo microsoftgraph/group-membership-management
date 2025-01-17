@@ -3,21 +3,16 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
-using Microsoft.Graph;
 using Models;
 using Models.Helpers;
-using Newtonsoft.Json;
+using Models.Notifications;
 using Repositories.Contracts;
-using Hosts.GroupMembershipObtainer;
+using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using Repositories.Contracts.InjectConfig;
-using Models.Notifications;
-using Newtonsoft.Json.Linq;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -117,7 +112,7 @@ namespace Hosts.GroupMembershipObtainer
                         {
                             try
                             {
-                                var queryParts = JArray.Parse(syncJob.Query);
+                                var queryParts = JsonNode.Parse(syncJob.Query).AsArray();
                                 var currentPart = queryParts[mainRequest.CurrentPart - 1];
                                 var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId });
                                 if (!hasValidJson)
@@ -126,7 +121,7 @@ namespace Hosts.GroupMembershipObtainer
                                     return;
                                 }
                             }
-                            catch (JsonReaderException)
+                            catch (JsonException)
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source query is not valid for job:{syncJob.Id}" });
                                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
@@ -143,7 +138,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                             RunId = runId
                                                                                                                         });
 
-                        var sgResponse = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+                        var sgResponse = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
                         if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
                         {
@@ -166,7 +161,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                     SyncJob = syncJob,
                                                                                     GroupId = groupId,
                                                                                     RunId = runId,
-                                                                                    Users = TextCompressor.Compress(JsonConvert.SerializeObject(distinctUsers)),
+                                                                                    Users = TextCompressor.Compress(JsonSerializer.Serialize(distinctUsers)),
                                                                                     CurrentPart = mainRequest.CurrentPart,
                                                                                     Exclusionary = mainRequest.Exclusionary
                                                                                 });

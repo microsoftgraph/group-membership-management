@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
+using Models.Helpers;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
@@ -30,7 +29,7 @@ namespace Hosts.GroupMembershipObtainer
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            var users = JsonConvert.DeserializeObject<List<AzureADUser>>(TextCompressor.Decompress(request.Users));
+            var users = JsonSerializer.Deserialize<List<AzureADUser>>(TextCompressor.Decompress(request.Users));
             filePath = await _calculator.SendMembershipAsync(request.SyncJob, users, request.CurrentPart, request.Exclusionary);
 
             await _log.LogMessageAsync(new LogMessage

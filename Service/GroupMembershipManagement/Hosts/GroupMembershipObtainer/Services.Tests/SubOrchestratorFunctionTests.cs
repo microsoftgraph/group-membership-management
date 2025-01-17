@@ -9,7 +9,6 @@ using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
@@ -17,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -92,7 +92,7 @@ namespace Tests.Services
             {
                 BlobStatus = BlobStatus.Found,
 
-                Content = JsonConvert.SerializeObject(content)
+                Content = JsonSerializer.Serialize(content)
             };
 
             var extraUserContent = new GroupMembership
@@ -112,7 +112,7 @@ namespace Tests.Services
             {
                 BlobStatus = BlobStatus.Found,
 
-                Content = JsonConvert.SerializeObject(extraUserContent)
+                Content = JsonSerializer.Serialize(extraUserContent)
             };
             _groupExists = true;
 
@@ -329,7 +329,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -410,7 +410,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -479,7 +479,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -532,7 +532,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -597,7 +597,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -647,7 +647,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -715,7 +715,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -784,7 +784,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -831,7 +831,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                    It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
@@ -1005,7 +1005,7 @@ namespace Tests.Services
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-            var response = JsonConvert.DeserializeObject<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
+            var response = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                 It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
