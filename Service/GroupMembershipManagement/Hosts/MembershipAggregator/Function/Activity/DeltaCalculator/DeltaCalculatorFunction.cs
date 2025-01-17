@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -44,33 +44,33 @@ namespace Hosts.MembershipAggregator
             {
                 var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
                 await _loggingRepository.LogMessageAsync(
-                    new LogMessage 
-                    { 
-                        Message = $"Source blob download result: {sourceBlobResult.BlobStatus} for path {request.SourceMembershipFilePath}", 
-                        RunId = request.RunId 
-                    }, 
+                    new LogMessage
+                    {
+                        Message = $"Source blob download result: {sourceBlobResult.BlobStatus} for path {request.SourceMembershipFilePath}",
+                        RunId = request.RunId
+                    },
                     VerbosityLevel.DEBUG
                 );
                 var destinationBlobResult = await _blobStorageRepository.DownloadFileAsync(request.DestinationMembershipFilePath);
 
                 await _loggingRepository.LogMessageAsync(
-                    new LogMessage 
-                    { 
-                        Message = $"Destination blob download result: {destinationBlobResult.BlobStatus} for path {request.DestinationMembershipFilePath}", 
-                        RunId = request.RunId 
-                    }, 
+                    new LogMessage
+                    {
+                        Message = $"Destination blob download result: {destinationBlobResult.BlobStatus} for path {request.DestinationMembershipFilePath}",
+                        RunId = request.RunId
+                    },
                     VerbosityLevel.DEBUG
                 );
                 await _blobStorageRepository.DeleteFileAsync(request.SourceMembershipFilePath);
                 await _blobStorageRepository.DeleteFileAsync(request.DestinationMembershipFilePath);
 
-                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(sourceBlobResult.Content);
-                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(destinationBlobResult.Content);
+                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceBlobResult.Content);
+                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationBlobResult.Content);
             }
             else
             {
-                sourceMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(request.SourceGroupMembership));
-                destinationMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
+                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.SourceGroupMembership));
+                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
             }
 
             var response = await _deltaCalculatorService.CalculateDifferenceAsync(sourceMembership, destinationMembership);
@@ -81,8 +81,8 @@ namespace Hosts.MembershipAggregator
                 MembersToAddCount = response.MembersToAdd?.Count ?? 0,
                 MembersToRemoveCount = response.MembersToRemove?.Count ?? 0,
                 MembershipDeltaStatus = response.MembershipDeltaStatus,
-                CompressedMembersToAddJSON = TextCompressor.Compress(JsonConvert.SerializeObject(response.MembersToAdd)),
-                CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonConvert.SerializeObject(response.MembersToRemove)),
+                CompressedMembersToAddJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToAdd)),
+                CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToRemove)),
             };
         }
     }

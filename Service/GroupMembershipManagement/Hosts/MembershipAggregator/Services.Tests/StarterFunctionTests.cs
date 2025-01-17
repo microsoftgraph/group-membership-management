@@ -7,12 +7,13 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -64,7 +65,7 @@ namespace Services.Tests
                 PartsCount = 1
             };
 
-            var contentBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(content));
+            var contentBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content));
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(contentBytes));
 
             await starterFunction.ProcessServiceBusMessageAsync(message, _durableClient.Object);

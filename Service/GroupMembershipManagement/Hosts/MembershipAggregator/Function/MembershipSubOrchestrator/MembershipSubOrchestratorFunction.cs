@@ -9,7 +9,6 @@ using Models;
 using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -18,6 +17,8 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -106,11 +107,11 @@ namespace Hosts.MembershipAggregator
             if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
             {
                 var sourceFilePath = GenerateFileName(request.SyncJob, request.GroupId, "SourceMembership", context);
-                var sourceContent = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
+                var sourceContent = TextCompressor.Compress(JsonSerializer.Serialize(SourceMembership));
                 var sourceRequest = new FileUploaderRequest { FilePath = sourceFilePath, Content = sourceContent, SyncJob = request.SyncJob };
 
                 var destinationFilePath = GenerateFileName(request.SyncJob, request.GroupId, "DestinationMembership", context);
-                var destinationContent = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
+                var destinationContent = TextCompressor.Compress(JsonSerializer.Serialize(DestinationMembership));
                 var destinationRequest = new FileUploaderRequest { FilePath = destinationFilePath, Content = destinationContent, SyncJob = request.SyncJob };
 
                 await Task.WhenAll
@@ -125,8 +126,8 @@ namespace Hosts.MembershipAggregator
             }
             else
             {
-                deltaCalculatorRequest.SourceGroupMembership = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
-                deltaCalculatorRequest.DestinationGroupMembership = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
+                deltaCalculatorRequest.SourceGroupMembership = TextCompressor.Compress(JsonSerializer.Serialize(SourceMembership));
+                deltaCalculatorRequest.DestinationGroupMembership = TextCompressor.Compress(JsonSerializer.Serialize(DestinationMembership));
             }
 
             var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
@@ -285,7 +286,7 @@ namespace Hosts.MembershipAggregator
         {
             var sourceGroupsMemberships = allGroupMemberships
                                             .Where(x => x.FilePath != destinationPath)
-                                            .Select(x => JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(x.Content)))
+                                            .Select(x => JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(x.Content)))
                                             .ToList();
 
             var sourceGroupMembership = sourceGroupsMemberships[0];
@@ -304,29 +305,28 @@ namespace Hosts.MembershipAggregator
             sourceGroupMembership.SourceMembers = sourceMembers;
 
             var destinationMembershipFile = allGroupMemberships.First(x => x.FilePath == destinationPath);
-            var destinationGroupMembership = JsonConvert.DeserializeObject<GroupMembership>(TextCompressor.Decompress(destinationMembershipFile.Content));
+            var destinationGroupMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(destinationMembershipFile.Content));
 
             return (sourceGroupMembership, destinationGroupMembership);
         }
 
         private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, Guid groupId, IDurableOrchestrationContext context)
         {
-            var membersToAdd = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
-            var membersToRemove = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));
+            var membersToAdd = JsonSerializer.Deserialize<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
+            var membersToRemove = JsonSerializer.Deserialize<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));
 
             var newMembership = (GroupMembership)membership.Clone();
             newMembership.SourceMembers.Clear();
             newMembership.SourceMembers.AddRange(membersToAdd);
             newMembership.SourceMembers.AddRange(membersToRemove);
 
-            var serializerSettings = new JsonSerializerSettings
+            var serializerSettings = new JsonSerializerOptions
             {
-                NullValueHandling = NullValueHandling.Ignore, // Ignores null values during serialization
-                DefaultValueHandling = DefaultValueHandling.Ignore
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
             };
 
             var filePath = GenerateFileName(syncJob, groupId, "Aggregated", context);
-            var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership, serializerSettings));
+            var content = TextCompressor.Compress(JsonSerializer.Serialize(newMembership, serializerSettings));
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }

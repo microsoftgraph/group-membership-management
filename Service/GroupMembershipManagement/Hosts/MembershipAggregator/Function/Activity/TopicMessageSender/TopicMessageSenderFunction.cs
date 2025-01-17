@@ -6,12 +6,10 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
-using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator

@@ -2,12 +2,10 @@
 // Licensed under the MIT license.
 using DIConcreteTypes;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
-using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services
@@ -38,7 +36,7 @@ namespace Services
 
         public async Task SendMessageAsync(MembershipHttpRequest request)
         {
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
 
             var message = new Models.ServiceBus.ServiceBusMessage
             {

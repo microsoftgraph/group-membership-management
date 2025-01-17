@@ -13,7 +13,6 @@ using Models.Notifications;
 using Models.ServiceBus;
 using Models.ThresholdNotifications;
 using Moq;
-using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -24,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -195,7 +195,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonConvert.SerializeObject(content)
+                                            Content = JsonSerializer.Serialize(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -224,7 +224,7 @@ namespace Services.Tests
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = JsonConvert.SerializeObject(content)
+                                Content = JsonSerializer.Serialize(content)
                             };
                         })
                         .ReturnsAsync(() => _blobResult);
@@ -663,7 +663,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonConvert.SerializeObject(content)
+                                            Content = JsonSerializer.Serialize(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -708,7 +708,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonConvert.SerializeObject(content)
+                                            Content = JsonSerializer.Serialize(content)
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -740,7 +740,7 @@ namespace Services.Tests
                                        _blobResult = new BlobResult
                                        {
                                            BlobStatus = BlobStatus.Found,
-                                           Content = JsonConvert.SerializeObject(content)
+                                           Content = JsonSerializer.Serialize(content)
                                        };
                                    })
                                    .ReturnsAsync(() => _blobResult);
@@ -842,7 +842,7 @@ namespace Services.Tests
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = JsonConvert.SerializeObject(content)
+                                Content = JsonSerializer.Serialize(content)
                             };
                         })
                         .ReturnsAsync(() => _blobResult);

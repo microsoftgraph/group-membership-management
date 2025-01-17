@@ -4,10 +4,10 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -26,7 +26,7 @@ namespace Hosts.MembershipAggregator
             [ServiceBusTrigger("%serviceBusMembershipAggregatorQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
             [DurableClient] IDurableOrchestrationClient starter)
         {
-            var request = JsonConvert.DeserializeObject<MembershipAggregatorHttpRequest>(Encoding.UTF8.GetString(message.Body));
+            var request = JsonSerializer.Deserialize<MembershipAggregatorHttpRequest>(Encoding.UTF8.GetString(message.Body));
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
             _loggingRepository.SetSyncJobProperties(runId, request.SyncJob.ToDictionary());
 
