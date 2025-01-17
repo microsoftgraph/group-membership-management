@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
-using System.Text;
-using System.Threading.Tasks;
+using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Newtonsoft.Json;
-using Repositories.Contracts.InjectConfig;
-using Repositories.Contracts;
-using Azure.Messaging.ServiceBus;
 using Models;
+using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
+using System;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Hosts.PlaceMembershipObtainer
 {
@@ -31,7 +31,7 @@ namespace Hosts.PlaceMembershipObtainer
            [ServiceBusTrigger("%serviceBusSyncJobTopic%", "PlaceMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
            [DurableClient] IDurableOrchestrationClient starter)
         {
-            var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
+            var syncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
             _loggingRepository.SetSyncJobProperties(runId, syncJob.ToDictionary());
 

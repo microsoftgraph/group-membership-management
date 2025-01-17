@@ -171,7 +171,7 @@ namespace Tests.Services
             {
                 Id = Guid.NewGuid(),
                 MembershipType = "GroupMembership",
-                Query = "[{\"type\":\"PlaceMembership\",\"sources\":\"https://graph.microsoft.com/v1.0/users?$count=true&$filter=mail+eq+'USER2@M365x720024.onmicrosoft.com'\"}]",
+                Query = "[{\"type\":\"PlaceMembership\",\"source\":\"https://graph.microsoft.com/v1.0/users?$count=true&$filter=mail+eq+'USER2@M365x720024.onmicrosoft.com'\"}]",
                 Status = "InProgress",
                 Period = 6
             };

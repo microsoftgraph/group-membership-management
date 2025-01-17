@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using System.Text.Json;
 
 namespace Services
 {
@@ -116,7 +116,7 @@ namespace Services
 
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{groupId}/{timeStamp}_{runId}_PlaceMembership_{currentPart}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
 
             return fileName;
         }

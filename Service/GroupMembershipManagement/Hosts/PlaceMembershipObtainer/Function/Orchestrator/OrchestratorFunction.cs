@@ -4,13 +4,13 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Hosts.PlaceMembershipObtainer
@@ -51,7 +51,7 @@ namespace Hosts.PlaceMembershipObtainer
                     return;
                 }
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Group Id for job:{syncJob.Id} is {groupId}", RunId = syncJob.RunId });
-                var queryParts = JArray.Parse(syncJob.Query);
+                var queryParts = JsonNode.Parse(syncJob.Query).AsArray();
                 if (mainRequest.CurrentPart == mainRequest.TotalParts)
                 {
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Target Group", RunId = syncJob.RunId });
@@ -59,7 +59,7 @@ namespace Hosts.PlaceMembershipObtainer
                 }
                 
                 var currentPart = queryParts[mainRequest.CurrentPart - 1];
-                var currentType = currentPart.Value<string>("type");
+                var currentType = currentPart["type"].GetValue<string>();
 
                 if (currentType != "PlaceMembership")
                 {
@@ -67,7 +67,7 @@ namespace Hosts.PlaceMembershipObtainer
                     return;
                 }
 
-                var currentQuery = currentPart.Value<string>("source");
+                var currentQuery = currentPart["source"].GetValue<string>();
                 var currentQueryAsString = Convert.ToString(currentQuery);
 
                 if (string.IsNullOrWhiteSpace(currentQueryAsString))
@@ -88,7 +88,7 @@ namespace Hosts.PlaceMembershipObtainer
                             return;
                         }
                     }
-                    catch (JsonReaderException)
+                    catch (JsonException)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source query is not valid for job:{syncJob.Id}" });
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });

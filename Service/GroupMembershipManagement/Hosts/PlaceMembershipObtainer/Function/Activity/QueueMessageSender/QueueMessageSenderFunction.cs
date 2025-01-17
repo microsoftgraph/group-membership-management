@@ -4,9 +4,9 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.PlaceMembershipObtainer
@@ -33,7 +33,7 @@ namespace Hosts.PlaceMembershipObtainer
                 RunId = request.SyncJob.RunId
             }, VerbosityLevel.DEBUG);
 
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
 
             var message = new ServiceBusMessage
             {

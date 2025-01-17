@@ -19,7 +19,7 @@ namespace Tests.Services.Helpers
         private string GetPartQuery(int partIndex)
         {
             var queryPart = QueryParts.First(x => x.Index == partIndex);
-            return $"{{'type':'{queryPart.Type}','source': '{queryPart.SourceId}'}}";
+            return $"{{\"type\":\"{queryPart.Type}\",\"source\": \"{queryPart.SourceId}\"}}";
         }
 
         public Guid GetSourceId(int partIndex)

@@ -4,14 +4,14 @@ using Azure.Messaging.ServiceBus;
 using Hosts.PlaceMembershipObtainer;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
-using Newtonsoft.Json;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -52,7 +52,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestRegularSyncJobRun()
         {
-            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_syncJob));
             var properties = new Dictionary<string, object>
             {
                 { "CurrentPart", 1},
@@ -89,7 +89,7 @@ namespace Tests.Services
             _dryRunValue.SetupGet(x => x.DryRunEnabled).Returns(true);
             _syncJob.DryRunTimeStamp = DateTime.UtcNow.AddHours(-1);
 
-            var syncJobBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_syncJob));
+            var syncJobBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_syncJob));
             var properties = new Dictionary<string, object>
             {
                 { "CurrentPart", 1},

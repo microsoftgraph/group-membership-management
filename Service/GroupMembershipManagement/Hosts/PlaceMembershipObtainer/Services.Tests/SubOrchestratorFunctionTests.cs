@@ -8,13 +8,13 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Tests.Services
@@ -59,7 +59,7 @@ namespace Tests.Services
 
             var content = new GroupMembership
             {
-                SyncJobId = Guid.NewGuid(),                
+                SyncJobId = Guid.NewGuid(),
                 MembershipObtainerDryRunEnabled = false,
                 RunId = Guid.Empty,
                 SourceMembers = Enumerable.Range(0, _userCount)
@@ -74,7 +74,7 @@ namespace Tests.Services
             _blobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
-                Content = JsonConvert.SerializeObject(content)
+                Content = JsonSerializer.Serialize(content)
             };
 
             _service = new PlaceMembershipObtainerService(
