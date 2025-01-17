@@ -16,6 +16,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse>, SearchDestinationsHandler>();
             services.AddTransient<IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse>, GetGroupEndpointsHandler>();
             services.AddTransient<IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse>, GetGroupOnboardingStatusHandler>();
+            services.AddTransient<IRequestHandler<PostGroupRequest, PostGroupResponse>, PostGroupHandler>();
 
             services.AddTransient<IRequestHandler<GetSettingRequest, GetSettingResponse>, GetSettingHandler>();
             services.AddTransient<IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse>, GetAllSettingsHandler>();

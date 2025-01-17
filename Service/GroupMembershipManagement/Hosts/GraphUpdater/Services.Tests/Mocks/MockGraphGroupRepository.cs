@@ -91,6 +91,11 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<List<AzureADUser>> GetTenantUsers(int userCount)
         {
             throw new NotImplementedException();

@@ -12,6 +12,7 @@ using Microsoft.Extensions.Options;
 using Common.DependencyInjection;
 using System.Security.Claims;
 using WebApi.Models;
+using NewGroupDTO = WebApi.Models.DTOs.NewGroup;
 
 namespace Services.Tests
 {
@@ -32,6 +33,8 @@ namespace Services.Tests
         private GetGroupEndpointsHandler _getGroupEndpointsHandler = null!;
         private GetGroupOnboardingStatusHandler _getGroupOnboardingStatusHandler = null!;
         private Mock<IOptions<GraphCredentials>> _graphCredentials = null!;
+        private PostGroupHandler _postGroupHandler = null!;
+        private NewGroupDTO _newGroup = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -43,6 +46,7 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _searchDestinationsHandler = new SearchDestinationsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _getGroupEndpointsHandler = new GetGroupEndpointsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            _postGroupHandler = new PostGroupHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _graphCredentials = new Mock<IOptions<GraphCredentials>>();
             var testGraphCredentials = new GraphCredentials
             {
@@ -55,7 +59,7 @@ namespace Services.Tests
                                                                                    _syncJobRepository.Object,
                                                                                    _graphCredentials.Object);
 
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -65,6 +69,12 @@ namespace Services.Tests
                 })
             };
 
+            _newGroup = new NewGroupDTO
+            {
+                UserIdentity = Guid.NewGuid(),
+                GroupAlias = "",
+                GroupName = ""
+            };
             _groupTypes = new List<string>
             {
                 "Microsoft 365",
@@ -100,6 +110,7 @@ namespace Services.Tests
                 Period = 12
             };
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync(syncJob);
+
         }
 
         [TestMethod]
@@ -190,7 +201,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupUserNotOwnerStatusAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -220,7 +231,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusWhenClaimIsNotFoundAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -244,7 +255,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler)
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -264,7 +275,48 @@ namespace Services.Tests
             Assert.AreEqual(500, result?.StatusCode);
         }
 
-        private ControllerContext CreateControllerContext(HttpContext httpContext)
+        [TestMethod]
+        public async Task CreateGroupSucceedsAsync()
+        {
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync(new AzureADGroup());
+
+            var response = await _destinationController.CreateGroupAsync(_newGroup);
+            var result = response.Result as OkObjectResult;
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Value);
+            Assert.AreEqual(200, result?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task CreateGroupThrowsExceptionAsync()
+        {
+            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+
+            _graphGroupRepository.Setup(x => x.CreateGroupFromUI(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<string>())).ThrowsAsync(new Exception("Graph error"));
+
+            var response = await _destinationController.CreateGroupAsync(_newGroup);
+            var result = response.Result as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result?.StatusCode);
+        }
+
+            private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };
         }

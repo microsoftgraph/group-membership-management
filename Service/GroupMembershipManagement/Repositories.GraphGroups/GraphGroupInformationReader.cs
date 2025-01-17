@@ -460,6 +460,61 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<AzureADGroup> CreateGroupFromUIAsync(string newGroupName, Guid groupOwnerId, string newGroupAlias, Guid? runId)
+        {
+            try
+            {
+                var groupDefinition = new Group
+                {
+                    DisplayName = newGroupName,
+                    MailEnabled = false,
+                    SecurityEnabled = true,
+                    Description = $"{newGroupName}",
+                    GroupTypes = new List<string> { "Unified" },
+                    MailNickname = newGroupAlias ?? Guid.NewGuid().ToString()
+                };
+
+                var group = await _graphServiceClient.Groups.PostAsync(groupDefinition);
+
+                await _graphServiceClient.Groups[group.Id]
+                                            .Owners
+                                            .Ref
+                                            .PostAsync(new ReferenceCreate
+                                            {
+                                                OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{groupOwnerId}"
+                                            });
+
+
+                if (await GroupExistsAsync(new Guid(group.Id), runId))
+                {
+                    return new AzureADGroup
+                    {
+                        ObjectId = new Guid(group.Id),
+                        Name = group.DisplayName
+                    };
+                }
+                else
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group" });
+                    return null;
+                }
+            }
+            catch (ODataError ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                });
+
+                throw;
+            }
+            catch (Exception e)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
+                return null;
+            }
+        }
+
         public async Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds, Guid? runId)
         {
             var groups = new List<AzureADGroup>();

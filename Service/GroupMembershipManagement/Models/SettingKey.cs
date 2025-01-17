@@ -10,5 +10,6 @@ namespace Models
         PrivacyPolicyUrl = 2,
         UIUrl = 3,
         CanReviewOwnSubmissions = 4,
+        CreateGroupFeatureEnabled = 5,
     }
 }
