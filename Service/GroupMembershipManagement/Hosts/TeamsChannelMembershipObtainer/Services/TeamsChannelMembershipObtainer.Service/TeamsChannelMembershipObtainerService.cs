@@ -1,15 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
-using Microsoft.FeatureManagement;
-using Microsoft.Graph.Models;
 using Models;
 using Models.Entities;
 using Models.ServiceBus;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
-using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
 
@@ -48,13 +46,17 @@ namespace TeamsChannelMembershipObtainer.Service
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
-            var destinationArray = JArray.Parse(channelSyncInfo.SyncJob.Destination);
-            var currentDestination = (destinationArray[0] as JObject)["value"];
+            var destinationArray = JsonNode.Parse(channelSyncInfo.SyncJob.Destination).AsArray();
+            var currentDestination = destinationArray[0].AsObject()["value"];
+            var objectIdNode = currentDestination["objectId"];
+            var objectId = Convert.ToString(objectIdNode);
+            var channelIdNode = currentDestination.AsObject()["channelId"];
+            var channelId = Convert.ToString(channelIdNode);
 
             var azureADTeamsChannel = new AzureADTeamsChannel
             {
-                ObjectId = Guid.Parse(currentDestination["objectId"].Value<string>()),
-                ChannelId = currentDestination["channelId"].Value<string>()
+                ObjectId = Guid.Parse(objectId),
+                ChannelId = channelId
             };
 
             if (!channelSyncInfo.IsDestinationPart)
@@ -62,7 +64,7 @@ namespace TeamsChannelMembershipObtainer.Service
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, group {azureADTeamsChannel.ObjectId} and channel {azureADTeamsChannel.ChannelId} is not a destination.", RunId = runId });
                 await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.TeamsChannelNotDestination);
                 return new ValidateChannelResponse {
-                    ParsedChannel = azureADTeamsChannel, 
+                    ParsedChannel = azureADTeamsChannel,
                     IsValid = false };
             }
 
@@ -103,22 +105,20 @@ namespace TeamsChannelMembershipObtainer.Service
                 SourceMembers = new List<AzureADUser>(users) ?? new List<AzureADUser>(),
                 RunId = runId,
                 Exclusionary = channelSyncInfo.Exclusionary,
-                SyncJobId = channelSyncInfo.SyncJob.Id,                
+                SyncJobId = channelSyncInfo.SyncJob.Id,
                 MembershipObtainerDryRunEnabled = dryRun,
                 Query = channelSyncInfo.SyncJob.Query
             };
 
             var timeStamp = channelSyncInfo.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
             var fileName = $"/{channelSyncInfo.SyncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannelMembership_{channelSyncInfo.CurrentPart}.json";
-            var serializerSettings = new JsonSerializerSettings
+            var serializerSettings = new JsonSerializerOptions
             {
-                NullValueHandling = NullValueHandling.Ignore, // Ignores null values during serialization
-                DefaultValueHandling = DefaultValueHandling.Ignore
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
             };
 
-
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploading {users.Count} users to {fileName}.", RunId = runId });
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership, serializerSettings));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership, serializerSettings));
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, uploaded {users.Count} users to {fileName}.", RunId = runId });
 
             return fileName;
@@ -151,7 +151,7 @@ namespace TeamsChannelMembershipObtainer.Service
         private async Task SendMembershipAggregatorMessageAsync(MembershipAggregatorHttpRequest request)
         {
 
-            var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
+            var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
 
             var message = new ServiceBusMessage
             {

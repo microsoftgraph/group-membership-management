@@ -4,11 +4,11 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
@@ -35,7 +35,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             var channelSyncInfo = new ChannelSyncInfo
             {
-                SyncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body)),
+                SyncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body)),
                 Exclusionary = message.ApplicationProperties.ContainsKey("Exclusionary") ? Convert.ToBoolean(message.ApplicationProperties["Exclusionary"]) : false,
                 CurrentPart = message.ApplicationProperties.ContainsKey("CurrentPart") ? Convert.ToInt32(message.ApplicationProperties["CurrentPart"]) : 0,
                 TotalParts = message.ApplicationProperties.ContainsKey("TotalParts") ? Convert.ToInt32(message.ApplicationProperties["TotalParts"]) : 0,
