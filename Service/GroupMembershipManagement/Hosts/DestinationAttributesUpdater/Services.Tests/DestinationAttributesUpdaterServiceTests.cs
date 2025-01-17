@@ -83,6 +83,7 @@ namespace Services.Tests
 
             _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { destination.Value.ObjectId,  "name"} });
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { destination.Value.ObjectId, new List<Guid> { owner } } });
+            _mockGraphGroupRepository.Setup(x => x.GetGroupEmailsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { destination.Value.ObjectId, "email" } });
 
             var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
 

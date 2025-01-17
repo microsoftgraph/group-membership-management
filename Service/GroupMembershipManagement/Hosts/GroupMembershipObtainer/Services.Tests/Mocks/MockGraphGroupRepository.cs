@@ -178,6 +178,10 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+        public Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds)
+        {
+            throw new NotImplementedException();
+        }
 
         public Task<List<AzureADGroup>> SearchDestinationsAsync(string query)
         {
