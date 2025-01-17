@@ -10,7 +10,6 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
@@ -174,7 +173,7 @@ namespace Services.Tests
         public async Task HandleInvalidDestinationQueryException()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).Throws<JsonReaderException>();
+            _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).Throws<JsonException>();
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,
@@ -291,7 +290,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task HandleSchemasForUnknowProperty()
+        public async Task HandleSchemasForUnknownProperty()
         {
             _jsonSchemaProvider.Schemas.Clear();
             _jsonSchemaProvider.Schemas.Add("Test", "");

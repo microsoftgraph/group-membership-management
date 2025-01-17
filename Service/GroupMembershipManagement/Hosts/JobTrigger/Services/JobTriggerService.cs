@@ -3,19 +3,17 @@
 using Microsoft.ApplicationInsights;
 using Models;
 using Models.Entities;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using System.Text.Json;
-using Models.Helpers;
+using System.Threading.Tasks;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Services

@@ -10,7 +10,6 @@ using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -20,6 +19,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -87,14 +87,14 @@ namespace Services.Tests
                         }
 
                         var stringContent = Encoding.UTF8.GetString(buffer);
-                        var root = JObject.Parse(stringContent);
+                        var root = JsonNode.Parse(stringContent);
                         var requestsNode = root["requests"].ToString();
-                        var batchRequest = JArray.Parse(requestsNode);
+                        var batchRequest = JsonNode.Parse(requestsNode).AsArray();
 
                         var requests = batchRequest.Select(jtoken => new
                         {
-                            id = jtoken["id"].Value<string>(),
-                            url = jtoken["url"].Value<string>(),
+                            id = jtoken["id"].GetValue<string>(),
+                            url = jtoken["url"].GetValue<string>(),
                         }).ToList();
 
                         var requestIds = new Dictionary<string, string>

@@ -4,12 +4,12 @@ using Hosts.JobTrigger;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
 using NJsonSchema;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace JobTrigger.Activity.SchemaValidator
@@ -70,7 +70,7 @@ namespace JobTrigger.Activity.SchemaValidator
                             break;
                         }
                     }
-                    catch (JsonReaderException je)
+                    catch (Exception je) when (je is JsonException || je.GetType().Name == "JsonReaderException")
                     {
                         await _loggingRepository.LogMessageAsync(new LogMessage
                         {

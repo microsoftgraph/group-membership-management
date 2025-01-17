@@ -6,10 +6,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Models.Helpers;
 using Models.Notifications;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
@@ -17,8 +14,8 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Hosts.JobTrigger
 {
@@ -139,7 +136,7 @@ namespace Hosts.JobTrigger
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { SyncJob = syncJob });
                 
                 }
-                catch (JsonReaderException)
+                catch (JsonException)
                 {
 
                     await context.CallActivityAsync(nameof(LoggerFunction),
@@ -172,7 +169,7 @@ namespace Hosts.JobTrigger
                     try
                     {
                         // Make sure the query is valid JSON.
-                        var query = JToken.Parse(syncJob.Query);
+                        var query = JsonDocument.Parse(syncJob.Query);
 
                         var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), syncJob);
                         if (!hasValidJson)
@@ -189,7 +186,7 @@ namespace Hosts.JobTrigger
                             return;
                         }
                     }
-                    catch (JsonReaderException)
+                    catch (JsonException)
                     {
                         await context.CallActivityAsync(nameof(LoggerFunction),
                                 new LoggerRequest
@@ -360,7 +357,7 @@ namespace Hosts.JobTrigger
 
         private void TrackExclusionaryEvent(SyncJob syncJob)
         {
-            var parsedQuery = JArray.Parse(syncJob.Query);
+            var parsedQuery = JsonNode.Parse(syncJob.Query).AsArray();
             var queryTypes = parsedQuery.Select(x => new
             {
                 exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false
