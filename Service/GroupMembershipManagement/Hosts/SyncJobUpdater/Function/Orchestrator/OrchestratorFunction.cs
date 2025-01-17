@@ -2,22 +2,10 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
-using Microsoft.Graph;
 using Models;
-using Models.Helpers;
-using Newtonsoft.Json;
 using Repositories.Contracts;
-using Hosts.SyncJobUpdater;
 using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
-using Repositories.Contracts.InjectConfig;
-using Models.Notifications;
-using Hosts.SyncJobUpdater;
 
 namespace Hosts.SyncJobUpdater
 {
