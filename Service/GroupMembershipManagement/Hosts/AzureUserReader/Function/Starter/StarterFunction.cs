@@ -1,15 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Newtonsoft.Json;
+using Models;
 using Repositories.Contracts;
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.AzureUserReader
@@ -62,7 +62,7 @@ namespace Hosts.AzureUserReader
                     return (HttpStatusCode.BadRequest, null);
                 }
 
-                userReaderRequest = JsonConvert.DeserializeObject<AzureUserReaderRequest>(content);
+                userReaderRequest = JsonSerializer.Deserialize<AzureUserReaderRequest>(content);
 
                 if (string.IsNullOrWhiteSpace(userReaderRequest.ContainerName) || string.IsNullOrWhiteSpace(userReaderRequest.BlobPath))
                 {
@@ -83,9 +83,9 @@ namespace Hosts.AzureUserReader
                     }
                 }
             }
-            catch (Exception ex) when (ex.GetType() == typeof(JsonReaderException) || ex.GetType() == typeof(JsonSerializationException))
+            catch (JsonException)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Request body is not valid." });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Request body is not valid." });
                 return (HttpStatusCode.BadRequest, null);
             }
             catch (Exception ex)

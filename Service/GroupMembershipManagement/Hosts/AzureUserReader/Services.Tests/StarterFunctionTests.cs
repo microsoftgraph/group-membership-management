@@ -74,7 +74,7 @@ namespace Services.Tests
                 new HttpRequestMessage()
                 {
                     Content = new StringContent(
-                        "{ 'ContainerName':'myContainer','BlobPath':'folder1/folder2/myfile.csv'}",
+                        "{ \"ContainerName\":\"myContainer\",\"BlobPath\":\"folder1/folder2/myfile.csv\"}",
                                 Encoding.UTF8, "application/json")
                 },
                 _durableClientMock.Object
