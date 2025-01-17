@@ -89,6 +89,9 @@ export type IStrings = {
       saveButton: string;
       saveSuccess: string;
     },
+    Errors:{
+      forbidden: string;
+    },
     HyperlinkSettings: {
       labels: {
         hyperlinks: string;

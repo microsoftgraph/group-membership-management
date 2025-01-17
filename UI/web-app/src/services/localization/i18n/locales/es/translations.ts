@@ -94,6 +94,9 @@ export const strings: IStrings = {
       saveButton: "Guardar",
       saveSuccess:  "Guardado exitosamente."
     },
+    Errors:{
+      forbidden: 'Prohibido'
+    },
     HyperlinkSettings: {
       labels: {
         hyperlinks: "Ligas",

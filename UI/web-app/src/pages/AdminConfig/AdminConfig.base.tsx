@@ -28,6 +28,7 @@ import {
   selectIsGeneralSettingsAdministrator,
   selectHasAdminCenterPermissions,
 } from '../../store/roles.slice';
+import { MessageBar, MessageBarType } from '@fluentui/react';
 
 export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props: AdminConfigProps) => {
   // get the store's dispatch function
@@ -128,9 +129,13 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   };
 
   if (!canViewSettings) {
-    return <></>;
-  }
-  
+    return (<MessageBar
+      messageBarType={MessageBarType.error}
+      isMultiline={false}
+    >
+    {strings.Errors.forbidden}
+  </MessageBar>);
+}
   // render the view with the data from the store and the event handler
   return (
     <AdminConfigView
