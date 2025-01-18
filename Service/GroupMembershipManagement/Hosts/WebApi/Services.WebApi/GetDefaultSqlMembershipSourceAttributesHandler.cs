@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Data.SqlClient;
-using Microsoft.Graph.Models;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -52,9 +50,9 @@ namespace Services
                         attribute.Name == sqlAttribute.Name
                     );
 
-                    sqlAttribute.CustomLabel = storedAttribute?.CustomLabel ?? ""; 
-                    sqlAttribute.Description = storedAttribute?.Description ?? ""; 
-                    sqlAttribute.Enabled = storedAttribute?.Enabled ?? true; 
+                    sqlAttribute.CustomLabel = storedAttribute?.CustomLabel ?? "";
+                    sqlAttribute.Description = storedAttribute?.Description ?? "";
+                    sqlAttribute.Enabled = storedAttribute?.Enabled ?? true;
                     return sqlAttribute;
 
                 }).ToList();

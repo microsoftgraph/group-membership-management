@@ -3,12 +3,12 @@
 
 using Models;
 using Models.SyncJobChange;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using System.Text.Json;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
 namespace Services
@@ -109,13 +109,29 @@ namespace Services
 
         private static SyncJob MapSyncJobDTOtoEntity(NewSyncJobDTO syncJob)
         {
-            var queryObject = JsonConvert.DeserializeObject(syncJob.Query);
-            var convertedQuery = JsonConvert.SerializeObject(queryObject);
+            var queryObject = JsonDocument.Parse(syncJob.Query);
+            var convertedQuery = JsonSerializer.Serialize(queryObject);
 
-            var destinationArray = JsonConvert.DeserializeObject<List<dynamic>>(syncJob.Destination);
-            string targetOfficeGroupId = destinationArray?.FirstOrDefault()?.value?.objectId;
-            string channelId = destinationArray?.FirstOrDefault()?.value?.channelId;
-            string type = destinationArray?.FirstOrDefault()?.type;
+            var destinationArray = JsonSerializer.Deserialize<List<JsonElement>>(syncJob.Destination);
+            string? targetOfficeGroupId = null;
+            string? channelId = null;
+            string? type = null;
+
+            var destination = destinationArray?.FirstOrDefault();
+            if (destination != null && destination.Value.TryGetProperty("value", out JsonElement value))
+            {
+                if (value.TryGetProperty("objectId", out JsonElement objectId))
+                {
+                    targetOfficeGroupId = objectId.GetString();
+                }
+
+                if (value.TryGetProperty("channelId", out JsonElement channelIdElement))
+                {
+                    channelId = channelIdElement.GetString();
+                }
+            }
+
+            type = destination != null ? destination.Value.GetProperty("type").GetString() : null;
 
             return new SyncJob
             {

@@ -7,7 +7,6 @@ using Azure.Messaging.ServiceBus.Administration;
 using Azure.Storage.Queues;
 using Microsoft.AspNetCore.SignalR;
 using Models;
-using Newtonsoft.Json;
 using Polly;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -16,6 +15,7 @@ using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.Json;
 using WebApi.Models;
 
 namespace WebApi.BackgroundServices
@@ -336,7 +336,7 @@ namespace WebApi.BackgroundServices
                 await retryPolicy.ExecuteAsync(async () =>
                 {
                     var request = new HttpRequestMessage(HttpMethod.Post, jobSchedulerUrl);
-                    request.Content = new StringContent(JsonConvert.SerializeObject(new { DelayForDeploymentInMinutes = 5 }), Encoding.UTF8, "application/json");
+                    request.Content = new StringContent(JsonSerializer.Serialize(new { DelayForDeploymentInMinutes = 5 }), Encoding.UTF8, "application/json");
                     var response = await _httpClient.SendAsync(request);
                     var responseContent = await response.Content.ReadAsStringAsync();
                     await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobScheduler response: {response.StatusCode}.\n{responseContent}" });
