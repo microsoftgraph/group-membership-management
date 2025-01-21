@@ -70,16 +70,23 @@ namespace JobTrigger.Activity.SchemaValidator
                             break;
                         }
                     }
-                    catch (Exception je) when (je is JsonException || je.GetType().Name == "JsonReaderException")
+                    catch (Exception e)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        if (e is JsonException || e.GetType().Name == "JsonReaderException")
                         {
-                            RunId = syncJob.RunId.GetValueOrDefault(),
-                            Message = $"Unable to parse json for property: {property.Name}.\n{je}"
-                        });
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                RunId = syncJob.RunId.GetValueOrDefault(),
+                                Message = $"Unable to parse json for property: {property.Name}.\n{e}"
+                            });
 
-                        isValidJson = false;
-                        break;
+                            isValidJson = false;
+                            break;
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
                 }
                 else
