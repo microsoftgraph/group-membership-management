@@ -1,21 +1,13 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.ServiceBus;
-using GraphUpdater.Entities;
-using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
-using Models.Helpers;
 
 namespace Hosts.GraphUpdater
 {

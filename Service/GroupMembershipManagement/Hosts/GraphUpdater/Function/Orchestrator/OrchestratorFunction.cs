@@ -9,7 +9,6 @@ using Microsoft.Identity.Client;
 using Models;
 using Models.Notifications;
 using Models.ServiceBus;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -20,8 +19,8 @@ using System.Data.SqlTypes;
 using System.Linq;
 using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace Hosts.GraphUpdater
 {
@@ -106,7 +105,7 @@ namespace Hosts.GraphUpdater
                                                                                 SyncJob = syncJob
                                                                             });
 
-                groupMembership = JsonConvert.DeserializeObject<GroupMembership>(fileContent);
+                groupMembership = JsonSerializer.Deserialize<GroupMembership>(fileContent);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -163,7 +162,7 @@ namespace Hosts.GraphUpdater
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
                                                                         SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, syncJob.ThresholdViolations, groupMembership.RunId));
 
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { 
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest {
 						JobStatus = SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
 						ResultStatus = ResultStatus.Success,
 						RunId = syncJob.RunId
@@ -275,7 +274,7 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = "SyncJob is null. Removing the message from the queue..." });
                     return OrchestrationRuntimeStatus.Failed;
                 }
-                
+
                 if (syncJob != null && groupMembership != null && groupMembership.SyncJobId != Guid.Empty)
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -324,8 +323,8 @@ namespace Hosts.GraphUpdater
 
                     if (sourceGroups != null && sourceGroups.Count > 0)
                     {
-                        // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory. 
-                        // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan. 
+                        // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory.
+                        // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan.
                         foreach (var sourceGroup in sourceGroups)
                         {
                             await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),

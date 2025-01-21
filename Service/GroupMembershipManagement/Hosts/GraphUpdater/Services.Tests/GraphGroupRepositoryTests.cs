@@ -8,7 +8,6 @@ using Microsoft.Kiota.Abstractions.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System;
@@ -16,6 +15,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -89,9 +90,7 @@ namespace Services.Tests
                                 }
 
                                 var stringContent = Encoding.UTF8.GetString(buffer);
-                                var root = JObject.Parse(stringContent);
-                                var requestsNode = root["requests"].ToString();
-                                var batchRequest = JArray.Parse(requestsNode);
+                                var batchRequest = GetBatchRequests(stringContent);
 
                                 var requests = new Dictionary<string, string>();
                                 var userIds = new List<string>();
@@ -100,18 +99,14 @@ namespace Services.Tests
                                 foreach (var step in batchRequest)
                                 {
                                     //PATCH requests have multiple userIds per step
-                                    if (step["method"].Value<string>() == "PATCH")
+                                    if (step["method"].GetValue<string>() == "PATCH")
                                     {
-                                        userIds = step["body"]["members@odata.bind"]
-                                                  .Values()
-                                                  .Select(x => x.Value<string>()
-                                                  .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                                  .ToList();
+                                        userIds = GetUserIds(step);
 
                                         var userNotFound = userIds.Intersect(usersNotFoundIds).FirstOrDefault();
                                         if (userNotFound != null)
                                         {
-                                            requests.Add(step["id"].Value<string>(), userNotFound);
+                                            requests.Add(step["id"].GetValue<string>(), userNotFound);
                                             var content = GenerateNotFoundBatchResponse(requests);
                                             batchResponseContent = GenerateBatchResponseContent(content);
                                             nativeResponseHandler.Value = GetHttpResponseMessage(content);
@@ -121,18 +116,18 @@ namespace Services.Tests
                                     {
                                         //POST requests have a single userId per step
                                         var userId = step["body"]["@odata.id"]
-                                                        .Value<string>()
+                                                        .GetValue<string>()
                                                         .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
 
                                         if (usersNotFoundIds.Contains(userId))
                                         {
-                                            var id = step["id"].Value<string>();
+                                            var id = step["id"].GetValue<string>();
                                             var message = $"Resource '{id}' does not exist or one of its queried reference-property objects are not present.";
                                             individualResponsesForPOSTRequests.Add(GenerateNotFoundIndividualResponse(id, message));
                                         }
                                         else
                                         {
-                                            individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].Value<string>()));
+                                            individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].GetValue<string>()));
                                         }
                                     }
                                 }
@@ -211,14 +206,12 @@ namespace Services.Tests
                                 }
 
                                 var stringContent = Encoding.UTF8.GetString(buffer);
-                                var root = JObject.Parse(stringContent);
-                                var requestsNode = root["requests"].ToString();
-                                var batchRequest = JArray.Parse(requestsNode);
+                                var batchRequest = GetBatchRequests(stringContent);
 
                                 var steps = batchRequest.Select(jtoken => new
                                 {
-                                    Id = jtoken["id"].Value<string>(),
-                                    Url = jtoken["url"].Value<string>(),
+                                    Id = jtoken["id"].GetValue<string>(),
+                                    Url = jtoken["url"].GetValue<string>(),
                                 }).ToList();
 
                                 var individualResponsesForPOSTRequests = new List<string>();
@@ -294,9 +287,7 @@ namespace Services.Tests
                     }
 
                     var stringContent = Encoding.UTF8.GetString(buffer);
-                    var root = JObject.Parse(stringContent);
-                    var requestsNode = root["requests"].ToString();
-                    var batchRequest = JArray.Parse(requestsNode);
+                    var batchRequest = GetBatchRequests(stringContent);
 
                     var requests = new Dictionary<string, string>();
                     var userIds = new List<string>();
@@ -306,17 +297,13 @@ namespace Services.Tests
                     foreach (var step in batchRequest)
                     {
                         //PATCH requests have multiple userIds per step
-                        if (step["method"].Value<string>() == "PATCH")
+                        if (step["method"].GetValue<string>() == "PATCH")
                         {
-                            userIds = step["body"]["members@odata.bind"]
-                                      .Values()
-                                      .Select(x => x.Value<string>()
-                                      .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                      .ToList();
+                            userIds = GetUserIds(step);
 
                             if (userIds.Any(x => usersThatAlreadyExist.Contains(x)))
                             {
-                                requests.Add(step["id"].Value<string>(), usersThatAlreadyExist.First());
+                                requests.Add(step["id"].GetValue<string>(), usersThatAlreadyExist.First());
                                 var content = GenerateBadRequestBatchResponse(requests, userAlreadyExistsMessage);
                                 batchResponseContent = GenerateBatchResponseContent(content);
                                 nativeResponseHandler.Value = GetHttpResponseMessage(content);
@@ -326,16 +313,16 @@ namespace Services.Tests
                         {
                             //POST requests have a single userId per step
                             var userId = step["body"]["@odata.id"]
-                                            .Value<string>()
+                                            .GetValue<string>()
                                             .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
 
                             if (usersThatAlreadyExist.Contains(userId))
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateBadRequestIndividualResponse(step["id"].Value<string>(), userAlreadyExistsMessage));
+                                individualResponsesForPOSTRequests.Add(GenerateBadRequestIndividualResponse(step["id"].GetValue<string>(), userAlreadyExistsMessage));
                             }
                             else
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].Value<string>()));
+                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].GetValue<string>()));
                             }
                         }
                     }
@@ -417,9 +404,7 @@ namespace Services.Tests
                     }
 
                     var stringContent = Encoding.UTF8.GetString(buffer);
-                    var root = JObject.Parse(stringContent);
-                    var requestsNode = root["requests"].ToString();
-                    var batchRequest = JArray.Parse(requestsNode);
+                    var batchRequest = GetBatchRequests(stringContent);
 
                     var requests = new Dictionary<string, string>();
                     var userIds = new List<string>();
@@ -429,17 +414,13 @@ namespace Services.Tests
                     foreach (var step in batchRequest)
                     {
                         //PATCH requests have multiple userIds per step
-                        if (step["method"].Value<string>() == "PATCH")
+                        if (step["method"].GetValue<string>() == "PATCH")
                         {
-                            userIds = step["body"]["members@odata.bind"]
-                                      .Values()
-                                      .Select(x => x.Value<string>()
-                                      .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
-                                      .ToList();
+                            userIds = GetUserIds(step);
 
                             if (userIds.Any(x => guestUsers.Contains(x)))
                             {
-                                requests.Add(step["id"].Value<string>(), guestUsers.First());
+                                requests.Add(step["id"].GetValue<string>(), guestUsers.First());
                                 var content = GenerateForbiddenBatchResponse(requests, guestUserErrorMessage);
                                 batchResponseContent = GenerateBatchResponseContent(content);
                                 nativeResponseHandler.Value = GetHttpResponseMessage(content);
@@ -449,16 +430,16 @@ namespace Services.Tests
                         {
                             //POST requests have a single userId per step
                             var userId = step["body"]["@odata.id"]
-                                            .Value<string>()
+                                            .GetValue<string>()
                                             .Replace("https://graph.microsoft.com/v1.0/directoryObjects/", string.Empty);
 
                             if (guestUsers.Contains(userId))
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateForbiddenIndividualResponse(step["id"].Value<string>(), guestUserErrorMessage));
+                                individualResponsesForPOSTRequests.Add(GenerateForbiddenIndividualResponse(step["id"].GetValue<string>(), guestUserErrorMessage));
                             }
                             else
                             {
-                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].Value<string>()));
+                                individualResponsesForPOSTRequests.Add(GenerateSuccessIndividualResponse(step["id"].GetValue<string>()));
                             }
                         }
                     }
@@ -617,6 +598,22 @@ namespace Services.Tests
             }}";
 
             return response;
+        }
+
+        private List<string> GetUserIds(JsonNode node)
+        {
+            return node["body"]["members@odata.bind"].AsArray()
+                    .Select(x => x.GetValue<string>()
+                    .Replace("https://graph.microsoft.com/v1.0/users/", string.Empty))
+                    .ToList();
+        }
+
+        private JsonArray GetBatchRequests(string json)
+        {
+            var root = JsonDocument.Parse(json);
+            var requestsNode = root.RootElement.GetProperty("requests");
+            var batchRequest = JsonNode.Parse(requestsNode.ToString()).AsArray();
+            return batchRequest;
         }
     }
 }

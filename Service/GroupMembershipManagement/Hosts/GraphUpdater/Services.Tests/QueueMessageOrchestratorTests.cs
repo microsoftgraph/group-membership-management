@@ -6,13 +6,12 @@ using Hosts.GraphUpdater;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
-using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -60,7 +59,7 @@ namespace Services.Tests
             _serviceBusReceiverMock.Setup(x => x.ReceiveMessageAsync(It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()))
                                    .ReturnsAsync(() =>
                                    {
-                                       var contentBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(_request));
+                                       var contentBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(_request));
                                        var properties = new Dictionary<string, object> { { "Type", "GroupMembership" } };
                                        var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(contentBytes), properties: properties);
                                        return message;

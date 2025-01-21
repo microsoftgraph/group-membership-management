@@ -1,24 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Models.ServiceBus;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
+using Models.ServiceBus;
+using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
-using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
-using System.Text.Json.Serialization;
-using Newtonsoft.Json;
 
 namespace Services.Tests
 {
@@ -64,7 +62,7 @@ namespace Services.Tests
             _blobResult = new BlobResult
             {
                 BlobStatus = BlobStatus.Found,
-                Content = JsonConvert.SerializeObject(content)
+                Content = JsonSerializer.Serialize(content)
             };
 
             var syncJob = new SyncJob

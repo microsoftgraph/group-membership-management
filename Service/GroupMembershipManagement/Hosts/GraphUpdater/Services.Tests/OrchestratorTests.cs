@@ -12,7 +12,6 @@ using Models;
 using Models.Notifications;
 using Models.ServiceBus;
 using Moq;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Repositories.Mocks;
 using Services.Contracts;
@@ -23,6 +22,7 @@ using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Models.Group;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
@@ -103,7 +103,7 @@ namespace Services.Tests
                 SyncJob = syncJob
             };
 
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -211,7 +211,7 @@ namespace Services.Tests
 
             mockGraphUpdaterService.Jobs.Add(syncJob);
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -342,7 +342,7 @@ namespace Services.Tests
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
-            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonSerializer.Serialize(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -445,7 +445,7 @@ namespace Services.Tests
                 SyncJob = syncJob
             };
 
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -547,7 +547,7 @@ namespace Services.Tests
                 SyncJob = syncJob
             };
 
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -618,7 +618,7 @@ namespace Services.Tests
                 SyncJob = syncJob
             };
 
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -699,7 +699,7 @@ namespace Services.Tests
                 SyncJob = syncJob
             };
 
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -782,7 +782,7 @@ namespace Services.Tests
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
-            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonSerializer.Serialize(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -899,7 +899,7 @@ namespace Services.Tests
             context.Setup(x => x.GetInput<MembershipHttpRequest>()).Returns(input);
             context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(syncJob);
             context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(syncJob.Group.GroupId);
-            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonConvert.SerializeObject(groupMembership));
+            context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>())).ReturnsAsync(JsonSerializer.Serialize(groupMembership));
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, mockLoggingRepo));
             context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
@@ -1021,7 +1021,7 @@ namespace Services.Tests
 
             mockGraphUpdaterService.Jobs.Add(syncJob);
             mockGraphUpdaterService.Groups.Add(groupMembership.Destination.ObjectId, new Group { Id = groupMembership.Destination.ObjectId.ToString() });
-            blobStorageRepository.Files.Add(input.FilePath, JsonConvert.SerializeObject(groupMembership));
+            blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
 
             var context = new Mock<IDurableOrchestrationContext>();
             var executionContext = new Mock<ExecutionContext>();
@@ -1098,21 +1098,21 @@ namespace Services.Tests
         {
             var json =
             "{" +
-            "  'Sources': [" +
+            "  \"Sources\": [" +
             "    {" +
-            "      'ObjectId': '8032abf6-b4b1-45b1-8e7e-40b0bd16d6eb'" +
+            "      \"ObjectId\": \"8032abf6-b4b1-45b1-8e7e-40b0bd16d6eb\"" +
             "    }" +
             "  ]," +
-            "  'Destination': {" +
-            "    'ObjectId': 'dc04c21f-091a-44a9-a661-9211dd9ccf35'" +
+            "  \"Destination\": {" +
+            "    \"ObjectId\": \"dc04c21f-091a-44a9-a661-9211dd9ccf35\"" +
             "  }," +
-            "  'SyncJobId': '601f6c70-8fe1-496f-8446-befb15b5249a'," +
-            "  'SourceMembers': []," +
-            "  'RunId': '501f6c70-8fe1-496f-8446-befb15b5249a'," +
-            "  'Errored': false," +
-            "  'IsLastMessage': true" +
+            "  \"SyncJobId\": \"601f6c70-8fe1-496f-8446-befb15b5249a\"," +
+            "  \"SourceMembers\": []," +
+            "  \"RunId\": \"501f6c70-8fe1-496f-8446-befb15b5249a\"," +
+            "  \"Errored\": false," +
+            "  \"IsLastMessage\": true" +
             "}";
-            var groupMembership = JsonConvert.DeserializeObject<GroupMembership>(json);
+            var groupMembership = JsonSerializer.Deserialize<GroupMembership>(json);
             return groupMembership;
         }
 

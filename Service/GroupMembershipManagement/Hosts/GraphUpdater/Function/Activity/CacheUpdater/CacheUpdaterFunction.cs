@@ -1,19 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Repositories.Contracts;
-using Services.Contracts;
-using System;
-using System.Threading.Tasks;
-using Microsoft.Graph.Models;
-using Models.Helpers;
+using Models;
 using Models.ServiceBus;
-using Newtonsoft.Json;
-using Repositories.BlobStorage;
+using Repositories.Contracts;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
 {
@@ -32,11 +28,11 @@ namespace Hosts.GraphUpdater
         public async Task UpdateCacheAsync
             ([ActivityTrigger] CacheUpdaterRequest request)
         {
-           
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUpdaterFunction)} {request.UserIds.Count} users to remove from cache/{request.GroupId}", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            
-            var json = JsonConvert.DeserializeObject<GroupMembership>(request.FileContent);
+
+            var json = JsonSerializer.Deserialize<GroupMembership>(request.FileContent);
             var cacheMembers = json.SourceMembers.Distinct().ToList();
 
             await _loggingRepository.LogMessageAsync(
@@ -63,7 +59,7 @@ namespace Hosts.GraphUpdater
                 SourceMembers = newUsers ?? new List<AzureADUser>()
             };
             var fileName = $"/cache/{request.GroupId}_{timeStamp}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
