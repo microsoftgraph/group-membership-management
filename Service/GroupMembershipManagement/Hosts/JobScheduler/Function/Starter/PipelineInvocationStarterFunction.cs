@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Hosts.JobScheduler
@@ -34,8 +35,9 @@ namespace Hosts.JobScheduler
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            var requestBody = JsonSerializer.Deserialize<Dictionary<string, string>>(await req.Content.ReadAsStringAsync());
-            var delayForDeploymentInMinutes = int.Parse(requestBody.GetValueOrDefault("DelayForDeploymentInMinutes"));
+            var requestContent = await req.Content.ReadAsStringAsync();
+            var requestBody = JsonSerializer.Deserialize<JsonElement>(requestContent);
+            var delayForDeploymentInMinutes = requestBody.GetProperty("DelayForDeploymentInMinutes").GetInt32();
 
             var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction),
                 new OrchestratorRequest
