@@ -1,0 +1,13 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+using System;
+using System.Collections.Generic;
+
+namespace Hosts.NonProdService
+{
+    public class GroupDeltaCalculatorRequest
+    {
+        public Dictionary<int,int> GroupSizesAndCounts { get; set; }
+        public Guid RunId { get; set; }
+    }
+}

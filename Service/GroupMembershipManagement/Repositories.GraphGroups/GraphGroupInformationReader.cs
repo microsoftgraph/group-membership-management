@@ -639,5 +639,36 @@ namespace Repositories.GraphGroups
                 throw;
             }
         }
+
+        public async Task<List<string>> GetAllGroupNamesAsync()
+        {
+            var groupNames = new List<string>();
+            var groups = await _graphServiceClient.Groups
+                .GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = new[] { "displayName" };
+                });
+
+            while (groups.Value.Count > 0)
+            {
+                groupNames.AddRange(groups.Value.Select(g => g.DisplayName));
+                if (groups.OdataNextLink != null)
+                {
+                    var nextPageRequest = new RequestInformation
+                    {
+                        HttpMethod = Method.GET,
+                        UrlTemplate = groups.OdataNextLink
+                    };
+
+                    groups = await _graphServiceClient.RequestAdapter.SendAsync<GroupCollectionResponse>(nextPageRequest, GroupCollectionResponse.CreateFromDiscriminatorValue);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return groupNames;
+        }
     }
 }

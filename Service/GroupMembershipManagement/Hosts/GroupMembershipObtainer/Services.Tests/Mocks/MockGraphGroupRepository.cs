@@ -212,6 +212,11 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<string>> GetAllGroupNamesAsync()
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockException : Exception { }

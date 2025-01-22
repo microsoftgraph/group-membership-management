@@ -251,5 +251,9 @@ namespace Repositories.GraphGroups
         {
             return await _graphGroupInformationReader.SearchGroupsAsync(query);
         }
+        public async Task<List<string>> GetAllGroupNamesAsync()
+        {
+            return await _graphGroupInformationReader.GetAllGroupNamesAsync();
+        }
     }
 }

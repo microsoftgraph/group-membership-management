@@ -41,37 +41,35 @@ namespace Hosts.NonProdService
                     RunId = runId
                 });
 
+            // Determine how many groups of each size we still need to create
+            var groupSizesAndCounts = calcResponse.GroupSizesAndCounts;
+            var groupsToCreate = await context.CallActivityAsync<GroupDeltaCalculatorResponse>(
+                nameof(GroupDeltaCalculatorFunction),
+                new GroupDeltaCalculatorRequest
+                {
+                    GroupSizesAndCounts = groupSizesAndCounts,
+                    RunId = runId
+                });
+
             // Create and retrieve groups
             var groupSizesAndIds = new Dictionary<int, List<Guid>>();
-            var groupSizesAndCounts = calcResponse.GroupSizesAndCounts;
-            foreach (var groupSize in groupSizesAndCounts.Keys)
+            foreach (var groupSize in groupsToCreate.GroupsToCreate.Keys)
             {
-                var groupCount = groupSizesAndCounts[groupSize];
-                var groupIds = new List<Guid>();
+                var groupCount = groupsToCreate.GroupsToCreate[groupSize];
 
-                // Process groups in batches
-                const int batchSize = 10;
-                for (var i = 0; i < groupCount; i += batchSize)
-                {
-                    var batchTasks = new List<Task<GroupCreatorAndRetrieverResponse>>();
-                    for (var j = 0; j < batchSize && (i + j) < groupCount; j++)
+                // Call the batch function to create and retrieve groups
+                var batchResponse = await context.CallActivityAsync<List<GroupCreatorAndRetrieverBatchResponse>>(
+                    nameof(GroupCreatorAndRetrieverBatchFunction),
+                    new GroupCreatorAndRetrieverBatchRequest
                     {
-                        batchTasks.Add(context.CallActivityAsync<GroupCreatorAndRetrieverResponse>(
-                            nameof(GroupCreatorAndRetrieverFunction),
-                            new GroupCreatorAndRetrieverRequest
-                            {
-                                GroupName = $"LoadTesting_DestinationGroup_{groupSize}_{i + j + 1}",
-                                TestGroupType = TestGroupType.LoadTesting,
-                                GroupOwnersIds = new List<Guid>() { options.DestinationGroupOwnerId },
-                                RetrieveMembers = false,
-                                RunId = runId
-                            }));
-                    }
+                        BaseGroupName = $"LoadTesting_DestinationGroup_{groupSize}",
+                        GroupCount = groupCount,
+                        DestinationGroupOwnerId = options.DestinationGroupOwnerId,
+                        RetrieveMembers = false,
+                        RunId = runId
+                    });
 
-                    var batchResults = await Task.WhenAll(batchTasks);
-                    groupIds.AddRange(batchResults.Select(result => result.TargetGroup.ObjectId));
-                }
-
+                var groupIds = batchResponse.Select(response => response.TargetGroup.ObjectId).ToList();
                 groupSizesAndIds.Add(groupSize, groupIds);
             }
 
