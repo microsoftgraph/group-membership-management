@@ -126,7 +126,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               {selectedDestination && selectedDestinationEndpoints &&
                 <EndpointsList 
                   endpoints={selectedDestinationEndpoints}
-                  groupId={selectedDestination.id}
                   groupName={selectedDestination.name}
                 />
               }

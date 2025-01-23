@@ -197,7 +197,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
             {selectedDestination && selectedDestinationEndpoints && (
               <EndpointsList
                 endpoints={selectedDestinationEndpoints}
-                groupId={selectedDestination.id}
                 groupName={selectedDestination.name}
                 showOutlookWarning={true}
               />)}

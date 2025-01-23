@@ -13,7 +13,7 @@ import vivaEngageLogo from '../../assets/vivaengagelogo.png';
 const getClassNames = classNamesFunction<IEndpointsListStyleProps, IEndpointsListStyles>();
 
 export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (props) => {
-  const { className, styles, endpoints, groupName, groupId, showOutlookWarning } = props;
+  const { className, styles, endpoints, groupName, showOutlookWarning } = props;
   const classNames: IProcessedStyleSet<IEndpointsListStyles> = getClassNames(styles, {
     className,
   });
@@ -21,7 +21,9 @@ export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (
 
   const hasRequiredEndpoints = () => {
     if (!endpoints) return false;
-    return ['Outlook', 'Yammer', 'SharePoint', 'Microsoft Teams'].some((endpoint) => endpoints.includes(endpoint));
+    return ['Outlook', 'Yammer', 'SharePoint', 'Microsoft Teams', 'SecurityGroup'].some((endpoint) =>
+      endpoints.includes(endpoint)
+    );
   };
 
   const outlookWarningUrl = useSelector(selectOutlookWarningUrl);
@@ -56,10 +58,16 @@ export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (
 
   if (!hasRequiredEndpoints()) return null;
 
-  return (
+  return endpoints && endpoints.length === 0 ? (
+    <></>
+  ) : endpoints && endpoints.every((endpoint) => endpoint === 'SecurityGroup') ? (
+    <Text className={classNames.itemTitle} block>
+      {strings.ManageMembership.labels.entraSecurityGroup}
+    </Text>
+  ) : (
     <Stack.Item align="start">
       <Text className={classNames.itemTitle} block>
-        {endpoints ? strings.ManageMembership.labels.appsUsed : ''}
+        {strings.ManageMembership.labels.appsUsed}
       </Text>
       <Text className={classNames.itemData} block>
         <div className={classNames.endpointsContainer}>
@@ -94,20 +102,20 @@ export const EndpointsListBase: React.FunctionComponent<IEndpointsListProps> = (
           )}
           {endpoints?.includes('Yammer') && (
             <div className={classNames.yammerContainer}>
-            <Stack horizontal verticalAlign="center">
-              <div
-                className={mergeStyles({
-                  backgroundImage: `url(${vivaEngageLogo})`,
-                  backgroundSize: 'contain',
-                  backgroundRepeat: 'no-repeat',
-                  width: '24px',
-                  height: '24px',
-                })}
-                aria-hidden="true"
-              ></div>
-              <Text className={vivaEngageLabelClass}>Viva Engage</Text>
-            </Stack>
-          </div>
+              <Stack horizontal verticalAlign="center">
+                <div
+                  className={mergeStyles({
+                    backgroundImage: `url(${vivaEngageLogo})`,
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    width: '24px',
+                    height: '24px',
+                  })}
+                  aria-hidden="true"
+                ></div>
+                <Text className={vivaEngageLabelClass}>Viva Engage</Text>
+              </Stack>
+            </div>
           )}
         </div>
       </Text>

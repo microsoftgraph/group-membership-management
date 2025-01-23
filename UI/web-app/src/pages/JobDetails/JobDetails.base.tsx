@@ -498,13 +498,10 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           </Stack.Item>
         </Stack>
       </Stack.Item>
-      {job?.endpoints ? (
         <EndpointsList 
           endpoints={job.endpoints}
-          groupId={job.targetGroupId}
           groupName={job.targetGroupName}
         />
-      ) : null}
     </Stack>
   )
 }

@@ -28,7 +28,6 @@ export interface IEndpointsListProps extends React.AllHTMLAttributes<HTMLDivElem
    */
   styles?: IStyleFunctionOrObject<IEndpointsListStyleProps, IEndpointsListStyles>;
   endpoints: string[];
-  groupId: string;
   groupName?: string;
   showOutlookWarning?: boolean;
 }
