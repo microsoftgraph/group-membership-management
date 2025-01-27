@@ -101,7 +101,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
-  const [canEditJob, setCanEditJob] = useState<boolean>(isJobWriter && job?.status !== SyncStatus.PendingReview);
   const showLoader: boolean = jobLoading || removeGMMPending;
 
   const [isJobHistoryPanelOpen, setIsJobHistoryPanelOpen] = useState(false);
@@ -155,21 +154,25 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   };
 
+  const [canEditJob, setCanEditJob] = useState<boolean>(false);
+
+  useEffect(() => {
+    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview);
+  }, [isJobWriter, job?.status]);
+  
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
     if (jobId) {
-      dispatch(fetchJobDetails({ syncJobId: jobId ?? '' }));
+      dispatch(fetchJobDetails({ syncJobId: jobId }));
     }
     if (groupId && channelId === undefined) {
       dispatch(getGroupDetails(groupId));
     }
     if (groupId && channelId) {
-      dispatch(getChannelDetails({
-        groupId,
-        channelId
-      }));
+      dispatch(getChannelDetails({ groupId, channelId }));
     }
   }, [dispatch, jobId, groupId, channelId]);
+  
 
   return (
     <Page>
