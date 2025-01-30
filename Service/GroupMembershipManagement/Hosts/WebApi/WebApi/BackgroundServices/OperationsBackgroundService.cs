@@ -195,21 +195,16 @@ namespace WebApi.BackgroundServices
                 Message = "Clearing topics and their subscriptions..."
             });
 
-            var subscriptions = await Task.WhenAll(GetSubscriptionsAsync(_operationsSettings.MembershipUpdatersTopic),
-                                                   GetSubscriptionsAsync(_operationsSettings.SyncJobTopic));
-
-            var membershipUpdaterSubscriptions = subscriptions.FirstOrDefault(s => s.topicName == _operationsSettings.MembershipUpdatersTopic).subscriptions;
-            var syncJobSubscriptions = subscriptions.FirstOrDefault(s => s.topicName == _operationsSettings.SyncJobTopic).subscriptions;
+            var topics = _sbAdministrationClient.GetTopicsAsync();
             var clearTopicTasks = new List<Task>();
 
-            foreach (var subscription in membershipUpdaterSubscriptions)
+            await foreach (var topic in topics)
             {
-                clearTopicTasks.Add(ClearTopicAsync(_operationsSettings.MembershipUpdatersTopic, subscription, cancellationToken));
-            }
-
-            foreach (var subscription in syncJobSubscriptions)
-            {
-                clearTopicTasks.Add(ClearTopicAsync(_operationsSettings.SyncJobTopic, subscription, cancellationToken));
+                var subscriptions = _sbAdministrationClient.GetSubscriptionsAsync(topic.Name);
+                await foreach (var subscription in subscriptions)
+                {
+                    clearTopicTasks.Add(ClearTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken));
+                }
             }
 
             await Task.WhenAll(clearTopicTasks);
