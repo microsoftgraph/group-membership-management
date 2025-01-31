@@ -203,10 +203,13 @@ namespace Repositories.EntityFramework
 
         public async Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
         {
-            foreach (var job in jobs)
+            var existingJobs = await _writeContext.SyncJobs
+                                                .Where(job => jobs.Select(j => j.Id).Contains(job.Id))
+                                                .ToListAsync();
+            foreach (var job in existingJobs)
             {
-                _writeContext.Set<SyncJob>().Attach(job);
-                _writeContext.Entry(job).Property(x => x.ScheduledDate).IsModified = true;
+                var updatedJob = jobs.First(j => j.Id == job.Id);
+                job.ScheduledDate = updatedJob.ScheduledDate;
             }
 
             await _writeContext.SaveChangesAsync();
