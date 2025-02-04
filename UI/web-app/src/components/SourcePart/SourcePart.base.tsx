@@ -239,13 +239,13 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           {part.query.type === SourcePartType.HR && 
             isEditable &&
             (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (
-          <ActionButton
+          <div><ActionButton
             iconProps={{ iconName: "Copy" }}
             onClick={handleCopy}
             disabled={!isJobWriter || !isEditable}
           >
             {strings.copy}
-        </ActionButton>
+        </ActionButton></div>
         )}
         </div>
       }
