@@ -71,6 +71,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const attributes = useSelector(selectAttributes);
   const attributeMappings = useSelector(selectAttributeMappings);
   const hrSource = useSelector(selectSource);
+  const [childIndexForAttribute, setChildIndexForAttribute] = useState<number>(-1);
+  const [groupIndexForAttribute, setGroupIndexForAttribute] = useState<number>(-1);
+  const [itemIndexForAttribute, setItemIndexForAttribute] = useState<number>(-1);
   const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
   const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
@@ -1097,18 +1100,17 @@ const getOptions = (
     }
   };
 
-  const onAttributeChange = (text: string, index: number) => {
+  const onAttributeChange = (text: string, index: number, groupIndex?: number, childIndex?: number) => {
     let newFilteredOptions = { ...filteredOptions };
-    if (groupingEnabled && groups.length > 1) return;
+    if (groupingEnabled && groups.length > 0 && groupIndex !== undefined) {
+      setItemIndexForAttribute(index);
+      setGroupIndexForAttribute(groupIndex);
+      setChildIndexForAttribute(childIndex ?? -1);
+    }
     if (attributes && attributes.length > 0) {
       const currentAttributeKey = items[index].attribute;
-  
-      if (!text) {
-        newFilteredOptions[index] = getOptions(attributes, currentAttributeKey);
-      } else {
-        let options = getOptions(attributes, currentAttributeKey);
-        newFilteredOptions[index] = options.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
-      }
+      const options = getOptions(attributes, currentAttributeKey);
+      newFilteredOptions[index] = (!text) ? options : options.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()));
       setFilteredOptions(newFilteredOptions);
     }
   };
@@ -1299,7 +1301,7 @@ const getOptions = (
     );
   }
 
-  const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number): JSX.Element => {
+  const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number, childIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       const currentAttributeKey = items[index].attribute;
       const attribute = attributes?.find(
@@ -1307,6 +1309,16 @@ const getOptions = (
           (attr.hasMapping ? `${attr.name}_Code` : attr.name) === currentAttributeKey
       );
       const isAttributeDisabled = attribute?.enabled === false;
+
+      const attributeOptions = groupingEnabled
+      ? (groups.length > 0 &&
+          (groupIndex === undefined && groupIndexForAttribute === -1 ? true : groupIndex === groupIndexForAttribute) &&
+          (childIndex === undefined && childIndexForAttribute === -1 ? true : childIndex === childIndexForAttribute) &&
+          (index === undefined && itemIndexForAttribute === -1 ? true : index === itemIndexForAttribute))
+        ? filteredOptions[index]
+        : getOptions(attributes, currentAttributeKey)
+      : filteredOptions[index] || getOptions(attributes, currentAttributeKey);
+
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
@@ -1317,11 +1329,8 @@ const getOptions = (
           return (
             <ComboBox
               selectedKey={currentAttributeKey}
-              options={
-                filteredOptions[index] ||
-                getOptions(attributes, currentAttributeKey) 
-              }
-              onInputValueChange={(text) => onAttributeChange(text, index)}
+              options={attributeOptions}
+              onInputValueChange={(text) => onAttributeChange(text, index, groupIndex, childIndex)}
               onChange={(event, option) =>
                 handleAttributeChange(event, option, index, groupIndex)
               }
@@ -1632,7 +1641,7 @@ const getOptions = (
         styles={{ root: classNames.detailsList }}
         items={items}
         columns={columns}
-        onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column, groupIndex)}
+        onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column, groupIndex, childIndex)}
         selection={selection}
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
