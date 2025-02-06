@@ -29,25 +29,20 @@ namespace Hosts.NonProdService
             await _graphGroupRepository.CreateGroup(request.GroupName, request.TestGroupType, request.GroupOwnersIds);
 
             var group = await _graphGroupRepository.GetGroup(request.GroupName);
-            
+
+            var attempts = 0;
+            while (group == null && attempts < 5)
+            {
+                attempts++;
+                await Task.Delay(5000);
+                group = await _graphGroupRepository.GetGroup(request.GroupName);
+            }
+
             if (group == null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function failed because group couldn't be generated", RunId = request.RunId });
 
-                var attempts = 0;
-                while(group == null && attempts < 5)
-                {
-                    attempts++;
-                    group = await _graphGroupRepository.GetGroup(request.GroupName);
-                    await Task.Delay(5000);
-                }
-
-                if(group == null)
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function failed because group couldn't be generated", RunId = request.RunId });
-
-                    return null;
-                }
+                return null;
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully created group with name {request.GroupName}, if it did not exist already", RunId = request.RunId });

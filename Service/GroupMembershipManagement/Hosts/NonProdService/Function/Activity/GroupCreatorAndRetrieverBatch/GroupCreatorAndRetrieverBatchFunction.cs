@@ -41,14 +41,14 @@ namespace Hosts.NonProdService
 
                 if (group == null)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} failed to create group {groupName}", RunId = request.RunId });
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} failed to create group {groupName}. Retrying...", RunId = request.RunId });
 
                     var attempts = 0;
                     while (group == null && attempts < 5)
                     {
                         attempts++;
-                        group = await _graphGroupRepository.GetGroup(groupName);
                         await Task.Delay(5000);
+                        group = await _graphGroupRepository.GetGroup(groupName);
                     }
 
                     if (group == null)
