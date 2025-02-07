@@ -286,7 +286,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         await dispatch(patchJobDetails(patchRequest));
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
-        await dispatch(fetchJobs());
         navigate('/');
         setIsEditingJob(false);
       } catch (error) {
@@ -316,7 +315,6 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         await dispatch(postJob(newJob));
         dispatch(resetManageMembership());
         dispatch(clearSourceParts());
-        await dispatch(fetchJobs());
         navigate('/');
         setIsPostingJob(false);
       } catch (error) {
