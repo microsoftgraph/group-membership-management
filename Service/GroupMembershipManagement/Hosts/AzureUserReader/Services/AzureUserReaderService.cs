@@ -38,7 +38,7 @@ namespace Services
         public async Task<IList<string>> GetPersonnelNumbersAsync(string containerName, string blobPath)
         {
             var blob = await DownloadFileAsync(_storageAccountSecret.ConnectionString, containerName, blobPath);
-            var personnelNumbers = ExtractPersonnelNumbers(blob);
+            var personnelNumbers = ExtractPersonnelNumbers(blob).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved {personnelNumbers.Count} personnel numbers." });
 
