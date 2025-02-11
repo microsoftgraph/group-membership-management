@@ -43,6 +43,8 @@ namespace WebApi.Models.DTOs
         public string? TargetGroupType { get; set; }
         public DateTime? LastSuccessfulRunTime { get; set; }
         public DateTime? EstimatedNextRunTime { get; set; }
-        public string? Status { get; set; } 
+        public string? Status { get; set; }
+        public string? LastModifiedByDisplayName { get; set; }
+        public string? LastModifiedByObjectId { get; set; }
     }
 }

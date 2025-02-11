@@ -142,6 +142,7 @@ namespace Services.Tests
 
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
                                                              _syncJobRepository.Object,
+                                                             _syncJobChangeRepository.Object,
                                                              _graphGroupRepository.Object,
                                                              _httpContextAccessor.Object);
 
@@ -327,6 +328,7 @@ namespace Services.Tests
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
+                                     _syncJobChangeRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object);
 
@@ -417,6 +419,7 @@ namespace Services.Tests
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
+                                     _syncJobChangeRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object);
 
@@ -456,6 +459,7 @@ namespace Services.Tests
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
+                                     _syncJobChangeRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object);
 

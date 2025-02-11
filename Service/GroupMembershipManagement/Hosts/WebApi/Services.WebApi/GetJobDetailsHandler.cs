@@ -16,16 +16,19 @@ namespace Services
     public class GetJobDetailsHandler : RequestHandlerBase<GetJobDetailsRequest, GetJobDetailsResponse>
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly ISyncJobChangeRepository _syncJobChangesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public GetJobDetailsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+                              ISyncJobChangeRepository syncJobChangesRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
@@ -65,6 +68,15 @@ namespace Services
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
 
+            string lastModifiedByDisplayName = "";
+            string lastModifiedByObjectId = "";
+            if (job.Status == SyncStatus.PendingReview.ToString())
+            {
+                var res = await _syncJobChangesRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
+                lastModifiedByDisplayName = res.ChangedByDisplayName;
+                lastModifiedByObjectId = res.ChangedByObjectId.ToString();
+            }
+
             DateTime estimatedNextRunTime;
             if (!jobStartsInFuture && !jobScheduledForFuture)
             {
@@ -97,7 +109,9 @@ namespace Services
                 TargetGroupType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
-                Status = job.Status
+                Status = job.Status,
+                LastModifiedByDisplayName = lastModifiedByDisplayName,
+                LastModifiedByObjectId = lastModifiedByObjectId
             };
 
             response.Model = dto;
