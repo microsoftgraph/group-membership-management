@@ -57,8 +57,8 @@ namespace WebApi.Controllers.v1.Jobs
                 }
 
                 var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
-
-                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter, displayName));
+                var businessJustification = newSyncJob.BusinessJustification;
+                var response = await _postJobRequestHandler.ExecuteAsync(new PostJobRequest(userId, newSyncJob, isJobTenantWriter, displayName, businessJustification));
 
                 switch (response.StatusCode)
                 {

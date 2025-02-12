@@ -109,7 +109,8 @@ namespace Repositories.EntityFramework
                 ChangedByObjectId = entity.ChangedByObjectId,
                 ChangeSource = (SyncJobChangeSource)entity.ChangeSource,
                 ChangeReason = entity.ChangeReason,
-                ChangeDetails = entity.ChangeDetails
+                ChangeDetails = entity.ChangeDetails,
+                BusinessJustification = entity.BusinessJustification
             };
         }
 
@@ -124,7 +125,8 @@ namespace Repositories.EntityFramework
                 ChangedByObjectId = model.ChangedByObjectId,
                 ChangeSource = (Entities.SyncJobChangeSource)model.ChangeSource,
                 ChangeReason = model.ChangeReason,
-                ChangeDetails = model.ChangeDetails
+                ChangeDetails = model.ChangeDetails,
+                BusinessJustification = model.BusinessJustification
             };
         }
     }

@@ -16,6 +16,7 @@ namespace WebApi.Models.DTOs
         public int ThresholdPercentageForRemovals { get; set; }
         public string StartDate { get; set; }
         public string Destination { get; set; }
+        public string BusinessJustification { get; set; }
 
     }
 }

@@ -15,7 +15,8 @@ namespace Models
             { SettingKey.PrivacyPolicyUrl, Guid.Parse("6328107C-7332-47D1-A29C-CF9A49109AB0")},
             { SettingKey.UIUrl, Guid.Parse("446FDA16-C27B-4E0C-BF4D-5E563F47FC61")},
             { SettingKey.CanReviewOwnSubmissions, Guid.Parse("F901FC06-E92E-4361-B4CF-7F7283FB312B")},
-            { SettingKey.CreateGroupFeatureEnabled, Guid.Parse("A4B0C3E1-7F8D-4E9F-9A2C-5B6A0B8D7F1B") }
+            { SettingKey.CreateGroupFeatureEnabled, Guid.Parse("A4B0C3E1-7F8D-4E9F-9A2C-5B6A0B8D7F1B") },
+            { SettingKey.IsBusinessJustificationRequired, Guid.Parse("CDE677B2-F55C-4AD8-AB09-DE59F87AA5EE") }
         };
     }
 }

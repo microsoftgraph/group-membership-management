@@ -11,5 +11,6 @@ namespace Models
         UIUrl = 3,
         CanReviewOwnSubmissions = 4,
         CreateGroupFeatureEnabled = 5,
+        IsBusinessJustificationRequired = 6,
     }
 }

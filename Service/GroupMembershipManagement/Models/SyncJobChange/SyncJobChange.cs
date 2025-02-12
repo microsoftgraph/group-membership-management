@@ -44,5 +44,10 @@ namespace Models.SyncJobChange
         /// occurred, the serialized data may not match the current schema.
         /// </remarks>
         public string ChangeDetails { get; set; }
+
+        /// <summary>
+        /// Gets or sets the business justification for the change.
+        /// </summary>
+        public string BusinessJustification { get; set; }
     }
 }

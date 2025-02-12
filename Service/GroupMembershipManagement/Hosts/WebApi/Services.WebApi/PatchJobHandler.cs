@@ -83,6 +83,7 @@ namespace Services.WebApi
                 ChangedByObjectId = Guid.Parse(request.UserIdentity),
                 ChangedByDisplayName = request.UserDisplayName,
                 ChangeSource = SyncJobChangeSource.WebApp,
+                BusinessJustification = request.BusinessJustification
             };
 
             var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
@@ -141,7 +142,7 @@ namespace Services.WebApi
 
             syncJobChange.ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(updatedSyncJob);
             syncJobChange.ChangeReason = changeReason;
-            
+
             await _syncJobChangeRepository.Save(syncJobChange);
             return null;
         }

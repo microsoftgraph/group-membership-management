@@ -81,7 +81,8 @@ namespace Services
                         ChangedByDisplayName = request.UserDisplayName,
                         ChangeSource = SyncJobChangeSource.WebApp,
                         ChangeReason = SyncJobChangeReason.Onboarding.ToString(),
-                        ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(newSyncJobEntity)
+                        ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(newSyncJobEntity),
+                        BusinessJustification = request.BusinessJustification
                     });
                 }
                 else

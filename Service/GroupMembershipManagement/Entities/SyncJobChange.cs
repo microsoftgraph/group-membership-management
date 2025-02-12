@@ -15,5 +15,6 @@ namespace Entities
         public SyncJobChangeSource ChangeSource { get; set; }
         public string ChangeReason { get; set; }
         public string ChangeDetails { get; set; }
+        public string BusinessJustification { get; set; }
     }
 }
