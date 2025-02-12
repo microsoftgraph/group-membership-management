@@ -88,6 +88,17 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }
         },
         {
+            key: 'businessJustification',
+            name: strings.JobDetails.Panel.businessJustification,
+            fieldName: 'businessJustification',
+            minWidth: 100,
+            maxWidth: 200,
+            isResizable: true,
+            onRender: (item: SyncJobChange) => {
+                return <span>{item.businessJustification}</span>;
+            }
+        },
+        {
             key: 'changeDetails',
             name: strings.JobDetails.Panel.changeDetailsColumnLabel,
             fieldName: 'changeDetails',

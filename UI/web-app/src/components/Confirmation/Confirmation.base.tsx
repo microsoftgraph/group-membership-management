@@ -10,7 +10,7 @@ import {
   Text,
   TextField,
   Separator,
-  ActionButton
+  ActionButton,
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -31,12 +31,14 @@ import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipStartDate,
   manageMembershipThresholdPercentageForAdditions,
-  manageMembershipThresholdPercentageForRemovals
+  manageMembershipThresholdPercentageForRemovals,
+  manageMembershipBusinessJustification
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { EndpointsList } from '../EndpointsList';
+import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -47,7 +49,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const { 
     className, 
     styles,
-    onEditButtonClick
+    onEditButtonClick,
+    onEditBusinessJustification
   } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<IConfirmationStyles> = getClassNames(
@@ -65,6 +68,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
   const requestor: string = useSelector(manageMembershipRequestor);
+  const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
+  const businessJustification = useSelector(manageMembershipBusinessJustification);
   
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const compositeQuery = useSelector(manageMembershipCompositeQuery);
@@ -193,35 +198,54 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
           </div>
 
           <div>
-          <div className={classNames.cardHeader}>
-              <div className={classNames.cardTitle}>
-              {strings.ManageMembership.labels.sourceParts}
+            <div className={classNames.cardHeader}>
+                <div className={classNames.cardTitle}>
+                {strings.ManageMembership.labels.sourceParts}
+                </div>
+                <ActionButton 
+                  iconProps={{ iconName: 'Edit' }} 
+                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                  onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
+                  {strings.edit}
+                </ActionButton>
               </div>
-              <ActionButton 
-                iconProps={{ iconName: 'Edit' }} 
-                styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-                onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
-                {strings.edit}
-              </ActionButton>
+              <Separator />
+              <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
+                <Stack.Item align="stretch" grow>
+                  <TextField
+                    value={displayQuery}
+                    readOnly
+                    multiline
+                    resizable={true}
+                    autoAdjustHeight={true}
+                    styles={{
+                      field: { fontFamily: "monospace" },
+                    }}
+                  />
+                </Stack.Item>
+              </Stack>
             </div>
-            <Separator />
-            <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-              <Stack.Item align="stretch" grow>
-                <TextField
-                  value={displayQuery}
-                  readOnly
-                  multiline
-                  resizable={true}
-                  autoAdjustHeight={true}
-                  styles={{
-                    field: { fontFamily: "monospace" },
-                  }}
-                />
-              </Stack.Item>
-            </Stack>
-          </div>
+        
+            <div>
+              <div className={classNames.cardHeader}>
+                <div className={classNames.cardTitle}>
+                  {strings.JobDetails.labels.businessJustification}
+                </div>
+              </div>
+              <Separator />
+              <TextField
+                multiline
+                resizable={true}
+                autoAdjustHeight
+                required={isBusinessJustificationRequired}
+                label={`${strings.ManageMembership.labels.businessJustificationSubtitle} ${strings.ManageMembership.labels.businessJustificationPrompt}`}
+                contentEditable={false}
+                value={businessJustification}
+                onChange={(_event, newValue) => onEditBusinessJustification(newValue ?? '')}
+                placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
+              />
+            </div>
         </div>
-
       </PageSection>
     </div>
   );

@@ -8,5 +8,6 @@ export interface SyncJobChange {
     changeReason: string;
     changeSource: string;
     changeDetails: string;
+    businessJustification: string;
   }
   

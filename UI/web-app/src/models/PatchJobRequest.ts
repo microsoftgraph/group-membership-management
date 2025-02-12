@@ -5,6 +5,7 @@ export interface PatchJobRequest {
   syncJobId: string;
   patchOperation: PatchOperation[];
   changeReason: string;
+  businessJustification: string;
 }
 
 export interface PatchOperation {

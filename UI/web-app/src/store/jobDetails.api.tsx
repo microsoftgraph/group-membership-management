@@ -108,6 +108,7 @@ export const patchJobDetails = createAsyncThunk<
   headers.append('Authorization', `Bearer ${token}`);
   headers.append('Content-Type', 'application/json-patch+json');
   headers.append('X-Change-Reason', request.changeReason);
+  headers.append('X-Business-Justification', request.businessJustification);
 
   const options = {
     method: 'PATCH',

@@ -193,6 +193,12 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
         onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
         generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
       />
+      <GeneralSetting
+        title={strings.GeneralSettings.labels.businessJustificationTitle}
+        description={strings.GeneralSettings.labels.businessJustificationDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
+        generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
+      />
     </div>
   );
 }
@@ -208,6 +214,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.UIUrl]: true,
     [SettingKey.CanReviewOwnSubmissions]: true,
     [SettingKey.CreateGroupFeatureEnabled]: true,
+    [SettingKey.IsBusinessJustificationRequired]: true,
   });
 
   useEffect(() => {

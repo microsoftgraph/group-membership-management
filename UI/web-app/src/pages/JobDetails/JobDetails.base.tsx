@@ -19,7 +19,8 @@ import {
   DialogFooter,
   Persona,
   PersonaSize,
-  IPersonaSharedProps
+  IPersonaSharedProps,
+  TextField
 } from '@fluentui/react';
 
 import {
@@ -33,7 +34,7 @@ import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
 import { type AppDispatch } from '../../store';
-import { fetchJobDetails, getChannelDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
+import { fetchJobChanges, fetchJobDetails, getChannelDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
@@ -42,7 +43,8 @@ import {
   selectPatchJobDetailsError,
   selectRemoveGMMError,
   selectRemoveGMMLoading,
-  selectSelectedJobLoading
+  selectSelectedJobLoading,
+  selectSelectedJobChanges
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -59,11 +61,10 @@ import {
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
-import { SyncStatus } from '../../models';
+import { SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
-import { fetchJobs } from '../../store/jobs.api';
 import { Loader } from '../../components/Loader';
-import { setIsEditingExistingJob } from '../../store/manageMembership.slice';
+import { manageMembershipBusinessJustification, setIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
@@ -347,11 +348,20 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     imageUrl: profilePhoto,
     text: jobDetails?.lastModifiedByDisplayName
   }
+  const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
+  const lastChange = jobChanges?.[0];
+  const businessJustification = useSelector(manageMembershipBusinessJustification);
+  const [loadingJobChanges, setLoadingJobChanges] = useState(true);
 
   useEffect(() => {
     setJobStatus(job?.status ?? '');
     setIsJobEnabled(job?.enabledOrNot ?? false);
-  }, [job]);
+    const fetchChanges = async () => {
+      await dispatch(fetchJobChanges({ syncJobId: jobId ?? job.syncJobId }));
+      setLoadingJobChanges(false);
+    };
+    fetchChanges();
+  }, [job, dispatch, jobId]);
 
   useEffect(() => {
     if (jobDetails && jobDetails.lastModifiedByObjectId) {
@@ -373,7 +383,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     const patchRequest: PatchJobRequest = {
       syncJobId: jobId ?? job.syncJobId,
       patchOperation,
-      changeReason
+      changeReason,
+      businessJustification: businessJustification ?? ''
     };
 
     try {
@@ -440,7 +451,19 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
               <Text>{strings.JobDetails.labels.pendingReview}</Text>
             </div>
             <Text>{isSubmissionReviewer ?
-              strings.JobDetails.labels.pendingReviewInstructions
+            <>
+              {strings.JobDetails.labels.pendingReviewInstructions}
+              {loadingJobChanges ? <Shimmer width="100%" /> :
+                <TextField
+                  multiline
+                  resizable={true}
+                  autoAdjustHeight
+                  label={strings.JobDetails.labels.businessJustification}
+                  readOnly={true}
+                  defaultValue={lastChange?.businessJustification}
+                />
+              }
+            </>
               : strings.JobDetails.labels.pendingReviewDescription}</Text>
             {isSubmissionReviewer && (
               <div className={classNames.membershipStatusActionButtons}>

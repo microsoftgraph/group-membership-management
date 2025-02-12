@@ -153,6 +153,8 @@ export type IStrings = {
         reviewOwnSubmissionDescription: string;
         createGroupTitle: string;
         createGroupDescription: string;
+        businessJustificationTitle: string;
+        businessJustificationDescription: string;
       }
     }
   },
@@ -189,6 +191,7 @@ export type IStrings = {
       pendingReview: string;
       pendingReviewDescription: string;
       pendingReviewInstructions: string;
+      businessJustification: string;
       approve: string;
       reject: string;
       submissionRejected: string;
@@ -233,6 +236,7 @@ export type IStrings = {
       update: string;
       submissionApproved: string;
       submissionRejected: string;
+      businessJustification: string;
     };
     notFound: string;
     openInAzure: string;
@@ -401,6 +405,9 @@ export type IStrings = {
       clickHere: string;
       requestor: string;
       requestorInfo: string;
+      businessJustificationSubtitle: string;
+      businessJustificationPrompt: string;
+      businessJustificationPlaceholder: string;
     },
     CreateGroup: {
       createNewGroup: string;

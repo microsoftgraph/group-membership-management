@@ -156,6 +156,8 @@ export const strings: IStrings = {
         reviewOwnSubmissionDescription: "Can submission reviewers review their own submissions?",
         createGroupTitle: "Create Group feature enabled",
         createGroupDescription: "Allow users to create groups in your organization.",
+        businessJustificationTitle: "Business Justification required",
+        businessJustificationDescription: "Require users to provide business justification when requesting to manage a group or perform an update?",
       }
     }
   },
@@ -192,6 +194,7 @@ export const strings: IStrings = {
       pendingReview: 'Pending Review',
       pendingReviewDescription: 'Your submission is awaiting to be reviewed.',
       pendingReviewInstructions: 'Please review this request and then approve or decline after reviewing the membership configuration.',
+      businessJustification: 'Business Justification',
       approve: 'Approve',
       reject: 'Reject',
       submissionRejected: 'Submission Rejected',
@@ -238,6 +241,7 @@ export const strings: IStrings = {
       update: 'Sync Update Request',
       submissionApproved: 'Submission Approved',
       submissionRejected: 'Submission Rejected',
+      businessJustification: 'Business Justification',
     },
     openInAzure: 'Open in Azure',
     viewDetails: 'View Details',
@@ -406,6 +410,9 @@ export const strings: IStrings = {
       clickHere: 'Click here',
       requestor: 'Requestor',
       requestorInfo: 'The requestor is the person who initially requested that GMM manage this destination\'s membership. This person must be an owner of the destination. This helps us track who to reach out to if we have questions about the initial onboarding. Otherwise, the requestor has no additional rights to the destination than any other owner.',
+      businessJustificationSubtitle: 'What is the purpose of this destination?',
+      businessJustificationPrompt: 'Please provide a specific business justification. This will help the reviewer evaluate your request and offer feedback, if necessary.',
+      businessJustificationPlaceholder: 'Enter your answer'
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',

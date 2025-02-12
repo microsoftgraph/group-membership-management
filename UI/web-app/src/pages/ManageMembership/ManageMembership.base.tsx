@@ -46,7 +46,9 @@ import {
   manageMembershipAdvancedViewQuery,
   manageMembershipCreatedGroupId,
   setCreatedGroupName,
-  manageMembershipCreatedGroupName
+  manageMembershipCreatedGroupName,
+  manageMembershipBusinessJustification,
+  setBusinessJustification
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -67,6 +69,7 @@ import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { createGroup } from '../../store/groups.api';
+import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -159,6 +162,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
+  const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
+  const businessJustification: string = useSelector(manageMembershipBusinessJustification) ?? '';
+  const isBusinessJustificationProvided = businessJustification !== '';
 
   const finalQuery: SyncJobQuery = useMemo(() => {
     if (!sourcePartsQuery || sourcePartsQuery.length === 0) {
@@ -203,6 +209,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(getGroupEndpoints(createdGroupId));
     }
   }, [createdGroupId, createdGroupName, dispatch]);
+
+  const handleEditBusinessJustification = (justification: string) => {
+    dispatch(setBusinessJustification(justification));
+  };
 
   const handleBackToDashboardButtonClick = () => {
     if (hasChanges){
@@ -279,7 +289,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       const patchRequest: PatchJobRequest = {
         syncJobId: jobId,
         patchOperation,
-        changeReason: SyncJobChangeReason.Update
+        changeReason: SyncJobChangeReason.Update,
+        businessJustification: businessJustification
       };
 
       try {
@@ -307,6 +318,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         thresholdPercentageForAdditions: thresholdPercentageForAdditions,
         thresholdPercentageForRemovals: thresholdPercentageForRemovals,
         status: 'Idle',
+        businessJustification: businessJustification
       };
 
       setIsPostingJob(true);
@@ -338,6 +350,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   if (orgLeaderDataReturned === false) {
     isNextDisabled = true;
   }
+
+  const isSubmitDisabled = isBusinessJustificationRequired && !isBusinessJustificationProvided;
+
   return (
     <Page>
       <PageHeader onBackToDashboardButtonClick={isEditingExistingJob ? undefined : handleBackToDashboardButtonClick} />
@@ -379,6 +394,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             children={
               <Confirmation
                 onEditButtonClick={onEditButtonClick}
+                onEditBusinessJustification={handleEditBusinessJustification}
               />}
           />}
           <div className={classNames.bottomContainer}>
@@ -400,7 +416,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             </div>
             <div className={classNames.nextButtonContainer}>
               {currentStep === OnboardingSteps.Confirmation ?
-                <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} />
+                <PrimaryButton text={strings.submit} onClick={handleSaveButtonClick} disabled={isSubmitDisabled} />
                 : <PrimaryButton text={strings.next} onClick={onNextStepClick} disabled={isNextDisabled} />}
             </div>
           </div>

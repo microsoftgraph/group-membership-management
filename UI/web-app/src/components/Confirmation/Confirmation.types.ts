@@ -35,5 +35,6 @@ import {
      */
     styles?: IStyleFunctionOrObject<IConfirmationStyleProps, IConfirmationStyles>;
     onEditButtonClick: (stepToEdit: number) => void;
+    onEditBusinessJustification: (justification: string) => void;
   }
   

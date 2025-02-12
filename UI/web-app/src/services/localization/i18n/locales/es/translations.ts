@@ -158,6 +158,8 @@ export const strings: IStrings = {
         reviewOwnSubmissionDescription: "¿Pueden los Verificadores de Solicitud aceptar o rechazar su propia solicitud?",
         createGroupTitle: "Crear grupo habilitado",
         createGroupDescription: "¿Debería GMM permitir que los propietarios de grupos creen nuevos grupos?",
+        businessJustificationTitle: "Justificación de Negocio",
+        businessJustificationDescription: "¿Debería GMM requerir una justificación de negocio para la administración de la membresía o realizar algun cambio?",
       }
     }
   },
@@ -194,6 +196,7 @@ export const strings: IStrings = {
       pendingReview: 'Revisión pendiente',
       pendingReviewDescription: 'La configuración de la membresía está esperando ser verificada.',
       pendingReviewInstructions: 'Por favor revisa esta solicitud y luego aprueba o rechaza después de revisar la configuración de la membresía.',
+      businessJustification: 'Justificación de la membresía',
       approve: 'Aprobar',
       reject: 'Rechazar',
       submissionRejected: 'Solicitud rechazada',
@@ -241,6 +244,7 @@ export const strings: IStrings = {
       update: 'Solicitud de Actualización de sincronización',
       submissionApproved: 'Solicitud aprobada',
       submissionRejected: 'Solicitud rechazada',
+      businessJustification: 'Justificación del cambio',
     },
     notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
     openInAzure: 'Abrir en Azure',
@@ -408,7 +412,10 @@ export const strings: IStrings = {
       placeMembership: 'Membresía de lugar',
       clickHere: 'Haz click aquí',
       requestor: 'Solicitante',
-      requestorInfo: 'El solicitante es la persona que inicialmente solicitó que GMM gestione la membresía de este destino. Esta persona debe ser propietaria del destino. Esto nos ayuda a rastrear a quién contactar si tenemos preguntas sobre la sincronización inicial. De lo contrario, el solicitante no tiene más derechos sobre el destino que cualquier otro propietario.'
+      requestorInfo: 'El solicitante es la persona que inicialmente solicitó que GMM gestione la membresía de este destino. Esta persona debe ser propietaria del destino. Esto nos ayuda a rastrear a quién contactar si tenemos preguntas sobre la sincronización inicial. De lo contrario, el solicitante no tiene más derechos sobre el destino que cualquier otro propietario.',
+      businessJustificationSubtitle: '¿Cuál es el propósito de la administración de la membresía de este destino?',	
+      businessJustificationPrompt: 'Proporcione una justificación comercial para la administración de la membresía de este destino.',
+      businessJustificationPlaceholder: 'Escriba su respuesta aquí...',
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',

@@ -12,4 +12,5 @@ export type NewJob = {
     thresholdPercentageForRemovals: number;
     status: string;
     destination: string;
+    businessJustification: string;
 };

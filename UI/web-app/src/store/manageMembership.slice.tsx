@@ -42,6 +42,7 @@ export interface ManageMembershipState {
     createdGroupName?: string | undefined;
     createGroupLoading: boolean;
     createGroupErrorMessage?: string | undefined;
+    businessJustification?: string;
 }
 
 const initialState: ManageMembershipState = {
@@ -64,7 +65,8 @@ const initialState: ManageMembershipState = {
         query: {} as SyncJobQuery,
         thresholdPercentageForAdditions: 100,
         thresholdPercentageForRemovals: 20,
-        status: 'Idle'
+        status: 'Idle',
+        businessJustification: '',
     },
     isAdvancedView: false,
     compositeQuery: {} as SyncJobQuery,
@@ -75,6 +77,7 @@ const initialState: ManageMembershipState = {
     createdGroupName: undefined,
     createGroupLoading: false,
     createGroupErrorMessage: undefined,
+    businessJustification: '',
 };
 
 const manageMembershipSlice = createSlice({
@@ -284,7 +287,10 @@ const manageMembershipSlice = createSlice({
         },
         setCreateGroupErrorMessage: (state, action: PayloadAction<string>) => {
             state.createGroupErrorMessage = action.payload;
-        }
+        },
+        setBusinessJustification: (state, action: PayloadAction<string>) => {
+            state.businessJustification = action.payload;
+        },
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
@@ -360,7 +366,8 @@ export const {
     setJobDetailsForExistingJob,
     setIsEditingExistingJob,
     setCreatedGroupName,
-    setCreateGroupErrorMessage
+    setCreateGroupErrorMessage,
+    setBusinessJustification
 } = manageMembershipSlice.actions;
 
 // General
@@ -401,6 +408,9 @@ export const getSourcePartsFromState = (state: RootState) => state.manageMembers
 export const areAllSourcePartsValid = (state: RootState): boolean => {
     return state.manageMembership.sourceParts.every(isSourcePartValid);
 };
+
+// 4- Confirmation
+export const manageMembershipBusinessJustification = (state: RootState) => state.manageMembership.businessJustification;
 
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;

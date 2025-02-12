@@ -160,6 +160,15 @@ export const selectCreateGroupFeatureEnabled = (state: RootState) => {
   return createGroupFeatureEnabledSetting ? createGroupFeatureEnabledSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsBusinessJustificationRequired = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isBusinessJustificationRequiredSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsBusinessJustificationRequired);
+  return isBusinessJustificationRequiredSetting ? isBusinessJustificationRequiredSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

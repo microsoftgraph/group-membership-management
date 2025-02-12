@@ -12,6 +12,7 @@ import {
   selectUIUrl,
   selectCanReviewOwnSubmissions,
   selectCreateGroupFeatureEnabled,
+  selectIsBusinessJustificationRequired,
 } from '../../store/settings.slice';
 import { patchSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -45,6 +46,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const UIUrl = useSelector(selectUIUrl);
   const canReviewOwnSubmissions = useSelector(selectCanReviewOwnSubmissions);
   const createGroupFeatureEnabled = useSelector(selectCreateGroupFeatureEnabled);
+  const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const sqlMembershipSource = useSelector(selectSource);
   const sqlMembershipSourceAttributes = useSelector(selectAttributes);
   const isSourceSaving = useSelector(selectIsSourceSaving);
@@ -65,13 +67,14 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.UIUrl]: UIUrl ?? '',
     [SettingKey.CanReviewOwnSubmissions]: canReviewOwnSubmissions ? 'true' : 'false',
     [SettingKey.CreateGroupFeatureEnabled]: createGroupFeatureEnabled ? 'true' : 'false',
+    [SettingKey.IsBusinessJustificationRequired]: isBusinessJustificationRequired ? 'true' : 'false',
   });
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
   useEffect(() => { 
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -111,6 +114,12 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         patchSetting({
           settingKey: SettingKey.CreateGroupFeatureEnabled,
           settingValue: newSettings[SettingKey.CreateGroupFeatureEnabled],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsBusinessJustificationRequired,
+          settingValue: newSettings[SettingKey.IsBusinessJustificationRequired],
         })
       );
     }
