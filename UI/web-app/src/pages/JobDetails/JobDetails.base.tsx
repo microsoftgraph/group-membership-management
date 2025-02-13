@@ -16,7 +16,10 @@ import {
   Icon,
   Dialog,
   DialogType,
-  DialogFooter
+  DialogFooter,
+  Persona,
+  PersonaSize,
+  IPersonaSharedProps
 } from '@fluentui/react';
 
 import {
@@ -66,6 +69,8 @@ import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 import { JobHistoryPanel } from '../../components/JobHistoryPanel/JobHistoryPanel';
 import { EndpointsList } from '../../components/EndpointsList';
+import { getProfilePhotoUsingId } from '../../store/profile.api';
+import { selectLastModifiedUserProfilePhoto } from '../../store/profile.slice';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -173,7 +178,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       dispatch(getChannelDetails({ groupId, channelId }));
     }
   }, [dispatch, jobId, groupId, channelId]);
-  
+   
 
   return (
     <Page>
@@ -332,15 +337,27 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const patchError = useSelector(selectPatchJobDetailsError);
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
   const [jobStatus, setJobStatus] = useState(job.status);
+  const jobDetails = useSelector(selectSelectedJobDetails);
   const [isJobEnabled, setIsJobEnabled] = useState(job.enabledOrNot);
   const isJobEnabler = useSelector(selectIsJobOwnerEnabler);
   const isJobWriter = useSelector(selectIsJobWriter);
   const canEnableJob = isJobEnabler || isJobWriter;
+  const profilePhoto = useSelector(selectLastModifiedUserProfilePhoto);
+  const personaProps: IPersonaSharedProps = {
+    imageUrl: profilePhoto,
+    text: jobDetails?.lastModifiedByDisplayName
+  }
 
   useEffect(() => {
     setJobStatus(job?.status ?? '');
     setIsJobEnabled(job?.enabledOrNot ?? false);
   }, [job]);
+
+  useEffect(() => {
+    if (jobDetails && jobDetails.lastModifiedByObjectId) {
+      dispatch(getProfilePhotoUsingId(jobDetails.lastModifiedByObjectId));
+    }
+  }, [dispatch, jobDetails]);
 
   const updateJobStatus = async (newStatus: string, changeReason: SyncJobChangeReason) => {
     if (jobId === undefined && job.syncJobId === undefined) {
@@ -439,6 +456,40 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           </div>
         )}
       </div>
+      {isSubmissionReviewer && (jobStatus === SyncStatus.PendingReview) && (
+      <div className={classNames.lastModifiedby}>
+        <Stack.Item align="start">
+          <InfoLabel
+            label={strings.JobDetails.labels.lastModifiedby}
+            description={strings.JobDetails.descriptions.lastModifiedby}
+          />
+         <div className={classNames.itemData}>
+          {jobDetails != null ? (
+            (profilePhoto === "ErrorNonExistentStorage") ? (
+              <div className={classNames.itemData}>
+              <Text variant="medium" block>
+              {jobDetails.lastModifiedByDisplayName}
+              </Text>
+              <Text variant="medium" block>
+              {jobDetails.lastModifiedByObjectId}
+              </Text>
+            </div>
+            ) : (
+              <Persona
+                {...personaProps}
+                text={jobDetails.lastModifiedByDisplayName}
+                size={PersonaSize.size32}
+                hidePersonaDetails={false}
+                imageAlt={jobDetails.lastModifiedByDisplayName}
+              />
+            )
+          ) : (
+            <Shimmer width="100%" />
+          )}
+        </div>
+        </Stack.Item>
+      </div>
+      )}
     </div>
   )
 }

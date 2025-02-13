@@ -23,3 +23,12 @@ export const getProfilePhoto = createAsyncThunk<string, void, ThunkConfig>(
     return await graphApi.getProfilePhotoUrl(user);
   }
 );
+
+export const getProfilePhotoUsingId = createAsyncThunk<string | undefined, string, ThunkConfig>(
+  'profile/getProfilePhotoUsingId',
+  async (id, {extra}) => {
+    const { graphApi } = extra.apis;
+    if (!id) return '';
+    return await graphApi.getProfilePhotoUrlUsingUserId(id);
+  }
+);

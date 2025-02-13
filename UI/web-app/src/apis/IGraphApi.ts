@@ -9,4 +9,5 @@ export interface IGraphApi {
   getPreferredLanguage(user: User): Promise<string>;
   getProfilePhotoUrl(user: User): Promise<string>;
   getPeoplePickerSuggestions(input: string): Promise<PeoplePickerPersona[]>;
+  getProfilePhotoUrlUsingUserId(userId: string): Promise<string>;
 }

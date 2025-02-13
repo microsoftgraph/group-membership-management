@@ -65,4 +65,18 @@ export class GraphApi extends ApiBase implements IGraphApi {
     const response = await this.httpClient.get<UserEntity>(`/users/${objectId}`, {});   
     return response.data.displayName;
   }
+
+  public async getProfilePhotoUrlUsingUserId(userId: string): Promise<string> {
+    try {
+      const response = await this.httpClient.get<Blob>(`/users/${userId}/photos/48x48/$value`, { responseType: 'blob' });
+      return URL.createObjectURL(response.data);
+    } catch (error) {
+      try {
+        await this.getUser(userId);
+        return 'ImageNotFound';
+      } catch {
+        return 'ErrorNonExistentStorage';
+      }
+    }
+  }
 }

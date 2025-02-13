@@ -21,4 +21,6 @@ export type Job = {
   thresholdPercentageForRemovals: number;
   endpoints: string[];
   requestor: string;
+  lastModifiedByDisplayName?: string;
+  lastModifiedByObjectId?: string;
 };

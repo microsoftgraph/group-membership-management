@@ -78,6 +78,11 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             flexDirection: "column",
             paddingLeft: 50
         },
+        lastModifiedby: {
+            display: "flex",
+            flexDirection: "column",
+            paddingLeft: 50
+        },
         clockIcon: {
             color: theme.palette.yellowDark,
         },
@@ -101,5 +106,9 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             display: "flex",
             justifyContent: "flex-end"
         },
+        userPersona: {
+            height: 48,
+            width: 48
+        }
     };
 };

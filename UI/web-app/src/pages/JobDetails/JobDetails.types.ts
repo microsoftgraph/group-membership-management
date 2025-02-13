@@ -24,11 +24,13 @@ export interface IJobDetailsStyles {
     membershipStatusContainer: IStyle;
     membershipStatusControls: IStyle;
     membershipStatusMessage: IStyle;
+    lastModifiedby: IStyle;
     clockIcon: IStyle;
     membershipStatusActionButtons: IStyle;
     membershipStatusPendingLabel: IStyle;
     removeGMM: IStyle;
     historyButtonContainer: IStyle;
+    userPersona: IStyle;
 }
 
 export interface IJobDetailsStyleProps {
