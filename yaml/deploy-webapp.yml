@@ -90,3 +90,9 @@ steps:
       output_location: ''
       cwd: '${{ parameters.root }}/webapp_package/web-app'
       azure_static_web_apps_api_token: $(deployment_token)
+
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish WebApp Build'
+    inputs:
+      targetPath: '${{ parameters.root }}/webapp_package/web-app'
+      artifact: 'webapp_build'
