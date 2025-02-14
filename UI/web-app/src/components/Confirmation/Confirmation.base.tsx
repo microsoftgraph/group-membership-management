@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React from 'react';
+import React  from 'react';
+import { useCallback } from 'react';
 import {
   IProcessedStyleSet,
   Stack,
@@ -39,6 +40,7 @@ import { useLocation, useParams } from 'react-router-dom';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { EndpointsList } from '../EndpointsList';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
+import { debounce } from '../../utils/jobUtils';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -83,6 +85,12 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const locationState = location.state as { currentStep?: number, jobId?: string };
   const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const jobId = locationState?.jobId ?? urlJobId;
+
+  
+  const debouncedOnEditBusinessJustification = useCallback(
+    debounce((newValue) => onEditBusinessJustification(newValue ?? ''), 300),
+    []
+  );
 
   return (
     <div className={classNames.root}>
@@ -241,7 +249,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 label={`${strings.ManageMembership.labels.businessJustificationSubtitle} ${strings.ManageMembership.labels.businessJustificationPrompt}`}
                 contentEditable={false}
                 value={businessJustification}
-                onChange={(_event, newValue) => onEditBusinessJustification(newValue ?? '')}
+                onChange={(_event, newValue) => debouncedOnEditBusinessJustification(newValue ?? '')}
                 placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
               />
             </div>

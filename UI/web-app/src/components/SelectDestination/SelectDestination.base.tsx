@@ -37,6 +37,7 @@ import { selectCreateGroupFeatureEnabled } from '../../store/settings.slice';
 import { OnboardingStatus } from '../../models';
 import { EndpointsList } from '../EndpointsList';
 import { CreateGroup } from '../CreateGroup';
+import { debounce } from '../../utils/jobUtils';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
@@ -251,11 +252,3 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     </div>
   );
 };
-
-function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
-  let timeout: NodeJS.Timeout;
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
-  };
-}
