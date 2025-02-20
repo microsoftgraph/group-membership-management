@@ -55,9 +55,6 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       flexDirection: 'column',
       paddingLeft: 6
     },
-    columnToEnd: {
-      flexGrow: 1
-    },
     refresh: {
       padding: 22.5,
     },

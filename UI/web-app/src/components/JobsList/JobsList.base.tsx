@@ -244,10 +244,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(setGetJobsError());
   };
 
-  const onItemClicked = (
+  const onItemInvoked = (
     item?: any,
     index?: number,
-    ev?: React.FocusEvent<HTMLElement>
+    ev?: Event
   ): void => {
     if(item.targetGroupName === null){
       navigate('/NotFound', { replace: true, state: { item: item} });
@@ -403,8 +403,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               ariaLabelForSelectionColumn={strings.JobsList.ShimmeredDetailsList.toggleSelection}
               ariaLabelForSelectAllCheckbox={strings.JobsList.ShimmeredDetailsList.toggleAllSelection}
               checkButtonAriaLabel={strings.JobsList.ShimmeredDetailsList.selectRow}
-              onActiveItemChanged={onItemClicked}
               onRenderItemColumn={_renderItemColumn}
+              onItemInvoked={onItemInvoked}
             />
 
             {jobs?.length === 0 && (
@@ -412,7 +412,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                 <Text variant="medium">{strings.JobsList.NoResults}</Text>
               </div>
             )}
-            <div className={classNames.columnToEnd}></div>
           </div>
         </div>
       </div>

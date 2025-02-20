@@ -18,7 +18,6 @@ export interface IJobsListStyles {
   pendingReviewIcon: IStyle;
   rejectedIcon: IStyle;
   tabContent: IStyle;
-  columnToEnd: IStyle;
   refresh: IStyle;
   jobsList: IStyle;
   jobsListFilter: IStyle;
