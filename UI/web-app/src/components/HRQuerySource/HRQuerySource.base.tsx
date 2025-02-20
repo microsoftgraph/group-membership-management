@@ -1322,8 +1322,8 @@ const getOptions = (
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
-            <ActionButton iconProps={{ iconName: 'ChevronUp' }} disabled={!isJobWriter || !isEditable } onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
-            <ActionButton iconProps={{ iconName: 'ChevronDown' }} disabled={!isJobWriter || !isEditable} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronUp' }} title={strings.HROnboarding.up} disabled={!isJobWriter || !isEditable } onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+            <ActionButton iconProps={{ iconName: 'ChevronDown' }} title={strings.HROnboarding.down} disabled={!isJobWriter || !isEditable} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
           </div>;
         case 'attribute':
           return (
@@ -1348,6 +1348,7 @@ const getOptions = (
               styles={{
                 errorMessage: classNames.errorMessageStyles,
               }}
+              ariaLabel={strings.HROnboarding.attribute}
             />
           );
         case 'equalityOperator':
@@ -1357,6 +1358,7 @@ const getOptions = (
           options={equalityOperatorOptions}
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
           disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+          title={strings.HROnboarding.equalityOperator}
         />;
         case 'value':
           if (item.equalityOperator && item.equalityOperator.toString().toUpperCase() === 'IS') {
@@ -1369,6 +1371,7 @@ const getOptions = (
                 autoComplete="off"
                 dropdownMaxWidth={500}
                 disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+                title={strings.HROnboarding.attributeValue}
               />
             );
           }
@@ -1387,6 +1390,7 @@ const getOptions = (
               useComboBoxAsMenuWidth={false}
               dropdownMaxWidth={500}
               disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+              title={strings.HROnboarding.attributeValue}
               />
           } else {
             return <TextField
@@ -1397,7 +1401,8 @@ const getOptions = (
               validateOnLoad={false}
               validateOnFocusOut={false}
               disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-          ></TextField>;
+              title={strings.HROnboarding.attributeValue}
+              />;
           }
         }
         case 'andOr':
@@ -1409,6 +1414,7 @@ const getOptions = (
                 options={orAndOperatorOptions}
                 styles={{ root: classNames.root, title: classNames.dropdownTitle }}
                 disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+                title={strings.HROnboarding.orAndOperator}
               />
             ) : (
               index >= 0 && index < items.length - 1 ? (
@@ -1418,6 +1424,7 @@ const getOptions = (
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
                   disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+                  title={strings.HROnboarding.orAndOperator}
                 />
               ) : (
                 <Dropdown
@@ -1425,6 +1432,7 @@ const getOptions = (
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
                   disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+                  title={strings.HROnboarding.orAndOperator}
                 />
               )
             )
@@ -1671,6 +1679,7 @@ const getOptions = (
             options={orAndOperatorOptions}
             disabled={!isJobWriter || !isEditable}
             styles={group.children && group.children.length > 0 ?  { root: classNames.startOfNestedGroupDropdown } : { root: classNames.betweenGroupsDropdown }}
+            title={strings.HROnboarding.orAndOperator}
           />
           </div>
           )}
@@ -1695,6 +1704,7 @@ const getOptions = (
             options={orAndOperatorOptions}
             disabled={!isJobWriter || !isEditable}
             styles={parentIndex !== groups.length - 1 && childIndex === children.length - 1 ? { root: classNames.endOfNestedGroupDropdown } : { root: classNames.betweenChildrenDropdown }}
+            title={strings.HROnboarding.orAndOperator}
           />
           </div>
           )}

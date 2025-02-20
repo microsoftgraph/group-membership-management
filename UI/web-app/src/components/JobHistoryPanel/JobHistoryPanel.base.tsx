@@ -14,6 +14,7 @@ import {
     Modal,
     IconButton,
     useTheme,
+    TextField,
 } from '@fluentui/react';
 import {
     IJobHistoryPanelProps, IJobHistoryPanelStyleProps, IJobHistoryPanelStyles,
@@ -163,6 +164,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isOpen={isOpen}
             onDismiss={dismissPanel}
             headerText={strings.JobDetails.Panel.history}
+            closeButtonAriaLabel={strings.close}
         >
             <Pivot>
                 <PivotItem
@@ -192,8 +194,13 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         onClick={handleCloseModal}
                     />
                 </div>
-                <div className={classNames.body}>
-                    <pre>{formattedDetails}</pre>
+                <div>
+                    <TextField
+                        value={formattedDetails}
+                        readOnly
+                        multiline
+                        resizable={true}
+                    />
                 </div>
             </Modal>
         </Panel>

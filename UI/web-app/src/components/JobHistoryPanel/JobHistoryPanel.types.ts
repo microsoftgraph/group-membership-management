@@ -12,7 +12,6 @@ export interface IJobHistoryPanelStyles {
     root: IStyle;
     container: IStyle;
     header: IStyle;
-    body: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

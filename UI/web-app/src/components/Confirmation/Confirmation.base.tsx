@@ -8,6 +8,7 @@ import {
   classNamesFunction,
   useTheme,
   Text,
+  TextField,
   Separator,
   ActionButton
 } from '@fluentui/react';
@@ -205,8 +206,17 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
             </div>
             <Separator />
             <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
-              <Stack.Item align="start" className={classNames.queryContainer}>
-                <pre>{displayQuery}</pre>
+              <Stack.Item align="stretch" grow>
+                <TextField
+                  value={displayQuery}
+                  readOnly
+                  multiline
+                  resizable={true}
+                  autoAdjustHeight={true}
+                  styles={{
+                    field: { fontFamily: "monospace" },
+                  }}
+                />
               </Stack.Item>
             </Stack>
           </div>

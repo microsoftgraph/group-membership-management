@@ -59,6 +59,7 @@ export const strings: IStrings = {
     level: "nivel",
     levelsPlural: "es",
     down: "abajo",
+    up: "arriba",
   },
   Components: {
     AppHeader: {

@@ -19,14 +19,6 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             display: 'flex',
             justifyContent: 'flex-end',
         },
-        body: {
-            whiteSpace: 'pre-wrap',
-            fontFamily: 'monospace', 
-            backgroundColor: `${theme.palette.neutralQuaternary}`,
-            padding: 10,
-            borderRadius: 4,
-            maxHeight: 400,
-            overflowY: 'auto',
-        },
+        
     };
 };

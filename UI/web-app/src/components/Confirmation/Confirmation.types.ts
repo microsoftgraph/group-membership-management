@@ -15,7 +15,6 @@ import {
     cardTitle: IStyle;
     itemTitle: IStyle;
     itemData: IStyle;
-    queryContainer: IStyle;
   }
   
   export interface IConfirmationStyleProps {

@@ -192,7 +192,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
             <Dropdown
               styles={{ title: classNames.dropdownTitle }}
               options={getOptions(hrSource)}
-              label="Source Type"
+              label={strings.ManageMembership.labels.sourceType}
               required={true}
               selectedKey={part.query.type}
               onChange={handleSourceTypeChanged}
@@ -201,7 +201,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
             <ChoiceGroup
               className={classNames.exclusionaryPart}
               options={options}
-              label="Exclude source part"
+              label={strings.ManageMembership.labels.excludeSourcePart}
               required={true}
               onChange={handleExclusionaryChange}
               selectedKey={isExclusionary ? 'Yes' : 'No'}

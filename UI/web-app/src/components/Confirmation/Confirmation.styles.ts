@@ -45,11 +45,5 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             paddingTop: 10,
             fontSize: 14
         },
-        queryContainer: {
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            overflow: 'auto',
-            maxWidth: '100%',
-        },
     };
 };

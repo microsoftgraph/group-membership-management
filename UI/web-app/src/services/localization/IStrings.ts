@@ -55,6 +55,7 @@ export type IStrings = {
     level: string;
     levelsPlural: string;
     down: string;
+    up: string;
   },
   Components: {
     AppHeader: {
