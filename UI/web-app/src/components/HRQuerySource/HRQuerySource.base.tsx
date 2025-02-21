@@ -30,6 +30,7 @@ import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError } from '../../store/settings.slice';
+import { AttributeDetails } from '../AttributeDetails';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -1836,7 +1837,7 @@ const getOptions = (
       {(includeFilter || source.filter) &&
       <div className={classNames.cardHeader}>
         <div className={classNames.cardTitle}>
-          {strings.HROnboarding.attributeTitle}
+          <AttributeDetails />
         </div>
         <IconButton
           iconProps={{ iconName: expanded ? 'ChevronUp' : 'ChevronDown' }}

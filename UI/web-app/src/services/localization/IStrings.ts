@@ -34,6 +34,9 @@ export type IStrings = {
     group: string;
     ungroup: string;
     attributeTitle: string;
+    attributeDescription: string;
+    attributeNameHeader: string;
+    attributeDescriptionHeader: string;
     addAttribute: string;
     attribute: string;
     equalityOperator: string;
