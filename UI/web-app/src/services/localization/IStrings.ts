@@ -229,6 +229,7 @@ export type IStrings = {
       dismissButtonAriaLabel: string;
       changeTimeColumnLabel: string;
       changedByColumnLabel: string;
+      changedOnBehalfOfColumnLabel: string;
       changeReasonColumnLabel: string;
       changeDetailsColumnLabel: string;
       viewDetails: string;

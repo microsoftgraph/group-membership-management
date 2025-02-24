@@ -237,6 +237,7 @@ export const strings: IStrings = {
       dismissButtonAriaLabel: 'Cerrar panel de historial',
       changeTimeColumnLabel: 'Fecha',
       changedByColumnLabel: 'Modificado por',
+      changedOnBehalfOfColumnLabel: 'Modificado en nombre de',
       changeReasonColumnLabel: 'Tipo de cambio',
       changeDetailsColumnLabel: 'Detalles',
       viewDetails: 'Ver detalles',

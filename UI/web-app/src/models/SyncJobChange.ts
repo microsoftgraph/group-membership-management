@@ -5,6 +5,8 @@ export interface SyncJobChange {
     changeTime: string;
     changedByDisplayName: string;
     changedByObjectId: string;
+    changedOnBehalfOfDisplayName: string;
+    changedOnBehalfOfObjectId: string;
     changeReason: string;
     changeSource: string;
     changeDetails: string;

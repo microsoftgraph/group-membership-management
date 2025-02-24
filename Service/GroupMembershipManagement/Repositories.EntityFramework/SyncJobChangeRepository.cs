@@ -100,18 +100,20 @@ namespace Repositories.EntityFramework
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
         private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {
-            return new SyncJobChange
-            {
-                Id = entity.Id,
-                SyncJobId = entity.SyncJobId,
-                ChangeTime = entity.ChangeTime,
-                ChangedByDisplayName = entity.ChangedByDisplayName,
-                ChangedByObjectId = entity.ChangedByObjectId,
-                ChangeSource = (SyncJobChangeSource)entity.ChangeSource,
-                ChangeReason = entity.ChangeReason,
-                ChangeDetails = entity.ChangeDetails,
-                BusinessJustification = entity.BusinessJustification
-            };
+            var syncJobChange = new SyncJobChange();
+            syncJobChange.Id = entity.Id;
+            syncJobChange.SyncJobId = entity.SyncJobId;
+            syncJobChange.ChangeTime = entity.ChangeTime;
+            syncJobChange.ChangedByDisplayName = entity.ChangedByDisplayName;
+            syncJobChange.ChangedByObjectId = entity.ChangedByObjectId;
+            syncJobChange.ChangedOnBehalfOfDisplayName = entity.ChangedOnBehalfOfDisplayName;
+            syncJobChange.ChangedOnBehalfOfObjectId = entity.ChangedOnBehalfOfObjectId;
+            syncJobChange.ChangeSource = (SyncJobChangeSource?)entity.ChangeSource;
+            syncJobChange.ChangeReason = entity.ChangeReason;
+            syncJobChange.ChangeDetails = entity.ChangeDetails;
+            syncJobChange.BusinessJustification = entity.BusinessJustification;
+
+            return syncJobChange;
         }
 
         private static Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
@@ -123,6 +125,8 @@ namespace Repositories.EntityFramework
                 ChangeTime = model.ChangeTime,
                 ChangedByDisplayName = model.ChangedByDisplayName,
                 ChangedByObjectId = model.ChangedByObjectId,
+                ChangedOnBehalfOfDisplayName = model.ChangedOnBehalfOfDisplayName,
+                ChangedOnBehalfOfObjectId = model.ChangedOnBehalfOfObjectId,
                 ChangeSource = (Entities.SyncJobChangeSource)model.ChangeSource,
                 ChangeReason = model.ChangeReason,
                 ChangeDetails = model.ChangeDetails,
