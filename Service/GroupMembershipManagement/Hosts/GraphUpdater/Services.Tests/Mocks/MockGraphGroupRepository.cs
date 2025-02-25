@@ -173,5 +173,25 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(string deltaLink)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
