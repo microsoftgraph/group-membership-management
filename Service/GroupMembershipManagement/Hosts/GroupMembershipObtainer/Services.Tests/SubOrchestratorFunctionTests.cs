@@ -49,8 +49,8 @@ namespace Tests.Services
         private GroupMembershipRequest _groupMembershipRequest;
         private SGMembershipCalculator _membershipCalculator;
         private GroupInformation _membersReaderResponse;
-        private DeltaGroupInformation _usersReaderResponse;
-        private DeltaGroupInformation _deltaUsersReaderResponse;
+        private DeltaGroupInformation _deltaUserReaderResponse;
+        private DeltaGroupInformation _deltaLinkUserReaderResponse;
         private TelemetryClient _telemetryClient;
 
         [TestInitialize]
@@ -165,54 +165,48 @@ namespace Tests.Services
                                           await CallFileDeleterFunctionAsync(request as FileDeleterRequest);
                                       });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                                    It.IsAny<DeltaUsersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<DeltaLinkUserReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _deltaUsersReaderResponse = await CallDeltaUsersReaderFunctionAsync(request as DeltaUsersReaderRequest);
+                                           _deltaLinkUserReaderResponse = await CallDeltaLinkUserReaderFunctionAsync(request as DeltaLinkUserReaderRequest);
                                        })
-                                       .ReturnsAsync(() => _deltaUsersReaderResponse);
+                                       .ReturnsAsync(() => _deltaLinkUserReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                                    It.IsAny<SubsequentDeltaUsersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<SubsequentDeltaLinkUserReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _deltaUsersReaderResponse = await CallSubsequentDeltaUsersReaderFunctionAsync(request as SubsequentDeltaUsersReaderRequest);
+                                           _deltaLinkUserReaderResponse = await CallSubsequentDeltaLinkUserReaderFunctionAsync(request as SubsequentDeltaLinkUserReaderRequest);
                                        })
-                                       .ReturnsAsync(() => _deltaUsersReaderResponse);
+                                       .ReturnsAsync(() => _deltaLinkUserReaderResponse);
 
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(),
-                                                                                                                                     It.IsAny<MembersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(), It.IsAny<MembersReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
                                             _membersReaderResponse = await CallMembersReaderFunctionAsync(request as MembersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _membersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(),
-                                                                                                                         It.IsAny<SubsequentMembersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupInformation>(It.IsAny<string>(), It.IsAny<SubsequentMembersReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
                                             _membersReaderResponse = await CallSubsequentMembersReaderFunctionAsync(request as SubsequentMembersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _membersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                                    It.IsAny<UsersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<DeltaUserReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _usersReaderResponse = await CallUsersReaderFunctionAsync(request as UsersReaderRequest);
+                                           _deltaUserReaderResponse = await CallDeltaUserReaderFunctionAsync(request as DeltaUserReaderRequest);
                                        })
-                                       .ReturnsAsync(() => _usersReaderResponse);
+                                       .ReturnsAsync(() => _deltaUserReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(),
-                                                                                                                         It.IsAny<SubsequentUsersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<SubsequentDeltaUserReaderRequest>()))
                                         .Callback<string, object>(async (name, request) =>
                                         {
-                                            _usersReaderResponse = await CallSubsequentUsersReaderFunctionAsync(request as SubsequentUsersReaderRequest);
+                                            _deltaUserReaderResponse = await CallSubsequentDeltaUserReaderFunctionAsync(request as SubsequentDeltaUserReaderRequest);
                                         })
-                                        .ReturnsAsync(() => _usersReaderResponse);
+                                        .ReturnsAsync(() => _deltaUserReaderResponse);
 
             _graphGroupRepository.Setup(x => x.GroupExists(It.IsAny<Guid>())).ReturnsAsync(() => _groupExists);
             _graphGroupRepository.Setup(x => x.GetGroupsCountAsync(It.IsAny<Guid>())).ReturnsAsync(() => _groupCount);
@@ -249,7 +243,7 @@ namespace Tests.Services
                                      return (users, nonUserGraphObjects, null);
                                  });
 
-            _graphGroupRepository.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
@@ -262,7 +256,7 @@ namespace Tests.Services
                                      return (users, _usersReaderNextPageUrl, _deltaUrl);
                                  });
 
-            _graphGroupRepository.Setup(x => x.GetNextUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()))
+            _graphGroupRepository.Setup(x => x.GetNextDeltaUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
@@ -275,7 +269,7 @@ namespace Tests.Services
                                      return (users, null, null);
                                  });
 
-            _graphGroupRepository.Setup(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()))
+            _graphGroupRepository.Setup(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<string>()))
                                 .ReturnsAsync(() =>
                                 {
                                     var users = new List<AzureADUser>();
@@ -288,7 +282,7 @@ namespace Tests.Services
                                     return (users, users, _usersReaderNextPageUrl, _deltaUrl);
                                 });
 
-            _graphGroupRepository.Setup(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>()))
+            _graphGroupRepository.Setup(x => x.GetNextDeltaLinkUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()))
                                  .ReturnsAsync(() =>
                                  {
                                      var users = new List<AzureADUser>();
@@ -347,7 +341,7 @@ namespace Tests.Services
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
@@ -429,7 +423,7 @@ namespace Tests.Services
             _graphGroupRepository.Verify(x => x.GetUsersCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()), Times.Once);
             _blobStorageRepository.Verify(x => x.DeleteFilesByPrefixAsync(It.IsAny<string>(), It.IsAny<bool>()), Times.Exactly(2));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -497,7 +491,7 @@ namespace Tests.Services
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<string>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
@@ -550,7 +544,7 @@ namespace Tests.Services
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<string>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
@@ -588,10 +582,10 @@ namespace Tests.Services
                                            _deltaUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
                                        .ReturnsAsync(() => _deltaUrl);
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<DeltaUsersReaderRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaGroupInformation>(It.IsAny<string>(), It.IsAny<DeltaLinkUserReaderRequest>()))
                                        .Callback<string, object>(async (name, request) =>
                                        {
-                                           _deltaUsersReaderResponse = await CallDeltaUsersReaderFunctionAsync(request as DeltaUsersReaderRequest);
+                                           _deltaLinkUserReaderResponse = await CallDeltaLinkUserReaderFunctionAsync(request as DeltaLinkUserReaderRequest);
                                        })
                                        .Throws<KeyNotFoundException>();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -613,7 +607,7 @@ namespace Tests.Services
                                 ), Times.Once);
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()), Times.Once);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount} users")),
                         It.IsAny<VerbosityLevel>(),
@@ -733,7 +727,7 @@ namespace Tests.Services
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message.Contains($"read {_userCount * Number_Of_Pages} users")),
@@ -802,7 +796,7 @@ namespace Tests.Services
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<string>()), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
@@ -898,7 +892,7 @@ namespace Tests.Services
                .ReturnsAsync(() => content);
 
             _userCount = 10;
-            _graphGroupRepository.Setup(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()))
                                 .ReturnsAsync(() =>
                                 {
                                     var users = new List<AzureADUser>();
@@ -915,8 +909,8 @@ namespace Tests.Services
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _graphGroupRepository.Verify(x => x.GetFirstUsersPageAsync(It.IsAny<Guid>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextDeltaUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Once);
         }
 
         [TestMethod]
@@ -931,7 +925,7 @@ namespace Tests.Services
                                       .ReturnsAsync(() => _groupCount);
 
             _usersReaderNextPageUrl = "http://next-page-url";
-            _graphGroupRepository.Setup(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()))
+            _graphGroupRepository.Setup(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<string>()))
                                 .ReturnsAsync(() =>
                                 {
                                     var users = new List<AzureADUser>();
@@ -957,8 +951,8 @@ namespace Tests.Services
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
-            _graphGroupRepository.Verify(x => x.GetNextDeltaUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetFirstDeltaLinkUsersPageAsync(It.IsAny<string>()), Times.Once);
+            _graphGroupRepository.Verify(x => x.GetNextDeltaLinkUsersPagesAsync(It.IsAny<string>(), It.IsAny<int>()), Times.Once);
         }
 
         [TestMethod]
@@ -1120,28 +1114,28 @@ namespace Tests.Services
             return await function.GetMembersAsync(request);
         }
 
-        private async Task<DeltaGroupInformation> CallUsersReaderFunctionAsync(UsersReaderRequest request)
+        private async Task<DeltaGroupInformation> CallDeltaUserReaderFunctionAsync(DeltaUserReaderRequest request)
         {
-            var function = new UsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            return await function.GetUsersAsync(request);
-        }
-
-        private async Task<DeltaGroupInformation> CallSubsequentUsersReaderFunctionAsync(SubsequentUsersReaderRequest request)
-        {
-            var function = new SubsequentUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            return await function.GetUsersAsync(request);
-        }
-
-        private async Task<DeltaGroupInformation> CallDeltaUsersReaderFunctionAsync(DeltaUsersReaderRequest request)
-        {
-            var function = new DeltaUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new DeltaUserReaderFunction(_loggingRepository.Object, _membershipCalculator);
             return await function.GetDeltaUsersAsync(request);
         }
 
-        private async Task<DeltaGroupInformation> CallSubsequentDeltaUsersReaderFunctionAsync(SubsequentDeltaUsersReaderRequest request)
+        private async Task<DeltaGroupInformation> CallSubsequentDeltaUserReaderFunctionAsync(SubsequentDeltaUserReaderRequest request)
         {
-            var function = new SubsequentDeltaUsersReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            return await function.GetDeltaUsersAsync(request);
+            var function = new SubsequentDeltaUserReaderFunction(_loggingRepository.Object, _membershipCalculator);
+            return await function.GetSubsequentDeltaUsersAsync(request);
+        }
+
+        private async Task<DeltaGroupInformation> CallDeltaLinkUserReaderFunctionAsync(DeltaLinkUserReaderRequest request)
+        {
+            var function = new DeltaLinkUserReaderFunction(_loggingRepository.Object, _membershipCalculator);
+            return await function.GetDeltaLinkUsersAsync(request);
+        }
+
+        private async Task<DeltaGroupInformation> CallSubsequentDeltaLinkUserReaderFunctionAsync(SubsequentDeltaLinkUserReaderRequest request)
+        {
+            var function = new SubsequentDeltaLinkUserReaderFunction(_loggingRepository.Object, _membershipCalculator);
+            return await function.GetSubsequentDeltaLinkUsersAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)

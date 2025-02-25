@@ -23,6 +23,7 @@ namespace Hosts.GroupMembershipObtainer
     public class SubOrchestratorFunction
     {
         private const int DELTAQUERY_PAGECOUNT = 5;
+        private const int DELTALINKQUERY_PAGECOUNT = 5;
         private readonly IDeltaCachingConfig _deltaCachingConfig;
         private readonly ILoggingRepository _log;
         private readonly TelemetryClient _telemetryClient;
@@ -111,7 +112,7 @@ namespace Hosts.GroupMembershipObtainer
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                                 var compressedResponse = await GetInitialDeltaUsers(context, request);
-                                var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+                                var response = JsonConvert.DeserializeObject<DeltaUsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
 
                                 allUsers.AddRange(response.Users);
 
@@ -178,7 +179,7 @@ namespace Hosts.GroupMembershipObtainer
                                     shouldClearCache = true;
 
                                     var compressedResponse = await GetInitialDeltaUsers(context, request);
-                                    var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+                                    var response = JsonConvert.DeserializeObject<DeltaUsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
                                     allUsers = response.Users;
                                 }
                                 else if (countOfUsersFromAADGroup == countOfUsersFromCache)
@@ -207,7 +208,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                                 var compressedResponse = await GetInitialDeltaUsers(context, request);
-                                var response = JsonConvert.DeserializeObject<UsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
+                                var response = JsonConvert.DeserializeObject<DeltaUsersReaderResponse>(TextCompressor.Decompress(compressedResponse));
 
                                 if (response.Users.Any())
                                     allUsers.AddRange(response.Users);
@@ -349,13 +350,13 @@ namespace Hosts.GroupMembershipObtainer
                                                     GroupMembershipRequest request)
         {
             var allUsers = new List<AzureADUser>();
-            var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(UsersReaderFunction), new UsersReaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
+            var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(DeltaUserReaderFunction), new DeltaUserReaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
             allUsers.AddRange(response.UsersToAdd);
             while (!string.IsNullOrEmpty(response.NextPageUrl))
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page using delta query for group {request.SourceGroup.ObjectId}" });
-                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentUsersReaderFunction),
-                    new SubsequentUsersReaderRequest { 
+                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentDeltaUserReaderFunction),
+                    new SubsequentDeltaUserReaderRequest { 
                         RunId = request.RunId,
                         NextPageUrl = response.NextPageUrl,
                         PageCount = DELTAQUERY_PAGECOUNT
@@ -363,13 +364,13 @@ namespace Hosts.GroupMembershipObtainer
                 allUsers.AddRange(response.UsersToAdd);
             }
 
-            var usersReaderResponse = new UsersReaderResponse
+            var deltaUserReaderResponse = new DeltaUsersReaderResponse
             {
                 Users = allUsers,
                 DeltaUrl = response.DeltaUrl
             };
 
-            return TextCompressor.Compress(JsonConvert.SerializeObject(usersReaderResponse));
+            return TextCompressor.Compress(JsonConvert.SerializeObject(deltaUserReaderResponse));
         }
 
         /// <summary>
@@ -378,35 +379,40 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="context"></param>
         /// <param name="fileContent"></param>
         /// <param name="request"></param>
-        /// <returns>Compressed serialized DeltaUserReaderResponse</returns>                                                                                       
-        public async Task<DeltaUserReaderResponse> GetDeltaLinkUsers(
+        /// <returns>Compressed serialized DeltaLinkUserReaderResponse</returns>
+        public async Task<DeltaLinkUserReaderResponse> GetDeltaLinkUsers(
                                                                                         IDurableOrchestrationContext context,
                                                                                         string fileContent,
                                                                                         GroupMembershipRequest request)
         {
 
-            var deltaUsersToAdd = new List<AzureADUser>();
-            var deltaUsersToRemove = new List<AzureADUser>();
+            var deltaLinkUsersToAdd = new List<AzureADUser>();
+            var deltaLinkUsersToRemove = new List<AzureADUser>();
 
-            var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(DeltaUsersReaderFunction), new DeltaUsersReaderRequest { RunId = request.RunId, DeltaLink = fileContent });
-            deltaUsersToAdd.AddRange(response.UsersToAdd);
-            deltaUsersToRemove.AddRange(response.UsersToRemove);
+            var response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(DeltaLinkUserReaderFunction), new DeltaLinkUserReaderRequest { RunId = request.RunId, DeltaLink = fileContent });
+            deltaLinkUsersToAdd.AddRange(response.UsersToAdd);
+            deltaLinkUsersToRemove.AddRange(response.UsersToRemove);
             while (!string.IsNullOrEmpty(response.NextPageUrl))
             {
                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from next page using delta link for group {request.SourceGroup.ObjectId}" });
-                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentDeltaUsersReaderFunction), new SubsequentDeltaUsersReaderRequest { RunId = request.RunId, NextPageUrl = response.NextPageUrl });
-                deltaUsersToAdd.AddRange(response.UsersToAdd);
-                deltaUsersToRemove.AddRange(response.UsersToRemove);
+                response = await context.CallActivityAsync<DeltaGroupInformation>(nameof(SubsequentDeltaLinkUserReaderFunction), 
+                    new SubsequentDeltaLinkUserReaderRequest { 
+                        RunId = request.RunId, 
+                        NextPageUrl = response.NextPageUrl,
+                        PageCount = DELTALINKQUERY_PAGECOUNT
+                    });
+                deltaLinkUsersToAdd.AddRange(response.UsersToAdd);
+                deltaLinkUsersToRemove.AddRange(response.UsersToRemove);
             }
 
-            var deltaUserReaderResponse = new DeltaUserReaderResponse
+            var deltaLinkUserReaderResponse = new DeltaLinkUserReaderResponse
             {
-                UsersToAdd = deltaUsersToAdd,
-                UsersToRemove = deltaUsersToRemove,
+                UsersToAdd = deltaLinkUsersToAdd,
+                UsersToRemove = deltaLinkUsersToRemove,
                 DeltaUrl = response.DeltaUrl
             };
 
-            return deltaUserReaderResponse;
+            return deltaLinkUserReaderResponse;
         }
     }
 }

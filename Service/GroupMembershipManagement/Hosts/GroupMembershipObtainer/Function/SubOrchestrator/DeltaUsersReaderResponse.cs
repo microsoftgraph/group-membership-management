@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Hosts.GroupMembershipObtainer
 {
-    public class UsersReaderResponse
+    public class DeltaUsersReaderResponse
     {
         public List<AzureADUser> Users { get; set; }
         public string DeltaUrl { get; set; }

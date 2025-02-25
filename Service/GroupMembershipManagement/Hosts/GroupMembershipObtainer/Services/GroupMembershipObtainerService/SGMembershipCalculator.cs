@@ -77,9 +77,9 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
         }
 
-        public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(string deltaLink)
+        public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(string deltaLink)
         {
-            var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(deltaLink);
+            var result = await _graphGroupRepository.GetFirstDeltaLinkUsersPageAsync(deltaLink);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,
@@ -89,9 +89,9 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaUsersPageAsync(string nextPageUrl)
+        public async Task<DeltaGroupInformation> GetNextDeltaLinkUsersPageAsync(string nextPageUrl, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetNextDeltaUsersPageAsync(nextPageUrl);
+            var result = await _graphGroupRepository.GetNextDeltaLinkUsersPagesAsync(nextPageUrl, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,
@@ -111,10 +111,10 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphGroupRepository.GetUsersCountAsync(objectId);
         }
 
-        public async Task<DeltaGroupInformation> GetFirstUsersPageAsync(Guid objectId, Guid runId)
+        public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId)
         {
             await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
-            var result = await _graphGroupRepository.GetFirstUsersPageAsync(objectId);
+            var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(objectId);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,
@@ -123,9 +123,9 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        public async Task<DeltaGroupInformation> GetNextDeltaUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetNextUsersPagesAsync(nextPageUrl, numberOfPages);
+            var result = await _graphGroupRepository.GetNextDeltaUsersPagesAsync(nextPageUrl, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,

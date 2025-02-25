@@ -185,9 +185,9 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetFirstDeltaUsersPageAsync(string deltaLink)
+            GetFirstDeltaLinkUsersPageAsync(string deltaLink)
         {
-            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaUsersPageAsync(deltaLink, RunId);
+            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetFirstDeltaLinkUsersPageAsync(deltaLink, RunId);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -199,9 +199,9 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetNextDeltaUsersPageAsync(string deltaLink)
+            GetNextDeltaLinkUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
-            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaUsersPageAsync(deltaLink, RunId);
+            var (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaLinkUsersPagesAsync(nextPageUrl, RunId, numberOfPages); 
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -209,17 +209,17 @@ namespace Repositories.GraphGroups
                 RunId = RunId
             });
 
-            return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl);
+            return (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstUsersPageAsync(Guid groupId)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId)
         {
-            return await _graphGroupDeltaReader.GetFirstUsersPageAsync(groupId, RunId);
+            return await _graphGroupDeltaReader.GetFirstDeltaUsersPageAsync(groupId, RunId);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(string nextPageUrl, int numberOfPages)
         {
-            return await _graphGroupDeltaReader.GetNextUsersPagesAsync(nextPageUrl, RunId, numberOfPages);
+            return await _graphGroupDeltaReader.GetNextDeltaUsersPagesAsync(nextPageUrl, RunId, numberOfPages);
         }
 
         public async Task<int> GetGroupsCountAsync(Guid objectId)

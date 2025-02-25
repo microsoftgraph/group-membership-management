@@ -4,9 +4,10 @@ using System;
 
 namespace Hosts.GroupMembershipObtainer
 {
-    public class UsersReaderRequest
+    public class SubsequentDeltaLinkUserReaderRequest
     {
         public Guid RunId { get; set; }
-        public Guid ObjectId { get; set; }
+        public string NextPageUrl { get; set; }
+        public int PageCount { get; set; }
     }
 }

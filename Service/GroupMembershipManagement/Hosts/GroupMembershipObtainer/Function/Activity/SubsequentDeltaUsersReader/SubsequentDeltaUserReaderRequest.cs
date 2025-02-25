@@ -4,7 +4,7 @@ using System;
 
 namespace Hosts.GroupMembershipObtainer
 {
-    public class SubsequentUsersReaderRequest
+    public class SubsequentDeltaUserReaderRequest
     {
         public Guid RunId { get; set; }
         public string NextPageUrl { get; set; }

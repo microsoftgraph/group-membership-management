@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace Hosts.GroupMembershipObtainer
 {
-	public class DeltaUsersReaderRequest
+	public class DeltaLinkUserReaderRequest
 	{
 		public Guid RunId { get; set; }
 		public string DeltaLink { get; set; }
