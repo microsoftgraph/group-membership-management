@@ -16,7 +16,7 @@ import { useTheme } from '@fluentui/react/lib/Theme';
 import { v4 as uuidv4 } from 'uuid';
 import { SourcePartStyleProps, SourcePartStyles, SourcePartProps } from './SourcePart.types';
 import { AppDispatch } from '../../store';
-import { manageMembershipIsEditingExistingJob, updateSourcePart, copySourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
+import { updateSourcePart, copySourcePart, updateSourcePartType } from '../../store/manageMembership.slice';
 import { useStrings } from '../../store/hooks';
 import { ISourcePart } from '../../models/ISourcePart';
 import { HRQuerySource } from '../HRQuerySource';
@@ -41,6 +41,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const toggleExpand = () => {
     setExpanded(!expanded);
+    dispatch(updateSourcePart({ ...part, isExpanded: !expanded }));
   };
 
   const [hrSourcePartSource, setHRSourcePartSource] = useState<HRSourcePartSource>(query.source as HRSourcePartSource);
@@ -50,14 +51,13 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     { key: 'No', text: strings.no },
   ];
 
-
   const dispatch = useDispatch<AppDispatch>();
   const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
-  const [expanded, setExpanded] = useState(part.isNew ||isEditingExistingJob);
+
+  const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
   
   useEffect(() => {
@@ -65,6 +65,11 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       dispatch(updateSourcePart({ ...part, isNew: false }));
     }
   }, [dispatch, part]);
+
+  useEffect(() => {
+    setExpanded(part.isExpanded);
+  }, [part.isExpanded]);
+
   const handleSourceTypeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
     if (!item) return;
 
@@ -81,7 +86,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       query: {
         type: SourcePartType.GroupMembership,
         source: sourceId,
-        exclusionary: isExclusionary
+        exclusionary: isExclusionary,
       },
     };
     dispatch(updateSourcePart(newQuery));
@@ -103,7 +108,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: uuidv4(),
-      query: newQuery
+      query: newQuery,
+      isExpanded: true,
+      isNew: true
     };
     dispatch(copySourcePart(newPart));
   };
@@ -146,7 +153,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: partId,
-      query: newQuery
+      query: newQuery,
+      isExpanded: true,
+      isNew: false
     };
     dispatch(updateSourcePart(newPart));
   };
@@ -164,7 +173,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
       const updatedSourcePart: ISourcePart = {
         id: partId,
-        query: updatedQuery
+        query: updatedQuery,
+        isExpanded: true,
+        isNew: false
       };
 
       dispatch(updateSourcePart(updatedSourcePart));

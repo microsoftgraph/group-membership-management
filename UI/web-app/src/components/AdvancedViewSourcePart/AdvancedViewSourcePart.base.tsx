@@ -92,7 +92,9 @@ export const AdvancedViewSourcePartBase: React.FunctionComponent<IAdvancedViewSo
       if(isValid) {
         const updatedSourcePart: ISourcePart = {
           id: part.id,
-          query: JSON.parse(localQuery ?? '{}') as GroupOwnershipSourcePart | PlaceMembershipSourcePart
+          query: JSON.parse(localQuery ?? '{}') as GroupOwnershipSourcePart | PlaceMembershipSourcePart,
+          isNew: part.isNew,
+          isExpanded: part.isExpanded,
         };
         dispatch(updateSourcePart(updatedSourcePart));
         setValidationMessage(strings.ManageMembership.labels.validQuery);

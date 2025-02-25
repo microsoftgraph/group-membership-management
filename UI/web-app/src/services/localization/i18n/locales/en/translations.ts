@@ -423,6 +423,8 @@ export const strings: IStrings = {
       businessJustificationPlaceholder: 'Enter your answer',
       requestedBy: 'Requested by',
       requestedOnBehalfOf: 'Requested on behalf of',
+      expandAll: 'Expand all',
+      collapseAll: 'Collapse all',
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',

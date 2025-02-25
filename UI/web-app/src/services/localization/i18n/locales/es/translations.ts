@@ -425,7 +425,9 @@ export const strings: IStrings = {
       businessJustificationPrompt: 'Proporcione una justificación comercial para la administración de la membresía de este destino.',
       businessJustificationPlaceholder: 'Escriba su respuesta aquí...',
       requestedBy: 'Solicitado por',
-      requestedOnBehalfOf: 'Solicitado en nombre de'
+      requestedOnBehalfOf: 'Solicitado en nombre de',
+      expandAll: 'Expandir todo',
+      collapseAll: 'Contraer todo',
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',

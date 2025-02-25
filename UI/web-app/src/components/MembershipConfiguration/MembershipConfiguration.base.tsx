@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
+import { ActionButton, classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { v4 as uuidv4 } from 'uuid';
 import { MembershipConfigurationStyleProps, MembershipConfigurationStyles, MembershipConfigurationProps } from './MembershipConfiguration.types';
@@ -25,6 +25,8 @@ import {
   setIsAdvancedView,
   setIsAdvancedQueryValid,
   setSourceParts,
+  updateSourcePart,
+  manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings } from '../../store/hooks';
@@ -58,6 +60,17 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
+  const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+
+  const getAllSourcePartsExpanded = () => {
+    return sourceParts.every(part => part.isExpanded);
+  }
+
+  const [allSourcePartsExpanded, setAllSourcePartsExpanded] = useState(getAllSourcePartsExpanded);
+
+  useEffect(() => {
+    setAllSourcePartsExpanded(getAllSourcePartsExpanded());
+  }, [sourceParts]);
 
   const sourcePartQuery: HRSourcePartSource = {
     manager: {
@@ -75,7 +88,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         source: sourcePartQuery,
         exclusionary: false
       },
-      isNew: true
+      isNew: true,
+      isExpanded: true
     };
     dispatch(addSourcePart(newPart));
   };
@@ -96,14 +110,17 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       // When switching back to non-advanced view
       if (compositeQuery) {
         try {
-          const updatedSourceParts: ISourcePart[] = compositeQuery.map(() => {
+          const updatedSourceParts: ISourcePart[] = compositeQuery.map((query, index) => {
+            const originalPart = sourceParts[index];
             const newPart: ISourcePart = {
               id: uuidv4(),
               query: {
                 type: SourcePartType.HR,
                 source: sourcePartQuery,
                 exclusionary: false
-              }
+              },
+              isNew: originalPart?.isNew ?? false,
+              isExpanded: originalPart?.isExpanded ?? false
             };
             return newPart;
           });
@@ -122,6 +139,14 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(setIsAdvancedQueryValid(false));
   };
 
+  const handleExpandCollapseAll = () => {
+    const newExpandedState = !allSourcePartsExpanded;
+    setAllSourcePartsExpanded(newExpandedState);
+    sourceParts.forEach(part => {
+      dispatch(updateSourcePart({ ...part, isExpanded: newExpandedState }));
+    });
+  };
+
   useEffect(() => {
     const compositeQuery = buildCompositeQuery(sourceParts);
     dispatch(setCompositeQuery(compositeQuery));
@@ -131,11 +156,16 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     if (jobDetails?.query) {
       try {
         const parsedQuery: SyncJobQuery = JSON.parse(jobDetails.query);
-        const updatedSourceParts = parsedQuery.map((query) => ({
-          id: uuidv4(),
-          query: query,
-          isValid: true
-        }));
+        const updatedSourceParts = parsedQuery.map((query, index) => {
+          const originalPart = sourceParts[index];
+          return {
+            id: uuidv4(),
+            query: query,
+            isValid: true,
+            isNew: originalPart?.isNew ?? false,
+            isExpanded:  isEditingExistingJob ? originalPart?.isExpanded ?? true : false
+          }
+        });
         dispatch(setSourceParts(updatedSourceParts));
         dispatch(setAdvancedViewQuery(jobDetails.query));
       } catch (error) {
@@ -159,6 +189,14 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         </div>
       )}
       {!isAdvancedView ? (<>
+        <div className={classNames.expandCollapseButton}>
+          <ActionButton
+              iconProps={{ iconName: allSourcePartsExpanded ? 'ChevronUp' : 'ChevronDown' }}
+              onClick={handleExpandCollapseAll}
+            >
+              {allSourcePartsExpanded ? strings.ManageMembership.labels.collapseAll : strings.ManageMembership.labels.expandAll}
+            </ActionButton>
+        </div>
         <div>
           {sourceParts.map((part) => (
             <SourcePart

@@ -8,6 +8,7 @@ export type MembershipConfigurationStyles = {
   root: IStyle;
   addButtonContainer: IStyle;
   toggleContainer: IStyle;
+  expandCollapseButton: IStyle;
   card: IStyle;
 };
 

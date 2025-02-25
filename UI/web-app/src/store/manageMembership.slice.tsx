@@ -170,10 +170,15 @@ const manageMembershipSlice = createSlice({
                         if(isAdvancedQueryValid){
                             const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
                             state.compositeQuery = parsedQuery;
-                            state.sourceParts = parsedQuery.map((query, index) => ({
-                                id: uuidv4(),
-                                query: query
-                            }));
+                            state.sourceParts = parsedQuery.map((query, index) => {
+                                const originalPart = state.sourceParts[index];
+                                return {
+                                    id: uuidv4(),
+                                    query: query,
+                                    isNew: originalPart?.isNew ?? false,
+                                    isExpanded: originalPart?.isExpanded ?? false
+                                };
+                            });
                             state.newJob.query = parsedQuery;
                         }
                     } catch (error) {
@@ -188,11 +193,15 @@ const manageMembershipSlice = createSlice({
             state.advancedViewQuery = action.payload;
             const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
             state.newJob.query = parsedQuery;
-            state.sourceParts = parsedQuery.map((query, index) => ({
-              id: uuidv4(),
-              query: query,
-              isValid: true
-            }));
+            state.sourceParts = parsedQuery.map((query, index) => {
+                const originalPart = state.sourceParts[index];
+                return {
+                    id: uuidv4(),
+                    query: query,
+                    isNew: originalPart?.isNew ?? false,
+                    isExpanded: originalPart?.isExpanded ?? false
+                };
+            });
         },
         setCompositeQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
             state.compositeQuery = action.payload;

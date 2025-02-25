@@ -418,6 +418,8 @@ export type IStrings = {
       businessJustificationPlaceholder: string;
       requestedBy: string;
       requestedOnBehalfOf: string;
+      expandAll: string;
+      collapseAll: string;
     },
     CreateGroup: {
       createNewGroup: string;

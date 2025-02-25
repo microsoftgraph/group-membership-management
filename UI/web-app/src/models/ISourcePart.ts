@@ -6,5 +6,6 @@ import { SourcePartQuery } from "./SourcePartQuery";
 export type ISourcePart = {
     id: string;
     query: SourcePartQuery;
-    isNew?: boolean;
+    isNew: boolean;
+    isExpanded: boolean;
 };
