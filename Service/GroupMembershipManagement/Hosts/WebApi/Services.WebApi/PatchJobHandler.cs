@@ -92,6 +92,7 @@ namespace Services.WebApi
             if (!string.IsNullOrEmpty(changedOnBehalfOfDisplayName))
             {
                 syncJobChange.ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName;
+                syncJob.Requestor = changedOnBehalfOfDisplayName;
             }
 
             var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
