@@ -492,8 +492,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         <div className={classNames.lastModifiedby}>
         <Stack.Item align="start">
           <InfoLabel
-            label={strings.JobDetails.labels.lastModifiedby}
-            description={strings.JobDetails.descriptions.lastModifiedby}
+            label={strings.JobDetails.labels.requestedBy}
+            description={strings.JobDetails.descriptions.requestedBy}
           />
          <div className={classNames.itemData}>
           {jobDetails != null ? (
@@ -527,8 +527,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         <div>
         <Stack.Item align="start">
           <InfoLabel
-            label={strings.JobDetails.labels.lastModifiedOnBehalfOf}
-            description={strings.JobDetails.descriptions.lastModifiedOnBehalfOf}
+            label={strings.JobDetails.labels.requestedOnBehalfOf}
+            description={strings.JobDetails.descriptions.requestedOnBehalfOf}
           />
          <div className={classNames.itemData}>
           {jobDetails != null ? (

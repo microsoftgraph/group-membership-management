@@ -309,7 +309,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <Stack.Item align="start">
                 <InfoLabel
                   label={strings.ManageMembership.labels.requestedOnBehalfOf}
-                  description={strings.JobDetails.descriptions.lastModifiedOnBehalfOf}
+                  description={strings.JobDetails.descriptions.requestedOnBehalfOf}
                 />
                 <div className={classNames.itemData}>
                   {jobDetails != null ? (

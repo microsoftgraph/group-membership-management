@@ -174,7 +174,8 @@ export const strings: IStrings = {
       pageTitle: 'Detalle de Membresía',
       sectionTitle: 'Detalle de Membresía',
       lastModifiedby: 'Última vez modificado por',
-      lastModifiedOnBehalfOf: 'Última modificación en nombre de',
+      requestedBy: 'Solicitado por',
+      requestedOnBehalfOf: 'Solicitado en nombre de',
       groupLinks: 'Links del grupo',
       destination: 'Destino',
       type: 'Tipo',
@@ -209,8 +210,8 @@ export const strings: IStrings = {
       removeGMMConfirmation: 'Confirmar (Liga se abrirá en una nueva pestaña.)',
     },
     descriptions: {
-      lastModifiedby: 'Usuario quien hizo el último cambio a este grupo.',
-      lastModifiedOnBehalfOf: 'Usuario en cuyo nombre se realizó el último cambio en este trabajo.',
+      requestedBy: 'Usuario que realizó el cambio a este trabajo.',
+      requestedOnBehalfOf: 'Usuario en cuyo nombre se realizó el cambio en este trabajo.',
       startDate: 'Fecha en la que este grupo fue integrado a GMM.',
       endDate: 'Fecha de la última sincronización de este grupo.',
       type: 'El tipo de destino. Actualmente, GMM solo administra la membresía de los destinos de grupo. En el futuro, también admitirá la membresía de los canales de Teams.',
@@ -422,7 +423,8 @@ export const strings: IStrings = {
       businessJustificationSubtitle: '¿Cuál es el propósito de la administración de la membresía de este destino?',	
       businessJustificationPrompt: 'Proporcione una justificación comercial para la administración de la membresía de este destino.',
       businessJustificationPlaceholder: 'Escriba su respuesta aquí...',
-      requestedOnBehalfOf: 'Requested on behalf of'
+      requestedBy: 'Solicitado por',
+      requestedOnBehalfOf: 'Solicitado en nombre de'
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',

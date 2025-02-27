@@ -169,7 +169,8 @@ export type IStrings = {
       pageTitle: string;
       sectionTitle: string;
       lastModifiedby: string;
-      lastModifiedOnBehalfOf: string;
+      requestedBy: string;
+      requestedOnBehalfOf: string;
       groupLinks: string;
       destination: string;
       type: string;
@@ -204,8 +205,8 @@ export type IStrings = {
       removeGMMConfirmation: string;
     };
     descriptions: {
-      lastModifiedby: string;
-      lastModifiedOnBehalfOf: string;
+      requestedBy: string;
+      requestedOnBehalfOf: string;
       startDate: string;
       endDate: string;
       type: string;
@@ -414,6 +415,7 @@ export type IStrings = {
       businessJustificationSubtitle: string;
       businessJustificationPrompt: string;
       businessJustificationPlaceholder: string;
+      requestedBy: string;
       requestedOnBehalfOf: string;
     },
     CreateGroup: {
