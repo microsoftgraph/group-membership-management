@@ -105,15 +105,22 @@ namespace WebApi.Controllers.v1.Jobs
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
                 var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+                
+                var patchJobResponse = new PatchJobResponse
+                {
+                    StatusCode = response.StatusCode,
+                    ErrorCode = response.ErrorCode,
+                    ResponseData = response.ResponseData
+                };
 
                 return response.StatusCode switch
                 {
-                    System.Net.HttpStatusCode.OK => Ok(),
-                    System.Net.HttpStatusCode.NotFound => NotFound(),
-                    System.Net.HttpStatusCode.BadRequest => BadRequest(response.ErrorCode),
+                    System.Net.HttpStatusCode.OK => Ok(patchJobResponse),
+                    System.Net.HttpStatusCode.NotFound => NotFound(patchJobResponse),
+                    System.Net.HttpStatusCode.BadRequest => BadRequest(patchJobResponse),
                     System.Net.HttpStatusCode.Forbidden => Forbid(),
                     System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
-                    _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+                    _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: response.ErrorCode)
                 };
             }
             catch (Exception ex)

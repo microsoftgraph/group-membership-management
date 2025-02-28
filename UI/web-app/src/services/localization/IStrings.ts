@@ -227,6 +227,7 @@ export type IStrings = {
       forbidden: string;
       internalError: string;
       removeGMMError: string;
+      submitterNotOwner: string;
     };
     Panel: {
       dismissButtonAriaLabel: string;

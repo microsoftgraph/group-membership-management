@@ -125,6 +125,30 @@ namespace Services.WebApi
                     return response;
                 }
 
+                var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
+
+                // Verify that the submitter is still an owner
+                var destinationOwners = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid>() { syncJob.Group.GroupId });
+                var isSubmitterOwner = false;
+                if (destinationOwners != null && submission.ChangedByObjectId.HasValue)
+                {
+                    isSubmitterOwner = destinationOwners.ContainsKey(submission.ChangedByObjectId.Value);
+                }
+
+                if (!isSubmitterOwner)
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = "SubmitterNotOwner";
+
+                    syncJob.Status = SyncStatus.SubmissionRejected.ToString();
+                    await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { syncJob });
+
+                    syncJobChange.ChangeReason = SyncJobChangeReason.SubmissionRejected.ToString();
+                    await _syncJobChangeRepository.Save(syncJobChange);
+
+                    return response;
+                }
+
                 var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, request.ChangeReason, status);
                 if (result != null) return result;
             }

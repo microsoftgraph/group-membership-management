@@ -61,7 +61,7 @@ import {
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
-import { SyncJobChange, SyncStatus } from '../../models';
+import { PatchJobResponse, SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { Loader } from '../../components/Loader';
 import { manageMembershipBusinessJustification, setIsEditingExistingJob } from '../../store/manageMembership.slice';
@@ -396,15 +396,19 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     };
 
     try {
-      await dispatch(patchJobDetails(patchRequest));
-
-      if (patchResponse?.ok) {
+      const response = await dispatch(patchJobDetails(patchRequest)).unwrap();
+      if (response.ok) {
         setJobStatus(newStatus);
         setIsJobEnabled(newStatus === SyncStatus.Idle);
+      } else if (response.responseData && response.responseData[0] === "SubmitterNotOwner") {
+        setJobStatus(SyncStatus.SubmissionRejected);
+        setIsJobEnabled(false);
       }
+
+      await dispatch(fetchJobDetails({ syncJobId: jobId ?? job.syncJobId }));
     } catch (error) {
       throw new Error('Failed to update job status');
-    };
+    }
   };
 
   const handleStatusChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
@@ -418,7 +422,12 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     resolveReview();
   };
 
-  const displayMessage = (errorCode: string | undefined): string | undefined => {
+  const displayMessage = (patchResponse?: PatchJobResponse): string  => {
+    if (!patchResponse) {
+      return "";
+    }
+    const errorCode = patchResponse.errorCode;
+
     switch (errorCode) {
       case 'JobInProgress':
         return strings.JobDetails.Errors.jobInProgress;
@@ -426,8 +435,10 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         return strings.JobDetails.Errors.forbidden;
       case 'InternalError':
         return strings.JobDetails.Errors.internalError;
+      case 'SubmitterNotOwner':
+        return strings.JobDetails.Errors.submitterNotOwner;
       default:
-        return undefined;
+        return "";
     }
   };
 
@@ -450,7 +461,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       </div>
       <div className={classNames.membershipStatusMessage}>
         <div>
-          {!patchResponse?.ok && (displayMessage(patchResponse?.errorCode ?? patchError))}
+          {!patchResponse?.ok && (displayMessage(patchResponse))}
         </div>
         {(jobStatus === SyncStatus.PendingReview) && (
           <Stack>

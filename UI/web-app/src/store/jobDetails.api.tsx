@@ -124,34 +124,20 @@ export const patchJobDetails = createAsyncThunk<
       options
     ).then(async (response) => {
       if (response.ok) {
-        let patchResponse: PatchJobResponse = {
+        const patchResponse: PatchJobResponse = {
           ok: response.ok,
           statusCode: response.status,
         };
         return patchResponse;
       } else {
-        let jsonResponse;
-
-        try {
-          jsonResponse = await response.json();
-        } catch (error) {
-          // there is no reponse body
-        }
-
-        let patchResponse: PatchJobResponse = {
+        const json: PatchJobResponse = await response.json();
+        return {
+          ...json,
           ok: response.ok,
           statusCode: response.status,
-          errorCode: jsonResponse?.detail,
-          responseData: jsonResponse?.responseData,
+          responseData: json.responseData,
+          errorCode: json.errorCode,
         };
-
-        if (response.status === 403) {
-          patchResponse.errorCode = 'Forbidden';
-        } else if (response.status === 500) {
-          patchResponse.errorCode = 'InternalError';
-        }
-
-        return patchResponse;
       }
     });
 

@@ -235,6 +235,7 @@ export const strings: IStrings = {
       forbidden: 'Esta operación no está permitida.',
       internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.',
       removeGMMError: 'Error al dejar de administrar con GMM.',
+      submitterNotOwner: 'Esta solicitud fue rechazada ya que el solicitante ya no era propietario cuando se revisó la solicitud.',
     },
     Panel: {
       dismissButtonAriaLabel: 'Cerrar panel de historial',

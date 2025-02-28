@@ -9,6 +9,7 @@ using Models;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Services.Messages.Responses;
 using Services.WebApi;
 using System.Data;
 using System.Net;
@@ -132,7 +133,7 @@ namespace Services.Tests
             _channelRepository.Setup(x => x.GetChannelAsync(It.IsAny<Guid>(), It.IsAny<string>()))
                              .ReturnsAsync(() => _channel);
 
-            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(_jobEntity.Id))
                               .ReturnsAsync(() => _jobEntity);
 
             _syncJobRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
@@ -338,7 +339,7 @@ namespace Services.Tests
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
 
-            var response = await _jobDetailsController.GetJobDetailsAsync(Guid.NewGuid());
+            var response = await _jobDetailsController.GetJobDetailsAsync(_jobEntity.Id);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -498,12 +499,17 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "InvalidStatus");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
             var result = response as BadRequestObjectResult;
 
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
-            Assert.AreEqual("StatusIsNotValid", result.Value);
+            Assert.IsNotNull(result.Value);
+
+            var responseObject = result.Value as PatchJobResponse;
+            Assert.IsNotNull(responseObject);
+            Assert.AreEqual("StatusIsNotValid", responseObject.ErrorCode);
+
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
@@ -523,12 +529,16 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, null);
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
             var result = response as BadRequestObjectResult;
 
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
-            Assert.AreEqual("StatusIsRequired", result.Value);
+
+            var responseObject = result.Value as PatchJobResponse;
+            Assert.IsNotNull(responseObject);
+            Assert.AreEqual("StatusIsRequired", responseObject.ErrorCode);
+
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
@@ -553,7 +563,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
             var result = response as ObjectResult;
 
             Assert.IsNotNull(result);
@@ -584,11 +594,42 @@ namespace Services.Tests
             patchDocument.Replace(x => x.Status, "Idle");
 
             var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
-            var result = response as NotFoundResult;
+            var result = response as NotFoundObjectResult;
 
             Assert.IsNotNull(result);
             Assert.AreEqual(404, result.StatusCode);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchRejectedWhenSubmitterNotAnOwner(string role)
+        {
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.SubmissionApproved.ToString())
+            };
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, "Idle");
+
+            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                                    .ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { _jobEntity.Group.GroupId, new List<Guid> { Guid.NewGuid() } } });
+
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as BadRequestObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
+            var responseObject = result.Value as PatchJobResponse;
+            Assert.IsNotNull(responseObject);
+            Assert.AreEqual("SubmitterNotOwner", responseObject.ErrorCode);
+
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 
         [TestMethod]
@@ -608,7 +649,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "CustomerPaused");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
             var result = response as ForbidResult;
 
             Assert.IsNotNull(result);
@@ -632,8 +673,8 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "CustomerPaused");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
-            var result = response as OkResult;
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
@@ -668,8 +709,8 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "CustomerPaused");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
-            var result = response as OkResult;
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
@@ -723,12 +764,15 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "InvalidStatus");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
             var result = response as BadRequestObjectResult;
 
             Assert.IsNotNull(result);
             Assert.AreEqual(400, result.StatusCode);
-            Assert.AreEqual("ChangeReasonIsRequired", result.Value);
+            var responseObject = result.Value as PatchJobResponse;
+            Assert.IsNotNull(responseObject);
+            Assert.AreEqual("ChangeReasonIsRequired", responseObject.ErrorCode);
+
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
@@ -736,8 +780,6 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_DELETER)]
         public async Task RemoveGMMAsyncWhenIsAnAuthorizedUser(string role)
         {
-            var syncJobId = Guid.NewGuid();
-
             var context = CreateHttpContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
@@ -749,7 +791,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(context)
             };
 
-            var response = await _jobDetailsController.RemoveGMMAsync(syncJobId);
+            var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
             var result = response as OkResult;
 
             Assert.IsInstanceOfType(result, typeof(OkResult));
@@ -759,12 +801,12 @@ namespace Services.Tests
         [DataRow(Roles.HYPERLINK_ADMINISTRATOR)]
         public async Task RemoveGMMAsyncWhenIsAnUnauthorizedUser(string role)
         {
-            var syncJobId = Guid.NewGuid();
+            var userId = Guid.NewGuid().ToString();
 
             var context = CreateHttpContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)});
 
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
@@ -772,10 +814,10 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(context)
             };
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(userId, _jobEntity.Group.GroupId))
                                     .ReturnsAsync(() => false);
 
-            var response = await _jobDetailsController.RemoveGMMAsync(syncJobId);
+            var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
             var result = response as ForbidResult;
 
             Assert.IsInstanceOfType(result, typeof(ForbidResult));
