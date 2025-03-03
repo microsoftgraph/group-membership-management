@@ -10,11 +10,13 @@ namespace Entities
         public Guid Id { get; set; }
         public Guid SyncJobId { get; set; }
         public DateTime ChangeTime { get; set; } = DateTime.UtcNow;
-        public string ChangedByDisplayName { get; set; }
-        public Guid ChangedByObjectId { get; set; }
-        public SyncJobChangeSource ChangeSource { get; set; }
+        public string? ChangedByDisplayName { get; set; }
+        public Guid? ChangedByObjectId { get; set; }
+        public string? ChangedOnBehalfOfDisplayName { get; set; }
+        public Guid? ChangedOnBehalfOfObjectId { get; set; }
+        public SyncJobChangeSource? ChangeSource { get; set; }
         public string ChangeReason { get; set; }
-        public string ChangeDetails { get; set; }
+        public string? ChangeDetails { get; set; }
         public string BusinessJustification { get; set; }
     }
 }

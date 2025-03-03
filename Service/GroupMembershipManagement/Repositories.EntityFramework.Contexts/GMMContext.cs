@@ -156,11 +156,7 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(s => s.Id).ValueGeneratedOnAdd().HasDefaultValueSql("NEWSEQUENTIALID()");
                 entity.Property(s => s.SyncJobId).IsRequired();
                 entity.Property(s => s.ChangeTime).IsRequired().HasDefaultValue(DateTime.UtcNow);
-                entity.Property(s => s.ChangedByDisplayName).IsRequired();
-                entity.Property(s => s.ChangedByObjectId).IsRequired();
-                entity.Property(s => s.ChangeSource).IsRequired();
                 entity.Property(s => s.ChangeReason).IsRequired();
-                entity.Property(s => s.ChangeDetails).IsRequired();
             });
             modelBuilder.Entity<ThresholdNotification>(entity =>
             {
