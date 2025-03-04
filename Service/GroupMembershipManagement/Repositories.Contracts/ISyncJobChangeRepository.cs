@@ -32,5 +32,6 @@ namespace Repositories.Contracts
         /// Retrieves the last sync job change by its sync job id.
         /// </summary>
         Task<SyncJobChange> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId);
+        Task<SyncJobChange> GetLastSyncJobChangeWithOnboardingOrUpdateBySyncJobIdAsync(Guid syncJobId);
     }
 }
