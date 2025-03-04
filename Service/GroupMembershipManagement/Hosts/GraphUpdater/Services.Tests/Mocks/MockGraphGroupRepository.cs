@@ -136,6 +136,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+        public Task<AzureADUser> GetUserByDisplayNameAsync(string displayName)
+        {
+            throw new NotImplementedException();
+        }
         public Task<int> GetGroupsCountAsync(Guid objectId)
         {
             throw new NotImplementedException();

@@ -24,11 +24,11 @@ export const getProfilePhoto = createAsyncThunk<string, void, ThunkConfig>(
   }
 );
 
-export const getProfilePhotoUsingId = createAsyncThunk<string | undefined, string, ThunkConfig>(
+export const getProfilePhotoUsingId = createAsyncThunk<string | undefined, { id: string, type: 'lastModifiedBy' | 'lastModifiedOnBehalfOf' }, ThunkConfig>(
   'profile/getProfilePhotoUsingId',
-  async (id, {extra}) => {
+  async (input, {extra}) => {
     const { graphApi } = extra.apis;
-    if (!id) return '';
-    return await graphApi.getProfilePhotoUrlUsingUserId(id);
+    if (!input.id) return '';
+    return await graphApi.getProfilePhotoUrlUsingUserId(input.id);
   }
 );

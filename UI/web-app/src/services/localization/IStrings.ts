@@ -169,6 +169,7 @@ export type IStrings = {
       pageTitle: string;
       sectionTitle: string;
       lastModifiedby: string;
+      lastModifiedOnBehalfOf: string;
       groupLinks: string;
       destination: string;
       type: string;
@@ -204,6 +205,7 @@ export type IStrings = {
     };
     descriptions: {
       lastModifiedby: string;
+      lastModifiedOnBehalfOf: string;
       startDate: string;
       endDate: string;
       type: string;
@@ -412,6 +414,7 @@ export type IStrings = {
       businessJustificationSubtitle: string;
       businessJustificationPrompt: string;
       businessJustificationPlaceholder: string;
+      requestedOnBehalfOf: string;
     },
     CreateGroup: {
       createNewGroup: string;

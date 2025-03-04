@@ -46,5 +46,7 @@ namespace WebApi.Models.DTOs
         public string? Status { get; set; }
         public string? LastModifiedByDisplayName { get; set; }
         public string? LastModifiedByObjectId { get; set; }
+        public string? LastModifiedOnBehalfOfDisplayName { get; set; }
+        public string? LastModifiedOnBehalfOfObjectId { get; set; }
     }
 }

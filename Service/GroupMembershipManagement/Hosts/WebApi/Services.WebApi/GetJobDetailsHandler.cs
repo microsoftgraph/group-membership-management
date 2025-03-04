@@ -70,11 +70,20 @@ namespace Services
 
             string lastModifiedByDisplayName = "";
             string lastModifiedByObjectId = "";
+            string lastModifiedOnBehalfOfDisplayName = "";
+            string lastModifiedOnBehalfOfObjectId = "";
             if (job.Status == SyncStatus.PendingReview.ToString())
             {
                 var res = await _syncJobChangesRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
                 lastModifiedByDisplayName = res.ChangedByDisplayName;
                 lastModifiedByObjectId = res.ChangedByObjectId.ToString();
+                lastModifiedOnBehalfOfDisplayName = res.ChangedOnBehalfOfDisplayName ?? "";
+                lastModifiedOnBehalfOfObjectId = res.ChangedOnBehalfOfObjectId.ToString() ?? "";
+                if (lastModifiedOnBehalfOfDisplayName != string.Empty && lastModifiedOnBehalfOfObjectId == string.Empty)
+                {
+                    var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(lastModifiedOnBehalfOfDisplayName, false);
+                    lastModifiedOnBehalfOfObjectId = userResponse.ObjectId.ToString();
+                }
             }
 
             DateTime estimatedNextRunTime;
@@ -111,7 +120,9 @@ namespace Services
                 EstimatedNextRunTime = estimatedNextRunTime,
                 Status = job.Status,
                 LastModifiedByDisplayName = lastModifiedByDisplayName,
-                LastModifiedByObjectId = lastModifiedByObjectId
+                LastModifiedByObjectId = lastModifiedByObjectId,
+                LastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName,
+                LastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId
             };
 
             response.Model = dto;

@@ -23,4 +23,6 @@ export type Job = {
   requestor: string;
   lastModifiedByDisplayName?: string;
   lastModifiedByObjectId?: string;
+  lastModifiedOnBehalfOfDisplayName?: string;
+  lastModifiedOnBehalfOfObjectId?: string;
 };

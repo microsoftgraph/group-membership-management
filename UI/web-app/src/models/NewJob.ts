@@ -13,4 +13,6 @@ export type NewJob = {
     status: string;
     destination: string;
     businessJustification: string;
+    lastModifiedOnBehalfOfDisplayName?: string;
+    lastModifiedOnBehalfOfObjectId?: string;
 };

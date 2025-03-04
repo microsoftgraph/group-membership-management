@@ -12,6 +12,10 @@ import {
   TextField,
   Separator,
   ActionButton,
+  IPersonaSharedProps,
+  Persona,
+  PersonaSize,
+  Shimmer,
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -41,6 +45,10 @@ import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { EndpointsList } from '../EndpointsList';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { debounce } from '../../utils/jobUtils';
+import { InfoLabel } from '../InfoLabel';
+import { selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectLastModifiedOnBehalfOfUserProfilePhoto } from '../../store/profile.slice';
+import { SyncStatus } from '../../models';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -72,7 +80,13 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const requestor: string = useSelector(manageMembershipRequestor);
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification = useSelector(manageMembershipBusinessJustification);
-  
+  const jobDetails = useSelector(selectSelectedJobDetails);
+  const lastModifiedOnBehalfOfUserProfilePhoto = useSelector(selectLastModifiedOnBehalfOfUserProfilePhoto);
+  const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
+    imageUrl: lastModifiedOnBehalfOfUserProfilePhoto,
+    text: jobDetails?.lastModifiedOnBehalfOfDisplayName
+  }
+
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const compositeQuery = useSelector(manageMembershipCompositeQuery);
   const globalQuery = useSelector(manageMembershipQuery);
@@ -192,16 +206,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                   {thresholdPercentageForRemovals === -1 ? `${strings.ManageMembership.labels.noThresholdSet}`: `${thresholdPercentageForRemovals}%`}
                 </Text>
               </Stack.Item>
-              {isJobTenantWriter &&
-                <Stack.Item align="start">
-                  <Text className={classNames.itemTitle} block>
-                    {strings.JobDetails.labels.requestor}
-                  </Text>
-                  <Text className={classNames.itemData} block>
-                    {requestor}
-                  </Text>
-                </Stack.Item>
-              }
             </Stack>
           </div>
 
@@ -253,6 +257,40 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
               />
             </div>
+
+            {jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId && (
+            <Stack.Item align="start">
+              <InfoLabel
+                label={strings.ManageMembership.labels.requestedOnBehalfOf}
+                description={strings.JobDetails.descriptions.lastModifiedOnBehalfOf}
+              />
+            <div className={classNames.itemData}>
+              {jobDetails != null ? (
+                (lastModifiedOnBehalfOfUserProfilePhoto === "ErrorNonExistentStorage") ? (
+                  <div className={classNames.itemData}>
+                  <Text variant="medium" block>
+                  {jobDetails.lastModifiedOnBehalfOfDisplayName}
+                  </Text>
+                  <Text variant="medium" block>
+                  {jobDetails.lastModifiedOnBehalfOfObjectId}
+                  </Text>
+                </div>
+                ) : (
+                  <Persona
+                    {...lastModifiedOnBehalfOfUserProps}
+                    text={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                    size={PersonaSize.size32}
+                    hidePersonaDetails={false}
+                    imageAlt={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                  />
+                )
+              ) : (
+                <Shimmer width="100%" />
+              )}
+            </div>
+            </Stack.Item>
+            )}
+
         </div>
       </PageSection>
     </div>

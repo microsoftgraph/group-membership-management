@@ -71,7 +71,7 @@ import { MembershipConfiguration } from '../../components/MembershipConfiguratio
 import { JobHistoryPanel } from '../../components/JobHistoryPanel/JobHistoryPanel';
 import { EndpointsList } from '../../components/EndpointsList';
 import { getProfilePhotoUsingId } from '../../store/profile.api';
-import { selectLastModifiedUserProfilePhoto } from '../../store/profile.slice';
+import { selectLastModifiedOnBehalfOfUserProfilePhoto, selectLastModifiedUserProfilePhoto } from '../../store/profile.slice';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -348,6 +348,11 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     imageUrl: profilePhoto,
     text: jobDetails?.lastModifiedByDisplayName
   }
+  const lastModifiedOnBehalfOfUserProfilePhoto = useSelector(selectLastModifiedOnBehalfOfUserProfilePhoto);
+  const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
+    imageUrl: lastModifiedOnBehalfOfUserProfilePhoto,
+    text: jobDetails?.lastModifiedOnBehalfOfDisplayName
+  }
   const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
   const lastChange = jobChanges?.[0];
   const businessJustification = useSelector(manageMembershipBusinessJustification);
@@ -365,7 +370,10 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
 
   useEffect(() => {
     if (jobDetails && jobDetails.lastModifiedByObjectId) {
-      dispatch(getProfilePhotoUsingId(jobDetails.lastModifiedByObjectId));
+      dispatch(getProfilePhotoUsingId({ id: jobDetails.lastModifiedByObjectId, type: 'lastModifiedBy' }));
+    }
+    if (jobDetails && jobDetails.lastModifiedOnBehalfOfObjectId) {
+      dispatch(getProfilePhotoUsingId({ id: jobDetails.lastModifiedOnBehalfOfObjectId, type: 'lastModifiedOnBehalfOf' }));
     }
   }, [dispatch, jobDetails]);
 
@@ -479,8 +487,9 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           </div>
         )}
       </div>
-      {isSubmissionReviewer && (jobStatus === SyncStatus.PendingReview) && (
-      <div className={classNames.lastModifiedby}>
+
+      {isSubmissionReviewer && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedByObjectId && (
+        <div className={classNames.lastModifiedby}>
         <Stack.Item align="start">
           <InfoLabel
             label={strings.JobDetails.labels.lastModifiedby}
@@ -511,8 +520,43 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           )}
         </div>
         </Stack.Item>
-      </div>
-      )}
+        </div>
+        )}
+
+        {isSubmissionReviewer && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedOnBehalfOfObjectId && (
+        <div>
+        <Stack.Item align="start">
+          <InfoLabel
+            label={strings.JobDetails.labels.lastModifiedOnBehalfOf}
+            description={strings.JobDetails.descriptions.lastModifiedOnBehalfOf}
+          />
+         <div className={classNames.itemData}>
+          {jobDetails != null ? (
+            (lastModifiedOnBehalfOfUserProfilePhoto === "ErrorNonExistentStorage") ? (
+              <div className={classNames.itemData}>
+              <Text variant="medium" block>
+              {jobDetails.lastModifiedOnBehalfOfDisplayName}
+              </Text>
+              <Text variant="medium" block>
+              {jobDetails.lastModifiedOnBehalfOfObjectId}
+              </Text>
+            </div>
+            ) : (
+              <Persona
+                {...lastModifiedOnBehalfOfUserProps}
+                text={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                size={PersonaSize.size32}
+                hidePersonaDetails={false}
+                imageAlt={jobDetails.lastModifiedOnBehalfOfDisplayName}
+              />
+            )
+          ) : (
+            <Shimmer width="100%" />
+          )}
+        </div>
+        </Stack.Item>
+        </div>
+        )}
     </div>
   )
 }

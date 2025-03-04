@@ -172,6 +172,7 @@ export const strings: IStrings = {
       pageTitle: 'Membership Details',
       sectionTitle: 'Membership Details',
       lastModifiedby: 'Last Modified by',
+      lastModifiedOnBehalfOf: 'Last Modified on behalf of',
       groupLinks: 'Group Links',
       destination: 'Destination',
       type: 'Type',
@@ -207,6 +208,7 @@ export const strings: IStrings = {
     },
     descriptions: {
       lastModifiedby: 'User who made the last change to this job.',
+      lastModifiedOnBehalfOf: 'User on whose behalf the last change was made to this job.',
       startDate: 'Date of the onboarding of this job into GMM.',
       endDate: 'Date of the last run of this job.',
       type: 'The destination\'s type. Currently GMM only manages the membership of Group destinations. In the future it will also support Teams Channel membership.',
@@ -416,7 +418,8 @@ export const strings: IStrings = {
       requestorInfo: 'The requestor is the person who initially requested that GMM manage this destination\'s membership. This person must be an owner of the destination. This helps us track who to reach out to if we have questions about the initial onboarding. Otherwise, the requestor has no additional rights to the destination than any other owner.',
       businessJustificationSubtitle: 'What is the purpose of this destination?',
       businessJustificationPrompt: 'Please provide a specific business justification. This will help the reviewer evaluate your request and offer feedback, if necessary.',
-      businessJustificationPlaceholder: 'Enter your answer'
+      businessJustificationPlaceholder: 'Enter your answer',
+      requestedOnBehalfOf: 'Requested on behalf of',
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',
