@@ -76,15 +76,23 @@ namespace Services.WebApi
                 return response;
             }
 
+            var changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
+
             var syncJobChange = new SyncJobChange
             {
                 SyncJobId = request.SyncJobId,
                 ChangeTime = DateTime.UtcNow,
                 ChangedByObjectId = Guid.Parse(request.UserIdentity),
                 ChangedByDisplayName = request.UserDisplayName,
+                ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
                 ChangeSource = SyncJobChangeSource.WebApp,
                 BusinessJustification = request.BusinessJustification
             };
+
+            if (!string.IsNullOrEmpty(changedOnBehalfOfDisplayName))
+            {
+                syncJobChange.ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName;
+            }
 
             var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
 

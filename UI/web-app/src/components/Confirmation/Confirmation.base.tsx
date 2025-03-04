@@ -16,6 +16,9 @@ import {
   Persona,
   PersonaSize,
   Shimmer,
+  NormalPeoplePicker,
+  IPersonaProps,
+  DirectionalHint
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -25,8 +28,8 @@ import {
 } from './Confirmation.types';
 import { useStrings } from "../../store/hooks";
 import { PageSection } from "../PageSection";
-import { useSelector } from 'react-redux';
-import { 
+import { useDispatch, useSelector } from 'react-redux';
+import {
   manageMembershipCompositeQuery,
   manageMembershipIsAdvancedView,
   manageMembershipPeriod,
@@ -37,18 +40,23 @@ import {
   manageMembershipStartDate,
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals,
-  manageMembershipBusinessJustification
+  manageMembershipBusinessJustification,
+  setNewJobRequestor,
+  manageMembershipLastModifiedOnBehalfOfDisplayName,
+  setNewJobLastModifiedOnBehalfOfDisplayName
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
-import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { EndpointsList } from '../EndpointsList';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { debounce } from '../../utils/jobUtils';
 import { InfoLabel } from '../InfoLabel';
-import { selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectPeoplePickerSuggestions, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { selectLastModifiedOnBehalfOfUserProfilePhoto } from '../../store/profile.slice';
 import { SyncStatus } from '../../models';
+import { AppDispatch } from '../../store';
+import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -71,6 +79,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
     }
   );
   
+  const dispatch = useDispatch<AppDispatch>();
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const period: number = useSelector(manageMembershipPeriod);
@@ -78,6 +87,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
   const requestor: string = useSelector(manageMembershipRequestor);
+  const lastModifiedOnBehalfOfDisplayName = useSelector(manageMembershipLastModifiedOnBehalfOfDisplayName);
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const jobDetails = useSelector(selectSelectedJobDetails);
@@ -105,6 +115,42 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
     debounce((newValue) => onEditBusinessJustification(newValue ?? ''), 300),
     []
   );
+
+  const mapLastModifiedOnBehalfOfDisplayNameToPersonaProps = (lastModifiedOnBehalfOfDisplayName: string): IPersonaProps[] => {
+    if (!lastModifiedOnBehalfOfDisplayName) return [];
+    return [{
+      key: lastModifiedOnBehalfOfDisplayName,
+      text: lastModifiedOnBehalfOfDisplayName,
+      secondaryText: lastModifiedOnBehalfOfDisplayName,
+    }];
+  };
+
+  const lastModifiedOnBehalfOfDisplayNamePickerSuggestions = useSelector(selectPeoplePickerSuggestions);
+  const lastModifiedOnBehalfOfDisplayNamePersona = mapLastModifiedOnBehalfOfDisplayNameToPersonaProps(lastModifiedOnBehalfOfDisplayName || '');
+  const [lastModifiedOnBehalfOfDisplayNamePersonaState, setLastModifiedOnBehalfOfDisplayNamePersonaState] = React.useState<IPersonaProps[]>(mapLastModifiedOnBehalfOfDisplayNameToPersonaProps(requestor || ''));
+  const isJobWriter = useSelector(selectIsJobWriter);
+
+  const getPickerSuggestions = async (
+      text: string
+  ): Promise<IPersonaProps[]> => {
+    return text && lastModifiedOnBehalfOfDisplayNamePickerSuggestions ? lastModifiedOnBehalfOfDisplayNamePickerSuggestions : [];
+  };
+
+  const handleLastModifiedOnBehalfOfDisplayNameInputChange = (input: string): string => {
+    if (input.trim() !== "") {
+      dispatch(getPeoplePickerSuggestions(input));
+    }
+    return input;
+  };
+
+  const handleLastModifiedOnBehalfOfDisplayNameChange = (items?: IPersonaProps[] | undefined) => {
+    if (items && items.length > 0) {
+      dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(items[0].text || items[0].secondaryText || '' ));
+    } else {
+      dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(''));
+    }
+    setLastModifiedOnBehalfOfDisplayNamePersonaState(items || []);
+  };
 
   return (
     <div className={classNames.root}>
@@ -258,38 +304,62 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               />
             </div>
 
-            {jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId && (
-            <Stack.Item align="start">
-              <InfoLabel
-                label={strings.ManageMembership.labels.requestedOnBehalfOf}
-                description={strings.JobDetails.descriptions.lastModifiedOnBehalfOf}
-              />
-            <div className={classNames.itemData}>
-              {jobDetails != null ? (
-                (lastModifiedOnBehalfOfUserProfilePhoto === "ErrorNonExistentStorage") ? (
-                  <div className={classNames.itemData}>
-                  <Text variant="medium" block>
-                  {jobDetails.lastModifiedOnBehalfOfDisplayName}
-                  </Text>
-                  <Text variant="medium" block>
-                  {jobDetails.lastModifiedOnBehalfOfObjectId}
-                  </Text>
+            {jobId && jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId? (
+            jobDetails && jobDetails?.status === SyncStatus.PendingReview ? (
+              <Stack.Item align="start">
+                <InfoLabel
+                  label={strings.ManageMembership.labels.requestedOnBehalfOf}
+                  description={strings.JobDetails.descriptions.lastModifiedOnBehalfOf}
+                />
+                <div className={classNames.itemData}>
+                  {jobDetails != null ? (
+                    lastModifiedOnBehalfOfUserProfilePhoto === "ErrorNonExistentStorage" ? (
+                      <div className={classNames.itemData}>
+                        <Text variant="medium" block>
+                          {jobDetails.lastModifiedOnBehalfOfDisplayName}
+                        </Text>
+                        <Text variant="medium" block>
+                          {jobDetails.lastModifiedOnBehalfOfObjectId}
+                        </Text>
+                      </div>
+                    ) : (
+                      <Persona
+                        {...lastModifiedOnBehalfOfUserProps}
+                        text={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                        size={PersonaSize.size32}
+                        hidePersonaDetails={false}
+                        imageAlt={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                      />
+                    )
+                  ) : (
+                    <Shimmer width="100%" />
+                  )}
                 </div>
-                ) : (
-                  <Persona
-                    {...lastModifiedOnBehalfOfUserProps}
-                    text={jobDetails.lastModifiedOnBehalfOfDisplayName}
-                    size={PersonaSize.size32}
-                    hidePersonaDetails={false}
-                    imageAlt={jobDetails.lastModifiedOnBehalfOfDisplayName}
-                  />
-                )
-              ) : (
-                <Shimmer width="100%" />
-              )}
+              </Stack.Item>
+            ) : null
+          ) : (
+            <div>
+              <div className={classNames.cardHeader}>
+                <div className={classNames.cardTitle}>
+                  {strings.ManageMembership.labels.requestedOnBehalfOf}
+                </div>
+              </div>
+              <Separator />
+              <NormalPeoplePicker
+                aria-label={strings.ManageMembership.labels.requestedOnBehalfOf}
+                onResolveSuggestions={getPickerSuggestions}
+                key={'normal'}
+                resolveDelay={300}
+                itemLimit={1}
+                selectedItems={lastModifiedOnBehalfOfDisplayNamePersona}
+                onInputChange={handleLastModifiedOnBehalfOfDisplayNameInputChange}
+                onChange={handleLastModifiedOnBehalfOfDisplayNameChange}
+                styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
+                pickerCalloutProps={{ directionalHint: DirectionalHint.bottomAutoEdge, calloutWidth: 300 }}
+                disabled={!isJobWriter}
+              />
             </div>
-            </Stack.Item>
-            )}
+          )}
 
         </div>
       </PageSection>

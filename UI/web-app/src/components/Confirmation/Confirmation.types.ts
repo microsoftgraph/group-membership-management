@@ -15,6 +15,9 @@ import {
     cardTitle: IStyle;
     itemTitle: IStyle;
     itemData: IStyle;
+    labelContainer: IStyle;
+    textField: IStyle;
+    textFieldGroup: IStyle;
   }
   
   export interface IConfirmationStyleProps {

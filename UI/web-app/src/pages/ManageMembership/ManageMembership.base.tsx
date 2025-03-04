@@ -48,7 +48,8 @@ import {
   setCreatedGroupName,
   manageMembershipCreatedGroupName,
   manageMembershipBusinessJustification,
-  setBusinessJustification
+  setBusinessJustification,
+  manageMembershipLastModifiedOnBehalfOfDisplayName
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -158,6 +159,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const currentUser = useSelector(selectAccountUsername) ?? '';
   const inputRequestor = useSelector(manageMembershipRequestor);
   const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
+  const lastModifiedOnBehalfOfDisplayName = useSelector(manageMembershipLastModifiedOnBehalfOfDisplayName);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
@@ -280,8 +282,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       },
       {
         op: "replace",
-        path: "/Requestor",
-        value: requestor
+        path: "/LastModifiedOnBehalfOfDisplayName",
+        value: lastModifiedOnBehalfOfDisplayName
       }
     ];
 
@@ -312,6 +314,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       const newJob: NewJob = {
         destination: destinationJson,
         requestor: requestor ?? '',
+        lastModifiedOnBehalfOfDisplayName: lastModifiedOnBehalfOfDisplayName ?? '',
         startDate: startDate,
         period: period,
         query: finalQuery,

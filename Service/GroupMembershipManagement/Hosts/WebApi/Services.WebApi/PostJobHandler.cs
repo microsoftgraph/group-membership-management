@@ -79,6 +79,7 @@ namespace Services
                         ChangeTime = DateTime.UtcNow,
                         ChangedByObjectId = Guid.Parse(request.UserIdentity),
                         ChangedByDisplayName = request.UserDisplayName,
+                        ChangedOnBehalfOfDisplayName = request.NewSyncJob.LastModifiedOnBehalfOfDisplayName,
                         ChangeSource = SyncJobChangeSource.WebApp,
                         ChangeReason = SyncJobChangeReason.Onboarding.ToString(),
                         ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(newSyncJobEntity),

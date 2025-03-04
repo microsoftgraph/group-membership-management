@@ -72,9 +72,10 @@ namespace Services
             string lastModifiedByObjectId = "";
             string lastModifiedOnBehalfOfDisplayName = "";
             string lastModifiedOnBehalfOfObjectId = "";
-            if (job.Status == SyncStatus.PendingReview.ToString())
+
+            var res = await _syncJobChangesRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
+            if (res != null)
             {
-                var res = await _syncJobChangesRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
                 lastModifiedByDisplayName = res.ChangedByDisplayName;
                 lastModifiedByObjectId = res.ChangedByObjectId.ToString();
                 lastModifiedOnBehalfOfDisplayName = res.ChangedOnBehalfOfDisplayName ?? "";
@@ -82,7 +83,7 @@ namespace Services
                 if (lastModifiedOnBehalfOfDisplayName != string.Empty && lastModifiedOnBehalfOfObjectId == string.Empty)
                 {
                     var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(lastModifiedOnBehalfOfDisplayName, false);
-                    lastModifiedOnBehalfOfObjectId = userResponse.ObjectId.ToString();
+                    lastModifiedOnBehalfOfObjectId = userResponse != null ? userResponse.ObjectId.ToString() : "";
                 }
             }
 

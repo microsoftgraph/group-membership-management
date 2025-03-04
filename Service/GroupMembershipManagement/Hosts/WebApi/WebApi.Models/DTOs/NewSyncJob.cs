@@ -12,6 +12,7 @@ namespace WebApi.Models.DTOs
         public int Period { get; set; }
         public string Query { get; set; }
         public string Requestor { get; set; }
+        public string LastModifiedOnBehalfOfDisplayName { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
         public string StartDate { get; set; }
