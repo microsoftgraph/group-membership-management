@@ -5,10 +5,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.AzureUserReader
 {
@@ -21,9 +21,9 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(UserCreatorSubOrchestratorFunction))]
+        [FunctionName(nameof(UserCreatorSubOrchestratorFunction))]
         public async Task<List<GraphProfileInformation>> CreateUsersAsync(
-            [OrchestrationTrigger] TaskOrchestrationContext context)
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<AzureUserCreatorRequest>();
             var profiles = new List<GraphProfileInformation>();

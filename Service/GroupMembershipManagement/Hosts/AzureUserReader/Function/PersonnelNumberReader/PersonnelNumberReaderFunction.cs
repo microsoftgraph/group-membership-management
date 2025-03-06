@@ -2,12 +2,13 @@
 // Licensed under the MIT license.
 
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.AzureUserReader
 {
@@ -22,7 +23,7 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(PersonnelNumberReaderFunction))]
+        [FunctionName(nameof(PersonnelNumberReaderFunction))]
         public async Task<IList<string>> GetPersonnelNumbersAsync([ActivityTrigger] AzureUserReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PersonnelNumberReaderFunction)} function started" }, VerbosityLevel.DEBUG);

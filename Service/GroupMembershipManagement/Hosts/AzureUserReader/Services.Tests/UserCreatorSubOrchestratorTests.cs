@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 using Hosts.AzureUserReader;
-using Microsoft.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -22,7 +22,7 @@ namespace Services.Tests
         {
             var loggingRepository = new Mock<ILoggingRepository>();
             var graphUserRepository = new Mock<IGraphUserRepository>();
-            var context = new Mock<TaskOrchestrationContext>();
+            var context = new Mock<IDurableOrchestrationContext>();
 
             var personnelNumbers = new List<string>();
             for (int i = 1; i <= 10000; i++)
@@ -45,8 +45,8 @@ namespace Services.Tests
             context.Setup(x => x.GetInput<AzureUserCreatorRequest>()).Returns(request);
 
             var currentProfilePage = default(List<GraphProfileInformation>);
-            context.Setup(x => x.CallActivityAsync<List<GraphProfileInformation>>(It.IsAny<TaskName>(), It.IsAny<AzureUserCreatorRequest>(), It.IsAny<TaskOptions>()))
-                 .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            context.Setup(x => x.CallActivityAsync<List<GraphProfileInformation>>(It.IsAny<string>(), It.IsAny<AzureUserCreatorRequest>()))
+                 .Callback<string, object>(async (name, request) =>
                  {
                      currentProfilePage = await RunAzureUserCreatorFunctionAsync
                                                 (

@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.AzureUserReader
 {
@@ -21,7 +22,7 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(AzureUserReaderFunction))]
+        [FunctionName(nameof(AzureUserReaderFunction))]
         public async Task<IList<GraphProfileInformation>> GetUsersAsync([ActivityTrigger] List<string> personnelNumbers)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AzureUserReaderFunction)} function started" }, VerbosityLevel.DEBUG);

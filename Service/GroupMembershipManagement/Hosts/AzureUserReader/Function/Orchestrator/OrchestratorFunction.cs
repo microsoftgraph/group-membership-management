@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.AzureUserReader
 {
@@ -21,9 +21,9 @@ namespace Hosts.AzureUserReader
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(OrchestratorFunction))]
+        [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestrator(
-            [OrchestrationTrigger] TaskOrchestrationContext context)
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             if (!context.IsReplaying)
                 _ = _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started" }, VerbosityLevel.DEBUG);
