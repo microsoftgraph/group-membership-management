@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.Functions.Worker;
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Net.Http;
@@ -23,7 +24,7 @@ namespace Hosts.JobScheduler
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(PostCallbackFunction))]
+        [FunctionName(nameof(PostCallbackFunction))]
         public async Task PostCallbackAsync([ActivityTrigger] PostCallbackRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PostCallbackFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);

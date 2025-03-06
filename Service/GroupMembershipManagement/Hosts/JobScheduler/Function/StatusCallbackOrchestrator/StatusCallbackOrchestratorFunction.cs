@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
+using Repositories.Contracts;
+using System.Threading;
+using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.JobScheduler
 {
@@ -19,8 +20,8 @@ namespace Hosts.JobScheduler
         { 
         }
 
-        [Function(nameof(StatusCallbackOrchestratorFunction))]
-        public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(StatusCallbackOrchestratorFunction))]
+        public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest

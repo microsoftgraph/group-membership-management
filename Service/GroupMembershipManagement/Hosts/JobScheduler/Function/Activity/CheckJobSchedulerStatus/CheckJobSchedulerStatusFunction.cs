@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask.Client;
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using System;
@@ -24,7 +24,7 @@ namespace Hosts.JobScheduler
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(CheckJobSchedulerStatusFunction))]
+        [FunctionName(nameof(CheckJobSchedulerStatusFunction))]
         public async Task<bool> CheckStatusAsync([ActivityTrigger] CheckJobSchedulerStatusRequest request)
         {
             var completed = false;

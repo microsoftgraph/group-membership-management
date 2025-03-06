@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
-using Services.Contracts;
+using Entities;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+using Services.Contracts;
+using Repositories.Contracts;
+using System.Collections.Generic;
+using Models;
 
 namespace Hosts.JobScheduler
 {
@@ -21,7 +23,7 @@ namespace Hosts.JobScheduler
             _jobSchedulingService = jobSchedulingService ?? throw new ArgumentNullException(nameof(jobSchedulingService));
         }
 
-        [Function(nameof(DistributeJobsFunction))]
+        [FunctionName(nameof(DistributeJobsFunction))]
         public async Task<List<DistributionSyncJob>> DistributeJobsAsync([ActivityTrigger] DistributeJobsRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DistributeJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);

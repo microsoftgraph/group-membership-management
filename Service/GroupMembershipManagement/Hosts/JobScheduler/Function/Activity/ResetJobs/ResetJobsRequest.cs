@@ -8,7 +8,7 @@ namespace Hosts.JobScheduler
 {
     public class ResetJobsRequest
     {
-        public List<DistributionSyncJob> JobsToReset { get; set; }
-        public int DaysToAddForReset { get; set; }
+        public List<DistributionSyncJob> JobsToReset;
+        public int DaysToAddForReset;
     }
 }

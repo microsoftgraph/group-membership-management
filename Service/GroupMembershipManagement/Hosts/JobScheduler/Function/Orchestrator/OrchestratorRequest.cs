@@ -5,6 +5,6 @@ namespace Hosts.JobScheduler
 {
     public class OrchestratorRequest
     {
-        public int StartTimeDelayMinutes { get; set; }
+        public int StartTimeDelayMinutes;
     }
 }

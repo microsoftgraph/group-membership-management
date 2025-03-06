@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -21,9 +21,9 @@ namespace Hosts.JobScheduler
             _jobSchedulerConfig = jobSchedulerConfig ?? throw new ArgumentNullException(nameof(jobSchedulerConfig));
         }
 
-        [Function(nameof(OrchestratorFunction))]
+        [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] TaskOrchestrationContext context)
+            [OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var runId = context.NewGuid();
 
