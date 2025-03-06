@@ -4,8 +4,6 @@
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <AssemblyName>SqlMembershipObtainer</AssemblyName>
     <RootNamespace>SqlMembershipObtainer</RootNamespace>
-    <OutputType>Exe</OutputType>
-    <ImplicitUsings>enabled</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="NewFolder\**" />
@@ -13,11 +11,11 @@
     <None Remove="NewFolder\**" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.21.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.17.4" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.23.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.1.5" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Extensions" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" Version="2.13.4" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask.Analyzers" Version="0.5.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" Version="5.16.2" />
+    <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.4.1" />
     <PackageReference Include="NJsonSchema" Version="11.0.2" />
   </ItemGroup>
   <ItemGroup>
@@ -43,8 +41,5 @@
     <ProjectReference Include="..\..\..\Repositories.SqlMembershipRepository\Repositories.SqlMembershipRepository.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services\Services.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Using Include="System.Threading.ExecutionContext" Alias="ExecutionContext" />
   </ItemGroup>
 </Project>

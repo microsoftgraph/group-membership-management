@@ -1,19 +1,20 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.DurableTask;
+using Entities;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Models;
 using Moq;
-using Repositories.Contracts;
-using Services.Contracts;
-using Services.Tests.Helpers;
+using Models;
 using SqlMembershipObtainer;
 using SqlMembershipObtainer.Entities;
-using SqlMembershipObtainer.SubOrchestrator;
+using Services.Tests.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using SqlMembershipObtainer.SubOrchestrator;
+using Services.Contracts;
+using Repositories.Contracts;
 
 namespace Services.Tests
 {
@@ -51,7 +52,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task ProcessQueryWithOrgLeadersTest()
         {
-            var context = new Mock<TaskOrchestrationContext>();
+            var context = new Mock<IDurableOrchestrationContext>();
             var queryFunction = new OrganizationProcessorFunction();
             var organization = new OrganizationCreator().GenerateOrganizationHierarchy();
 
@@ -83,21 +84,19 @@ namespace Services.Tests
 
             context.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(organizationProcessorRequest);
 
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()));
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
 
-            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync("tbl112233445566");
+            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
 
             context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
-                                                                            nameof(ManagerOrgReaderFunction),
-                                                                            It.IsAny<ManagerOrgReaderRequest>(),
-                                                                            It.IsAny<TaskOptions>()))
+                                                                            It.Is<string>(x => x == nameof(ManagerOrgReaderFunction)),
+                                                                            It.IsAny<ManagerOrgReaderRequest>()))
                     .ReturnsAsync(() => managerOrgProcessorResponse);
 
             context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(
-                                                                nameof(ManagerOrgReaderFunction),
-                                                                It.IsAny<ManagerOrgReaderRequest>(), 
-                                                                It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, requestObject, options) =>
+                                                                It.Is<string>(x => x == nameof(ManagerOrgReaderFunction)),
+                                                                It.IsAny<ManagerOrgReaderRequest>()))
+                    .Callback<string, object>(async (name, requestObject) =>
                     {
                         var request = requestObject as ManagerOrgReaderRequest;
                         managerOrgReaderResponse = await ManagerOrgReaderFunctionAsync(request);
@@ -112,7 +111,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task ProcessQueryWithNoOrgLeadersTest()
         {
-            var context = new Mock<TaskOrchestrationContext>();
+            var context = new Mock<IDurableOrchestrationContext>();
             var queryFunction = new OrganizationProcessorFunction();
             var organization = new OrganizationCreator().GenerateOrganizationHierarchy();
 
@@ -141,12 +140,12 @@ namespace Services.Tests
             context.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(organizationProcessorRequest);
             context.Setup(x => x.GetInput<ManagerOrgReaderRequest>()).Returns(() => managerOrgReaderRequest);
 
-            context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()));
+            context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
 
-            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync("tbl112233445566");
+            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
 
-            context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(It.IsAny<TaskName>(), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()))
-                .Callback<TaskName, object, TaskOptions>(async (name, requestObject, options) =>
+            context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(It.IsAny<string>(), It.IsAny<ChildEntitiesFilterRequest>()))
+                .Callback<string, object>(async (name, requestObject) =>
                 {
                     var request = requestObject as ChildEntitiesFilterRequest;
                     childEntitiesFilterResponse = await CallChildEntitiesFilterFunctionAsync(request);

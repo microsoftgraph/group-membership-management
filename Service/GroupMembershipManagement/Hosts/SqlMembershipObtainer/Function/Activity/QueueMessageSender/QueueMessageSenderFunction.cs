@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Models.ServiceBus;
 using Newtonsoft.Json;
@@ -22,7 +23,7 @@ namespace SqlMembershipObtainer
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
-        [Function(nameof(QueueMessageSenderFunction))]
+        [FunctionName(nameof(QueueMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] MembershipAggregatorHttpRequest request)
         {
 

@@ -1,11 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using NJsonSchema;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
+using NJsonSchema;
 
 namespace SqlMembershipObtainer
 {
@@ -20,7 +21,7 @@ namespace SqlMembershipObtainer
             _schemaProvider = schemaProvider ?? throw new ArgumentNullException(nameof(schemaProvider));
         }
 
-        [Function(nameof(SchemaValidatorFunction))]
+        [FunctionName(nameof(SchemaValidatorFunction))]
         public async Task<bool> ValidateSchemasAsync([ActivityTrigger] SchemaValidatorRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

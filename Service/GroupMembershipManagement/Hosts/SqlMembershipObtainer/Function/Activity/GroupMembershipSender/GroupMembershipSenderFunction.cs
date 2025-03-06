@@ -1,8 +1,9 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
-using Models;
 using Models.Helpers;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -23,8 +24,8 @@ namespace SqlMembershipObtainer
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(GroupMembershipSenderFunction))]
-        public async Task<OrchestratorResponse> SendGroupMembershipAsync([ActivityTrigger] GroupMembershipSenderRequest request)
+        [FunctionName(nameof(GroupMembershipSenderFunction))]
+        public async Task<(SyncStatus Status, string FilePath)> SendGroupMembershipAsync([ActivityTrigger] GroupMembershipSenderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupMembershipSenderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
@@ -33,11 +34,7 @@ namespace SqlMembershipObtainer
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupMembershipSenderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            return new OrchestratorResponse
-            {
-                Status = response.Status,
-                FilePath = response.FilePath
-            };
+            return response;
         }
     }
 }

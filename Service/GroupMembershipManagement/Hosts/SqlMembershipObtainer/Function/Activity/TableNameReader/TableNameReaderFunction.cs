@@ -1,7 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -23,7 +24,7 @@ namespace SqlMembershipObtainer
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(TableNameReaderFunction))]
+        [FunctionName(nameof(TableNameReaderFunction))]
         public async Task<string> GetSqlMembershipTableName([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

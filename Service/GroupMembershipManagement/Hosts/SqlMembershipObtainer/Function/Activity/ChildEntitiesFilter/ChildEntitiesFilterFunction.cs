@@ -1,12 +1,13 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
-using Models;
 using Models.Helpers;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Models;
 using Newtonsoft.Json;
+using SqlMembershipObtainer.SubOrchestrator;
 using Repositories.Contracts;
 using Services.Contracts;
-using SqlMembershipObtainer.SubOrchestrator;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -24,7 +25,7 @@ namespace SqlMembershipObtainer
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(ChildEntitiesFilterFunction))]
+        [FunctionName(nameof(ChildEntitiesFilterFunction))]
         public async Task<GraphProfileInformationResponse> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

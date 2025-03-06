@@ -1,21 +1,24 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Data.SqlClient;
-using Microsoft.DurableTask;
+using Entities;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
+using SqlMembershipObtainer.Entities;
+using System.Net.Http;
 using Microsoft.Extensions.Configuration;
+using System.Net;
+using Newtonsoft.Json.Linq;
+using Microsoft.Extensions.Primitives;
+using Repositories.Contracts;
 using Microsoft.Graph;
 using Models;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Repositories.Contracts;
-using SqlMembershipObtainer.Entities;
 using SqlMembershipObtainer.SubOrchestrator;
-using System;
-using System.IO;
-using System.Net;
-using System.Reflection;
-using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
 
 namespace SqlMembershipObtainer
 {
@@ -29,9 +32,9 @@ namespace SqlMembershipObtainer
             _loggingRepository = loggingRepository;
         }
 
-        [Function(nameof(OrchestratorFunction))]
+        [FunctionName(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] TaskOrchestrationContext context)
+            [OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest == null || mainRequest.SyncJob == null) { return; }
@@ -109,7 +112,7 @@ namespace SqlMembershipObtainer
                                    Message = $"Retrieved {graphProfilesResponse.GraphProfileCount} total profiles from SqlMembershipObtainer",
                                });
 
-                var senderResponse = await context.CallActivityAsync<OrchestratorResponse>(
+                var senderResponse = await context.CallActivityAsync<(SyncStatus Status, string FilePath)>(
                                     nameof(GroupMembershipSenderFunction),
                                     new GroupMembershipSenderRequest
                                     {
@@ -117,7 +120,7 @@ namespace SqlMembershipObtainer
                                         Profiles = graphProfilesResponse.GraphProfiles,
                                         CurrentPart = mainRequest.CurrentPart,
                                         Exclusionary = mainRequest.Exclusionary,
-                                        AdaptiveCardTemplateDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)
+                                        AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
                                     });
 
                 if (senderResponse.Status != SyncStatus.InProgress)
