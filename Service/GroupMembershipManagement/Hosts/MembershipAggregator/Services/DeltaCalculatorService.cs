@@ -7,6 +7,7 @@ using Models.Notifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
+using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -14,7 +15,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using System.Data.SqlTypes;
-using MembershipAggregator.Services.Entities;
 
 namespace Services
 {
@@ -313,6 +313,7 @@ namespace Services
                 : NotificationMessageType.NormalThresholdNotification;
 
             var messageId = $"{job.Id}_{job.RunId}_{messageType}";
+            
             var message = new ServiceBusMessage
             {
                 MessageId = messageId,
@@ -325,7 +326,7 @@ namespace Services
                 Message = $"Sent message {message.MessageId} to service bus notifications queue ",
                 RunId = job.RunId
             });
-        }
+        }   
         private async Task CloseUnresolvedThresholdNotificationAsync(SyncJob job)
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)

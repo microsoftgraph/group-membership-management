@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -30,7 +30,7 @@ namespace Hosts.MembershipAggregator
             _blobStorageRepository = blobStorageRepository;
         }
 
-        [Function(nameof(DeltaCalculatorFunction))]
+        [FunctionName(nameof(DeltaCalculatorFunction))]
         public async Task<DeltaCalculatorResponse> CalculateDeltaAsync([ActivityTrigger] DeltaCalculatorRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

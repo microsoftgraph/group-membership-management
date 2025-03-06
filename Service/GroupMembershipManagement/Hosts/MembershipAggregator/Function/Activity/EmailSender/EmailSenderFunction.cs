@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using MembershipAggregator.Activity.EmailSender;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using Models;
+using MembershipAggregator.Activity.EmailSender;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -22,7 +22,7 @@ namespace Hosts.MembershipAggregator
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService)); ;
         }
 
-        [Function(nameof(EmailSenderFunction))]
+        [FunctionName(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
             var job = request.SyncJob;
@@ -34,3 +34,4 @@ namespace Hosts.MembershipAggregator
         }
     }
 }
+       

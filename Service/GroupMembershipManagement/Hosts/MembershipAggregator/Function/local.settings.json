@@ -1,7 +1,6 @@
 {
   "IsEncrypted": false,
   "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "appConfigurationEndpoint": "https://<solution>-appconfig-<environment>.azconfig.io",

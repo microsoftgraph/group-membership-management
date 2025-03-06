@@ -1,8 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask.Client;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
@@ -21,10 +21,10 @@ namespace Hosts.MembershipAggregator
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function("ServiceBusStarterFunction")]
+        [FunctionName("ServiceBusStarterFunction")]
         public async Task ProcessServiceBusMessageAsync(
             [ServiceBusTrigger("%serviceBusMembershipAggregatorQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] DurableTaskClient starter)
+            [DurableClient] IDurableOrchestrationClient starter)
         {
             var request = JsonConvert.DeserializeObject<MembershipAggregatorHttpRequest>(Encoding.UTF8.GetString(message.Body));
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -33,7 +33,7 @@ namespace Hosts.MembershipAggregator
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Processing message {message.MessageId}", RunId = runId }, VerbosityLevel.INFO);
 
-            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
+            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId}", RunId = runId }, VerbosityLevel.DEBUG);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);

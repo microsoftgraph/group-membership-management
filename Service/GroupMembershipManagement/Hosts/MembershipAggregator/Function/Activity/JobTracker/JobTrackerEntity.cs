@@ -1,55 +1,58 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask.Entities;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
-    public class JobTrackerEntity : TaskEntity<JobState>, IJobTracker
+    public class JobTrackerEntity : IJobTracker
     {
+        public JobState JobState { get; set; } = new JobState();
+
         public Task AddCompletedPart(string filePath)
         {
-            if (!State.CompletedParts.Contains(filePath))
-                State.CompletedParts.Add(filePath);
+            if (!JobState.CompletedParts.Contains(filePath))
+                JobState.CompletedParts.Add(filePath);
 
             return Task.CompletedTask;
         }
 
         public Task SetDestinationPart(string filePath)
         {
-            State.DestinationPart = filePath;
+            JobState.DestinationPart = filePath;
             return Task.CompletedTask;
         }
 
         public Task<JobState> GetState()
         {
-            return Task.FromResult(State);
+            return Task.FromResult(JobState);
         }
 
         public Task<bool> IsComplete()
         {
-            var allPartsCompleted = State.TotalParts > 0
-                                    && State.CompletedParts.Count == State.TotalParts;
+            var allPartsCompleted = JobState.TotalParts > 0
+                                    && JobState.CompletedParts.Count == JobState.TotalParts;
 
             return Task.FromResult(allPartsCompleted);
         }
 
         public Task SetTotalParts(int totalParts)
         {
-            State.TotalParts = totalParts;
+            JobState.TotalParts = totalParts;
             return Task.CompletedTask;
         }
 
-        [Function(nameof(JobTrackerEntity))]
-        public static Task Run([EntityTrigger] TaskEntityDispatcher ctx)
+        public virtual async Task Delete()
         {
-            return ctx.DispatchAsync<JobTrackerEntity>();
+            Entity.Current.DeleteState();
+            await Task.CompletedTask;
         }
 
-        protected override JobState InitializeState(TaskEntityOperation entityOperation)
+        [FunctionName(nameof(JobTrackerEntity))]
+        public static Task RunAsync([EntityTrigger] IDurableEntityContext ctx)
         {
-            return new JobState();
+            return ctx.DispatchAsync<JobTrackerEntity>();
         }
     }
 }

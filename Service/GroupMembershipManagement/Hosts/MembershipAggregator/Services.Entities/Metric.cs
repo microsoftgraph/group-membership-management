@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-namespace MembershipAggregator.Services.Entities
+namespace Services.Entities
 {
     public enum Metric
     {

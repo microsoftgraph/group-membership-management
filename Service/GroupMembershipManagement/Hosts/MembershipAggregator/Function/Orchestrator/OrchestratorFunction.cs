@@ -1,14 +1,19 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using MembershipAggregator.Services.Entities;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Entities;
+using Azure;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Primitives;
 using Models;
+using Newtonsoft.Json;
 using Repositories.Contracts;
+using Services.Entities;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -24,25 +29,26 @@ namespace Hosts.MembershipAggregator
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<MembershipAggregatorHttpRequest>();
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var entityId = new EntityInstanceId(nameof(JobTrackerEntity), $"{request.SyncJob.TargetOfficeGroupId}_{runId}");
+            var entityId = new EntityId(nameof(JobTrackerEntity), $"{request.SyncJob.TargetOfficeGroupId}_{runId}");
+            var proxy = context.CreateEntityProxy<IJobTracker>(entityId);
             var hasSourceCompleted = false;
             var errorOccurred = false;
 
             try
             {
-                await using (await context.Entities.LockEntitiesAsync(entityId))
+                using (await context.LockAsync(entityId))
                 {
-                    await context.Entities.CallEntityAsync(entityId, "SetTotalParts", request.PartsCount);
-                    await context.Entities.CallEntityAsync(entityId, "AddCompletedPart", request.FilePath);
-                    hasSourceCompleted = await context.Entities.CallEntityAsync<bool>(entityId, "IsComplete");
+                    await proxy.SetTotalParts(request.PartsCount);
+                    await proxy.AddCompletedPart(request.FilePath);
+                    hasSourceCompleted = await proxy.IsComplete();
 
                     if (request.IsDestinationPart)
-                        await context.Entities.CallEntityAsync(entityId, "SetDestinationPart", request.FilePath);
+                        await proxy.SetDestinationPart(request.FilePath);
                 }
 
                 if (hasSourceCompleted)
@@ -136,7 +142,7 @@ namespace Hosts.MembershipAggregator
             {
                 if (hasSourceCompleted || errorOccurred)
                 {
-                    await context.Entities.CallEntityAsync(entityId, "Delete");
+                    await proxy.Delete();
                 }
 
                 _loggingRepository.RemoveSyncJobProperties(runId);
