@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -42,8 +41,8 @@ namespace Hosts.NonProdService
             _nonProdService = nonProdService ?? throw new ArgumentNullException(nameof(nonProdService));
         }
 
-        [Function(nameof(IntegrationTestingPrepSubOrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(IntegrationTestingPrepSubOrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<IntegrationTestingPrepSubOrchestratorRequest>();
             var runId = request.RunId;

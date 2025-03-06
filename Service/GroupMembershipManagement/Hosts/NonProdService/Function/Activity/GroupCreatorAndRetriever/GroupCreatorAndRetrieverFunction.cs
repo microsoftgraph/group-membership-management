@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
@@ -21,7 +21,7 @@ namespace Hosts.NonProdService
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
-        [Function(nameof(GroupCreatorAndRetrieverFunction))]
+        [FunctionName(nameof(GroupCreatorAndRetrieverFunction))]
         public async Task<GroupCreatorAndRetrieverResponse> GenerateGroup([ActivityTrigger] GroupCreatorAndRetrieverRequest request, ILogger log)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.DurableTask;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Options;
 using Models;
 using NonProdService.LoadTestingPrepSubOrchestrator;
@@ -22,8 +21,8 @@ namespace Hosts.NonProdService
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        [Function(nameof(LoadTestingPrepSubOrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(LoadTestingPrepSubOrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<LoadTestingPrepSubOrchestratorRequest>();
             var runId = request.RunId;

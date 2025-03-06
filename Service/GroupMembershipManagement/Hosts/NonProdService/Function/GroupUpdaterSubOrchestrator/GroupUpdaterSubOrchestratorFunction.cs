@@ -1,13 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.DurableTask;
-using Models;
-using Repositories.Contracts;
-using System.Collections.Generic;
-using System.Linq;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Threading.Tasks;
+using System.Linq;
+using System.Collections.Generic;
+using System;
+using Microsoft.ApplicationInsights;
+using Repositories.Contracts;
+using Models;
 
 namespace Hosts.NonProdService
 {
@@ -17,8 +18,8 @@ namespace Hosts.NonProdService
         {
         }
 
-        [Function(nameof(GroupUpdaterSubOrchestratorFunction))]
-        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(GroupUpdaterSubOrchestratorFunction))]
+        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
             var batchSize = 100;
