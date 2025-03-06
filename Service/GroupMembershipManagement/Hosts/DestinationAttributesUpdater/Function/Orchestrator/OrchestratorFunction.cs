@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.DestinationAttributesUpdater
 {
@@ -21,8 +21,8 @@ namespace Hosts.DestinationAttributesUpdater
 
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
 
             await context.CallActivityAsync(nameof(LoggerFunction),
@@ -39,7 +39,7 @@ namespace Hosts.DestinationAttributesUpdater
                 foreach (var destinationType in destinationTypes)
                 {
 
-                    var destinationsList = await context.CallActivityAsync<List<DestinationReaderResponse>>(nameof(DestinationReaderFunction), destinationType);
+                    var destinationsList = await context.CallActivityAsync<List<(string Destination, Guid TableId)>>(nameof(DestinationReaderFunction), destinationType);
 
                     int index = 0;
                     while (index < destinationsList.Count)

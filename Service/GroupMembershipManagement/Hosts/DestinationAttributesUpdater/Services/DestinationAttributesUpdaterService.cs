@@ -33,10 +33,10 @@ namespace Services
             _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
 
-        public async Task<List<DestinationReaderResponse>> GetDestinationsAsync(string destinationType)
+        public async Task<List<(string Destination, Guid JobId)>> GetDestinationsAsync(string destinationType)
         {
             var jobs = await _databaseSyncJobsRepository.GetSyncJobsByDestinationAsync(destinationType);
-            var destinations = new List<DestinationReaderResponse>();
+            var destinations = new List<(string Destination, Guid JobId)>();
 
             foreach (var job in jobs)
             {
@@ -71,13 +71,14 @@ namespace Services
                 }
 
                 var serializedDestination = JsonSerializer.Serialize(destination, _destinationObjectSerializerOptions);
-                destinations.Add(new DestinationReaderResponse { Destination = serializedDestination, JobId = job.Id });
+
+                destinations.Add((serializedDestination, job.Id));
             }
 
             return destinations;
         }
 
-        public async Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<DestinationReaderResponse> destinations, string destinationType)
+        public async Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<(string Destination, Guid JobId)> destinations, string destinationType)
         {
             
             var destinationAttributesList = new List<DestinationAttributes>();
