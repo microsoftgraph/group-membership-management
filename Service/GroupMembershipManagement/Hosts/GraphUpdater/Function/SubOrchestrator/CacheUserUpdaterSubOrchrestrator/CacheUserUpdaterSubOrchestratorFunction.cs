@@ -4,6 +4,8 @@ using Models.ServiceBus;
 using GraphUpdater.Entities;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -14,8 +16,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Models.Helpers;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.GraphUpdater
 {
@@ -30,8 +30,8 @@ namespace Hosts.GraphUpdater
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [Function(nameof(CacheUserUpdaterSubOrchestratorFunction))]
-        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(CacheUserUpdaterSubOrchestratorFunction))]
+        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
 
             var request = context.GetInput<CacheUserUpdaterRequest>();

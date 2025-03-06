@@ -2,15 +2,14 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.GraphUpdater;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Mocks;
 using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -20,7 +19,7 @@ namespace Services.Tests
     {
         private string _instanceId;
         private MockLoggingRepository _loggerMock;
-        private Mock<MockDurableTaskClient> _durableOrchestrationClient;
+        private Mock<IDurableOrchestrationClient> _durableClientMock;
         private SyncJob _syncJob;
         private Mock<ServiceBusReceiver> _serviceBusReceiverMock;
 
@@ -28,7 +27,7 @@ namespace Services.Tests
         public void SetupTest()
         {
             _instanceId = "1234567890";
-            _durableOrchestrationClient = new Mock<MockDurableTaskClient>();
+            _durableClientMock = new Mock<IDurableOrchestrationClient>();
             _loggerMock = new MockLoggingRepository();
             _serviceBusReceiverMock = new Mock<ServiceBusReceiver>();
             _syncJob = new SyncJob
@@ -47,18 +46,18 @@ namespace Services.Tests
         [TestMethod]
         public async Task ProcessValidRequestTest()
         {
-            _durableOrchestrationClient
-                .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            _durableClientMock
+                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), (object)null))
                 .ReturnsAsync(_instanceId);
 
             var instanceId = nameof(QueueMessageOrchestratorFunction);
             var starterFunction = new StarterFunction(_loggerMock, _serviceBusReceiverMock.Object);
-            var timer = new TimerInfo();
+            var timer = new TimerInfo(null, null);
 
-            await starterFunction.RunAsync(timer, _durableOrchestrationClient.Object);
+            await starterFunction.RunAsync(timer, _durableClientMock.Object);
 
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function started")));
-            _durableOrchestrationClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), instanceId, null,It.IsAny<CancellationToken>()), Times.Once());
+            _durableClientMock.Verify(x => x.StartNewAsync(instanceId, instanceId, (object)null), Times.Once());
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message == $"Calling {instanceId}"));
             Assert.IsNotNull(_loggerMock.MessagesLogged.Single(x => x.Message.Contains("function complete")));
         }

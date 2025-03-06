@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -12,7 +14,6 @@ using Newtonsoft.Json;
 using Repositories.BlobStorage;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GraphUpdater
 {
@@ -27,7 +28,7 @@ namespace Hosts.GraphUpdater
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        [Function(nameof(CacheUpdaterFunction))]
+        [FunctionName(nameof(CacheUpdaterFunction))]
         public async Task UpdateCacheAsync
             ([ActivityTrigger] CacheUpdaterRequest request)
         {

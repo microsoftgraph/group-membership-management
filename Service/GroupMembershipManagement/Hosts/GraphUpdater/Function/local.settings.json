@@ -22,7 +22,6 @@
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "serviceBusMembershipUpdatersTopic": "",
     "serviceBusNotificationsQueue": "",
-    "triggerSchedule": "0,30 * * * * *",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+    "triggerSchedule": "0,30 * * * * *"
   }
 }

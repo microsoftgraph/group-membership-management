@@ -1,5 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using System.Threading.Tasks;
 using System.Linq;
 using System.Collections.Generic;
@@ -9,8 +11,6 @@ using GraphUpdater.Entities;
 using Models;
 using Repositories.Contracts;
 using Services.Entities;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.GraphUpdater
 {
@@ -25,8 +25,8 @@ namespace Hosts.GraphUpdater
             _batchSize = batchSize.BatchSize;
         }
 
-        [Function(nameof(GroupUpdaterSubOrchestratorFunction))]
-        public async Task<GroupUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(GroupUpdaterSubOrchestratorFunction))]
+        public async Task<GroupUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var skip = 0;
             var request = context.GetInput<GroupUpdaterRequest>();

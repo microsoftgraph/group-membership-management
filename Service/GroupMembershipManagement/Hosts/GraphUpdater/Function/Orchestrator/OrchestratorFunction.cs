@@ -3,6 +3,8 @@
 using GraphUpdater.Entities;
 using GraphUpdater.Helpers;
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Identity.Client;
 using Models;
 using Models.Notifications;
@@ -20,9 +22,6 @@ using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 using static System.Net.WebRequestMethods;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
 
 namespace Hosts.GraphUpdater
 {
@@ -57,8 +56,8 @@ namespace Hosts.GraphUpdater
             _deltaCachingConfig = deltaCachingConfig ?? throw new ArgumentNullException(nameof(deltaCachingConfig));
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             GroupMembership groupMembership = null;
             MembershipHttpRequest graphRequest = null;
@@ -285,7 +284,7 @@ namespace Hosts.GraphUpdater
             }
         }
 
-        public async Task UpdateCachesAsync(TaskOrchestrationContext context,
+        public async Task UpdateCachesAsync(IDurableOrchestrationContext context,
                                                 List<AzureADUser> sourceUsersNotFound,
                                                 List<AzureADUser> destinationUsersNotFound,
                                                 SyncJob syncJob,
@@ -356,7 +355,7 @@ namespace Hosts.GraphUpdater
             _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
         }
 
-        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
+        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
