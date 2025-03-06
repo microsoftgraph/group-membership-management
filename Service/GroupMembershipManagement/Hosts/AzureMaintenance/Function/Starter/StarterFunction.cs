@@ -3,10 +3,10 @@
 using System;
 using System.Threading.Tasks;
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
-using Microsoft.DurableTask.Client;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.AzureMaintenance
 {
@@ -19,15 +19,15 @@ namespace Hosts.AzureMaintenance
         }
 
 
-        [Function(nameof(StarterFunction))]
+        [FunctionName(nameof(StarterFunction))]
         public async Task Run(
             [TimerTrigger("%maintenanceTriggerSchedule%")] TimerInfo myTimer,
-            [DurableClient] DurableTaskClient client,
+            [DurableClient] IDurableOrchestrationClient starter,
             ILogger log)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), null);
+            await starter.StartNewAsync(nameof(OrchestratorFunction), null);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
