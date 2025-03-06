@@ -13,14 +13,13 @@ using Models;
 using Repositories.Contracts;
 using Services.SyncJobUpdater.Tests.Mocks;
 using Hosts.SyncJobUpdater;
-using Microsoft.DurableTask;
 
 namespace Services.Tests
 {
     [TestClass]
     public class OrchestratorFunctionTests
     {
-        private Mock<TaskOrchestrationContext> _mockContext;
+        private Mock<IDurableOrchestrationContext> _mockContext;
         private MockLoggingRepository _mockLogger;
         private OrchestratorFunction _orchestratorFunction;
         private const string GroupMembership = "GroupMembership";
@@ -28,7 +27,7 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
-            _mockContext = new Mock<TaskOrchestrationContext>();
+            _mockContext = new Mock<IDurableOrchestrationContext>();
             _mockLogger = new MockLoggingRepository();
             _orchestratorFunction = new OrchestratorFunction();
         }
@@ -45,9 +44,9 @@ namespace Services.Tests
 
             _mockContext.Setup(c => c.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
 
-            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), null), Times.Once);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), null), Times.Exactly(2));
+            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object, null);
+            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>()), Times.Once);
+            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.Exactly(2));
         }
 
         [TestMethod]
@@ -61,16 +60,16 @@ namespace Services.Tests
             };
             var loggerRequests = new List<LoggerRequest>();
             _mockContext
-                .Setup(context => context.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                .Callback<TaskName, object, TaskOptions>((name, request, options) => loggerRequests.Add((LoggerRequest)request))
+                .Setup(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
+                .Callback<string, object>((name, request) => loggerRequests.Add((LoggerRequest)request))
                 .Returns(Task.CompletedTask);
 
             _mockContext.Setup(c => c.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
 
-            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), null), Times.Exactly(2), "Expected LoggerFunction to be called exactly twice.");
+            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object, null);
+            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.Exactly(2), "Expected LoggerFunction to be called exactly twice.");
             Assert.IsTrue(loggerRequests.Any(req => req.Message.Contains("unknown status")), "Expected an error log message for unknown status.");
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), null), Times.Once);
+            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>()), Times.Once);
         }
 
     }

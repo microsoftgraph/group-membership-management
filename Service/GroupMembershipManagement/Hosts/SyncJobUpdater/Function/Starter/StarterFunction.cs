@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -8,8 +10,6 @@ using System;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask.Client;
 
 namespace Hosts.SyncJobUpdater
 {
@@ -22,10 +22,10 @@ namespace Hosts.SyncJobUpdater
             _loggingRepository = loggingRepository;
         }
 
-        [Function(nameof(StarterFunction))]
+        [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusSyncJobUpdaterQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] DurableTaskClient client)
+            [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonSerializer.Deserialize<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -42,7 +42,7 @@ namespace Hosts.SyncJobUpdater
                     Status = syncjobStatus
                 };
 
-            var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
+            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {syncJob.Id} ", RunId = runId });
             
 

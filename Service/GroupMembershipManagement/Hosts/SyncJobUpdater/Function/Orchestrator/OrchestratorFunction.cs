@@ -1,5 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Graph;
@@ -16,8 +18,6 @@ using System.Threading.Tasks;
 using Repositories.Contracts.InjectConfig;
 using Models.Notifications;
 using Hosts.SyncJobUpdater;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.SyncJobUpdater
 {
@@ -27,8 +27,8 @@ namespace Hosts.SyncJobUpdater
         {
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest != null && mainRequest.SyncJob != null)

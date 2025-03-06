@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using Services.Contracts;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.SyncJobUpdater
 {
@@ -19,7 +20,7 @@ namespace Hosts.SyncJobUpdater
             _syncJobUpdaterService = syncJobUpdaterService;
         }
 
-        [Function(nameof(JobStatusUpdaterFunction))]
+        [FunctionName(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             if (request.SyncJob != null)
