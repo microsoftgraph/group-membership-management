@@ -2,11 +2,12 @@
 // Licensed under the MIT license.
 using Models;
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -21,7 +22,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [Function(nameof(TelemetryTrackerFunction))]
+        [FunctionName(nameof(TelemetryTrackerFunction))]
         public async Task TrackEventAsync([ActivityTrigger] TelemetryTrackerRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TelemetryTrackerFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

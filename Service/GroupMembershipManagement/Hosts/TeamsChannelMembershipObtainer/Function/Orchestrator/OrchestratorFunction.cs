@@ -1,6 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
@@ -9,8 +11,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -27,8 +27,8 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _isTeamsChannelDryRunEnabled = dryRun?.DryRunEnabled ?? throw new ArgumentNullException(nameof(dryRun));
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
 
             var channelSyncInfo = context.GetInput<ChannelSyncInfo>();

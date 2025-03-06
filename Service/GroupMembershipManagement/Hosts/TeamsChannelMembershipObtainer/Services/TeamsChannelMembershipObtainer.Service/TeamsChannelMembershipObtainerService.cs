@@ -72,21 +72,16 @@ namespace TeamsChannelMembershipObtainer.Service
             {
                 await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, channel {azureADTeamsChannel.ChannelId} from group {azureADTeamsChannel.ObjectId} is a standard channel.", RunId = runId });
                 await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.StandardTeamsChannel);
-                return new ValidateChannelResponse
-                {
-                    ParsedChannel = azureADTeamsChannel,
-                    IsValid = false
-                };
+                return new ValidateChannelResponse {
+                    ParsedChannel = azureADTeamsChannel, 
+                    IsValid = false };
             }
 
             await _logger.LogMessageAsync(new LogMessage { Message = $"In Service, Channel {azureADTeamsChannel.ChannelId} of group {azureADTeamsChannel.ObjectId} is of type {destType}.", RunId = runId });
 
-            return new ValidateChannelResponse
-            {
-                ParsedChannel = azureADTeamsChannel,
-                IsValid = true
-            };
-
+            return new ValidateChannelResponse {
+                    ParsedChannel = azureADTeamsChannel, 
+                    IsValid = true };
         }
 
         public Task<List<AzureADTeamsUser>> GetUsersFromTeamAsync(AzureADTeamsChannel azureADTeamsChannel, Guid runId)

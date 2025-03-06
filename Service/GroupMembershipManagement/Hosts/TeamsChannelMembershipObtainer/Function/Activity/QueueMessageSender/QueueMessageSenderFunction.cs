@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using TeamsChannelMembershipObtainer.Service.Contracts;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.TeamsChannelMembershipObtainer
 {
@@ -20,7 +21,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
             _teamsChannelService = teamsChannelService ?? throw new ArgumentNullException(nameof(teamsChannelService));
         }
 
-        [Function(nameof(QueueMessageSenderFunction))]
+        [FunctionName(nameof(QueueMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] QueueMessageSenderRequest request)
         {
             var syncJob = request.ChannelSyncInfo.SyncJob;
