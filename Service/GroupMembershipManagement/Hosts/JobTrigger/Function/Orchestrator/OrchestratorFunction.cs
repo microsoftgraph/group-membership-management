@@ -1,12 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.JobTrigger
 {
@@ -19,8 +19,8 @@ namespace Hosts.JobTrigger
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
 
             var runId = context.NewGuid();
@@ -33,7 +33,7 @@ namespace Hosts.JobTrigger
                     Verbosity = VerbosityLevel.DEBUG
                 });
 
-            var syncJobs =  await context.CallActivityAsync<List<SyncJob>>(new TaskName(nameof(GetJobsFunction)), null);
+            var syncJobs =  await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), null);
 
             await context.CallActivityAsync(nameof(LoggerFunction),
              new LoggerRequest

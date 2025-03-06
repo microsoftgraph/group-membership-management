@@ -6,6 +6,7 @@ using JobTrigger.Activity.EmailSender;
 using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -15,6 +16,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.ServiceBusTopics;
 using Services.Contracts;
 using Services.Tests.Helpers;
+using Repositories.ServiceBusQueue;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
@@ -25,7 +27,6 @@ using Models.Notifications;
 using Models.Helpers;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
-using Microsoft.DurableTask;
 
 namespace Services.Tests
 {
@@ -34,8 +35,8 @@ namespace Services.Tests
     {
         Mock<IJobTriggerService> _jobTriggerService;
         Mock<ILoggingRepository> _loggingRespository;
-        Mock<TaskOrchestrationContext> _context;
-        ExecutionContext _executionContext; 
+        Mock<IDurableOrchestrationContext> _context;
+        Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         Mock<IEmailSenderRecipient> _emailSenderAndRecipients;
         Mock<IGMMResources> _gmmResources;
         SyncStatus? _syncStatus = SyncStatus.Idle;
@@ -56,8 +57,8 @@ namespace Services.Tests
             _destinationVerifierResult = DestinationVerifierResult.Success;
             _gmmResources = new Mock<IGMMResources>();
             _jobTriggerService = new Mock<IJobTriggerService>();
-            _context = new Mock<TaskOrchestrationContext>();
-            _executionContext = ExecutionContext.Capture();
+            _context = new Mock<IDurableOrchestrationContext>();
+            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _loggingRespository = new Mock<ILoggingRepository>();
             _emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -89,64 +90,61 @@ namespace Services.Tests
                                   _syncStatus = status;
                               });
 
-            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(),  null))
-                                        .Callback<TaskName, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+                                        .Callback<string, object>(async (name, request) =>
                                         {
                                             _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.UtcNow);
                                         })
                                         .ReturnsAsync(() => _frequency);
 
-            _context.Setup(x => x.CallActivityAsync<ParsedAndValidateDestinationResponse>(It.Is<TaskName>(x => x.ToString() == nameof(ParseAndValidateDestinationFunction)), It.IsAny<SyncJob>(), null))
+            _context.Setup(x => x.CallActivityAsync<ParsedAndValidateDestinationResponse>(It.Is<string>(x => x == nameof(ParseAndValidateDestinationFunction)), It.IsAny<SyncJob>()))
                    .Returns(async () => await CallParseAndValidateDestinationFunction());
 
-            _context.Setup(x => x.CallActivityAsync(
-                    It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)),
-                    It.IsAny<TelemetryTrackerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
-                {
-                    var telemetryRequest = request as TelemetryTrackerRequest;
-                    await CallTelemetryTrackerFunctionAsync(telemetryRequest);
-                });
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        var telemetryRequest = request as TelemetryTrackerRequest;
+                        await CallTelemetryTrackerFunctionAsync(telemetryRequest);
+                    });
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(JobUpdaterFunction)), It.IsAny<JobUpdaterRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(JobUpdaterFunction)), It.IsAny<JobUpdaterRequest>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         var updateRequest = request as JobUpdaterRequest;
                         await CallJobStatusUpdaterFunctionAsync(updateRequest);
                         _syncStatus = updateRequest.Status;
                     });
 
-            _context.Setup(x => x.CallActivityAsync<DestinationVerifierResult>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationVerifierFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+            _context.Setup(x => x.CallActivityAsync<DestinationVerifierResult>(It.Is<string>(x => x == nameof(DestinationVerifierFunction)), It.IsAny<SyncJob>()))
                     .Returns(async () => await CallDestinationVerifierFunctionAsync());
 
-            _context.Setup(x => x.CallActivityAsync<string>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync<string>(It.Is<string>(x => x == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         _destinationName = await CallDestinationNameReaderFunctionAsync();
                     })
                     .ReturnsAsync(() => _destinationName);
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
-                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()))
+                     .Callback<string, object>(async (name, request) =>
                      {
                          await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                      });
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         await CallTopicMessageSenderFunctionAsync();
                     });
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
+                   .Callback<string, object>(async (name, request) =>
                    {
                        await CallLoggerFunctionAsync(request as LoggerRequest);
                    });
 
-            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         _jsonValidationResult = await CallSchemaValidatorFunctionAsync(request as SyncJob);
                     }).ReturnsAsync(() => _jsonValidationResult);
@@ -164,7 +162,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -191,7 +189,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -213,7 +211,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -228,8 +226,8 @@ namespace Services.Tests
         [TestMethod]
         public async Task HandleInvalidJson()
         {
-            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         var job = request as SyncJob;
                         job.Query = "{invalid-json}";
@@ -242,7 +240,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.SchemaError), It.IsAny<SyncJob>()), Times.Once());
@@ -265,7 +263,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("No json schemas have been loaded")),
@@ -286,7 +284,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Skipping schema validation for property")),
@@ -306,7 +304,7 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.SchemaError, It.IsAny<SyncJob>()), Times.Once());
@@ -328,12 +326,11 @@ namespace Services.Tests
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.ErroredDueToStuckInProgress, It.IsAny<SyncJob>()), Times.Once());
         }
 
         [TestMethod]
-
         public async Task HandleEmptySourceQuery()
         {
             _syncJob.Query = null;
@@ -343,7 +340,7 @@ namespace Services.Tests
                                                     _telemetryClient,
                                                     _emailSenderAndRecipients.Object,
                                                     _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
@@ -361,8 +358,8 @@ namespace Services.Tests
 
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
 
-            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+                                        .Callback<string, object>(async (name, request) =>
                                         {
                                             _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, SqlDateTime.MinValue.Value);
                                         })
@@ -372,7 +369,7 @@ namespace Services.Tests
                                                     _telemetryClient,
                                                     _emailSenderAndRecipients.Object,
                                                     _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
@@ -386,10 +383,10 @@ namespace Services.Tests
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
-            _context.Verify(x => x.CallActivityAsync<int>(It.Is<TaskName>(x => x.ToString() == nameof(JobTrackerFunction)), It.IsAny<SyncJob>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync<string>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), null), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<int>(It.Is<string>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<string>(It.Is<string>(x => x == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
@@ -406,8 +403,8 @@ namespace Services.Tests
             var serviceBusSender = new Mock<ServiceBusSender>();
 
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         var gmmResources = new Mock<IGMMResources>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
@@ -443,12 +440,12 @@ namespace Services.Tests
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
 
-            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>(), null)).ReturnsAsync(2);
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>())).ReturnsAsync(2);
             var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
@@ -456,10 +453,10 @@ namespace Services.Tests
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
-            _context.Verify(x => x.CallActivityAsync<int>(It.Is<TaskName>(x => x.ToString() == nameof(JobTrackerFunction)), It.IsAny<SyncJob>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync<string>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), null), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<int>(It.Is<string>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<string>(It.Is<string>(x => x == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
@@ -488,8 +485,8 @@ namespace Services.Tests
             _syncJob.Status = SyncStatus.InProgress.ToString();
 
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()))
+                    .Callback<string, object>(async (name, request) =>
                     {
                         var gmmResources = new Mock<IGMMResources>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
@@ -525,12 +522,12 @@ namespace Services.Tests
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
                     });
 
-            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>(), null)).ReturnsAsync(2);
+            _context.Setup(x => x.CallActivityAsync<int>(nameof(JobTrackerFunction), It.IsAny<SyncJob>())).ReturnsAsync(2);
             var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                                                 _telemetryClient,
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
-            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => !m.Message.Contains("Source query is not valid") && !m.Message.Contains("Source query is empty for job")),
@@ -538,10 +535,10 @@ namespace Services.Tests
                 It.IsAny<string>(),
                 It.IsAny<string>()));
 
-            _context.Verify(x => x.CallActivityAsync<int>(It.Is<TaskName>(x => x.ToString() == nameof(JobTrackerFunction)), It.IsAny<SyncJob>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync<string>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), null), Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), null), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<int>(It.Is<string>(x => x == nameof(JobTrackerFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync<string>(It.Is<string>(x => x == nameof(DestinationNameReaderFunction)), It.IsAny<SyncJob>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>()), Times.Once());
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
@@ -565,42 +562,42 @@ namespace Services.Tests
         public async Task DestinationNotFound()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _context.Setup(x => x.CallActivityAsync<DestinationVerifierResult>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationVerifierFunction)), It.IsAny<SyncJob>(), null))
+            _context.Setup(x => x.CallActivityAsync<DestinationVerifierResult>(It.Is<string>(x => x == nameof(DestinationVerifierFunction)), It.IsAny<SyncJob>()))
                     .ReturnsAsync(DestinationVerifierResult.NotFound);
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                         _telemetryClient,
                                         _emailSenderAndRecipients.Object,
                                         _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(),null), Times.Once());
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _syncStatus);
-            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.DestinationNotExistNotification), null), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.DestinationNotExistNotification)), Times.Once());
         }
 
         [TestMethod]
         public async Task DestinationNotOwnedByGMM()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _context.Setup(x => x.CallActivityAsync<DestinationVerifierResult>(It.Is<TaskName>(x => x.ToString() == nameof(DestinationVerifierFunction)), It.IsAny<SyncJob>(), null))
+            _context.Setup(x => x.CallActivityAsync<DestinationVerifierResult>(It.Is<string>(x => x == nameof(DestinationVerifierFunction)), It.IsAny<SyncJob>()))
                     .ReturnsAsync(DestinationVerifierResult.NotOwnedByGMM);
 
             var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
                                         _telemetryClient,
                                         _emailSenderAndRecipients.Object,
                                         _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), null), Times.Once());
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
-            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.NotOwnerNotification), null), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.Is<EmailSenderRequest>(r => r.NotificationType == NotificationMessageType.NotOwnerNotification)), Times.Once());
         }
 
         [TestMethod]
         public async Task TrackTelemetry()
         {
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
-                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+                                        .Callback<string, object>(async (name, request) =>
                                         {
                                             _frequency = await CallJobTrackerFunctionAsync(request as SyncJob, DateTime.UtcNow.AddDays(-1));
                                         })
@@ -612,8 +609,8 @@ namespace Services.Tests
                             _telemetryClient,
                             _emailSenderAndRecipients.Object,
                             _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), null), Times.Once());
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Once());
             Assert.AreEqual(SyncStatus.NotOwnerOfDestinationGroup, _syncStatus);
 
             _destinationVerifierResult = DestinationVerifierResult.NotOwnedByGMM;
@@ -623,8 +620,8 @@ namespace Services.Tests
                             _telemetryClient,
                             _emailSenderAndRecipients.Object,
                             _gmmResources.Object);
-            await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), null), Times.Exactly(2));
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()), Times.Exactly(2));
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
         }
 
@@ -632,22 +629,21 @@ namespace Services.Tests
 		public async Task HandleUnexpectedExceptionInSubOrchestrator()
 		{
 			_context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<SyncJob>(),null))
-                    .Throws(new Exception("Unexpected exception triggered for testing"));
+			_context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+					.Throws(new Exception("Unexpected exception triggered for testing"));
 
 			var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
 																_telemetryClient,
 																_emailSenderAndRecipients.Object,
 																_gmmResources.Object);
-			await suborchrestrator.RunSubOrchestratorAsync(_context.Object);
+			await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-
-            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(LoggerFunction)),
-                It.Is<LoggerRequest>(req => req.Message.Contains("Caught unexpected exception in SubOrchestratorFunction, marking sync job as errored. ")), null), Times.Once());
-			_context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(JobUpdaterFunction)),
-				It.Is<JobUpdaterRequest>(req => req.Status == SyncStatus.Error), null), Times.Once());
-			_context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)),
-				It.Is<TelemetryTrackerRequest>(req => req.JobStatus == SyncStatus.Error && req.ResultStatus == ResultStatus.Failure), null), Times.Once());
+			_context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+				It.Is<LoggerRequest>(req => req.Message.Contains("Caught unexpected exception in SubOrchestratorFunction, marking sync job as errored. "))), Times.Once());
+			_context.Verify(x => x.CallActivityAsync(nameof(JobUpdaterFunction),
+				It.Is<JobUpdaterRequest>(req => req.Status == SyncStatus.Error)), Times.Once());
+			_context.Verify(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction),
+				It.Is<TelemetryTrackerRequest>(req => req.JobStatus == SyncStatus.Error && req.ResultStatus == ResultStatus.Failure)), Times.Once());
 		}
 
 		private async Task<ParsedAndValidateDestinationResponse> CallParseAndValidateDestinationFunction()
