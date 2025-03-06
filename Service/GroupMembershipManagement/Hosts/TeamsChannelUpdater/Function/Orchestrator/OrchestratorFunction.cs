@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using Models;
@@ -12,13 +14,11 @@ using System.Linq;
 using Models.ServiceBus;
 using TeamsChannelUpdater.Helpers;
 using Repositories.Contracts.InjectConfig;
+using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.Entities;
 using System.Text.Json;
 using Services.TeamsChannelUpdater.Contracts;
 using Models.Notifications;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -46,9 +46,9 @@ namespace Hosts.TeamsChannelUpdater
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
         }
 
-        [Function(nameof(OrchestratorFunction))]
+        [FunctionName(nameof(OrchestratorFunction))]
         public async Task<OrchestrationRuntimeStatus> RunOrchestratorAsync(
-            [OrchestrationTrigger] TaskOrchestrationContext context)
+            [OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             TeamsGroupMembership groupMembership = null;
             MembershipHttpRequest graphRequest = null;
@@ -221,7 +221,7 @@ namespace Hosts.TeamsChannelUpdater
             }
         }
 
-        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
+        private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.Timestamp.GetValueOrDefault()).TotalSeconds;
             _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);

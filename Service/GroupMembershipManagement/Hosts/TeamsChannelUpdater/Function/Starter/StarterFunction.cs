@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask.Client;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -21,16 +21,15 @@ namespace Hosts.TeamsChannelUpdater
             _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
-        [Function(nameof(StarterFunction))]
+        [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
          [TimerTrigger("%triggerSchedule%")] TimerInfo myTimer,
-         [DurableClient] DurableTaskClient client)
+         [DurableClient] IDurableOrchestrationClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var instanceId = nameof(QueueMessageOrchestratorFunction);
-            // Inside the RunAsync method
-            var orchestratorStatus = await client.GetInstanceAsync(instanceId);
+            var orchestratorStatus = await starter.GetStatusAsync(instanceId);
             var isRunning = orchestratorStatus != null
                     && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
                     && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
@@ -39,7 +38,7 @@ namespace Hosts.TeamsChannelUpdater
             if (!isRunning)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calling {instanceId}" }, VerbosityLevel.INFO);
-                await client.ScheduleNewOrchestrationInstanceAsync(instanceId, instanceId, null);
+                await starter.StartNewAsync(instanceId, instanceId, (object)null);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);

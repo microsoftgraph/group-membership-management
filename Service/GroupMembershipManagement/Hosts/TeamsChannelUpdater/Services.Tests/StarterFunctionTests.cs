@@ -2,13 +2,12 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.TeamsChannelUpdater;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts;
-using Repositories.Mocks;
 
 namespace Services.Tests
 {
@@ -17,7 +16,7 @@ namespace Services.Tests
     {
         private string _instanceId;
         private Mock<ILoggingRepository> _loggerMock;
-        private Mock<MockDurableTaskClient> _durableClientMock;
+        private Mock<IDurableOrchestrationClient> _durableClientMock;
         private SyncJob _syncJob;
         private Mock<ServiceBusReceiver> _serviceBusReceiverMock;
 
@@ -25,7 +24,7 @@ namespace Services.Tests
         public void SetupTest()
         {
             _instanceId = "1234567890";
-            _durableClientMock = new Mock<MockDurableTaskClient>();
+            _durableClientMock = new Mock<IDurableOrchestrationClient>();
             _loggerMock = new Mock<ILoggingRepository>();
             _serviceBusReceiverMock = new Mock<ServiceBusReceiver>();
             _syncJob = new SyncJob
@@ -45,12 +44,12 @@ namespace Services.Tests
         public async Task ProcessValidRequestTest()
         {
             _durableClientMock
-                .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<string>(), null, It.IsAny<CancellationToken>()))
+                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), (object)null))
                 .ReturnsAsync(_instanceId);
 
             var instanceId = nameof(QueueMessageOrchestratorFunction);
             var starterFunction = new StarterFunction(_loggerMock.Object, _serviceBusReceiverMock.Object);
-            var timer = new TimerInfo();
+            var timer = new TimerInfo(null, null);
 
             await starterFunction.RunAsync(timer, _durableClientMock.Object);
 
@@ -61,7 +60,7 @@ namespace Services.Tests
                                         It.IsAny<string>()
                                         ), Times.Once());
 
-            _durableClientMock.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(instanceId, instanceId, null, It.IsAny<CancellationToken>()), Times.Once());
+            _durableClientMock.Verify(x => x.StartNewAsync(instanceId, instanceId, (object)null), Times.Once());
 
             _loggerMock.Verify(x => x.LogMessageAsync(
                             It.Is<LogMessage>(m => m.Message == $"Calling {instanceId}"),
