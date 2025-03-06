@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models.Helpers;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph;
 using Models;
 using Newtonsoft.Json;
@@ -9,7 +11,6 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -24,7 +25,7 @@ namespace Hosts.GroupMembershipObtainer
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
         }
 
-        [Function(nameof(DeltaUsersSenderFunction))]
+        [FunctionName(nameof(DeltaUsersSenderFunction))]
         public async Task SendUsersAsync([ActivityTrigger] DeltaUsersSenderRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaUsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

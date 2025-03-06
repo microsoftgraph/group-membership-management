@@ -1,5 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Graph;
@@ -16,8 +18,6 @@ using System.Threading.Tasks;
 using Repositories.Contracts.InjectConfig;
 using Models.Notifications;
 using Newtonsoft.Json.Linq;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -41,8 +41,8 @@ namespace Hosts.GroupMembershipObtainer
             _emailSenderRecipient = emailSenderRecipient;
         }
 
-        [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest != null && mainRequest.SyncJob != null)
@@ -62,7 +62,7 @@ namespace Hosts.GroupMembershipObtainer
                     }
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-                    var groupReaderResult = await context.CallActivityAsync<GroupReaderResponse>(nameof(GroupReaderFunction),
+                    var (sourceGroup, sourceGroupId) = await context.CallActivityAsync<(AzureADGroup, string)>(nameof(GroupReaderFunction),
                                                                                         new GroupReaderRequest
                                                                                         {
                                                                                             SyncJob = syncJob,
@@ -70,8 +70,6 @@ namespace Hosts.GroupMembershipObtainer
                                                                                             IsDestinationPart = mainRequest.IsDestinationPart,
                                                                                             RunId = runId
                                                                                         });
-                    var sourceGroup = groupReaderResult.SourceGroup;
-                    var sourceGroupId = groupReaderResult.SourceGroupId;
 
                     if (sourceGroup.ObjectId == Guid.Empty)
                     {
@@ -89,7 +87,7 @@ namespace Hosts.GroupMembershipObtainer
                         }
                         var additionalContentParams = new[]
                         {
-                            destinationName.ToString(), 
+                            destinationName.ToString(),
                             syncJob.TargetOfficeGroupId.ToString(),
                             sourceGroupId.ToString(),
                             DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotValidSourceNotification]

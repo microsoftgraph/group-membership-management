@@ -1,6 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -15,8 +17,6 @@ using Models.Helpers;
 using Models;
 using Hosts.GroupMembershipObtainer;
 using System.Net.Http;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -42,8 +42,8 @@ namespace Hosts.GroupMembershipObtainer
         /// </summary>
         /// <param name="context"></param>
         /// <returns>Compressed serialized SubOrchestratorResponse</returns>
-        [Function(nameof(SubOrchestratorFunction))]
-        public async Task<string> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(SubOrchestratorFunction))]
+        public async Task<string> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<GroupMembershipRequest>();
             var allUsers = new List<AzureADUser>();
@@ -257,7 +257,7 @@ namespace Hosts.GroupMembershipObtainer
             _telemetryClient.TrackEvent("UsersInCacheCount", cachedUsersEvent);
         }
 
-        public async Task<string> GetFileDownloaderFunction(TaskOrchestrationContext context, string filePath, SyncJob syncJob)
+        public async Task<string> GetFileDownloaderFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)
         {
             return await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                             new FileDownloaderRequest
@@ -267,7 +267,7 @@ namespace Hosts.GroupMembershipObtainer
                                                             });
         }
 
-        public async Task ClearCacheFunction(TaskOrchestrationContext context, string filePath, SyncJob syncJob)
+        public async Task ClearCacheFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)
         {
             await context.CallActivityAsync(nameof(FileDeleterFunction),
                                             new FileDeleterRequest
@@ -277,7 +277,7 @@ namespace Hosts.GroupMembershipObtainer
                                             });
         }
 
-        public async Task<int> GetUsersCountFunction(TaskOrchestrationContext context, Guid groupId, Guid runId)
+        public async Task<int> GetUsersCountFunction(IDurableOrchestrationContext context, Guid groupId, Guid runId)
         {
             return await context.CallActivityAsync<int>(nameof(GetUserCountFunction),
                                             new GetUserCountRequest
@@ -287,7 +287,7 @@ namespace Hosts.GroupMembershipObtainer
                                             });
         }
 
-        public async Task GetDeltaUsersSenderFunction(TaskOrchestrationContext context, GroupMembershipRequest request, List<AzureADUser> allUsers, string deltaUrl)
+        public async Task GetDeltaUsersSenderFunction(IDurableOrchestrationContext context, GroupMembershipRequest request, List<AzureADUser> allUsers, string deltaUrl)
         {
             var compressedUsers = TextCompressor.Compress(JsonConvert.SerializeObject(allUsers));
 
@@ -309,7 +309,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="context"></param>
         /// <param name="request"></param>
         /// <returns>Compressed serialized MembersReaderResponse</returns>
-        public async Task<string> GetMembersReaderFunction(TaskOrchestrationContext context, GroupMembershipRequest request)
+        public async Task<string> GetMembersReaderFunction(IDurableOrchestrationContext context, GroupMembershipRequest request)
         {
             var allUsers = new List<AzureADUser>();
             var allNonUserGraphObjects = new Dictionary<string, int>();
@@ -348,7 +348,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="request"></param>
         /// <returns>Compressed serialized UsersReaderResponse</returns>
         public async Task<string> GetUsersReaderFunction(
-                                                    TaskOrchestrationContext context,
+                                                    IDurableOrchestrationContext context,
                                                     GroupMembershipRequest request)
         {
             var allUsers = new List<AzureADUser>();
@@ -378,7 +378,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="request"></param>
         /// <returns>Compressed serialized DeltaUserReaderResponse</returns>
         public async Task<string> GetDeltaUsersReaderFunction(
-                                                                                        TaskOrchestrationContext context,
+                                                                                        IDurableOrchestrationContext context,
                                                                                         string fileContent,
                                                                                         GroupMembershipRequest request)
         {

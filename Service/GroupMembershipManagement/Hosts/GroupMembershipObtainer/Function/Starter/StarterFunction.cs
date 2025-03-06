@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json;
 using Repositories.Contracts;
@@ -8,9 +10,6 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -27,10 +26,10 @@ namespace Hosts.GroupMembershipObtainer
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
         }
 
-        [Function(nameof(StarterFunction))]
+        [FunctionName(nameof(StarterFunction))]
         public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusSyncJobTopic%", "GroupMembership", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] DurableTaskClient client)
+            [DurableClient] IDurableOrchestrationClient starter)
         {
             var syncJob = JsonConvert.DeserializeObject<SyncJob>(Encoding.UTF8.GetString(message.Body));
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -54,7 +53,7 @@ namespace Hosts.GroupMembershipObtainer
                     IsDestinationPart = message.ApplicationProperties.ContainsKey("IsDestinationPart") ? Convert.ToBoolean(message.ApplicationProperties["IsDestinationPart"]) : false,
                 };
 
-                var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
+                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {syncJob.Id} ", RunId = runId });
             }
 

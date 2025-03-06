@@ -5,14 +5,20 @@
     "dynamicConcurrencyEnabled": true,
     "snapshotPersistenceEnabled": true
   },
+  "extensions": {
+    "durableTask": {
+      "extendedSessionsEnabled": true,
+      "extendedSessionIdleTimeoutInSeconds": 30
+    }
+  },
   "logging": {
     "logLevel": {
       "Host.Concurrency": "Trace"
     },
     "applicationInsights": {
+      "samplingExcludedTypes": "Request",
       "samplingSettings": {
-        "isEnabled": true,
-        "excludedTypes": "Request"
+        "isEnabled": true
       }
     }
   }

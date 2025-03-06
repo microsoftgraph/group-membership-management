@@ -24,7 +24,6 @@
     "graphUpdaterFunctionKey": "",
     "actionableEmailProviderId": "",
     "serviceBusMembershipAggregatorQueue": "",
-    "serviceBusNotificationsQueue": "",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated"
+    "serviceBusNotificationsQueue": ""
   }
 }

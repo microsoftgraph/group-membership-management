@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -21,8 +22,8 @@ namespace Hosts.GroupMembershipObtainer
             _membershipCalculator = membershipCalculator;
         }
 
-        [Function(nameof(GroupReaderFunction))]
-        public async Task<GroupReaderResponse> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
+        [FunctionName(nameof(GroupReaderFunction))]
+        public async Task<(AzureADGroup, string)> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             if (request.IsDestinationPart)
@@ -60,11 +61,7 @@ namespace Hosts.GroupMembershipObtainer
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return new GroupReaderResponse
-            {
-                SourceGroup = azureAdGroup,
-                SourceGroupId = groupId
-            };
+            return (azureAdGroup, groupId);
         }
 
         public (AzureADGroup Group, string GroupId) GetSourceGroup(GroupReaderRequest request)
