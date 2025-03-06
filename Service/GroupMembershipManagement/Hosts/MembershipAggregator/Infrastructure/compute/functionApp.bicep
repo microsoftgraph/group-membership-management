@@ -46,7 +46,6 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
-      netFrameworkVersion: 'v8.0'
       use32BitWorkerProcess : false
       appSettings: secretSettings
       ftpsState: 'Disabled'
