@@ -2,11 +2,12 @@
 // Licensed under the MIT license.
 
 using Models;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.Notifier
 {
@@ -21,7 +22,7 @@ namespace Hosts.Notifier
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
-        [Function(nameof(SendNotification))]
+        [FunctionName(nameof(SendNotification))]
         public async Task SendNotificationAsync([ActivityTrigger] OrchestratorRequest message)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function started at: {DateTime.UtcNow}" });

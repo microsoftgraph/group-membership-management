@@ -264,18 +264,10 @@ namespace Hosts.FunctionBase
         {
             return Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process) ?? string.Empty;
         }
-        public static int GetIntSettingBase(IConfiguration configuration, string settingName, int defaultValue)
+        private static int GetIntSettingBase(IConfiguration configuration, string settingName, int defaultValue)
         {
             var checkParse = int.TryParse(configuration[settingName], out int value);
             return checkParse ? value : defaultValue;
-        }
-
-        public static bool GetBoolSettingBase(IConfiguration configuration, string settingName, bool defaultValue)
-        {
-            var checkParse = bool.TryParse(configuration[settingName], out bool value);
-            if (checkParse)
-                return value;
-            return defaultValue;
         }
     }
 }

@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 using Hosts.Notifier;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.WebJobs;
 using Models;
 using Repositories.Contracts;
 using Services.Notifier.Contracts;
@@ -10,7 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification
 {
@@ -25,7 +26,7 @@ namespace Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification
             _notifierService = notifierService ?? throw new ArgumentNullException(nameof(notifierService));
         }
 
-        [Function(nameof(SendNormalThresholdNotification))]
+        [FunctionName(nameof(SendNormalThresholdNotification))]
         public async Task SendNormalThresholdNotificationAsync([ActivityTrigger] OrchestratorRequest message)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function started at: {DateTime.UtcNow}" });

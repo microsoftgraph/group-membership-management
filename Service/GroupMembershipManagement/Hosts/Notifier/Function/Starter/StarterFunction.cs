@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 using Azure.Messaging.ServiceBus;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -10,9 +12,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
-using Microsoft.DurableTask.Client;
 namespace Hosts.Notifier
 {
     public class StarterFunction
@@ -28,10 +27,10 @@ namespace Hosts.Notifier
             _mailConfig = mailConfig ?? throw new ArgumentNullException(nameof(mailConfig)); ;
         }
 
-        [Function(nameof(StarterFunction))]
+        [FunctionName(nameof(StarterFunction))]
         public async Task ProcessServiceBusMessageAsync(
             [ServiceBusTrigger("%serviceBusNotificationsQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] DurableTaskClient client)
+            [DurableClient] IDurableOrchestrationClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
             string messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
@@ -60,7 +59,7 @@ namespace Hosts.Notifier
             }
             else
             {
-                var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), (orchestratorRequest));
+                var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), (orchestratorRequest));
             }
 
 
