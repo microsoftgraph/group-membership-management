@@ -24,7 +24,7 @@ export interface IJobDetailsStyles {
     membershipStatusContainer: IStyle;
     membershipStatusControls: IStyle;
     membershipStatusMessage: IStyle;
-    lastModifiedby: IStyle;
+    requestor: IStyle;
     clockIcon: IStyle;
     membershipStatusActionButtons: IStyle;
     membershipStatusPendingLabel: IStyle;

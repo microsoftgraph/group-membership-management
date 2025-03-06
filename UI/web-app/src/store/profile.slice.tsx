@@ -5,12 +5,19 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import { getProfile, getProfilePhoto, getProfilePhotoUsingId } from './profile.api';
 
+export type UserProfile = {
+  photoUrl: string | undefined;
+  displayName: string | undefined;
+};
+
 // Define a type for the slice state
 export type ProfileState = {
   userPreferredLanguage?: string;
   userProfilePhoto?: string;
   userProfilePhotoUsingId?: string;
   lastModifiedOnBehalfOfUserProfilePhoto?: string;
+  userProfile: UserProfile | undefined;
+  lastModifiedOnBehalfOfUserProfile: UserProfile | undefined;
 }
 
 // Define the initial state using that type
@@ -18,7 +25,9 @@ const initialState: ProfileState = {
   userPreferredLanguage: undefined,
   userProfilePhoto: undefined,
   userProfilePhotoUsingId: undefined,
-  lastModifiedOnBehalfOfUserProfilePhoto: undefined
+  lastModifiedOnBehalfOfUserProfilePhoto: undefined,
+  userProfile: undefined,
+  lastModifiedOnBehalfOfUserProfile: undefined
 };
 
 export const profileSlice = createSlice({
@@ -34,9 +43,15 @@ export const profileSlice = createSlice({
     });
     builder.addCase(getProfilePhotoUsingId.fulfilled, (state, action) => {
       if (action.meta.arg.type === 'lastModifiedBy') {
-        state.userProfilePhotoUsingId = action.payload;
+        state.userProfile = {
+          photoUrl: action.payload.photoUrl,
+          displayName: action.payload.displayName
+        };
       } else if (action.meta.arg.type === 'lastModifiedOnBehalfOf') {
-        state.lastModifiedOnBehalfOfUserProfilePhoto = action.payload;
+        state.lastModifiedOnBehalfOfUserProfile = {
+          photoUrl: action.payload.photoUrl,
+          displayName: action.payload.displayName
+        };
       }
     });
   }
@@ -44,6 +59,6 @@ export const profileSlice = createSlice({
 
 export const selectProfile = (state: RootState) => state.profile;
 export const selectProfilePhoto = (state: RootState) => state.profile.userProfilePhoto;
-export const selectLastModifiedUserProfilePhoto = (state: RootState) => state.profile.userProfilePhotoUsingId;
-export const selectLastModifiedOnBehalfOfUserProfilePhoto = (state: RootState) => state.profile.lastModifiedOnBehalfOfUserProfilePhoto;
+export const selectLastModifiedUserProfile = (state: RootState) => state.profile.userProfile;
+export const selectLastModifiedOnBehalfOfUserProfile = (state: RootState) => state.profile.lastModifiedOnBehalfOfUserProfile;
 export default profileSlice.reducer;

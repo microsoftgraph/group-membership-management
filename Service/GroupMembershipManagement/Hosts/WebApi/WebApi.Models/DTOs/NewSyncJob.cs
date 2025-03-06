@@ -13,6 +13,7 @@ namespace WebApi.Models.DTOs
         public string Query { get; set; }
         public string Requestor { get; set; }
         public string LastModifiedOnBehalfOfDisplayName { get; set; }
+        public string LastModifiedOnBehalfOfObjectId { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
         public string StartDate { get; set; }

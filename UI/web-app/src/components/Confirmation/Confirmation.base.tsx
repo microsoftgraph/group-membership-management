@@ -43,7 +43,8 @@ import {
   manageMembershipBusinessJustification,
   setNewJobRequestor,
   manageMembershipLastModifiedOnBehalfOfDisplayName,
-  setNewJobLastModifiedOnBehalfOfDisplayName
+  setNewJobLastModifiedOnBehalfOfDisplayName,
+  setNewJobLastModifiedOnBehalfOfObjectId
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
@@ -53,7 +54,7 @@ import { selectIsBusinessJustificationRequired } from '../../store/settings.slic
 import { debounce } from '../../utils/jobUtils';
 import { InfoLabel } from '../InfoLabel';
 import { selectPeoplePickerSuggestions, selectSelectedJobDetails } from '../../store/jobs.slice';
-import { selectLastModifiedOnBehalfOfUserProfilePhoto } from '../../store/profile.slice';
+import { selectLastModifiedOnBehalfOfUserProfile } from '../../store/profile.slice';
 import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
@@ -91,11 +92,11 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const jobDetails = useSelector(selectSelectedJobDetails);
-  const lastModifiedOnBehalfOfUserProfilePhoto = useSelector(selectLastModifiedOnBehalfOfUserProfilePhoto);
+  const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
   const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
-    imageUrl: lastModifiedOnBehalfOfUserProfilePhoto,
-    text: jobDetails?.lastModifiedOnBehalfOfDisplayName
-  }
+    imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
+    text: lastModifiedOnBehalfOfUserProfile?.displayName
+  };
 
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const compositeQuery = useSelector(manageMembershipCompositeQuery);
@@ -146,8 +147,10 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const handleLastModifiedOnBehalfOfDisplayNameChange = (items?: IPersonaProps[] | undefined) => {
     if (items && items.length > 0) {
       dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(items[0].text || items[0].secondaryText || '' ));
+      dispatch(setNewJobLastModifiedOnBehalfOfObjectId(items[0].id || '' ));
     } else {
       dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(''));
+      dispatch(setNewJobLastModifiedOnBehalfOfObjectId(''));
     }
     setLastModifiedOnBehalfOfDisplayNamePersonaState(items || []);
   };
@@ -313,10 +316,10 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 />
                 <div className={classNames.itemData}>
                   {jobDetails != null ? (
-                    lastModifiedOnBehalfOfUserProfilePhoto === "ErrorNonExistentStorage" ? (
+                    lastModifiedOnBehalfOfUserProfile?.photoUrl === "ErrorNonExistentStorage" ? (
                       <div className={classNames.itemData}>
                         <Text variant="medium" block>
-                          {jobDetails.lastModifiedOnBehalfOfDisplayName}
+                          {lastModifiedOnBehalfOfUserProfile.displayName}
                         </Text>
                         <Text variant="medium" block>
                           {jobDetails.lastModifiedOnBehalfOfObjectId}
@@ -325,10 +328,10 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                     ) : (
                       <Persona
                         {...lastModifiedOnBehalfOfUserProps}
-                        text={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                        text={lastModifiedOnBehalfOfUserProfile?.displayName}
                         size={PersonaSize.size32}
                         hidePersonaDetails={false}
-                        imageAlt={jobDetails.lastModifiedOnBehalfOfDisplayName}
+                        imageAlt={lastModifiedOnBehalfOfUserProfile?.displayName}
                       />
                     )
                   ) : (

@@ -56,7 +56,8 @@ namespace Repositories.GraphGroups
                 var user = await _graphServiceClient.Users[userIdentifier].GetAsync();
                 if (user != null) userDetails = new AzureADUser
                 {
-                    ObjectId = Guid.Parse(user.Id)
+                    ObjectId = Guid.Parse(user.Id),
+                    UserPrincipalName = user.UserPrincipalName
                 };
 
                 if (includeMailProperty)
@@ -180,39 +181,6 @@ namespace Repositories.GraphGroups
             });
 
             return response;
-        }
-
-        public async Task<AzureADUser> GetUserByDisplayNameAsync(string displayName)
-        {
-            AzureADUser userDetails = null;
-
-            try
-            {
-                var userResponse = await _graphServiceClient.Users
-                    .GetAsync(requestConfiguration =>
-                    {
-                        requestConfiguration.QueryParameters.Filter = $"displayName eq '{displayName}'";
-                    });
-
-                if (userResponse != null && userResponse.Value.Any())
-                {
-                    var user = userResponse.Value.First();
-                    userDetails = new AzureADUser
-                    {
-                        ObjectId = Guid.Parse(user.Id)
-                    };
-                }
-            }
-
-            catch (Exception exception)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByDisplayNameAsync)}, DisplayName: {displayName}"
-                });
-            }
-
-            return userDetails;
         }
     }
 }

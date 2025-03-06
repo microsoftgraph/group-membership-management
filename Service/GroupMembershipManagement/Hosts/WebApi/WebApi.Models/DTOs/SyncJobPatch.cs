@@ -7,7 +7,8 @@ namespace WebApi.Models.DTOs
     {
         public Guid? RunId { get; set; }
         public string Requestor { get; set; }
-        public string LastModifiedOnBehalfOfDisplayName { get; set; }
+        public string? LastModifiedOnBehalfOfDisplayName { get; set; }
+        public string? LastModifiedOnBehalfOfObjectId { get; set; }
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
         public bool AllowEmptyDestination { get; set; }

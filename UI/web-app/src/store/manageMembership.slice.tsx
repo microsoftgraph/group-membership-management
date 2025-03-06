@@ -61,6 +61,7 @@ const initialState: ManageMembershipState = {
         destination: '',
         requestor: '',
         lastModifiedOnBehalfOfDisplayName: '',
+        lastModifiedOnBehalfOfObjectId: '',
         startDate: new Date().toISOString(),
         period: 24,
         query: {} as SyncJobQuery,
@@ -110,6 +111,9 @@ const manageMembershipSlice = createSlice({
         },
         setNewJobLastModifiedOnBehalfOfDisplayName: (state, action: PayloadAction<string>) => {
             state.newJob.lastModifiedOnBehalfOfDisplayName = action.payload;
+        },
+        setNewJobLastModifiedOnBehalfOfObjectId: (state, action: PayloadAction<string>) => {
+            state.newJob.lastModifiedOnBehalfOfObjectId = action.payload;
         },
         setIsAdvancedQueryValid: (state, action: PayloadAction<boolean>) => {
             state.isAdvancedQueryValid = action.payload;
@@ -265,7 +269,7 @@ const manageMembershipSlice = createSlice({
             state.sourceParts = [];
         },
         setJobDetailsForExistingJob: (state, action: PayloadAction<Job>) => {
-            const { query, requestor, lastModifiedOnBehalfOfDisplayName, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
+            const { query, requestor, lastModifiedOnBehalfOfDisplayName, lastModifiedOnBehalfOfObjectId, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
             state.advancedViewQuery = JSON.stringify(query);
             state.compositeQuery = buildCompositeQuery(JSON.parse(query));
             state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
@@ -276,6 +280,7 @@ const manageMembershipSlice = createSlice({
             }));
             state.newJob.requestor = requestor || state.newJob.requestor;
             state.newJob.lastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName || state.newJob.lastModifiedOnBehalfOfDisplayName;
+            state.newJob.lastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId || state.newJob.lastModifiedOnBehalfOfObjectId;
             state.newJob.startDate = startDate || state.newJob.startDate;
             state.newJob.period = period || state.newJob.period;
             state.newJob.thresholdPercentageForAdditions = thresholdPercentageForAdditions || state.newJob.thresholdPercentageForAdditions;
@@ -348,6 +353,7 @@ export const {
     setNewJobQuery,
     setNewJobRequestor,
     setNewJobLastModifiedOnBehalfOfDisplayName,
+    setNewJobLastModifiedOnBehalfOfObjectId,
     setIsAdvancedQueryValid,
     setSelectedDestination,
     setNewJobStartDate,
@@ -418,6 +424,7 @@ export const areAllSourcePartsValid = (state: RootState): boolean => {
 // 4- Confirmation
 export const manageMembershipBusinessJustification = (state: RootState) => state.manageMembership.businessJustification;
 export const manageMembershipLastModifiedOnBehalfOfDisplayName = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfDisplayName;
+export const manageMembershipLastModifiedOnBehalfOfObjectId = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfObjectId;
 
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;

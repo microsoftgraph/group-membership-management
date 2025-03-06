@@ -237,7 +237,6 @@ export const strings: IStrings = {
       dismissButtonAriaLabel: 'Dismiss job history panel',
       changeTimeColumnLabel: 'Date',
       changedByColumnLabel: 'Modified By',
-      changedOnBehalfOfColumnLabel: 'Modified on behalf of',
       changeReasonColumnLabel: 'Change Type',
       changeDetailsColumnLabel: 'Details',
       viewDetails: 'View Details',

@@ -15,6 +15,8 @@ namespace Models
 
         public string Mail { get; set; }
 
+        public string UserPrincipalName { get; set; }
+
         public virtual object Properties { get; set; }
 
         public MembershipAction? MembershipAction { get; set; }

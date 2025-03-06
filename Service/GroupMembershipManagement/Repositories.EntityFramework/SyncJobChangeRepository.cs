@@ -84,6 +84,13 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
+        public async Task UpdateSyncJobChangeAsync(SyncJobChange syncJobChange)
+        {
+            var entry = _writeContext.Set<Entities.SyncJobChange>().Add(MapModelToEntity(syncJobChange));
+            entry.State = EntityState.Modified;
+            await _writeContext.SaveChangesAsync();
+        }
+
         public async Task<SyncJobChange?> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId)
         {
             var entity = await _readContext.SyncJobChanges
@@ -130,20 +137,20 @@ namespace Repositories.EntityFramework
 
         private static Entities.SyncJobChange MapModelToEntity(SyncJobChange model)
         {
-            return new Entities.SyncJobChange
-            {
-                Id = model.Id,
-                SyncJobId = model.SyncJobId,
-                ChangeTime = model.ChangeTime,
-                ChangedByDisplayName = model.ChangedByDisplayName,
-                ChangedByObjectId = model.ChangedByObjectId,
-                ChangedOnBehalfOfDisplayName = model.ChangedOnBehalfOfDisplayName,
-                ChangedOnBehalfOfObjectId = model.ChangedOnBehalfOfObjectId,
-                ChangeSource = (Entities.SyncJobChangeSource)model.ChangeSource,
-                ChangeReason = model.ChangeReason,
-                ChangeDetails = model.ChangeDetails,
-                BusinessJustification = model.BusinessJustification
-            };
+            var syncJobChange = new Entities.SyncJobChange();
+            syncJobChange.Id = model.Id;
+            syncJobChange.SyncJobId = model.SyncJobId;
+            syncJobChange.ChangeTime = model.ChangeTime;
+            syncJobChange.ChangedByDisplayName = model.ChangedByDisplayName;
+            syncJobChange.ChangedByObjectId = model.ChangedByObjectId;
+            syncJobChange.ChangedOnBehalfOfDisplayName = model.ChangedOnBehalfOfDisplayName;
+            syncJobChange.ChangedOnBehalfOfObjectId = model.ChangedOnBehalfOfObjectId;
+            syncJobChange.ChangeSource = (Entities.SyncJobChangeSource?)model.ChangeSource;
+            syncJobChange.ChangeReason = model.ChangeReason;
+            syncJobChange.ChangeDetails = model.ChangeDetails;
+            syncJobChange.BusinessJustification = model.BusinessJustification;
+
+            return syncJobChange;
         }
     }
 }

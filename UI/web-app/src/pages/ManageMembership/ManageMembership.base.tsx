@@ -49,7 +49,8 @@ import {
   manageMembershipCreatedGroupName,
   manageMembershipBusinessJustification,
   setBusinessJustification,
-  manageMembershipLastModifiedOnBehalfOfDisplayName
+  manageMembershipLastModifiedOnBehalfOfDisplayName,
+  manageMembershipLastModifiedOnBehalfOfObjectId
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -160,6 +161,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const inputRequestor = useSelector(manageMembershipRequestor);
   const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
   const lastModifiedOnBehalfOfDisplayName = useSelector(manageMembershipLastModifiedOnBehalfOfDisplayName);
+  const lastModifiedOnBehalfOfObjectId = useSelector(manageMembershipLastModifiedOnBehalfOfObjectId);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery);
   const sourcePartsQuery = useSelector(manageMembershipCompositeQuery);
@@ -284,6 +286,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         op: "replace",
         path: "/LastModifiedOnBehalfOfDisplayName",
         value: lastModifiedOnBehalfOfDisplayName
+      },
+      {
+        op: "replace",
+        path: "/LastModifiedOnBehalfOfObjectId",
+        value: lastModifiedOnBehalfOfObjectId
       }
     ];
 
@@ -315,6 +322,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         destination: destinationJson,
         requestor: requestor ?? '',
         lastModifiedOnBehalfOfDisplayName: lastModifiedOnBehalfOfDisplayName ?? '',
+        lastModifiedOnBehalfOfObjectId: lastModifiedOnBehalfOfObjectId ?? '',
         startDate: startDate,
         period: period,
         query: finalQuery,

@@ -64,14 +64,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isResizable: true,
         },
         {
-            key: 'changedOnBehalfOfDisplayName',
-            name: strings.JobDetails.Panel.changedOnBehalfOfColumnLabel,
-            fieldName: 'changedOnBehalfOfDisplayName',
-            minWidth: 140,
-            maxWidth: 200,
-            isResizable: true,
-        },
-        {
             key: 'changeReason',
             name: strings.JobDetails.Panel.changeReasonColumnLabel,
             fieldName: 'changeReason',

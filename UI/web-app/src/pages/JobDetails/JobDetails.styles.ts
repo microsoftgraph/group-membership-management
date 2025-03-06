@@ -78,7 +78,7 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             flexDirection: "column",
             paddingLeft: 50
         },
-        lastModifiedby: {
+        requestor: {
             display: "flex",
             flexDirection: "column",
             paddingLeft: 50

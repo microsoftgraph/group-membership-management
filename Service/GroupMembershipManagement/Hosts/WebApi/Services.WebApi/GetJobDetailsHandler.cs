@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Models;
+using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -68,22 +69,21 @@ namespace Services
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
 
-            string lastModifiedByDisplayName = "";
-            string lastModifiedByObjectId = "";
-            string lastModifiedOnBehalfOfDisplayName = "";
-            string lastModifiedOnBehalfOfObjectId = "";
+            var lastModifiedByDisplayName = string.Empty;
+            var lastModifiedByObjectId = string.Empty;
+            var lastModifiedOnBehalfOfDisplayName = string.Empty;
+            var lastModifiedOnBehalfOfObjectId = string.Empty;
 
             var res = await _syncJobChangesRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
             if (res != null)
             {
                 lastModifiedByDisplayName = res.ChangedByDisplayName;
                 lastModifiedByObjectId = res.ChangedByObjectId.ToString();
-                lastModifiedOnBehalfOfDisplayName = res.ChangedOnBehalfOfDisplayName ?? "";
-                lastModifiedOnBehalfOfObjectId = res.ChangedOnBehalfOfObjectId.ToString() ?? "";
-                if (lastModifiedOnBehalfOfDisplayName != string.Empty && lastModifiedOnBehalfOfObjectId == string.Empty)
+                lastModifiedOnBehalfOfDisplayName = res.ChangedOnBehalfOfDisplayName;
+                lastModifiedOnBehalfOfObjectId = res.ChangedOnBehalfOfObjectId.ToString();
+                if (!string.IsNullOrEmpty(lastModifiedOnBehalfOfDisplayName) && string.IsNullOrEmpty(lastModifiedOnBehalfOfObjectId))
                 {
-                    var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(lastModifiedOnBehalfOfDisplayName, false);
-                    lastModifiedOnBehalfOfObjectId = userResponse != null ? userResponse.ObjectId.ToString() : "";
+                    lastModifiedOnBehalfOfObjectId = await UpdateChangedOnBehalfOfObjectIdAsync(res, lastModifiedOnBehalfOfDisplayName);
                 }
             }
 
@@ -129,6 +129,15 @@ namespace Services
             response.Model = dto;
 
             return response;
+        }
+
+        private async Task<string> UpdateChangedOnBehalfOfObjectIdAsync(SyncJobChange res, string userIdentifier)
+        {
+            var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentifier, false);
+            if (userResponse == null) return string.Empty;
+            res.ChangedOnBehalfOfObjectId = userResponse.ObjectId;
+            await _syncJobChangesRepository.UpdateSyncJobChangeAsync(res);
+            return userResponse.ObjectId.ToString();
         }
 
         private async Task<(SyncJob? syncJob, HttpStatusCode statusCode)> GetSyncJobAsync(Guid syncJobId)

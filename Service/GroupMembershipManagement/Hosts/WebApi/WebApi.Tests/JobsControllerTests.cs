@@ -76,6 +76,9 @@ namespace Services.Tests
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                     .ReturnsAsync(() => _groups);
 
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(It.IsAny<string>(), false))
+                                    .ReturnsAsync(() => new AzureADUser { UserPrincipalName = "upn" } );
+
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => "GroupNameTest");
 

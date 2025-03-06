@@ -77,6 +77,7 @@ namespace Services.WebApi
             }
 
             var changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
+            var changedOnBehalfOfObjectId = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfObjectId")?.value?.ToString();
 
             var syncJobChange = new SyncJobChange
             {
@@ -84,15 +85,16 @@ namespace Services.WebApi
                 ChangeTime = DateTime.UtcNow,
                 ChangedByObjectId = Guid.Parse(request.UserIdentity),
                 ChangedByDisplayName = request.UserDisplayName,
-                ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
                 ChangeSource = SyncJobChangeSource.WebApp,
-                BusinessJustification = request.BusinessJustification
+                BusinessJustification = request.BusinessJustification,
+                ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName != null && changedOnBehalfOfDisplayName != request.UserDisplayName ? changedOnBehalfOfDisplayName : null,
+                ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != request.UserIdentity ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
             };
 
-            if (!string.IsNullOrEmpty(changedOnBehalfOfDisplayName))
+            if (!string.IsNullOrEmpty(changedOnBehalfOfObjectId))
             {
-                syncJobChange.ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName;
-                syncJob.Requestor = changedOnBehalfOfDisplayName;
+                var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(changedOnBehalfOfObjectId, false);
+                syncJob.Requestor = userResponse.UserPrincipalName;
             }
 
             var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);

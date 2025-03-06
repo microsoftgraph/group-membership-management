@@ -27,6 +27,7 @@ namespace Repositories.Contracts
         /// SyncJobChanges should be immutable once created, so this will not update existing records.
         /// </remarks>
         Task Save(SyncJobChange syncJobChange);
+        Task UpdateSyncJobChangeAsync(SyncJobChange syncJobChange);
 
         /// <summary>
         /// Retrieves the last sync job change by its sync job id.
