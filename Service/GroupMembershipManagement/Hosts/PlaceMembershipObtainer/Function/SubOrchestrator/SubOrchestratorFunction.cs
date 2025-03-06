@@ -1,14 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.ApplicationInsights;
 using Models;
-using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 
 namespace Hosts.PlaceMembershipObtainer
 {
@@ -23,8 +23,8 @@ namespace Hosts.PlaceMembershipObtainer
             _telemetryClient = telemetryClient;
         }
 
-        [Function(nameof(SubOrchestratorFunction))]
-        public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        [FunctionName(nameof(SubOrchestratorFunction))]
+        public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<SubOrchestratorRequest>();
             var allUsers = new List<AzureADUser>();
