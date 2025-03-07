@@ -83,6 +83,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const newSourcePart = () => {
     const newPart: ISourcePart = {
       id: uuidv4(),
+      title: "",
       query: {
         type: SourcePartType.HR,
         source: sourcePartQuery,
@@ -114,6 +115,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             const originalPart = sourceParts[index];
             const newPart: ISourcePart = {
               id: uuidv4(),
+              title: "",
               query: {
                 type: SourcePartType.HR,
                 source: sourcePartQuery,
@@ -161,6 +163,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           const originalPart = sourceParts[index];
           return {
             id: uuidv4(),
+            title: "",
             query: query,
             isValid: true,
             isNew: originalPart?.isNew ?? false,
@@ -208,6 +211,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             <SourcePart
               key={part.id}
               partId={part.id}
+              title={part.title}
               onDelete={removeSourcePart}
               totalSourceParts={sourceParts.length}
               query={part.query}

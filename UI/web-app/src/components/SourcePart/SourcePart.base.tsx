@@ -80,9 +80,10 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
   }
 
-  const handleGroupMembershipSourceChange = (sourceId: string) => {
+  const handleGroupMembershipSourceChange = (sourceId: string, title: string) => {
     const newQuery: ISourcePart = {
       ...part,
+      title: title,
       query: {
         type: SourcePartType.GroupMembership,
         source: sourceId,
@@ -108,6 +109,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: uuidv4(),
+      title: "",
       query: newQuery,
       isExpanded: true,
       isNew: true
@@ -153,6 +155,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: partId,
+      title: "",
       query: newQuery,
       isExpanded: true,
       isNew: false
@@ -173,6 +176,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
       const updatedSourcePart: ISourcePart = {
         id: partId,
+        title: part.title,
         query: updatedQuery,
         isExpanded: true,
         isNew: false
@@ -188,7 +192,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-          {strings.ManageMembership.labels.sourcePart}
+          {strings.ManageMembership.labels.sourcePart}{part.title ? ": "+ part.title : ""}
         </div>
         <IconButton
           className={classNames.expandButton}

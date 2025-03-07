@@ -25,5 +25,5 @@ export type GroupQuerySourceProps = React.AllHTMLAttributes<HTMLDivElement> & {
    */
   styles?: IStyleFunctionOrObject<GroupQuerySourceStyleProps, GroupQuerySourceStyles>;
   part: ISourcePart;
-  onSourceChange: (sourceId: string) => void;
+  onSourceChange: (sourceId: string, title: string) => void;
 };

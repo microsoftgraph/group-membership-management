@@ -185,6 +185,7 @@ const manageMembershipSlice = createSlice({
                                 const originalPart = state.sourceParts[index];
                                 return {
                                     id: uuidv4(),
+                                    title: "",
                                     query: query,
                                     isNew: originalPart?.isNew ?? false,
                                     isExpanded: originalPart?.isExpanded ?? false
@@ -208,6 +209,7 @@ const manageMembershipSlice = createSlice({
                 const originalPart = state.sourceParts[index];
                 return {
                     id: uuidv4(),
+                    title: "",
                     query: query,
                     isNew: originalPart?.isNew ?? false,
                     isExpanded: originalPart?.isExpanded ?? false
@@ -269,6 +271,9 @@ const manageMembershipSlice = createSlice({
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
             if (index !== -1) {
+                if (state.sourceParts[index].title !== action.payload.title) {
+                    state.sourceParts[index].title = action.payload.title;
+                }
                 state.sourceParts[index] = {
                     ...state.sourceParts[index],
                     ...action.payload,
