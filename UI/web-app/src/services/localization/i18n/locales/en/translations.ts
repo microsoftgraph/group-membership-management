@@ -305,7 +305,8 @@ export const strings: IStrings = {
           options: {
             all: 'All',
             thresholdExceeded: 'Threshold Exceeded',
-            customerPaused: 'Customer Paused',
+            customerPaused: 'Paused',
+            developerPaused: 'Developer Paused',
             membershipDataNotFound: 'No users in the source',
             destinationGroupNotFound: 'Destination Group Not Found',
             notOwnerOfDestinationGroup: 'Not Owner Of Destination Group',

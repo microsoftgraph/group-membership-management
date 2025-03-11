@@ -301,6 +301,7 @@ export type IStrings = {
             all: string;
             thresholdExceeded: string;
             customerPaused: string;
+            developerPaused: string;
             membershipDataNotFound: string;
             destinationGroupNotFound: string;
             notOwnerOfDestinationGroup: string;

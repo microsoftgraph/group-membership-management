@@ -95,6 +95,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.customerPaused,
     },
     {
+      key: SyncStatus.DeveloperPaused,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.developerPaused,
+    },
+    {
       key: SyncStatus.MembershipDataNotFound,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.membershipDataNotFound,
     },

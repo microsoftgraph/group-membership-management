@@ -32,7 +32,10 @@ export const processJob = (job: Job): Job => {
       job['actionRequired'] = ActionRequired.ThresholdExceeded;
       break;
     case SyncStatus.CustomerPaused:
-      job['actionRequired'] = ActionRequired.CustomerPaused;
+      job['actionRequired'] = ActionRequired.Paused;
+      break;
+    case SyncStatus.DeveloperPaused:
+      job['actionRequired'] = ActionRequired.DeveloperPaused;
       break;
     case SyncStatus.MembershipDataNotFound:
       job['actionRequired'] = ActionRequired.MembershipDataNotFound;

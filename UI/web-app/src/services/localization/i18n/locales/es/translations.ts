@@ -308,7 +308,8 @@ export const strings: IStrings = {
           options: {
             all: 'Todos',
             thresholdExceeded: 'Límite excedido',
-            customerPaused: 'Pausado por el cliente',
+            customerPaused: 'En pausa',
+            developerPaused: 'Desarrollador en pausa',
             membershipDataNotFound: 'Datos de membresía no encontrados',
             destinationGroupNotFound: 'Grupo de destino no encontrado',
             notOwnerOfDestinationGroup: 'No es propietario del grupo de destino',

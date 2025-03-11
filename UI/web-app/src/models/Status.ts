@@ -4,6 +4,7 @@
 export enum SyncStatus {
   ThresholdExceeded = 'ThresholdExceeded',
   CustomerPaused = 'CustomerPaused',
+  DeveloperPaused = 'DeveloperPaused',
   MembershipDataNotFound = 'MembershipDataNotFound',
   DestinationGroupNotFound = 'DestinationGroupNotFound',
   NotOwnerOfDestinationGroup = 'NotOwnerOfDestinationGroup',
@@ -16,7 +17,8 @@ export enum SyncStatus {
 
 export enum ActionRequired {
   ThresholdExceeded = 'Threshold Exceeded',
-  CustomerPaused = 'Customer Paused',
+  Paused = 'Paused',
+  DeveloperPaused = 'Developer Paused',
   MembershipDataNotFound = 'No users in the source',
   DestinationGroupNotFound = 'Destination Group Not Found',
   NotOwnerOfDestinationGroup = 'Not Owner Of Destination Group',
