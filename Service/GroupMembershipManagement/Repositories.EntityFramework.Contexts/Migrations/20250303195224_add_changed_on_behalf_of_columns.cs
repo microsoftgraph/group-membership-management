@@ -23,11 +23,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                 type: "uniqueidentifier",
                 nullable: true);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_SyncJobChanges_SyncJobId",
-                table: "SyncJobChanges",
-                column: "SyncJobId");
-
             migrationBuilder.Sql(
             $@"
                 ALTER TABLE SyncJobChanges ALTER COLUMN ChangeSource INT NULL;
@@ -133,10 +128,6 @@ namespace Repositories.EntityFramework.Contexts.Migrations
             $@"
                 DELETE FROM [dbo].[SyncJobChanges] WHERE ChangedByDisplayName IS NULL;
             ");
-
-             migrationBuilder.DropIndex(
-                name: "IX_SyncJobChanges_SyncJobId",
-                table: "SyncJobChanges");
 
             migrationBuilder.DropColumn(
                 name: "ChangedOnBehalfOfDisplayName",
