@@ -23,7 +23,6 @@ async function globalSetup(config: FullConfig) {
     console.log("🔗 Navigating to login page...");
     await page.goto(DOMAIN);
 
-    // Replace these selectors with the actual ones from your login page
     console.log("📝 Filling in login details...");
     await page.getByRole('textbox', { name: 'Enter your email, phone, or' }).fill(EMAIL);
     await page.getByRole('button', { name: 'Next' }).click();
@@ -31,20 +30,17 @@ async function globalSetup(config: FullConfig) {
     await page.getByRole('textbox', { name: 'Enter the password for' }).fill(PASSWORD);
     await page.getByRole('button', { name: 'Sign in' }).click();
 
-    
     const displaySignContainer = await page.locator('.display-sign-container');
     const textContent = await displaySignContainer.innerText();
     console.log(`Please tap the number ${textContent} on your phone`);
   
     await page.getByText('Don\'t show this again').click();
     await page.getByRole('button', { name: 'Yes' }).click();
-    await expect(page.locator('text="Membership Management"')).toBeVisible();
+    await expect(page.locator('text="Membership Management"')).toBeVisible({ timeout: 10000 });
 
-    // Wait for the user to be fully logged in
     console.log("⏳ Waiting for dashboard to load...");
     await page.waitForSelector('text="Membership Management"');
 
-    // Save authentication state
     console.log("💾 Saving authentication state...");
     await context.storageState({ path: 'tests/storageState.json' });
 
