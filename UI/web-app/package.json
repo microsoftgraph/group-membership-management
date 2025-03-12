@@ -63,7 +63,7 @@
     "@babel/plugin-syntax-flow": "^7.26.0",
     "@babel/plugin-transform-react-jsx": "^7.25.9",
     "@babel/polyfill": "^7.12.1",
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "1.42.1",
     "@testing-library/dom": "^9.3.4",
     "@testing-library/jest-dom": "^5.17.0",
     "@types/node": "16.18.11",

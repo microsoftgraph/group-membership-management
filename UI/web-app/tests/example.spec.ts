@@ -9,7 +9,6 @@ const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
 test('Home', async ({ page }) => {
   await page.goto(DOMAIN);
-  // await for 2 seconds to allow the page to load
   await page.waitForTimeout(5000);
   await expect(page.locator('text="Membership Management"')).toBeVisible();
   console.log("✅ Home test completed successfully.");
@@ -17,7 +16,6 @@ test('Home', async ({ page }) => {
 
 test('Admin', async ({ page }) => {
   await page.goto(`${DOMAIN}/Admin`);
-  // await for 2 seconds to allow the page to load
   await page.waitForTimeout(5000);
   await expect(page.locator('text="Admin Center"')).toBeVisible();
   console.log("✅ Admin test completed successfully.");
