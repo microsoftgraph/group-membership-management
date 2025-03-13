@@ -61,6 +61,7 @@ namespace Services.Tests
         private Mock<IActionableMessageTokenValidator> _mockTokenValidator = null!;
         private ActionableMessageTokenValidationResult _tokenValidationResult = null!;
         private IOptions<WebApiSettings> _webApiSettings = null!;
+        private Mock<IThresholdConfig> _thresholdConfig = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -187,8 +188,10 @@ namespace Services.Tests
                 HandleInactiveJobsEnabled = true,
                 NumberOfDaysBeforeDeletion = 30
             };
+            _thresholdConfig = new Mock<IThresholdConfig>();
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(3);
 
-            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig);
+            _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig, _thresholdConfig.Object, _syncJobRepository.Object);
             _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,

@@ -19,18 +19,24 @@ namespace Services.Notifications
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
         private readonly string _apiHostname;
         private readonly Guid _providerId;
+        private readonly IThresholdConfig _thresholdConfig;
+        private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
 
         public ThresholdNotificationService(
             IOptions<ThresholdNotificationServiceConfig> config,
             IGraphGroupRepository graphGroupRepository,
             ILocalizationRepository localizationRepository,
-            IHandleInactiveJobsConfig handleInactiveJobsConfig)
+            IHandleInactiveJobsConfig handleInactiveJobsConfig,
+            IThresholdConfig thresholdConfig,
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository)
         {
             _apiHostname = config.Value.ApiHostname;
             _providerId = config.Value.ActionableEmailProviderId;
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException( nameof(handleInactiveJobsConfig));
+            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
+            _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
         }
 
         /// <inheritdoc />
@@ -55,6 +61,14 @@ namespace Services.Notifications
             }
 
             var groupName = await _graphGroupRepository.GetGroupNameAsync(notification.TargetOfficeGroupId);
+            int thresholdViolations = await _databaseSyncJobsRepository.GetThresholdViolationsBySyncJobIdAsync(notification.SyncJobId); ;
+            int violationsRemaining = _thresholdConfig.NumberOfThresholdViolationsToDisableJob - thresholdViolations;
+            int period = await _databaseSyncJobsRepository.GetPeriodBySyncJobIdAsync(notification.SyncJobId);
+            double hoursUntilDisable = (violationsRemaining * period);
+            string disableDate = DateTime.UtcNow.AddHours(hoursUntilDisable).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"); ;
+            string purgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            DateTime jobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
+                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion) : DateTime.MinValue;
             var cardData = new ThresholdNotificationCardData
             {
                 GroupName = groupName,
@@ -66,10 +80,11 @@ namespace Services.Notifications
                 ThresholdPercentageForRemovals = notification.ThresholdPercentageForRemovals,
                 ApiHostname = _apiHostname,
                 NotificationId = $"{notification.Id}",
-                ProviderId = $"{_providerId}", 
+                ProviderId = $"{_providerId}",
                 CardCreatedTime = DateTime.UtcNow,
-                JobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
-                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion) : DateTime.MinValue
+                JobExpirationDate = jobExpirationDate.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                DisableDate = disableDate,
+                PurgeDate = purgeDate
             };
 
             var template = new AdaptiveCardTemplate(cardJson);

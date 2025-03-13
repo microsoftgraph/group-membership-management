@@ -35,7 +35,17 @@ namespace Repositories.EntityFramework
                 .Include(j => j.Channel)
                 .SingleOrDefaultAsync(job => job.Id == syncJobId);
         }
-
+        
+        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var syncJob = await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return syncJob.ThresholdViolations;
+        }
+        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
+        {
+            var syncJob = await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
+            return syncJob.Period;
+        }
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
             return await _readContext.SyncJobs

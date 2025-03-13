@@ -62,6 +62,16 @@ namespace Repositories.Mocks
             var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
             return await Task.FromResult(job);
         }
+        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job.ThresholdViolations);
+        }
+        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job.Period);
+        }
 
         public async Task UpdateSyncJobStatusAsync(IEnumerable<SyncJob> jobs, SyncStatus? status)
         {

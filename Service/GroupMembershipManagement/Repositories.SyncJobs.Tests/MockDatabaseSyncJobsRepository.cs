@@ -25,7 +25,18 @@ namespace Repositories.SyncJobs.Tests
         {
             return await Task.FromResult(Jobs);
         }
-
+        
+        public async Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job.ThresholdViolations);
+        }
+        public async Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == syncJobId);
+            return await Task.FromResult(job.Period);
+        }
+        
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs = true, params SyncStatus[] statusFilters)
         {
             var jobs = Jobs.Where(x => (x.StartDate <= DateTime.UtcNow)

@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Services.Contracts.Notifications;
@@ -87,6 +88,7 @@ namespace Hosts.Notifier
             {
                 return new ThresholdNotificationConfig(true);
             });
+            builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
             builder.Services.AddHttpClient();
         }

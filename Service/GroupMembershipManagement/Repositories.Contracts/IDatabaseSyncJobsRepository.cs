@@ -25,5 +25,7 @@ namespace Repositories.Contracts
         Task DeleteSyncJobsAsync(IEnumerable<SyncJob> jobs);
         Task DeleteSyncJobAsync(SyncJob job);
         Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs);
+        Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId);
+        Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId);
     }
 }

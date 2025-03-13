@@ -194,7 +194,7 @@
         "items": [
           {
             "type": "TextBlock",
-            "text": "The most recent attempt to update the membership of your GMM managed group '**${$root.groupName}**' exceeded the configured alert threshold.",
+            "text": "The most recent attempt to update the membership of your GMM managed group '**${$root.groupName}**' exceeded the configured alert threshold.GMM will stop syncing this group by the end of {{DATE(${$root.disableDate}, SHORT)}}. If no action is taken by {{DATE(${$root.purgeDate}, SHORT)}} GMM will purge this sync.  At that point, if you wish to re enable the sync, you will need to follow GMM's onboarding process again.  Please reach out to the **CC'ed alias** for inquiries about re-onboarding or any questions you may have.",
             "wrap": true,
             "color": "Attention"
           },
@@ -346,7 +346,7 @@
    "items": [
     {
      "type": "TextBlock",
-     "text": "Synchronization of your GMM group **${$root.groupName}** has been disabled. If no action is taken, the sync will be deleted on **${$root.jobExpirationDate}** UTC. After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.",
+     "text": "Synchronization of your GMM group **${$root.groupName}** has been disabled. If no action is taken, the sync will be deleted on **{{DATE(${$root.jobExpirationDate}, SHORT)}} at {{TIME(${$root.jobExpirationDate})}}**. After this period, if you wish to reenable the sync, you will need to follow GMM's onboarding process again.",
      "wrap": true,
      "color": "Attention"
     },
