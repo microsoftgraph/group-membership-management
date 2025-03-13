@@ -256,6 +256,8 @@ namespace Services.Tests
         [TestMethod]
         public async Task SendNewJobToMessageSplitterTopicAsync()
         {
+            _syncJob.LastRunTime = System.Data.SqlTypes.SqlDateTime.MinValue.Value;
+
             _multilaneConfig = Options.Create(new MultiLaneConfig
             {
                 IsEnabled = true,
@@ -291,7 +293,7 @@ namespace Services.Tests
 
             _membershipSubOrchestratorResponse.MembersToBeAdded = 20;
 
-            _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddDays(-1);
+            _syncJob.LastRunTime = DateTime.UtcNow.AddDays(-1);
 
             var laneSize = string.Empty;
             _onSendingMessage = message =>
@@ -319,7 +321,7 @@ namespace Services.Tests
 
             _membershipSubOrchestratorResponse.MembersToBeAdded = 60;
 
-            _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddDays(-1);
+            _syncJob.LastRunTime = DateTime.UtcNow.AddDays(-1);
 
             var laneSize = string.Empty;
             _onSendingMessage = message =>
@@ -347,7 +349,7 @@ namespace Services.Tests
 
             _membershipSubOrchestratorResponse.MembersToBeAdded = 61;
 
-            _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddDays(-1);
+            _syncJob.LastRunTime = DateTime.UtcNow.AddDays(-1);
 
             var laneSize = string.Empty;
             _onSendingMessage = message =>

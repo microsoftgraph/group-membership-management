@@ -68,7 +68,7 @@ namespace Services
 
         private async Task SendMessageToTopicAsync(Models.ServiceBus.ServiceBusMessage message, MembershipHttpRequest request)
         {
-            if (request.SyncJob.LastSuccessfulRunTime == System.Data.SqlTypes.SqlDateTime.MinValue)
+            if (request.SyncJob.LastRunTime == System.Data.SqlTypes.SqlDateTime.MinValue)
             {
                 // New jobs
                 message.ApplicationProperties.Add(LANE_SIZE_PROPERTY, MESSAGE_SUBSCRIPTION_ONBOARDING);
