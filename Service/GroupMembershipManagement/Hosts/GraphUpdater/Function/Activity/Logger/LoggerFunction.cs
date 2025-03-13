@@ -21,7 +21,12 @@ namespace Hosts.GraphUpdater
         [FunctionName(nameof(LoggerFunction))]
         public async Task LogMessageAsync([ActivityTrigger] LoggerRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = request.Message, RunId = request.SyncJob?.RunId }, request.Verbosity);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = request.Message,
+                RunId = request.SyncJob?.RunId,
+                DynamicProperties = request.AdditionalProperties
+            }, request.Verbosity);
         }
     }
 }

@@ -105,22 +105,22 @@ param availableMembershipUpdaters array = [
       {
         name: 'small'
         instances: 3
-        messageSize: 20
+        messageSize: 5
       }
       {
         name: 'medium'
         instances: 2
-        messageSize: 60
+        messageSize: 15
       }
       {
         name: 'large'
-        instances: 1
-        messageSize: 100
+        instances: 2
+        messageSize: 90
       }
       {
         name: 'onboarding'
-        instances: 1
-        messageSize: 840
+        instances: 2
+        messageSize: 270
       }
     ]
   }

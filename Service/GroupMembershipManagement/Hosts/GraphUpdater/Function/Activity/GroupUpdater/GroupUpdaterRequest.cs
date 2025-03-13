@@ -11,5 +11,7 @@ namespace Hosts.GraphUpdater
         public ICollection<AzureADUser> Members { get; set; }
         public bool IsInitialSync { get; set; }
         public SyncJob SyncJob { get; set; }
+        public int? TotalMemberCount { get; set; }
+        public bool IsMultiLaneEnabled { get; set; }
     }
 }

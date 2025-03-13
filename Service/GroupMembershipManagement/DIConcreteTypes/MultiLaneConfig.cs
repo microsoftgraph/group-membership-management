@@ -9,5 +9,6 @@ namespace DIConcreteTypes
         public int Small { get; set; }
         public int Medium { get; set; }
         public string AvailableMembershipUpdaters { get; set; }
+        public int TriggerDelay { get; set; }
     }
 }

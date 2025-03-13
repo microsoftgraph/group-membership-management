@@ -164,7 +164,7 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = if(!featureFlags.sk
     keyVaultSecrets: {
       secrets: [
         {
-          name: 'graphUpdaterFunctionKey'
+          name: 'graphUpdater${instanceIdentifier}FunctionKey'
           value: featureFlags.skipListingFunctionAppKeys ? 'not-set' : listkeys('${functionApp.id}/host/default', '2018-11-01').functionKeys.default
         }
       ]

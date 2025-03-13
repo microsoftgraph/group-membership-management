@@ -264,7 +264,7 @@ namespace Hosts.FunctionBase
         {
             return Environment.GetEnvironmentVariable(key, EnvironmentVariableTarget.Process) ?? string.Empty;
         }
-        private static int GetIntSettingBase(IConfiguration configuration, string settingName, int defaultValue)
+        public static int GetIntSettingBase(IConfiguration configuration, string settingName, int defaultValue)
         {
             var checkParse = int.TryParse(configuration[settingName], out int value);
             return checkParse ? value : defaultValue;

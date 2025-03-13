@@ -41,7 +41,7 @@ function Set-StorageAccountContainerManagedIdentityRoles
 
 	foreach ($functionAppName in $functionApps)
 	{
-		
+
 		Write-Host "Granting app service access to storage account blobs";
 
 		$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
@@ -56,8 +56,8 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		if ($appServicePrincipal)
 		{
             $sizeIdentifier = ($functionAppName -split "-")[-1]
-            if ($sizeIdentifier -notin @("large", "medium", "small", "onboarding")) {
-                $sizeIdentifier = ""  
+            if ($sizeIdentifier -notin @("large", "medium", "small", "onboarding", "s1", "m2", "l1", "o1")) {
+                $sizeIdentifier = ""
             }
 			$functionAbbreviation = ($functionAppName | Select-String -CaseSensitive -AllMatches -Pattern '[A-Z]').Matches.Value -join ''
             $prefix = $functionAbbreviation + $SolutionAbbreviation + $EnvironmentAbbreviation + "prod" + $sizeIdentifier
@@ -74,7 +74,7 @@ function Set-StorageAccountContainerManagedIdentityRoles
                 # Multiple matches found
                 if ($sizeIdentifier -eq "") {
                     # No size identifier given, try to filter out any accounts with known size keywords
-					$sizeKeywords = "small","medium","large","onboarding"
+					$sizeKeywords = @("small","medium","large","onboarding","s1","m2","l1","o1")
 					$filteredMatches = $allFunctionStorageAccounts | Where-Object {
 						$acctName = $_.StorageAccountName.ToLower()
 						$matchesSize = $sizeKeywords | ForEach-Object { $acctName -like "*$_*" }

@@ -106,6 +106,9 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
+var triggerSchedule = instanceIdentifier == 'small' ? '*/10 * * * * *' : instanceIdentifier == 'medium' ? '*/10 * * * * *' : instanceIdentifier == 'large' ? '*/20 * * * * *' : instanceIdentifier == 'onboarding' ? '0 * * * * *' :  '*/30 * * * * *' 
+var triggerDelay = instanceIdentifier == 'onboarding' ? 15 : 0
+
 var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
   WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
@@ -114,9 +117,6 @@ var commonSettings = {
   FUNCTIONS_EXTENSION_VERSION: '~4'
   FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
-
-var triggerSchedule = instanceIdentifier == 'small' ? '*/15 * * * * *' : instanceIdentifier == 'medium' ? '*/30 * * * * *' : instanceIdentifier == 'large' ? '*/50 * * * * *' : instanceIdentifier == 'onboarding' ? '0 */2 * * * *' :  '*/30 * * * * *' 
-var triggerDelay = instanceIdentifier == 'onboarding' ? 30 : 0
 
 var appSettings = {
   AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
@@ -229,7 +229,7 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
 }
 
 resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-GraphUpdater/appsettings'
+  name: '${functionAppName}-GraphUpdater${instanceSuffix}/appsettings'
   kind: 'string'
   properties: union(commonSettings, appSettings, activityFunctionSettings)
   dependsOn: [
