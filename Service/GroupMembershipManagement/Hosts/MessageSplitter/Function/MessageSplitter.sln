@@ -9,8 +9,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hosts.FunctionBase", "..\..
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusTopics", "..\..\..\Repositories.Topics\Repositories.ServiceBusTopics.csproj", "{479F9F7C-A537-4D41-B878-61E18CFACF4C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MessageSplitter.Entities", "..\Entities\MessageSplitter.Entities.csproj", "{DA2DE36F-752D-4636-A182-52F22DF7118D}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{B2C3C005-06AC-4905-A209-262848971678}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.BlobStorage", "..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj", "{C490F531-5539-4C45-8E21-8E897011BD46}"
@@ -22,6 +20,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MessageSplitter.Contracts", "..\Contracts\MessageSplitter.Contracts.csproj", "{9C93B0A8-FC4A-4A7D-90F7-21930BC4E8FF}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.Tests\Services.Tests.csproj", "{EA382D7A-E469-4536-9006-FF4D9AB19626}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{51852C94-BF60-5405-3D95-A67C4886496C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,10 +41,6 @@ Global
 		{479F9F7C-A537-4D41-B878-61E18CFACF4C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{479F9F7C-A537-4D41-B878-61E18CFACF4C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{479F9F7C-A537-4D41-B878-61E18CFACF4C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DA2DE36F-752D-4636-A182-52F22DF7118D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DA2DE36F-752D-4636-A182-52F22DF7118D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DA2DE36F-752D-4636-A182-52F22DF7118D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DA2DE36F-752D-4636-A182-52F22DF7118D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B2C3C005-06AC-4905-A209-262848971678}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B2C3C005-06AC-4905-A209-262848971678}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B2C3C005-06AC-4905-A209-262848971678}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -69,6 +65,10 @@ Global
 		{EA382D7A-E469-4536-9006-FF4D9AB19626}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA382D7A-E469-4536-9006-FF4D9AB19626}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EA382D7A-E469-4536-9006-FF4D9AB19626}.Release|Any CPU.Build.0 = Release|Any CPU
+		{51852C94-BF60-5405-3D95-A67C4886496C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{51852C94-BF60-5405-3D95-A67C4886496C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{51852C94-BF60-5405-3D95-A67C4886496C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{51852C94-BF60-5405-3D95-A67C4886496C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

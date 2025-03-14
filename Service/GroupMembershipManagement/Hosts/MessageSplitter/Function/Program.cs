@@ -6,7 +6,6 @@ using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using MessageSplitter.Contracts;
-using MessageSplitter.Entities;
 using MessageSplitter.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

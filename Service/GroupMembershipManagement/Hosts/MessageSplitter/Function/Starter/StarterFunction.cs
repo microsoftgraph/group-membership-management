@@ -1,13 +1,11 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
+using DIConcreteTypes;
 using MessageSplitter.Contracts;
-using MessageSplitter.Entities;
-using MessageSplitter.TrackerOrchestrator;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
 using Microsoft.DurableTask.Client;
-using Microsoft.DurableTask.Entities;
 using Models;
 using Repositories.Contracts;
 using System.Text;
@@ -45,8 +43,7 @@ namespace Hosts.MessageSplitter
 
             try
             {
-                var instanceToUse = await GetMembershipUpdaterInstanceToUseAsync(message, starter);
-                var instanceId = await RunMainOrchestratorAsync(message, request, starter, instanceToUse);
+                var instanceId = await RunMainOrchestratorAsync(message, request, starter);
                 await actions.CompleteMessageAsync(message);
                 await WaitForOrchestratorToCompleteAsync(instanceId, starter);
             }
@@ -64,8 +61,7 @@ namespace Hosts.MessageSplitter
         private async Task<string> RunMainOrchestratorAsync(
                                     ServiceBusReceivedMessage message,
                                     MembershipHttpRequest request,
-                                    DurableTaskClient starter,
-                                    int instanceToUse)
+                                    DurableTaskClient starter)
         {
             var updaterType = message.ApplicationProperties["Type"].ToString();
             var subscription = _membershipUpdaters.AvailableInstances[updaterType][_membershipUpdaters.CurrentLaneSize];
@@ -75,7 +71,6 @@ namespace Hosts.MessageSplitter
                 MessageId = message.MessageId,
                 UpdaterType = updaterType,
                 SubscriptionName = subscription.Name,
-                InstanceToUse = instanceToUse,
                 CurrentLaneSize = _membershipUpdaters.CurrentLaneSize
             };
 
@@ -89,34 +84,19 @@ namespace Hosts.MessageSplitter
 
         private async Task WaitForOrchestratorToCompleteAsync(string instanceId, DurableTaskClient starter)
         {
-            if (_membershipUpdaters.CurrentLaneSize.Equals("small", StringComparison.InvariantCultureIgnoreCase) ||
-                _membershipUpdaters.CurrentLaneSize.Equals("medium", StringComparison.InvariantCultureIgnoreCase))
-            {
-                await starter.WaitForInstanceCompletionAsync(instanceId);
-            }
-            else
-            {
-                var isCompleted = false;
-                do
-                {
-                    await Task.Delay(5000);
-                    var instanceMetadata = await starter.GetInstanceAsync(instanceId);
-                    isCompleted = IsOrchestrationCompleted(instanceMetadata.RuntimeStatus);
-                }
-                while (!isCompleted);
-            }
-        }
+            await Task.Delay(1000);
 
-        private async Task<int> GetMembershipUpdaterInstanceToUseAsync(ServiceBusReceivedMessage message, DurableTaskClient starter)
-        {
-            var updaterType = message.ApplicationProperties["Type"].ToString();
-            var instanceTrackerEntityId = new EntityInstanceId(nameof(InstanceTracker), nameof(InstanceTracker));
-            var updaterInstanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(InstanceTrackerOrchestrator),
-                                                                                        new InstanceTrackerOrchestratorRequest(updaterType,
-                                                                                                                               _membershipUpdaters.CurrentLaneSize));
-            await starter.WaitForInstanceCompletionAsync(updaterInstanceId);
-            var instanceTracker = await starter.Entities.GetEntityAsync<int>(instanceTrackerEntityId);
-            return instanceTracker.State;
+            var isCompleted = false;
+            do
+            {
+                var instanceMetadata = await starter.GetInstanceAsync(instanceId);
+                if (instanceMetadata != null)
+                    isCompleted = IsOrchestrationCompleted(instanceMetadata.RuntimeStatus);
+
+                if (!isCompleted)
+                    await Task.Delay(2000);
+            }
+            while (!isCompleted);
         }
 
         private bool IsOrchestrationCompleted(OrchestrationRuntimeStatus status)

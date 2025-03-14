@@ -1,7 +1,7 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using MessageSplitter.Entities;
+using DIConcreteTypes;
 using System.Text.Json;
 
 namespace Services.Tests
@@ -10,7 +10,7 @@ namespace Services.Tests
     {
         public static MembershipUpdaters GetAvailableMembershipUpdaters(string updaters = null, string currentLaneSize = "Small")
         {
-            updaters = updaters ?? "[{\"name\":\"GroupMembership\",\"lanes\":[{\"name\":\"small\",\"instances\":3,\"messageSize\":20},{\"name\":\"medium\",\"instances\":2,\"messageSize\":60},{\"name\":\"large\",\"instances\":1,\"messageSize\":100},{\"name\":\"onboarding\",\"instances\":1,\"messageSize\":840}]}]";
+            updaters = updaters ?? "[{\"name\":\"GroupMembership\",\"lanes\":[{\"name\":\"small\",\"instances\":3,\"messageSize\":5},{\"name\":\"medium\",\"instances\":2,\"messageSize\":15},{\"name\":\"large\",\"instances\":2,\"messageSize\":90},{\"name\":\"onboarding\",\"instances\":2,\"messageSize\":270}]}]";
             var availableMembershipUpdaters = JsonSerializer.Deserialize<List<MembershipUpdater>>(updaters);
 
             var instances = new Dictionary<string, Dictionary<string, Subscription>>(StringComparer.InvariantCultureIgnoreCase);

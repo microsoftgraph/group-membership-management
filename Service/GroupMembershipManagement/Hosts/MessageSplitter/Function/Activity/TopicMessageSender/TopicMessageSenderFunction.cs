@@ -7,7 +7,9 @@ using Microsoft.Extensions.Options;
 using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 
 namespace Hosts.MessageSplitter
 {
@@ -16,6 +18,7 @@ namespace Hosts.MessageSplitter
         private readonly ILoggingRepository _loggingRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IServiceBusTopicsRepository _membershipUpdaterSender;
+        private readonly JsonSerializerOptions _jsonSerializerOptions;
 
         public TopicMessageSenderFunction(
             ILoggingRepository loggingRepository,
@@ -26,6 +29,7 @@ namespace Hosts.MessageSplitter
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _membershipUpdaterSender = membershipUpdaterSender ?? throw new ArgumentNullException(nameof(membershipUpdaterSender));
+            _jsonSerializerOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
         }
 
         [Function(nameof(TopicMessageSenderFunction))]
@@ -58,10 +62,16 @@ namespace Hosts.MessageSplitter
 
             foreach (var membership in membershipRequests)
             {
+                membership.SyncJob = request.MembershipRequest.SyncJob;
+                membership.ProjectedMemberCount = request.MembershipRequest.ProjectedMemberCount;
+                membership.TotalMembersToAdd = request.MembershipRequest.MembersToBeAdded;
+                membership.TotalMembersToRemove = request.MembershipRequest.MembersToBeRemoved;
+
+                var body = JsonSerializer.Serialize(membership, _jsonSerializerOptions);
                 var message = new ServiceBusMessage
                 {
                     MessageId = $"{request.MembershipRequest.SyncJob.Id}_{request.MembershipRequest.SyncJob.RunId}_{destinationType}_{++index}",
-                    Body = System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(membership))
+                    Body = System.Text.Encoding.UTF8.GetBytes(body)
                 };
 
                 message.ApplicationProperties.Add("Type", targetSubscription);

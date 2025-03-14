@@ -2,18 +2,21 @@
 // Licensed under the MIT license.
 
 using Azure.Messaging.ServiceBus;
+using DIConcreteTypes;
 using Hosts.MessageSplitter;
 using MessageSplitter.Contracts;
-using MessageSplitter.Entities;
+using MessageSplitter.TrackerOrchestrator;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Client.Entities;
+using Microsoft.DurableTask.Converters;
 using Microsoft.DurableTask.Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts;
+using System;
 using System.Text;
 using System.Text.Json;
 
@@ -24,6 +27,7 @@ namespace Services.Tests
     {
         private SyncJob _syncJob;
         private string _instanceId;
+        private int _instanceToUse;
         private MembershipUpdaters _membershipUpdaters;
         private Mock<DurableTaskClient> _durableClient;
         private Mock<ILoggingRepository> _loggingRepository;
@@ -34,6 +38,7 @@ namespace Services.Tests
         public void SetupTest()
         {
             _instanceId = "1234567890";
+            _instanceToUse = 1;
             _loggingRepository = new Mock<ILoggingRepository>();
             _messageSplitterService = new Mock<IMessageSplitterService>();
             _durableClient = new Mock<DurableTaskClient>("test");
@@ -69,6 +74,40 @@ namespace Services.Tests
             _durableClient.Setup(x => x.GetInstanceAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
                           .ReturnsAsync(() => new OrchestrationMetadata("test", "test") { RuntimeStatus = OrchestrationRuntimeStatus.Completed });
 
+            _durableClient.Setup(x => x.ScheduleNewOrchestrationInstanceAsync(nameof(InstanceTrackerOrchestrator),
+                                                                              It.IsAny<InstanceTrackerOrchestratorRequest>(),
+                                                                              It.IsAny<StartOrchestrationOptions>(),
+                                                                              It.IsAny<CancellationToken>()
+                                                                              ))
+                          .ReturnsAsync(_instanceId);
+
+            _durableClient.Setup(x => x.WaitForInstanceCompletionAsync(_instanceId, true, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() =>
+                {
+                    DataConverter converter = new JsonDataConverter();
+                    var om = new OrchestrationMetadata(_instanceId, _instanceId)
+                    {
+                        SerializedOutput = _instanceToUse.ToString(),
+                        DataConverter = converter,
+                        RuntimeStatus = OrchestrationRuntimeStatus.Completed
+                    };
+
+                    return om;
+                });
+
+            _durableClient.Setup(x => x.GetInstanceAsync(_instanceId, true, It.IsAny<CancellationToken>()))
+              .ReturnsAsync(() =>
+              {
+                  DataConverter converter = new JsonDataConverter();
+                  var om = new OrchestrationMetadata(_instanceId, _instanceId)
+                  {
+                      SerializedOutput = _instanceToUse.ToString(),
+                      DataConverter = converter,
+                      RuntimeStatus = OrchestrationRuntimeStatus.Completed
+                  };
+
+                  return om;
+              });
         }
 
         [TestMethod]

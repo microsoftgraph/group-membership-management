@@ -1,9 +1,10 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using MessageSplitter.Entities;
+using DIConcreteTypes;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Models;
 using Repositories.Contracts;
 
@@ -28,6 +29,9 @@ namespace Hosts.MessageSplitter
         {
             var request = context.GetInput<OrchestratorRequest>();
             var runId = request.MembershipRequest.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            var updaterType = request.UpdaterType;
+            var instanceTrackerEntityId = new EntityInstanceId(nameof(InstanceTracker), request.CurrentLaneSize);
+            var subscription = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize];
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
             {
@@ -36,14 +40,22 @@ namespace Hosts.MessageSplitter
 
             try
             {
-                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), new TopicMessageSenderRequest
+                await using (await context.Entities.LockEntitiesAsync(instanceTrackerEntityId))
                 {
-                    MembershipRequest = request.MembershipRequest,
-                    MessageSize = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize].MessageSize,
-                    SubscriptionName = request.SubscriptionName,
-                    InstanceToUse = request.InstanceToUse,
-                    LaneSize = request.CurrentLaneSize
-                });
+                    var instanceToUse = await context.Entities.CallEntityAsync<int>(instanceTrackerEntityId, "Get");
+                    instanceToUse = (instanceToUse <= 0 || ++instanceToUse > subscription.Instances) ? 1 : instanceToUse;
+                    var setInstanceTask = context.Entities.CallEntityAsync(instanceTrackerEntityId, "Set", instanceToUse);
+                    var sendMessagesTask = context.CallActivityAsync(nameof(TopicMessageSenderFunction), new TopicMessageSenderRequest
+                    {
+                        MembershipRequest = request.MembershipRequest,
+                        MessageSize = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize].MessageSize,
+                        SubscriptionName = request.SubscriptionName,
+                        InstanceToUse = instanceToUse,
+                        LaneSize = request.CurrentLaneSize
+                    });
+
+                    await Task.WhenAll(setInstanceTask, sendMessagesTask);
+                }
             }
             catch (Exception ex)
             {

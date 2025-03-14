@@ -17,12 +17,12 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.1.7" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Models\Models.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Topics\Repositories.ServiceBusTopics.csproj" />
     <ProjectReference Include="..\Contracts\MessageSplitter.Contracts.csproj" />
-    <ProjectReference Include="..\Entities\MessageSplitter.Entities.csproj" />
     <ProjectReference Include="..\Services\MessageSplitter.Services.csproj" />
   </ItemGroup>
   <ItemGroup>

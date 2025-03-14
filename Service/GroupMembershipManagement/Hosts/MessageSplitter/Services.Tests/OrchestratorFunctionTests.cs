@@ -1,9 +1,10 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using DIConcreteTypes;
 using Hosts.MessageSplitter;
-using MessageSplitter.Entities;
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -43,7 +44,6 @@ namespace Services.Tests
             _orchestratorRequest = new OrchestratorRequest
             {
                 CurrentLaneSize = "Small",
-                InstanceToUse = 1,
                 MessageId = Guid.NewGuid().ToString(),
                 SubscriptionName = "Small",
                 UpdaterType = "GroupMembership",
@@ -55,6 +55,9 @@ namespace Services.Tests
 
             _durableContext.Setup(x => x.GetInput<OrchestratorRequest>())
                            .Returns(() => _orchestratorRequest);
+
+            _durableContext.Setup(x => x.Entities.LockEntitiesAsync(It.IsAny<EntityInstanceId>()));
+
         }
 
         [TestMethod]

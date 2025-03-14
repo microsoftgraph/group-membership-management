@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using DIConcreteTypes;
 using Hosts.MessageSplitter;
-using MessageSplitter.Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
@@ -19,10 +19,10 @@ namespace MessageSplitter.TrackerOrchestrator
         }
 
         [Function(nameof(InstanceTrackerOrchestrator))]
-        public async Task UpdateInstanceTrackerAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        public async Task<int> UpdateInstanceTrackerAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<InstanceTrackerOrchestratorRequest>();
-            var instanceTrackerEntityId = new EntityInstanceId(nameof(InstanceTracker), nameof(InstanceTracker));
+            var instanceTrackerEntityId = new EntityInstanceId(nameof(InstanceTracker), request.CurrentLaneSize);
             var subscription = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize];
             var instanceToUse = 0;
 
@@ -32,6 +32,8 @@ namespace MessageSplitter.TrackerOrchestrator
                 instanceToUse = (instanceToUse <= 0 || ++instanceToUse > subscription.Instances) ? 1 : instanceToUse;
                 await context.Entities.CallEntityAsync(instanceTrackerEntityId, "Set", instanceToUse);
             }
+
+            return instanceToUse;
         }
     }
 }
