@@ -90,13 +90,21 @@ namespace Hosts.MembershipAggregator
                 var sender = client.CreateSender(membershipAggregatorQueue);
                 return new ServiceBusTopicsRepository(sender);
             })
-            .AddKeyedSingleton<IServiceBusTopicsRepository>("messageSplitterSender", (services, _) =>
+            .AddSingleton<ITopicMessageSenderService>((services) =>
             {
                 var configuration = services.GetRequiredService<IConfiguration>();
+
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                var membershipUpdatersSender = services.GetRequiredService<IServiceBusTopicsRepository>();
+
                 var messageSplitterTopic = configuration["serviceBusMessageSplitterTopic"];
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(messageSplitterTopic);
-                return new ServiceBusTopicsRepository(sender);
+                var messageSplitterSender = new ServiceBusTopicsRepository(sender);
+
+                var multilaneConfig = services.GetRequiredService<IOptions<MultiLaneConfig>>()?.Value;
+
+                return new TopicMessageSenderService(loggingRepository, membershipUpdatersSender, messageSplitterSender, multilaneConfig);
             })
             .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>((services) =>
             {

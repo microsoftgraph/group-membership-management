@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Services.Contracts;
 
 namespace Services.Tests
 {
@@ -382,11 +383,9 @@ namespace Services.Tests
 
         private async Task CallTopicMessageSenderFunctionAsync(MembershipHttpRequest request)
         {
-            var topicMessageSenderFunction = new TopicMessageSenderFunction(
-                                                    _loggingRepository.Object,
-                                                    _serviceBusTopicsRepository.Object,
-                                                    _messageSplitterSender,
-                                                    _multilaneConfig);
+            
+            var topicMessageSenderRepository = new TopicMessageSenderService(_loggingRepository.Object, _serviceBusTopicsRepository.Object, _messageSplitterSender, _multilaneConfig.Value);
+            var topicMessageSenderFunction = new TopicMessageSenderFunction(_loggingRepository.Object, topicMessageSenderRepository);
 
             await topicMessageSenderFunction.SendMessageAsync(request);
         }
