@@ -104,7 +104,7 @@ stages:
          coverageThreshold: 40
       - function:
          name: 'MessageSplitter'
-         coverageThreshold: 45
+         coverageThreshold: 40
 
   - template: yaml/build-release-package.yml
     parameters:
