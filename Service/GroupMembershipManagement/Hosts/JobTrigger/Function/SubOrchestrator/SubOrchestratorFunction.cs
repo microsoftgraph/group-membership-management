@@ -73,7 +73,8 @@ namespace Hosts.JobTrigger
 
                 var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
-                DestinationObject destinationObject = null;
+                var groupId = Guid.Empty;
+                var channelId = "";
 
                 try
                 {
@@ -83,32 +84,60 @@ namespace Hosts.JobTrigger
                     {
 
                         await context.CallActivityAsync(nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                RunId = (Guid)syncJob.RunId,
-                                Message = $"Destination query is empty or missing required fields for job:{syncJob.Id}"
-                            });
+                             new LoggerRequest
+                             {
+                                 RunId = (Guid)syncJob.RunId,
+                                 Message = $"Destination query is empty or missing required fields for job:{syncJob.Id}"
+                             });
 
                         await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                         return;
                     }
 
-                    var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
-                    destinationObject = JsonSerializer.Deserialize<DestinationObject>(parsedAndValidatedDestination.DestinationObject, options);
-
-                    if (destinationObject.Type == "GroupMembership")
+                    if (syncJob.MembershipType == "GroupMembership")
                     {
-                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.Value.ObjectId}\"}}}}]";
+                        var group = syncJob.Group ?? await context.CallActivityAsync<Group>(nameof(GetGroupFunction), syncJob);
+                        if (group == null)
+                        {
+                            await context.CallActivityAsync(nameof(LoggerFunction),
+                                new LoggerRequest
+                                {
+                                    RunId = (Guid)syncJob.RunId,
+                                    Message = $"Group not found for job:{syncJob.Id}"
+                                });
+                            await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                            return;
+                        }
+                        groupId = group.GroupId;
+                        syncJob.Group = group;
+                        syncJob.Destination = $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]";
                     }
-                    else if (destinationObject.Type == "TeamsChannelMembership")
+                    else if (syncJob.MembershipType == "TeamsChannelMembership")
                     {
-                        syncJob.Destination = $"[{{\"type\":\"{destinationObject.Type}\",\"value\":{{\"objectId\":\"{destinationObject.Value.ObjectId}\",\"channelId\":\"{(destinationObject.Value as TeamsChannelDestinationValue).ChannelId}\"}}}}]";
+                        var channel = syncJob.Channel ?? await context.CallActivityAsync<Channel>(nameof(GetChannelFunction), syncJob);
+                        if (channel == null)
+                        {
+                            await context.CallActivityAsync(nameof(LoggerFunction),
+                                new LoggerRequest
+                                {
+                                    RunId = (Guid)syncJob.RunId,
+                                    Message = $"Channel not found for job:{syncJob.Id}"
+                                });
+                            await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                            return;
+                        }
+                        groupId = channel.GroupId;
+                        channelId = channel.ChannelId;
+                        syncJob.Channel = channel;
+                        syncJob.Destination = $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\",\"channelId\":\"{channelId}\"}}}}]";
                     }
 
                     // Updates the job with the standardized destination.
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { SyncJob = syncJob });
-
+                
                 }
                 catch (JsonReaderException)
                 {
@@ -130,11 +159,11 @@ namespace Hosts.JobTrigger
                 {
                     if (syncJob.Status == SyncStatus.Idle.ToString())
                     {
-                        TrackIdleJobsEvent(frequency, destinationObject.Value.ObjectId);
+                        TrackIdleJobsEvent(frequency, groupId);
                     }
                     else if (syncJob.Status == SyncStatus.InProgress.ToString())
                     {
-                        TrackInProgressJobsEvent(frequency, destinationObject.Value.ObjectId, syncJob.RunId);
+                        TrackInProgressJobsEvent(frequency, groupId, syncJob.RunId);
                     }
                 }
 
@@ -210,7 +239,7 @@ namespace Hosts.JobTrigger
                                                         NotificationType = NotificationMessageType.DestinationNotExistNotification,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                        destinationObject.Value.ObjectId.ToString(),
+                                                        groupId.ToString(),
                                                         destinationName,
                                                         DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification]
                                                         }
@@ -232,7 +261,7 @@ namespace Hosts.JobTrigger
                                                         NotificationType = NotificationMessageType.NotOwnerNotification,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                        destinationObject.Value.ObjectId.ToString(),
+                                                        groupId.ToString(),
                                                         destinationName,
                                                         DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotOwnerNotification]
                                                         }
@@ -253,7 +282,7 @@ namespace Hosts.JobTrigger
                                                         NotificationType = NotificationMessageType.SyncStartedNotification,
                                                         AdditionalContentParams = new[]
                                                         {
-                                                            destinationObject.Value.ObjectId.ToString(),
+                                                            groupId.ToString(),
                                                             destinationName,
                                                             _emailSenderAndRecipients.SupportEmailAddresses,
                                                             _gmmResources.LearnMoreAboutGMMUrl,
@@ -337,9 +366,12 @@ namespace Hosts.JobTrigger
                 exclusionary = x["exclusionary"] != null ? (bool)x["exclusionary"] : false
             }).ToList();
 
+            var groupId = syncJob.MembershipType == "GroupMembership" ? syncJob.Group.GroupId.ToString() : syncJob.Channel.GroupId.ToString();
+
             var exclusionaryEvent = new Dictionary<string, string>
             {
-                { "Destination", syncJob.Destination },
+                { "Destination", $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\"}}}}]" },
+                { "DestinationGroupObjectId", groupId },
                 { "TotalNumberOfSourceParts", queryTypes.Count.ToString() },
                 { "NumberOfExclusionarySourceParts", queryTypes.Where(g => g.exclusionary).Count().ToString() }
             };

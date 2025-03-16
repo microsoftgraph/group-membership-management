@@ -34,6 +34,8 @@ namespace Services
 
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly INotificationTypesRepository _notificationTypesRepository;
         private readonly IJobNotificationsRepository _jobNotificationRepository;
@@ -62,6 +64,8 @@ namespace Services
         public JobTriggerService(
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
             INotificationTypesRepository notificationTypesRepository,
             IJobNotificationsRepository jobNotificationRepository,
@@ -80,6 +84,8 @@ namespace Services
             _emailSenderAndRecipients = emailSenderAndRecipients;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository ?? throw new ArgumentNullException(nameof(databaseDestinationAttributesRepository));
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
             _notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
@@ -121,8 +127,6 @@ namespace Services
         }
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
-            var destination = DestinationParser.ParseDestination(job);
-
             // Try to get the name from the DestinationNames table first
 
             var destinationName = await _databaseDestinationAttributesRepository.GetDestinationName(job);
@@ -131,19 +135,19 @@ namespace Services
                 return destinationName;
             }
 
-            if (destination.Type == "TeamsChannelMembership")
+            if (job.MembershipType == "TeamsChannelMembership")
             {
                 var channel = new AzureADTeamsChannel
                 {
-                    ObjectId = destination.Value.ObjectId,
-                    ChannelId = (destination.Value as TeamsChannelDestinationValue).ChannelId
+                    ObjectId = job.Channel.GroupId,
+                    ChannelId = job.Channel.ChannelId
                 };
 
                 return await _teamsChannelRepository.GetTeamsChannelNameAsync(channel);
             }
-            else if (destination.Type == "GroupMembership")
+            else if (job.MembershipType == "GroupMembership")
             {
-                var objectId = destination.Value.ObjectId;
+                var objectId = job.Group.GroupId;
                 return await _graphGroupRepository.GetGroupNameAsync(objectId);
             }
 
@@ -173,7 +177,7 @@ namespace Services
             });
 
         }
-        
+
         public async Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job)
         {
             if (status == SyncStatus.InProgress)
@@ -206,20 +210,33 @@ namespace Services
             await _serviceBusTopicsRepository.AddMessageAsync(job);
         }
         public async Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job)
-        {            
-            var destinationType =  DestinationParser.ParseDestination(job).Type;
-
-            if (destinationType == "TeamsChannelMembership")
+        {
+            if (job.MembershipType == "TeamsChannelMembership")
                 return await TeamsChannelExistsAndGMMCanWriteToItAsync(job);
-            else if (destinationType == "GroupMembership")
+            else if (job.MembershipType == "GroupMembership")
                 return await GroupExistsAndGMMCanWriteToItAsync(job);
             else
                 return DestinationVerifierResult.NotFound;
         }
         public async Task<List<string>> GetGroupEndpointsAsync(SyncJob job)
         {
-            var destinationObjectId =  DestinationParser.ParseDestination(job).Value.ObjectId;
+            var destinationObjectId = job.MembershipType switch
+            {
+                var type when type == MembershipTypes.TeamsChannelMembership.ToString() => job.Channel.GroupId,
+                var type when type == MembershipTypes.GroupMembership.ToString() => job.Group.GroupId,
+                _ => Guid.Empty
+            };
+
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
+        }
+
+        public async Task<Group> GetGroupAsync(SyncJob syncJob)
+        {
+            return syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+        }
+        public async Task<Channel> GetChannelAsync(SyncJob syncJob)
+        {
+            return syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
         }
         public async Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob)
         {
@@ -270,7 +287,7 @@ namespace Services
         }
         private async Task<DestinationVerifierResult> GroupExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var groupId =  DestinationParser.ParseDestination(job).Value.ObjectId;
+            var groupId = job.Group.GroupId;
 
             if (!(await CheckGroupExists(job, groupId)))
                 return DestinationVerifierResult.NotFound;
@@ -280,11 +297,11 @@ namespace Services
         }
         private async Task<DestinationVerifierResult> TeamsChannelExistsAndGMMCanWriteToItAsync(SyncJob job)
         {
-            var destinationObject = DestinationParser.ParseDestination(job);
+            var destinationObject = job.Channel;
             var channel = new AzureADTeamsChannel
             {
-                ObjectId = destinationObject.Value.ObjectId,
-                ChannelId = (destinationObject.Value as TeamsChannelDestinationValue).ChannelId
+                ObjectId = destinationObject.GroupId,
+                ChannelId = destinationObject.ChannelId
             };
 
             if (!await CheckTeamExists(job, channel))
@@ -296,7 +313,7 @@ namespace Services
                 return DestinationVerifierResult.NotFound;
             if(!_jobTriggerConfig.GMMHasChannelReadWriteAllPermissions && !await CheckGMMIsChannelOwner(job, channel))
                 return DestinationVerifierResult.NotOwnedByGMM;
-            
+
 
             return DestinationVerifierResult.Success;
         }

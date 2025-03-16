@@ -13,7 +13,9 @@ namespace Services.Contracts
     {
         public Guid RunId { get; set; }
         Task<List<SyncJob>> GetSyncJobsAsync();
-        Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob);
+        Task<Group> GetGroupAsync(SyncJob syncJob);
+        Task<Channel> GetChannelAsync(SyncJob syncJob);
+         Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob);
         Task<string> GetDestinationNameAsync(SyncJob job);
         Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
         Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job);

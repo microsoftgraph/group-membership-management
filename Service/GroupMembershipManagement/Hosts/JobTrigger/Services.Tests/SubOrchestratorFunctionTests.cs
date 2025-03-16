@@ -79,6 +79,19 @@ namespace Services.Tests
                 }
             };
 
+            var group = new Group
+            {
+                GroupId = Guid.NewGuid(),
+                SyncJobId = Guid.NewGuid()
+            };
+
+            var channel = new Channel
+            {
+                ChannelId = "some-string",
+                GroupId = Guid.NewGuid(),
+                SyncJobId = Guid.NewGuid()
+            };
+
             var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
             var serializedDestinationObject = JsonSerializer.Serialize(destinationObject, options);
 
@@ -99,6 +112,11 @@ namespace Services.Tests
 
             _context.Setup(x => x.CallActivityAsync<ParsedAndValidateDestinationResponse>(It.Is<string>(x => x == nameof(ParseAndValidateDestinationFunction)), It.IsAny<SyncJob>()))
                    .Returns(async () => await CallParseAndValidateDestinationFunction());
+
+            _context.Setup(x => x.CallActivityAsync<Group>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+                  .ReturnsAsync(group);
+            _context.Setup(x => x.CallActivityAsync<Channel>(It.Is<string>(x => x == nameof(GetChannelFunction)), It.IsAny<SyncJob>()))
+                  .ReturnsAsync(channel);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -331,6 +349,29 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task HandleEmptyGroupId()
+        {
+            _syncJob.Group = null;
+            _syncJob.Status = SyncStatus.Idle.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<Group>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+                 .ReturnsAsync(_syncJob.Group);
+
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Group not found for job")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()));
+            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.Error, It.IsAny<SyncJob>()), Times.Once());
+        }
+
+        [TestMethod]
+
         public async Task HandleEmptySourceQuery()
         {
             _syncJob.Query = null;
@@ -409,6 +450,8 @@ namespace Services.Tests
                         var gmmResources = new Mock<IGMMResources>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+                        var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+                        var channelsRepository = new Mock<IDatabaseChannelsRepository>();
                         var destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
                         var notificationTypesRepository = new Mock<INotificationTypesRepository>();
                         var iJobNotificationRepository = new Mock<IJobNotificationsRepository>();
@@ -422,6 +465,8 @@ namespace Services.Tests
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
+                                                        groupsRepository.Object,
+                                                        channelsRepository.Object,
                                                         destinationAttributesRepository.Object,
                                                         notificationTypesRepository.Object,
                                                         iJobNotificationRepository.Object,
@@ -434,7 +479,7 @@ namespace Services.Tests
                                                         serviceBusQueueRepository.Object,
                                                         gmmResources.Object,
                                                         jobTriggerConfig.Object,
-														_telemetryClient
+                                                        _telemetryClient
                                                         );
 
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
@@ -491,6 +536,8 @@ namespace Services.Tests
                         var gmmResources = new Mock<IGMMResources>();
                         var jobTriggerConfig = new Mock<IJobTriggerConfig>();
                         var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+                        var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+                        var channelsRepository = new Mock<IDatabaseChannelsRepository>();
                         var destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
                         var emailTypeRepository = new Mock<INotificationTypesRepository>();
                         var iJobNotificationRepository = new Mock<IJobNotificationsRepository>();
@@ -504,10 +551,12 @@ namespace Services.Tests
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
+                                                        groupsRepository.Object,
+                                                        channelsRepository.Object,
                                                         destinationAttributesRepository.Object,
-														emailTypeRepository.Object,
+                                                        emailTypeRepository.Object,
                                                         iJobNotificationRepository.Object,
-														serviceBusTopicsRepository,
+                                                        serviceBusTopicsRepository,
                                                         graphGroupRepository.Object,
                                                         teamsChannelRepository.Object,
                                                         gmmAppId.Object,
@@ -625,28 +674,28 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.QueryNotValid, _syncStatus);
         }
 
-		[TestMethod]
-		public async Task HandleUnexpectedExceptionInSubOrchestrator()
-		{
-			_context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
-			_context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
+        [TestMethod]
+        public async Task HandleUnexpectedExceptionInSubOrchestrator()
+        {
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            _context.Setup(x => x.CallActivityAsync<int>(It.IsAny<string>(), It.IsAny<SyncJob>()))
 					.Throws(new Exception("Unexpected exception triggered for testing"));
 
-			var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
-																_telemetryClient,
-																_emailSenderAndRecipients.Object,
-																_gmmResources.Object);
-			await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
+            var suborchrestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                                _telemetryClient,
+                                                                _emailSenderAndRecipients.Object,
+                                                                _gmmResources.Object);
+            await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-			_context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
+            _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
 				It.Is<LoggerRequest>(req => req.Message.Contains("Caught unexpected exception in SubOrchestratorFunction, marking sync job as errored. "))), Times.Once());
 			_context.Verify(x => x.CallActivityAsync(nameof(JobUpdaterFunction),
 				It.Is<JobUpdaterRequest>(req => req.Status == SyncStatus.Error)), Times.Once());
 			_context.Verify(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction),
 				It.Is<TelemetryTrackerRequest>(req => req.JobStatus == SyncStatus.Error && req.ResultStatus == ResultStatus.Failure)), Times.Once());
-		}
+        }
 
-		private async Task<ParsedAndValidateDestinationResponse> CallParseAndValidateDestinationFunction()
+        private async Task<ParsedAndValidateDestinationResponse> CallParseAndValidateDestinationFunction()
         {
             var parseAndValidateDestinationFunction = new ParseAndValidateDestinationFunction(_loggingRespository.Object, _jobTriggerService.Object);
             return await parseAndValidateDestinationFunction.ParseAndValidateDestinationAsync(new SyncJob());

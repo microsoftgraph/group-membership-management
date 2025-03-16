@@ -12,6 +12,10 @@ namespace Models
         public Guid SyncJobId { get; set; }
 
         public Guid GroupId { get; set; }
-        public SyncJob SyncJob { get; set; }
+
+        public override string ToString()
+        {
+            return GroupId.ToString();
+        }
     }
 }

@@ -49,7 +49,7 @@ namespace Repositories.EntityFramework
 
             return entry.Entity.Id;
         }
-        
+
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
             return await _readContext.SyncJobs.SingleOrDefaultAsync(job => job.Id == syncJobId);
@@ -78,7 +78,9 @@ namespace Repositories.EntityFramework
         }
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs, params SyncStatus[] statusFilters)
         {
-            IQueryable<SyncJob> query = _readContext.SyncJobs;
+            IQueryable<SyncJob> query = _readContext.SyncJobs
+                                                    .Include(syncJob => syncJob.Group)
+                                                    .Include(syncJob => syncJob.Channel);
 
             DateTime currentUtcTime = DateTime.UtcNow;
             query = query.Where(job => job.StartDate <= currentUtcTime);
@@ -102,7 +104,7 @@ namespace Repositories.EntityFramework
             IQueryable<SyncJob> query = _readContext.SyncJobs;
 
             DateTime currentUtcTime = DateTime.UtcNow;
-            
+
             if (!statusFilters.Contains(SyncStatus.All))
             {
                 var statuses = statusFilters.Select(x => x.ToString()).ToList();
@@ -125,6 +127,8 @@ namespace Repositories.EntityFramework
                 {
                     job.Status = status.ToString();
                 }
+                if (job.Group != null) _writeContext.Entry(job.Group).State = EntityState.Unchanged;
+                if (job.Channel != null) _writeContext.Entry(job.Channel).State = EntityState.Unchanged;
                 var entry = _writeContext.Set<SyncJob>().Add(job);
                 entry.State = EntityState.Modified;
             }
@@ -179,7 +183,7 @@ namespace Repositories.EntityFramework
             }
 
             _writeContext.SyncJobs.Remove(jobWithOwners);
-            
+
             await _writeContext.SaveChangesAsync();
         }
 

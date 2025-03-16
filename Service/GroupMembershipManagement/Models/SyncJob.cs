@@ -131,6 +131,9 @@ namespace Models
         /// </summary>
         [IgnoreLogging]
         public int ThresholdViolations { get; set; }
+        public Group Group { get; set; }
+        [IgnoreLogging]
+        public Channel Channel { get; set; }
         public DestinationName DestinationName { get; set; }
         public List<DestinationOwner> DestinationOwners { get; set; }
         [NotMapped]

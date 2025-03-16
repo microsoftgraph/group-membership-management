@@ -118,6 +118,8 @@ namespace Hosts.FunctionBase
 
             services.AddSingleton<ILoggingRepository, LoggingRepository>();
             services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
+            services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
             services.AddScoped<IDatabasePendingSyncJobChangesRepository, DatabasePendingSyncJobChangesRepository>();
             services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();

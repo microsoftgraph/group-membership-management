@@ -130,6 +130,8 @@ namespace Hosts.FunctionBase
 
             builder.Services.AddSingleton<ILoggingRepository, LoggingRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
+            builder.Services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
             builder.Services.AddScoped<IDatabasePendingSyncJobChangesRepository, DatabasePendingSyncJobChangesRepository>();
             builder.Services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             builder.Services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();

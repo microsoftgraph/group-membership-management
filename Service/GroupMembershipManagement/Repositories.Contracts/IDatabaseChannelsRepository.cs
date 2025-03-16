@@ -7,9 +7,8 @@ using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
-    public interface IDatabaseGroupsRepository
+    public interface IDatabaseChannelsRepository
     {
-        Task<Group> GetGroupAsync(Guid groupId);
-        Task<Group> GetGroupUsingSyncJobIdAsync(Guid syncJobId);
+        Task<Channel> GetChannelUsingSyncJobIdAsync(Guid syncJobId);
     }
 }

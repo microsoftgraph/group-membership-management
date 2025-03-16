@@ -8,25 +8,20 @@ using Repositories.EntityFramework.Contexts;
 
 namespace Repositories.EntityFramework
 {
-    public class DatabaseGroupsRepository : IDatabaseGroupsRepository
+    public class DatabaseChannelsRepository : IDatabaseChannelsRepository
     {
         private readonly GMMContext _writeContext;
         private readonly GMMReadContext _readContext;
 
-        public DatabaseGroupsRepository(GMMContext writeContext, GMMReadContext readContext)
+        public DatabaseChannelsRepository(GMMContext writeContext, GMMReadContext readContext)
         {
             _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<Group> GetGroupAsync(Guid groupId)
+        public async Task<Channel> GetChannelUsingSyncJobIdAsync(Guid syncJobId)
         {
-            return await _readContext.Groups.SingleOrDefaultAsync(group => group.GroupId == groupId);
-        }
-
-        public async Task<Group> GetGroupUsingSyncJobIdAsync(Guid syncJobId)
-        {
-            return await _readContext.Groups.SingleOrDefaultAsync(group => group.SyncJobId == syncJobId);
+            return await _readContext.TeamsChannels.SingleOrDefaultAsync(channel => channel.SyncJobId == syncJobId);
         }
     }
 }
