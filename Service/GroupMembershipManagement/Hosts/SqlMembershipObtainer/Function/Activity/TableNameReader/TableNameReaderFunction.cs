@@ -25,18 +25,18 @@ namespace SqlMembershipObtainer
         }
 
         [FunctionName(nameof(TableNameReaderFunction))]
-        public async Task<string> GetSqlMembershipTableName([ActivityTrigger] SyncJob syncJob)
+        public async Task<string> GetSqlMembershipTableName([ActivityTrigger] TableNameReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             string sqlMembershipObtainerTableName = null;
 
             await _retryPolicy.ExecuteAsync(async () =>
             {
-                sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(syncJob.RunId, syncJob.TargetOfficeGroupId);
+                sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(request.SyncJob.RunId, request.GroupId);
             });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             return sqlMembershipObtainerTableName;
         }

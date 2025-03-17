@@ -38,7 +38,7 @@ namespace SqlMembershipObtainer
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest == null || mainRequest.SyncJob == null) { return; }
-            var syncJob = mainRequest.SyncJob;
+            var syncJob = mainRequest.SyncJob;            
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
 
@@ -95,13 +95,24 @@ namespace SqlMembershipObtainer
                     }
                 }
 
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                if (groupId.Equals(Guid.Empty))
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Unable to get group id for job:{syncJob.Id}", SyncJob = syncJob});
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    return;
+                }
+
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob});
                 var query = JsonConvert.DeserializeObject<Query>(currentQueryAsString);
                 var graphProfilesResponse = await context.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
                             nameof(OrganizationProcessorFunction),
                             new OrganizationProcessorRequest
                             {
                                 Query = query,
-                                SyncJob = syncJob
+                                SyncJob = syncJob,
+                                GroupId = groupId
                             });
 
                 await context.CallActivityAsync(
@@ -117,6 +128,7 @@ namespace SqlMembershipObtainer
                                     new GroupMembershipSenderRequest
                                     {
                                         SyncJob = syncJob,
+                                        GroupId = groupId,
                                         Profiles = graphProfilesResponse.GraphProfiles,
                                         CurrentPart = mainRequest.CurrentPart,
                                         Exclusionary = mainRequest.Exclusionary,

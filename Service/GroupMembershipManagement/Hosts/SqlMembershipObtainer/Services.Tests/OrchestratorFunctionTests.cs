@@ -21,6 +21,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using Polly;
 
 namespace Services.Tests
 {
@@ -84,6 +85,8 @@ namespace Services.Tests
 
             _membershipAggregatorResponse = new DurableHttpResponse(HttpStatusCode.NoContent);
 
+            _context.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>())).ReturnsAsync(_syncJob.Group.GroupId);
+
             _context.Setup(x => x.GetInput<OrchestratorRequest>()).Returns(() => _mainRequest);
             _context.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -137,10 +140,11 @@ namespace Services.Tests
             _sqlMembershipObtainerService.Setup(x => x.SendGroupMembershipAsync(
                                                         It.IsAny<List<GraphProfileInformation>>(),
                                                         It.IsAny<SyncJob>(),
+                                                        It.IsAny<Guid>(),
                                                         It.IsAny<int>(),
                                                         It.IsAny<bool>(),
                                                         It.IsAny<string>()))
-                                .Callback<List<GraphProfileInformation>, SyncJob, int, bool, string>((profiles, syncJob, currentPart, exclusionary, directory) =>
+                                .Callback<List<GraphProfileInformation>, SyncJob, Guid, int, bool, string>((profiles, syncJob, groupId, currentPart, exclusionary, directory) =>
                                 {
                                     profilesSent = profiles;
                                 })
@@ -157,6 +161,7 @@ namespace Services.Tests
 
             _sqlMembershipObtainerService.Verify(x => x.SendGroupMembershipAsync(It.IsAny<List<GraphProfileInformation>>(),
                                                         It.IsAny<SyncJob>(),
+                                                        It.IsAny<Guid>(),
                                                         It.IsAny<int>(),
                                                         It.IsAny<bool>(),
                                                         It.IsAny<string>()), Times.Once());

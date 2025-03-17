@@ -18,6 +18,8 @@ namespace Services
         private readonly ISqlMembershipRepository _sqlMembershipRepository = null;
         private readonly IBlobStorageRepository _blobStorageRepository = null;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository = null;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository = null;
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient = null;
         private readonly bool _isSqlMembershipObtainerDryRunEnabled;
@@ -28,9 +30,11 @@ namespace Services
             MissingParentEntities
         }
 
-        public SqlMembershipObtainerService(ISqlMembershipRepository sqlMembershipRepository, 
+        public SqlMembershipObtainerService(ISqlMembershipRepository sqlMembershipRepository,
                                     IBlobStorageRepository blobStorageRepository,
                                     IDatabaseSyncJobsRepository syncJobRepository,
+                                    IDatabaseGroupsRepository databaseGroupsRepository,
+                                    IDatabaseChannelsRepository databaseChannelsRepository,
                                     ILoggingRepository loggingRepository,
                                     TelemetryClient telemetryClient,
                                     IDryRunValue dryRun,
@@ -38,6 +42,8 @@ namespace Services
         {
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
@@ -103,12 +109,27 @@ namespace Services
             return filteredChildren;
         }
 
-        public async Task<(SyncStatus Status, string FilePath)> SendGroupMembershipAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "")
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
+        }
+
+        public async Task<(SyncStatus Status, string FilePath)> SendGroupMembershipAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "")
         {
             var groupMemberToBeSent = new GroupMembership
             {
                 SourceMembers = profiles.Select(x => new AzureADUser { ObjectId = Guid.Parse(x.Id) }).ToList(),
-                Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
+                Destination = new AzureADGroup { ObjectId = groupId },
                 SyncJobId = syncJob.Id,
                 RunId = syncJob.RunId.Value,
                 Exclusionary = exclusionary,
@@ -119,7 +140,7 @@ namespace Services
             var status = SyncStatus.InProgress;
             var runId = syncJob.RunId.GetValueOrDefault();
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
-            fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_SqlMembership_{currentPart}.json";
+            fileName = $"/{groupId}/{timeStamp}_{runId}_SqlMembership_{currentPart}.json";
             var start = DateTime.UtcNow;
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMemberToBeSent));
             var end = DateTime.UtcNow;
@@ -128,7 +149,7 @@ namespace Services
                 Message = $"Time to upload file: {end - start}",
                 RunId = syncJob.RunId
             });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent {groupMemberToBeSent.SourceMembers.Count} members for group {syncJob.TargetOfficeGroupId}", RunId = syncJob.RunId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent {groupMemberToBeSent.SourceMembers.Count} members for group {groupId}", RunId = syncJob.RunId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"SqlMembershipObtainer service completed at: {DateTime.UtcNow}", RunId = syncJob.RunId });
 
             return (status, fileName);
@@ -178,7 +199,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = job.RunId,
-                Message = $"Updating job status for target group {job.TargetOfficeGroupId} to Idle."
+                Message = $"Updating status of job {job.Id} to Idle."
             });
 
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
@@ -188,7 +209,7 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Setting sync job to {status} for the group {syncJob.TargetOfficeGroupId}.",
+                Message = $"Setting status of job {syncJob.Id} to {status}.",
                 RunId = syncJob.RunId
             });
 

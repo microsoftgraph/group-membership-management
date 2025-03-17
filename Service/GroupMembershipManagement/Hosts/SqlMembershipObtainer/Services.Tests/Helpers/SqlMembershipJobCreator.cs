@@ -23,9 +23,14 @@ namespace Services.Tests.Helpers
                     Query = GetJobQuery(syncType, Random.Shared.Next(1000, 10000).ToString()),
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = lastRunTime ?? DateTime.FromFileTimeUtc(0),
-                    RunId = Guid.NewGuid()
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                };
+                job.Group = new Group
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid()
                 };
 
                 jobs.Add(job);

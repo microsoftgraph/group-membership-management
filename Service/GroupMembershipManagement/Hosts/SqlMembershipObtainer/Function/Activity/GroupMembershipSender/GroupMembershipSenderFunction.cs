@@ -30,7 +30,7 @@ namespace SqlMembershipObtainer
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupMembershipSenderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             var profiles = JsonConvert.DeserializeObject<List<GraphProfileInformation>>(TextCompressor.Decompress(request.Profiles));
-            var response = await _sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, request.SyncJob, request.CurrentPart, request.Exclusionary, request.AdaptiveCardTemplateDirectory);
+            var response = await _sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary, request.AdaptiveCardTemplateDirectory);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupMembershipSenderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 

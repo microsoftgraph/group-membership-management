@@ -75,8 +75,10 @@ namespace Services.Tests
                 SyncJob = new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    RunId = Guid.NewGuid()
-                }
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                },
+                GroupId = Guid.NewGuid()
             };
 
             GraphProfileInformationResponse managerOrgProcessorResponse = null;
@@ -86,7 +88,7 @@ namespace Services.Tests
 
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
 
-            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
+            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>())).ReturnsAsync("tbl112233445566");
 
             context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
                                                                             It.Is<string>(x => x == nameof(ManagerOrgReaderFunction)),
@@ -130,8 +132,10 @@ namespace Services.Tests
                 SyncJob = new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    RunId = Guid.NewGuid()
-                }
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                },
+                GroupId = Guid.NewGuid()
             };
 
             ManagerOrgReaderRequest managerOrgReaderRequest = null;
@@ -142,7 +146,7 @@ namespace Services.Tests
 
             context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()));
 
-            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<SyncJob>())).ReturnsAsync("tbl112233445566");
+            context.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>())).ReturnsAsync("tbl112233445566");
 
             context.Setup(x => x.CallActivityAsync<GraphProfileInformationResponse>(It.IsAny<string>(), It.IsAny<ChildEntitiesFilterRequest>()))
                 .Callback<string, object>(async (name, requestObject) =>

@@ -31,6 +31,8 @@ namespace Services.Tests
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var loggingRepository = new Mock<ILoggingRepository>();
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
@@ -49,7 +51,13 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                RunId = Guid.NewGuid()
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership"
+            };
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             var organization = new OrganizationCreator().GenerateOrganizationHierarchy();
@@ -61,12 +69,14 @@ namespace Services.Tests
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
                                             syncJobRepository.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
                                             loggingRepository.Object,
                                             telemetryClient,
                                             dryRunValue.Object,
                                             dfService.Object);
 
-            await sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, syncJob, currentPart, false);
+            await sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, syncJob, syncJob.Group.GroupId, currentPart, false);
 
             blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             Assert.AreEqual(profiles.Count, groupMembership.SourceMembers.Count);

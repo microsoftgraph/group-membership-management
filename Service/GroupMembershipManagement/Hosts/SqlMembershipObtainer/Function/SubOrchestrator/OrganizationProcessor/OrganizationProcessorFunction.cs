@@ -36,7 +36,7 @@ namespace SqlMembershipObtainer
                                 Verbosity = VerbosityLevel.DEBUG
                             });
 
-            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), request.SyncJob);
+            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), new TableNameReaderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId });
             if (string.IsNullOrWhiteSpace(tableName))
             {
                 await context.CallActivityAsync(
@@ -62,6 +62,7 @@ namespace SqlMembershipObtainer
                                                         Depth = manager.Depth,
                                                         PersonnelNumber = manager.Id,
                                                         SyncJob = request.SyncJob,
+                                                        GroupId = request.GroupId,
                                                         TableName = tableName
                                                     });
 
@@ -83,6 +84,7 @@ namespace SqlMembershipObtainer
                                                                 {
                                                                     Query = filter,
                                                                     SyncJob = request.SyncJob,
+                                                                    GroupId = request.GroupId,
                                                                     TableName = tableName
                                                                 });
                 }
