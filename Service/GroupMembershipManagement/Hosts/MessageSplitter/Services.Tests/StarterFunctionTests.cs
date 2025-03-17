@@ -26,6 +26,7 @@ namespace Services.Tests
     public class StarterFunctionTests
     {
         private SyncJob _syncJob;
+        private Group _group;
         private string _instanceId;
         private int _instanceToUse;
         private MembershipUpdaters _membershipUpdaters;
@@ -47,13 +48,18 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0
+            };
+
+            _group = new Group
+            {
+                SyncJobId = _syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             _membershipUpdaters = Helpers.GetAvailableMembershipUpdaters();

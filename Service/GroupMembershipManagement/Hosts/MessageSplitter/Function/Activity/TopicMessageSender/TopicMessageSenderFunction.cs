@@ -53,8 +53,7 @@ namespace Hosts.MessageSplitter
         private async Task SendMessagesAsync(TopicMessageSenderRequest request)
         {
             var membershipRequests = await SplitGroupMembershipAsync(request);
-            var destinations = JsonNode.Parse(request.MembershipRequest.SyncJob.Destination);
-            var destinationType = destinations[0]["type"];
+            var destinationType = request.MembershipRequest.SyncJob.MembershipType;
 
             var index = 0;
             var messages = new List<ServiceBusMessage>();

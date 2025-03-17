@@ -16,6 +16,7 @@ namespace Services.Tests
     public class OrchestratorFunctionTests
     {
         private SyncJob _syncJob;
+        private Group _group;
         private MembershipUpdaters _membershipUpdaters;
         private OrchestratorRequest _orchestratorRequest;
         private Mock<ILoggingRepository> _loggingRepository;
@@ -32,13 +33,18 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0
+            };
+
+            _group = new Group
+            {
+                SyncJobId = _syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             _orchestratorRequest = new OrchestratorRequest

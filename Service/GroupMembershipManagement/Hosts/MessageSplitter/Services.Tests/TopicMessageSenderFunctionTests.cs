@@ -70,15 +70,16 @@ namespace Services.Tests
                     SyncJob = new SyncJob
                     {
                         Id = Guid.NewGuid(),
-                        TargetOfficeGroupId = Guid.NewGuid(),
                         ThresholdPercentageForAdditions = 80,
                         ThresholdPercentageForRemovals = 20,
                         LastRunTime = DateTime.UtcNow.AddDays(-1),
                         Requestor = "user@domail.com",
                         RunId = Guid.NewGuid(),
                         ThresholdViolations = 0,
-                        Destination = "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"00000000-0000-0000-0000-000000000000\"}}]"
+                        MembershipType = "GroupMembership",
+                        Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.Parse("00000000-0000-0000-0000-000000000000")}
                     },
+                    GroupId = Guid.NewGuid(),
                     FilePath = "test",
                     MembersToBeAdded = membersToBeAdded,
                     MembersToBeRemoved = 0,
