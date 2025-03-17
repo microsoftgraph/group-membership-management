@@ -2,21 +2,17 @@
 // Licensed under the MIT license.
 using Models;
 using Models.Notifications;
-using Services.Entities.Contracts;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Services.Contracts
 {
     public interface IAzureMaintenanceService
     {
         Task<List<SyncJob>> GetSyncJobsAsync();
-        Task<int> BackupInactiveJobsAsync(List<SyncJob> syncJobs);
+        Task<List<PurgedSyncJob>> BackupInactiveJobsAsync(List<SyncJob> syncJobs);
         Task RemoveInactiveJobsAsync(IEnumerable<SyncJob> jobs);
         Task<int> RemoveBackupsAsync();
         Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs);
         Task<string> GetGroupNameAsync(Guid groupId);
-        Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType);
+        Task SendEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType);
     }
 }

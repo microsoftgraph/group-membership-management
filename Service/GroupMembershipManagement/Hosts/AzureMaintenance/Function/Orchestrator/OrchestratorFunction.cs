@@ -45,19 +45,19 @@ namespace Hosts.AzureMaintenance
             if (_handleInactiveJobsConfig.HandleInactiveJobsEnabled)
             {
                 var inactiveSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(ReadSyncJobsFunction), null);
-                var countOfBackUpJobs = await context.CallActivityAsync<int>(nameof(BackUpInactiveJobsFunction), inactiveSyncJobs);
+                var backUpJobs = await context.CallActivityAsync<List<PurgedSyncJob>>(nameof(BackUpInactiveJobsFunction), inactiveSyncJobs);
 
-                if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == countOfBackUpJobs)
+                if (inactiveSyncJobs != null && inactiveSyncJobs.Count > 0 && inactiveSyncJobs.Count == backUpJobs.Count)
                 {
                     await context.CallActivityAsync(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
                     var processingTasks = new List<Task>();
-                    foreach (var inactiveSyncJob in inactiveSyncJobs)
+                    foreach (var backUpJob in backUpJobs)
                     {
                         var processTask = context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest
                         {
                             RunId = runId,
-                            SyncJob = inactiveSyncJob,
+                            SyncJob = backUpJob,
                             NotificationType = Models.Notifications.NotificationMessageType.InactiveSyncJobNotification
                         });
                         processingTasks.Add(processTask);

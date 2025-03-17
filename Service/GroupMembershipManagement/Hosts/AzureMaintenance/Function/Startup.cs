@@ -72,6 +72,8 @@ namespace Hosts.AzureMaintenance
                 var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
 
                 return new AzureMaintenanceService(services.GetService<IDatabaseSyncJobsRepository>(),
+                    services.GetService<IDatabaseGroupsRepository>(),
+                    services.GetService<IDatabaseChannelsRepository>(),
                     services.GetService<IDatabasePurgedSyncJobsRepository>(),
                     services.GetService<IGraphGroupRepository>(),
                     services.GetService<IHandleInactiveJobsConfig>(),

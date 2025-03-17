@@ -158,6 +158,8 @@ namespace Repositories.EntityFramework
                     .ThenInclude(owner => owner.SyncJobs)
                 .SingleOrDefaultAsync(j => j.Id == job.Id);
 
+                if (jobWithOwners == null) continue;
+
                 foreach (var owner in jobWithOwners.DestinationOwners)
                 {
                     if (owner.SyncJobs.Count() < 2)

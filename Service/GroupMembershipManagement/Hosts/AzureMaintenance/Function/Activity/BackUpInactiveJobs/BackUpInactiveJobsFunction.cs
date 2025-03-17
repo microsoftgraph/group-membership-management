@@ -22,14 +22,12 @@ namespace Hosts.AzureMaintenance
         }
 
         [FunctionName(nameof(BackUpInactiveJobsFunction))]
-        public async Task<int> BackupInactiveJobsAsync([ActivityTrigger] List<SyncJob> syncJobs)
+        public async Task<List<PurgedSyncJob>> BackupInactiveJobsAsync([ActivityTrigger] List<SyncJob> syncJobs)
         {
-            int countOfBackUpJobs = 0;
-            if (syncJobs.Count > 0)
-            {
-                countOfBackUpJobs = await _azureMaintenanceService.BackupInactiveJobsAsync(syncJobs);
-            }
-            return countOfBackUpJobs;
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackUpInactiveJobsFunction)} function started" }, VerbosityLevel.DEBUG);
+            var backUpJobs = await _azureMaintenanceService.BackupInactiveJobsAsync(syncJobs);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(BackUpInactiveJobsFunction)} function completed" }, VerbosityLevel.DEBUG);
+            return backUpJobs;
         }
     }
 }

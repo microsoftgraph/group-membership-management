@@ -58,15 +58,21 @@ namespace Services.Tests
                     Query = "[{ \"type\": \"GroupMembership\", \"source\": \"da144736-962b-4879-a304-acd9f5221e78\"}]",
                     StartDate = DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.CustomerPaused.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership",
                     LastRunTime = SqlDateTime.MinValue.Value,
                     RunId = Guid.NewGuid()
                 };
-
+                job.Group = new Group
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid()
+                };
                 jobs.Add(job);
             }
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
@@ -76,6 +82,8 @@ namespace Services.Tests
             purgedSyncJobRepository.Setup(x => x.InsertPurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -83,13 +91,13 @@ namespace Services.Tests
                                                 notificationQueueRepository.Object,
                                                 loggerMock.Object);
 
-            var countOfBackedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
-            Assert.AreEqual(countOfBackedUpJobs, jobs.Count);
+            var backedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
+            Assert.AreEqual(backedUpJobs.Count, jobs.Count);
             purgedSyncJobRepository.Verify(x => x.InsertPurgedSyncJobsAsync(It.IsAny<List<PurgedSyncJob>>()), Times.Once());
 
             jobs = new List<SyncJob>();
-            countOfBackedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
-            Assert.AreEqual(countOfBackedUpJobs, 0);
+            backedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
+            Assert.AreEqual(backedUpJobs.Count, 0);
         }
 
         [TestMethod]
@@ -120,6 +128,8 @@ namespace Services.Tests
             }
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
@@ -130,6 +140,8 @@ namespace Services.Tests
             purgedSyncJobRepository.Setup(x => x.DeletePurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>())).ReturnsAsync(2);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -161,9 +173,15 @@ namespace Services.Tests
                     Query = "[{ \"type\": \"GroupMembership\", \"source\": \"da144736-962b-4879-a304-acd9f5221e78\"}]",
                     StartDate = DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.CustomerPaused.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = SqlDateTime.MinValue.Value,
-                    RunId = Guid.NewGuid()
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                };
+
+                job.Group = new Group
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid()
                 };
 
                 jobs.Add(job);
@@ -172,6 +190,8 @@ namespace Services.Tests
             var j = GetJobs(jobs);
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
@@ -179,6 +199,8 @@ namespace Services.Tests
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -209,9 +231,15 @@ namespace Services.Tests
                     Query = "[{ \"type\": \"SecurityGroup\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                     StartDate = DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.ThresholdExceeded.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = DateTime.FromFileTimeUtc(0),
-                    RunId = Guid.NewGuid()
+                    RunId = Guid.NewGuid(),
+                    MembershipType = "GroupMembership"
+                };
+
+                job.Group = new Group
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid()
                 };
 
                 jobs.Add(job);
@@ -220,6 +248,8 @@ namespace Services.Tests
             var j = GetJobs(jobs);
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
@@ -244,6 +274,8 @@ namespace Services.Tests
                 CardState = ThresholdNotificationCardState.DefaultCard
             };
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                    groupsRepository.Object,
+                                    channelsRepository.Object,
                                     purgedSyncJobRepository.Object,
                                     graphGroupRepository.Object,
                                     handleInactiveJobsConfig.Object,
@@ -263,6 +295,8 @@ namespace Services.Tests
             loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
@@ -272,6 +306,8 @@ namespace Services.Tests
             graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(() => "Test Group");
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -298,13 +334,20 @@ namespace Services.Tests
                 Query = "[{ \"type\": \"GroupMembership\", \"source\": \"da144736-962b-4879-a304-acd9f5221e78\"}]",
                 StartDate = DateTime.UtcNow.AddDays(-1),
                 Status = SyncStatus.CustomerPaused.ToString(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 LastRunTime = SqlDateTime.MinValue.Value,
-                RunId = Guid.NewGuid()
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership"
+            };
+            job.Group = new Group
+            {
+                SyncJobId = job.Id,
+                GroupId = Guid.NewGuid()
             };
             jobList.Add(job);
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
@@ -312,6 +355,8 @@ namespace Services.Tests
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -343,9 +388,27 @@ namespace Services.Tests
                 Query = "[{ \"type\": \"GroupMembership\", \"source\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 StartDate = DateTime.UtcNow.AddDays(-1),
                 Status = SyncStatus.CustomerPaused.ToString(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 LastRunTime = SqlDateTime.MinValue.Value,
-                RunId = Guid.NewGuid()
+                RunId = Guid.NewGuid(),
+                MembershipType = "GroupMembership"
+            };
+            job.Group = new Group
+            {
+                SyncJobId = job.Id,
+                GroupId = Guid.NewGuid()
+            };
+
+            var purgedJob = new PurgedSyncJob
+            {
+                Requestor = $"requestor@email.com",
+                Id = Guid.NewGuid(),
+                Period = 6,
+                Query = "[{ \"type\": \"GroupMembership\", \"source\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
+                StartDate = DateTime.UtcNow.AddDays(-1),
+                Status = SyncStatus.CustomerPaused.ToString(),
+                LastRunTime = SqlDateTime.MinValue.Value,
+                RunId = Guid.NewGuid(),
+                TargetOfficeGroupId = job.Group.GroupId
             };
 
             var users = new List<AzureADUser>();
@@ -361,15 +424,19 @@ namespace Services.Tests
             }
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
             var graphGroupRepository = new Mock<IGraphGroupRepository>();
             var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
             var notificationRepository = new Mock<INotificationRepository>();
             var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
 
-            _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(job.TargetOfficeGroupId, 0)).ReturnsAsync(users);
+            _ = graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(job.Group.GroupId, 0)).ReturnsAsync(users);
 
             var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
                                                 purgedSyncJobRepository.Object,
                                                 graphGroupRepository.Object,
                                                 handleInactiveJobsConfig.Object,
@@ -377,7 +444,7 @@ namespace Services.Tests
                                                 notificationQueueRepository.Object,
                                                 loggerMock.Object);
 
-            await azureMaintenanceService.SendEmailAsync(job, Models.Notifications.NotificationMessageType.InactiveSyncJobNotification);
+            await azureMaintenanceService.SendEmailAsync(purgedJob, Models.Notifications.NotificationMessageType.InactiveSyncJobNotification);
             notificationQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
         }
 
