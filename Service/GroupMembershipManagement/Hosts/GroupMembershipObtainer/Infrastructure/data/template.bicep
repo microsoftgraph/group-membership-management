@@ -23,6 +23,6 @@ module gmoStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'groupMembershipObtainerStorageAccountProd'
+    storageAccountSettingName: 'groupMembershipObtainerStorageAccountProd'
   }
 }
