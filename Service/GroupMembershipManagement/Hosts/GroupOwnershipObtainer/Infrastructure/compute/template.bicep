@@ -78,7 +78,6 @@ var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, da
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var groupOwnershipObtainerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'groupOwnershipObtainerStorageAccountProd')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -101,11 +100,9 @@ var commonSettings = {
 }
 
 var appSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(groupOwnershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupOwnershipObtainer'
   AzureFunctionsWebHost__hostid: 'GroupOwnershipObtainer'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(groupOwnershipObtainerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-GroupOwnershipObtainer')
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
@@ -154,6 +151,16 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   name: 'uamiNameReader-GroupOwnershipObtainer'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-GroupOwnershipObtainer'
+  params: {
+    value: dataKeyVault.getSecret('groupOwnershipObtainerStorageAccountProd')
   }
   dependsOn: [
     dataKeyVault
