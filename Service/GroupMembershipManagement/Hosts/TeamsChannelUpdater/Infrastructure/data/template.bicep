@@ -23,6 +23,6 @@ module teamsChannelUpdaterStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'teamsChannelUpdaterStorageAccountProd'
+    storageAccountSettingName: 'teamsChannelUpdaterStorageAccountProd'
   }
 }
