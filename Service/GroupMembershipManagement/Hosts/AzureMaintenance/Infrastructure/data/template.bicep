@@ -23,6 +23,6 @@ module azureMaintenanceStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'azureMaintenanceStorageAccountProd'
+    storageAccountSettingName: 'azureMaintenanceStorageAccountProd'
   }
 }
