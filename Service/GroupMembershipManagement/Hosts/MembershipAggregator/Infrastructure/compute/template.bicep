@@ -101,7 +101,6 @@ var serviceBusMembershipAggregatorQueue = resourceId(subscription().subscription
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var membershipAggregatorStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipAggregatorStorageAccountProd')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var serviceBusMessageSplitterTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMessageSplitterTopic')
 
@@ -126,11 +125,9 @@ var commonSettings = {
 }
 
 var appSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregator'
   AzureFunctionsWebHost__hostid: 'MembershipAggregator'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(membershipAggregatorStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-MembershipAggregator')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
@@ -183,6 +180,16 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   name: 'uamiNameReader-MembershipAggregator'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-MembershipAggregator'
+  params: {
+    value: dataKeyVault.getSecret('membershipAggregatorStorageAccountProd')
   }
   dependsOn: [
     dataKeyVault

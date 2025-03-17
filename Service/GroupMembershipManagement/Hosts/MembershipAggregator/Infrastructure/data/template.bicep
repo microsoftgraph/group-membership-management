@@ -23,6 +23,6 @@ module membershipAggregatorStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'membershipAggregatorStorageAccountProd'
+    storageAccountSettingName: 'membershipAggregatorStorageAccountProd'
   }
 }
