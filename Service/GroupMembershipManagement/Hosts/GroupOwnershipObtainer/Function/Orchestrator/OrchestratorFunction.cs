@@ -115,7 +115,14 @@ namespace Hosts.GroupOwnershipObtainer
                         return;
                     }
                 }
-
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                if (groupId.Equals(Guid.Empty))
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Unable to get group id for job:{syncJob.Id}" });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                    return;
+                }
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Group Id for job:{syncJob.Id} is {groupId}" });
                 var syncJobs = new List<SyncJob>();
                 var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest { RunId = syncJob.RunId });
                 syncJobs.AddRange(segmentResponse);
@@ -128,7 +135,7 @@ namespace Hosts.GroupOwnershipObtainer
                                                                                    SyncJobs = syncJobs.Select(x => new JobsFilterSyncJob
                                                                                    {
                                                                                        Query = x.Query,
-                                                                                       TargetOfficeGroupId = x.TargetOfficeGroupId,
+                                                                                       TargetOfficeGroupId = groupId
                                                                                    }).ToList()
                                                                                });
 
@@ -167,6 +174,7 @@ namespace Hosts.GroupOwnershipObtainer
                                                                        new UsersSenderRequest
                                                                        {
                                                                            SyncJob = syncJob,
+                                                                           GroupId = groupId,
                                                                            Users = owners,
                                                                            CurrentPart = mainRequest.CurrentPart,
                                                                            Exclusionary = mainRequest.Exclusionary

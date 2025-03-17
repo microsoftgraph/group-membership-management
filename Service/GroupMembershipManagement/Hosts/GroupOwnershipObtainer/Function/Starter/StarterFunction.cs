@@ -59,7 +59,7 @@ namespace Hosts.GroupOwnershipObtainer
                 };
 
                 var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job RowKey: {syncJob.RowKey}", RunId = runId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {syncJob.Id}", RunId = runId });
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);

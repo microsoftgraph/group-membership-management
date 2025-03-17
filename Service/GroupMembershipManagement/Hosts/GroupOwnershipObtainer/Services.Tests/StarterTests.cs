@@ -33,11 +33,15 @@ namespace Tests.Services
 
             _syncJob = new SyncJob
             {
-                Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                Id = Guid.NewGuid(),             
                 Query = "<query>",
                 Status = "InProgress",
-                Period = 6
+                Period = 6,
+                MembershipType = "GroupMembership",
+                Group = new Group
+                {
+                    GroupId = Guid.NewGuid()
+                }
             };
         }
 

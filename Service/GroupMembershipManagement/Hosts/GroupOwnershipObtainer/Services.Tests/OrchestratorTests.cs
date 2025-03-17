@@ -27,6 +27,8 @@ namespace Services.Tests
         private Mock<IConfiguration> _configuration = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository = null!;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<IBlobStorageRepository> _blobStorageRepository = null!;
         private Mock<IGroupOwnershipObtainerService> _groupOwnershipObtainerService = null!;
@@ -48,6 +50,8 @@ namespace Services.Tests
             _configuration = new Mock<IConfiguration>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _groupOwnershipObtainerService = new Mock<IGroupOwnershipObtainerService>();
@@ -62,6 +66,8 @@ namespace Services.Tests
                         _dryRunSettings.Object,
                         _loggingRepository.Object,
                         _syncJobRepository.Object,
+                        _groupsRepository.Object,
+                        _channelsRepository.Object,
                         _graphGroupRepository.Object,
                         _blobStorageRepository.Object);
 
@@ -69,10 +75,14 @@ namespace Services.Tests
             {
                 RowKey = Guid.NewGuid().ToString(),
                 PartitionKey = "00-00-0000",
-                TargetOfficeGroupId = Guid.NewGuid(),
                 Query = "[{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]",
                 Status = "InProgress",
-                Period = 6
+                Period = 6,
+                MembershipType = "GroupMembership",
+                Group = new Group
+                {
+                    GroupId = Guid.NewGuid()
+                }
             };
 
             _sampleSyncJobs = new List<SyncJob>
@@ -80,26 +90,38 @@ namespace Services.Tests
                 new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     Query = "[{\"type\":\"GroupMembership\",\"source\":\"00000000-0000-0000-0000-000000000000\"}]",
                     Status = "InProgress",
-                    Period = 6
+                    Period = 6,
+                    MembershipType = "GroupMembership",
+                    Group = new Group
+                    {
+                        GroupId = Guid.NewGuid()
+                    }
                 },
                 new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     Query = "[{\"type\":\"CustomType1\",\"source\":\"00000000-0000-0000-0000-000000000001\"}]",
                     Status = "InProgress",
-                    Period = 6
+                    Period = 6,
+                    MembershipType = "GroupMembership",
+                    Group = new Group
+                    {
+                        GroupId = Guid.NewGuid()
+                    }
                 },
                 new SyncJob
                 {
                     Id = Guid.NewGuid(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     Query = "[{\"type\":\"CustomType2\",\"source\":\"00000000-0000-0000-0000-000000000002\"}]",
                     Status = "InProgress",
-                    Period = 6
+                    Period = 6,
+                    MembershipType = "GroupMembership",
+                    Group = new Group
+                    {
+                        GroupId = Guid.NewGuid()
+                    }
                 }
             };
 
@@ -121,6 +143,9 @@ namespace Services.Tests
 
             _durableOrchestrationContext.Setup(x => x.CurrentUtcDateTime)
                                         .Returns(DateTime.UtcNow);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+                                        .ReturnsAsync(Guid.NewGuid());
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -215,7 +240,7 @@ namespace Services.Tests
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
-            
+
             _loggingRepository.Verify(x => x.LogMessageAsync(
                     It.Is<LogMessage>(m => m.Message.StartsWith($"{nameof(OrchestratorFunction)} function completed")),
                     It.IsAny<VerbosityLevel>(),
@@ -356,6 +381,8 @@ namespace Services.Tests
                                     _dryRunSettings.Object,
                                     _loggingRepository.Object,
                                     _syncJobRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
                                     _graphGroupRepository.Object,
                                     _blobStorageRepository.Object);
 

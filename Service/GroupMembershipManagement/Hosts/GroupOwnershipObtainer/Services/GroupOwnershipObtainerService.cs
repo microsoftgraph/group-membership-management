@@ -19,6 +19,8 @@ namespace Services
         private readonly IDryRunValue _dryRunSettings;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
@@ -28,14 +30,33 @@ namespace Services
             IDryRunValue dryRunSettings,
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             IGraphGroupRepository graphGroupRepository,
             IBlobStorageRepository blobStorageRepository)
         {
             _dryRunSettings = dryRunSettings ?? throw new ArgumentNullException(nameof(dryRunSettings));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
         }
 
         public async Task<List<SyncJob>> GetSyncJobsSegmentAsync()
@@ -57,13 +78,13 @@ namespace Services
             return owners.Select(x => x.ObjectId).ToList();
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<Guid> allUsers, int currentPart, bool exclusionary)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, Guid groupId, List<Guid> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
             {
                 SourceMembers = allUsers != null ? allUsers.Select(x => new AzureADUser { ObjectId = x }).ToList() : new List<AzureADUser>(),
-                Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
+                Destination = new AzureADGroup { ObjectId = groupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
                 SyncJobId = syncJob.Id,
@@ -72,7 +93,7 @@ namespace Services
             };
 
             var timeStamp = syncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmm");
-            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_GroupOwnershipObtainer_{currentPart}.json";
+            var fileName = $"/{groupId}/{timeStamp}_{runId}_GroupOwnershipObtainer_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
             return fileName;
