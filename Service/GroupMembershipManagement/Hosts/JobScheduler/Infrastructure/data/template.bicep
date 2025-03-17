@@ -23,6 +23,6 @@ module groupOwnershipObtainerStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'jobSchedulerStorageAccountProd'
+    storageAccountSettingName: 'jobSchedulerStorageAccountProd'
   }
 }

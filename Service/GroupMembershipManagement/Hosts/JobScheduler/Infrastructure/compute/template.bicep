@@ -90,7 +90,6 @@ var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dat
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var jobSchedulerStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerStorageAccountProd')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-JobScheduler'
@@ -112,11 +111,9 @@ var commonSettings = {
 }
 
 var appSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}JobScheduler'
   AzureFunctionsWebHost__hostid: 'JobScheduler'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-JobScheduler')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   jobSchedulerSchedule: '0 0 0 * * Sun'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
@@ -124,6 +121,21 @@ var appSettings = {
   appConfigurationEndpoint: appConfigurationEndpoint
   'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+}
+
+resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: dataKeyVaultName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-JobScheduler'
+  params: {
+    value: dataKeyVault.getSecret('jobSchedulerStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
 }
 
 var activityFunctionSettings = {
