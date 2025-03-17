@@ -26,6 +26,8 @@ namespace Tests.Services
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
@@ -46,6 +48,8 @@ namespace Tests.Services
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -77,6 +81,8 @@ namespace Tests.Services
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
                                             _syncJobRepository.Object,
+                                            _groupsRepository.Object,
+                                            _channelsRepository.Object,
                                             _dryRunValue.Object
                                             );
 
@@ -119,12 +125,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/Rooms/microsoft.graph.room' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
 
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
@@ -192,12 +202,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/Rooms/microsoft.graph.workspace' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
 
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
@@ -265,12 +279,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/users?$filter=endsWith(mail,'microsoft.com')&$orderBy=displayName&$select=id,displayName,mail' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
                 RunId = Guid.NewGuid(),
@@ -337,12 +355,16 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ 'type': 'PlaceMembership', 'source': 'https://graph.microsoft.com/v1.0/users?$filter=endsWith(mail,'microsoft.com')&$orderBy=displayName&$select=id,displayName,mail' }]",
                 Status = "InProgress",
                 Period = 6
             };
-
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
             _subOrchestratorRequest = new SubOrchestratorRequest
             {
                 RunId = Guid.NewGuid(),

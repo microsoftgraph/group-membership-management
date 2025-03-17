@@ -52,15 +52,22 @@ namespace Tests.Services
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             var mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
             var mockSyncJob = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var mockDryRunValue = new Mock<IDryRunValue>();
             _querySample = QuerySample.GenerateQuerySample("PlaceMembership");
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = _querySample.GetQuery(),
                 Status = "InProgress",
                 Period = 6
+            };
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             _orchestratorRequest = new OrchestratorRequest
@@ -76,6 +83,8 @@ namespace Tests.Services
             mockGraphGroupRepository.Object,
             mockBlobStorageRepository.Object,
             mockSyncJob.Object,
+            groupsRepository.Object,
+            channelsRepository.Object,
             mockDryRunValue.Object);
             _context = new Mock<IDurableOrchestrationContext>();
             _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
@@ -114,6 +123,8 @@ namespace Tests.Services
             });
 
             string _filePath = null;
+            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+                .ReturnsAsync(Guid.NewGuid());
             _context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<UsersSenderRequest>()))
                .Callback<string, object>(async (name, request) =>
                {
@@ -159,10 +170,15 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{\"type\":\"PlaceMembership\",\"sources\":\"https://graph.microsoft.com/v1.0/users?$count=true&$filter=mail+eq+'USER2@M365x720024.onmicrosoft.com'\"}]",
                 Status = "InProgress",
                 Period = 6
+            };
+            syncJob.Group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))

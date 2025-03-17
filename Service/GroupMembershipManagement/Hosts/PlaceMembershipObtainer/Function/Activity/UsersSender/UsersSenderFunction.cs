@@ -27,12 +27,12 @@ namespace Hosts.PlaceMembershipObtainer
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            filePath = await _membershipProviderService.SendMembershipAsync(request.SyncJob, request.Users, request.CurrentPart, request.Exclusionary);
+            filePath = await _membershipProviderService.SendMembershipAsync(request.SyncJob, request.GroupId, request.Users, request.CurrentPart, request.Exclusionary);
 
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = request.RunId,
-                Message = $"Successfully uploaded {request.Users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.SyncJob.TargetOfficeGroupId}."
+                Message = $"Successfully uploaded {request.Users.Count} users from source groups {request.SyncJob.Query} to blob storage to be put into the destination group {request.GroupId}."
             });
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);

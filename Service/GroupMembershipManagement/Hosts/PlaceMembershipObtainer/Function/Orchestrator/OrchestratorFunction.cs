@@ -37,12 +37,20 @@ namespace Hosts.PlaceMembershipObtainer
             var mainRequest = context.GetInput<OrchestratorRequest>();
             var syncJob = mainRequest.SyncJob;
             var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
-            List<AzureADUser> distinctUsers = null;
+            List<AzureADUser> distinctUsers = null;           
 
             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = syncJob.RunId });
 
             try
             {
+                var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                if (groupId.Equals(Guid.Empty))
+                {
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Unable to get group id for job:{syncJob.Id}", RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                    return;
+                }
+                if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Group Id for job:{syncJob.Id} is {groupId}", RunId = syncJob.RunId });
                 var queryParts = JArray.Parse(syncJob.Query);
                 if (mainRequest.CurrentPart == mainRequest.TotalParts)
                 {
@@ -104,7 +112,7 @@ namespace Hosts.PlaceMembershipObtainer
                 {
                     RunId = runId,
                     Message = $"Found {users.Count - distinctUsers.Count} duplicate user(s). " +
-                                $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
+                                $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {groupId}."
                 });
 
                 var filePath = await context.CallActivityAsync<string>(
@@ -113,6 +121,7 @@ namespace Hosts.PlaceMembershipObtainer
                                     {
                                         SyncJob = syncJob,
                                         RunId = runId,
+                                        GroupId = groupId,
                                         Users = distinctUsers,
                                         CurrentPart = mainRequest.CurrentPart,
                                         Exclusionary = mainRequest.Exclusionary

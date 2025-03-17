@@ -13,17 +13,23 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IDatabaseSyncJobsRepository _syncJob;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly bool _isPlaceMembershipObtainerDryRunEnabled;
 
         public PlaceMembershipObtainerService(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
                                       IDatabaseSyncJobsRepository syncJob,
+                                      IDatabaseGroupsRepository databaseGroupsRepository,
+                                      IDatabaseChannelsRepository databaseChannelsRepository,
                                       IDryRunValue dryRun
                                       )
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _syncJob = syncJob ?? throw new ArgumentNullException(nameof(syncJob));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _isPlaceMembershipObtainerDryRunEnabled = dryRun.DryRunEnabled;
         }
 
@@ -46,6 +52,21 @@ namespace Services
                 Users = response.users,
                 NextPageUrl = response.nextPageUrl
             };
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
         }
 
         public async Task<PlaceInformation> GetWorkSpacesAsync(string url, int top, int skip)
@@ -80,21 +101,21 @@ namespace Services
             };
         }
 
-        public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
+        public async Task<string> SendMembershipAsync(SyncJob syncJob, Guid groupId, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var groupMembership = new GroupMembership
             {
                 SourceMembers = allUsers ?? new List<AzureADUser>(),
-                Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
+                Destination = new AzureADGroup { ObjectId = groupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
-                SyncJobId = syncJob.Id,                
+                SyncJobId = syncJob.Id,
                 MembershipObtainerDryRunEnabled = _isPlaceMembershipObtainerDryRunEnabled
             };
 
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
-            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_PlaceMembership_{currentPart}.json";
+            var fileName = $"/{groupId}/{timeStamp}_{runId}_PlaceMembership_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
             return fileName;

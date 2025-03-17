@@ -36,11 +36,17 @@ namespace Tests.Services
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
+                MembershipType = "GroupMembership",
                 Query = "[{ \"type\": \"PlaceMembership\", \"source\": \"https://graph.microsoft.com/v1.0/places/microsoft.graph.room\" }]",
                 Status = "InProgress",
                 Period = 6
             };
+            _syncJob.Group = new Group
+            {
+                SyncJobId = _syncJob.Id,
+                GroupId = Guid.NewGuid()
+            };
+
         }
 
         [TestMethod]
