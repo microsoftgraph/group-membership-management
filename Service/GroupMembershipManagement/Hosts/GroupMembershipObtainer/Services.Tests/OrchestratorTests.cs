@@ -32,6 +32,8 @@ namespace Tests.Services
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
@@ -59,6 +61,8 @@ namespace Tests.Services
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -75,10 +79,15 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 Query = _querySample.GetQuery(),
                 Status = "InProgress",
                 Period = 6
+            };
+
+            var group = new Group
+            {
+                SyncJobId = syncJob.Id,
+                GroupId = Guid.NewGuid()
             };
 
             _orchestratorRequest = new OrchestratorRequest
@@ -93,6 +102,8 @@ namespace Tests.Services
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
                                             _syncJobRepository.Object,
+                                            _groupsRepository.Object,
+                                            _channelsRepository.Object,
                                             _serviceBusQueueRepository.Object,
                                             _databaseDestinationAttributesRepository.Object,
                                             _loggingRepository.Object,
@@ -109,6 +120,8 @@ namespace Tests.Services
                                         .Returns(() => _orchestratorRequest);
 
             _durableOrchestrationContext.Setup(x => x.CurrentUtcDateTime).Returns(DateTime.UtcNow);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>())).ReturnsAsync(group.GroupId);
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
                                         .Callback<string, object>(async (name, request) =>
@@ -551,7 +564,7 @@ namespace Tests.Services
             var function = new GroupReaderFunction(_loggingRepository.Object, _membershipCalculator);
             var (group, groupId) = function.GetSourceGroup(request);
             AzureADGroup azureAdGroup = request.IsDestinationPart
-                                ? azureAdGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId }
+                                ? azureAdGroup = new AzureADGroup { ObjectId = request.GroupId }
                                 : azureAdGroup = group;
             return (azureAdGroup, groupId);
         }

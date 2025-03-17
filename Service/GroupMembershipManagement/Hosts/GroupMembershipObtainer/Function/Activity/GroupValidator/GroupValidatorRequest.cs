@@ -8,6 +8,7 @@ namespace Hosts.GroupMembershipObtainer
     public class GroupValidatorRequest
     {
         public Guid RunId { get; set; }
+        public Guid GroupId { get; set; }
         public Guid ObjectId { get; set; }
         public SyncJob SyncJob { get; set; }
         public string Content { get; set; }

@@ -58,6 +58,8 @@ namespace Hosts.GroupMembershipObtainer
                     services.GetRequiredService<IGraphGroupRepository>(),
                     services.GetRequiredService<IBlobStorageRepository>(),
                     services.GetRequiredService<IDatabaseSyncJobsRepository>(),
+                    services.GetRequiredService<IDatabaseGroupsRepository>(),
+                    services.GetRequiredService<IDatabaseChannelsRepository>(),
                     notificationsQueueRepository,
                     services.GetRequiredService<IDatabaseDestinationAttributesRepository>(),
                     services.GetRequiredService<ILoggingRepository>(),

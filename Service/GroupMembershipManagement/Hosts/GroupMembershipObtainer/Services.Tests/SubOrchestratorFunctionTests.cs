@@ -31,6 +31,8 @@ namespace Tests.Services
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
@@ -61,6 +63,8 @@ namespace Tests.Services
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -115,7 +119,6 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 Query = QuerySample.GenerateQuerySample("GroupMembership").GetQuery(),
                 Status = "InProgress",
                 Period = 6
@@ -124,6 +127,7 @@ namespace Tests.Services
             _groupMembershipRequest = new GroupMembershipRequest
             {
                 RunId = Guid.NewGuid(),
+                GroupId = Guid.NewGuid(),
                 SourceGroup = new AzureADGroup { ObjectId = Guid.NewGuid() },
                 SyncJob = syncJob
             };
@@ -132,6 +136,8 @@ namespace Tests.Services
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
                                             _syncJobRepository.Object,
+                                            _groupsRepository.Object,
+                                            _channelsRepository.Object,
                                             _serviceBusQueueRepository.Object,
                                             _destinationAttributesRepository.Object,
                                             _loggingRepository.Object,
@@ -398,8 +404,8 @@ namespace Tests.Services
                                       {
                                           var fileDeleterRequest = request as FileDeleterRequest;
 
-                                          await CallFileDeleterFunctionAsync(fileDeleterRequest);
-                                      });
+                                           await CallFileDeleterFunctionAsync(fileDeleterRequest);
+                                       });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
@@ -699,11 +705,11 @@ namespace Tests.Services
                            {
                                var fileDownloaderRequest = request as FileDownloaderRequest;
 
-                               if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
-                                   content = string.Empty;
-                               else
-                                   content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
-                           })
+                                           if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
+                                               content = string.Empty;
+                                           else
+                                               content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
+                                       })
                            .ReturnsAsync(() => content);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -884,11 +890,11 @@ namespace Tests.Services
                {
                    var fileDownloaderRequest = request as FileDownloaderRequest;
 
-                   if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
-                       content = string.Empty;
-                   else
-                       content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
-               })
+                                           if (fileDownloaderRequest.FilePath.StartsWith("cache/delta_"))
+                                               content = string.Empty;
+                                           else
+                                               content = await CallFileDownloaderFunctionAsync(fileDownloaderRequest);
+                                       })
                .ReturnsAsync(() => content);
 
             _userCount = 10;

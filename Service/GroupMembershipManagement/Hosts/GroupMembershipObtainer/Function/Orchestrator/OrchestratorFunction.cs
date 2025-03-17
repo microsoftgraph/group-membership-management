@@ -62,10 +62,20 @@ namespace Hosts.GroupMembershipObtainer
                     }
 
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(OrchestratorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
+                    var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
+                    if (groupId.Equals(Guid.Empty))
+                    {
+                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Unable to get group id for job:{syncJob.Id}", RunId = runId }, VerbosityLevel.DEBUG);
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
+                        await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                        return;
+                    }
+                    if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Group Id for job:{syncJob.Id} is {groupId}", RunId = runId }, VerbosityLevel.DEBUG);
                     var (sourceGroup, sourceGroupId) = await context.CallActivityAsync<(AzureADGroup, string)>(nameof(GroupReaderFunction),
                                                                                         new GroupReaderRequest
                                                                                         {
                                                                                             SyncJob = syncJob,
+                                                                                            GroupId = groupId,
                                                                                             CurrentPart = mainRequest.CurrentPart,
                                                                                             IsDestinationPart = mainRequest.IsDestinationPart,
                                                                                             RunId = runId
@@ -74,7 +84,7 @@ namespace Hosts.GroupMembershipObtainer
                     if (sourceGroup.ObjectId == Guid.Empty)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
-                        
+
                         var destinationName = await context.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), syncJob);
                         if (destinationName == null)
                         {
@@ -88,14 +98,14 @@ namespace Hosts.GroupMembershipObtainer
                         var additionalContentParams = new[]
                         {
                             destinationName.ToString(),
-                            syncJob.TargetOfficeGroupId.ToString(),
+                            groupId.ToString(),
                             sourceGroupId.ToString(),
                             DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotValidSourceNotification]
                         };
-                        await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest {                                                         
+                        await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest {
                                                         SyncJob = syncJob,
                                                         NotificationType = NotificationMessageType.NotValidSourceNotification,
-                                                        AdditionalContentParams = additionalContentParams 
+                                                        AdditionalContentParams = additionalContentParams
                                                         });
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.QueryNotValid });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = runId });
@@ -128,6 +138,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                         new GroupMembershipRequest
                                                                                                                         {
                                                                                                                             SyncJob = syncJob,
+                                                                                                                            GroupId = groupId,
                                                                                                                             SourceGroup = sourceGroup,
                                                                                                                             RunId = runId
                                                                                                                         });
@@ -146,13 +157,14 @@ namespace Hosts.GroupMembershipObtainer
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
                         {
                             RunId = runId,
-                            Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {syncJob.TargetOfficeGroupId}."
+                            Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {groupId}."
                         });
 
                         var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
                                                                                 new UsersSenderRequest
                                                                                 {
                                                                                     SyncJob = syncJob,
+                                                                                    GroupId = groupId,
                                                                                     RunId = runId,
                                                                                     Users = TextCompressor.Compress(JsonConvert.SerializeObject(distinctUsers)),
                                                                                     CurrentPart = mainRequest.CurrentPart,

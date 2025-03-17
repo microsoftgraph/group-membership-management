@@ -8,6 +8,7 @@ namespace Hosts.GroupMembershipObtainer
     public class UsersSenderRequest
     {
         public SyncJob SyncJob { get; set; }
+        public Guid GroupId { get; set; }
         public Guid RunId { get; set; }
 
         /// <summary>

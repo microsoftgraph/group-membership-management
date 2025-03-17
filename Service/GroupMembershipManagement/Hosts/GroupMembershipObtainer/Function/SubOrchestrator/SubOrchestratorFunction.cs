@@ -55,7 +55,7 @@ namespace Hosts.GroupMembershipObtainer
                 if (request != null && request.SyncJob != null)
                 {
                     _ = _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubOrchestratorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-                    var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
+                    var isExistingGroup = await context.CallActivityAsync<bool>(nameof(GroupValidatorFunction), new GroupValidatorRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId });
                     if (!isExistingGroup)
                         return TextCompressor.Compress(JsonConvert.SerializeObject(new SubOrchestratorResponse { Status = SyncStatus.SecurityGroupNotFound }));
 
@@ -68,12 +68,13 @@ namespace Hosts.GroupMembershipObtainer
 
                     if (!context.IsReplaying)
                     {
-                        if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                        if (request.SourceGroup.ObjectId != request.GroupId)
                         {
                             var nestedGroupEvent = new Dictionary<string, string>
                             {
                                 { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
                                 { "Destination", request.SyncJob.Destination },
+                                { "DestinationGroupObjectId", request.GroupId.ToString() },
                                 { "NestedGroupCount", transitiveGroupCount.ToString() }
                             };
                             _telemetryClient.TrackEvent("NestedGroupCount", nestedGroupEvent);
@@ -89,7 +90,7 @@ namespace Hosts.GroupMembershipObtainer
 
                         allUsers.AddRange(response.Users);
 
-                        if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                        if (request.SourceGroup.ObjectId != request.GroupId)
                         {
                             allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                         }
@@ -116,7 +117,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 allUsers.AddRange(response.Users);
 
-                                if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                                if (request.SourceGroup.ObjectId != request.GroupId)
                                 {
                                     allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                                 }
@@ -136,7 +137,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 allUsers.AddRange(response.Users);
 
-                                if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                                if (request.SourceGroup.ObjectId != request.GroupId)
                                 {
                                     allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                                 }
@@ -187,7 +188,7 @@ namespace Hosts.GroupMembershipObtainer
                                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Number of users from {request.SourceGroup.ObjectId} ({countOfUsersFromAADGroup}) and cache ({countOfUsersFromCache}) are equal" });
                                 }
 
-                                if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                                if (request.SourceGroup.ObjectId != request.GroupId)
                                 {
                                     allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                                 }
@@ -213,7 +214,7 @@ namespace Hosts.GroupMembershipObtainer
                                 if (response.Users.Any())
                                     allUsers.AddRange(response.Users);
 
-                                if (request.SourceGroup.ObjectId != request.SyncJob.TargetOfficeGroupId)
+                                if (request.SourceGroup.ObjectId != request.GroupId)
                                 {
                                     allUsers.ForEach(x => x.SourceGroup = request.SourceGroup.ObjectId);
                                 }

@@ -23,6 +23,8 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly ILoggingRepository _log;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly bool _isGroupMembershipDryRunEnabled;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
@@ -30,6 +32,8 @@ namespace Hosts.GroupMembershipObtainer
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
                                       IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+                                      IDatabaseGroupsRepository databaseGroupsRepository,
+                                      IDatabaseChannelsRepository databaseChannelsRepository,
                                       IServiceBusQueueRepository notificationsQueueRepository,
                                       IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
                                       ILoggingRepository logging,
@@ -40,6 +44,8 @@ namespace Hosts.GroupMembershipObtainer
             _blobStorageRepository = blobStorageRepository;
             _log = logging;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
+            _databaseGroupsRepository = databaseGroupsRepository;
+            _databaseChannelsRepository = databaseChannelsRepository;
             _notificationsQueueRepository = notificationsQueueRepository;
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
@@ -157,13 +163,29 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
+        }
+
         public async Task<string> SendMembershipAsync(SyncJob syncJob, List<AzureADUser> allUsers, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
+            var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
             var groupMembership = new GroupMembership
             {
                 SourceMembers = allUsers ?? new List<AzureADUser>(),
-                Destination = new AzureADGroup { ObjectId = syncJob.TargetOfficeGroupId },
+                Destination = new AzureADGroup { ObjectId = targetOfficeGroupId },
                 RunId = runId,
                 Exclusionary = exclusionary,
                 SyncJobId = syncJob.Id,
@@ -172,7 +194,7 @@ namespace Hosts.GroupMembershipObtainer
             };
 
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
-            var fileName = $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
+            var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonConvert.SerializeObject(groupMembership));
 
             return fileName;
@@ -226,16 +248,7 @@ namespace Hosts.GroupMembershipObtainer
         }
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
-            var destination = DestinationParser.ParseDestination(job);   
-            if (destination == null)
-            {
-                await _log.LogMessageAsync(new LogMessage
-                {
-                    RunId = job.RunId,
-                    Message = "Failed to parse destination from job."
-                });
-                return null;
-            }
+            var objectId = await GetGroupIdAsync(job);
             // Try to get the name from the DestinationNames table first
 
             var destinationName = await _databaseDestinationAttributesRepository.GetDestinationName(job);
@@ -251,9 +264,8 @@ namespace Hosts.GroupMembershipObtainer
                 Message = "Destination name not found in database; attempting to retrieve from Graph"
             });
 
-            if (destination.Type == "GroupMembership")
+            if (job.MembershipType == MembershipTypes.GroupMembership.ToString())
             {
-                var objectId = destination.Value.ObjectId;
                 return await _graphGroupRepository.GetGroupNameAsync(objectId);
             }
             

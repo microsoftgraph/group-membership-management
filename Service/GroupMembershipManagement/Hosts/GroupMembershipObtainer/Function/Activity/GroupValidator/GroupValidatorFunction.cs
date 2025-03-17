@@ -47,13 +47,13 @@ namespace Hosts.GroupMembershipObtainer
                     if (groupExistsResult.Outcome == OutcomeType.Successful)
                     {
                         await _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Group with ID {request.ObjectId} doesn't exist. Stopping sync and marking as {SyncStatus.SecurityGroupNotFound}." });
-                        var targetGroupName = await _calculator.GetGroupNameAsync(request.SyncJob.TargetOfficeGroupId);
+                        var targetGroupName = await _calculator.GetGroupNameAsync(request.GroupId);
                         if (request.SyncJob != null && request.ObjectId != default(Guid))
                             await _calculator.SendEmailAsync(request.SyncJob,
                                                                 NotificationMessageType.SourceNotExistNotification,
                                                                 new[]
                                                                 {
-                                                                request.SyncJob.TargetOfficeGroupId.ToString(),
+                                                                request.GroupId.ToString(),
 																targetGroupName,
                                                                 request.ObjectId.ToString(),
                                                                 DisabledNotificationType.StatusDescriptions[NotificationMessageType.SourceNotExistNotification]

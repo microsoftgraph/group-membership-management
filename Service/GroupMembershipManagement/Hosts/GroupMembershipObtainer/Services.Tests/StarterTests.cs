@@ -37,7 +37,6 @@ namespace Tests.Services
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 Query = QuerySample.GenerateQuerySample("GroupMembership").GetQuery(),
                 Status = "InProgress",
                 Period = 6

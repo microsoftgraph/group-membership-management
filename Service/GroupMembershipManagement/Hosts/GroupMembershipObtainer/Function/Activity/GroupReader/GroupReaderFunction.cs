@@ -31,7 +31,7 @@ namespace Hosts.GroupMembershipObtainer
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = request.RunId,
-                    Message = $"Getting destination group for Part# {request.CurrentPart}, with group id {request.SyncJob.TargetOfficeGroupId}."
+                    Message = $"Getting destination group for Part# {request.CurrentPart}, with group id {request.GroupId}."
                 });
             }
             else
@@ -39,7 +39,7 @@ namespace Hosts.GroupMembershipObtainer
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     RunId = request.RunId,
-                    Message = $"Getting source group for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.SyncJob.TargetOfficeGroupId}."
+                    Message = $"Getting source group for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.GroupId}."
                 });
             }
 
@@ -48,7 +48,7 @@ namespace Hosts.GroupMembershipObtainer
 
             if (request.IsDestinationPart)
             {
-                azureAdGroup = new AzureADGroup { ObjectId = request.SyncJob.TargetOfficeGroupId };
+                azureAdGroup = new AzureADGroup { ObjectId = request.GroupId };
                 groupId = Guid.Empty.ToString();
 
             }
