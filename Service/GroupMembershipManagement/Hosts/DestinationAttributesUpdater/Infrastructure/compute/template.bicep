@@ -97,7 +97,7 @@ var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, da
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
-var destinationAttributesUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'destinationAttributesUpdaterStorageAccountProd')
+
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -120,11 +120,9 @@ var commonSettings = {
 }
 
 var appSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(destinationAttributesUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}DestinationAttributesUpdater'
   AzureFunctionsWebHost__hostid: 'DestinationAttributesUpdater'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(destinationAttributesUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-DestinationAttributesUpdater')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   destinationAttributesUpdaterSchedule: '0 0 */12 * * *'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
@@ -167,6 +165,16 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   name: 'uamiNameReader-DestinationAttributesUpdater'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-DestinationAttributesUpdater'
+  params: {
+    value: dataKeyVault.getSecret('destinationAttributesUpdaterStorageAccountProd')
   }
   dependsOn: [
     dataKeyVault

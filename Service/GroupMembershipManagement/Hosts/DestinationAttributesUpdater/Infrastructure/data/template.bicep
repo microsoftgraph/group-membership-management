@@ -23,6 +23,6 @@ module destinationAttributesUpdaterStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'destinationAttributesUpdaterStorageAccountProd'
+    storageAccountSettingName: 'destinationAttributesUpdaterStorageAccountProd'
   }
 }

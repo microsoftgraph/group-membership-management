@@ -20,8 +20,8 @@ param addJobsStorageAccountPolicies bool = false
 @description('Specifies the Azure location where the storage account will be created.')
 param location string
 
-@description('Key vault setting name to store the connection string.')
-param storageAccountConnectionStringSettingName string
+@description('Key vault setting name to store the account name.')
+param storageAccountSettingName string
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   name: name
@@ -34,6 +34,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
     supportsHttpsTrafficOnly: true
     allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
+    allowSharedKeyAccess: false
   }
   identity: {
     type: 'SystemAssigned'
@@ -99,8 +100,8 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultSecrets: {
       secrets: [
         {
-          name:  storageAccountConnectionStringSettingName
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value}'
+          name:  storageAccountSettingName
+          value: name
         }
       ]
     }
