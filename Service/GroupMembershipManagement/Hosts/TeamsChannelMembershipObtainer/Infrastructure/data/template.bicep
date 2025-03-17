@@ -23,6 +23,6 @@ module teamsChannelMembershipObtainerStorageAccountProd 'storageAccount.bicep' =
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'teamsChannelMembershipObtainerStorageAccountProd'
+    storageAccountSettingName: 'teamsChannelMembershipObtainerStorageAccountProd'
   }
 }
