@@ -52,7 +52,7 @@ namespace Hosts.SyncJobUpdater
                 else
                 {
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"{syncJob.TargetOfficeGroupId} pass an unknown status. Marking job as {SyncStatus.Error}.", Verbosity = VerbosityLevel.DEBUG });
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"Job with Id {syncJob.Id} pass an unknown status. Marking job as {SyncStatus.Error}.", Verbosity = VerbosityLevel.DEBUG });
                     return;
                 }
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = status });
