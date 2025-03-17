@@ -109,7 +109,7 @@ namespace Services.Tests
 
             for (int i = 0; i < jobs.Count; i++)
             {
-                Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
+                Assert.AreEqual(jobs[i].Id, updatedJobs[i].Id);
                 Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
                 Assert.IsTrue(updatedJobs[i].ScheduledDate >= dateTimeNow.AddSeconds(60 * START_TIME_DELAY_MINUTES +
                     i * (DEFAULT_RUNTIME_SECONDS + BUFFER_SECONDS)));
@@ -155,7 +155,7 @@ namespace Services.Tests
             // 1  3  5  7
             for (int i = 0; i < jobs.Count; i++)
             {
-                Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
+                Assert.AreEqual(jobs[i].Id, updatedJobs[i].Id);
                 Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
                 if (i < 8)
                 {
@@ -184,7 +184,7 @@ namespace Services.Tests
 
             for (int i = 0; i < jobs.Count; i++)
             {
-                Assert.AreEqual(jobs[i].TargetOfficeGroupId, updatedJobs[i].TargetOfficeGroupId);
+                Assert.AreEqual(jobs[i].Id, updatedJobs[i].Id);
                 Assert.IsTrue(jobs[i].ScheduledDate < dateTimeNow);
 
                 if (i < 3)
@@ -212,12 +212,12 @@ namespace Services.Tests
             var numberOfJobs = 5;
             var periodInHours = 1;
             var jobs = CreateSampleSyncJobs(numberOfJobs, periodInHours);
-            var groupRuntimes = new List<(string Destination, double Median, double Average)>();
+            var groupRuntimes = new List<(string Id, double Median, double Average)>();
             var max = 100.0;
             var avg = 5.0;
             foreach (var job in jobs)
             {
-                groupRuntimes.Add((job.Destination, max++, avg++));
+                groupRuntimes.Add((job.Id.ToString(), max++, avg++));
             }
 
             var queryResult = CreateLogsQueryResult(groupRuntimes);
@@ -246,7 +246,7 @@ namespace Services.Tests
             {
                 if (currentJobIndex > 0)
                 {
-                    var previousJobRunTime = groupRuntimes.First(x => x.Destination == updatedJobs[currentJobIndex - 1].Destination);
+                    var previousJobRunTime = groupRuntimes.First(x => x.Id.ToString() == updatedJobs[currentJobIndex - 1].Id.ToString());
                     baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Median);
                 }
 
@@ -268,10 +268,8 @@ namespace Services.Tests
                     Id = Guid.NewGuid(),
                     Period = period,
                     ScheduledDate = ScheduledDateBase.AddDays(-1 * i),
-                    Status = SyncStatus.Idle.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
-                    LastRunTime = LastRunTimeBase.AddDays(-1 * i),
-                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
+                    Status = SyncStatus.Idle.ToString(),                   
+                    LastRunTime = LastRunTimeBase.AddDays(-1 * i)                   
                 };
 
                 jobs.Add(job);

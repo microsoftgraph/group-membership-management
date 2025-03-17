@@ -139,7 +139,7 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calculating distribution for jobs with period {periodInHours}" });
 
-            HashSet<string> groupDestinationsForPeriod = new HashSet<string>(jobsToDistribute.ConvertAll(job => job.Destination));
+            HashSet<string> groupDestinationsForPeriod = new HashSet<string>(jobsToDistribute.ConvertAll(job => job.Id.ToString()));
             runtimeMap = new Dictionary<string, double>(runtimeMap.Where(entry => groupDestinationsForPeriod.Contains(entry.Key) || entry.Key == "Default"));
 
             // Sort sync jobs by Status, LastRunTime and ThresholdPercentages
@@ -167,7 +167,7 @@ namespace Services
                 var updatedJob = JsonConvert.DeserializeObject<DistributionSyncJob>(serializedJob);
 
                 updatedJob.ScheduledDate = earliestTime;
-                var groupRuntime = runtimeMap.ContainsKey(job.Destination) ? runtimeMap[job.Destination] : runtimeMap["Default"];
+                var groupRuntime = runtimeMap.ContainsKey(job.Id.ToString()) ? runtimeMap[job.Id.ToString()] : runtimeMap["Default"];
                 DateTime updatedTime = earliestTime.AddSeconds(groupRuntime + bufferBetweenSyncsSeconds);
                 int index = jobThreads.IndexOf(earliestTime);
                 jobThreads[index] = updatedTime;
