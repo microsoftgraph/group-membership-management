@@ -86,7 +86,6 @@ var senderPassword = resourceId(subscription().subscriptionId, prereqsKeyVaultRe
 var supportEmailAddresses = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'supportEmailAddresses')
 var membershipStorageAccountName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountName')
 var membershipContainerName = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'membershipContainerName')
-var graphUpdaterStorageAccountProd = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUpdater${instanceIdentifier}StorageAccountProd')
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var serviceBusFQN = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
@@ -119,11 +118,9 @@ var commonSettings = {
 }
 
 var appSettings = {
-  AzureWebJobsStorage: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
+  AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater${instanceIdentifier}'
   AzureFunctionsWebHost__hostid: 'GraphUpdater${instanceIdentifier}'
-  WEBSITE_CONTENTAZUREFILECONNECTIONSTRING: '@Microsoft.KeyVault(SecretUri=${reference(graphUpdaterStorageAccountProd, '2019-09-01').secretUriWithVersion})'
-  WEBSITE_CONTENTSHARE: toLower('functionApp-GraphUpdater')
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
@@ -180,6 +177,16 @@ module userAssignedManagedIdentityNameReader 'keyVaultReader.bicep' = {
   name: 'uamiNameReader-GraphUpdater${instanceSuffix}'
   params: {
     value: dataKeyVault.getSecret('graphUserAssignedManagedIdentityName')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module storageAccountNameReader 'keyVaultReader.bicep' = {
+  name: 'storageAccountNameReader-GraphUpdater${instanceSuffix}'
+  params: {
+    value: dataKeyVault.getSecret('graphUpdater${instanceIdentifier}StorageAccountProd')
   }
   dependsOn: [
     dataKeyVault
