@@ -33,11 +33,12 @@ namespace Services.Tests
         public async Task GetGroupNameAsync_ShouldReturnCorrectGroupName()
         {
             var expectedGroupName = "Test Group Name";
-            var syncJob = new SyncJob { TargetOfficeGroupId = Guid.NewGuid(), RunId = Guid.NewGuid() };
-            _mockGraphAPIService.Setup(service => service.GetGroupNameAsync(syncJob.TargetOfficeGroupId))
+            var syncJob = new SyncJob { RunId = Guid.NewGuid() };
+            var groupNameReaderRequest = new GroupNameReaderRequest { SyncJob = syncJob, GroupId = Guid.NewGuid() };
+            _mockGraphAPIService.Setup(service => service.GetGroupNameAsync(groupNameReaderRequest.GroupId))
                                 .ReturnsAsync(expectedGroupName);
 
-            var result = await _groupNameReaderFunction.GetGroupNameAsync(syncJob);
+            var result = await _groupNameReaderFunction.GetGroupNameAsync(groupNameReaderRequest);
 
             Assert.IsNotNull(result);
             Assert.AreEqual(expectedGroupName, result.Name);

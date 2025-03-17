@@ -38,17 +38,15 @@ namespace Services
 
         public async Task SendMessageAsync(MembershipHttpRequest request)
         {
-            var destinations = JArray.Parse(request.SyncJob.Destination);
-            var destinationType = destinations.SelectTokens("$..type").Select(x => x.Value<string>()).First();
             var body = System.Text.Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(request));
 
             var message = new Models.ServiceBus.ServiceBusMessage
             {
-                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{destinationType}",
+                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{request.SyncJob.MembershipType}",
                 Body = body
             };
 
-            message.ApplicationProperties.Add("Type", destinationType);
+            message.ApplicationProperties.Add("Type", request.SyncJob.MembershipType);
 
             // Send message to the appropriate queue or topic
             if (_multilaneConfig.IsEnabled)
@@ -60,7 +58,7 @@ namespace Services
                 await _serviceBusTopicsRepository.AddMessageAsync(message);
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Sent message to {destinationType} membership updater",
+                    Message = $"Sent message to {request.SyncJob.MembershipType} membership updater",
                     RunId = request.SyncJob.RunId
                 }, VerbosityLevel.INFO);
             }

@@ -32,7 +32,9 @@ namespace Services.Tests
     public class MembershipSubOrchestratorTests
     {
         private SyncJob _syncJob;
-		private JobState _jobState;
+        private Group _group;
+        private Channel _channel;
+        private JobState _jobState;
         private BlobResult _blobResult;
         private PolicyResult<bool> _groupExists;
         private int _numberOfUsersForSourcePart;
@@ -55,6 +57,8 @@ namespace Services.Tests
         private Mock<IThresholdNotificationConfig> _thresholdNotificationConfig;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IDurableOrchestrationContext> _durableContext;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
@@ -69,6 +73,8 @@ namespace Services.Tests
             _thresholdNotificationConfig = new Mock<IThresholdNotificationConfig>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _durableContext = new Mock<IDurableOrchestrationContext>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _graphAPIService = new Mock<IGraphAPIService>();
@@ -82,6 +88,8 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                             (
                                                 _syncJobRepository.Object,
+                                                _groupsRepository.Object,
+                                                _channelsRepository.Object,
                                                 _loggingRepository.Object,
                                                 _graphAPIService.Object,
                                                 _dryRun.Object,
@@ -108,26 +116,37 @@ namespace Services.Tests
 			_syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = targetGroupId,
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
-                Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{targetGroupId}\"}}}}]",
+                MembershipType = "GroupMembership",
                 Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdOne}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{sourceGroupIdTwo}\"}}]"
-			};
+            };
+            _group = new Group
+            {
+                GroupId = targetGroupId,
+                SyncJobId = _syncJob.Id
+            };
+            _channel = new Channel
+            {
+                ChannelId = "some-channel",
+                GroupId = targetGroupId,
+                SyncJobId = _syncJob.Id
+            };
             _groupInformation = new SyncJobGroup
             {
                 SyncJob = _syncJob,
                 Name = "groupName"
 
             };
-			_membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
+            _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
             {
                 EntityId = new EntityId(),
-                SyncJob = _syncJob
+                SyncJob = _syncJob,
+                GroupId = targetGroupId
             };
 
             _jobState = new JobState
@@ -168,7 +187,7 @@ namespace Services.Tests
                                             Destination = new AzureADGroup
                                             {
                                                 ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
+                                                                ? _group.GroupId
                                                                 : Guid.Empty
                                             }
                                         };
@@ -197,7 +216,7 @@ namespace Services.Tests
                                 Destination = new AzureADGroup
                                 {
                                     ObjectId = _syncJob != null
-                                                    ? _syncJob.TargetOfficeGroupId
+                                                    ? _group.GroupId
                                                     : Guid.Empty
                                 }
                             };
@@ -220,6 +239,12 @@ namespace Services.Tests
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                               .ReturnsAsync(() => _syncJob);
 
+            _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                              .ReturnsAsync(() => _group);
+
+            _channelsRepository.Setup(x => x.GetChannelUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                              .ReturnsAsync(() => _channel);
+
             _graphAPIService.Setup(x => x.GroupExistsAsync(It.IsAny<Guid>(), It.IsAny<Guid>()))
                             .ReturnsAsync(() => _groupExists);
 
@@ -229,7 +254,7 @@ namespace Services.Tests
             _graphAPIService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                             .ReturnsAsync(() => "GroupName");
 
-			_durableContext.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(s => s == nameof(GroupNameReaderFunction)), It.IsAny<SyncJob>()))
+			_durableContext.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(s => s == nameof(GroupNameReaderFunction)), It.IsAny<GroupNameReaderRequest>()))
 			   .ReturnsAsync(_groupInformation);
 
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
@@ -475,6 +500,8 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                 (
                                     _syncJobRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
                                     _loggingRepository.Object,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
@@ -508,6 +535,8 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                 (
                                     _syncJobRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
                                     _loggingRepository.Object,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
@@ -536,6 +565,8 @@ namespace Services.Tests
             _deltaCalculatorService = new DeltaCalculatorService
                                 (
                                     _syncJobRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
                                     _loggingRepository.Object,
                                     _graphAPIService.Object,
                                     _dryRun.Object,
@@ -570,8 +601,8 @@ namespace Services.Tests
 
             var contextMock = new Mock<IDurableOrchestrationContext>();
 
-            _membersPerFile.Add(GenerateFileName(_syncJob, "SourceMembership", contextMock.Object), 100000);
-            _membersPerFile.Add(GenerateFileName(_syncJob, "DestinationMembership", contextMock.Object), 0);
+            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "SourceMembership", contextMock.Object), 100000);
+            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "DestinationMembership", contextMock.Object), 0);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
@@ -603,7 +634,7 @@ namespace Services.Tests
         {
             _syncJob.ThresholdPercentageForAdditions = -1;
             _syncJob.ThresholdPercentageForRemovals = -1;
-			_numberOfUsersForSourcePart = 50000;
+            _numberOfUsersForSourcePart = 50000;
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
@@ -624,7 +655,7 @@ namespace Services.Tests
                                             Destination = new AzureADGroup
                                             {
                                                 ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
+                                                                ? _group.GroupId
                                                                 : Guid.Empty
                                             }
                                         };
@@ -669,7 +700,7 @@ namespace Services.Tests
                                             Destination = new AzureADGroup
                                             {
                                                 ObjectId = _syncJob != null
-                                                                ? _syncJob.TargetOfficeGroupId
+                                                                ? _group.GroupId
                                                                 : Guid.Empty
                                             }
                                         };
@@ -701,7 +732,7 @@ namespace Services.Tests
                                            Destination = new AzureADGroup
                                            {
                                                ObjectId = _syncJob != null
-                                                               ? _syncJob.TargetOfficeGroupId
+                                                               ? _group.GroupId
                                                                : Guid.Empty
                                            }
                                        };
@@ -803,7 +834,7 @@ namespace Services.Tests
                                 Destination = new AzureADGroup
                                 {
                                     ObjectId = _syncJob != null
-                                                    ? _syncJob.TargetOfficeGroupId
+                                                    ? _group.GroupId
                                                     : Guid.Empty
                                 }
                             };
@@ -858,10 +889,10 @@ namespace Services.Tests
             return await function.CalculateDeltaAsync(request);
         }
 
-        private string GenerateFileName(SyncJob syncJob, string suffix, IDurableOrchestrationContext context)
+        private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, IDurableOrchestrationContext context)
         {
             var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
-            return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
+            return $"/{groupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
 }

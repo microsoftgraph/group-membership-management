@@ -71,7 +71,7 @@ namespace Hosts.MembershipAggregator
                     {
                         Message = new LogMessage
                         {
-                            Message = $"Sources are empty for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}. Empty destination is not allowed for this group. Marking job as 'MembershipDataNotFound'.",
+                            Message = $"Sources are empty for TargetOfficeGroupId {request.GroupId}. Empty destination is not allowed for this group. Marking job as 'MembershipDataNotFound'.",
                             RunId = runId
                         }
                     });
@@ -83,13 +83,17 @@ namespace Hosts.MembershipAggregator
                     RunId = runId
                 });
 
-                var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), request.SyncJob);
+                var groupInformation = await context.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), new GroupNameReaderRequest
+                                                                                    {
+                                                                                        SyncJob = request.SyncJob,
+                                                                                        GroupId = request.GroupId
+                                                                                    });
                 await context.CallActivityAsync(nameof(EmailSenderFunction),
                                                 new EmailSenderRequest
                                                 {
                                                     SyncJob = request.SyncJob,
                                                     NotificationType = NotificationMessageType.NoDataNotification,
-                                                    AdditionalContentParams = new[] { request.SyncJob.TargetOfficeGroupId.ToString(), groupInformation.Name },
+                                                    AdditionalContentParams = new[] { request.GroupId.ToString(), groupInformation.Name },
                                                 });
 
                 return new MembershipSubOrchestratorResponse
@@ -101,11 +105,11 @@ namespace Hosts.MembershipAggregator
 
             if (SourceMembership.SourceMembers.Count >= MEMBERS_LIMIT || DestinationMembership.SourceMembers.Count >= MEMBERS_LIMIT)
             {
-                var sourceFilePath = GenerateFileName(request.SyncJob, "SourceMembership", context);
+                var sourceFilePath = GenerateFileName(request.SyncJob, request.GroupId, "SourceMembership", context);
                 var sourceContent = TextCompressor.Compress(JsonConvert.SerializeObject(SourceMembership));
                 var sourceRequest = new FileUploaderRequest { FilePath = sourceFilePath, Content = sourceContent, SyncJob = request.SyncJob };
 
-                var destinationFilePath = GenerateFileName(request.SyncJob, "DestinationMembership", context);
+                var destinationFilePath = GenerateFileName(request.SyncJob, request.GroupId, "DestinationMembership", context);
                 var destinationContent = TextCompressor.Compress(JsonConvert.SerializeObject(DestinationMembership));
                 var destinationRequest = new FileUploaderRequest { FilePath = destinationFilePath, Content = destinationContent, SyncJob = request.SyncJob };
 
@@ -129,7 +133,7 @@ namespace Hosts.MembershipAggregator
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {
-                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, context);
+                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, request.GroupId, context);
                 await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
@@ -152,7 +156,7 @@ namespace Hosts.MembershipAggregator
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.ThresholdExceeded)
             {
-                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, context);
+                var uploadRequest = CreateAggregatedFileUploaderRequest(SourceMembership, deltaResponse, request.SyncJob, request.GroupId, context);
                 await context.CallActivityAsync(nameof(FileUploaderFunction), uploadRequest);
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
@@ -180,7 +184,7 @@ namespace Hosts.MembershipAggregator
             }
             else if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.DryRun)
             {
-                var message = $"A Dry Run Synchronization for {request.SyncJob.TargetOfficeGroupId} is now complete. " +
+                var message = $"A Dry Run Synchronization for {request.GroupId} is now complete. " +
                               $"{deltaResponse.MembersToAddCount} users would have been added. " +
                               $"{deltaResponse.MembersToRemoveCount} users would have been removed.";
 
@@ -215,18 +219,20 @@ namespace Hosts.MembershipAggregator
                 {
                     Message = new LogMessage
                     {
-                        Message = $"There are no membership changes for TargetOfficeGroupId {request.SyncJob.TargetOfficeGroupId}.",
+                        Message = $"There are no membership changes for TargetOfficeGroupId {request.GroupId}.",
                         RunId = runId
                     }
                 });
 
                 var sourceTypeCounts = JsonParser.GetQueryTypes(request.SyncJob.Query);
-                var destination = JsonParser.GetDestination(request.SyncJob.Destination);
+                var channelId = await context.CallActivityAsync<string>(nameof(GetChannelFunction), request.SyncJob);
                 var syncCompleteEvent = new SyncCompleteCustomEvent
                 {
-                    Type = destination.Type.ToString(),
+                    Type = request.SyncJob.MembershipType,
                     SourceTypesCounts = sourceTypeCounts,
-                    Destination = request.SyncJob.Destination,
+                    Destination = $"[{{\"type\":\"{request.SyncJob.MembershipType}\",\"value\":{{\"objectId\":\"{request.GroupId}\"}}}}]",
+                    GroupId = request.GroupId.ToString(),
+                    ChannelId = channelId,
                     RunId = runId.ToString(),
                     IsDryRunEnabled = false.ToString(),
                     ProjectedMemberCount = "0",
@@ -303,7 +309,7 @@ namespace Hosts.MembershipAggregator
             return (sourceGroupMembership, destinationGroupMembership);
         }
 
-        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, IDurableOrchestrationContext context)
+        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, Guid groupId, IDurableOrchestrationContext context)
         {
             var membersToAdd = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
             var membersToRemove = JsonConvert.DeserializeObject<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));
@@ -319,16 +325,16 @@ namespace Hosts.MembershipAggregator
                 DefaultValueHandling = DefaultValueHandling.Ignore
             };
 
-            var filePath = GenerateFileName(syncJob, "Aggregated", context);
+            var filePath = GenerateFileName(syncJob, groupId, "Aggregated", context);
             var content = TextCompressor.Compress(JsonConvert.SerializeObject(newMembership, serializerSettings));
 
             return new FileUploaderRequest { FilePath = filePath, Content = content, SyncJob = syncJob };
         }
 
-        private string GenerateFileName(SyncJob syncJob, string suffix, IDurableOrchestrationContext context)
+        private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, IDurableOrchestrationContext context)
         {
             var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
-            return $"/{syncJob.TargetOfficeGroupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
+            return $"/{groupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
 
         private void TrackSyncCompleteEvent(IDurableOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)

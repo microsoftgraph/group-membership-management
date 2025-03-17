@@ -22,6 +22,8 @@ namespace Services
     {
 
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IGraphAPIService _graphAPIService;
         private readonly IThresholdConfig _thresholdConfig;
@@ -44,6 +46,8 @@ namespace Services
 
         public DeltaCalculatorService(
             IDatabaseSyncJobsRepository syncJobRepository,
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
             ILoggingRepository loggingRepository,
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
@@ -55,6 +59,8 @@ namespace Services
             )
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
@@ -63,6 +69,31 @@ namespace Services
             _isDryRunEnabled = dryRun != null && dryRun.DryRunEnabled;
             _notificationsQueueRepository = notificationsQueueRepository ?? throw new ArgumentNullException(nameof(notificationsQueueRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+        }
+
+        public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.GroupId;
+            }
+            else if (syncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+            {
+                var group = syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
+                return group.GroupId;
+            }
+            return Guid.Empty;
+        }
+
+        public async Task<string> GetChannelIdAsync(SyncJob syncJob)
+        {
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                var channel = syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+                return channel.ChannelId;
+            }
+            return string.Empty;
         }
 
         public async Task<DeltaResponse> CalculateDifferenceAsync(GroupMembership sourceMembership, GroupMembership destinationMembership)
@@ -82,6 +113,7 @@ namespace Services
                 return deltaResponse;
             }
 
+            var groupId = await GetGroupIdAsync(job);
             var isDryRunSync = _loggingRepository.DryRun = job.IsDryRunEnabled || sourceMembership.MembershipObtainerDryRunEnabled || _isDryRunEnabled;
 
             await _loggingRepository.LogMessageAsync(new LogMessage
@@ -99,7 +131,7 @@ namespace Services
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"{job.TargetOfficeGroupId} job's status is {job.Status}.",
+                Message = $"{groupId} job's status is {job.Status}.",
                 RunId = sourceMembership.RunId
             });
 
@@ -121,7 +153,7 @@ namespace Services
             {
                 var delta = await CalculateDeltaAsync(sourceMembership, destinationMembership, fromto, job);
                 var isInitialSync = job.LastRunTime == SqlDateTime.MinValue.Value;
-                var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, delta.Delta, delta.TotalMembersCount, sourceMembership.RunId);
+                var threshold = isInitialSync ? new ThresholdResult() : await CalculateThresholdAsync(job, groupId, delta.Delta, delta.TotalMembersCount, sourceMembership.RunId);
 
                 deltaResponse.MembersToAdd = delta.Delta.ToAdd;
                 deltaResponse.MembersToRemove = delta.Delta.ToRemove;
@@ -129,7 +161,7 @@ namespace Services
                 if (threshold.IsThresholdExceeded)
                 {
                     deltaResponse.MembershipDeltaStatus = job.IgnoreThresholdOnce ? MembershipDeltaStatus.Ok : MembershipDeltaStatus.ThresholdExceeded;
-                    TrackThresholdViolationEvent(job.TargetOfficeGroupId);
+                    TrackThresholdViolationEvent(groupId);
 
                     if (job.IgnoreThresholdOnce)
                         await LogIgnoreThresholdOnceAsync(job, sourceMembership.RunId);
@@ -140,7 +172,7 @@ namespace Services
                     }
                     else
                     {
-                        await SendThresholdNotificationAsync(threshold, job, sourceMembership.RunId);
+                        await SendThresholdNotificationAsync(threshold, job, groupId, sourceMembership.RunId);
                     }
 
                     return deltaResponse;
@@ -204,7 +236,7 @@ namespace Services
             return (delta, destinationMembership.SourceMembers.Count);
         }
 
-        private async Task<ThresholdResult> CalculateThresholdAsync(SyncJob job, MembershipDelta<AzureADUser> delta, int totalMembersCount, Guid runId)
+        private async Task<ThresholdResult> CalculateThresholdAsync(SyncJob job, Guid groupId, MembershipDelta<AzureADUser> delta, int totalMembersCount, Guid runId)
         {
             double percentageIncrease = 0;
             double percentageDecrease = 0;
@@ -222,7 +254,7 @@ namespace Services
                     await _loggingRepository.LogMessageAsync(
                         new LogMessage
                         {
-                            Message = $"Membership increase in {job.TargetOfficeGroupId} is {percentageIncrease}% " +
+                            Message = $"Membership increase in {groupId} is {percentageIncrease}% " +
                                       $"and is greater than threshold value {job.ThresholdPercentageForAdditions}%",
                             RunId = runId
                         });
@@ -239,7 +271,7 @@ namespace Services
                     await _loggingRepository.LogMessageAsync(
                         new LogMessage
                         {
-                            Message = $"Membership decrease in {job.TargetOfficeGroupId} is {percentageDecrease}% " +
+                            Message = $"Membership decrease in {groupId} is {percentageDecrease}% " +
                                       $"and is lesser than threshold value {job.ThresholdPercentageForRemovals}%",
                             RunId = runId
                         });
@@ -274,16 +306,16 @@ namespace Services
                 RunId = runId
             });
         }
-        private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid runId)
+        private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid groupId, Guid runId)
         {
             var currentThresholdViolations = job.ThresholdViolations + 1;
             var sendNotification = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToNotify;
             var sendDisableJobNotification = currentThresholdViolations == _thresholdConfig.NumberOfThresholdViolationsToDisableJob;
 
-            var groupName = await _graphAPIService.GetGroupNameAsync(job.TargetOfficeGroupId);
+            var groupName = await _graphAPIService.GetGroupNameAsync(groupId);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Threshold exceeded, no changes made to group {groupName} ({job.TargetOfficeGroupId}). ",
+                Message = $"Threshold exceeded, no changes made to group {groupName} ({groupId}). ",
                 RunId = runId
             });
 

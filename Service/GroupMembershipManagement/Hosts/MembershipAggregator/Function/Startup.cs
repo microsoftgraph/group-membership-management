@@ -109,6 +109,8 @@ namespace Hosts.MembershipAggregator
             .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>((services) =>
             {
                 var syncJobRepository = services.GetRequiredService<IDatabaseSyncJobsRepository>();
+                var groupsRepository = services.GetRequiredService<IDatabaseGroupsRepository>();
+                var channelsRepository = services.GetRequiredService<IDatabaseChannelsRepository>();
                 var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                 var graphAPIService = services.GetRequiredService<IGraphAPIService>();
                 var dryRun = services.GetRequiredService<IDryRunValue>();
@@ -125,6 +127,8 @@ namespace Hosts.MembershipAggregator
 
                 return new DeltaCalculatorService(
                     syncJobRepository,
+                    groupsRepository,
+                    channelsRepository,
                     loggingRepository,
                     graphAPIService,
                     dryRun,

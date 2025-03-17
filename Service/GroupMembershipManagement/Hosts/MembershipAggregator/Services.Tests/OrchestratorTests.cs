@@ -31,6 +31,8 @@ namespace Services.Tests
         private const int MEDIUM = 60;
 
         private SyncJob _syncJob;
+        private Group _group;
+        private JobState _jobState;
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
         private TelemetryClient _telemetryClient;
@@ -74,15 +76,20 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = targetOfficeGroupId,
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
-                Query = "[{\"type\":\"GroupMembership\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]",
-                Destination = $"[{{\"value\":{{\"objectId\":\"{targetOfficeGroupId}\"}},\"type\":\"GraphUpdater\"}}]"
+                Query = "[{\"type\":\"GroupMembership\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]"  ,
+                MembershipType = "GroupMembership"
+            };
+
+            _group = new Group
+            {
+                GroupId = targetOfficeGroupId,
+                SyncJobId = _syncJob.Id
             };
 
             _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
@@ -112,6 +119,9 @@ namespace Services.Tests
 
             _durableContext.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>()))
                             .Returns(() => _jobTrackerEntity.Object);
+
+            _durableContext.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+                            .ReturnsAsync(_group.GroupId);
 
             _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -147,6 +157,18 @@ namespace Services.Tests
                                var membershipRequest = request as MembershipHttpRequest;
                                await CallTopicMessageSenderFunctionAsync(membershipRequest);
                            });
+        }
+
+        [TestMethod]
+        public async Task HandleMissingGroupIdAsync()
+        {
+            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            _durableContext.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+              .ReturnsAsync(Guid.Empty);
+            await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
+
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unable to get group id")), VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()));
+            _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Once());
         }
 
         [TestMethod]

@@ -39,7 +39,7 @@ namespace Services.Tests
         public async Task SendEmailAsyncLogsStartAndCompletionAndCallsGraphApiService()
         {
 
-            var syncJob = new SyncJob { TargetOfficeGroupId = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "test@example.com" };
+            var syncJob = new SyncJob { Group = new Group { GroupId = Guid.NewGuid() } , RunId = Guid.NewGuid(), Requestor = "test@example.com" };
       
             var emailRequest = new EmailSenderRequest
             {

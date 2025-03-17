@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 
 namespace Models
 {
@@ -10,6 +11,7 @@ namespace Models
         public int? ProjectedMemberCount { get; set; }
         public int MembersToBeAdded { get; set; }
         public int MembersToBeRemoved { get; set; }
+        public Guid GroupId { get; set; }
         public int MembersToBeUpdated => MembersToBeAdded + MembersToBeRemoved;
     }
 }

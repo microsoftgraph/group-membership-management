@@ -21,6 +21,7 @@ namespace Services.Tests
     public class StarterFunctionTests
     {
         private SyncJob _syncJob;
+        private Group _group;
         private string _instanceId;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDurableOrchestrationClient> _durableClient;
@@ -34,7 +35,6 @@ namespace Services.Tests
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 ThresholdPercentageForAdditions = 80,
                 ThresholdPercentageForRemovals = 20,
                 LastRunTime = DateTime.UtcNow.AddDays(-1),
@@ -42,7 +42,11 @@ namespace Services.Tests
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0
             };
-
+            _group = new Group
+            {
+                GroupId = Guid.NewGuid(),
+                SyncJobId = _syncJob.Id
+            };
             _durableClient
                   .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipAggregatorHttpRequest>()))
                   .ReturnsAsync(_instanceId);

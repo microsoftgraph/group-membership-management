@@ -21,18 +21,18 @@ namespace Hosts.MembershipAggregator
         }
 
         [FunctionName(nameof(GroupNameReaderFunction))]
-        public async Task<SyncJobGroup> GetGroupNameAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<SyncJobGroup> GetGroupNameAsync([ActivityTrigger] GroupNameReaderRequest request)
         {
             var group = new SyncJobGroup();
             
-            if (syncJob != null)
+            if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-                _graphAPIService.RunId = syncJob.RunId ?? Guid.Empty;
-                var groupName = await _graphAPIService.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
-                group.SyncJob = syncJob;
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                _graphAPIService.RunId = request.SyncJob.RunId ?? Guid.Empty;
+                var groupName = await _graphAPIService.GetGroupNameAsync(request.GroupId);
+                group.SyncJob = request.SyncJob;
                 group.Name = groupName;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
             }
             return group;
         }

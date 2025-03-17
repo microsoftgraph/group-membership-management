@@ -34,13 +34,22 @@ namespace Hosts.MembershipAggregator
         {
             var request = context.GetInput<MembershipAggregatorHttpRequest>();
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var entityId = new EntityId(nameof(JobTrackerEntity), $"{request.SyncJob.TargetOfficeGroupId}_{runId}");
+            var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), request.SyncJob);
+            if (groupId.Equals(Guid.Empty))
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = new LogMessage { Message = $"Unable to get group id for job:{request.SyncJob.Id}", RunId = runId}, Verbosity = VerbosityLevel.DEBUG });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = request.SyncJob });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
+                return;
+            }
+            var entityId = new EntityId(nameof(JobTrackerEntity), $"{groupId}_{runId}");
             var proxy = context.CreateEntityProxy<IJobTracker>(entityId);
             var hasSourceCompleted = false;
             var errorOccurred = false;
 
             try
             {
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = new LogMessage { Message = $"Group Id for job:{request.SyncJob.Id} is {groupId}", RunId = runId }, Verbosity = VerbosityLevel.DEBUG });
                 using (await context.LockAsync(entityId))
                 {
                     await proxy.SetTotalParts(request.PartsCount);
@@ -70,7 +79,8 @@ namespace Hosts.MembershipAggregator
                                                                                 new MembershipSubOrchestratorRequest
                                                                                 {
                                                                                     EntityId = entityId,
-                                                                                    SyncJob = request.SyncJob
+                                                                                    SyncJob = request.SyncJob,
+                                                                                    GroupId = groupId
                                                                                 }
                                                                             );
 
@@ -80,6 +90,7 @@ namespace Hosts.MembershipAggregator
                         {
                             FilePath = membershipResponse.FilePath,
                             SyncJob = request.SyncJob,
+                            GroupId = groupId,
                             ProjectedMemberCount = membershipResponse.ProjectedMemberCount,
                             MembersToBeAdded = membershipResponse.MembersToBeAdded,
                             MembersToBeRemoved = membershipResponse.MembersToBeRemoved,

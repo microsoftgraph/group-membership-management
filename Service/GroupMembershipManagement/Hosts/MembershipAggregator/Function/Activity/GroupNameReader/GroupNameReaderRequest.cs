@@ -1,16 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
 using System;
 
 namespace Hosts.MembershipAggregator
 {
-    public class MembershipSubOrchestratorRequest
+    public class GroupNameReaderRequest
     {
         public SyncJob SyncJob { get; set; }
-        public EntityId EntityId { get; set; }
         public Guid GroupId { get; set; }
     }
 }
