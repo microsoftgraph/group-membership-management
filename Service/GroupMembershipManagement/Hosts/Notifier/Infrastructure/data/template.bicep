@@ -23,6 +23,6 @@ module notifierStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'notifierStorageAccountProd'
+    storageAccountSettingName: 'notifierStorageAccountProd'
   }
 }
