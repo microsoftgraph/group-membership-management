@@ -32,6 +32,6 @@ module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'messageSplitter${instanceIdentifier}StorageAccountProd'
+    storageAccountSettingName: 'messageSplitter${instanceIdentifier}StorageAccountProd'
   }
 }
