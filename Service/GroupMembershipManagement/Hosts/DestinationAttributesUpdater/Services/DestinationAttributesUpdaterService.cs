@@ -15,18 +15,24 @@ namespace Services
     public class DestinationAttributesUpdaterService : IDestinationAttributesUpdaterService
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly JsonSerializerOptions _destinationObjectSerializerOptions;
 
         public DestinationAttributesUpdaterService(
-            IDatabaseSyncJobsRepository databaseSyncJobsRepository, 
-            IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository, 
+            IDatabaseSyncJobsRepository databaseSyncJobsRepository,
+            IDatabaseGroupsRepository databaseGroupsRepository,
+            IDatabaseChannelsRepository databaseChannelsRepository,
+            IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
             IGraphGroupRepository graphGroupRepository,
             ITeamsChannelRepository teamsChannelRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
+            _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
+            _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
@@ -40,30 +46,30 @@ namespace Services
 
             foreach (var job in jobs)
             {
-                var destinationToken = JArray.Parse(job.Destination).First();
                 DestinationObject destination;
                  
                 if (destinationType == "GroupMembership")
                 {
+                    var group = job.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(job.Id);
                     destination = new DestinationObject
                     {
-                        Type = destinationToken["type"].ToString(),
-                        Value = new GroupDestinationValue() { ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString()) }
+                        Type = job.MembershipType.ToString(),
+                        Value = new GroupDestinationValue() { ObjectId = group.GroupId }
                         
                     };
                 }
                 else if (destinationType == "TeamsChannelMembership")
                 {
+                    var channel = job.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(job.Id);
                     destination = new DestinationObject
                     {
-                        Type = destinationToken["type"].ToString(),
+                        Type = job.MembershipType.ToString(),
                         Value = new TeamsChannelDestinationValue()
                         {
-                            ObjectId = Guid.Parse(destinationToken["value"]["objectId"].ToString()),
-                            ChannelId = destinationToken["value"]["channelId"].ToString()
+                            ObjectId = channel.GroupId,
+                            ChannelId = channel.ChannelId
                         }
                     };
-                    
                 }
                 else
                 {

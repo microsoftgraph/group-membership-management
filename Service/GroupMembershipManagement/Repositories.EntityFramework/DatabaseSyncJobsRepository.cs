@@ -69,7 +69,11 @@ namespace Repositories.EntityFramework
 
         public async Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType)
         {
-            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].type') = {0}", destinationType).ToListAsync();
+            return await _readContext.SyncJobs
+                           .Include(j => j.Group)
+                           .Include(j => j.Channel)
+                           .Where(job => job.MembershipType == destinationType)
+                           .ToListAsync();
         }
 
         public async Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId)

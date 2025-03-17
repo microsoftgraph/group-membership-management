@@ -84,7 +84,7 @@ namespace Services.Tests
 
         public Guid getDestinationObjectId(SyncJob job)
         {
-            return new Guid((JArray.Parse(job.Destination)[0] as JObject)["value"]["objectId"].Value<string>());
+            return job.Group.GroupId;
         }
 
         [TestMethod]

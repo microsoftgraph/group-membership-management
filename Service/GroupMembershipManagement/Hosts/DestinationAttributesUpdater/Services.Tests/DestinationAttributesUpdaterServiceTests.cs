@@ -22,6 +22,8 @@ namespace Services.Tests
 
         private Mock<IDatabaseDestinationAttributesRepository> _mockDatabaseDestinationAttributeRepository;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository;
+        private Mock<IDatabaseGroupsRepository> _mockGroupsRepository;
+        private Mock<IDatabaseChannelsRepository> _mockChannelsRepository;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository;
         private DestinationAttributesUpdaterService _destinationAttributeUpdaterService;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null;
@@ -34,9 +36,13 @@ namespace Services.Tests
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
+            _mockGroupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _mockChannelsRepository = new Mock<IDatabaseChannelsRepository>();
             _destinationAttributeUpdaterService = new DestinationAttributesUpdaterService(
-                _mockSyncJobRepository.Object, 
-                _mockDatabaseDestinationAttributeRepository.Object, 
+                _mockSyncJobRepository.Object,
+                _mockGroupsRepository.Object,
+                _mockChannelsRepository.Object,
+                _mockDatabaseDestinationAttributeRepository.Object,
                 _mockGraphGroupRepository.Object,
                 _mockTeamsChannelRepository.Object
                 );
@@ -44,7 +50,7 @@ namespace Services.Tests
 
         public Guid getDestinationObjectId(SyncJob job)
         {
-            return new Guid((JArray.Parse(job.Destination)[0] as JObject)["value"]["objectId"].Value<string>());
+            return job.Group.GroupId;
         }
 
         [TestMethod]
