@@ -23,6 +23,6 @@ module jobTriggerStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: keyVaultName
     location: location
-    storageAccountConnectionStringSettingName: 'jobTriggerStorageAccountProd'
+    storageAccountSettingName: 'jobTriggerStorageAccountProd'
   }
 }
