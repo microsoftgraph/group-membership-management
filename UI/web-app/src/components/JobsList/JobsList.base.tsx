@@ -3,7 +3,9 @@
 
 import {
   DetailsListLayoutMode,
+  DetailsRow,
   IColumn,
+  IDetailsRowProps,
   SelectionMode,
 } from '@fluentui/react/lib/DetailsList';
 import { useEffect, useState } from 'react';
@@ -257,6 +259,29 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     }
   };
 
+  const onRenderRow = (props?: IDetailsRowProps): JSX.Element => {
+    if (!props) return <></>;
+  
+    const { item } = props;
+    const handleRowClick = (): void => {
+      if (item?.targetGroupName === null) {
+        navigate('/NotFound', { replace: true, state: { item } });
+      } else if (item?.syncJobId) {
+        navigate(`/JobDetails/${item.syncJobId}`);
+      }
+    };
+  
+    return (
+      <div
+        onClick={handleRowClick}
+        style={{ cursor: 'pointer' }}
+        role="button"
+      >
+        <DetailsRow {...props} />
+      </div>
+    );
+  };
+
   const onRefreshClicked = (
     item?: any,
     index?: number,
@@ -404,7 +429,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               ariaLabelForSelectAllCheckbox={strings.JobsList.ShimmeredDetailsList.toggleAllSelection}
               checkButtonAriaLabel={strings.JobsList.ShimmeredDetailsList.selectRow}
               onRenderItemColumn={_renderItemColumn}
-              onItemInvoked={onItemInvoked}
+              onItemInvoked={onItemInvoked} // Handle tab and enter key navigation
+              onRenderRow={onRenderRow} // Handle row click
             />
 
             {jobs?.length === 0 && (
