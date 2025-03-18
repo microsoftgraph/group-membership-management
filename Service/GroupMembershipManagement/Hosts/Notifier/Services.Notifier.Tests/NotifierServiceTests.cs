@@ -40,6 +40,7 @@ namespace Services.Notifier.Tests
         private const string GRAPH_API_V1_BASE_URL = "https://graph.microsoft.com/v1.0";
         private const string GroupMembership = "GroupMembership";
 
+        private Group _group;
         private Mock<IGMMResources> _gmmResources;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IJobNotificationsRepository> _jobNotificationRepository;
@@ -59,6 +60,8 @@ namespace Services.Notifier.Tests
         private Mock<IThresholdNotificationService> _thresholdNotificationService;
         private List<AzureADUser> _users;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
+        private Mock<IDatabaseGroupsRepository> _groupsRepository = null;
+        private Mock<IDatabaseChannelsRepository> _channelsRepository = null;
 
 
         [TestMethod]
@@ -122,6 +125,8 @@ namespace Services.Notifier.Tests
             _jobNotificationRepository = new Mock<IJobNotificationsRepository>();
             _thresholdConfig = new Mock<IThresholdConfig>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _gmmResources = new Mock<IGMMResources>();
             _notification = new ThresholdNotification
             {
@@ -138,6 +143,11 @@ namespace Services.Notifier.Tests
                 ThresholdPercentageForAdditions = -1,
                 ThresholdPercentageForRemovals = -1,
             };
+            _group = new Group
+            {
+                GroupId = Guid.NewGuid(),
+                SyncJobId = Guid.NewGuid()
+            };
             _loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
 
@@ -149,6 +159,7 @@ namespace Services.Notifier.Tests
                 };
                 _users.Add(user);
             }
+            _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>())).ReturnsAsync(() => _group);
             _graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(_targetOfficeGroupId, 0)).Returns(() => Task.FromResult(_users));
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.Is<Guid>(id => id == _targetOfficeGroupId))).ReturnsAsync($"Test Group with id {_targetOfficeGroupId}");
             _thresholdNotificationService.Setup(x => x.CreateNotificationCardAsync(It.IsAny<ThresholdNotification>())).ReturnsAsync(_notification.Id.ToString());
@@ -170,6 +181,8 @@ namespace Services.Notifier.Tests
                                                 _thresholdConfig.Object,
                                                 _gmmResources.Object,
                                                 _serviceBusQueueRepository.Object,
+                                                _groupsRepository.Object,
+                                                _channelsRepository.Object,
                                                 _telemetryClient
                                                 );
             _requestAdapter = new Mock<IRequestAdapter>();
@@ -351,7 +364,12 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task SendEmailAsync_ShouldHandleNonOKResponse()
         {
-            var job = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "requestor@example.com", TargetOfficeGroupId = Guid.NewGuid() };
+            var job = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), Requestor = "requestor@example.com"};
+            job.Group = new Group
+            {
+                SyncJobId = job.Id,
+                GroupId = Guid.NewGuid()
+            };
             var messageBody = JsonSerializer.Serialize(new { SyncJob = job });
             var messageType = NotificationMessageType.SyncStartedNotification.ToString();
             var messageTitle = "OnboardingStartedEmailTitle";
@@ -420,6 +438,8 @@ namespace Services.Notifier.Tests
                                     _thresholdConfig.Object,
                                     _gmmResources.Object,
                                     _serviceBusQueueRepository.Object,
+                                    _groupsRepository.Object,
+                                    _channelsRepository.Object,
                                     _telemetryClient
                                     );
 

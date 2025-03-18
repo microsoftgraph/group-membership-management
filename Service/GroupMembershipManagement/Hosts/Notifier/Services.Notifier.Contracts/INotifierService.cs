@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
 using Models.ThresholdNotifications;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,8 @@ namespace Services.Notifier.Contracts
 {
     public interface INotifierService
     {
+        public Task<Guid> GetGroupIdAsync(SyncJob syncJob);
+        public Task<string> GetChannelIdAsync(SyncJob syncJob);
         public Task SendThresholdEmailAsync(ThresholdNotification notification);
         public Task<List<ThresholdNotification>> RetrieveQueuedNotificationsAsync();
         public Task UpdateNotificationStatusAsync(ThresholdNotification notification, ThresholdNotificationStatus status);

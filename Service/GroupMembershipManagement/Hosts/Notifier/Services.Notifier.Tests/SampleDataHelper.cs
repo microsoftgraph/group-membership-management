@@ -26,10 +26,15 @@ namespace Services.Tests
                     Query = GetJobQuery(syncType, new[] { Guid.NewGuid().ToString() }),
                     StartDate = startDateBase ?? DateTime.UtcNow.AddDays(-1),
                     Status = SyncStatus.Idle.ToString(),
-                    TargetOfficeGroupId = Guid.NewGuid(),
                     LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
                     RunId = Guid.NewGuid(),
                     Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
+                };
+
+                job.Group = new Group
+                {
+                    SyncJobId = job.Id,
+                    GroupId = Guid.NewGuid()
                 };
 
                 jobs.Add(job);
