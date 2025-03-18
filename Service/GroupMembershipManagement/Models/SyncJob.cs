@@ -135,6 +135,7 @@ namespace Models
         [IgnoreLogging]
         public Channel Channel { get; set; }
         public DestinationName DestinationName { get; set; }
+        public DestinationEmail DestinationEmail { get; set; }
         public List<DestinationOwner> DestinationOwners { get; set; }
         [NotMapped]
         public DateTimeOffset? Timestamp { get; set; }

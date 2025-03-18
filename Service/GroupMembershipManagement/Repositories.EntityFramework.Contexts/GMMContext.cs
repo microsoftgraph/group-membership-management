@@ -22,6 +22,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<JobNotification> JobNotifications { get; set; }
         public DbSet<DestinationName> DestinationNames { get; set; }
         public DbSet<DestinationOwner> DestinationOwners { get; set; }
+        public DbSet<DestinationEmail> DestinationEmail { get; set; }
         public DbSet<Entities.SyncJobChange> SyncJobChanges { get; set; } = null!;
         public DbSet<ThresholdNotification> ThresholdNotifications { get; set; } = null!;
         public DbSet<ServiceStatus> ServiceStatus { get; set; }
@@ -119,6 +120,11 @@ namespace Repositories.EntityFramework.Contexts
                 .HasForeignKey<DestinationName>(name => name.Id);
 
             modelBuilder.Entity<SyncJob>()
+                .HasOne(syncJob => syncJob.DestinationEmail)
+                .WithOne(email => email.SyncJob)
+                .HasForeignKey<DestinationEmail>(email => email.Id);
+
+            modelBuilder.Entity<SyncJob>()
                 .HasMany(syncJob => syncJob.DestinationOwners)
                 .WithMany(owner => owner.SyncJobs);
 
@@ -131,6 +137,9 @@ namespace Repositories.EntityFramework.Contexts
 
             modelBuilder.Entity<DestinationName>()
                 .HasIndex(name => name.Name);
+
+            modelBuilder.Entity<DestinationEmail>()
+                .HasIndex(name => name.Email);
 
             modelBuilder.Entity<Entities.SyncJobChange>(entity =>
             {

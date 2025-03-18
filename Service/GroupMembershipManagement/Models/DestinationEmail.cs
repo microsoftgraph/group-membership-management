@@ -2,15 +2,15 @@
 // Licensed under the MIT license.
 
 using System;
-using System.Collections.Generic;
+using System.Data.SqlTypes;
 
 namespace Models
 {
-    public class DestinationAttributes
+    public class DestinationEmail
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
+        public DateTime LastUpdatedTime { get; set; } = SqlDateTime.MinValue.Value;
         public string Email { get; set; }
-        public List<Guid> Owners { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }
