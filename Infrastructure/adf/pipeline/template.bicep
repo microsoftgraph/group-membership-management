@@ -44,6 +44,6 @@ module azureDataFactoryTemplate 'azureDataFactory.bicep' = {
 		sqlDatabaseName: sqlDatabaseName
 		azureUserReaderUrl: dataKeyVault.getSecret('azureUserReaderUrl')
 		azureUserReaderFunctionKey: dataKeyVault.getSecret('azureUserReaderKey')
-		storageAccountConnectionString: dataKeyVault.getSecret('adfStorageAccountConnectionString')
+		storageAccountName: dataKeyVault.getSecret('adfStorageAccountName')
 	}
 }

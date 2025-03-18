@@ -484,7 +484,7 @@ function Set-GMMResources {
         -ParametersFilePath $ParameterFilePath `
         -AdditionalParameters $commonParametersObject
 
-    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountConnectionString")
+    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
     foreach ($secret in $adfDataSecrets) {
         $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
         if (-not $secretExists) {

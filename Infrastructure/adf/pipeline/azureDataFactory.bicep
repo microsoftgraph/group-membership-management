@@ -24,9 +24,9 @@ param azureUserReaderUrl string
 @secure()
 param azureUserReaderFunctionKey string
 
-@description('Connection string of adf storage account')
+@description('Name of adf storage account')
 @secure()
-param storageAccountConnectionString string
+param storageAccountName string
 
 var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
@@ -66,7 +66,8 @@ resource linkedService_AzureBlobStorage 'Microsoft.DataFactory/factories/linkedS
     annotations: []
     type: 'AzureBlobStorage'
     typeProperties: {
-      connectionString: storageAccountConnectionString
+      serviceEndpoint: 'https://${storageAccountName}.blob.${environment().suffixes.storage}'
+      accountKind: 'StorageV2'
     }
   }
 }

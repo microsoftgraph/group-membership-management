@@ -105,5 +105,31 @@ function Set-ADFManagedIdentityRoles
         }
     }
 
+    Write-Host "Grant ADF identity access to the storage account";
+    # Define the Key Vault name and the secret name
+    $dataFactoryPrincipalId = $azureDataFactoryObject.Identity.PrincipalId
+    $dataRGName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $secretName = "adfStorageAccountName"
+    $storageAccountName = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name $secretName -AsPlainText
+    $adfStorageAccount = Get-AzStorageAccount -ResourceGroupName $dataRGName -Name $storageAccountName
+    $storageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
+
+    foreach($role in $storageAccountRoles)
+    {
+        if ($null -eq (Get-AzRoleAssignment -ObjectId $dataFactoryPrincipalId -Scope $adfStorageAccount.Id -RoleDefinitionName $role)) {
+            $assignment = New-AzRoleAssignment -ObjectId $dataFactoryPrincipalId -Scope $adfStorageAccount.Id -RoleDefinitionName $role;
+            if ($assignment) {
+                Write-Host "Added role assignment $role to $azureDataFactoryName with scope $storageAccountName.";
+            }
+            else {
+                Write-Host "Failed to add role assignment $role to $azureDataFactoryName with scope $storageAccountName. Please double check that you have permission to perform this operation";
+            }
+        }
+        else {
+            Write-Host "$azureDataFactoryName already has role $role with scope $storageAccountName.";
+        }
+    }
+
 	Write-Host "Done attempting to add Data Factory Contributor role assignments.";
 }
