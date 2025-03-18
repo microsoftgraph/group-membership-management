@@ -154,7 +154,7 @@ export const selectPagingOptions = (state: RootState) => {
     orderByString = sortKey + (isSortedDescending ? ' desc' : '');
   }
   if (filterDestinationId) {
-    filters.push("targetOfficeGroupId eq " + filterDestinationId);
+    filters.push("Group/GroupId eq " + filterDestinationId);
   }
   if (filterActionRequired && filterActionRequired !== 'All') {
     filters.push("status eq '" + filterActionRequired + "'");

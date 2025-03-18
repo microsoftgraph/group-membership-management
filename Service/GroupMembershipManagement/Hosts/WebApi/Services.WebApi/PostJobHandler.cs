@@ -141,10 +141,13 @@ namespace Services
 
             type = destination != null ? destination.Value.GetProperty("type").GetString() : null;
 
+            var targetGroupId = !string.IsNullOrEmpty(targetOfficeGroupId) ? new Guid(targetOfficeGroupId) : Guid.Empty;
+            string membershipType = !string.IsNullOrEmpty(type) ? type : MembershipTypes.GroupMembership.ToString();
+
             return new SyncJob
             {
                 Id = new Guid(),
-                TargetOfficeGroupId = !string.IsNullOrEmpty(targetOfficeGroupId) ? new Guid(targetOfficeGroupId) : Guid.Empty,
+                TargetOfficeGroupId = targetGroupId,
                 Destination = syncJob.Destination,
                 Requestor = syncJob.Requestor,
                 StartDate = DateTime.Parse(syncJob.StartDate),
@@ -153,7 +156,9 @@ namespace Services
                 ThresholdPercentageForAdditions = syncJob.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = syncJob.ThresholdPercentageForRemovals,
                 Status = SyncStatus.PendingReview.ToString(),
-                MembershipType = !string.IsNullOrEmpty(type) ? type : MembershipTypes.GroupMembership.ToString()
+                MembershipType = membershipType,
+                Channel = membershipType == MembershipTypes.TeamsChannelMembership.ToString() ? new Channel { GroupId = targetGroupId, ChannelId = channelId } : null,
+                Group = membershipType == MembershipTypes.GroupMembership.ToString() ? new Group { GroupId = targetGroupId } : null
             };
         }
     }

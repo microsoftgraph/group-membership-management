@@ -25,33 +25,6 @@ namespace Repositories.EntityFramework
             var entry = await _writeContext.Set<SyncJob>().AddAsync(job);
             await _writeContext.SaveChangesAsync();
 
-            string? channelId = null;
-            var destinationArray = JsonSerializer.Deserialize<List<JsonElement>>(job.Destination);
-            var firstItem = destinationArray?.FirstOrDefault().GetProperty("value");
-            if (firstItem.HasValue && firstItem.Value.TryGetProperty("channelId", out var channelIdJson))
-            {
-                channelId = channelIdJson.GetString();
-            }
-
-            if (job.MembershipType == MembershipTypes.GroupMembership.ToString())
-            {
-                var group = new Group();
-                group.SyncJobId = job.Id;
-                group.GroupId = job.TargetOfficeGroupId;
-                await _writeContext.AddAsync(group);
-                await _writeContext.SaveChangesAsync();
-            }
-
-            else if (job.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
-            {
-                var channel = new Channel();
-                channel.SyncJobId = job.Id;
-                channel.GroupId = job.TargetOfficeGroupId;
-                channel.ChannelId = channelId ?? "";
-                await _writeContext.AddAsync(channel);
-                await _writeContext.SaveChangesAsync();
-            }
-
             return entry.Entity.Id;
         }
 
@@ -65,7 +38,10 @@ namespace Repositories.EntityFramework
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            return await _readContext.SyncJobs.ToListAsync();
+            return await _readContext.SyncJobs
+                            .Include(j => j.Group)
+                            .Include(j => j.Channel)
+                            .ToListAsync();
         }
 
         public IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false)
@@ -86,8 +62,21 @@ namespace Repositories.EntityFramework
 
         public async Task<SyncJob> GetSyncJobByObjectIdAsync(Guid objectId)
         {
-            return await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT * FROM [dbo].[SyncJobs] WHERE JSON_VALUE(Destination, '$[0].value.objectId') = {0}", objectId.ToString()).FirstOrDefaultAsync();
+            var syncJob = await _readContext.SyncJobs.FromSqlRaw<SyncJob>(@"SELECT s.*
+                                FROM SyncJobs s
+                                LEFT JOIN Groups g
+                                    ON s.Id = g.SyncJobId
+                                    AND s.MembershipType = 'GroupMembership'
+                                    AND g.GroupId = {0}
+                                LEFT JOIN TeamsChannels c
+                                    ON s.Id = c.SyncJobId
+                                    AND s.MembershipType = 'TeamsChannelMembership'
+                                    AND c.GroupId = {0}
+                                WHERE (g.SyncJobId IS NOT NULL AND c.SyncJobId IS NULL)
+                                   OR (c.SyncJobId IS NOT NULL AND g.SyncJobId IS NULL)", objectId.ToString()).FirstOrDefaultAsync();
+            return syncJob;
         }
+
         public async Task<IEnumerable<SyncJob>> GetSyncJobsAsync(bool includeFutureScheduledJobs, params SyncStatus[] statusFilters)
         {
             IQueryable<SyncJob> query = _readContext.SyncJobs
