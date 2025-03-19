@@ -4,9 +4,7 @@
   "extensions": {
     "durableTask": {
       "extendedSessionsEnabled": true,
-      "extendedSessionIdleTimeoutInSeconds": 30,
-      "maxConcurrentActivityFunctions": 10,
-      "maxConcurrentOrchestratorFunctions": 5
+      "extendedSessionIdleTimeoutInSeconds": 30
     }
   },
   "logging": {
