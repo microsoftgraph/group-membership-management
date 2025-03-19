@@ -52,7 +52,7 @@ namespace Hosts.NonProdService
             {
                 foreach (var groupId in groupSizesAndIds[groupSize])
                 {
-                    if (syncJobs.Any(syncJob => syncJob.Destination.ToLower().Contains(groupId.ToString().ToLower())))
+                    if (syncJobs.Any(syncJob => syncJob.Group.GroupId.ToString().ToLower().Equals(groupId.ToString().ToLower())))
                     {
                         continue;
                     }
@@ -81,7 +81,11 @@ namespace Hosts.NonProdService
                         LastRunTime = SqlDateTime.MinValue.Value.AddDays(1),
                         IgnoreThresholdOnce = true,
                         Query = query,
-                        MembershipType = MembershipTypes.GroupMembership.ToString()
+                        MembershipType = MembershipTypes.GroupMembership.ToString(),
+                        Group = new Group
+                        {
+                            GroupId = groupId
+                        }
                     };
 
                     await _databaseSyncJobsRepository.CreateSyncJobAsync(syncJob);
