@@ -201,5 +201,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        Task<List<string>> IGraphGroupRepository.GetAllGroupNamesAsync()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
