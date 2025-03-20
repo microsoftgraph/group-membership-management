@@ -194,7 +194,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task HandleInvalidDestinationQuery()
         {
-            _syncJob.Destination = "{invalid destination}";
+            _syncJob.MembershipType = null;
             _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
             _jobTriggerService.Setup(x => x.ParseAndValidateDestinationAsync(It.IsAny<SyncJob>())).ReturnsAsync(() => new ParsedAndValidateDestinationResponse
             {

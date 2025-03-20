@@ -71,7 +71,7 @@ namespace Hosts.GroupMembershipObtainer
                             var nestedGroupEvent = new Dictionary<string, string>
                             {
                                 { "SourceGroupObjectId", request.SourceGroup.ObjectId.ToString() },
-                                { "Destination", request.SyncJob.Destination },
+                                { "Destination", $"[{{\"type\":\"{request.SyncJob.MembershipType}\",\"value\":{{\"objectId\":\"{request.GroupId}\"}}}}]" },
                                 { "DestinationGroupObjectId", request.GroupId.ToString() },
                                 { "NestedGroupCount", transitiveGroupCount.ToString() }
                             };

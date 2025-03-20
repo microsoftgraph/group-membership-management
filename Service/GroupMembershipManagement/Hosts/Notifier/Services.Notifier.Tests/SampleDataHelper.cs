@@ -28,7 +28,7 @@ namespace Services.Tests
                     Status = SyncStatus.Idle.ToString(),
                     LastRunTime = lastRunTime ?? SqlDateTime.MinValue.Value,
                     RunId = Guid.NewGuid(),
-                    Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]"
+                    MembershipType = "GroupMembership"
                 };
 
                 job.Group = new Group

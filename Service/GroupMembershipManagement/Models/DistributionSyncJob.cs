@@ -8,8 +8,6 @@ namespace Models
 {
     public class DistributionSyncJob : UpdateMergeSyncJob, IComparable<DistributionSyncJob>
     {
-        public Guid TargetOfficeGroupId { get; set; }
-        public string Destination { get; set; }
         public DateTime LastRunTime { get; set; } = SqlDateTime.MinValue.Value;
         public int Period { get; set; }
         public string Status { get; set; }
@@ -18,8 +16,6 @@ namespace Models
 
         public DistributionSyncJob(SyncJob syncJob)
         {
-            TargetOfficeGroupId = syncJob.TargetOfficeGroupId;
-            Destination = syncJob.Destination;
             LastRunTime = syncJob.LastRunTime;
             Period = syncJob.Period;
             Status = syncJob.Status;

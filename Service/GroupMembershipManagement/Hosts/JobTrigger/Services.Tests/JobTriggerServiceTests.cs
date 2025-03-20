@@ -96,17 +96,16 @@ namespace Services.Tests
             _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
 
-        public Guid getDestinationObjectId(SyncJob job)
-        {
-            return new Guid((JArray.Parse(job.Destination)[0] as JObject)["value"]["objectId"].Value<string>());
-        }
-
         [TestMethod]
         public async Task TestValidGroupDestinationQuery()
         {
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
             var objectId = Guid.NewGuid();
-            job.Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{objectId}\"}}}}]";
+            job.MembershipType = "GroupMembership";
+            job.Group = new Group
+            {
+                GroupId = objectId
+            };
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
@@ -120,10 +119,15 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestValidTeamsDestinationQuery()
         {
-            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
+            SyncJob job = SampleDataHelper.CreateSampleSyncJobsWithTeamsChannelMembership(1, GroupMembership).First();
             var objectId = Guid.NewGuid();
             var channelId = "Channel_ID";
-            job.Destination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{objectId}\",\"channelId\":\"{channelId}\"}}}}]";
+            job.MembershipType = "TeamsChannelMembership";
+            job.Channel = new Channel
+            {
+                GroupId = objectId,
+                ChannelId = channelId
+            };
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
@@ -139,7 +143,7 @@ namespace Services.Tests
         public async Task TestEmptyDestinationQuery()
         {
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-            job.Destination = "";
+            job.Group = null;
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
@@ -151,7 +155,7 @@ namespace Services.Tests
         public async Task TestInvalidDestinationQueryDueToMissingType()
         {
             SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-            job.Destination = $"[{{\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]";
+            job.MembershipType = null;
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
@@ -162,8 +166,8 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestInvalidTeamsDestinationQuery()
         {
-            SyncJob job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
-            job.Destination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]";
+            SyncJob job = SampleDataHelper.CreateSampleSyncJobsWithTeamsChannelMembership(1, GroupMembership).First();
+            job.Channel = null;
 
             var parsedAndValidated = await _jobTriggerService.ParseAndValidateDestinationAsync(job);
 
