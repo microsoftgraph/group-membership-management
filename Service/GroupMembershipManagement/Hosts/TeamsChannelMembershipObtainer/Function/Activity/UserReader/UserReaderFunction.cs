@@ -33,7 +33,7 @@ namespace Hosts.TeamsChannelMembershipObtainer
 
             var users = await _teamsChannelService.GetUsersFromTeamAsync(request.Channel, runId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} users from {request.ChannelSyncInfo.SyncJob.Destination}.", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId}.", RunId = runId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UserReaderFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
 
             return users;

@@ -24,7 +24,7 @@ namespace Services.Tests
         private Mock<ITeamsChannelService> _teamsChannelMembershipObtainerService = null!;
         private ChannelSyncInfo _syncInfo = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        
+
         [TestInitialize]
         public void SetUp()
         {
@@ -38,6 +38,7 @@ namespace Services.Tests
 
             List<AzureADTeamsUser> testUsers = new List<AzureADTeamsUser> { new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "user1" }, new AzureADTeamsUser { ObjectId = Guid.NewGuid(), ConversationMemberId = "user2" } };
 
+            Channel destination = new Channel { GroupId = Guid.NewGuid(), ChannelId = "some-channel" };
 
             _teamsChannelMembershipObtainerService.Setup(x => x.GetUsersFromTeamAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
                                   .ReturnsAsync(() => testUsers);
@@ -110,10 +111,14 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
                 }
             };
 
@@ -132,10 +137,14 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
                 }
             };
 
@@ -172,10 +181,14 @@ namespace Services.Tests
                 {
                     RunId = Guid.Parse("00000000-0000-0000-0000-000000000012"),
                     Status = SyncStatus.InProgress.ToString(),
-                    TargetOfficeGroupId = Guid.Parse("00000000-0000-0000-0000-000000000042"),
                     Timestamp = new DateTimeOffset(1995, 03, 28, 1, 2, 3, TimeSpan.Zero),
                     Query = @"[{""type"":""GroupMembership"",""source"":""00000000-0000-0000-0000-000000000000""}]",
-                    Destination = @"[{""type"":""TeamsChannelMembership"",""value"":{""objectId"":""00000000-0000-0000-0000-000000000000"", ""channelId"":""some channel""}}]"
+                    MembershipType = "TeamsChannelMembership",
+                    Channel = new Channel
+                    {
+                        GroupId = Guid.NewGuid(),
+                        ChannelId = "some-channel"
+                    }
                 }
             };
 

@@ -92,7 +92,8 @@ namespace Hosts.TeamsChannelMembershipObtainer
                      {
                          Users = users,
                          ChannelSyncInfo = channelSyncInfo,
-                         IsDryRunEnabled = _isTeamsChannelDryRunEnabled
+                         IsDryRunEnabled = _isTeamsChannelDryRunEnabled,
+                         Channel = parsedAndValidated.ParsedChannel
                      });
 
 

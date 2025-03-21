@@ -28,11 +28,11 @@ namespace Hosts.TeamsChannelMembershipObtainer
             var runId = request.ChannelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {request.Users.Count} users from {request.ChannelSyncInfo.SyncJob.Destination} to blob storage.", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading {request.Users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId} to blob storage.", RunId = runId });
 
-            var filePath = await _teamsChannelService.UploadMembershipAsync(request.Users, request.ChannelSyncInfo, request.IsDryRunEnabled);
+            var filePath = await _teamsChannelService.UploadMembershipAsync(request.Users, request.ChannelSyncInfo, request.IsDryRunEnabled, request.Channel.ObjectId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {request.Users.Count} users from {request.ChannelSyncInfo.SyncJob.Destination} to blob storage at {filePath}.", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploaded {request.Users.Count} users from Group: {request.Channel.ObjectId} with Channel Id: {request.Channel.ChannelId} to blob storage at {filePath}.", RunId = runId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(FileUploaderFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
 
             return filePath;

@@ -19,6 +19,7 @@ namespace TeamsChannelMembershipObtainer.Service
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly ILoggingRepository _logger;
         private readonly IConfigurationRefresherProvider _refresherProvider;
@@ -29,6 +30,7 @@ namespace TeamsChannelMembershipObtainer.Service
             IBlobStorageRepository blobStorageRepository,
             IHttpClientFactory httpClientFactory,
             IDatabaseSyncJobsRepository syncJobRepository,
+            IDatabaseChannelsRepository channelsRepository,
             ILoggingRepository loggingRepository,
             IConfigurationRefresherProvider refresherProvider,
             IServiceBusQueueRepository serviceBusQueueRepository)
@@ -37,26 +39,39 @@ namespace TeamsChannelMembershipObtainer.Service
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _databaseChannelsRepository = channelsRepository ?? throw new ArgumentException(nameof(channelsRepository));
             _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+        }
+
+        public async Task<Channel> GetDestinationAsync(SyncJob syncJob)
+        {
+            var channel = new Channel();
+            if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
+            {
+                return syncJob.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(syncJob.Id);
+            }
+            return channel;
         }
 
         public async Task<ValidateChannelResponse> VerifyChannelAsync(ChannelSyncInfo channelSyncInfo)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
-            var destinationArray = JsonNode.Parse(channelSyncInfo.SyncJob.Destination).AsArray();
-            var currentDestination = destinationArray[0].AsObject()["value"];
-            var objectIdNode = currentDestination["objectId"];
-            var objectId = Convert.ToString(objectIdNode);
-            var channelIdNode = currentDestination.AsObject()["channelId"];
-            var channelId = Convert.ToString(channelIdNode);
+            var channel = await GetDestinationAsync(channelSyncInfo.SyncJob);
+
+            if (channel.GroupId == Guid.Empty || channel.ChannelId == null)
+            {
+                await _logger.LogMessageAsync(new LogMessage { Message = $"Unable to get destination details from TeamsChannels table", RunId = runId });
+                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { channelSyncInfo.SyncJob }, SyncStatus.Error);
+                return new ValidateChannelResponse { ParsedChannel = null, IsValid = false };
+            }
 
             var azureADTeamsChannel = new AzureADTeamsChannel
             {
-                ObjectId = Guid.Parse(objectId),
-                ChannelId = channelId
+                ObjectId = channel.GroupId,
+                ChannelId = channel.ChannelId
             };
 
             if (!channelSyncInfo.IsDestinationPart)
@@ -92,7 +107,7 @@ namespace TeamsChannelMembershipObtainer.Service
             return _teamsChannelRepository.ReadUsersFromChannelAsync(azureADTeamsChannel, runId);
         }
 
-        public async Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun)
+        public async Task<string> UploadMembershipAsync(List<AzureADTeamsUser> users, ChannelSyncInfo channelSyncInfo, bool dryRun, Guid targetOfficeGroupId)
         {
             Guid runId = channelSyncInfo.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
@@ -111,7 +126,7 @@ namespace TeamsChannelMembershipObtainer.Service
             };
 
             var timeStamp = channelSyncInfo.SyncJob.Timestamp.GetValueOrDefault().ToString("MMddyyyy-HHmmss");
-            var fileName = $"/{channelSyncInfo.SyncJob.TargetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannelMembership_{channelSyncInfo.CurrentPart}.json";
+            var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_TeamsChannelMembership_{channelSyncInfo.CurrentPart}.json";
             var serializerSettings = new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,

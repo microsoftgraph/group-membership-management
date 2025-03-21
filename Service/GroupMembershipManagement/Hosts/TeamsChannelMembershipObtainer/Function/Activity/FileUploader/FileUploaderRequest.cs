@@ -13,6 +13,6 @@ namespace Hosts.TeamsChannelMembershipObtainer
         public ChannelSyncInfo ChannelSyncInfo { get; set; }
         public List<AzureADTeamsUser> Users { get; set; }
         public Boolean IsDryRunEnabled { get; set; }
-
+        public AzureADTeamsChannel Channel { get; set; }
     }
 }
