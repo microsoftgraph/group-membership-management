@@ -70,18 +70,19 @@ namespace Services
             }
 
             var jobs = jobsQuery.ToList();
-            var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.TargetOfficeGroupId).ToList()))
+            var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.Group.GroupId).ToList()))
                                .ToDictionary(x => x.ObjectId);
 
             if (request.CustomSortBy == "targetGroupName")
             {
-                var jobsWithNames = jobs.Select(job => new { Job = job, TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null }).ToList();
+                var jobsWithNames = jobs.Select(job => new { Job = job, TargetGroupName = targetGroups.ContainsKey(job.Group.GroupId) ? targetGroups[job.Group.GroupId].Name : null }).ToList();
                 jobs = jobsWithNames.OrderBy(job => job.TargetGroupName).Select(job => job.Job).ToList();
             }
 
             foreach (var job in jobs)
             {
-                var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
+                var type = job.MembershipType.Equals("GroupMembership") ? "Group" : "Channel";
+                var groupId = job.MembershipType.Contains("GroupMembership") ? job.Group.GroupId : job.Channel.GroupId;
                 var currentTime = DateTime.UtcNow;
                 var jobStartsInFuture = currentTime < job.StartDate;
                 var jobScheduledForFuture = currentTime < job.ScheduledDate;
@@ -103,15 +104,15 @@ namespace Services
                 var dto = new SyncJobDTO
                 (
                     job.Id,
-                    job.TargetOfficeGroupId,
+                    groupId,
                     job.Status,
                     job.Period,
                     job.LastSuccessfulRunTime,
                     estimatedNextRunTime
                 )
                 {
-                    TargetGroupName = targetGroups.ContainsKey(job.TargetOfficeGroupId) ? targetGroups[job.TargetOfficeGroupId].Name : null,
-                    TargetGroupEmail = targetGroups.ContainsKey(job.TargetOfficeGroupId)? targetGroups[job.TargetOfficeGroupId].Email : null,
+                    TargetGroupName = targetGroups.ContainsKey(groupId) ? targetGroups[groupId].Name : null,
+                    TargetGroupEmail = targetGroups.ContainsKey(groupId)? targetGroups[groupId].Email : null,
                     TargetGroupType = type
                 };
 

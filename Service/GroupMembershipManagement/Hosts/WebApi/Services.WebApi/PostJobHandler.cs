@@ -42,7 +42,7 @@ namespace Services
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
-                var destinationId = newSyncJobEntity.TargetOfficeGroupId;
+                var destinationId = newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString() ? newSyncJobEntity.Group.GroupId : newSyncJobEntity.Channel.GroupId;
                 var userIdentifier = string.IsNullOrEmpty(request.NewSyncJob.LastModifiedOnBehalfOfObjectId) ? request.UserIdentity : request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
                 var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentifier, false);
                 newSyncJobEntity.Requestor = userResponse.UserPrincipalName;
@@ -62,7 +62,7 @@ namespace Services
 
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"PostJobHandler created job: {request}."
+                        Message = $"PostJobHandler created job: {response.NewSyncJobId}."
                     });
 
                     var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);

@@ -53,7 +53,7 @@ namespace Services
 
             try
             {
-                endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(job.TargetOfficeGroupId);
+                endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(request.GroupId);
             }
             catch (Exception ex)
             {
@@ -63,8 +63,8 @@ namespace Services
                 });
             }
 
-            var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
-            var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+            var type = job.MembershipType.Equals("GroupMembership") ? "Group" : "Channel";
+            var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(request.GroupId);
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
@@ -97,7 +97,7 @@ namespace Services
             )
             {
                 SyncJobId = job.Id,
-                TargetGroupId = job.TargetOfficeGroupId,
+                TargetGroupId = request.GroupId,
                 TargetGroupName = targetGroupName,
                 TargetGroupType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,

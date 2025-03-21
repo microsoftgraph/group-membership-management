@@ -38,7 +38,7 @@ namespace Services
                 };
             }
 
-            var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, syncJob.TargetOfficeGroupId);
+            var isOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, syncJob.Group.GroupId);
             if (!(isOwner || request.IsJobTenantWriter))
             {
                 return new RemoveGMMResponse

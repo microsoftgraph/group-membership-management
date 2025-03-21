@@ -51,9 +51,11 @@ namespace Services
                 return response;
             }
 
+            var groupId = job.MembershipType.Contains("GroupMembership") ? job.Group.GroupId : job.Channel.GroupId;
+
             try
             {
-                endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(job.TargetOfficeGroupId);
+                endpoints = await _graphGroupRepository.GetGroupEndpointsAsync(groupId);
             }
             catch (Exception ex)
             {
@@ -63,8 +65,8 @@ namespace Services
                 });
             }
 
-            var type = job.Destination.Contains("GroupMembership") ? "Group" : "Channel";
-            var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(job.TargetOfficeGroupId);
+            var type = job.MembershipType.Equals("GroupMembership") ? "Group" : "Channel";
+            var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
@@ -114,7 +116,7 @@ namespace Services
                 period: job.Period
             )
             {
-                TargetGroupId = job.TargetOfficeGroupId,
+                TargetGroupId = groupId,
                 TargetGroupName = targetGroupName,
                 TargetGroupType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,

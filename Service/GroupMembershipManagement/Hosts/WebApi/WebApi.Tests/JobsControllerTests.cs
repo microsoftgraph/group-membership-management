@@ -119,8 +119,6 @@ namespace Services.Tests
             {
                 Id = Guid.NewGuid(),
                 Status = ((SyncStatus)Random.Shared.Next(1, 15)).ToString(),
-                Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]",
-                TargetOfficeGroupId = Guid.NewGuid(),
                 LastSuccessfulRunTime = currentDataTimeUtc.AddHours(-4),
                 LastSuccessfulStartTime = currentDataTimeUtc.AddHours(-5),
                 StartDate = currentDataTimeUtc.AddMonths(-1),
@@ -133,6 +131,12 @@ namespace Services.Tests
                     Id = Guid.Parse("AC3604F9-5869-EE11-9937-6045BDE913DD"),
                     Name = SyncStatus.Idle.ToString(),
                     SortPriority = 1000
+                },
+                MembershipType = "GroupMembership",
+                Group = new Group
+                {
+                    SyncJobId = Guid.NewGuid(),
+                    GroupId = Guid.NewGuid()
                 }
             }).ToList();
 
@@ -140,7 +144,7 @@ namespace Services.Tests
             {
                 _groups.Add(new AzureADGroup
                 {
-                    ObjectId = x.TargetOfficeGroupId,
+                    ObjectId = x.Group.GroupId,
                     Type = _groupTypes[Random.Shared.Next(0, _groupTypes.Count)]
                 });
             });

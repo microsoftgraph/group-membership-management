@@ -66,8 +66,6 @@ namespace Services.Tests
             {
                 Id = Guid.NewGuid(),
                 Status = SyncStatus.Idle.ToString(),
-                Destination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{Guid.NewGuid()}\"}}}}]",
-                TargetOfficeGroupId = Guid.NewGuid(),
                 LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-4),
                 LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-5),
                 StartDate = DateTime.UtcNow.AddMonths(-1),
@@ -78,6 +76,12 @@ namespace Services.Tests
                 Period = 6,
                 Requestor = "example@microsoft.com",
                 MembershipType = "GroupMembership"
+            };
+
+            _jobEntity.Group = new Group
+            {
+                GroupId = Guid.NewGuid(),
+                SyncJobId = _jobEntity.Id
             };
 
             _group = new Group
@@ -246,7 +250,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
-            var response = await _jobDetailsController.GetGroupDetailsAsync(_jobEntity.TargetOfficeGroupId);
+            var response = await _jobDetailsController.GetGroupDetailsAsync(_jobEntity.Group.GroupId);
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);

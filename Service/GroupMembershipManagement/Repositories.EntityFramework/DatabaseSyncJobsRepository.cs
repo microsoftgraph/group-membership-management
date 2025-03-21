@@ -47,8 +47,8 @@ namespace Repositories.EntityFramework
         public IQueryable<SyncJob> GetSyncJobs(bool asNoTracking = false)
         {
             return asNoTracking ?
-                    _readContext.SyncJobs.AsNoTracking()
-                    : _readContext.SyncJobs;
+                    _readContext.SyncJobs.Include(j => j.Group).Include(j => j.Channel).AsNoTracking()
+                    : _readContext.SyncJobs.Include(j => j.Group).Include(j => j.Channel);
         }
 
         public async Task<List<SyncJob>> GetSyncJobsByDestinationAsync(string destinationType)

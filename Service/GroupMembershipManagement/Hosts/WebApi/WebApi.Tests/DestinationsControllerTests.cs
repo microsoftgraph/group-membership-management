@@ -104,10 +104,11 @@ namespace Services.Tests
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = Guid.NewGuid(),
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 Status = "Idle",
-                Period = 12
+                Period = 12,
+                MembershipType = "GroupMembership",
+                Group = new Group { GroupId = Guid.NewGuid() }
             };
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync(syncJob);
 
