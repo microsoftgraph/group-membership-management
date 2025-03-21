@@ -139,6 +139,8 @@ namespace Repositories.EntityFramework
 
         public async Task UpdateSyncJobFromNotificationAsync(SyncJob job, SyncStatus status)
         {
+            if (job.Group != null) _writeContext.Entry(job.Group).State = EntityState.Unchanged;
+            if (job.Channel != null) _writeContext.Entry(job.Channel).State = EntityState.Unchanged;
             var entry = _writeContext.Set<SyncJob>().Add(job);
             job.Status = status.ToString();
             entry.State = EntityState.Modified;
