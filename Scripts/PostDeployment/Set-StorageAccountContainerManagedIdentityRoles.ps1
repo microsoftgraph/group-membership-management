@@ -162,5 +162,24 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		}
 	}
 
+	$serviceConnectionName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
+	$serviceConnectionPrincipal = Get-AzADServicePrincipal -DisplayName $serviceConnectionName
+	if ($serviceConnectionPrincipal) {
+		$serviceConnectionRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
+		foreach($role in $serviceConnectionRoles)
+		{
+			if ($null -eq (Get-AzRoleAssignment -ObjectId $serviceConnectionPrincipal.Id -Scope $jobsStorageAccountId -RoleDefinitionName $role)) {
+				New-AzRoleAssignment -ObjectId $serviceConnectionPrincipal.Id -Scope $jobsStorageAccountId -RoleDefinitionName $role;
+				Write-Host "Added role assignment $role to $($serviceConnectionName) with scope $jobsStorageAccountId.";
+			}
+			else {
+				Write-Host "$($serviceConnectionName) can already $role with scope $jobsStorageAccountId.";
+			}
+		}
+	}
+	else {
+		Write-Host "Service connection $($serviceConnectionName) was not found!"
+	}
+
 	Write-Host "Done attempting to add Storage role assignments.";
 }
