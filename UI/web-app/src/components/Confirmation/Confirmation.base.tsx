@@ -111,12 +111,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const jobId = locationState?.jobId ?? urlJobId;
 
-  
-  const debouncedOnEditBusinessJustification = useCallback(
-    debounce((newValue) => onEditBusinessJustification(newValue ?? ''), 300),
-    []
-  );
-
   const mapLastModifiedOnBehalfOfDisplayNameToPersonaProps = (lastModifiedOnBehalfOfDisplayName: string): IPersonaProps[] => {
     if (!lastModifiedOnBehalfOfDisplayName) return [];
     return [{
@@ -302,7 +296,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 label={`${strings.ManageMembership.labels.businessJustificationSubtitle} ${strings.ManageMembership.labels.businessJustificationPrompt}`}
                 contentEditable={false}
                 value={businessJustification}
-                onChange={(_event, newValue) => debouncedOnEditBusinessJustification(newValue ?? '')}
+                onChange={(_event, newValue) => onEditBusinessJustification(newValue ?? '')}
                 placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
               />
             </div>
