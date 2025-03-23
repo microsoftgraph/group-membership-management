@@ -9,6 +9,7 @@ namespace Models.SyncJobChange
         StatusUpdate,
         Update,
         SubmissionApproved,
-        SubmissionRejected
+        SubmissionRejected,
+        IgnoreThresholdOnce
     }
 }

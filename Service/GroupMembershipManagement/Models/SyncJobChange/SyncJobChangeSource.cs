@@ -9,5 +9,6 @@ namespace Models.SyncJobChange
         /// Represents a change made through the web app.
         /// </summary>
         WebApp = 0,
+        Email = 1
     }
 }

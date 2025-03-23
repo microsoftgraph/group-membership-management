@@ -46,6 +46,7 @@ namespace Services.Tests
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<INotificationRepository> _notificationRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private ILocalizationRepository _localizationRepository = null!;
         private IThresholdNotificationService _thresholdNotificationService = null!;
         private IGMMEmailReceivers _gmmEmailReceivers = null!;
@@ -89,6 +90,7 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             _mockTokenValidator = new Mock<IActionableMessageTokenValidator>();
 
@@ -192,6 +194,7 @@ namespace Services.Tests
             _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
                 _notificationRepository.Object,
                 _syncJobRepository.Object,
+                _syncJobChangeRepository.Object,
                 _graphGroupRepository.Object,
                 _telemetryClient,
                 _thresholdNotificationService,
