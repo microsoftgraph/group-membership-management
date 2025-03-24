@@ -28,7 +28,7 @@ namespace Hosts.AzureUserReader
             builder.Services.AddGraphAPIClient();
 
             builder.Services.AddSingleton<IStorageAccountSecret>(services =>
-                new StorageAccountSecret(GetValueOrThrow("storageAccountConnectionString")));
+                new StorageAccountSecret(GetValueOrThrow("storageAccountName")));
 
             builder.Services.AddScoped<IGraphUserRepository, GraphUserRepository>();
             builder.Services.AddScoped<IBlobClientFactory, BlobClientFactory>();

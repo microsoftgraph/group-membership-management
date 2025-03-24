@@ -7,11 +7,11 @@ namespace DIConcreteTypes
 {
     public class StorageAccountSecret : IStorageAccountSecret
     {
-        public StorageAccountSecret(string connectionString)
+        public StorageAccountSecret(string accountName)
         {
-            ConnectionString = connectionString;
+            AccountName = accountName;
         }
 
-        public string ConnectionString { get; set; }
+        public string AccountName { get; set; }
     }
 }

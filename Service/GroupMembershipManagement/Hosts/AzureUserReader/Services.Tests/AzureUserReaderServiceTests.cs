@@ -86,7 +86,7 @@ namespace Services.Tests
             blobClientMock.Setup(x => x.Exists(It.IsAny<CancellationToken>())).Returns(Response.FromValue<bool>(true, new Mock<Response>().Object));
             blobClientMock.Setup(x => x.DownloadAsync()).ReturnsAsync(downloadResponse.Object);
 
-            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(blobClientMock.Object);
+            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<Uri>())).Returns(blobClientMock.Object);
 
             var service = new AzureUserReaderService(storageAccountSecret, loggerMock.Object, blobClientFactoryMock.Object);
             var personnelNumbers = await service.GetPersonnelNumbersAsync("validcontainer", "valid/blob/path/file.csv");
@@ -106,7 +106,7 @@ namespace Services.Tests
             var response = new Mock<Response>();
 
             blobClientMock.Setup(x => x.Exists(It.IsAny<CancellationToken>())).Returns(Response.FromValue<bool>(false, new Mock<Response>().Object));
-            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(blobClientMock.Object);
+            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<Uri>())).Returns(blobClientMock.Object);
 
             var service = new AzureUserReaderService(storageAccountSecret, loggerMock.Object, blobClientFactoryMock.Object);
             var personnelNumbers = await service.GetPersonnelNumbersAsync("validcontainer", "notvalid/blob/path/file.csv");
@@ -129,7 +129,7 @@ namespace Services.Tests
 
             blobClientMock.Setup(x => x.Exists(It.IsAny<CancellationToken>())).Returns(Response.FromValue<bool>(true, new Mock<Response>().Object));
             blobClientMock.Setup(x => x.DownloadAsync()).ReturnsAsync(downloadResponse.Object);
-            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(blobClientMock.Object);
+            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<Uri>())).Returns(blobClientMock.Object);
 
             var service = new AzureUserReaderService(storageAccountSecret, loggerMock.Object, blobClientFactoryMock.Object);
             var personnelNumbers = await service.GetPersonnelNumbersAsync("validcontainer", "valid/blob/path/file.csv");
@@ -208,7 +208,7 @@ namespace Services.Tests
                                     }
                                 }
                             });
-            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(blobClientMock.Object);
+            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<Uri>())).Returns(blobClientMock.Object);
 
             var users = new List<GraphProfileInformation>
             {
@@ -259,7 +259,7 @@ namespace Services.Tests
                                     }
                                 }
                             });
-            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).Returns(blobClientMock.Object);
+            blobClientFactoryMock.Setup(x => x.GetBlobClient(It.IsAny<Uri>())).Returns(blobClientMock.Object);
 
             var users = new List<GraphProfileInformation>
             {
