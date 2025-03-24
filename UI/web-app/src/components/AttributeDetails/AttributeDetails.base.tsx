@@ -79,7 +79,7 @@ export const AttributeDetailsBase: React.FunctionComponent<AttributeDetailsProps
               <div>
               <div key={attribute.name} className={classNames.attributeRow}>
                 <div className={classNames.attributeName}>
-                  {attribute.name}
+                  {attribute.customLabel ? attribute.customLabel : attribute.name}
                 </div>
                 <div className={classNames.attributeDescription}>
                   {attribute.description}
