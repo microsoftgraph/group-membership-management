@@ -45,7 +45,7 @@ namespace Repositories.GraphAzureADUsers
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _cache = new Dictionary<string, GraphProfileInformation>();
-            _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException( nameof(retryPolicyProvider));
+            _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
         }
 
         public async Task<IList<GraphProfileInformation>> GetAzureADObjectIdsAsync(IList<string> personnelNumbers, Guid? runId)
@@ -146,20 +146,13 @@ namespace Repositories.GraphAzureADUsers
                     if (response.Value.IsSuccessStatusCode)
                     {
                         var content = await response.Value.Content.ReadAsStringAsync();
-                        var oDataResponse = JsonSerializer.Deserialize<ODataResponse<List<User>>>(content);
+                        var oDataResponse = JsonSerializer.Deserialize<ODataResponse<List<GraphProfileInformation>>>(content);
 
                         // process each user
                         foreach (var user in oDataResponse.Value)
                         {
-                            var profile = new GraphProfileInformation
-                            {
-                                Id = user.Id,
-                                PersonnelNumber = user.OnPremisesImmutableId,
-                                UserPrincipalName = user.UserPrincipalName
-                            };
-
-                            profiles.Add(profile);
-                            _cache.Add(profile.PersonnelNumber, profile);
+                            profiles.Add(user);
+                            _cache.Add(user.PersonnelNumber, user);
                         }
                     }
                     else
