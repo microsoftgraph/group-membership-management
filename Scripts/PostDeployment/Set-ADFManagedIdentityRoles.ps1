@@ -28,13 +28,13 @@ function Set-ADFManagedIdentityRoles
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
         [Parameter(Mandatory = $False)]
-		[System.Collections.ArrayList] $UserPrincipalNames
+		[array] $UserPrincipalNames
 	)
 
 	$functionApps = @("SqlMembershipObtainer")
     $appServices = @("webapi")
     $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
-    $servicePrincipals = New-Object System.Collections.ArrayList
+    $servicePrincipals = @()
     $azureDataFactoryObject = Get-AzResource -Name $azureDataFactoryName -ResourceType "Microsoft.DataFactory/factories"
 
     if ($null -eq $azureDataFactoryObject)
@@ -49,7 +49,7 @@ function Set-ADFManagedIdentityRoles
 
 		if ($userPrincipal)
 		{
-			$servicePrincipals.Add($userPrincipal)
+			$servicePrincipals += $userPrincipal
 		}
 		elseif ($null -eq $userPrincipal) {
 			Write-Host "User $name was not found!"
@@ -64,7 +64,7 @@ function Set-ADFManagedIdentityRoles
 
         if ($servicePrincipal)
         {
-            $servicePrincipals.Add($servicePrincipal)
+            $servicePrincipals += $servicePrincipal
         }
         elseif ($null -eq $servicePrincipal) {
             Write-Host "Function $functionAppName was not found!"
@@ -78,7 +78,7 @@ function Set-ADFManagedIdentityRoles
 
         if ($servicePrincipal)
         {
-            $servicePrincipals.Add($servicePrincipal)
+            $servicePrincipals += $servicePrincipal
         }
         elseif ($null -eq $servicePrincipal) {
             Write-Host "App Service $appService was not found!"

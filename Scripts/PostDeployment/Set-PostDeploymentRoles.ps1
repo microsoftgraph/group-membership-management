@@ -29,7 +29,7 @@ function Set-PostDeploymentRoles {
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
         [Parameter(Mandatory = $False)]
-		[System.Collections.ArrayList] $UserPrincipalNames,
+		[array] $UserPrincipalNames,
         [Parameter(Mandatory = $False)]
 		[string] $DataResourceGroupName = $null,
         [Parameter(Mandatory = $False)]
