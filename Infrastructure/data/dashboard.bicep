@@ -4929,7 +4929,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'requests\n| project name, cloud_RoleName, duration=duration / 1000 / 60\n| summarize max_Duration=max(duration) by name, cloud_RoleName\n| order by max_Duration desc\n\n'
+                  value: 'requests\n| project name, operation_Name, duration=duration / 1000 / 60\n| summarize max_Duration=max(duration) by name, operation_Name\n| order by max_Duration desc\n\n'
                   isOptional: true
                 }
                 {
