@@ -66,6 +66,9 @@ export const jobsSlice = createSlice({
     setGetJobDetailsError: (state) => {
       state.getJobDetailsError = undefined;
     },
+    clearJob: (state) => {
+      state.selectedJob = undefined;
+    }
   },
   extraReducers: (builder) => {
     builder.addCase(fetchJobs.pending, (state) => {
@@ -184,7 +187,7 @@ export const jobsSlice = createSlice({
 });
 
 
-export const { setJobs, setGetJobsError, setGetJobDetailsError } =
+export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;

@@ -14,7 +14,8 @@ import { fetchJobs } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
-  setGetJobsError
+  setGetJobsError,
+  clearJob
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
@@ -224,6 +225,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   ): void => {
     if (item!.key === 'addSync') {
       dispatch(resetManageMembership());
+      dispatch(clearJob());
       navigate('/ManageMembership', { replace: false, state: { item: 1 } });
     }
   };
