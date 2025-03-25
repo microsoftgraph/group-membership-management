@@ -81,7 +81,7 @@ stages:
       displayName: 'dotnet publish webapi package'
       inputs:
         command: publish
-        arguments: '--configuration $(BuildConfiguration) --output webapi'
+        arguments: '--configuration $(BuildConfiguration) --output webapi /p:AssemblyVersion=$(Build.BuildNumber)'
         projects: 'Service/GroupMembershipManagement/Hosts/WebApi/WebApi/*.csproj'
         publishWebProjects: true
         modifyOutputPath: false

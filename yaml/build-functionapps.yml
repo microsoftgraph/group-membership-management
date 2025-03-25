@@ -83,7 +83,7 @@ stages:
           displayName: 'dotnet publish ${{ app.function.name }} function'
           inputs:
             command: publish
-            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }}'
+            arguments: '--configuration $(BuildConfiguration) --output ${{ app.function.name }} /p:AssemblyVersion=$(Build.BuildNumber)'
             projects: 'Service/GroupMembershipManagement/Hosts/${{ app.function.name }}/Function/*.csproj'
             publishWebProjects: false
             modifyOutputPath: false
