@@ -19,12 +19,12 @@ namespace Repositories.EntityFramework
             _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
         }
 
-        public async Task<Channel> GetChannelAsync(Guid groupId, string channelId)
+        public async Task<Channel?> GetChannelAsync(Guid groupId, string channelId)
         {
             return await _readContext.TeamsChannels.SingleOrDefaultAsync(channel => channel.GroupId == groupId && channel.ChannelId == channelId);
         }
 
-        public async Task<Channel> GetChannelUsingSyncJobIdAsync(Guid syncJobId)
+        public async Task<Channel?> GetChannelUsingSyncJobIdAsync(Guid syncJobId)
         {
             return await _readContext.TeamsChannels.SingleOrDefaultAsync(channel => channel.SyncJobId == syncJobId);
         }

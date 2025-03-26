@@ -17,12 +17,9 @@ namespace TeamsChannelMembershipObtainer.Service
     {
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
-        private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository;
         private readonly ILoggingRepository _logger;
-        private readonly IConfigurationRefresherProvider _refresherProvider;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         public TeamsChannelMembershipObtainerService(
@@ -37,11 +34,9 @@ namespace TeamsChannelMembershipObtainer.Service
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
-            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseChannelsRepository = channelsRepository ?? throw new ArgumentException(nameof(channelsRepository));
             _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _refresherProvider = refresherProvider ?? throw new ArgumentNullException(nameof(refresherProvider));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
@@ -153,11 +148,6 @@ namespace TeamsChannelMembershipObtainer.Service
             await SendMembershipAggregatorMessageAsync(aggregatorRequest);
         }
 
-        public async Task SendMessageAsync(SyncJob job)
-        {
-            await _serviceBusTopicsRepository.AddMessageAsync(job);
-        }
-
         public async Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
         {
             await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, status);
@@ -170,7 +160,7 @@ namespace TeamsChannelMembershipObtainer.Service
 
             var message = new ServiceBusMessage
             {
-                MessageId = $"{request.SyncJob.RowKey}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
+                MessageId = $"{request.SyncJob.Id}_{request.SyncJob.RunId}_{Guid.NewGuid()}",
                 Body = body
             };
 

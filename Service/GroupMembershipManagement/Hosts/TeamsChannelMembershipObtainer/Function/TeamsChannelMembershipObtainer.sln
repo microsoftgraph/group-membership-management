@@ -33,6 +33,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.GraphAzureADGr
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TeamsChannelMembershipObtainer.Service", "..\Services\TeamsChannelMembershipObtainer.Service\TeamsChannelMembershipObtainer.Service.csproj", "{3540D0A5-0FD6-4246-9B84-6B733D6C3762}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{C60615F7-C5B1-6F3A-F202-BF0FD1D24C1C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{4E1F745D-F0D0-7263-9BD1-99FB2E01022C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -95,6 +99,14 @@ Global
 		{3540D0A5-0FD6-4246-9B84-6B733D6C3762}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3540D0A5-0FD6-4246-9B84-6B733D6C3762}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3540D0A5-0FD6-4246-9B84-6B733D6C3762}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C60615F7-C5B1-6F3A-F202-BF0FD1D24C1C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C60615F7-C5B1-6F3A-F202-BF0FD1D24C1C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C60615F7-C5B1-6F3A-F202-BF0FD1D24C1C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C60615F7-C5B1-6F3A-F202-BF0FD1D24C1C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E1F745D-F0D0-7263-9BD1-99FB2E01022C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E1F745D-F0D0-7263-9BD1-99FB2E01022C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E1F745D-F0D0-7263-9BD1-99FB2E01022C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E1F745D-F0D0-7263-9BD1-99FB2E01022C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
