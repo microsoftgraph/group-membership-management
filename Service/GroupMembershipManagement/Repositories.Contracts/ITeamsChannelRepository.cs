@@ -18,6 +18,7 @@ namespace Repositories.Contracts
         public Task<(int SuccessCount, List<AzureADTeamsUser> UserRemovesFailed)> RemoveUsersFromChannelAsync(AzureADTeamsChannel teamsChannel, ICollection<AzureADTeamsUser> members);
         public Task<string> GetGroupNameAsync(Guid groupId, Guid runId);
         public Task<Channel> GetMainChannelAsync(Guid teamObjectId);
+        public Task<List<Channel>> SearchTeamsChannelsAsync(Guid teamObjectId, string filter);
         public Task<Dictionary<string, string>> GetTeamsChannelEmailsAsync(List<AzureADTeamsChannel> channels);
         public Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0);
         public Task<Dictionary<string, string>> GetTeamsChannelNamesAsync(List<AzureADTeamsChannel> channels);

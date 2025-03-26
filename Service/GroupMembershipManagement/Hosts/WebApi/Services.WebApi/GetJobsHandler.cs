@@ -70,7 +70,7 @@ namespace Services
             }
 
             var jobs = jobsQuery.ToList();
-            var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.Group.GroupId).ToList()))
+            var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() ? x.Channel.GroupId : x.Group.GroupId).ToList()))
                                .ToDictionary(x => x.ObjectId);
 
             if (request.CustomSortBy == "targetGroupName")

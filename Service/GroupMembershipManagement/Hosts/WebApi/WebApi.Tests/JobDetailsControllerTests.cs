@@ -19,6 +19,7 @@ using WebApi.Models.DTOs;
 using Roles = WebApi.Models.Roles;
 using SyncJob = Models.SyncJob;
 using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
+using Channel = Models.Channel;
 
 namespace Services.Tests
 {

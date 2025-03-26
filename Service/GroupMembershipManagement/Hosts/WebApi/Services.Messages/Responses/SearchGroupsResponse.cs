@@ -6,7 +6,7 @@ using WebApi.Models.Responses;
 
 namespace Services.Messages.Responses
 {
-    public class SearchDestinationsResponse : ResponseBase
+    public class SearchGroupsResponse : ResponseBase
     {
         public GetDestinationsModel Model { get; set; } = new GetDestinationsModel();
     }

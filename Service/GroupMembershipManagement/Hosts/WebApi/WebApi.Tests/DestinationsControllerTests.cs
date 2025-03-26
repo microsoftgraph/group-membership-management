@@ -29,7 +29,8 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
-        private SearchDestinationsHandler _searchDestinationsHandler = null!;
+        private SearchGroupsHandler _searchGroupsHandler = null!;
+        private SearchChannelsHandler _searchChannelsHandler = null!;
         private GetGroupEndpointsHandler _getGroupEndpointsHandler = null!;
         private GetGroupOnboardingStatusHandler _getGroupOnboardingStatusHandler = null!;
         private Mock<IOptions<GraphCredentials>> _graphCredentials = null!;
@@ -44,7 +45,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
-            _searchDestinationsHandler = new SearchDestinationsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            _searchGroupsHandler = new SearchGroupsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _getGroupEndpointsHandler = new GetGroupEndpointsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _postGroupHandler = new PostGroupHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _graphCredentials = new Mock<IOptions<GraphCredentials>>();
@@ -59,7 +60,7 @@ namespace Services.Tests
                                                                                    _syncJobRepository.Object,
                                                                                    _graphCredentials.Object);
 
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -117,7 +118,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task SearchDestinationsTestAsync()
         {
-            var response = await _destinationController.SearchAsync("Test");
+            var response = await _destinationController.SearchGroupsAsync("Test");
             var result = response.Result as OkObjectResult;
 
             Assert.IsNotNull(response);
@@ -202,7 +203,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupUserNotOwnerStatusAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -232,7 +233,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusWhenClaimIsNotFoundAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -256,7 +257,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -279,7 +280,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CreateGroupSucceedsAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -300,7 +301,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CreateGroupThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchDestinationsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {

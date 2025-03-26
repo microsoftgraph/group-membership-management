@@ -53,6 +53,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceStatus"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Services.Defaults", "..\Services.Defaults\Services.Defaults.csproj", "{E7551F2B-5E50-4345-9A41-B765FCD6A69E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Repositories.TeamsChannel", "..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj", "{64494230-82EF-88B7-5643-8021A242A781}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -159,6 +161,10 @@ Global
 		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E7551F2B-5E50-4345-9A41-B765FCD6A69E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64494230-82EF-88B7-5643-8021A242A781}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

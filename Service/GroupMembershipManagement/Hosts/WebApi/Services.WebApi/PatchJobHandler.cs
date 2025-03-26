@@ -54,7 +54,18 @@ namespace Services.WebApi
                 return response;
             }
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, syncJob.Group.GroupId);
+            var groupId = syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() 
+                ? syncJob.Channel?.GroupId 
+                : syncJob.Group?.GroupId;
+
+            if (groupId == null)
+            {
+                response.StatusCode = HttpStatusCode.BadRequest;
+                response.ErrorCode = "GroupIdNotFound";
+                return response;
+            }
+
+            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, (Guid) groupId);
             if (!(isGroupOwner || request.IsAllowed))
             {
                 response.StatusCode = HttpStatusCode.Forbidden;

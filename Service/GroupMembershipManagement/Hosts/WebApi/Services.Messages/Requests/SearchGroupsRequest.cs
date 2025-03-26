@@ -5,7 +5,7 @@ using Services.Messages.Contracts.Requests;
 
 namespace Services.Messages.Requests
 {
-    public class SearchDestinationsRequest : RequestBase
+    public class SearchGroupsRequest : RequestBase
     {
         public string? Query { get; set; }
     }

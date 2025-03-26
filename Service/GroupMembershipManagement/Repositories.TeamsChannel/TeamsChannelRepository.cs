@@ -23,6 +23,7 @@ namespace Repositories.TeamsChannel
         private readonly ILoggingRepository _loggingRepository;
         private readonly GraphServiceClient _graphServiceClient;
         private readonly TeamsChannelMetricTracker _teamsChannelMetricTracker;
+
         public Guid RunId { get; set; }
 
         public TeamsChannelRepository(ILoggingRepository loggingRepository,
@@ -368,6 +369,30 @@ namespace Repositories.TeamsChannel
             }
 
             return channelNames;
+        }
+        public async Task<List<Channel>> SearchTeamsChannelsAsync(Guid teamObjectId, string filter)
+        {
+            try
+            {
+                var channelResponse = await _graphServiceClient.Teams[teamObjectId.ToString()]
+                    .Channels
+                    .GetAsync(requestConfig =>
+                    {
+                        requestConfig.QueryParameters.Select = ["id", "displayName"];
+                        requestConfig.QueryParameters.Filter = filter;
+                    });
+
+                return channelResponse?.Value?.ToList() ?? new List<Channel>();
+            }
+            catch (ODataError ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString()
+                });
+
+                throw;
+            }
         }
         public async Task<Channel> GetMainChannelAsync(Guid teamObjectId)
         {

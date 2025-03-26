@@ -7,7 +7,6 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using System.Security.Claims;
-using AzureADGroup = Models.AzureADGroup;
 using NewGroupDTO = WebApi.Models.DTOs.NewGroup;
 
 namespace WebApi.Controllers.v1.Destination
@@ -17,28 +16,43 @@ namespace WebApi.Controllers.v1.Destination
     [Route("api/v{version:apiVersion}/destinations")]
     public class DestinationController : ControllerBase
     {
-        private readonly IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse> _searchDestinationsRequestHandler;
+        private readonly IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> _searchGroupsRequestHandler;
+        private readonly IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> _searchChannelsRequestHandler;
         private readonly IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> _getGroupEndpointsRequestHandler;
         private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
         private readonly IRequestHandler<PostGroupRequest, PostGroupResponse> _postGroupHandler;
 
         public DestinationController
-            (IRequestHandler<SearchDestinationsRequest, SearchDestinationsResponse> searchDestinationsRequestHandler,
+            (IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> searchGroupsRequestHandler,
+            IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> searchChannelsRequestHandler,
             IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> getGroupEndpointsRequestHandler,
             IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse> getGroupOnboardingStatusHandler,
             IRequestHandler<PostGroupRequest, PostGroupResponse> postGroupHandler)
         {
-            _searchDestinationsRequestHandler = searchDestinationsRequestHandler ?? throw new ArgumentNullException(nameof(searchDestinationsRequestHandler));
+            _searchGroupsRequestHandler = searchGroupsRequestHandler ?? throw new ArgumentNullException(nameof(searchGroupsRequestHandler));
+            _searchChannelsRequestHandler = searchChannelsRequestHandler ?? throw new ArgumentNullException(nameof(searchChannelsRequestHandler));
             _getGroupEndpointsRequestHandler = getGroupEndpointsRequestHandler ?? throw new ArgumentNullException(nameof(getGroupEndpointsRequestHandler));
             _getGroupOnboardingStatusHandler = getGroupOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getGroupOnboardingStatusHandler));
             _postGroupHandler = postGroupHandler ?? throw new ArgumentNullException(nameof(postGroupHandler));
         }
 
         [Authorize()]
-        [HttpGet("search/{query}")]
-        public async Task<ActionResult<IEnumerable<AzureADGroup>>> SearchAsync(string query)
+        [HttpGet("searchGroups/{query}")]
+        public async Task<ActionResult<IEnumerable<Models.DTOs.Destination>>> SearchGroupsAsync(string query)
         {
-            var response = await _searchDestinationsRequestHandler.ExecuteAsync(new SearchDestinationsRequest { Query = query });
+            var response = await _searchGroupsRequestHandler.ExecuteAsync(new SearchGroupsRequest { Query = query });
+            return Ok(response.Model);
+        }
+
+        [Authorize()]
+        [HttpGet("teams/{teamId}/searchChannels/{query}")]
+        public async Task<ActionResult<IEnumerable<Models.DTOs.Channel>>> SearchChannelsAsync(Guid teamId, string query)
+        {
+            var response = await _searchChannelsRequestHandler.ExecuteAsync(new SearchChannelsRequest
+            {
+                TeamId = teamId,
+                Query = query
+            });
             return Ok(response.Model);
         }
 

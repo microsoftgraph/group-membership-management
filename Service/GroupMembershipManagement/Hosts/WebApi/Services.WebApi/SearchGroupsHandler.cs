@@ -10,18 +10,18 @@ using DestinationDTO = WebApi.Models.DTOs.Destination;
 
 namespace Services
 {
-    public class SearchDestinationsHandler : RequestHandlerBase<SearchDestinationsRequest, SearchDestinationsResponse>
+    public class SearchGroupsHandler : RequestHandlerBase<SearchGroupsRequest, SearchGroupsResponse>
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
-        public SearchDestinationsHandler(ILoggingRepository loggingRepository,
+        public SearchGroupsHandler(ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
-        protected override async Task<SearchDestinationsResponse> ExecuteCoreAsync(SearchDestinationsRequest request)
+        protected override async Task<SearchGroupsResponse> ExecuteCoreAsync(SearchGroupsRequest request)
         {
-            var response = new SearchDestinationsResponse();
+            var response = new SearchGroupsResponse();
 
             int minQueryLength = 1;
             if (string.IsNullOrEmpty(request.Query) || request.Query.Length < minQueryLength)
