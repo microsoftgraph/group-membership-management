@@ -309,7 +309,7 @@ export const strings: IStrings = {
             all: 'Todos',
             thresholdExceeded: 'Límite excedido',
             customerPaused: 'En pausa',
-            developerPaused: 'Desarrollador en pausa',
+            developerPaused: 'Pausado por el desarrollador',
             membershipDataNotFound: 'Datos de membresía no encontrados',
             destinationGroupNotFound: 'Grupo de destino no encontrado',
             notOwnerOfDestinationGroup: 'No es propietario del grupo de destino',
