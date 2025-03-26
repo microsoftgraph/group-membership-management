@@ -59,6 +59,7 @@ import { selectLastModifiedOnBehalfOfUserProfile } from '../../store/profile.sli
 import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
+import { SourcePartType } from '../../models/SourcePartType';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -180,7 +181,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </Stack.Item>
                 <Stack.Item align="start">
                   <Text className={classNames.itemTitle} block>
-                    {strings.JobDetails.labels.name}
+                    {selectedDestination?.type === SourcePartType.TeamsChannelMembership ? strings.JobDetails.labels.teamName : strings.JobDetails.labels.name}
                   </Text>
                   <Text className={classNames.itemData} block>
                     {selectedDestination?.name ?? '-'}
@@ -194,6 +195,26 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                     {selectedDestination?.id ?? '-'}
                   </Text>
                 </Stack.Item>
+                {selectedDestination?.channelName &&
+                  <Stack.Item align="start">
+                    <Text className={classNames.itemTitle} block>
+                      {strings.JobDetails.labels.channelName}
+                    </Text>
+                    <Text className={classNames.itemData} block>
+                      {selectedDestination?.channelName ?? '-'}
+                    </Text>
+                  </Stack.Item> 
+                }
+                {selectedDestination?.channelId &&
+                  <Stack.Item align="start">
+                    <Text className={classNames.itemTitle} block>
+                      {strings.JobDetails.labels.channelId}
+                    </Text>
+                    <Text className={classNames.itemData} block>
+                      {selectedDestination?.channelId ?? '-'}
+                    </Text>
+                  </Stack.Item>
+                }
               </Stack>
               {selectedDestination && selectedDestinationEndpoints &&
                 <EndpointsList 

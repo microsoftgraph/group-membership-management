@@ -176,6 +176,9 @@ export type IStrings = {
       type: string;
       name: string;
       ID: string;
+      teamName: string;
+      channelName: string;
+      channelId: string;
       configuration: string;
       startDate: string;
       endDate: string;
@@ -354,12 +357,16 @@ export type IStrings = {
       selectDestinationTypePlaceholder: string;
       selectDestination: string;
       createNewGroup: string;
-      searchDestination: string;
+      searchGroup: string;
+      searchTeam: string;
+      searchChannel: string;
       searchGroupSuggestedText: string;
+      searchChannelSuggestedText: string;
       noResultsFound: string;
       appsUsed: string;
       entraSecurityGroup: string;
       outlookWarning: string;
+      teamsNotSupportedWarning: string;
       appIdNotOwnerWarning: string;
       userNotOwnerWarning: string;
       groupDescription: string;

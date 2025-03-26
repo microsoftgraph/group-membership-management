@@ -7,6 +7,9 @@ import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
 import { Destination, DestinationPickerPersona } from '../models';
+import { SearchChannelRequest } from '../models/SearchChannelRequest';
+import { Search } from 'react-router-dom';
+import { Channel } from '../models/Channel';
 
 export class OdataQueryOptions {
   pageSize?: number;
@@ -45,6 +48,38 @@ export const searchDestinations = createAsyncThunk<DestinationPickerPersona[], s
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch destination data!');
+    }
+  }
+);
+
+export const searchChannels = createAsyncThunk<DestinationPickerPersona[], SearchChannelRequest, ThunkConfig>(
+  'destinations/searchChannels',
+  async (searchChannelRequest: SearchChannelRequest, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers();
+    const bearer = `Bearer ${token}`;
+    headers.append('Authorization', bearer);
+
+    const options = {
+      method: 'GET',
+      headers,
+    };
+
+    try {
+      const response = await fetch(`${config.searchChannels(searchChannelRequest.teamId)}/${encodeURIComponent(searchChannelRequest.query)}`, options).then(
+        async (response) => await response.json()
+      );
+
+      const payload: DestinationPickerPersona[] = response.map((channel: Channel, index: number) => ({
+        key: index, 
+        id: channel.channelId,
+        text: channel.name,
+      }));
+      
+      return payload;
+    } catch (error) {
+      throw new Error('Failed to fetch channel data!');
     }
   }
 );

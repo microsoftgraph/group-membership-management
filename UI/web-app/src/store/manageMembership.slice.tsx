@@ -8,7 +8,8 @@ import { NewJob } from '../models/NewJob';
 import {
     getGroupOnboardingStatus,
     getGroupEndpoints,
-    searchDestinations
+    searchDestinations,
+    searchChannels
 } from './manageMembership.api';
 import { OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
@@ -23,6 +24,7 @@ import { createGroup } from './groups.api';
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
     searchResults?: DestinationPickerPersona[];
+    channelPickerSearchResults?: DestinationPickerPersona[];
     selectedDestination: Destination | undefined;
     onboardingStatus: OnboardingStatus | null;
     hasChanges: boolean;
@@ -48,6 +50,7 @@ export interface ManageMembershipState {
 const initialState: ManageMembershipState = {
     loadingSearchResults: false,
     searchResults: [],
+    channelPickerSearchResults: [],
     selectedDestination: undefined,
     onboardingStatus: null,
     hasChanges: false,
@@ -94,6 +97,9 @@ const manageMembershipSlice = createSlice({
         },
         setSelectedDestination: (state, action: PayloadAction<Destination | undefined>) => {
             state.selectedDestination = action.payload;
+            if (state.selectedDestination?.id === undefined) {
+                state.onboardingStatus = null;
+            }
         },
         setDestinationEndpoints: (state, action: PayloadAction<string[]>) => {
             if (state.selectedDestination) {
@@ -325,6 +331,16 @@ const manageMembershipSlice = createSlice({
         builder.addCase(searchDestinations.rejected, (state) => {
             state.loadingSearchResults = false;
         });
+        builder.addCase(searchChannels.fulfilled, (state, action) => {
+            state.loadingSearchResults = false;
+            state.channelPickerSearchResults = action.payload;
+        });
+        builder.addCase(searchChannels.pending, (state) => {
+            state.loadingSearchResults = true;
+        });
+        builder.addCase(searchChannels.rejected, (state) => {
+            state.loadingSearchResults = false;
+        });
         builder.addCase(getGroupEndpoints.fulfilled, (state, action) => {
             if (state.selectedDestination?.id === action.meta.arg) {
                 state.selectedDestination.endpoints = action.payload;
@@ -409,6 +425,7 @@ export const manageMembershipRequestor = (state: RootState) => state.manageMembe
 
 // 1- Select Destination
 export const manageMembershipSearchResults = (state: RootState) => state.manageMembership.searchResults;
+export const manageMembershipChannelPickerSearchResults = (state: RootState) => state.manageMembership.channelPickerSearchResults;
 export const manageMembershipLoadingSearchResults = (state: RootState) => state.manageMembership.loadingSearchResults;
 export const manageMembershipSelectedDestinationEndpoints = (state: RootState) => state.manageMembership.selectedDestination?.endpoints;
 export const manageMembershipGroupOnboardingStatus = (state: RootState) => state.manageMembership.onboardingStatus;

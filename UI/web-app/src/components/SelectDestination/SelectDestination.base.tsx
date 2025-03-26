@@ -16,6 +16,7 @@ import {
   Text,
   ChoiceGroup,
   IChoiceGroupOption,
+  TextField,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -25,24 +26,28 @@ import {
 import { useStrings } from '../../store/hooks';
 import { PageSection } from '../PageSection';
 import { AppDispatch } from '../../store';
-import { searchDestinations } from '../../store/manageMembership.api';
+import { searchChannels, searchDestinations } from '../../store/manageMembership.api';
 import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipSearchResults,
+  manageMembershipChannelPickerSearchResults,
   manageMembershipLoadingSearchResults,
-  manageMembershipGroupOnboardingStatus,
+  manageMembershipGroupOnboardingStatus
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
+import { SearchChannelRequest } from '../../models/SearchChannelRequest';
 import { selectCreateGroupFeatureEnabled } from '../../store/settings.slice';
 import { OnboardingStatus } from '../../models';
 import { EndpointsList } from '../EndpointsList';
 import { CreateGroup } from '../CreateGroup';
 import { debounce } from '../../utils/jobUtils';
+import { selectIsJobTenantWriter } from '../../store/roles.slice';
+import { SourcePartType } from '../../models/SourcePartType';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
 export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationProps> = (props) => {
-  const { className, styles, selectedDestination, onSearchDestinationChange, onGroupCreated } = props;
+  const { className, styles, selectedDestination, onDestinationTypeChange, onSearchDestinationChange, onSearchChannelChange, onGroupCreated } = props;
   const strings = useStrings();
   const classNames: IProcessedStyleSet<ISelectDestinationStyles> = getClassNames(styles, {
     className,
@@ -57,24 +62,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     {
       key: 'Select',
       text: strings.ManageMembership.labels.selectDestination,
-    },
-  ];
-
-  const optionsDestinationType: IComboBoxOption[] = [
-    {
-      key: 'Group',
-      text: 'Group',
-      data: {
-        description: strings.ManageMembership.labels.groupDescription,
-      },
-    },
-    {
-      key: 'Channel',
-      text: 'Channel',
-      data: {
-        description: strings.ManageMembership.labels.channelDescription,
-      },
-      disabled: true,
     },
   ];
 
@@ -95,8 +82,29 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       </div>
     );
   };
+  const mapDestinationToType = (destination: Destination | undefined): string => {
+    return destination?.type ?? "GroupMembership";
+  };
+  const mapDestinationToChannelPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
+    if (!destination) return [];
+
+    if(!destination.channelId || !destination.channelName) {
+      return [];
+    } 
+
+    return [
+      {
+        key: destination.channelId,
+        text: destination.channelName,
+      },
+    ];
+  };
   const mapDestinationToPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
     if (!destination) return [];
+
+    if(!destination.id || !destination.name) {
+      return [];
+    } 
 
     return [
       {
@@ -111,22 +119,61 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const onboardingStatus = useSelector(manageMembershipGroupOnboardingStatus);
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
+  const channelPickerSuggestions = useSelector(manageMembershipChannelPickerSearchResults);
+  const selectedDestinationType = mapDestinationToType(selectedDestination);
+  const selectedDestinationChannelPersona = mapDestinationToChannelPersonaProps(selectedDestination);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
   const [createNewGroup, setCreateNewGroup] = useState(false);
   const isCreateGroupEnabled = useSelector(selectCreateGroupFeatureEnabled);
+  const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
 
-  const [inputValue, setInputValue] = useState('');
+  const optionsDestinationType: IComboBoxOption[] = [
+    {
+      key: 'GroupMembership',
+      text: 'Group',
+      data: {
+        description: strings.ManageMembership.labels.groupDescription,
+      },
+    },
+    {
+      key: 'TeamsChannelMembership',
+      text: 'Channel',
+      data: {
+        description: strings.ManageMembership.labels.channelDescription,
+      },
+      disabled: !isTenantJobWriter,
+    },
+  ];
 
   const debouncedSearch = useCallback(
     debounce((input: string) => {
-      dispatch(searchDestinations(input));
+      if(input != undefined && input.length > 0) {
+        dispatch(searchDestinations(input));
+      }
+    }, 50),
+    []
+  );
+
+  const debouncedChannelSearch = useCallback(
+    debounce((input: string, currentDestination: Destination | undefined) => {
+      if (input != undefined && input.length > 0) {
+        const channelRequest: SearchChannelRequest = {
+          teamId: currentDestination?.id ?? "",
+          query: input,
+        };
+        dispatch(searchChannels(channelRequest));
+      }
     }, 50),
     []
   );
 
   const handleInputChange = (input: string): string => {
-    setInputValue(input);
     debouncedSearch(input);
+    return input;
+  };
+
+  const handleChannelInputChange = (input: string): string => {
+    debouncedChannelSearch(input, selectedDestination);
     return input;
   };
 
@@ -160,6 +207,11 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.alreadyOnboardedWarning}</div>
     ) : null;
 
+  const teamsNotSupportedWarning =
+    onboardingStatus == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === SourcePartType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
+      <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.teamsNotSupportedWarning}</div>
+    ) : null;
+
   useEffect(() => {}, [dispatch, groupPickerSuggestions]);
 
   const getPickerSuggestions = async (
@@ -168,6 +220,14 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   ): Promise<IPersonaProps[]> => {
     return text && groupPickerSuggestions ? groupPickerSuggestions : [];
   };
+
+  const getChannelPickerSuggestions = async (
+    text: string,
+    currentChannels: IPersonaProps[] | undefined
+  ): Promise<IPersonaProps[]> => {
+    return text && channelPickerSuggestions ? channelPickerSuggestions : [];
+  };
+
   const visibleOptionsDestinationType = optionsDestinationType.filter((option) => !option.disabled);
 
   const onDestinationActionChange = (
@@ -202,12 +262,13 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 label={strings.ManageMembership.labels.selectDestinationType}
                 options={visibleOptionsDestinationType}
                 required
-                selectedKey={'Group'}
+                selectedKey={selectedDestinationType}
+                onChange={onDestinationTypeChange}
                 onRenderOption={onRenderValueComboBoxOptions}
                 styles={{ root: classNames.peoplePicker }}
               />
               <div>
-                {strings.ManageMembership.labels.searchDestination}
+                {selectedDestination?.type == SourcePartType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
                 <NormalPeoplePicker
                   onResolveSuggestions={getPickerSuggestions}
                   pickerSuggestionsProps={{
@@ -216,7 +277,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                     loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
                   }}
                   key={'normal'}
-                  aria-label={strings.ManageMembership.labels.searchDestination}
+                  aria-label={strings.ManageMembership.labels.searchTeam}
                   selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
                   removeButtonAriaLabel={
                     strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel
@@ -230,6 +291,32 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                   pickerCalloutProps={{ calloutMinWidth: 500 }}
                 />
               </div>
+              {selectedDestination?.id != null && selectedDestinationType === SourcePartType.TeamsChannelMembership && (
+                <div>
+                  {strings.ManageMembership.labels.searchChannel}
+                  <NormalPeoplePicker
+                    onResolveSuggestions={getChannelPickerSuggestions}
+                    pickerSuggestionsProps={{
+                      suggestionsHeaderText: strings.ManageMembership.labels.searchChannelSuggestedText,
+                      noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
+                      loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+                    }}
+                    key={'normal'}
+                    aria-label={selectedDestination?.type == SourcePartType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
+                    selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
+                    removeButtonAriaLabel={
+                      strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel
+                    }
+                    resolveDelay={600}
+                    itemLimit={1}
+                    selectedItems={selectedDestinationChannelPersona}
+                    onInputChange={handleChannelInputChange}
+                    onChange={onSearchChannelChange}
+                    styles={{ text: classNames.peoplePicker }}
+                    pickerCalloutProps={{ calloutMinWidth: 500 }}
+                  />
+                </div>
+              )}
               <div className={classNames.resultsContainer}>
                 {!hasRequiredEndpoints() && (
                   <div className={classNames.spinnerContainer}>{loadingSearchResults ? <Spinner /> : null}</div>
@@ -244,6 +331,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {appIdNotOwnerWarning}
                 {userNotOwnerWarning}
                 {alreadyOnboardedWarning}
+                {teamsNotSupportedWarning}
               </div>
             </>
           )}

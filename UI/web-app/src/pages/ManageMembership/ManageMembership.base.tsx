@@ -12,6 +12,8 @@ import {
   IPersonaProps,
   Dialog, DialogType, DialogFooter,
   Spinner,
+  IComboBoxOption,
+  IComboBox,
 } from '@fluentui/react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Page } from '../../components/Page';
@@ -72,6 +74,7 @@ import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { createGroup } from '../../store/groups.api';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
+import { DestinationType } from '../../models/DestinationType';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -177,23 +180,64 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     return sourcePartsQuery;
   }, [sourcePartsQuery, advancedViewQuery]);
   
+  const handleDestinationTypeChange = (
+    event: React.FormEvent<IComboBox>,
+    option?: IComboBoxOption
+  ): void => {
+    dispatch(setHasChanges(true));
+    const updatedDestination: Destination = {
+      type: option?.key as string,
+    };
+    dispatch(setSelectedDestination(updatedDestination));
+  };
+
   const handleSearchDestinationChange = (selectedDestinations: IPersonaProps[] | undefined) => {
     dispatch(setHasChanges(true));
 
     if (selectedDestinations && selectedDestinations.length > 0) {
       const selectedGroupId = selectedDestinations[0].id as string;
       const groupName = selectedDestinations[0].text as string;
-      const selectedDestination: Destination = {
+      const updatedDestination: Destination = {
         id: selectedGroupId,
         name: groupName,
-        type: 'GroupMembership' // Make type configurable once we support Teams Channels
+        type: selectedDestination?.type ?? DestinationType.GroupMembership
       };
 
-      dispatch(setSelectedDestination(selectedDestination));
+      dispatch(setSelectedDestination(updatedDestination));
       dispatch(getGroupEndpoints(selectedGroupId));
-      dispatch(getGroupOnboardingStatus(selectedGroupId));
+      if (updatedDestination.type === DestinationType.GroupMembership) {
+        dispatch(getGroupOnboardingStatus(selectedGroupId));
+      }
     } else {
-      dispatch(setSelectedDestination(undefined));
+      const updatedDestination: Destination = {
+        id: undefined,
+        name: undefined,
+        type: selectedDestination?.type ?? DestinationType.GroupMembership
+      };
+      dispatch(setSelectedDestination(updatedDestination));
+    }
+  };
+
+  const handleSearchChannelChange = (selectedChannels: IPersonaProps[] | undefined) => {
+    dispatch(setHasChanges(true));
+    if (selectedChannels && selectedChannels.length > 0) {
+      const selectedChannelId = selectedChannels[0].id as string;
+      const channelName = selectedChannels[0].text as string;
+      const updatedDestination: Destination = {
+        ...selectedDestination,
+        type: DestinationType.TeamsChannelMembership,
+        channelId: selectedChannelId,
+        channelName: channelName,
+      };
+      dispatch(setSelectedDestination(updatedDestination));
+    } else {
+      const updatedDestination: Destination = {
+        ...selectedDestination,
+        channelId: undefined,
+        channelName: undefined,
+        type: selectedDestination?.type ?? DestinationType.GroupMembership
+      };
+      dispatch(setSelectedDestination(updatedDestination));
     }
   };
 
@@ -207,7 +251,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       const selectedDestination: Destination = {
         id: createdGroupId,
         name: createdGroupName,
-        type: 'GroupMembership' // Make type configurable once we support Teams Channels
+        type: DestinationType.GroupMembership // Make type configurable once we support Teams Channel creation
       };
       dispatch(setSelectedDestination(selectedDestination));
       dispatch(getGroupEndpoints(createdGroupId));
@@ -314,7 +358,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
     } else {
       const destinationJson = JSON.stringify([{
-        value: { objectId: selectedDestination?.id },
+        value: { objectId: selectedDestination?.id, channelId: selectedDestination?.channelId },
         type: selectedDestination?.type
       }]);
 
@@ -376,7 +420,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             children={
               <SelectDestination
                 selectedDestination={selectedDestination}
+                onDestinationTypeChange={handleDestinationTypeChange}
                 onSearchDestinationChange={handleSearchDestinationChange}
+                onSearchChannelChange={handleSearchChannelChange}
                 onGroupCreated={handleGroupCreated}
               />}
           />}
