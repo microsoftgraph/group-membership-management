@@ -81,19 +81,38 @@ namespace Hosts.NonProdService
                     RunId = runId
                 });
 
-            // Create sync jobs for the groups, if they don't already exist.
-            await context.CallActivityAsync(
-                nameof(LoadTestingSyncJobCreatorFunction),
-                new LoadTestingSyncJobCreatorRequest
+            var targetGroupIds = syncJobsResponse.SyncJobs.Select(x => x.Group.GroupId).ToList();
+
+            // If all groups exist, make sure they all have a sync job.
+            if (groupsToCreate.GroupsToCreate.Keys.Count == 0)
+            {
+                var syncJobCheckerResponse = await context.CallActivityAsync<SyncJobCheckerResponse>(nameof(SyncJobCheckerFunction), new SyncJobCheckerRequest
                 {
-                    GroupSizesAndIds = groupSizesAndIds,
-                    SyncJobs = syncJobsResponse.SyncJobs,
-                    RunId = runId
+                    RunId = runId,
+                    TargetGroupIds = targetGroupIds
                 });
+
+                groupSizesAndIds = syncJobCheckerResponse.GroupSizesAndIds;
+            }
+
+            if (groupSizesAndIds.Count == 0)
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                                                new LoggerRequest { Message = "No groups to create sync jobs for", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+            }
+            else
+            {
+                await context.CallActivityAsync(
+                    nameof(LoadTestingSyncJobCreatorFunction),
+                    new LoadTestingSyncJobCreatorRequest
+                    {
+                        GroupSizesAndIds = groupSizesAndIds,
+                        TargetGroupIds = targetGroupIds,
+                        RunId = runId
+                    });
+            }
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
         }
-
-        
     }
 }

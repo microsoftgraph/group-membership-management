@@ -32,11 +32,11 @@ namespace Hosts.NonProdService
         {
             var runId = request.RunId;
             var groupSizesAndIds = request.GroupSizesAndIds;
-            var syncJobs = request.SyncJobs;
+            var targetGroupIds = request.TargetGroupIds;
             var options = _options.Value;
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(LoadTestingSyncJobCreatorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            
+
             // spread out jobs evenly across 1 day
             var totalJobsToCreate = groupSizesAndIds.Keys.Sum(groupSize => groupSizesAndIds[groupSize].Count);
             var minutesInADay = 60 * 24;
@@ -52,7 +52,7 @@ namespace Hosts.NonProdService
             {
                 foreach (var groupId in groupSizesAndIds[groupSize])
                 {
-                    if (syncJobs.Any(syncJob => syncJob.Group.GroupId.ToString().ToLower().Equals(groupId.ToString().ToLower())))
+                    if (targetGroupIds.Any(id => id.ToString().ToLower().Equals(groupId.ToString().ToLower())))
                     {
                         continue;
                     }

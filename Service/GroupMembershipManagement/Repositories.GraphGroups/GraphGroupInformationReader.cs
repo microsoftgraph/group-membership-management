@@ -680,6 +680,56 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<List<AzureADGroup>> GetGroupsByFilterAsync(string filter)
+        {
+            try
+            {
+                var results = new List<AzureADGroup>();
+                var groupCollectionPage = await _graphServiceClient.Groups
+                                   .GetAsync(requestConfiguration =>
+                                   {
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Filter = filter;
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Top = 999;
+                                   });
+
+                while (groupCollectionPage.Value.Count > 0)
+                {
+                    foreach (var group in groupCollectionPage.Value)
+                    {
+                        var azureAdGroup = new AzureADGroup
+                        {
+                            ObjectId = new Guid(group.Id),
+                            Name = group.DisplayName,
+                            Email = group.Mail
+                        };
+
+                        results.Add(azureAdGroup);
+                    }
+
+                    if (groupCollectionPage.OdataNextLink != null)
+                    {
+                        groupCollectionPage = await _graphServiceClient.Groups.WithUrl(groupCollectionPage.OdataNextLink).GetAsync();
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                return results;
+
+            }
+            catch (Exception e)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error searching for groups: {e}" });
+                throw;
+            }
+        }
+
         public async Task<List<string>> GetAllGroupNamesAsync()
         {
             var groupNames = new List<string>();
