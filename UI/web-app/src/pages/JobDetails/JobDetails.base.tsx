@@ -20,7 +20,7 @@ import {
   Persona,
   PersonaSize,
   IPersonaSharedProps,
-  TextField
+  Label
 } from '@fluentui/react';
 
 import {
@@ -462,14 +462,10 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
             <>
               {strings.JobDetails.labels.pendingReviewInstructions}
               {loadingJobChanges ? <Shimmer width="100%" /> :
-                <TextField
-                  multiline
-                  resizable={true}
-                  autoAdjustHeight
-                  label={strings.JobDetails.labels.businessJustification}
-                  readOnly={true}
-                  defaultValue={lastChange?.businessJustification}
-                />
+              <>
+              <Label>{strings.JobDetails.labels.businessJustification}</Label>
+                {lastChange?.businessJustification}
+              </>
               }
             </>
               : strings.JobDetails.labels.pendingReviewDescription}</Text>
