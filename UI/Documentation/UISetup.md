@@ -64,3 +64,30 @@ Add the following variables to `.env`:
 - REACT_APP_VERSION_NUMBER (Optional: this value is pulled from the build pipeline)
 - REACT_APP_MANAGE_MEMBERSHIP_FLAG (Optional: this value sets the state of the Manage Membership feature flag (true or false))
 - REACT_APP_ENVIRONMENT_ABBREVIATION: (Set value with `<environmentAbbreviation>`)
+
+### Accessibility Testing
+#### Installing Accessibility Insights for Web
+1. Download the Extension:
+   - Navigate to the [Accessibility Insights for Web](https://accessibilityinsights.io/downloads/) page.
+   - Click on the "Download for Web" button.
+   - Select "Add to Chrome" or "Add to Edge" depending on your browser.
+   - Confirm by clicking "Add Extension" in the pop-up window.
+2. Activate the Extension:
+   - Once installed, click on the puzzle piece icon (extensions) in the top right corner of your browser.
+   - Pin the Accessibility Insights extension for easy access.
+
+#### Running Accessibility Insights
+1. Open the Extension:
+   - Click on the Accessibility Insights extension icon in your browser toolbar.
+2. Run Automated Checks:
+   - Select "FastPass" to run automated checks on your current webpage.
+   - The tool will highlight any accessibility issues in red and provide guidance on how to address them.
+3. Manual Testing:
+   - For a more thorough assessment, use the "Assessment" feature.
+   - Follow the step-by-step instructions to manually test various aspects of your UI for accessibility compliance.
+4. Review and Fix Issues:
+   - Review the issues identified by the tool.
+   - Follow the provided guidance to fix the issues and ensure your UI changes do not introduce new accessibility bugs.
+
+#### Regular Testing
+- Run the Accessibility Insights checks whenever you make changes to the UI to catch any new issues early.
