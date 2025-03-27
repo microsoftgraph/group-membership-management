@@ -158,7 +158,7 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
-        
+
         public Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias)
         {
             throw new NotImplementedException();
@@ -219,6 +219,11 @@ namespace Tests.FunctionApps.Mocks
         }
 
         public Task<string> GetGroupEmailAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
+        
+        public Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query)
         {
             throw new NotImplementedException();
         }
