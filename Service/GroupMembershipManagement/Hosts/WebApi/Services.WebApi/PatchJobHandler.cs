@@ -68,6 +68,12 @@ namespace Services.WebApi
                 return response;
             }
 
+            if (syncJob.Status == SyncStatus.PendingReview.ToString() && !request.IsAllowed)
+            {
+                response.StatusCode = HttpStatusCode.Forbidden;
+                return response;
+            }
+
             var status = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Status")?.value?.ToString();
             if (status == null)
             {
