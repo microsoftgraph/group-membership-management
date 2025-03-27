@@ -29,8 +29,8 @@ namespace WebApi.Controllers.v1.Roles
             {
                 isJobOwnerReader = true;
                 isJobOwnerEnabler = true;
-                isJobOwnerConfigurationEditor = true;
                 isJobOwnerDeleter = true;
+                isJobOwnerConfigurationEditor = true;
             };
 
             var isJobTenantReader = User.IsInRole(Models.Roles.JOB_TENANT_READER);
@@ -45,6 +45,7 @@ namespace WebApi.Controllers.v1.Roles
             {
                 IsJobOwnerReader = isJobOwnerReader,
                 IsJobOwnerEnabler = isJobOwnerEnabler,
+                IsJobOwnerConfigurationEditor = isJobOwnerConfigurationEditor,
                 IsJobOwnerDeleter = isJobOwnerDeleter,
                 IsJobOwnerWriter = isJobOwnerWriter,
                 IsJobTenantReader = isJobTenantReader,
