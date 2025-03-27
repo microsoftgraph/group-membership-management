@@ -249,7 +249,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                 actionButtons={
                   canEditJob
                   ? [{ text: strings.JobDetails.editButton, icon: { iconName: 'Edit' }, onClick: openMembershipConfiguration }]
-                  : [{ text: strings.JobDetails.viewDetails, icon: { iconName: 'View' }, onClick: openMembershipConfiguration }]
+                  : []
                 }
                 children={
                   <MembershipConfiguration 
