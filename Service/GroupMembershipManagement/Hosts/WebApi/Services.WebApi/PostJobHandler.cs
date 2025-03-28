@@ -72,6 +72,7 @@ namespace Services
                     {
                         Id = newSyncJobId,
                         Name = destinationName,
+                        Email = destinationEmail,
                         Owners = ownersDictionary.GetValueOrDefault(destinationId)
                     };
                     await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
