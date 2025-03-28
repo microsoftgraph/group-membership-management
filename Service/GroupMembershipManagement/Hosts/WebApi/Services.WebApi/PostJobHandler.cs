@@ -66,6 +66,7 @@ namespace Services
                     });
 
                     var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
+                    var destinationEmail = await _graphGroupRepository.GetGroupEmailAsync(destinationId);
                     var ownersDictionary = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid> { destinationId });
                     var destinationAttributes = new DestinationAttributes
                     {

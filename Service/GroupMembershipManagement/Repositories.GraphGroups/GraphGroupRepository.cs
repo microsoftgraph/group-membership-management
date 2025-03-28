@@ -66,6 +66,11 @@ namespace Repositories.GraphGroups
         {
             return _graphGroupInformationReader.GetGroupNamesAsync(objectIds);
         }
+        
+        public Task<string> GetGroupEmailAsync(Guid objectId)
+        {
+            return _graphGroupInformationReader.GetGroupEmailAsync(objectId, RunId);
+        }
 
         public Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds)
         {
