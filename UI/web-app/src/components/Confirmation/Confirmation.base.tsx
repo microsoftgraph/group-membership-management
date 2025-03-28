@@ -18,7 +18,8 @@ import {
   Shimmer,
   NormalPeoplePicker,
   IPersonaProps,
-  DirectionalHint
+  DirectionalHint,
+  Label
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -337,8 +338,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
           ) : (
             <div>
               <div className={classNames.cardHeader}>
-                <div className={classNames.cardTitle}>
-                  {strings.ManageMembership.labels.requestedOnBehalfOf}
+                <div className={classNames.cardTitle}>                  
+                  <Label required>{strings.ManageMembership.labels.requestedOnBehalfOf}</Label>
                 </div>
               </div>
               <Separator />
