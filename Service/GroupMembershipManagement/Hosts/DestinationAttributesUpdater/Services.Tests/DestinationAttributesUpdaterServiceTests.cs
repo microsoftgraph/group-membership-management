@@ -81,13 +81,16 @@ namespace Services.Tests
 
             Guid owner = Guid.NewGuid();
 
-            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { destination.Value.ObjectId,  "name"} });
+            _mockGraphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = destination.Value.ObjectId, Name = "name", Email = "email" } });
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { destination.Value.ObjectId, new List<Guid> { owner } } });
-            _mockGraphGroupRepository.Setup(x => x.GetGroupEmailsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { destination.Value.ObjectId, "email" } });
 
             var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
 
-            Assert.AreEqual(response.First().Id, tableId);
+            var attributes = response.First();
+            Assert.AreEqual(attributes.Id, tableId);
+            Assert.IsNotNull(attributes.Name);
+            Assert.IsNotNull(attributes.Email);
+            Assert.IsNotNull(attributes.Owners);
         }
 
         [TestMethod]
@@ -106,13 +109,16 @@ namespace Services.Tests
 
             Guid owner = Guid.NewGuid();
 
-            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { Guid.NewGuid(), "name" } });
+            _mockGraphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = Guid.NewGuid(), Name = "name", Email = "email" } });
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { Guid.NewGuid(), new List<Guid> { owner } } });
-            _mockGraphGroupRepository.Setup(x => x.GetGroupEmailsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { Guid.NewGuid(), "email" } });
 
             var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
 
-            Assert.AreEqual(response.First().Id, tableId);
+            var attributes = response.First();
+            Assert.AreEqual(attributes.Id, tableId);
+            Assert.IsNull(attributes.Name);
+            Assert.IsNull(attributes.Email);
+            Assert.IsNull(attributes.Owners);
         }
 
         [TestMethod]
@@ -137,7 +143,11 @@ namespace Services.Tests
 
             var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, TeamsChannelMembership);
 
-            Assert.AreEqual(response.First().Id, tableId);
+            var attributes = response.First();
+            Assert.AreEqual(attributes.Id, tableId);
+            Assert.IsNull(attributes.Name);
+            Assert.IsNull(attributes.Email);
+            Assert.IsNull(attributes.Owners);
         }
     }
 }

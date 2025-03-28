@@ -108,9 +108,11 @@ namespace Services
                 }
 
                 var destinationGuids = destinationObjects.Select(d => d.Value.ObjectId).ToList();
-                names = await _graphGroupRepository.GetGroupNamesAsync(destinationGuids);
+                var groupDetails = await _graphGroupRepository.GetGroupsAsync(destinationGuids);
+                names = groupDetails.ToDictionary(g => g.ObjectId, g => g.Name);
+                emails = groupDetails.ToDictionary(g => g.ObjectId, g => g.Email);
                 owners = await _graphGroupRepository.GetDestinationOwnersAsync(destinationGuids);
-                emails = await _graphGroupRepository.GetGroupEmailsAsync(destinationGuids);
+
 
                 foreach (var destination in destinationObjects)
                 {
