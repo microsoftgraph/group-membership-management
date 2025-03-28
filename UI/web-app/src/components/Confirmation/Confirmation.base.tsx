@@ -300,8 +300,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
               />
             </div>
-
-            {jobId && jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId? (
+            {isJobTenantWriter && (
+            jobId && jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId? (
             jobDetails && jobDetails?.status === SyncStatus.PendingReview ? (
               <Stack.Item align="start">
                 <InfoLabel
@@ -356,7 +356,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 disabled={!isJobWriter}
               />
             </div>
-          )}
+          ))}
 
         </div>
       </PageSection>
