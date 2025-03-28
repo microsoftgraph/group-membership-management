@@ -206,5 +206,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<string> GetGroupEmailAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

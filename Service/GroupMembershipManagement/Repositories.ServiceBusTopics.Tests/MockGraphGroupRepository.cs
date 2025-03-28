@@ -213,5 +213,10 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task<string> GetGroupEmailAsync(Guid objectId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
