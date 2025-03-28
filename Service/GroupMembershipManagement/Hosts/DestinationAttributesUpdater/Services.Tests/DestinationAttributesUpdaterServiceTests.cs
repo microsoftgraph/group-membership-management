@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Entities;
 using Models.Helpers;
 using Moq;
 using Repositories.Contracts;
@@ -26,6 +27,7 @@ namespace Services.Tests
         private DestinationAttributesUpdaterService _destinationAttributeUpdaterService;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null;
         private const string GroupMembership = "GroupMembership";
+        private const string TeamsChannelMembership = "TeamsChannelMembership";
 
         [TestInitialize]
         public void InitializeTest()
@@ -84,6 +86,56 @@ namespace Services.Tests
             _mockGraphGroupRepository.Setup(x => x.GetGroupEmailsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { destination.Value.ObjectId, "email" } });
 
             var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
+
+            Assert.AreEqual(response.First().Id, tableId);
+        }
+
+        [TestMethod]
+        public async Task TestGetBulkDestinationAttributesWithMissingData_Groups()
+        {
+            var destination = new DestinationObject()
+            {
+                Type = "GroupMembership",
+                Value = new GroupDestinationValue() { ObjectId = Guid.NewGuid() }
+            };
+
+            var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+            var serializedDestination = JsonSerializer.Serialize(destination, options);
+
+            Guid tableId = Guid.NewGuid();
+
+            Guid owner = Guid.NewGuid();
+
+            _mockGraphGroupRepository.Setup(x => x.GetGroupNamesAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { Guid.NewGuid(), "name" } });
+            _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { Guid.NewGuid(), new List<Guid> { owner } } });
+            _mockGraphGroupRepository.Setup(x => x.GetGroupEmailsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, string>() { { Guid.NewGuid(), "email" } });
+
+            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
+
+            Assert.AreEqual(response.First().Id, tableId);
+        }
+
+        [TestMethod]
+        public async Task TestGetBulkDestinationAttributesWithMissingData_Channels()
+        {
+            var destination = new DestinationObject()
+            {
+                Type = TeamsChannelMembership,
+                Value = new TeamsChannelDestinationValue() { ObjectId = Guid.NewGuid(), ChannelId = "some-channel-id" }
+            };
+
+            var options = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
+            var serializedDestination = JsonSerializer.Serialize(destination, options);
+
+            Guid tableId = Guid.NewGuid();
+
+            Guid owner = Guid.NewGuid();
+
+            _mockTeamsChannelRepository.Setup(x => x.GetTeamsChannelNamesAsync(It.IsAny<List<AzureADTeamsChannel>>())).ReturnsAsync(new Dictionary<string, string>() { { Guid.NewGuid().ToString(), "name" } });
+            _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { Guid.NewGuid(), new List<Guid> { owner } } });
+            _mockTeamsChannelRepository.Setup(x => x.GetTeamsChannelEmailsAsync(It.IsAny<List<AzureADTeamsChannel>>())).ReturnsAsync(new Dictionary<string, string>() { { Guid.NewGuid().ToString(), "email" } });
+
+            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, TeamsChannelMembership);
 
             Assert.AreEqual(response.First().Id, tableId);
         }

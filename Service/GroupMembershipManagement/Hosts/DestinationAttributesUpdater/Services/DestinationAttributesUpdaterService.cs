@@ -116,10 +116,10 @@ namespace Services
                 {
                     destinationAttributesList.Add(new DestinationAttributes
                     {
-                        Name = names[destination.Value.ObjectId],
-                        Owners = owners[destination.Value.ObjectId],
+                        Name = names.ContainsKey(destination.Value.ObjectId) ? names[destination.Value.ObjectId] : null,
+                        Owners = owners.ContainsKey(destination.Value.ObjectId) ? owners[destination.Value.ObjectId] : null,
                         Id = destinationIdMap[destination.Value.ObjectId],
-                        Email = emails[destination.Value.ObjectId],
+                        Email = emails.ContainsKey(destination.Value.ObjectId) ? emails[destination.Value.ObjectId] : null
                     });
                 }
             }
@@ -158,11 +158,12 @@ namespace Services
                         channelEmail = mainChannel?.Email;
                     }
 
+                    var teamChannelId = (destination.Value as TeamsChannelDestinationValue).ChannelId;
                     destinationAttributesList.Add(new DestinationAttributes
                     {
-                        Name = names[(destination.Value as TeamsChannelDestinationValue).ChannelId],
-                        Owners = owners[destination.Value.ObjectId],
-                        Id = destinationIdMap[(destination.Value as TeamsChannelDestinationValue).ChannelId],
+                        Name = names.ContainsKey(teamChannelId) ? names[teamChannelId] : null,
+                        Owners = owners.ContainsKey(destination.Value.ObjectId) ? owners[destination.Value.ObjectId] : null,
+                        Id = destinationIdMap[teamChannelId],
                         Email = channelEmail
                     });
                 }
