@@ -12,9 +12,6 @@
         }
     },
   "logging": {
-    "logLevel": {
-      "Host.Concurrency": "Trace"
-    },
     "applicationInsights": {
       "samplingSettings": {
         "isEnabled": true,
