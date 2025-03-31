@@ -1,5 +1,13 @@
 # Breaking Changes
 
+## Release 3/1/2024
+
+Add the following secrets to prereqs keyvault if using TeamsChannel functionality:
+- teamsChannelAppCertificateName
+- teamsChannelAppClientId
+- teamsChannelAppClientSecret
+- teamsChannelAppTenantId
+
 ## Release 9/10/2024
 
 New after  deployment step for new SignalR resource.
