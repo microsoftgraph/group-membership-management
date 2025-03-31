@@ -79,6 +79,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
   let options: IComboBoxOption[] = [];
+  const [childIndexForAttributeValue, setChildIndexForAttributeValue] = useState<number>(-1);
+  const [groupIndexForAttributeValue, setGroupIndexForAttributeValue] = useState<number>(-1);
+  const [itemIndexForAttributeValue, setItemIndexForAttributeValue] = useState<number>(-1);
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectedItems, setSelectedItems] = useState<IFilterPart[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
@@ -1116,17 +1119,17 @@ const getOptions = (
     }
   };
 
-  const onAttributeValueChange = (text: string, index: number) => {
+  const onAttributeValueChange = (text: string, index: number, currentAttributeKey: string, groupIndex?: number, childIndex?: number) => {
     let newFilteredValueOptions = { ...filteredValueOptions };
-    if (groupingEnabled && groups.length > 1) return;
-    const currentAttributeMappings = attributeMappings[items[index].attribute].mappings || [];
+    if (groupingEnabled && groups.length > 0 && groupIndex !== undefined) {
+      setItemIndexForAttributeValue(index);
+      setGroupIndexForAttributeValue(groupIndex);
+      setChildIndexForAttributeValue(childIndex ?? -1);
+    }
+    const currentAttributeMappings = attributeMappings[currentAttributeKey].mappings || [];
     if (currentAttributeMappings.length > 0) {
-      if (!text) {
-          newFilteredValueOptions[index] = getValueOptions(currentAttributeMappings);
-      } else {
-          let valueOptions = getValueOptions(currentAttributeMappings);
-          newFilteredValueOptions[index] = valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()) || opt.key.toString().toLowerCase().startsWith(text.toLowerCase()));
-      }
+      let valueOptions = getValueOptions(currentAttributeMappings);
+      newFilteredValueOptions[index] = (!text) ? valueOptions : valueOptions.filter(opt => opt.text.toLowerCase().startsWith(text.toLowerCase()) || opt.key.toString().toLowerCase().startsWith(text.toLowerCase()));
       setFilteredValueOptions(newFilteredValueOptions);
     }
   };
@@ -1320,6 +1323,15 @@ const getOptions = (
         : getOptions(attributes, currentAttributeKey)
       : filteredOptions[index] || getOptions(attributes, currentAttributeKey);
 
+      const attributeValueOptions = groupingEnabled
+        ? (groups.length > 0 &&
+          (groupIndex === undefined && groupIndexForAttributeValue === -1 ? true : groupIndex === groupIndexForAttributeValue) &&
+          (childIndex === undefined && childIndexForAttributeValue === -1 ? true : childIndex === childIndexForAttributeValue) &&
+          (index === undefined && itemIndexForAttributeValue === -1 ? true : index === itemIndexForAttributeValue))
+          ? filteredValueOptions[index]
+          : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
+        : filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value));
+
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
@@ -1380,8 +1392,8 @@ const getOptions = (
             if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
               return <ComboBox
               selectedKey={item.equalityOperator === 'IN' ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-              options={filteredValueOptions[index] || getValueOptions(attributeMappings[items[index].attribute].mappings, getSelectedKeys(items[index].value))}
-              onInputValueChange={(text) => onAttributeValueChange(text, index)}
+              options={attributeValueOptions}
+              onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
               onRenderOption={onRenderValueComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
