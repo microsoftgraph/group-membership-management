@@ -65,6 +65,30 @@ Add the following variables to `.env`:
 - REACT_APP_MANAGE_MEMBERSHIP_FLAG (Optional: this value sets the state of the Manage Membership feature flag (true or false))
 - REACT_APP_ENVIRONMENT_ABBREVIATION: (Set value with `<environmentAbbreviation>`)
 
+### Optional: Setting up Playwright Integration tests
+In order to run Playwright integration tests in your environment, you will need to do some manual steps to configure the account that will be used to run the tests.
+
+1. Create a user in your tenant and grant them access to your UI by making sure they have the appropriate roles.
+1. Set up authenticator 2FA for this user. Make sure you can access your UI page.
+1. Create three secrets in your gmm-data-<env> keyvault
+```
+INTEGRATION_TEST_DOMAIN='https://<domain>'
+INTEGRATION_TEST_EMAIL='<user>@<domain>'
+INTEGRATION_TEST_PASSWORD='<password>'
+```
+ You are now ready to run the Playwright Integration Tests! Make sure that you approve the manual validation for each run and that you have your Authenticator app ready to approve the sign-in request.
+
+To run tests locally: 
+   - Ensure your `.env` file contains the necessary environment variables, including the Playwright test secrets (domain, email, and password).
+
+Run the tests:
+   - Use the following command to execute the Playwright tests:
+     ```bash
+     npx playwright test
+     ```
+   - This will run all the integration tests defined in your Playwright test suite.
+
+
 ### Accessibility Testing
 #### Installing Accessibility Insights for Web
 1. Download the Extension:
