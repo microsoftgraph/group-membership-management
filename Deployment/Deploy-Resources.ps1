@@ -404,7 +404,8 @@ function Set-GMMResources {
 
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
     $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
-    $certificateName = $parameterObject.parameters["certificateName"].value ?? "not-set";
+    $graphAppCertificateName = $parameterObject.parameters["graphAppCertificateName"].value ?? "not-set";
+    $teamsChannelAppCertificateName = $parameterObject.parameters["teamsChannelAppCertificateName"].value ?? "not-set";
     $tenantDomain = $parameterObject.parameters["tenantDomain"].value ?? "not-set";
     $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
 
@@ -442,7 +443,8 @@ function Set-GMMResources {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -SecondaryTenantId $SecondaryTenantId `
-        -CertificateName $certificateName `
+        -GraphAppCertificateName $graphAppCertificateName `
+        -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
         -TenantDomain $tenantDomain `
         -SharepointDomain $sharepointDomain
 
@@ -963,7 +965,9 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $False)]
         [boolean] $SkipIfApplicationExists = $True,
         [Parameter(Mandatory = $False)]
-        [string] $CertificateName,
+        [string] $GraphAppCertificateName,
+        [Parameter(Mandatory = $False)]
+        [string] $TeamsChannelAppCertificateName,
         [Parameter(Mandatory = $False)]
         [string] $TenantDomain,
         [Parameter(Mandatory = $False)]
@@ -1012,7 +1016,20 @@ function Set-GMMAppRegistrations {
         -SaveToKeyVault $true `
         -SkipPrompts $true `
         -SkipIfApplicationExists $true `
-        -CertificateName $CertificateName `
+        -CertificateName $GraphAppCertificateName `
+        -Clean $false
+
+    . ($ScriptsDirectory + '\Set-TeamsChannelAzureADApplication.ps1')
+    $teamsChannelInformation = Set-TeamsChannelAzureADApplication `
+        -SubscriptionName $subscriptionName `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -TenantIdToCreateAppIn ($SecondaryTenantId ?? $mainTenantId) `
+        -TenantIdWithKeyVault $mainTenantId `
+        -SaveToKeyVault $true `
+        -SkipPrompts $true `
+        -SkipIfApplicationExists $true `
+        -CertificateName $TeamsChannelCertificateName `
         -Clean $false
 
     $null = Set-AzContext -Tenant $mainTenantId
@@ -1032,6 +1049,8 @@ function Set-GMMAppRegistrations {
         APITenantId                = $apiInformation.TenantId;
         GraphApplicationId         = $graphInformation.ApplicationId;
         GraphTenantId              = $graphInformation.TenantId;
+        TeamsChannelApplicationId  = $teamsChannelInformation.ApplicationId;
+        TeamsChannelTenantId       = $teamsChannelInformation.TenantId;
         SqlMembershipApplicationId = $sqlMembershipApp.ApplicationId;
         SqlMembershipTenantId      = $sqlMembershipApp.TenantId;
     }
