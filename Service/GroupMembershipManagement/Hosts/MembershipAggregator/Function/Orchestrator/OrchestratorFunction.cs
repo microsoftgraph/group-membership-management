@@ -42,7 +42,7 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                 return;
             }
-            var entityId = new EntityId(nameof(JobTrackerEntity), $"{groupId}_{runId}");
+            var entityId = new EntityId(nameof(JobTrackerEntity), $"{request.SyncJob.Id}_{runId}");
             var proxy = context.CreateEntityProxy<IJobTracker>(entityId);
             var hasSourceCompleted = false;
             var errorOccurred = false;
