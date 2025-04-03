@@ -1062,14 +1062,6 @@ function Set-GMMAppRegistrations {
 
     $null = Set-AzContext -Tenant $mainTenantId
 
-    . ($ScriptsDirectory + '\Set-GMMSqlMembershipAzureADApplication.ps1')
-    $sqlMembershipApp = Set-GMMSqlMembershipAzureADApplication `
-        -SubscriptionName $subscriptionName `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -Clean $false `
-        -SkipIfApplicationExists $true
-
     return @{
         UIApplicationId            = $uiInformation.ApplicationId;
         UITenantId                 = $uiInformation.TenantId;
@@ -1079,8 +1071,6 @@ function Set-GMMAppRegistrations {
         GraphTenantId              = $graphInformation.TenantId;
         TeamsChannelApplicationId  = $teamsChannelInformation.ApplicationId;
         TeamsChannelTenantId       = $teamsChannelInformation.TenantId;
-        SqlMembershipApplicationId = $sqlMembershipApp.ApplicationId;
-        SqlMembershipTenantId      = $sqlMembershipApp.TenantId;
     }
 }
 
