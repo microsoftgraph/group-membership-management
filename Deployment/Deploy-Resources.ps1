@@ -416,6 +416,8 @@ function Set-GMMResources {
     $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
     $secondaryTenantId = [string]::IsNullOrEmpty($parameterObject.parameters["secondaryTenantId"].value) ? $null : $parameterObject.parameters["secondaryTenantId"].value
     
+    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    
     # deploy resource groups
     Write-Host "`nCreating resource groups"
     $resourceGroupsParameters = `
@@ -444,7 +446,6 @@ function Set-GMMResources {
 
     Start-Sleep -Seconds 10
 
-    $ipAddress = (Invoke-WebRequest -uri “https://api.ipify.org/”).Content
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($prereqsResourceGroup) `
         -ipAddress $ipAddress `
@@ -490,7 +491,7 @@ function Set-GMMResources {
         -ipAddress $ipAddress `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -Region $Location
-
+    
     # deploy compute resources
     Retry-Operation `
         -Operation ${function:Set-ComputeResources} `
@@ -768,38 +769,6 @@ function Set-FunctionAppCode {
         -OperationName "Deploying code for $($webApi.Name)"
 }
 
-function Disable-KeyVaultFirewallRules {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string[]]$ResourceGroups
-    )
-
-    # disable firewall rules for key vaults
-    Write-Host "Disabling firewall rules for key vaults"
-
-    foreach ($resourceGroup in $ResourceGroups) {
-        $rgObject = Get-AzResourceGroup -Name $resourceGroup -ErrorAction SilentlyContinue
-        if ($null -eq $rgObject) {
-            Write-Warning "Resource group '$resourceGroup' not found. Skipping."
-            continue
-        }
-
-        $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
-        foreach ($keyVault in $keyVaults) {
-            $keyVaultName = $keyVault.VaultName
-            $keyVaultResourceGroup = $keyVault.ResourceGroupName
-
-            Write-Host "Disabling firewall rules for key vault $keyVaultName in resource group $keyVaultResourceGroup"
-
-            Update-AzKeyVaultNetworkRuleSet `
-                -VaultName $keyVaultName `
-                -ResourceGroupName $keyVaultResourceGroup `
-                -Bypass AzureServices `
-                -DefaultAction Allow
-        }
-    }
-}
-
 function Set-KeyVaultFirewallRules {
     param (
         [Parameter(Mandatory = $true)]
@@ -812,29 +781,37 @@ function Set-KeyVaultFirewallRules {
         [string]$Region
     )
 
-    # enable firewall rules for key vaults
     Write-Host "Enabling firewall rules for key vaults"
 
-    # get ip addresses for firewall rules
+    # Get IP rules from script
     . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
-    $ipRules = Get-Content "$ScriptsDirectory\ipRules.txt"
-    $ipRules += $ipAddress
+    $newIpRules = Get-Content "$ScriptsDirectory\ipRules.txt"
+    $newIpRules += $ipAddress
 
-    # apply firewall rules to key vaults
     foreach ($resourceGroup in $ResourceGroups) {
         $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
         foreach ($keyVault in $keyVaults) {
             $keyVaultName = $keyVault.VaultName
             $keyVaultResourceGroup = $keyVault.ResourceGroupName
 
-            Write-Host "Enabling firewall rules for key vault $keyVaultName in resource group $keyVaultResourceGroup"
+            Write-Host "Fetching existing rules for $keyVaultName"
+            $detailedKeyVault = Get-AzKeyVault -Name $keyVaultName -ResourceGroupName $keyVaultResourceGroup
+            $existingRules = $detailedKeyVault.NetworkAcls.IpAddressRanges
+
+            # Extract current IP rules
+            $existingIps = $existingRules.IpRules | ForEach-Object { $_.IpAddress }
+
+            # Combine existing and new, remove duplicates
+            $combinedIpRules = ($existingIps + $newIpRules) | Sort-Object -Unique
+
+            Write-Host "Applying updated firewall rules to $keyVaultName"
 
             Update-AzKeyVaultNetworkRuleSet `
                 -VaultName $keyVaultName `
                 -ResourceGroupName $keyVaultResourceGroup `
                 -Bypass AzureServices `
                 -DefaultAction Deny `
-                -IpAddressRange $ipRules
+                -IpAddressRange $combinedIpRules
         }
     }
 }
@@ -1307,11 +1284,9 @@ function Deploy-Resources {
     )
 
     # define the resource groups
-    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $resourceGroups = @($prereqsResourceGroup, $dataResourceGroup, $computeResourceGroup)
-    $ipAddress = (Invoke-WebRequest -uri “https://api.ipify.org/”).Content
+    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
@@ -1326,7 +1301,6 @@ function Deploy-Resources {
     }
 
     # Stop-FunctionApps -ResourceGroupName $computeResourceGroup
-    Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     $response = Set-GMMResources `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1336,8 +1310,6 @@ function Deploy-Resources {
         -ParameterFilePath $ParameterFilePath
 
     Start-Sleep -Seconds 30
-
-    Disable-KeyVaultFirewallRules -ResourceGroups $resourceGroups
 
     Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
 
@@ -1408,12 +1380,7 @@ function Deploy-Resources {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$ScriptsDirectory\scripts"
-
-    Set-KeyVaultFirewallRules `
-        -ResourceGroups $resourceGroups `
-        -ipAddress $ipAddress `
-        -ScriptsDirectory "$scriptsDirectory\Scripts" `
-        -Region $Location
+        
 
     if ($StartFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
