@@ -1224,6 +1224,8 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_VERSION_NUMBER=$buildVersion`n"
     $envContent += "DISABLE_ESLINT_PLUGIN=true`n"
 
+    Install-SwaIfNeeded
+
     Set-Content -Path "$WebAppDirectory\.env" -Value $envContent -Force
     $currentLocation = Get-Location
 
@@ -1233,6 +1235,50 @@ function Set-PublishUICode {
     swa deploy "build" --env "Production" -n "$SolutionAbbreviation-ui" -R $ComputeResourceGroup
 
     Set-Location -Path $currentLocation
+}
+
+function Install-SwaIfNeeded {
+
+    # Check if npm is available
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Error "npm is not installed. Please install Node.js and npm first."
+        return $false
+    }
+
+    $desiredVersion = "2.0.5"
+    $swaInstalled = Get-Command swa -ErrorAction SilentlyContinue
+
+    if ($swaInstalled) {
+        # Check installed version
+        $installedVersion = (npm list -g @azure/static-web-apps-cli --depth=0 | Select-String -Pattern "@azure/static-web-apps-cli@([\d\.]+)" | ForEach-Object {
+            $_.Matches[0].Groups[1].Value
+        })
+
+        if ($installedVersion -eq $desiredVersion) {
+            Write-Output "'swa' version $desiredVersion is already installed."
+            return $true
+        } else {
+            Write-Output "'swa' is installed but not version $desiredVersion. Updating..."
+        }
+    } else {
+        Write-Output "'swa' is not installed. Installing version $desiredVersion..."
+    }
+
+    # Install specific version
+    npm install -g @azure/static-web-apps-cli@$desiredVersion
+
+    # Verify installation
+    $installedVersion = (npm list -g @azure/static-web-apps-cli --depth=0 | Select-String -Pattern "@azure/static-web-apps-cli@([\d\.]+)" | ForEach-Object {
+        $_.Matches[0].Groups[1].Value
+    })
+
+    if ($installedVersion -eq $desiredVersion) {
+        Write-Output "'swa' version $desiredVersion installed successfully."
+        return $true
+    } else {
+        Write-Error "Failed to install 'swa' version $desiredVersion."
+        return $false
+    }
 }
 
 function Deploy-Resources {
@@ -1334,7 +1380,6 @@ function Deploy-Resources {
         -ComputeResourceGroup $computeResourceGroup `
         -FunctionsPackagesDirectory "$scriptsDirectory\function_packages" `
         -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
-
 
     # Configure web apps
     Set-ConfigureWebApps `
