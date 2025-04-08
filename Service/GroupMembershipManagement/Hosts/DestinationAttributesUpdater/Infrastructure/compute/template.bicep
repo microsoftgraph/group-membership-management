@@ -213,6 +213,7 @@ module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
