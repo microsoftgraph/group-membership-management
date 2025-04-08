@@ -226,6 +226,7 @@ module functionAppTemplate_Notifier 'functionApp.bicep' = {
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
