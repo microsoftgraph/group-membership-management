@@ -72,14 +72,19 @@ In order to run Playwright integration tests in your environment, you will need 
 1. Set up authenticator 2FA for this user. Make sure you can access your UI page.
 1. Create three secrets in your gmm-data-<env> keyvault
 ```
-INTEGRATION_TEST_DOMAIN='https://<domain>'
-INTEGRATION_TEST_EMAIL='<user>@<domain>'
-INTEGRATION_TEST_PASSWORD='<password>'
+integrationTestDomain='<domain>' // i.e. 'domain.com'
+integrationTestEmail='<user>@<domain>' // i.e. 'user@domain.com'
+integrationTestPassword='<password>'
 ```
  You are now ready to run the Playwright Integration Tests! Make sure that you approve the manual validation for each run and that you have your Authenticator app ready to approve the sign-in request.
 
 To run tests locally: 
-   - Ensure your `.env` file contains the necessary environment variables, including the Playwright test secrets (domain, email, and password).
+   - Ensure your `.env` file contains the necessary environment variables, including the Playwright test secrets (domain, email, and password) in the following format:
+   ```
+   INTEGRATION_TEST_DOMAIN='<domain>' // i.e. 'domain.com'
+   INTEGRATION_TEST_EMAIL='<user>@<domain>' // i.e. 'user@domain.com'
+   INTEGRATION_TEST_PASSWORD='<password>'
+   ```
 
 Run the tests:
    - Use the following command to execute the Playwright tests:

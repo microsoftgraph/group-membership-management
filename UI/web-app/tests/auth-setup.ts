@@ -21,7 +21,8 @@ async function globalSetup(config: FullConfig) {
 
   try {
     console.log("🔗 Navigating to login page...");
-    await page.goto(DOMAIN);
+    const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
+    await page.goto(url);
 
     console.log("📝 Filling in login details...");
     await page.getByRole('textbox', { name: 'Enter your email, phone, or' }).fill(EMAIL);
