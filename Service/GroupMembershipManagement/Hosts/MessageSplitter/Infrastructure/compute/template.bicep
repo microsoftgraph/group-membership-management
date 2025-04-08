@@ -184,6 +184,7 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     instanceIdentifier: instanceIdentifier
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate

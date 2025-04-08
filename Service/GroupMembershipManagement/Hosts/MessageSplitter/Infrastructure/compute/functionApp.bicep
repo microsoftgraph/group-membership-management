@@ -43,6 +43,9 @@ param prereqsKeyVaultResourceGroup string
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool
 
+@description('Storage account name.')
+param storageAccountName string
+
 @description('Instance identifier')
 @allowed([
   's1'
@@ -83,6 +86,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId:functionApp.identity.principalId
+    storageAccountName: storageAccountName
   }
 }
 
