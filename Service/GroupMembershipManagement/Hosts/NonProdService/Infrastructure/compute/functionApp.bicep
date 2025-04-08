@@ -46,6 +46,9 @@ param prereqsKeyVaultResourceGroup string
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool
 
+@description('Storage account name.')
+param storageAccountName string
+
 resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
   name: name
   location: location
@@ -77,6 +80,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionApp.identity.principalId
+    storageAccountName: storageAccountName
   }
 }
 
