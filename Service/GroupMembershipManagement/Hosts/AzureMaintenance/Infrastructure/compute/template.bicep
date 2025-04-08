@@ -192,6 +192,7 @@ module functionAppTemplate_AzureMaintenance 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
