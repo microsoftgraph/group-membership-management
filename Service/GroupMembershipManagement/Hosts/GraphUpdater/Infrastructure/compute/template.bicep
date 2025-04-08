@@ -227,6 +227,7 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     instanceIdentifier: instanceIdentifier
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
