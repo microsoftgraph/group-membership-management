@@ -179,6 +179,7 @@ module functionAppTemplate_SyncJobUpdater 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     graphUAMI
