@@ -128,7 +128,7 @@ namespace Hosts.GroupOwnershipObtainer
                                                                                    SyncJobs = syncJobs.Select(x => new JobsFilterSyncJob
                                                                                    {
                                                                                        Query = x.Query,
-                                                                                       TargetOfficeGroupId = groupId
+                                                                                       TargetOfficeGroupId = x.Group.GroupId
                                                                                    }).ToList()
                                                                                });
 
