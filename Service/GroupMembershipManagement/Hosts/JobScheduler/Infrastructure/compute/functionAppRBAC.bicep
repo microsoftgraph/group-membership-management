@@ -16,6 +16,8 @@ param setRBACPermissions bool
 @description('The principalId of the function app for the production slot.')
 param productionSlotPrincipalId string
 
+@description('Storage account name.')
+param storageAccountName string
 
 param functionName string
 
@@ -36,5 +38,35 @@ module functionAppDataRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
     keyVaultName: dataKeyVaultName
     principalId: productionSlotPrincipalId
     roleName: 'Key Vault Secrets User'
+  }
+}
+
+module functionAppStorageSBDCRBAC 'storageAccountRBAC.bicep' = if (setRBACPermissions) {
+  name: 'storageAccount-sbdc-${functionName}'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    storageAccountName: storageAccountName
+    principalId: productionSlotPrincipalId
+    roleName: 'Storage Blob Data Contributor'
+  }
+}
+
+module functionAppStorageSTDCRBAC 'storageAccountRBAC.bicep' = if (setRBACPermissions) {
+  name: 'storageAccount-stdc-${functionName}'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    storageAccountName: storageAccountName
+    principalId: productionSlotPrincipalId
+    roleName: 'Storage Table Data Contributor'
+  }
+}
+
+module functionAppStorageSQDCRBAC 'storageAccountRBAC.bicep' = if (setRBACPermissions) {
+  name: 'storageAccount-sqdc-${functionName}'
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+  params: {
+    storageAccountName: storageAccountName
+    principalId: productionSlotPrincipalId
+    roleName: 'Storage Queue Data Contributor'
   }
 }
