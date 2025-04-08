@@ -201,6 +201,7 @@ module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
+    storageAccountName: storageAccountNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
