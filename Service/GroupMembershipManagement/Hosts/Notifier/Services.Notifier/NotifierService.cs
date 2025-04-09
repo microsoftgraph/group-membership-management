@@ -239,7 +239,7 @@ namespace Services.Notifier
         public async Task SendEmailAsync(string messageType, string messageBody, string messageTitle, string subjectTemplate, string contentTemplate)
         {
             var (job, additionalContentParameters) = ParseMessageContentAsync(messageBody);
-            var groupId = await GetGroupIdAsync(job);
+            var groupId = job.TargetOfficeGroupId;
 
             if (!Enum.TryParse<NotificationMessageType>(messageType, true, out var messageTypeEnum))
             {
