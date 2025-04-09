@@ -33,6 +33,12 @@ Optional.
 If you are using a user-assigned managed identity, set this flag to true to assign the necessary permissions to the managed identity.
 
 .EXAMPLE
+Before running this script, make sure you are logged in to Azure and have the necessary permissions to deploy resources.
+Connect-AzAccount -TenantId "<tenant-id>"
+Set-AzContext -SubscriptionId "<subscription-id>"
+az login --tenant "<tenant-id>"
+az account set --subscription "<subscription-id>"
+
 Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
                     -EnvironmentAbbreviation "<environment-abbreviation>" `
                     -Location "<location>" `
@@ -1050,7 +1056,6 @@ function Set-GMMAppRegistrations {
         -TenantIdWithKeyVault $mainTenantId `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
-        -SkipIfApplicationExists $true `
         -CertificateName $TeamsChannelCertificateName `
         -Clean $false
 
@@ -1209,6 +1214,12 @@ function Set-PublishUICode {
     $appInsights = Get-AzApplicationInsights -ResourceGroupName $DataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $appInsightsConnectionString = $appInsights.ConnectionString
 
+    $buildVersionFilePath = "$WebAppDirectory\buildVersion.txt"
+    if (Test-Path -Path $buildVersionFilePath) {
+        $buildVersion = Get-Content -Path $buildVersionFilePath
+        Write-Host "Build version: $buildVersion"
+    }
+
     $envContent = "REACT_APP_AAD_UI_APP_CLIENT_ID=$UIClientId`n"
     $envContent += "REACT_APP_AAD_APP_TENANT_ID=$UITenantId`n"
     $envContent += "REACT_APP_AAD_API_APP_CLIENT_ID=$WebApiClientId`n"
@@ -1219,6 +1230,8 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_DOMAINNAME=$TenantDomain`n"
     $envContent += "AZURE_SUBSCRIPTION_ID=$SubscriptionId`n"
     $envContent += "AZURE_TENANT_ID=$MainTenantId`n"
+    $envContent += "REACT_APP_VERSION_NUMBER=$buildVersion`n"
+    $envContent += "DISABLE_ESLINT_PLUGIN=true`n"
 
     Set-Content -Path "$WebAppDirectory\.env" -Value $envContent -Force
     $currentLocation = Get-Location

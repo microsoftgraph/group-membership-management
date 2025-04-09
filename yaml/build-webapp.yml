@@ -45,7 +45,7 @@ stages:
         script: |
           $versionFileName = "buildVersion.txt"
           $buildVersion = "$(Build.BuildNumber)"
-          Set-Content -Path . -Value $buildVersion
+          Set-Content -Path $versionFileName -Value $buildVersion
         pwsh: true
 
     - task: CopyFiles@2
