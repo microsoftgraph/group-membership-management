@@ -435,6 +435,15 @@ function Set-GMMResources {
         SetRBACPermissions      = $setRBACPermissions
     }
 
+    Start-Sleep -Seconds 10
+
+    $ipAddress = (Invoke-WebRequest -uri “https://api.ipify.org/”).Content
+    Set-KeyVaultFirewallRules `
+        -ResourceGroups @($prereqsResourceGroup) `
+        -ipAddress $ipAddress `
+        -ScriptsDirectory "$scriptsDirectory\Scripts" `
+        -Region $Location
+
     # creating app registrations
     Write-Host "`nCreating app registrations"
     $appRegistrations = `
@@ -453,6 +462,8 @@ function Set-GMMResources {
     $commonParametersObject.parameters["uiAppTenantId"] = @{ "value" = $appRegistrations.UITenantId }
     $commonParametersObject.parameters["uiAppClientId"] = @{ "value" = $appRegistrations.UIApplicationId }
 
+    Start-Sleep -Seconds 10
+
     # deploy data resources
     Retry-Operation `
         -Operation ${function:Set-DataResources} `
@@ -465,6 +476,13 @@ function Set-GMMResources {
         AdditionalParameters    = $commonParametersObject
         SetRBACPermissions      = $setRBACPermissions
     }
+    Start-Sleep -Seconds 10
+
+    Set-KeyVaultFirewallRules `
+        -ResourceGroups @($dataResourceGroup) `
+        -ipAddress $ipAddress `
+        -ScriptsDirectory "$scriptsDirectory\Scripts" `
+        -Region $Location
 
     # deploy compute resources
     Retry-Operation `
@@ -477,6 +495,8 @@ function Set-GMMResources {
         ParameterFilePath       = $ParameterFilePath
         AdditionalParameters    = $commonParametersObject
     }
+
+    Start-Sleep -Seconds 10
 
     # deploy ADF resources
     Write-Host "`nCreating ADF resources"
@@ -500,6 +520,8 @@ function Set-GMMResources {
         -ResourceGroupName $dataResourceGroup `
         -TemplateFile "$directoryPath\adfHRResources.json" `
         -TemplateParameterObject $adfResourcesParameters
+
+    Start-Sleep -Seconds 10
 
     Write-Host "`nResources deployed"
 
