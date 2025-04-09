@@ -37,6 +37,17 @@ stages:
         Contents: '**\web-app\**'
         TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
 
+    - task: PowerShell@2
+      displayName: 'Write build version to file'
+      inputs:
+        targetType: inline
+        workingDirectory: '$(build.artifactstagingdirectory)/webapp_package/web-app'
+        script: |
+          $versionFileName = "buildVersion.txt"
+          $buildVersion = "$(Build.BuildNumber)"
+          Set-Content -Path . -Value $buildVersion
+        pwsh: true
+
     - task: CopyFiles@2
       displayName: 'Copy GmmUI webapp arm templates'
       inputs:
