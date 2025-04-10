@@ -45,7 +45,7 @@ namespace Hosts.Notifier
             };
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(messageBody);
             SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            Guid runId = (Guid)job.RunId;
+            Guid runId = job.RunId ?? Guid.Empty;
             _loggingRepository.SetSyncJobProperties(runId, job.ToDictionary());
 
             if (_mailConfig.SkipEmailNotifications)

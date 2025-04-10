@@ -29,7 +29,7 @@ namespace Hosts.Notifier
             var message = context.GetInput<OrchestratorRequest>();
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(message.MessageBody);
             SyncJob job = ((JsonElement)messageContent["SyncJob"]).Deserialize<SyncJob>();
-            Guid runId = (Guid)job.RunId;
+            Guid runId = job.RunId ?? Guid.Empty;
 
             message.RunId = runId;
             await context.CallActivityAsync(nameof(LoggerFunction),
