@@ -135,18 +135,22 @@ namespace Services.WebApi
                     isSubmitterOwner = destinationOwners.ContainsKey(submission.ChangedByObjectId.Value);
                 }
 
-                if (!isSubmitterOwner)
+                if (submission.ChangedOnBehalfOfObjectId == null)
                 {
-                    response.StatusCode = HttpStatusCode.BadRequest;
-                    response.ErrorCode = "SubmitterNotOwner";
+                    // If the request was not made on behalf of someone, check if the submitter is an owner
+                    if (!isSubmitterOwner)
+                    {
+                        response.StatusCode = HttpStatusCode.BadRequest;
+                        response.ErrorCode = "SubmitterNotOwner";
 
-                    syncJob.Status = SyncStatus.SubmissionRejected.ToString();
-                    await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { syncJob });
+                        syncJob.Status = SyncStatus.SubmissionRejected.ToString();
+                        await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { syncJob });
 
-                    syncJobChange.ChangeReason = SyncJobChangeReason.SubmissionRejected.ToString();
-                    await _syncJobChangeRepository.Save(syncJobChange);
+                        syncJobChange.ChangeReason = SyncJobChangeReason.SubmissionRejected.ToString();
+                        await _syncJobChangeRepository.Save(syncJobChange);
 
-                    return response;
+                        return response;
+                    }
                 }
 
                 var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, request.ChangeReason, status);
