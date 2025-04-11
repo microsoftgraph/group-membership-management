@@ -634,6 +634,43 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
+        public async Task PatchJobRejectsWhenSubmitterNotInOwnerList(string role)
+        {
+            var groupId = Guid.NewGuid();
+            var unrelatedOwnerId = Guid.NewGuid();
+
+            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new Dictionary<Guid, List<Guid>>
+                {
+                    { groupId, new List<Guid> { unrelatedOwnerId } } // Submitter is not in the owner list
+                });
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.SubmissionApproved.ToString())
+            };
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, "Idle");
+
+            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as BadRequestObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result.StatusCode);
+            var responseObject = result.Value as PatchJobResponse;
+            Assert.IsNotNull(responseObject);
+            Assert.AreEqual("SubmitterNotOwner", responseObject.ErrorCode);
+            
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenIsNotOwnerOfTheGroup(string role)
         {
             _isGroupOwner = false;

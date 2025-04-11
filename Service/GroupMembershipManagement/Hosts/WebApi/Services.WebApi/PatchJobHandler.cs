@@ -132,7 +132,7 @@ namespace Services.WebApi
                 var isSubmitterOwner = false;
                 if (destinationOwners != null && submission.ChangedByObjectId.HasValue)
                 {
-                    isSubmitterOwner = destinationOwners.ContainsKey(submission.ChangedByObjectId.Value);
+                    isSubmitterOwner = destinationOwners.Values.Any(ownerList => ownerList.Contains(submission.ChangedByObjectId.Value));
                 }
 
                 if (submission.ChangedOnBehalfOfObjectId == null)
