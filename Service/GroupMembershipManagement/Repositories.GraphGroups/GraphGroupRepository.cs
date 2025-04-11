@@ -227,9 +227,9 @@ namespace Repositories.GraphGroups
             return (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId, int numberOfPages)
         {
-            return await _graphGroupDeltaReader.GetFirstDeltaUsersPageAsync(groupId, RunId);
+            return await _graphGroupDeltaReader.GetFirstDeltaUsersPageAsync(groupId, RunId, numberOfPages);
         }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(string nextPageUrl, int numberOfPages)

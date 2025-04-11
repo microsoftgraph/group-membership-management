@@ -106,14 +106,25 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
+            string nextLink = null;
 
-            var usersResponse = await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString());
+            for (int i = 0; i < 5; i++)
+            {
+                var usersResponse = string.IsNullOrEmpty(nextLink)
+                    ? await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString())
+                    : await GetGroupTransitiveMembersNextPageAsync(nextLink);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, runId);
 
-            users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
-            return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
+                users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
+                nextLink = usersResponse.Response.OdataNextLink;
+                if (string.IsNullOrEmpty(nextLink))
+                {
+                    break;
+                }
+            }
+            return (users, nonUserGraphObjects, nextLink);
         }
 
         public async Task<(List<AzureADUser> users,
@@ -122,14 +133,19 @@ namespace Repositories.GraphGroups
         {
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
+            var nextLink = nextPageUrl;
 
-            var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextPageUrl);
+            for (int i = 0; i < 5 && !string.IsNullOrEmpty(nextLink); i++)
+            {
+                var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextLink);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, runId);
 
-            users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
-            return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
+                users.AddRange(ToUsers(usersResponse.Response.Value, nonUserGraphObjects));
+                nextLink = usersResponse.Response.OdataNextLink;
+            }
+            return (users, nonUserGraphObjects, nextLink);
         }
 
         public async Task<IEnumerable<IAzureADObject>> GetChildrenOfGroup(Guid groupId, Guid? runId)

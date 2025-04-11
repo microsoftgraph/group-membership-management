@@ -115,10 +115,10 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphGroupRepository.GetUsersCountAsync(objectId);
         }
 
-        public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId)
+        public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId, int numberOfPages)
         {
             await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
-            var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(objectId);
+            var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(objectId, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,

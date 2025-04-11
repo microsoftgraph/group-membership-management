@@ -9,6 +9,8 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
@@ -16,22 +18,44 @@ namespace Hosts.GroupMembershipObtainer
     public class SubsequentDeltaUserReaderFunction
     {
 		private readonly ILoggingRepository _log;
-		private readonly SGMembershipCalculator _calculator;
+        private readonly IBlobStorageRepository _blobStorageRepository;
+        private readonly SGMembershipCalculator _calculator;
 
-		public SubsequentDeltaUserReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+		public SubsequentDeltaUserReaderFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository, SGMembershipCalculator calculator)
 		{
 			_log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-			_calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
+            _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
+            _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
 		}
 
 		[FunctionName(nameof(SubsequentDeltaUserReaderFunction))]
-		public async Task<DeltaGroupInformation> GetSubsequentDeltaUsersAsync([ActivityTrigger] SubsequentDeltaUserReaderRequest request)
+		public async Task<DeltaUrls> GetSubsequentDeltaUsersAsync([ActivityTrigger] SubsequentDeltaUserReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUserReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			_calculator.RunId = request.RunId;
             var response = await _calculator.GetNextDeltaUsersPagesAsync(request.NextPageUrl, request.PageCount);
-			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUserReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-			return response;
+
+            if (request.ObjectId != request.TargetGroupId)
+            {
+                for (int i = 0; i < response.UsersToAdd.Count; i++)
+                {
+                    response.UsersToAdd[i].SourceGroup = request.ObjectId;
+                }
+            }
+
+            var serializerSettings = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
+            };
+
+            var fileName = $"/{request.TargetGroupId}/userUploads/{request.RunId}_GroupMembership_{request.CurrentPart}_{Guid.NewGuid()}.json";
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(response.UsersToAdd, serializerSettings));
+            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUserReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            return new DeltaUrls
+            {
+                NextPageUrl = response.NextPageUrl,
+                DeltaUrl = response.DeltaUrl
+            };
 		}
 	}
 }
