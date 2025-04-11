@@ -45,6 +45,7 @@ namespace Hosts.GroupMembershipObtainer
                 var syncJob = mainRequest.SyncJob;
                 var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
                 List<AzureADUser> distinctUsers = null;
+                string filePath = null;
 
                 try
                 {
@@ -135,6 +136,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                             SyncJob = syncJob,
                                                                                                                             GroupId = groupId,
                                                                                                                             SourceGroup = sourceGroup,
+                                                                                                                            CurrentPart = mainRequest.CurrentPart,
                                                                                                                             RunId = runId
                                                                                                                         });
 
@@ -147,15 +149,49 @@ namespace Hosts.GroupMembershipObtainer
                             return;
                         }
 
-                        distinctUsers = sgResponse.Users;
-
-                        if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
+                        if (sgResponse.QueryType == QueryType.Transitive || sgResponse.QueryType == QueryType.Delta)
                         {
-                            RunId = runId,
-                            Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {groupId}."
-                        });
+                            filePath = await context.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction),
+                                                                                    new TransitiveAndDeltaUsersSenderRequest
+                                                                                    {
+                                                                                        SyncJob = syncJob,
+                                                                                        GroupId = groupId,
+                                                                                        RunId = runId,
+                                                                                        CurrentPart = mainRequest.CurrentPart,
+                                                                                        Exclusionary = mainRequest.Exclusionary
+                                                                                    });
 
-                        var filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
+                            await context.CallActivityAsync<string>(nameof(DeleteBlobFunction),
+                                                                    new DeleteBlobRequest
+                                                                    {
+                                                                        GroupId = groupId,
+                                                                        RunId = runId,
+                                                                        CurrentPart = mainRequest.CurrentPart
+                                                                    });
+
+                            if (sgResponse.QueryType == QueryType.Delta)
+                            {
+                                await context.CallActivityAsync(nameof(CacheUploaderFunction),
+                                                                   new CacheUploaderRequest
+                                                                   {
+                                                                       RunId = runId,
+                                                                       ObjectId = sourceGroup.ObjectId,
+                                                                       FilePath = filePath
+                                                                   });
+                            }
+                        }
+
+                        else
+                        {
+                            distinctUsers = sgResponse.Users;
+
+                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
+                            {
+                                RunId = runId,
+                                Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {groupId}."
+                            });
+
+                            filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
                                                                                 new UsersSenderRequest
                                                                                 {
                                                                                     SyncJob = syncJob,
@@ -165,6 +201,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                     CurrentPart = mainRequest.CurrentPart,
                                                                                     Exclusionary = mainRequest.Exclusionary
                                                                                 });
+                        }
 
                         var content = new MembershipAggregatorHttpRequest
                         {

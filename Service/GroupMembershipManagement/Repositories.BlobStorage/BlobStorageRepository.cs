@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Repositories.BlobStorage
@@ -46,6 +47,48 @@ namespace Repositories.BlobStorage
             }
 
             return new BlobResult { BlobStatus = BlobStatus.NotFound };
+        }
+
+        public async Task<List<AzureADUser>> ReadBlobsAsync(string path)
+        {
+            var blobs = _containerClient.GetBlobsAsync(prefix: path);
+            var blobReaderTasks = new List<Task<Stream>>();
+            await foreach (BlobItem blobItem in blobs)
+            {
+                blobReaderTasks.Add(_containerClient.GetBlobClient(blobItem.Name).OpenReadAsync());
+            }
+
+            var blobStreams = await Task.WhenAll(blobReaderTasks);
+            var blobDeserializationTasks = blobStreams
+                .Select(async stream =>
+                {
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    };
+                    var users = await JsonSerializer.DeserializeAsync<List<AzureADUser>>(stream, options);
+                    if (users == null)
+                    {
+                        throw new Exception("Failed to deserialize blob");
+                    }
+                    return users;
+                })
+                .ToArray();
+
+            var adUsers = await Task.WhenAll(blobDeserializationTasks);
+            return adUsers.SelectMany(userList => userList).ToList();
+        }
+
+        public async Task DeleteBlobsAsync(string path)
+        {
+            var blobItems = _containerClient.GetBlobsAsync(prefix: path);
+            var deleteTasks = new List<Task>();
+            await foreach (BlobItem blobItem in blobItems)
+            {
+                var blobClient = _containerClient.GetBlobClient(blobItem.Name);
+                deleteTasks.Add(blobClient.DeleteIfExistsAsync());
+            }
+            await Task.WhenAll(deleteTasks);
         }
 
         public async Task DeleteFilesAsync(string path)

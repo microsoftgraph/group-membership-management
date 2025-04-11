@@ -9,6 +9,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -196,6 +197,54 @@ namespace Hosts.GroupMembershipObtainer
             await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
 
             return fileName;
+        }
+
+        public async Task<string> SendTransitiveMembershipAsync(SyncJob syncJob, int currentPart, bool exclusionary)
+        {
+            var runId = syncJob.RunId.GetValueOrDefault();
+            var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
+
+            // get all blobs
+            string prefix = $"{targetOfficeGroupId}/userUploads/{runId}_GroupMembership_{currentPart}";
+            var blobResult = await _blobStorageRepository.ReadBlobsAsync(prefix);
+            var sourceMembers = blobResult.Distinct().ToList();
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"Read {sourceMembers.Count} users from Part {currentPart} to be synced into the destination group {targetOfficeGroupId}."
+
+            }, VerbosityLevel.DEBUG);
+
+            var groupMembership = new GroupMembership
+            {
+                SourceMembers = sourceMembers ?? new List<AzureADUser>(),
+                Destination = new AzureADGroup { ObjectId = targetOfficeGroupId },
+                RunId = runId,
+                Exclusionary = exclusionary,
+                SyncJobId = syncJob.Id,
+                MembershipObtainerDryRunEnabled = _isGroupMembershipDryRunEnabled,
+                Query = syncJob.Query
+            };
+
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
+            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
+            return fileName;
+        }
+
+        public async Task UploadDeltaLinkAsync(Guid id, string deltaLink)
+        {
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var fileName = $"/cache/delta_{id}_{timeStamp}.json";
+            await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
+        }
+
+        public async Task UploadCacheAsync(Guid id, string filePath)
+        {
+            var blobResult = await _blobStorageRepository.DownloadFileAsync(filePath);
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var fileName = $"/cache/{id}_{timeStamp}.json";
+            await _blobStorageRepository.UploadFileAsync(fileName, blobResult.Content);
         }
 
         public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id, List<AzureADUser> users, string deltaLink)

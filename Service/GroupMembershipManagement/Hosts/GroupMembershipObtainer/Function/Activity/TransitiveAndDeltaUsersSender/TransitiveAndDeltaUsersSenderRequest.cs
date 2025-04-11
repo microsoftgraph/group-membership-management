@@ -5,13 +5,12 @@ using System;
 
 namespace Hosts.GroupMembershipObtainer
 {
-    public class GroupMembershipRequest
+    public class TransitiveAndDeltaUsersSenderRequest
     {
         public SyncJob SyncJob { get; set; }
-        public AzureADGroup SourceGroup { get; set; }
-        public Guid RunId { get; set; }
         public Guid GroupId { get; set; }
+        public Guid RunId { get; set; }
         public int CurrentPart { get; set; }
-        public QueryType QueryType { get; set; }
+        public bool Exclusionary { get; set; }
     }
 }
