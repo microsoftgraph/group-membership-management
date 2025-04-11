@@ -339,6 +339,7 @@ resource Pipeline_PopulateDestinationPipeline 'Microsoft.DataFactory/factories/p
   }
   dependsOn: [
     dataFlow_PopulateDestinationDataFlow
+    dataFlow_PopulateMappingsTableDataFlow
   ]
 }
 
