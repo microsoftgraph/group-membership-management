@@ -13,6 +13,7 @@ using Common.DependencyInjection;
 using System.Security.Claims;
 using WebApi.Models;
 using NewGroupDTO = WebApi.Models.DTOs.NewGroup;
+using Channel = Microsoft.Graph.Models.Channel;
 
 namespace Services.Tests
 {
@@ -24,10 +25,12 @@ namespace Services.Tests
         private List<string> _groupTypes = null!;
         private List<AzureADGroup> _destinations = null!;
         private List<string> _expectedEndpoints = null!;
+        private List<Channel> _channels = null!;
         private HttpContext _context = null!;
         private DestinationController _destinationController = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private SearchGroupsHandler _searchGroupsHandler = null!;
         private SearchChannelsHandler _searchChannelsHandler = null!;
@@ -45,7 +48,9 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
+            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _searchGroupsHandler = new SearchGroupsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            _searchChannelsHandler = new SearchChannelsHandler(_loggingRepository.Object, _teamsChannelRepository.Object);
             _getGroupEndpointsHandler = new GetGroupEndpointsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _postGroupHandler = new PostGroupHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _graphCredentials = new Mock<IOptions<GraphCredentials>>();
@@ -98,9 +103,13 @@ namespace Services.Tests
 
             _expectedEndpoints = new List<string> { "Yammer", "Outlook" };
 
+            _channels = [new Channel { Id = "TestId", DisplayName = "TestName" }];
+
             _graphGroupRepository.Setup(x => x.SearchDestinationsAsync(It.IsAny<string>())).ReturnsAsync(() => _destinations);
             _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == _validDestinationId))).ReturnsAsync(true);
             _graphGroupRepository.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(_expectedEndpoints);
+
+            _teamsChannelRepository.Setup(x => x.SearchTeamsChannelsAsync(It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync(() => _channels);
 
             var syncJob = new SyncJob
             {
@@ -116,7 +125,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task SearchDestinationsTestAsync()
+        public async Task SearchGroupsTestAsync()
         {
             var response = await _destinationController.SearchGroupsAsync("Test");
             var result = response.Result as OkObjectResult;
@@ -128,6 +137,21 @@ namespace Services.Tests
             var destinations = result.Value as GetDestinationsModel;
             Assert.IsNotNull(destinations);
             Assert.AreEqual(_destinationCount, destinations.Count);
+        }
+
+        [TestMethod]
+        public async Task SearchChannelsTestAsync()
+        {
+            var response = await _destinationController.SearchChannelsAsync(new Guid(), "TestChannel");
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Value);
+
+            var channels = result.Value as GetChannelsModel;
+            Assert.IsNotNull(channels);
+            Assert.AreEqual(1, channels.Count);
         }
 
         [TestMethod]
