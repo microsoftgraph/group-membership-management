@@ -10,12 +10,13 @@ import {
 } from './AppHeader.types';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { selectProfilePhoto } from '../../store/profile.slice';
 import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
 import { selectHasAdminCenterPermissions } from '../../store/roles.slice';
+import { Disclaimer } from '../Disclaimer';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -56,6 +57,16 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     navigate('/', { replace: false, state: { item: 1 } });
   };
 
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
+
+  const onReviewDisclaimerClicked = (): void => {
+    setIsDisclaimerOpen(true);
+  };
+
+  const closeDisclaimer = (): void => {
+    setIsDisclaimerOpen(false);
+  };
+
   const personaProps: IPersonaSharedProps = {
     imageUrl: profilePhoto
   }
@@ -89,8 +100,29 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
             styles={buttonStyles}
             onClick={onSettingsButtonClicked} />
           <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
+          <IconButton
+            title="Review Disclaimer"
+            iconProps={{ iconName: 'Info' }}
+            className={classNames.settingsIcon}
+            styles={buttonStyles}
+            onClick={onReviewDisclaimerClicked} />
         </div>
       }
+      {isDisclaimerOpen && (
+        <Disclaimer
+          checkboxes={[
+            { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
+            { id: 'autoSubscribeSettings', label: strings.Disclaimer.autoSubscribeSettings },
+            { id: 'authorizedSenders', label: strings.Disclaimer.authorizedSenders },
+            { id: 'globalHelpDesk', label: strings.Disclaimer.globalHelpDesk },
+            { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
+            { id: 'membershipRules', label: strings.Disclaimer.membershipRules },
+            { id: 'supportedGroups', label: strings.Disclaimer.supportedGroups },
+            { id: 'flatList', label: strings.Disclaimer.flatList },
+          ]}
+          onDismiss={closeDisclaimer}
+        />
+      )}
     </header>
   );
 };

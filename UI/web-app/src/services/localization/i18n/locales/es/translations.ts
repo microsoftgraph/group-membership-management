@@ -456,6 +456,18 @@ export const strings: IStrings = {
       welcomeMessageEnabledToolTip: 'Controla si se envía un mensaje de bienvenida por correo electrónico cuando se agregan nuevos miembros al grupo.'
     }
   },
+  Disclaimer: {
+    title: 'Por favor lea y acepte lo siguiente antes de continuar:',
+    submitButton: 'Estoy de acuerdo',
+    outlookWelcomeMessage: 'Entiendo que, de forma predeterminada, la creación de un grupo de Outlook genera un mensaje de bienvenida automático para los nuevos miembros. Para evitar notificaciones excesivas, WelcomeMessageEnabled debe configurarse en False antes de agregar miembros.',
+    autoSubscribeSettings: 'Entiendo que AutoSubscribeNewMembers y SubscribeMembersToCalendarEvents deben estar configurados en True para que los miembros reciban correos electrónicos e invitaciones de calendario. Estas configuraciones deben configurarse correctamente antes de agregar miembros para garantizar la entrega adecuada.',
+    authorizedSenders: 'Entiendo que para los grupos de Outlook con más de 5,000 miembros, se deben establecer remitentes autorizados para evitar fallas en la entrega de correos electrónicos. Para grupos con menos de 5,000 miembros, esto queda a discreción del propietario del grupo.',
+    globalHelpDesk: 'Entiendo que todas las configuraciones de grupo anteriores se pueden revisar y actualizar a través de Global HelpDesk.',
+    teamsVivaNotifications: 'Entiendo que para Teams y Viva Engage, los miembros serán notificados de acuerdo con el flujo de notificaciones de su plataforma, que no se puede omitir.',
+    membershipRules: 'Revisaré las reglas de membresía antes de enviarlas y reconozco que los miembros se poblarán según los criterios especificados. Acepto la responsabilidad por cualquier error causado por criterios incorrectos.',
+    supportedGroups: 'Reconozco que GMM admite Grupos de Outlook, Viva Engage, Teams y listas respaldadas por M365 o Grupos de Seguridad de Entra.',
+    flatList: 'Reconozco que los Grupos de M365 no admiten anidamiento y todos los miembros se incluyen en una lista plana.',
+  },
   copy: 'Copiar',
   remove: 'Eliminar',
   delete: 'Eliminar',

@@ -453,6 +453,18 @@ export const strings: IStrings = {
       welcomeMessageEnabledToolTip: 'Controls whether a welcome message is delivered in email when new members are added to the group.'
     }
   },
+  Disclaimer: {
+    title: 'Please read and agree to the following before proceeding:',
+    submitButton: 'I Agree',
+    outlookWelcomeMessage: 'I understand that by default, Outlook Group creation triggers an auto-generated welcome message for newly added members. To prevent excessive notifications, WelcomeMessageEnabled must be set to False before adding members.',
+    autoSubscribeSettings: 'I understand that AutoSubscribeNewMembers and SubscribeMembersToCalendarEvents must be True for members to receive emails and calendar invites. These settings must be configured correctly before adding members to ensure proper delivery.',
+    authorizedSenders: 'I understand that for Outlook Groups with more than 5,000 members, authorized senders must be set to prevent email delivery failures. For groups with fewer than 5,000 members, this is at the group owner\'s discretion.',
+    globalHelpDesk: 'I understand that all the above group settings can be reviewed and updated through Global HelpDesk.',
+    teamsVivaNotifications: 'I understand that for Teams and Viva Engage, members will be notified according to their platform’s notification flow, which cannot be bypassed.',
+    membershipRules: 'I will double-check membership rules before submission and acknowledge that members will be populated based on the specified criteria. I accept responsibility for any errors caused by incorrect criteria.',
+    supportedGroups: 'I acknowledge that GMM supports Outlook Groups, Viva Engage, Teams, and rosters backed by M365 or Entra Security Groups.',
+    flatList: 'I acknowledge that M365 Groups do not support nesting, and all members are included in a flat list.',
+  },
   copy: 'Copy',
   remove: 'Remove',
   delete: 'Delete',

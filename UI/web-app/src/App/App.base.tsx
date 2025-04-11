@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
@@ -20,6 +20,7 @@ import { fetchSettings } from '../store/settings.api';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
 import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
+import { Disclaimer } from '../components/Disclaimer';
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -37,6 +38,14 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const loggedIn = useSelector(selectLoggedIn);
   const hasAccess = useSelector(selectHasAccess);
   const isFetchingRoles = useSelector(selectIsFetchingRoles);
+
+  const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(() => {
+    return localStorage.getItem('disclaimerSubmitted') !== 'true';
+  });
+
+  const handleDismissDisclaimer = () => {
+    setIsDisclaimerOpen(false);
+  };
 
   // run once after load.
   useEffect(() => {
@@ -72,7 +81,24 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
         <AppHeader />
         <div className={classNames.content}>
           {hasAccess ?
-            <Outlet /> :
+            <>
+              {isDisclaimerOpen && (
+                <Disclaimer
+                  checkboxes={[
+                    { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
+                    { id: 'autoSubscribeSettings', label: strings.Disclaimer.autoSubscribeSettings },
+                    { id: 'authorizedSenders', label: strings.Disclaimer.authorizedSenders },
+                    { id: 'globalHelpDesk', label: strings.Disclaimer.globalHelpDesk },
+                    { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
+                    { id: 'membershipRules', label: strings.Disclaimer.membershipRules },
+                    { id: 'supportedGroups', label: strings.Disclaimer.supportedGroups },
+                    { id: 'flatList', label: strings.Disclaimer.flatList },
+                  ]}
+                  onDismiss={handleDismissDisclaimer}
+                />
+              )}
+              <Outlet />
+            </> :
             <div className={classNames.permissionDenied}>
               <Text>{strings.permissionDenied}</Text>
             </div>

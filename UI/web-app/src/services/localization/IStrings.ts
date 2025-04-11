@@ -471,4 +471,16 @@ export type IStrings = {
   hoursAgo: string;
   hoursLeft: string;
   pendingInitialSync: string;
+  Disclaimer: {
+    outlookWelcomeMessage: string;
+    autoSubscribeSettings: string;
+    authorizedSenders: string;
+    globalHelpDesk: string;
+    teamsVivaNotifications: string;
+    membershipRules: string;
+    supportedGroups: string;
+    flatList: string;
+    title: string;
+    submitButton: string;
+  };
 };
