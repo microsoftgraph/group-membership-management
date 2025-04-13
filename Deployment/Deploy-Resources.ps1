@@ -1338,12 +1338,16 @@ function Deploy-Resources {
         -ComputeResourceGroup $computeResourceGroup `
         -DataResourceGroup $dataResourceGroup
 
-    Set-RBACPermissions `
+    $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
+    $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
+    if ($setRBACPermissions -eq $true) {
+        Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment" `
         -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
-
+    }
+    
     Set-DBMigrations `
         -ConnectionString $connectionString `
         -ScriptsDirectory "$scriptsDirectory\function_packages"
