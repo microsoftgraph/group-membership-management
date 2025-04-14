@@ -67,6 +67,10 @@ param setRBACPermissions bool = false
 @description('Allowed origins for the SignalR service.')
 param signalrCORS array = ['https://microsoft.com']
 
+param featureFlags object = {
+  enableTeamsChannel: false
+}
+
 var subscriptionId = subscription().subscriptionId
 var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
@@ -78,6 +82,13 @@ var graphAppClientId = resourceId(subscription().subscriptionId, prereqsResource
 var graphAppClientSecret = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientSecret')
 var graphAppCertificateName = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppCertificateName')
 var graphAppTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppTenantId')
+var teamsChannelAppClientId =  resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppClientId')
+var teamsChannelAppClientSecret = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppClientSecret')
+var teamsChannelAppCertificateName = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppCertificateName')
+var teamsChannelAppTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelAppTenantId')
+var teamsChannelServiceAccountObjectId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountObjectId')
+var teamsChannelServiceAccountUsername = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountUsername')
+var teamsChannelServiceAccountPassword = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'teamsChannelServiceAccountPassword')
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
@@ -163,6 +174,34 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
   }
   {
+    name: 'Settings:TeamsGraphCredentials:ClientCertificateName'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppCertificateName, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ClientSecret'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientSecret, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ClientId'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:TenantId'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ServiceAccountObjectId'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountObjectId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ServiceAccountUsername'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountUsername, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:ServiceAccountPassword'
+    value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountPassword, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  }
+  {
     name: 'Settings:ActionableEmailProviderId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   }
@@ -172,6 +211,10 @@ var appSettings = [
   }
   {
     name: 'Settings:GraphCredentials:KeyVaultName'
+    value: prereqsKeyVaultName
+  }
+  {
+    name: 'Settings:TeamsGraphCredentials:KeyVaultName'
     value: prereqsKeyVaultName
   }
   {
