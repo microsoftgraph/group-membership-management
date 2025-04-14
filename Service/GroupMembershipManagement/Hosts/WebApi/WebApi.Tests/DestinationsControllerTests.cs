@@ -221,7 +221,7 @@ namespace Services.Tests
 
             var onboardingStatus = result.Value;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.AppIdNotOwner, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.GmmNotOwner, onboardingStatus);
         }
 
         [TestMethod]

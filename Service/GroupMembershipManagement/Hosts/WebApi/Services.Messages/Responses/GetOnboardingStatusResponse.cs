@@ -6,7 +6,7 @@ using Services.Messages.Contracts.Responses;
 
 namespace Services.Messages.Responses
 {
-    public class GetGroupOnboardingStatusResponse : ResponseBase
+    public class GetOnboardingStatusResponse : ResponseBase
     {
         public OnboardingStatus Status { get; set; }
     }

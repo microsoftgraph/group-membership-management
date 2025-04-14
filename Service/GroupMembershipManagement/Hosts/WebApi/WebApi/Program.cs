@@ -268,9 +268,10 @@ namespace WebApi
             {
                 var configuration = services.GetService<IConfiguration>();
                 var gmmHasTeamChannelReadWriteApplicationPermissions = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+                var serviceAccountObjectId = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountObjectId");
                 var serviceAccountUserName = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountUsername");
                 var serviceAccountPassword = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountPassword");
-                return new TeamsChannelConfig(gmmHasTeamChannelReadWriteApplicationPermissions, serviceAccountUserName, serviceAccountPassword);
+                return new TeamsChannelConfig(gmmHasTeamChannelReadWriteApplicationPermissions, serviceAccountObjectId, serviceAccountUserName, serviceAccountPassword);
             });
 
             builder.Services.Configure<GraphCredentials>("TeamsGraphCredentials", builder.Configuration.GetSection("Settings:TeamsGraphCredentials"));

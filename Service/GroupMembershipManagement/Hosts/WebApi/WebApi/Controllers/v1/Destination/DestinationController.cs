@@ -19,20 +19,23 @@ namespace WebApi.Controllers.v1.Destination
         private readonly IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> _searchGroupsRequestHandler;
         private readonly IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> _searchChannelsRequestHandler;
         private readonly IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> _getGroupEndpointsRequestHandler;
-        private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
+        private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
+        private readonly IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> _getChannelOnboardingStatusHandler;
         private readonly IRequestHandler<PostGroupRequest, PostGroupResponse> _postGroupHandler;
 
         public DestinationController
             (IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> searchGroupsRequestHandler,
             IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> searchChannelsRequestHandler,
             IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> getGroupEndpointsRequestHandler,
-            IRequestHandler<GetGroupOnboardingStatusRequest, GetGroupOnboardingStatusResponse> getGroupOnboardingStatusHandler,
+            IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> getGroupOnboardingStatusHandler,
+            IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> getChannelOnboardingStatusHandler,
             IRequestHandler<PostGroupRequest, PostGroupResponse> postGroupHandler)
         {
             _searchGroupsRequestHandler = searchGroupsRequestHandler ?? throw new ArgumentNullException(nameof(searchGroupsRequestHandler));
             _searchChannelsRequestHandler = searchChannelsRequestHandler ?? throw new ArgumentNullException(nameof(searchChannelsRequestHandler));
             _getGroupEndpointsRequestHandler = getGroupEndpointsRequestHandler ?? throw new ArgumentNullException(nameof(getGroupEndpointsRequestHandler));
             _getGroupOnboardingStatusHandler = getGroupOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getGroupOnboardingStatusHandler));
+            _getChannelOnboardingStatusHandler = getChannelOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getChannelOnboardingStatusHandler));
             _postGroupHandler = postGroupHandler ?? throw new ArgumentNullException(nameof(postGroupHandler));
         }
 
@@ -66,7 +69,7 @@ namespace WebApi.Controllers.v1.Destination
 
         [Authorize()]
         [HttpGet("groups/{groupId}/onboarding-status")]
-        public async Task<ActionResult<GetGroupOnboardingStatusResponse>> GetGroupOnboardingStatusAsync(Guid groupId)
+        public async Task<ActionResult<GetOnboardingStatusResponse>> GetGroupOnboardingStatusAsync(Guid groupId)
         {
             try
             {
@@ -81,7 +84,33 @@ namespace WebApi.Controllers.v1.Destination
                     return new ForbidResult();
                 }
 
-                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest (groupId, userId, isJobTenantWriter));
+                var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest(groupId, userId, isJobTenantWriter));
+                return Ok(response.Status);
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+            }
+        }
+
+        [Authorize()]
+        [HttpGet("teams/{teamId}/channel/{channelId}/onboarding-status")]
+        public async Task<ActionResult<GetOnboardingStatusResponse>> GetChannelOnboardingStatusAsync(Guid teamId, string channelId)
+        {
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+
+                var isJobTenantWriter = User.IsInRole(Models.Roles.JOB_TENANT_WRITER);
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var response = await _getChannelOnboardingStatusHandler.ExecuteAsync(new GetChannelOnboardingStatusRequest(teamId, channelId, userId, isJobTenantWriter));
                 return Ok(response.Status);
             }
             catch (Exception ex)

@@ -462,7 +462,7 @@ namespace Repositories.TeamsChannel
         }
         public async Task<bool> IsServiceAccountOwnerOfChannelAsync(Guid serviceAccountObjectId, AzureADTeamsChannel channel, Guid? runId)
         {
-            var userList = await ReadUsersFromChannelAsync(channel, runId, $"roles/any(r: r eq 'owner')", false);
+            var userList = await ReadUsersFromChannelAsync(channel, runId, $"roles/any(r: tolower(r) eq 'owner')", false);
             return userList.Any(user => user.ObjectId == serviceAccountObjectId);
         }
 
