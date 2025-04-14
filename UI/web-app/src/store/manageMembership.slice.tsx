@@ -7,6 +7,7 @@ import type { RootState } from './store';
 import { NewJob } from '../models/NewJob';
 import {
     getGroupOnboardingStatus,
+    getChannelOnboardingStatus,
     getGroupEndpoints,
     searchDestinations,
     searchChannels
@@ -319,6 +320,9 @@ const manageMembershipSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
+            state.onboardingStatus = action.payload;
+        });
+        builder.addCase(getChannelOnboardingStatus.fulfilled, (state, action) => {
             state.onboardingStatus = action.payload;
         });
         builder.addCase(searchDestinations.fulfilled, (state, action) => {

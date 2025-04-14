@@ -54,7 +54,7 @@ import {
   manageMembershipLastModifiedOnBehalfOfDisplayName,
   manageMembershipLastModifiedOnBehalfOfObjectId
 } from '../../store/manageMembership.slice';
-import { getGroupEndpoints, getGroupOnboardingStatus } from '../../store/manageMembership.api';
+import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
 import { fetchJobs, postJob } from '../../store/jobs.api';
 import { RunConfiguration } from '../../components/RunConfiguration';
@@ -75,6 +75,7 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { createGroup } from '../../store/groups.api';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { DestinationType } from '../../models/DestinationType';
+import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -230,6 +231,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         channelName: channelName,
       };
       dispatch(setSelectedDestination(updatedDestination));
+      const channelOnboardingStatusRequest: ChannelOnboardingStatusRequest = {
+        teamId: updatedDestination.id!,
+        channelId: selectedChannelId,
+      };
+      dispatch(getChannelOnboardingStatus(channelOnboardingStatusRequest));
     } else {
       const updatedDestination: Destination = {
         ...selectedDestination,
