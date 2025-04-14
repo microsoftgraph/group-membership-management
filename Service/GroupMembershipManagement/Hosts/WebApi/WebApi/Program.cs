@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Identity;
 using Common.DependencyInjection;
 using DIConcreteTypes;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Protocols;
@@ -31,6 +33,7 @@ using Repositories.Logging;
 using Repositories.NotificationsRepository;
 using Repositories.ServiceStatus;
 using Repositories.SqlMembershipRepository;
+using Repositories.TeamsChannel;
 using Services.Contracts;
 using Services.Contracts.Notifications;
 using Services.Entities;
@@ -91,7 +94,8 @@ namespace WebApi
                     .Select("MaximumNumberOfThresholdRecipients")
                     .Select("NumberOfThresholdViolationsToNotify")
                     .Select("NumberOfThresholdViolationsFollowUps")
-                    .Select("NumberOfThresholdViolationsToDisableJob");
+                    .Select("NumberOfThresholdViolationsToDisableJob")
+                    .Select("TeamsChannel:*");
             });
 
             // Add services to the container.
@@ -256,10 +260,45 @@ namespace WebApi
 
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
-            builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"))
-            .AddGraphAPIClient()
+            builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"));
+            builder.Services.AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
+            builder.Services.AddSingleton<ITeamsChannelConfig>(services =>
+            {
+                var configuration = services.GetService<IConfiguration>();
+                var gmmHasTeamChannelReadWriteApplicationPermissions = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+                var serviceAccountUserName = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountUsername");
+                var serviceAccountPassword = configuration.GetValue<string>("Settings:TeamsGraphCredentials:serviceAccountPassword");
+                return new TeamsChannelConfig(gmmHasTeamChannelReadWriteApplicationPermissions, serviceAccountUserName, serviceAccountPassword);
+            });
+
+            builder.Services.Configure<GraphCredentials>("TeamsGraphCredentials", builder.Configuration.GetSection("Settings:TeamsGraphCredentials"));
+
+            builder.Services.AddScoped<ITeamsChannelRepository, TeamsChannelRepository>(services =>
+            {
+                var teamsChannelConfig = services.GetService<ITeamsChannelConfig>();
+                var teamsGraphCredentials = services.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
+
+                TokenCredential teamsTokenCredential;
+
+                if (teamsChannelConfig.GMMHasTeamsChannelApplicationPermissions)
+                {
+                    teamsTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(teamsGraphCredentials);
+                }
+                else
+                {
+                    teamsGraphCredentials.ServiceAccountUserName = teamsChannelConfig.TeamsChannelServiceAccountUsername;
+                    teamsGraphCredentials.ServiceAccountPassword = teamsChannelConfig.TeamsChannelServiceAccountPassword;
+
+                    teamsTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(teamsGraphCredentials);
+                }
+
+                var graphClient = new GraphServiceClient(teamsTokenCredential);
+                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                var telemetryClient = services.GetRequiredService<TelemetryClient>();
+                return new TeamsChannelRepository(loggingRepository, graphClient, telemetryClient);
+            });
 
             builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
