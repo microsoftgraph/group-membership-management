@@ -16,7 +16,7 @@ param setRBACPermissions bool
 @description('The principalId of the webapi.')
 param webApiPrincipalId string
 
-module webapiPrereqsRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
+module webapiPrereqsRBAC 'keyVaultRBAC.bicep' = if (setRBACPermissions) {
   name: 'prereqsKV-rbac-webapi'
   scope: resourceGroup(prereqsKeyVaultResourceGroup)
   params: {
@@ -26,7 +26,7 @@ module webapiPrereqsRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
   }
 }
 
-module webapiDataRBAC 'keyvaultRBAC.bicep' = if (setRBACPermissions) {
+module webapiDataRBAC 'keyVaultRBAC.bicep' = if (setRBACPermissions) {
   name: 'dataKV-rbac-webapi'
   scope: resourceGroup(dataKeyVaultResourceGroup)
   params: {
