@@ -140,7 +140,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`;
 
   const appIdNotOwnerWarning =
-    onboardingStatus === OnboardingStatus.AppIdNotOwner ? (
+    onboardingStatus === OnboardingStatus.GmmNotOwner ? (
       <div className={classNames.ownershipWarning}>
         {strings.ManageMembership.labels.appIdNotOwnerWarning}{' '}
         <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">

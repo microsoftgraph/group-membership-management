@@ -8,6 +8,6 @@ export type GroupOnboardingStatus = {
 export enum OnboardingStatus {
     Onboarded,
     ReadyForOnboarding,
-    AppIdNotOwner,
+    GmmNotOwner,
     UserNotOwner
 }
