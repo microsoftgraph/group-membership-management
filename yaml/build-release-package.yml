@@ -75,7 +75,7 @@ stages:
         SourceFolder: 'UI/Scripts'
         Contents: |
           **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
+        TargetFolder: '$(build.artifactstagingdirectory)/deployment/scripts'
         OverWrite: false
 
     - task: CopyFiles@2
@@ -84,7 +84,7 @@ stages:
         SourceFolder: 'Service/GroupMembershipManagement/Hosts/WebApi/Scripts'
         Contents: |
           **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/Scripts'
+        TargetFolder: '$(build.artifactstagingdirectory)/deployment/scripts'
         OverWrite: false
 
     - task: DotNetCoreCLI@2
