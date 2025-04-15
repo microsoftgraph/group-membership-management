@@ -13,5 +13,6 @@ namespace Hosts.GroupMembershipObtainer
         public Guid GroupId { get; set; }
         public int CurrentPart { get; set; }
         public QueryType QueryType { get; set; }
+        public bool Exclusionary { get; set; }
     }
 }

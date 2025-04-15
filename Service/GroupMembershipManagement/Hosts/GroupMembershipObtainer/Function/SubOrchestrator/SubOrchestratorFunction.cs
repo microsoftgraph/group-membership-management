@@ -83,6 +83,7 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                         await GetTransitiveMembers(context, request);
+                        await ProcessGroupMembershipChangesAsync(context, request);
                         return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                         {
                             Status = SyncStatus.InProgress,
@@ -107,7 +108,7 @@ namespace Hosts.GroupMembershipObtainer
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                                 var deltaLink = await GetInitialDeltaUsers(context, request);
-                                await context.CallActivityAsync(nameof(DeltaLinkUploaderFunction), new DeltaLinkUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, DeltaLink = deltaLink });
+                                await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
                                 return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                 {
                                     Status = SyncStatus.InProgress,
@@ -122,6 +123,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                                 await GetTransitiveMembers(context, request);
+                                await ProcessGroupMembershipChangesAsync(context, request);
                                 return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                 {
                                     Status = SyncStatus.InProgress,
@@ -158,7 +160,14 @@ namespace Hosts.GroupMembershipObtainer
                                     // clear cache
                                     shouldClearCache = true;
                                     var deltaLink = await GetInitialDeltaUsers(context, request);
-                                    await context.CallActivityAsync(nameof(DeltaLinkUploaderFunction), new DeltaLinkUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, DeltaLink = deltaLink });
+                                    await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
+
+                                    // delete old cache files, only after new cache files are created
+                                    if (shouldClearCache)
+                                    {
+                                        await ClearCacheFunction(context, cacheFilePath, request.SyncJob);
+                                        await ClearCacheFunction(context, deltaFilePath, request.SyncJob);
+                                    }
                                     return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                     {
                                         Status = SyncStatus.InProgress,
@@ -176,13 +185,6 @@ namespace Hosts.GroupMembershipObtainer
                                 }
 
                                 await GetDeltaUsersSenderFunction(context, request, allUsers, deltaResponse.DeltaUrl);
-
-                                if (shouldClearCache)
-                                {
-                                    // delete old cache files, only after new cache file is created
-                                    await ClearCacheFunction(context, cacheFilePath, request.SyncJob);
-                                    await ClearCacheFunction(context, deltaFilePath, request.SyncJob);
-                                }
                             }
                             catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
                             {
@@ -191,7 +193,7 @@ namespace Hosts.GroupMembershipObtainer
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                                 var deltaLink = await GetInitialDeltaUsers(context, request);
-                                await context.CallActivityAsync(nameof(DeltaLinkUploaderFunction), new DeltaLinkUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, DeltaLink = deltaLink });
+                                await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
                                 return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                 {
                                     Status = SyncStatus.InProgress,
@@ -303,7 +305,19 @@ namespace Hosts.GroupMembershipObtainer
         /// </summary>
         /// <param name="context"></param>
         /// <param name="request"></param>
-        /// <returns>DeltaLink</returns>
+        /// <param name="deltaLink"></param>
+        public async Task ProcessGroupMembershipChangesAsync(IDurableOrchestrationContext context, GroupMembershipRequest request, string deltaLink = null)
+        {
+            var membershipFilePath = await context.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction), new TransitiveAndDeltaUsersSenderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart, Exclusionary = request.Exclusionary });
+            await context.CallActivityAsync<string>(nameof(DeleteBlobFunction), new DeleteBlobRequest { GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart });
+
+            if (!string.IsNullOrEmpty(deltaLink))
+            {
+                await context.CallActivityAsync(nameof(CacheUploaderFunction), new CacheUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, FilePath = membershipFilePath });
+                await context.CallActivityAsync(nameof(DeltaLinkUploaderFunction), new DeltaLinkUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, DeltaLink = deltaLink });
+            }
+        }
+
         public async Task<string> GetInitialDeltaUsers(
                                                     IDurableOrchestrationContext context,
                                                     GroupMembershipRequest request)

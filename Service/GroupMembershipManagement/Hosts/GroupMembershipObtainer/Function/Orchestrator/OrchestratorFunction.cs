@@ -137,7 +137,8 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                             GroupId = groupId,
                                                                                                                             SourceGroup = sourceGroup,
                                                                                                                             CurrentPart = mainRequest.CurrentPart,
-                                                                                                                            RunId = runId
+                                                                                                                            RunId = runId,
+                                                                                                                            Exclusionary = mainRequest.Exclusionary
                                                                                                                         });
 
                         var sgResponse = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
@@ -149,39 +150,7 @@ namespace Hosts.GroupMembershipObtainer
                             return;
                         }
 
-                        if (sgResponse.QueryType == QueryType.Transitive || sgResponse.QueryType == QueryType.Delta)
-                        {
-                            filePath = await context.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction),
-                                                                                    new TransitiveAndDeltaUsersSenderRequest
-                                                                                    {
-                                                                                        SyncJob = syncJob,
-                                                                                        GroupId = groupId,
-                                                                                        RunId = runId,
-                                                                                        CurrentPart = mainRequest.CurrentPart,
-                                                                                        Exclusionary = mainRequest.Exclusionary
-                                                                                    });
-
-                            await context.CallActivityAsync<string>(nameof(DeleteBlobFunction),
-                                                                    new DeleteBlobRequest
-                                                                    {
-                                                                        GroupId = groupId,
-                                                                        RunId = runId,
-                                                                        CurrentPart = mainRequest.CurrentPart
-                                                                    });
-
-                            if (sgResponse.QueryType == QueryType.Delta)
-                            {
-                                await context.CallActivityAsync(nameof(CacheUploaderFunction),
-                                                                   new CacheUploaderRequest
-                                                                   {
-                                                                       RunId = runId,
-                                                                       ObjectId = sourceGroup.ObjectId,
-                                                                       FilePath = filePath
-                                                                   });
-                            }
-                        }
-
-                        else
+                        if (sgResponse.QueryType != QueryType.Transitive && sgResponse.QueryType != QueryType.Delta)
                         {
                             distinctUsers = sgResponse.Users;
 
