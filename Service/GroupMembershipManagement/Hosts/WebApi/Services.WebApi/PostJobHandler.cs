@@ -8,6 +8,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
@@ -120,7 +121,14 @@ namespace Services
         private static SyncJob MapSyncJobDTOtoEntity(NewSyncJobDTO syncJob)
         {
             var queryObject = JsonDocument.Parse(syncJob.Query);
-            var convertedQuery = JsonSerializer.Serialize(queryObject);
+            var convertedQuery = JsonSerializer.Serialize(
+                JsonDocument.Parse(syncJob.Query),
+                new JsonSerializerOptions
+                {
+                    Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+                    WriteIndented = false
+                });
+
 
             var destinationArray = JsonSerializer.Deserialize<List<JsonElement>>(syncJob.Destination);
             string? targetOfficeGroupId = null;
