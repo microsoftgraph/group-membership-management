@@ -14,6 +14,9 @@ using System.Security.Claims;
 using WebApi.Models;
 using NewGroupDTO = WebApi.Models.DTOs.NewGroup;
 using Channel = Microsoft.Graph.Models.Channel;
+using Repositories.Contracts.InjectConfig;
+using Services.Messages.Responses;
+using Models.Entities;
 
 namespace Services.Tests
 {
@@ -31,11 +34,13 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
+        private Mock<ITeamsChannelConfig> _teamsChannelConfig = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private SearchGroupsHandler _searchGroupsHandler = null!;
         private SearchChannelsHandler _searchChannelsHandler = null!;
         private GetGroupEndpointsHandler _getGroupEndpointsHandler = null!;
         private GetGroupOnboardingStatusHandler _getGroupOnboardingStatusHandler = null!;
+        private GetChannelOnboardingStatusHandler _getChannelOnboardingStatusHandler = null!;
         private Mock<IOptions<GraphCredentials>> _graphCredentials = null!;
         private PostGroupHandler _postGroupHandler = null!;
         private NewGroupDTO _newGroup = null!;
@@ -49,6 +54,7 @@ namespace Services.Tests
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
+            _teamsChannelConfig = new Mock<ITeamsChannelConfig>();
             _searchGroupsHandler = new SearchGroupsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
             _searchChannelsHandler = new SearchChannelsHandler(_loggingRepository.Object, _teamsChannelRepository.Object);
             _getGroupEndpointsHandler = new GetGroupEndpointsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
@@ -64,8 +70,20 @@ namespace Services.Tests
                                                                                    _graphGroupRepository.Object,
                                                                                    _syncJobRepository.Object,
                                                                                    _graphCredentials.Object);
+            _getChannelOnboardingStatusHandler = new GetChannelOnboardingStatusHandler(_loggingRepository.Object,
+                                                                                    _graphGroupRepository.Object,
+                                                                                    _teamsChannelRepository.Object,
+                                                                                    _teamsChannelConfig.Object,
+                                                                                    _syncJobRepository.Object, 
+                                                                                    _graphCredentials.Object);
 
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(
+                _searchGroupsHandler, 
+                _searchChannelsHandler, 
+                _getGroupEndpointsHandler, 
+                _getGroupOnboardingStatusHandler, 
+                _getChannelOnboardingStatusHandler, 
+                _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -227,7 +245,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupUserNotOwnerStatusAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -257,7 +275,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusWhenClaimIsNotFoundAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -281,7 +299,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupOnboardingStatusThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -302,9 +320,147 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetChannelAlreadyOnboardedStatusAsync()
+        {
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(_validDestinationId, "TestChannelId");
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetChannelReadyForOnboardingStatusAsync()
+        {
+            Guid teamId = Guid.NewGuid();
+            string channelId = "TestChannelId";
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _teamsChannelRepository.Setup(x => x.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), null)).ReturnsAsync(true);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetChannelServiceAccountNotOwnerStatusAsync()
+        {
+            Guid teamId = Guid.NewGuid();
+            string channelId = "TestChannelId";
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _teamsChannelRepository.Setup(x => x.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), null)).ReturnsAsync(false);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.GmmNotOwner, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetChannelUserNotOwnerStatusAsync()
+        {
+            _destinationController = new DestinationController(
+                _searchGroupsHandler,
+                _searchChannelsHandler,
+                _getGroupEndpointsHandler,
+                _getGroupOnboardingStatusHandler,
+                _getChannelOnboardingStatusHandler,
+                _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+
+            Guid teamId = Guid.NewGuid();
+            string channelId = "TestChannelId";
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+            _teamsChannelRepository.Setup(x => x.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), null)).ReturnsAsync(true);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result?.Value);
+
+            var onboardingStatus = result.Value;
+            Assert.IsNotNull(onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.UserNotOwner, onboardingStatus);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatusWhenClaimIsNotFoundAsync()
+        {
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                })
+            };
+
+            Guid teamId = Guid.NewGuid();
+            string channelId = "TestChannelId";
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
+            var result = response.Result as ForbidResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+        }
+
+        [TestMethod]
+        public async Task GetChannelOnboardingStatusThrowsExceptionAsync()
+        {
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+                })
+            };
+
+            Guid teamId = Guid.NewGuid();
+            string channelId = "TestChannelId";
+            _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ThrowsAsync(new Exception("Database error"));
+
+            var response = await _destinationController.GetChannelOnboardingStatusAsync(teamId, channelId);
+            var result = response.Result as ObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result?.StatusCode);
+        }
+
+        [TestMethod]
         public async Task CreateGroupSucceedsAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -325,7 +481,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task CreateGroupThrowsExceptionAsync()
         {
-            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _postGroupHandler)
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -342,7 +498,7 @@ namespace Services.Tests
             Assert.AreEqual(500, result?.StatusCode);
         }
 
-            private ControllerContext CreateControllerContext(HttpContext httpContext)
+        private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };
         }
