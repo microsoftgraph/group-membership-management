@@ -69,5 +69,12 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<AzureADUser>> ReadBlobsAsync(string path) => Task.FromResult(new List<AzureADUser>());
+
+        public Task DeleteBlobsAsync(string path)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

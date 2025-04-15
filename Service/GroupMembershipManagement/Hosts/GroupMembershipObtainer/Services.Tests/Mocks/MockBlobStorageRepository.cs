@@ -90,6 +90,13 @@ namespace Tests.FunctionApps.Mocks
                 await blobClient.DeleteIfExistsAsync();
             }
         }
+
+        public Task<List<AzureADUser>> ReadBlobsAsync(string path) => Task.FromResult(new List<AzureADUser>());
+
+        public Task DeleteBlobsAsync(string path)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockBlobContainerClient : BlobContainerClient
@@ -103,7 +110,7 @@ namespace Tests.FunctionApps.Mocks
 
         public override Pageable<BlobItem> GetBlobs(BlobTraits traits = BlobTraits.None, BlobStates states = BlobStates.None, string prefix = null, CancellationToken cancellationToken = default)
         {
-            var filteredBlobs = prefix != null 
+            var filteredBlobs = prefix != null
                                 ? _blobs.Where(x => x.Name.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase)).ToList()
                                 : _blobs;
 

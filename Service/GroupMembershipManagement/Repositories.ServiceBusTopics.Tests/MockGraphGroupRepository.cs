@@ -199,7 +199,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId)
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid objectId, int numberOfPages)
         {
             throw new NotImplementedException();
         }
