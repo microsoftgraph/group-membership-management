@@ -469,6 +469,7 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
   }
   dependsOn: [
     syncJobUpdaterDataResources
+    notifierComputeResources // depends on notifier to create the service plan
   ]
 }
 
