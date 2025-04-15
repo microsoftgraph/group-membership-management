@@ -62,13 +62,15 @@ namespace Hosts.JobTrigger
             builder.Services.AddGraphAPIClient();
             builder.Services.AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
+            builder.Services.Configure<GraphCredentials>("TeamsGraphCredentials", builder.GetContext().Configuration.GetSection("TeamsGraphCredentials"));
+
             builder.Services.AddTransient<ITeamsChannelRepository, TeamsChannelRepository>((services) =>
             {
                 var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                 var telemetryClient = services.GetRequiredService<TelemetryClient>();
 
                 var configuration = services.GetService<IConfiguration>();
-                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
+                var teamsGraphCredentials = services.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
 
                 var channelReadWriteApplicationPermissionGranted = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
                 
@@ -76,14 +78,14 @@ namespace Hosts.JobTrigger
 
                 if (channelReadWriteApplicationPermissionGranted)
                 {
-                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
+                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(teamsGraphCredentials);
                 }
                 else
                 {
-                    graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
-                    graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+                    teamsGraphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                    teamsGraphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
 
-                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials);
+                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(teamsGraphCredentials);
                 }
                 var graphServiceClient = new GraphServiceClient(graphTokenCredential);
 
