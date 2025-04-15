@@ -43,6 +43,8 @@ import { CreateGroup } from '../CreateGroup';
 import { debounce } from '../../utils/jobUtils';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { SourcePartType } from '../../models/SourcePartType';
+import { DestinationType } from '../../models/DestinationType';
+import { selectOperationInProgress } from '../../store/operations.slice';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
@@ -189,11 +191,12 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const appIdNotOwnerWarning =
     onboardingStatus === OnboardingStatus.GmmNotOwner ? (
       <div className={classNames.ownershipWarning}>
-        {strings.ManageMembership.labels.appIdNotOwnerWarning}{' '}
-        <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
-          {strings.ManageMembership.labels.clickHere}
-        </a>
-        .
+        {selectedDestination?.type === DestinationType.TeamsChannelMembership ? strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning : strings.ManageMembership.labels.appIdNotOwnerWarning}{' '}
+        {selectedDestination?.type === DestinationType.GroupMembership && 
+          <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
+            {strings.ManageMembership.labels.clickHere}
+          </a>
+        }
       </div>
     ) : null;
 
@@ -208,7 +211,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     ) : null;
 
   const teamsNotSupportedWarning =
-    onboardingStatus == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === SourcePartType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
+    onboardingStatus == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === DestinationType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.teamsNotSupportedWarning}</div>
     ) : null;
 
@@ -268,7 +271,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 styles={{ root: classNames.peoplePicker }}
               />
               <div>
-                {selectedDestination?.type == SourcePartType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
+                {selectedDestination?.type == DestinationType.TeamsChannelMembership ? strings.ManageMembership.labels.searchTeam: strings.ManageMembership.labels.searchGroup}
                 <NormalPeoplePicker
                   onResolveSuggestions={getPickerSuggestions}
                   pickerSuggestionsProps={{
@@ -291,7 +294,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                   pickerCalloutProps={{ calloutMinWidth: 500 }}
                 />
               </div>
-              {selectedDestination?.id != null && selectedDestinationType === SourcePartType.TeamsChannelMembership && (
+              {selectedDestination?.id != null && selectedDestinationType === DestinationType.TeamsChannelMembership && (
                 <div>
                   {strings.ManageMembership.labels.searchChannel}
                   <NormalPeoplePicker

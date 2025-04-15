@@ -322,8 +322,14 @@ const manageMembershipSlice = createSlice({
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
             state.onboardingStatus = action.payload;
         });
+        builder.addCase(getGroupOnboardingStatus.pending, (state, action) => {
+            state.onboardingStatus = null;
+        });
         builder.addCase(getChannelOnboardingStatus.fulfilled, (state, action) => {
             state.onboardingStatus = action.payload;
+        });
+        builder.addCase(getChannelOnboardingStatus.pending, (state, action) => {
+            state.onboardingStatus = null;
         });
         builder.addCase(searchDestinations.fulfilled, (state, action) => {
             state.loadingSearchResults = false;

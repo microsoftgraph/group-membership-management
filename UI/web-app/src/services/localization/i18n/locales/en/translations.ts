@@ -373,6 +373,7 @@ export const strings: IStrings = {
       outlookWarning: 'There are important settings that should be considered before sending an email to this Outlook group. Please follow the instructions provided by your organization.',
       teamsNotSupportedWarning: 'Warning: This group is not Teams-enabled so Teams channel cannot be managed by GMM.',
       appIdNotOwnerWarning: 'Warning: GMM is not the owner of this group! It will not be able to manage membership for this group until you add it.',
+      teamsServiceAccountNotOwnerWarning: "Warning: GMM is not the owner of this Teams Channel! It will not be able to manage membership for this channel until you add it.",
       userNotOwnerWarning: 'Warning: You are not the owner of this group! You can only manage memberships with GMM for groups you own.',
       groupDescription: 'Groups can be Outlook / M365 Group, Entra Security Group, Teams, Viva Engage community, and SharePoint site etc.',
       channelDescription: 'Channel can be Teams private or shared channel.',
