@@ -16,7 +16,6 @@ import {
   Text,
   ChoiceGroup,
   IChoiceGroupOption,
-  TextField,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -44,7 +43,6 @@ import { debounce } from '../../utils/jobUtils';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { SourcePartType } from '../../models/SourcePartType';
 import { DestinationType } from '../../models/DestinationType';
-import { selectOperationInProgress } from '../../store/operations.slice';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
@@ -85,7 +83,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     );
   };
   const mapDestinationToType = (destination: Destination | undefined): string => {
-    return destination?.type ?? "GroupMembership";
+    return destination?.type ?? DestinationType.GroupMembership;
   };
   const mapDestinationToChannelPersonaProps = (destination: Destination | undefined): IPersonaProps[] => {
     if (!destination) return [];
@@ -131,14 +129,14 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const optionsDestinationType: IComboBoxOption[] = [
     {
-      key: 'GroupMembership',
+      key: DestinationType.GroupMembership,
       text: 'Group',
       data: {
         description: strings.ManageMembership.labels.groupDescription,
       },
     },
     {
-      key: 'TeamsChannelMembership',
+      key: DestinationType.TeamsChannelMembership,
       text: 'Channel',
       data: {
         description: strings.ManageMembership.labels.channelDescription,

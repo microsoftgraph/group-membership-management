@@ -8,7 +8,6 @@ import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
 import { Destination, DestinationPickerPersona } from '../models';
 import { SearchChannelRequest } from '../models/SearchChannelRequest';
-import { Search } from 'react-router-dom';
 import { Channel } from '../models/Channel';
 import { ChannelOnboardingStatusRequest } from '../models/ChannelOnboardingStatusRequest';
 
