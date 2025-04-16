@@ -96,6 +96,10 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const emailError = useSelector(selectSupportEmailError);
   const displayEmail = (!emailLoading && !emailError && email && email.trim() !== '') ? email : strings.HROnboarding.supportPlaceHolder;
 
+  interface IExtendedComboBoxOption extends IComboBoxOption {
+    description?: string;
+  }
+
   useEffect(() => {
     dispatch(getSupportEmailAddress());
   }, [dispatch]);
@@ -220,7 +224,7 @@ const checkType = (value: string, type: string | undefined): string => {
 const getOptions = (
   attributes?: SqlMembershipAttribute[],
   currentAttributeKey?: string
-): IComboBoxOption[] => {
+): IExtendedComboBoxOption[] => {
   let filteredAttributes = attributes || [];
 
   filteredAttributes = filteredAttributes.filter((attribute) => {
@@ -241,6 +245,7 @@ const getOptions = (
     filteredAttributes?.map((attribute) => ({
       key: attribute.hasMapping ? `${attribute.name}_Code` : attribute.name,
       text: attribute.customLabel ? attribute.customLabel : attribute.name,
+      description: attribute.description,
       data: { isDisabled: attribute.enabled === false },
     })) || [];
   return options;
@@ -1297,6 +1302,30 @@ const getOptions = (
     );
   }
 
+  const onRenderAttributeComboBoxOptions = (
+    props?: ISelectableOption,
+    defaultRender?: (props?: ISelectableOption) => JSX.Element | null
+  ): JSX.Element | null => {
+    const option = props as IExtendedComboBoxOption;
+    if (!option) return null;
+    return (
+      <div className={classNames.comboBoxOptionContainer}>
+        <div>
+          <Text>
+            {option.text || option.key}
+          </Text>
+        </div>
+        {option.description && (
+          <div>
+            <Text variant="tiny" styles={{ root: classNames.comboBoxOptionCodeText }}>
+              {strings.HROnboarding.descriptionLabel + option.description}
+            </Text>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const onRenderValueComboBoxList = (props?: ISelectableDroppableTextProps<IComboBox, IComboBox>, defaultRender?: (props?: ISelectableDroppableTextProps<IComboBox, IComboBox>) => JSX.Element | null): JSX.Element | null => {
     return (
       <div className = {classNames.comboBoxOptionList}>
@@ -1347,6 +1376,7 @@ const getOptions = (
               onChange={(event, option) =>
                 handleAttributeChange(event, option, index, groupIndex)
               }
+              onRenderOption={onRenderAttributeComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
               allowFreeInput
               autoComplete="off"

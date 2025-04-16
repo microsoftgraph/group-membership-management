@@ -56,6 +56,7 @@ export const strings: IStrings = {
     source: " fuente",
     invalidInputErrorMessage: "Entrada inválida. Por favor ingrese solo números.",
     valueComboBoxOptionCodeLabel: "Codigo: ",
+    descriptionLabel: "Descripción",
     attributeDisabledErrorMessage: 'Este atributo ha sido deshabilitado. Si lo elimina y luego desea volver a agregarlo, deberá ponerse en contacto con {email} para obtener ayuda.',
     supportPlaceHolder: 'Administrador',
     all: 'Todos',

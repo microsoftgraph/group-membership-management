@@ -52,6 +52,7 @@ export type IStrings = {
     source: string;
     invalidInputErrorMessage: string;
     valueComboBoxOptionCodeLabel: string;
+    descriptionLabel: string;
     attributeDisabledErrorMessage: string;
     supportPlaceHolder: string;
     all: string;
