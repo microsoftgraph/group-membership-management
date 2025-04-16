@@ -1,5 +1,9 @@
 # Breaking Changes
 
+## Release 4/1/2025
+Disabled storage account access keys for all storage accounts.
+- Run PostDeployment.ps1 script to grant proper RBAC roles.
+
 ## Release 3/1/2024
 
 Add the following secrets to prereqs keyvault if using TeamsChannel functionality:

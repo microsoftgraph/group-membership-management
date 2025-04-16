@@ -1,5 +1,15 @@
 # Release Notes:
 
+## Release 4/1/2025
+- Added check to verify if submission requestor is still an owner at review time
+- Added optional business justification field for onboardings and updates in the UI
+- Updated Source Parts component in the UI to include an expand/collapse all button and preserve their state
+- Set-up Playwright UI integration tests
+- Removed trace logging from several azure functions
+- Updated PostDeployment.ps1 to grant access to storage accounts
+- Add build number to binaries
+- Added disable and purge dates to the threshold email
+
 ## Release 3/1/2025
 
 - Added UI popup with list of attributes and descriptions.
