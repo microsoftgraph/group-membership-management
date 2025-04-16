@@ -286,6 +286,10 @@ namespace Services.Tests
 
             _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsThatExist.Add(x.Channel.GroupId));
 
+            _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.TeamsChannelExistsAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
+                .ReturnsAsync(true);
+
+            // Fails for jobs where teams channel exists but service account is not owner
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
                 var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
@@ -293,16 +297,13 @@ namespace Services.Tests
             }
 
             _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.IsServiceAccountOwnerOfChannelAsync(It.IsAny<Guid>(), It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
-                .ReturnsAsync(false);
-            _mockTeamsChannelRepository.Setup<Task<bool>>(repo => repo.TeamsChannelExistsAsync(It.IsAny<AzureADTeamsChannel>(), It.IsAny<Guid>()))
                 .ReturnsAsync(true);
 
-            _syncJobRepository.Jobs.ForEach(x => _graphGroupRepository.GroupsGMMOwns.Add(x.Channel.GroupId));
-
+            // Passes now that service account is owner
             foreach (var job in _syncJobRepository.Jobs.Take(enabledJobs))
             {
                 var response = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(job);
-                Assert.AreEqual(DestinationVerifierResult.NotOwnedByGMM, response);
+                Assert.AreEqual(DestinationVerifierResult.Success, response);
             }
         }
 

@@ -302,16 +302,11 @@ namespace Services
                 ChannelId = destinationObject.ChannelId
             };
 
-            if (!await CheckTeamExists(job, channel))
+            if (!await CheckTeamExists(job, channel) || !await CheckChannelExists(job, channel))
                 return DestinationVerifierResult.NotFound;
-            if (!_jobTriggerConfig.GMMHasChannelReadWriteAllPermissions && !await CheckGMMIsTeamOwner(job, channel))
-                return DestinationVerifierResult.NotOwnedByGMM;
 
-            if (!await CheckChannelExists(job, channel))
-                return DestinationVerifierResult.NotFound;
             if(!_jobTriggerConfig.GMMHasChannelReadWriteAllPermissions && !await CheckGMMIsChannelOwner(job, channel))
                 return DestinationVerifierResult.NotOwnedByGMM;
-
 
             return DestinationVerifierResult.Success;
         }
@@ -334,11 +329,6 @@ namespace Services
         {
             return await CheckAndLogAsync(job, $"team {channel.ObjectId}",
                 () => _graphGroupRepository.GroupExists(channel.ObjectId));
-        }
-        private async Task<bool> CheckGMMIsTeamOwner(SyncJob job, AzureADTeamsChannel channel)
-        {
-            return await CheckAndLogAsync(job, $"GMM ownership of team {channel.ObjectId}",
-                () => _graphGroupRepository.IsServiceAccountOwnerOfGroupAsync(_gmmTeamsChannelServiceAccountId, channel.ObjectId));
         }
         private async Task<bool> CheckGMMIsChannelOwner(SyncJob job, AzureADTeamsChannel channel)
         {
