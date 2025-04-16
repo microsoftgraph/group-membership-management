@@ -114,6 +114,7 @@ namespace Hosts.GraphUpdater
                 await client.StartNewAsync(orchestrator, instanceId, new QueueMessageOrchestratorRequest
                 {
                     TopicName = _membershipUpdaters.CurrentTopicName,
+                    LaneSize = _membershipUpdaters.CurrentLaneSize,
                     SubscriptionName = subscriptionName,
                     IsMultiLaneEnabled = _multilaneConfig.IsEnabled
                 });

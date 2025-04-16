@@ -67,6 +67,7 @@ namespace Hosts.GraphUpdater
                     {
                         RunId = runId,
                         TopicName = orchestratorRequest.TopicName,
+                        LaneSize = orchestratorRequest.LaneSize,
                         SubscriptionName = orchestratorRequest.SubscriptionName,
                         GroupMembership = request.GroupMembership
                     });

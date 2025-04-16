@@ -12,5 +12,6 @@ namespace Hosts.GraphUpdater
         public string TopicName { get; set; }
         public string SubscriptionName { get; set; }
         public GroupMembership GroupMembership { get; set; }
+        public string LaneSize { get; set; }
     }
 }

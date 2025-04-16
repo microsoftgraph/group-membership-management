@@ -185,7 +185,7 @@ namespace Hosts.GraphUpdater
                     syncCompleteEvent.RunId = syncJob.RunId.ToString();
                     syncCompleteEvent.IsDryRunEnabled = false.ToString();
                     syncCompleteEvent.ProjectedMemberCount = groupMembership.ProjectedMemberCount.HasValue ? groupMembership.ProjectedMemberCount.ToString() : "Not provided";
-                    syncCompleteEvent.Identifier = "MultiLane";
+                    syncCompleteEvent.Identifier = request.LaneSize;
                     syncCompleteEvent.IsInitialSync = isInitialSync.ToString();
                     syncCompleteEvent.MembersToAdd = jobState.TotalMembersToAdd.ToString();
                     syncCompleteEvent.MembersToRemove = jobState.TotalMembersToRemove.ToString();

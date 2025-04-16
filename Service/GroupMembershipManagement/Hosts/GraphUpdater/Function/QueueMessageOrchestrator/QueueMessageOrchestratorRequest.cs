@@ -8,5 +8,6 @@ namespace GraphUpdater.QueueMessageOrchestrator
         public string TopicName { get; set; }
         public string SubscriptionName { get; set; }
         public bool IsMultiLaneEnabled { get; set; }
+        public string LaneSize { get; set; }
     }
 }
