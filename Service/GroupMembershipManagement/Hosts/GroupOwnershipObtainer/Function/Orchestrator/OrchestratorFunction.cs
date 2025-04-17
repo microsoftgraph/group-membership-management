@@ -116,16 +116,16 @@ namespace Hosts.GroupOwnershipObtainer
                     return;
                 }
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { SyncJob = syncJob, Message = $"Group Id for job:{syncJob.Id} is {groupId}" });
-                var syncJobs = new List<SyncJob>();
                 var segmentResponse = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsSegmentedFunction), new GetJobsSegmentedRequest { RunId = syncJob.RunId });
-                syncJobs.AddRange(segmentResponse);
+
+                var groupDestinationSyncJobs = segmentResponse.Where(x => x.MembershipType == MembershipTypes.GroupMembership.ToString()).ToList();
 
                 var filteredJobs = await context.CallActivityAsync<List<Guid>>(nameof(JobsFilterFunction),
                                                                                new JobsFilterRequest
                                                                                {
                                                                                    RunId = syncJob.RunId,
                                                                                    RequestedSources = sources,
-                                                                                   SyncJobs = syncJobs.Select(x => new JobsFilterSyncJob
+                                                                                   SyncJobs = groupDestinationSyncJobs.Select(x => new JobsFilterSyncJob
                                                                                    {
                                                                                        Query = x.Query,
                                                                                        TargetOfficeGroupId = x.Group.GroupId
