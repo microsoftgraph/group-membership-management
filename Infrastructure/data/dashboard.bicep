@@ -3174,9 +3174,448 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             }
           }
           '32': {
+              position: {
+                x: 1
+                y: 34
+                colSpan: 3
+                rowSpan: 8
+              }
+              metadata: {
+                inputs: []
+                type: 'Extension/HubsExtension/PartType/MarkdownPart'
+                settings: {
+                  content: {
+                    settings: {
+                      content: '### <span style="color:lightseagreen">By Lane Size</span>\r\n\r\nThe four tiles on the right show percentiles for sync job run durations per lane.'
+                      title: ''
+                      subtitle: ''
+                      markdownSource: 1
+                      markdownUri: null
+                    }
+                  }
+                }
+              }
+          }
+          '33': {
+            position: {
+              x: 4
+              y: 34
+              rowSpan: 2
+              colSpan: 11
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "onboarding"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    percentile_Minutes_50: '171px'
+                    Type: '108px'
+                    percentile_Minutes_75: '170px'
+                    percentile_Minutes_95: '172px'
+                    percentile_Minutes_99: '170px'
+                    percentile_Minutes_100: '180px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "onboarding"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  PartTitle: 'Sync Job Run Durations for Onboarding Lane'
+                }
+              }
+            }
+          }
+          '34': {
+            position: {
+              x: 4
+              y: 36
+              rowSpan: 2
+              colSpan: 11
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "small"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    percentile_Minutes_50: '171px'
+                    Type: '108px'
+                    percentile_Minutes_75: '170px'
+                    percentile_Minutes_95: '172px'
+                    percentile_Minutes_99: '170px'
+                    percentile_Minutes_100: '180px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "small"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  PartTitle: 'Sync Job Run Durations for Small Lane'
+                }
+              }
+            }
+          }
+          '35': {
+            position: {
+              x: 4
+              y: 38
+              rowSpan: 2
+              colSpan: 11
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "medium"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    percentile_Minutes_50: '171px'
+                    Type: '108px'
+                    percentile_Minutes_75: '170px'
+                    percentile_Minutes_95: '172px'
+                    percentile_Minutes_99: '170px'
+                    percentile_Minutes_100: '180px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "medium"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  PartTitle: 'Sync Job Run Durations for Medium Lane'
+                }
+              }
+            }
+          }
+          '36': {
+            position: {
+              x: 4
+              y: 40
+              rowSpan: 2
+              colSpan: 11
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '15bd1362-68dd-413e-a9fd-87c931d2c932'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  value: 'P1D'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "large"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  GridColumnsWidth: {
+                    percentile_Minutes_50: '171px'
+                    Type: '108px'
+                    percentile_Minutes_75: '170px'
+                    percentile_Minutes_95: '172px'
+                    percentile_Minutes_99: '170px'
+                    percentile_Minutes_100: '180px'
+                  }
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project Minutes = todouble(customDimensions["SyncJobTimeElapsedSeconds"]) / 60 * 1m,\nResult = customDimensions["Result"],\nDryRun = customDimensions["IsDryRunEnabled"],\nLane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == "False" and Lane == "large"\n| project Minutes\n| summarize percentiles(Minutes, 50, 75, 95, 99, 100)'
+                  PartTitle: 'Sync Job Run Durations for Large Lane'
+                }
+              }
+            }
+          }
+          '37': {
             position: {
               x: 1
-              y: 34
+              y: 42
               colSpan: 3
               rowSpan: 4
             }
@@ -3196,10 +3635,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '33': {
+          '38': {
             position: {
               x: 4
-              y: 34
+              y: 42
               colSpan: 11
               rowSpan: 2
             }
@@ -3300,10 +3739,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '34': {
+          '39': {
             position: {
               x: 4
-              y: 36
+              y: 44
               colSpan: 11
               rowSpan: 2
             }
@@ -3404,10 +3843,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '35': {
+          '40': {
             position: {
               x: 1
-              y: 38
+              y: 46
               colSpan: 3
               rowSpan: 8
             }
@@ -3427,10 +3866,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '36': {
+          '41': {
             position: {
               x: 4
-              y: 38
+              y: 46
               colSpan: 11
               rowSpan: 2
             }
@@ -3531,10 +3970,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '37': {
+          '42': {
             position: {
               x: 4
-              y: 40
+              y: 48
               colSpan: 11
               rowSpan: 2
             }
@@ -3635,10 +4074,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '38': {
+          '43': {
             position: {
               x: 4
-              y: 42
+              y: 50
               colSpan: 11
               rowSpan: 2
             }
@@ -3739,10 +4178,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '39': {
+          '44': {
             position: {
               x: 4
-              y: 44
+              y: 52
               colSpan: 11
               rowSpan: 2
             }
@@ -3842,10 +4281,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '40': {
+          '45': {
             position: {
               x: 1
-              y: 46
+              y: 54
               colSpan: 6
               rowSpan: 4
             }
@@ -3962,10 +4401,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '41': {
+          '46': {
             position: {
               x: 7
-              y: 46
+              y: 54
               colSpan: 6
               rowSpan: 4
             }
@@ -4081,10 +4520,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '42': {
+          '47': {
             position: {
               x: 13
-              y: 46
+              y: 54
               colSpan: 10
               rowSpan: 4
             }
@@ -4206,10 +4645,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '43': {
+          '48': {
             position: {
               x: 1
-              y: 50
+              y: 58
               colSpan: 6
               rowSpan: 4
             }
@@ -4320,10 +4759,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '44': {
+          '49': {
             position: {
               x: 1
-              y: 54
+              y: 62
               colSpan: 9
               rowSpan: 2
             }
@@ -4343,10 +4782,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '45': {
+          '50': {
             position: {
               x: 1
-              y: 56
+              y: 64
               colSpan: 6
               rowSpan: 4
             }
@@ -4464,10 +4903,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '46': {
+          '51': {
             position: {
               x: 7
-              y: 56
+              y: 64
               colSpan: 9
               rowSpan: 4
             }
@@ -4563,10 +5002,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '47': {
+          '52': {
             position: {
               x: 1
-              y: 60
+              y: 68
               colSpan: 8
               rowSpan: 4
             }
@@ -4660,10 +5099,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '48': {
+          '53': {
             position: {
               x: 9
-              y: 60
+              y: 68
               colSpan: 7
               rowSpan: 4
             }
@@ -4757,10 +5196,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '49': {
+          '54': {
             position: {
               x: 1
-              y: 64
+              y: 72
               colSpan: 8
               rowSpan: 4
             }
@@ -4879,10 +5318,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '50': {
+          '55': {
             position: {
               x: 9
-              y: 64
+              y: 72
               colSpan: 8
               rowSpan: 4
             }
@@ -4983,10 +5422,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '51': {
+          '56': {
             position: {
               x: 1
-              y: 68
+              y: 76
               colSpan: 16
               rowSpan: 5
             }
@@ -5089,10 +5528,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '52': {
+          '57': {
             position: {
               x: 1
-              y: 73
+              y: 81
               colSpan: 10
               rowSpan: 2
             }
@@ -5110,10 +5549,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '53': {
+          '58': {
             position: {
               x: 1
-              y: 75
+              y: 83
               colSpan: 6
               rowSpan: 4
             }
@@ -5226,10 +5665,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '54': {
+          '59': {
             position: {
               x: 7
-              y: 75
+              y: 83
               colSpan: 6
               rowSpan: 4
             }
@@ -5342,10 +5781,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '55': {
+          '60': {
             position: {
               x: 1
-              y: 79
+              y: 87
               colSpan: 6
               rowSpan: 4
             }
