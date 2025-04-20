@@ -10,5 +10,6 @@ namespace Hosts.GroupMembershipObtainer
         public List<AzureADUser> Users { get; set; }
         public SyncStatus Status { get; set; }
         public QueryType QueryType { get; set; }
+        public string FilePath { get; set; }
     }
 }

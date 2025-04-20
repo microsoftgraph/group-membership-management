@@ -27,7 +27,7 @@ namespace Hosts.GroupMembershipObtainer
             string filePath = null;
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(TransitiveAndDeltaUsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            filePath = await _calculator.SendTransitiveMembershipAsync(request.SyncJob, request.CurrentPart, request.Exclusionary);
+            filePath = await _calculator.SendTransitiveAndDeltaMembershipAsync(request.SyncJob, request.CurrentPart, request.Exclusionary);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(TransitiveAndDeltaUsersSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return filePath;
         }

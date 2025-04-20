@@ -83,11 +83,12 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                         await GetTransitiveMembers(context, request);
-                        await ProcessGroupMembershipChangesAsync(context, request);
+                        var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request);
                         return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                         {
                             Status = SyncStatus.InProgress,
-                            QueryType = QueryType.Transitive
+                            QueryType = QueryType.Transitive,
+                            FilePath = membershipFilePath
                         }));
                     }
                     else
@@ -108,11 +109,12 @@ namespace Hosts.GroupMembershipObtainer
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                                 var deltaLink = await GetInitialDeltaUsers(context, request);
-                                await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
+                                var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
                                 return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                 {
                                     Status = SyncStatus.InProgress,
-                                    QueryType = QueryType.Delta
+                                    QueryType = QueryType.Delta,
+                                    FilePath = membershipFilePath
                                 }));
                             }
                             catch (Exception e) when (e is KeyNotFoundException || e is ServiceException)
@@ -123,11 +125,12 @@ namespace Hosts.GroupMembershipObtainer
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });
                                 await GetTransitiveMembers(context, request);
-                                await ProcessGroupMembershipChangesAsync(context, request);
+                                var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request);
                                 return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                 {
                                     Status = SyncStatus.InProgress,
-                                    QueryType = QueryType.Transitive
+                                    QueryType = QueryType.Transitive,
+                                    FilePath = membershipFilePath
                                 }));
                             }
                         }
@@ -160,7 +163,7 @@ namespace Hosts.GroupMembershipObtainer
                                     // clear cache
                                     shouldClearCache = true;
                                     var deltaLink = await GetInitialDeltaUsers(context, request);
-                                    await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
+                                    var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
 
                                     // delete old cache files, only after new cache files are created
                                     if (shouldClearCache)
@@ -171,7 +174,8 @@ namespace Hosts.GroupMembershipObtainer
                                     return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                     {
                                         Status = SyncStatus.InProgress,
-                                        QueryType = QueryType.Delta
+                                        QueryType = QueryType.Delta,
+                                        FilePath = membershipFilePath
                                     }));
                                 }
                                 else if (countOfUsersFromAADGroup == countOfUsersFromCache)
@@ -193,11 +197,12 @@ namespace Hosts.GroupMembershipObtainer
 
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query for group {request.SourceGroup.ObjectId}" });
                                 var deltaLink = await GetInitialDeltaUsers(context, request);
-                                await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
+                                var membershipFilePath = await ProcessGroupMembershipChangesAsync(context, request, deltaLink);
                                 return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
                                 {
                                     Status = SyncStatus.InProgress,
-                                    QueryType = QueryType.Delta
+                                    QueryType = QueryType.Delta,
+                                    FilePath = membershipFilePath
                                 }));
                             }
                         }
@@ -306,7 +311,8 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="context"></param>
         /// <param name="request"></param>
         /// <param name="deltaLink"></param>
-        public async Task ProcessGroupMembershipChangesAsync(IDurableOrchestrationContext context, GroupMembershipRequest request, string deltaLink = null)
+        /// <returns>Membership file path</returns>
+        public async Task<string> ProcessGroupMembershipChangesAsync(IDurableOrchestrationContext context, GroupMembershipRequest request, string deltaLink = null)
         {
             var membershipFilePath = await context.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction), new TransitiveAndDeltaUsersSenderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart, Exclusionary = request.Exclusionary });
             await context.CallActivityAsync<string>(nameof(DeleteBlobFunction), new DeleteBlobRequest { GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart });
@@ -316,6 +322,8 @@ namespace Hosts.GroupMembershipObtainer
                 await context.CallActivityAsync(nameof(CacheUploaderFunction), new CacheUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, FilePath = membershipFilePath });
                 await context.CallActivityAsync(nameof(DeltaLinkUploaderFunction), new DeltaLinkUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, DeltaLink = deltaLink });
             }
+
+            return membershipFilePath;
         }
 
         public async Task<string> GetInitialDeltaUsers(

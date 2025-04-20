@@ -171,15 +171,19 @@ namespace Hosts.GroupMembershipObtainer
                                                                                     Exclusionary = mainRequest.Exclusionary
                                                                                 });
                         }
-
-                        var content = new MembershipAggregatorHttpRequest
+                        else
                         {
-                            FilePath = filePath,
-                            PartNumber = mainRequest.CurrentPart,
-                            PartsCount = mainRequest.TotalParts,
-                            SyncJob = syncJob,
-                            IsDestinationPart = mainRequest.IsDestinationPart
-                        };
+                            filePath = sgResponse.FilePath;
+                        }
+
+                            var content = new MembershipAggregatorHttpRequest
+                            {
+                                FilePath = filePath,
+                                PartNumber = mainRequest.CurrentPart,
+                                PartsCount = mainRequest.TotalParts,
+                                SyncJob = syncJob,
+                                IsDestinationPart = mainRequest.IsDestinationPart
+                            };
 
                         await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
                     }

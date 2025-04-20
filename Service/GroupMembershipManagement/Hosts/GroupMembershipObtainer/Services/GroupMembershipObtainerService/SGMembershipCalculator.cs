@@ -199,7 +199,7 @@ namespace Hosts.GroupMembershipObtainer
             return fileName;
         }
 
-        public async Task<string> SendTransitiveMembershipAsync(SyncJob syncJob, int currentPart, bool exclusionary)
+        public async Task<string> SendTransitiveAndDeltaMembershipAsync(SyncJob syncJob, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
