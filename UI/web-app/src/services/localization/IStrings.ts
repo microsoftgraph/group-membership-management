@@ -156,6 +156,8 @@ export type IStrings = {
         createGroupDescription: string;
         businessJustificationTitle: string;
         businessJustificationDescription: string;
+        isDisclaimerEnabledTitle: string;
+        isDisclaimerEnabledDescription: string;
       }
     }
   },

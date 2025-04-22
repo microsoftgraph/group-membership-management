@@ -199,6 +199,12 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
         onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
         generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
       />
+      <GeneralSetting
+        title={strings.GeneralSettings.labels.isDisclaimerEnabledTitle}
+        description={strings.GeneralSettings.labels.isDisclaimerEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsDisclaimerEnabled)}
+        generalSettingValue={settings[SettingKey.IsDisclaimerEnabled]}
+      />
     </div>
   );
 }
@@ -215,6 +221,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.CanReviewOwnSubmissions]: true,
     [SettingKey.CreateGroupFeatureEnabled]: true,
     [SettingKey.IsBusinessJustificationRequired]: true,
+    [SettingKey.IsDisclaimerEnabled]: true,
   });
 
   useEffect(() => {

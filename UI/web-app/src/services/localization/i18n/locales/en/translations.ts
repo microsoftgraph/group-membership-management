@@ -159,6 +159,8 @@ export const strings: IStrings = {
         createGroupDescription: "Allow users to create groups in your organization.",
         businessJustificationTitle: "Business Justification required",
         businessJustificationDescription: "Require users to provide business justification when requesting to manage a group or perform an update?",
+        isDisclaimerEnabledTitle: "Is the initial visit disclaimer enabled?",
+        isDisclaimerEnabledDescription: "Enable the disclaimer to be shown to users when they first visit GMM.",
       }
     }
   },

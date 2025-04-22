@@ -9,4 +9,5 @@ export const enum SettingKey {
     CanReviewOwnSubmissions = 4,
     CreateGroupFeatureEnabled = 5,
     IsBusinessJustificationRequired = 6,
+    IsDisclaimerEnabled = 7,
 }

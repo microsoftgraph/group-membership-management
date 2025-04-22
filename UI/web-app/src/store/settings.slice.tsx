@@ -169,6 +169,15 @@ export const selectIsBusinessJustificationRequired = (state: RootState) => {
   return isBusinessJustificationRequiredSetting ? isBusinessJustificationRequiredSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsDisclaimerEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isDisclaimerEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsDisclaimerEnabled);
+  return isDisclaimerEnabledSetting ? isDisclaimerEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

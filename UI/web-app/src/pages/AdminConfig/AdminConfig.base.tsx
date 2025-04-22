@@ -13,6 +13,7 @@ import {
   selectCanReviewOwnSubmissions,
   selectCreateGroupFeatureEnabled,
   selectIsBusinessJustificationRequired,
+  selectIsDisclaimerEnabled
 } from '../../store/settings.slice';
 import { patchSetting } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
@@ -47,6 +48,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const canReviewOwnSubmissions = useSelector(selectCanReviewOwnSubmissions);
   const createGroupFeatureEnabled = useSelector(selectCreateGroupFeatureEnabled);
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
+  const IsDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
   const sqlMembershipSource = useSelector(selectSource);
   const sqlMembershipSourceAttributes = useSelector(selectAttributes);
   const isSourceSaving = useSelector(selectIsSourceSaving);
@@ -68,13 +70,14 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.CanReviewOwnSubmissions]: canReviewOwnSubmissions ? 'true' : 'false',
     [SettingKey.CreateGroupFeatureEnabled]: createGroupFeatureEnabled ? 'true' : 'false',
     [SettingKey.IsBusinessJustificationRequired]: isBusinessJustificationRequired ? 'true' : 'false',
+    [SettingKey.IsDisclaimerEnabled]: IsDisclaimerEnabled ? 'true' : 'false',
   });
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
   useEffect(() => { 
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -120,6 +123,12 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         patchSetting({
           settingKey: SettingKey.IsBusinessJustificationRequired,
           settingValue: newSettings[SettingKey.IsBusinessJustificationRequired],
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsDisclaimerEnabled,
+          settingValue: newSettings[SettingKey.IsDisclaimerEnabled],
         })
       );
     }
