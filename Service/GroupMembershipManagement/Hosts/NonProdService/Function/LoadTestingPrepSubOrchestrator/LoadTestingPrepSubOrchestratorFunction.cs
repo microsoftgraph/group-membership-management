@@ -28,9 +28,12 @@ namespace Hosts.NonProdService
             var runId = request.RunId;
             var tenantUserCount = request.TenantUserCount;
             var options = _options.Value;
+            var destinationGroupOwnerId = options.DestinationGroupOwnerId;
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function started", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
 
+            var allGroupNames = await context.CallActivityAsync<GetAllGroupNamesResponse>(nameof(GetAllGroupNamesFunction), new GetAllGroupNamesRequest { RunId = runId });
+            
             // Determine how many groups of each size are needed
             var calcResponse = await context.CallActivityAsync<LoadTestingGroupCalculatorResponse>(
                 nameof(LoadTestingGroupCalculatorFunction),
@@ -38,24 +41,17 @@ namespace Hosts.NonProdService
                 {
                     NumberOfGroups = options.GroupCount,
                     NumberOfUsers = tenantUserCount,
-                    RunId = runId
+                    RunId = runId,
+                    ExistingGroupNames = allGroupNames.GroupNames
                 });
 
-            // Determine how many groups of each size we still need to create
-            var groupSizesAndCounts = calcResponse.GroupSizesAndCounts;
-            var groupsToCreate = await context.CallActivityAsync<GroupDeltaCalculatorResponse>(
-                nameof(GroupDeltaCalculatorFunction),
-                new GroupDeltaCalculatorRequest
-                {
-                    GroupSizesAndCounts = groupSizesAndCounts,
-                    RunId = runId
-                });
+            var groupsToCreate = calcResponse.GroupSizesAndCounts;
 
             // Create and retrieve groups
             var groupSizesAndIds = new Dictionary<int, List<Guid>>();
-            foreach (var groupSize in groupsToCreate.GroupsToCreate.Keys)
+            foreach (var groupSize in groupsToCreate.Keys)
             {
-                var groupCount = groupsToCreate.GroupsToCreate[groupSize];
+                var groupCount = groupsToCreate[groupSize];
 
                 // Call the batch function to create and retrieve groups
                 var batchResponse = await context.CallActivityAsync<List<GroupCreatorAndRetrieverBatchResponse>>(
@@ -64,9 +60,10 @@ namespace Hosts.NonProdService
                     {
                         BaseGroupName = $"LoadTesting_DestinationGroup_{groupSize}",
                         GroupCount = groupCount,
-                        DestinationGroupOwnerId = options.DestinationGroupOwnerId,
+                        GroupOwnersIds = new List<Guid> { destinationGroupOwnerId },
                         RetrieveMembers = false,
-                        RunId = runId
+                        RunId = runId,
+                        ExistingGroupNames = allGroupNames.GroupNames
                     });
 
                 var groupIds = batchResponse.Select(response => response.TargetGroup.ObjectId).ToList();
@@ -84,7 +81,7 @@ namespace Hosts.NonProdService
             var targetGroupIds = syncJobsResponse.SyncJobs.Select(x => x.Group.GroupId).ToList();
 
             // If all groups exist, make sure they all have a sync job.
-            if (groupsToCreate.GroupsToCreate.Keys.Count == 0)
+            if (groupsToCreate.Count == 0)
             {
                 var syncJobCheckerResponse = await context.CallActivityAsync<SyncJobCheckerResponse>(nameof(SyncJobCheckerFunction), new SyncJobCheckerRequest
                 {

@@ -6,6 +6,7 @@ using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Hosts.NonProdService
@@ -28,10 +29,13 @@ namespace Hosts.NonProdService
                 throw new ArgumentNullException(nameof(request));
 
             var responses = new List<GroupCreatorAndRetrieverBatchResponse>();
+            var existingGroups = request.ExistingGroupNames ?? new List<string>();
+            var existingGroupCount = existingGroups
+                .Count(name => name.StartsWith(request.BaseGroupName + "_", StringComparison.OrdinalIgnoreCase));
 
             for (int i = 0; i < request.GroupCount; i++)
             {
-                var groupName = $"{request.BaseGroupName}_{i + 1}";
+                var groupName = $"{request.BaseGroupName}_{existingGroupCount + i + 1}";
 
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} creating group {groupName}", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
@@ -58,7 +62,7 @@ namespace Hosts.NonProdService
                     }
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully created group with name {groupName}, if it did not exist already", RunId = request.RunId });
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Successfully created group with name {groupName}.", RunId = request.RunId });
 
                 var usersInGroup = request.RetrieveMembers ? await _graphGroupRepository.GetUsersInGroupTransitively(group.ObjectId) : null;
 

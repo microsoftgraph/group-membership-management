@@ -12,8 +12,8 @@ namespace Hosts.NonProdService
         public TestGroupType TestGroupType { get; set; }
         public List<Guid> GroupOwnersIds { get; set; }
         public int GroupCount { get; set; }
-        public Guid DestinationGroupOwnerId { get; set; }
         public bool RetrieveMembers { get; set; }
         public Guid RunId { get; set; }
+        public List<string> ExistingGroupNames { get; set; } 
     }
 }

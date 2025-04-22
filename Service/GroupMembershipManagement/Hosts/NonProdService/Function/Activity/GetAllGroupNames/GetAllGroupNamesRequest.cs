@@ -1,13 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using System;
-using System.Collections.Generic;
 
 namespace Hosts.NonProdService
 {
-    public class GroupDeltaCalculatorResponse
+    public class GetAllGroupNamesRequest
     {
-        public Dictionary<int, int> GroupsToCreate { get; set; }
         public Guid RunId { get; set; }
     }
 }

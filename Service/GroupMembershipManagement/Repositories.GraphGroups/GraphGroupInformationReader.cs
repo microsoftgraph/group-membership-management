@@ -471,18 +471,23 @@ namespace Repositories.GraphGroups
                     groupDefinition.MailNickname = Guid.NewGuid().ToString();
                 }
 
-                if (groupOwnerIds != null && groupOwnerIds.Count > 1)
-                {
-                    groupOwnerIds.ForEach((ownerId) =>
-                    {
-                        groupDefinition.Owners.Add(new DirectoryObject
-                        {
-                            Id = $"{ownerId}"
-                        });
-                    });
-                }
-
                 var group = await _graphServiceClient.Groups.PostAsync(groupDefinition);
+
+                if (group != null && groupOwnerIds != null && groupOwnerIds.Any())
+                {
+                    groupDefinition.Owners = new List<DirectoryObject>();
+
+                    foreach (var ownerId in groupOwnerIds)
+                    {
+                        await _graphServiceClient.Groups[group.Id]
+                                            .Owners
+                                            .Ref
+                                            .PostAsync(new ReferenceCreate
+                                            {
+                                                OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{ownerId}"
+                                            });
+                    }
+                }
             }
             catch (ODataError ex)
             {
@@ -733,30 +738,24 @@ namespace Repositories.GraphGroups
         public async Task<List<string>> GetAllGroupNamesAsync()
         {
             var groupNames = new List<string>();
-            var groups = await _graphServiceClient.Groups
-                .GetAsync(requestConfiguration =>
-                {
-                    requestConfiguration.QueryParameters.Select = new[] { "displayName" };
-                });
+            var page = await _graphServiceClient.Groups
+                .GetAsync(config => config.QueryParameters.Select = new[] { "displayName" });
 
-            while (groups.Value.Count > 0)
+            while (page != null && page.Value != null)
             {
-                groupNames.AddRange(groups.Value.Select(g => g.DisplayName));
-                if (groups.OdataNextLink != null)
-                {
-                    var nextPageRequest = new RequestInformation
-                    {
-                        HttpMethod = Method.GET,
-                        UrlTemplate = groups.OdataNextLink
-                    };
+                groupNames.AddRange(page.Value.Select(g => g.DisplayName));
 
-                    groups = await _graphServiceClient.RequestAdapter.SendAsync<GroupCollectionResponse>(nextPageRequest, GroupCollectionResponse.CreateFromDiscriminatorValue);
+                if (page.OdataNextLink != null)
+                {
+                    page = await _graphServiceClient.Groups.WithUrl(page.OdataNextLink).GetAsync();
                 }
                 else
                 {
-                    break;
+                    page = null;
                 }
             }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Fetched {groupNames.Count} group names." });
 
             return groupNames;
         }
