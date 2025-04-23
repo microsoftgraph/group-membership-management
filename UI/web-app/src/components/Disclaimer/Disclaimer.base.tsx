@@ -3,6 +3,8 @@ import { Checkbox, PrimaryButton, Stack, Text, Modal, classNamesFunction, IProce
 import { IDisclaimerProps, IDisclaimerStyleProps, IDisclaimerStyles } from './Disclaimer.types';
 import { useStrings } from '../../store/hooks';
 import { IStrings } from '../../services/localization/IStrings';
+import { useSelector } from 'react-redux';
+import { selectIsDisclaimerEnabled } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<
   IDisclaimerStyleProps,
@@ -18,6 +20,7 @@ export const DisclaimerBase: React.FC<IDisclaimerProps> = (props: IDisclaimerPro
             className,
         }
     );
+    const isDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
     const [checkboxStates, setCheckboxStates] = useState(() => {
         const isSubmitted = localStorage.getItem('disclaimerSubmitted') === 'true';
         return checkboxes.reduce((acc, checkbox) => {
@@ -54,13 +57,17 @@ export const DisclaimerBase: React.FC<IDisclaimerProps> = (props: IDisclaimerPro
         }
     };
 
+    if (!isDisclaimerEnabled) {
+        return null;
+    }
+
     return (
         <Modal
             isOpen={true}
             isBlocking={true}
             onDismiss={onDismiss}
         >
-            <div className={classNames.modalContainer}>
+            <div className={classNames.modalContainer} id="disclaimerModal">
                 <Stack tokens={{ childrenGap: 20 }}>
                     <Text variant="large">{strings.Disclaimer.title}</Text>
                     {checkboxes.map((checkbox) => (

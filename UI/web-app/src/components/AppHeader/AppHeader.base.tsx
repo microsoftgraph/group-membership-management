@@ -80,49 +80,52 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
     rootPressed: disabledStyles
   }
 
-  return (
-    <header className={classNames.root}>
-      <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
-        <div className={classNames.titleContainer}>
-          <div className={classNames.appIcon}>
-            <img src={logo} alt="Membership Management Icon" style={{ height: 32, width: 32 }} />
+  return (<>
+      <header className={classNames.root}>
+        <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
+          <div className={classNames.titleContainer}>
+            <div className={classNames.appIcon}>
+              <img src={logo} alt="Membership Management Icon" style={{ height: 32, width: 32 }} />
+            </div>
+            <div className={classNames.appTitle}>{strings.membershipManagement}</div>
           </div>
-          <div className={classNames.appTitle}>{strings.membershipManagement}</div>
-        </div>
-      </a>
-      {
-        canViewSettings &&
-        <div className={classNames.settingsContainer}>
-          <IconButton
-            title={strings.Components.AppHeader.settings}
-            iconProps={{ iconName: 'settings' }}
-            className={classNames.settingsIcon}
-            styles={buttonStyles}
-            onClick={onSettingsButtonClicked} />
-          <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
-          <IconButton
-            title="Review Disclaimer"
-            iconProps={{ iconName: 'Info' }}
-            className={classNames.settingsIcon}
-            styles={buttonStyles}
-            onClick={onReviewDisclaimerClicked} />
-        </div>
-      }
-      {isDisclaimerOpen && (
-        <Disclaimer
-          checkboxes={[
-            { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
-            { id: 'autoSubscribeSettings', label: strings.Disclaimer.autoSubscribeSettings },
-            { id: 'authorizedSenders', label: strings.Disclaimer.authorizedSenders },
-            { id: 'globalHelpDesk', label: strings.Disclaimer.globalHelpDesk },
-            { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
-            { id: 'membershipRules', label: strings.Disclaimer.membershipRules },
-            { id: 'supportedGroups', label: strings.Disclaimer.supportedGroups },
-            { id: 'flatList', label: strings.Disclaimer.flatList },
-          ]}
-          onDismiss={closeDisclaimer}
-        />
-      )}
-    </header>
+        </a>
+        {
+          canViewSettings &&
+          <div className={classNames.settingsContainer}>
+            <IconButton
+              title={strings.Components.AppHeader.settings}
+              iconProps={{ iconName: 'settings' }}
+              className={classNames.settingsIcon}
+              styles={buttonStyles}
+              onClick={onSettingsButtonClicked} />
+            <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
+            <IconButton
+              title="Review Disclaimer"
+              iconProps={{ iconName: 'Info' }}
+              className={classNames.settingsIcon}
+              styles={buttonStyles}
+              onClick={onReviewDisclaimerClicked} />
+          </div>
+        }
+      </header>
+      <>
+        {isDisclaimerOpen && (
+          <Disclaimer
+            checkboxes={[
+              { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
+              { id: 'autoSubscribeSettings', label: strings.Disclaimer.autoSubscribeSettings },
+              { id: 'authorizedSenders', label: strings.Disclaimer.authorizedSenders },
+              { id: 'globalHelpDesk', label: strings.Disclaimer.globalHelpDesk },
+              { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
+              { id: 'membershipRules', label: strings.Disclaimer.membershipRules },
+              { id: 'supportedGroups', label: strings.Disclaimer.supportedGroups },
+              { id: 'flatList', label: strings.Disclaimer.flatList },
+            ]}
+            onDismiss={closeDisclaimer}
+          />
+        )}
+      </>
+    </>
   );
 };
