@@ -59,6 +59,37 @@ namespace Hosts.MembershipAggregator
                 RunId = request.SyncJob.RunId
             };
 
+            if (SourceMembership == null || DestinationMembership == null)
+            {
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                new JobStatusUpdaterRequest
+                                                {
+                                                    SyncJob = request.SyncJob,
+                                                    Status = SyncStatus.Error
+                                                });
+
+                if (SourceMembership == null)
+                {
+                    await LogMessageAsync(context, $"SourceMembership is missing for TargetOfficeGroupId {request.GroupId}. Marking job as 'Error'.", runId);
+                }
+                else
+                {
+                    await LogMessageAsync(context, $"DestinationMembership is missing for TargetOfficeGroupId {request.GroupId}. Marking job as 'Error'.", runId);
+                }
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    JobStatus = SyncStatus.Error,
+                    ResultStatus = ResultStatus.Failure,
+                    RunId = runId
+                });
+
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = MembershipDeltaStatus.Error
+                };
+            }
+
             if (!request.SyncJob.AllowEmptyDestination && SourceMembership.SourceMembers.Count == 0)
             {
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -262,7 +293,7 @@ namespace Hosts.MembershipAggregator
 
                 if (!context.IsReplaying)
                     TrackSyncCompleteEvent(context, dbSyncJob, syncCompleteEvent, "Success");
-                
+
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                 new JobStatusUpdaterRequest
                                 {
@@ -279,6 +310,19 @@ namespace Hosts.MembershipAggregator
                 MembersToBeAdded = deltaResponse.MembersToAddCount,
                 MembersToBeRemoved = deltaResponse.MembersToRemoveCount
             };
+        }
+
+        private async Task LogMessageAsync(IDurableOrchestrationContext context, string message, Guid runId)
+        {
+            await context.CallActivityAsync(nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    Message = new LogMessage
+                    {
+                        Message = message,
+                        RunId = runId
+                    }
+                });
         }
 
         private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
