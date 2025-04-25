@@ -265,5 +265,10 @@ namespace Repositories.GraphGroups
         {
             return await _graphGroupInformationReader.GetGroupsByFilterAsync(filter);
         }
+
+        public async Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId)
+        {
+            return await _graphUserReader.GetObjectIdFromServicePrincipalAsync(userIdentifier, runId);
+        }
     }
 }

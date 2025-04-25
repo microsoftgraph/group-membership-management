@@ -475,17 +475,15 @@ namespace Repositories.GraphGroups
 
                 if (group != null && groupOwnerIds != null && groupOwnerIds.Any())
                 {
-                    groupDefinition.Owners = new List<DirectoryObject>();
-
                     foreach (var ownerId in groupOwnerIds)
                     {
                         await _graphServiceClient.Groups[group.Id]
-                                            .Owners
-                                            .Ref
-                                            .PostAsync(new ReferenceCreate
-                                            {
-                                                OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{ownerId}"
-                                            });
+                            .Owners
+                            .Ref
+                            .PostAsync(new ReferenceCreate
+                            {
+                                OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{ownerId}"
+                            });
                     }
                 }
             }

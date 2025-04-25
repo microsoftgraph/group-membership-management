@@ -33,13 +33,16 @@ namespace Hosts.NonProdService
             var existingGroupCount = existingGroups
                 .Count(name => name.StartsWith(request.BaseGroupName + "_", StringComparison.OrdinalIgnoreCase));
 
+            var objectId = await _graphGroupRepository.GetObjectIdFromAppIdAsync(request.GroupOwnersIds.FirstOrDefault(), request.RunId);
+            var groupOwnersIds = new List<Guid> { objectId };
+
             for (int i = 0; i < request.GroupCount; i++)
             {
                 var groupName = $"{request.BaseGroupName}_{existingGroupCount + i + 1}";
 
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} creating group {groupName}", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-                await _graphGroupRepository.CreateGroup(groupName, request.TestGroupType, request.GroupOwnersIds);
+                await _graphGroupRepository.CreateGroup(groupName, request.TestGroupType, groupOwnersIds);
 
                 var group = await _graphGroupRepository.GetGroup(groupName);
 

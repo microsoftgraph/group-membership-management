@@ -107,6 +107,36 @@ namespace Repositories.GraphGroups
             return (users, nonUserGraphObjects, usersResponse.Response.OdataNextLink);
         }
 
+        public async Task<Guid> GetObjectIdFromServicePrincipalAsync(Guid appId, Guid? runId)
+        {
+            try
+            {
+                var servicePrincipals = await _graphServiceClient.ServicePrincipals
+                    .GetAsync(requestConfig =>
+                    {
+                        requestConfig.QueryParameters.Filter = $"appId eq '{appId}'";
+                    });
+
+                var servicePrincipal = servicePrincipals?.Value?.FirstOrDefault();
+
+                if (servicePrincipal != null)
+                {
+                    return Guid.Parse(servicePrincipal.Id);
+                }
+
+                return Guid.Empty;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Exception: {nameof(GetObjectIdFromServicePrincipalAsync)} failed with error {ex.Message}"
+                });
+                return Guid.Empty;
+            }
+        }
+
         private async Task<GraphObjectResponse<UserCollectionResponse>> GetFirstMembersAsync(string url)
         {
             var response = new GraphObjectResponse<UserCollectionResponse>();

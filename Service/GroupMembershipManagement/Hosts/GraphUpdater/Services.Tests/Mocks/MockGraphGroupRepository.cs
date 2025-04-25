@@ -216,5 +216,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+        
+        public async Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
