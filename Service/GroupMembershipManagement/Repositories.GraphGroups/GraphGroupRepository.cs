@@ -200,9 +200,9 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetFirstDeltaLinkUsersPageAsync(string deltaLink)
+            GetFirstDeltaLinkUsersPageAsync(string deltaLink, int numberOfPages)
         {
-            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetFirstDeltaLinkUsersPageAsync(deltaLink, RunId);
+            var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetFirstDeltaLinkUsersPageAsync(deltaLink, RunId, numberOfPages);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {

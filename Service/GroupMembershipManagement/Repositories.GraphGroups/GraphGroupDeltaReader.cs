@@ -88,22 +88,35 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetFirstDeltaLinkUsersPageAsync(string deltaLink, Guid? runId)
+            GetFirstDeltaLinkUsersPageAsync(string deltaLink, Guid? runId, int numberOfPages)
         {
-            List<AzureADUser> usersToAdd;
-            List<AzureADUser> usersToRemove;
+            var usersToAdd = new List<AzureADUser>();
+            var usersToRemove = new List<AzureADUser>();
+            string nextLink = deltaLink;
+            string deltaUrl = null;
 
-            var deltaLinkResponse = await GetGroupUsersNextPageAsync(deltaLink);
+            for (int i = 0; i < numberOfPages; i++)
+            {
+                var deltaLinkResponse = await GetGroupUsersNextPageAsync(nextLink);
 
-            await _graphGroupMetricTracker.TrackMetricsAsync(deltaLinkResponse.Headers, QueryType.DeltaLink, runId);
-            await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackMetricsAsync(deltaLinkResponse.Headers, QueryType.DeltaLink, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, runId);
 
-            var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
+                var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
 
-            usersToAdd = users.Where(x => x.MembershipAction == MembershipAction.Add).ToList();
-            usersToRemove = users.Where(x => x.MembershipAction == MembershipAction.Remove).ToList();
+                usersToAdd.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Add));
+                usersToRemove.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Remove));
 
-            return (usersToAdd, usersToRemove, deltaLinkResponse.Response.OdataNextLink, deltaLinkResponse.Response.OdataDeltaLink);
+                nextLink = deltaLinkResponse.Response.OdataNextLink;
+                deltaUrl = deltaLinkResponse.Response.OdataDeltaLink;
+
+                if (string.IsNullOrEmpty(nextLink))
+                {
+                    break;
+                }
+            }
+
+            return (usersToAdd, usersToRemove, nextLink, deltaUrl);
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>

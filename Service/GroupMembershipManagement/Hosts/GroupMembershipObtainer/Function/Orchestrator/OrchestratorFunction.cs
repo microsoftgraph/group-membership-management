@@ -44,7 +44,6 @@ namespace Hosts.GroupMembershipObtainer
             {
                 var syncJob = mainRequest.SyncJob;
                 var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
-                List<AzureADUser> distinctUsers = null;
                 string filePath = null;
 
                 try
@@ -130,7 +129,7 @@ namespace Hosts.GroupMembershipObtainer
                             }
                         }
 
-                        var compressedResponse = await context.CallSubOrchestratorAsync<string>(nameof(SubOrchestratorFunction),
+                        var sgResponse = await context.CallSubOrchestratorAsync<SubOrchestratorResponse>(nameof(SubOrchestratorFunction),
                                                                                                                         new GroupMembershipRequest
                                                                                                                         {
                                                                                                                             SyncJob = syncJob,
@@ -141,8 +140,6 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                             Exclusionary = mainRequest.Exclusionary
                                                                                                                         });
 
-                        var sgResponse = JsonSerializer.Deserialize<SubOrchestratorResponse>(TextCompressor.Decompress(compressedResponse));
-
                         if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
                         {
                             await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.SecurityGroupNotFound });
@@ -150,40 +147,17 @@ namespace Hosts.GroupMembershipObtainer
                             return;
                         }
 
-                        if (sgResponse.QueryType != QueryType.Transitive && sgResponse.QueryType != QueryType.Delta)
+                        
+                        filePath = sgResponse.FilePath;
+
+                        var content = new MembershipAggregatorHttpRequest
                         {
-                            distinctUsers = sgResponse.Users;
-
-                            if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage
-                            {
-                                RunId = runId,
-                                Message = $"Read {distinctUsers.Count} users from source groups {syncJob.Query} to be synced into the destination group {groupId}."
-                            });
-
-                            filePath = await context.CallActivityAsync<string>(nameof(UsersSenderFunction),
-                                                                                new UsersSenderRequest
-                                                                                {
-                                                                                    SyncJob = syncJob,
-                                                                                    GroupId = groupId,
-                                                                                    RunId = runId,
-                                                                                    Users = TextCompressor.Compress(JsonSerializer.Serialize(distinctUsers)),
-                                                                                    CurrentPart = mainRequest.CurrentPart,
-                                                                                    Exclusionary = mainRequest.Exclusionary
-                                                                                });
-                        }
-                        else
-                        {
-                            filePath = sgResponse.FilePath;
-                        }
-
-                            var content = new MembershipAggregatorHttpRequest
-                            {
-                                FilePath = filePath,
-                                PartNumber = mainRequest.CurrentPart,
-                                PartsCount = mainRequest.TotalParts,
-                                SyncJob = syncJob,
-                                IsDestinationPart = mainRequest.IsDestinationPart
-                            };
+                            FilePath = filePath,
+                            PartNumber = mainRequest.CurrentPart,
+                            PartsCount = mainRequest.TotalParts,
+                            SyncJob = syncJob,
+                            IsDestinationPart = mainRequest.IsDestinationPart
+                        };
 
                         await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
                     }

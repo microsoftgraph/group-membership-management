@@ -82,9 +82,9 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
         }
 
-        public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(string deltaLink)
+        public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(string deltaLink, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetFirstDeltaLinkUsersPageAsync(deltaLink);
+            var result = await _graphGroupRepository.GetFirstDeltaLinkUsersPageAsync(deltaLink, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,

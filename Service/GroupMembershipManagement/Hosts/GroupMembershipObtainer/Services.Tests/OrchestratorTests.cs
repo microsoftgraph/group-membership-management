@@ -149,20 +149,13 @@ namespace Tests.Services
                                         ReturnsAsync(() => (sourceGroup, id));
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
                                         .ReturnsAsync(() =>
                                         {
-                                            var users = new List<AzureADUser>();
-                                            for (var i = 0; i < _usersToReturn; i++)
+                                            return new SubOrchestratorResponse
                                             {
-                                                users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
-                                            }
-
-                                            return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
-                                            {
-                                                Users = users,
                                                 Status = _subOrchestratorResponseStatus
-                                            }));
+                                            };
 
                                         });
 
@@ -369,7 +362,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestUnhandledExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
                                         .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -399,7 +392,7 @@ namespace Tests.Services
         {
             var exception = new Exception("The request timed out");
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
                                         .Throws(exception);
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -428,26 +421,15 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPartRequestAsync()
         {
-
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
                                        .ReturnsAsync(() =>
                                        {
-                                           var users = new List<AzureADUser>();
-                                           for (var i = 0; i < _usersToReturn; i++)
+                                           return new SubOrchestratorResponse
                                            {
-                                               users.Add(new AzureADUser { ObjectId = Guid.NewGuid() });
-                                           }
-
-                                           return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
-                                           {
-                                               Users = users,
-                                               Status = _subOrchestratorResponseStatus,
-                                               QueryType = QueryType.DeltaLink
-                                           }));
+                                               Status = _subOrchestratorResponseStatus
+                                           };
 
                                        });
-
-            _usersToReturn = 100000;
 
             var orchestratorFunction = new OrchestratorFunction(
                                             _loggingRepository.Object,
@@ -457,26 +439,6 @@ namespace Tests.Services
                                             );
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                                It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users from source groups")),
-                                                It.IsAny<VerbosityLevel>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>()
-                                            ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message.Contains($"Successfully uploaded {_usersToReturn} users")),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
-
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(
-                                                It.IsAny<string>(),
-                                                It.IsAny<string>(),
-                                                It.IsAny<Dictionary<string, string>>()
-                                            ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
@@ -489,23 +451,18 @@ namespace Tests.Services
                                                 It.IsAny<IEnumerable<SyncJob>>(),
                                                 It.IsAny<SyncStatus>()
                                             ), Times.Never);
-
-
         }
 
         [TestMethod]
         public async Task TestTransitiveCallAsync()
         {
-
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
                                        .ReturnsAsync(() =>
                                        {                                          
-                                           return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
+                                           return new SubOrchestratorResponse
                                            {                                               
-                                               Status = _subOrchestratorResponseStatus,
-                                               QueryType = QueryType.Transitive
-                                           }));
-
+                                               Status = _subOrchestratorResponseStatus
+                                           };
                                        });
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -529,14 +486,13 @@ namespace Tests.Services
         public async Task TestDeltaCallAsync()
         {
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
                                        .ReturnsAsync(() =>
                                        {
-                                           return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
+                                           return new SubOrchestratorResponse
                                            {
-                                               Status = _subOrchestratorResponseStatus,
-                                               QueryType = QueryType.Delta
-                                           }));
+                                               Status = _subOrchestratorResponseStatus
+                                           };
 
                                        });
 
@@ -557,82 +513,74 @@ namespace Tests.Services
                                             ), Times.Once);
         }
 
-        //[TestMethod]
-        //public async Task TestValidPartForTransitiveRequestAsync()
-        //{
-        //    _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
-        //                               .ReturnsAsync(() =>
-        //                               {
-        //                                   return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
-        //                                   {
-        //                                       Status = _subOrchestratorResponseStatus,
-        //                                       QueryType = QueryType.Transitive
-        //                                   }));
-        //                               });
+        [TestMethod]
+        public async Task TestValidPartForTransitiveRequestAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+                                       .ReturnsAsync(() =>
+                                       {
+                                           return new SubOrchestratorResponse
+                                           {
+                                               Status = _subOrchestratorResponseStatus
+                                           };
+                                       });
 
-        //    _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<DeleteBlobRequest>()))
-        //                        .Callback<string, object>(async (name, request) =>
-        //                        {
-        //                            await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
-        //                        });
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<DeleteBlobRequest>()))
+                                .Callback<string, object>(async (name, request) =>
+                                {
+                                    await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
+                                });
 
-        //    _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>()))
-        //                       .Callback<string, object>(async (name, request) =>
-        //                       {
-        //                           await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
-        //                       });
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>()))
+                               .Callback<string, object>(async (name, request) =>
+                               {
+                                   await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
+                               });
 
-        //    var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipCalculator, _configuration.Object, _emailSenderRecipient.Object);
-        //    await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
-        //    _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users")), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipCalculator, _configuration.Object, _emailSenderRecipient.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
-        //    _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction), It.IsAny<TransitiveAndDeltaUsersSenderRequest>()), Times.Exactly(1));
-        //    _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(DeleteBlobFunction), It.IsAny<DeleteBlobRequest>()), Times.Exactly(1));
+            _durableOrchestrationContext.Verify(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(nameof(SubOrchestratorFunction), It.IsAny<GroupMembershipRequest>()), Times.Once);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()), Times.Once);
 
-        //    _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-        //}
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
 
-        //[TestMethod]
-        //public async Task TestValidPartForDeltaRequestAsync()
-        //{
-        //    _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<string>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
-        //                               .ReturnsAsync(() =>
-        //                               {
-        //                                   return TextCompressor.Compress(JsonSerializer.Serialize(new SubOrchestratorResponse
-        //                                   {
-        //                                       Status = _subOrchestratorResponseStatus,
-        //                                       QueryType = QueryType.Delta
-        //                                   }));
-        //                               });
+        [TestMethod]
+        public async Task TestValidPartForDeltaRequestAsync()
+        {
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>()))
+                                       .ReturnsAsync(() =>
+                                       {
+                                           return new SubOrchestratorResponse
+                                           {
+                                               Status = _subOrchestratorResponseStatus
+                                           };
+                                       });
 
-        //    _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>()))
-        //            .Callback<string, object>(async (name, request) =>
-        //            {
-        //                await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
-        //            });
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>()))
+                    .Callback<string, object>(async (name, request) =>
+                    {
+                        await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
+                    });
 
-        //    _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(DeleteBlobFunction), It.IsAny<DeleteBlobRequest>()))
-        //           .Callback<string, object>(async (name, request) =>
-        //           {
-        //               await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
-        //           });          
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(DeleteBlobFunction), It.IsAny<DeleteBlobRequest>()))
+                   .Callback<string, object>(async (name, request) =>
+                   {
+                       await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
+                   });
 
-        //    _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(CacheUploaderFunction), It.IsAny<CacheUploaderRequest>()))
-        //           .Callback<string, object>(async (name, request) =>
-        //           {
-        //               await CallCacheUploaderFunctionAsync(request as CacheUploaderRequest);
-        //           });
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(CacheUploaderFunction), It.IsAny<CacheUploaderRequest>()))
+                   .Callback<string, object>(async (name, request) =>
+                   {
+                       await CallCacheUploaderFunctionAsync(request as CacheUploaderRequest);
+                   });
 
-        //    var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipCalculator, _configuration.Object, _emailSenderRecipient.Object);
-        //    await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
-        //    //_loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Contains($"Read {_usersToReturn} users")), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipCalculator, _configuration.Object, _emailSenderRecipient.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
 
-        //    //_durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction), It.IsAny<TransitiveAndDeltaUsersSenderRequest>()), Times.Exactly(1));            
-        //    //_durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(DeleteBlobFunction), It.IsAny<DeleteBlobRequest>()), Times.Exactly(1));
-        //    //_durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(CacheUploaderFunction), It.IsAny<CacheUploaderRequest>()), Times.Exactly(1));
-
-        //    _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-        //}
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
+        }
 
         [TestMethod]
         public async Task TestMissingSchemasAsync()
