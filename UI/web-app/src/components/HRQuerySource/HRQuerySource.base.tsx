@@ -361,7 +361,7 @@ const getOptions = (
   useEffect(() => {
     if (orgLeaderDetails.employeeId === 0 && orgLeaderDetails.maxDepth === 0 && includeOrg && partId === orgLeaderDetails.partId) {
       setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
-      orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + hrSource?.name + strings.HROnboarding.source :
+      orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + (hrSource?.customLabel || hrSource?.name) + strings.HROnboarding.source :
       orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
     }
   }, [orgLeaderDetails]);
