@@ -17,6 +17,8 @@ import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
 import { selectHasAdminCenterPermissions } from '../../store/roles.slice';
 import { Disclaimer } from '../Disclaimer';
+import { InfoWord } from '../InfoWord';
+import { jsxFormat } from '../../utils/stringUtils';
 
 const getClassNames = classNamesFunction<
   IAppHeaderStyleProps,
@@ -113,13 +115,51 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
         {isDisclaimerOpen && (
           <Disclaimer
             checkboxes={[
+              { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
               { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
-              { id: 'autoSubscribeSettings', label: strings.Disclaimer.autoSubscribeSettings },
-              { id: 'authorizedSenders', label: strings.Disclaimer.authorizedSenders },
-              { id: 'globalHelpDesk', label: strings.Disclaimer.globalHelpDesk },
+              { id: 'autoSubscribeSettings', 
+                label: jsxFormat(
+                strings.Disclaimer.autoSubscribeSettings,
+                <InfoWord
+                  label={strings.Disclaimer.autoSubscribeNewMembersLabel}
+                  description={
+                    <>
+                      {strings.Disclaimer.autoSubscribeNewMembersDescription}{' '}
+                      <a
+                        href={strings.Disclaimer.autoSubscribeNewMembersDescriptionLinkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'underline' }}
+                      >
+                        {strings.Disclaimer.autoSubscribeNewMembersDescriptionLinkText}
+                      </a>
+                      .
+                    </>
+                  }
+                />,
+                <InfoWord
+                  label={strings.Disclaimer.subscribeMembersToCalendarEventsLabel}
+                  description={
+                    <>
+                      {strings.Disclaimer.subscribeMembersToCalendarEventsDescription}{' '}
+                      <a
+                        href={strings.Disclaimer.subscribeMembersToCalendarEventsDescriptionLinkUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ textDecoration: 'underline' }}
+                      >
+                        {strings.Disclaimer.subscribeMembersToCalendarEventsDescriptionLinkText}
+                      </a>
+                      .
+                    </>
+                  }
+                />,
+                <strong>{strings.true}</strong>,
+                <strong>{strings.Disclaimer.autoSubscribeSettingsBoldNote}</strong>
+                )
+              },
+              { id: 'authorizedSenders', label: jsxFormat(strings.Disclaimer.authorizedSenders,<strong>{strings.Disclaimer.authorizedSendersBoldNote}</strong>) },
               { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
-              { id: 'membershipRules', label: strings.Disclaimer.membershipRules },
-              { id: 'supportedGroups', label: strings.Disclaimer.supportedGroups },
               { id: 'flatList', label: strings.Disclaimer.flatList },
             ]}
             onDismiss={closeDisclaimer}

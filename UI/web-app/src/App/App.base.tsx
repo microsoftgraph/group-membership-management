@@ -3,7 +3,6 @@
 import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React, { useEffect, useState } from 'react';
-
 import { useSelector, useDispatch } from 'react-redux';
 import { Outlet } from 'react-router-dom';
 import { Text } from '@fluentui/react/lib/Text';
@@ -21,6 +20,9 @@ import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
 import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
 import { Disclaimer } from '../components/Disclaimer';
+import { jsxFormat } from '../utils/stringUtils';
+import { InfoWord } from '../components/InfoWord';
+
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
 
@@ -85,13 +87,51 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
               {isDisclaimerOpen && (
                 <Disclaimer
                   checkboxes={[
+                    { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
                     { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
-                    { id: 'autoSubscribeSettings', label: strings.Disclaimer.autoSubscribeSettings },
-                    { id: 'authorizedSenders', label: strings.Disclaimer.authorizedSenders },
-                    { id: 'globalHelpDesk', label: strings.Disclaimer.globalHelpDesk },
+                    { id: 'autoSubscribeSettings', 
+                      label: jsxFormat(
+                      strings.Disclaimer.autoSubscribeSettings,
+                      <InfoWord
+                        label={strings.Disclaimer.autoSubscribeNewMembersLabel}
+                        description={
+                          <>
+                            {strings.Disclaimer.autoSubscribeNewMembersDescription}{' '}
+                            <a
+                              href={strings.Disclaimer.autoSubscribeNewMembersDescriptionLinkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ textDecoration: 'underline' }}
+                            >
+                              {strings.Disclaimer.autoSubscribeNewMembersDescriptionLinkText}
+                            </a>
+                            .
+                          </>
+                        }
+                      />,
+                      <InfoWord
+                        label={strings.Disclaimer.subscribeMembersToCalendarEventsLabel}
+                        description={
+                          <>
+                            {strings.Disclaimer.subscribeMembersToCalendarEventsDescription}{' '}
+                            <a
+                              href={strings.Disclaimer.subscribeMembersToCalendarEventsDescriptionLinkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ textDecoration: 'underline' }}
+                            >
+                              {strings.Disclaimer.subscribeMembersToCalendarEventsDescriptionLinkText}
+                            </a>
+                            .
+                          </>
+                        }
+                      />,
+                      <strong>{strings.true}</strong>,
+                      <strong>{strings.Disclaimer.autoSubscribeSettingsBoldNote}</strong>
+                      )
+                    },
+                    { id: 'authorizedSenders', label: jsxFormat(strings.Disclaimer.authorizedSenders,<strong>{strings.Disclaimer.authorizedSendersBoldNote}</strong>) },
                     { id: 'teamsVivaNotifications', label: strings.Disclaimer.teamsVivaNotifications },
-                    { id: 'membershipRules', label: strings.Disclaimer.membershipRules },
-                    { id: 'supportedGroups', label: strings.Disclaimer.supportedGroups },
                     { id: 'flatList', label: strings.Disclaimer.flatList },
                   ]}
                   onDismiss={handleDismissDisclaimer}

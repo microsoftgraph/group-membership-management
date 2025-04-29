@@ -2,7 +2,7 @@ import {
     type IStyle,
     type IStyleFunctionOrObject,
   } from '@fluentui/react';
-import React from 'react';
+import React, { ReactNode } from 'react';
 
 export interface IDisclaimerStyles {
     root: IStyle;
@@ -14,10 +14,15 @@ export interface IDisclaimerStyleProps {
     className?: string;
 }
 
+export interface IDisclaimerCheckbox {
+    id: string;
+    label: ReactNode;
+}
+
 export interface IDisclaimerProps {
     className?: string;
     styles?: IStyleFunctionOrObject<IDisclaimerStyleProps, IDisclaimerStyles>;
-    checkboxes: { id: string; label: string }[];
+    checkboxes: IDisclaimerCheckbox[];
     onDismiss?: () => void;
 }
 

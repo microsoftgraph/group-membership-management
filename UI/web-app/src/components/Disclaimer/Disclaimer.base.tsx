@@ -73,7 +73,12 @@ export const DisclaimerBase: React.FC<IDisclaimerProps> = (props: IDisclaimerPro
                     {checkboxes.map((checkbox) => (
                         <Checkbox
                             key={checkbox.id}
-                            label={strings.Disclaimer[checkbox.id as keyof IStrings['Disclaimer']]}
+                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                            onRenderLabel={(_props, _defaultRender) => (
+                                <span style={{ display: 'inline', fontWeight: 'normal' }}>
+                                  {checkbox.label}
+                                </span>
+                              )}
                             checked={checkboxStates[checkbox.id]}
                             onChange={() => handleCheckboxChange(checkbox.id as keyof IStrings['Disclaimer'])}
                         />
