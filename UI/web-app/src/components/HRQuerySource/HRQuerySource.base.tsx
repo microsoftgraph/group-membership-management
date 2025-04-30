@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -31,6 +31,8 @@ import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } 
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError } from '../../store/settings.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
+import { InfoWord } from '../InfoWord';
+import { jsxFormat } from '../../utils/stringUtils';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -1178,7 +1180,7 @@ const getOptions = (
       fieldName: 'andOr',
       minWidth: 200,
       maxWidth: 200,
-      isResizable: true
+      isResizable: true,
     },
     {
       key: 'remove',
@@ -1333,6 +1335,62 @@ const getOptions = (
       </div>
     );
   }
+
+  const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (
+    props,
+    defaultRender
+  ) => {
+    if (!props || !defaultRender) return null;
+  
+    const customProps: IDetailsHeaderProps = {
+      ...props,
+      onRenderColumnHeaderTooltip: (tooltipProps?: IDetailsColumnRenderTooltipProps) => {
+        if (!tooltipProps) return null;
+  
+        const { column } = tooltipProps;
+  
+        if (column?.key === 'andOr') {
+          return (
+            <span className={classNames.detailsListColumnHeader} >
+              <InfoWord
+                label={column.name}
+                description={<div>
+                  <b>{strings.HROnboarding.andOrInfoTitle}</b>
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ margin: 0 }}>
+                      {jsxFormat(
+                          strings.HROnboarding.andLogicDescription,
+                          <strong>{strings.HROnboarding.AND}</strong>,
+                          <u>{strings.HROnboarding.allLowercase}</u>,
+                          <><br /></>,
+                          <strong>{strings.HROnboarding.AND}</strong>
+                        )}
+                    </p>
+                    <br />
+                    <p style={{ margin: 0 }}>
+                    {jsxFormat(
+                          strings.HROnboarding.orLogicDescription,
+                          <strong>{strings.HROnboarding.OR}</strong>,
+                          <u>{strings.HROnboarding.any}</u>,
+                          <><br /></>,
+                          <strong>{strings.HROnboarding.OR}</strong>
+                        )}
+                    </p>
+                  </div>
+                </div>}
+                />
+            </span>
+          );
+        }
+        else {
+          return <span className={classNames.detailsListColumnHeader}>{column?.name}</span>;
+        }
+  
+      },
+    };
+  
+    return <DetailsHeader {...customProps} />;
+  };
 
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number, childIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
@@ -1864,7 +1922,7 @@ const getOptions = (
       </div>
       <br />
 
-      <Label>{strings.HROnboarding.includeFilter}</Label>
+      <Label>{format(strings.HROnboarding.includeFilter, hrSource?.customLabel ?? hrSource?.name)}</Label>
       <ChoiceGroup
         selectedKey={(includeFilter || source.filter) ? strings.yes : strings.no}
         options={yesNoOptions}
@@ -1946,6 +2004,7 @@ const getOptions = (
               setKey="items"
               items={items}
               columns={columns}
+              onRenderDetailsHeader={onRenderDetailsHeader}
               selectionPreservedOnEmptyClick={true}
               selection={selection}
               onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}

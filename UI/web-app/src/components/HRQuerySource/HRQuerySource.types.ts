@@ -9,6 +9,7 @@ export type HRQuerySourceStyles = {
   root: IStyle;
   detailsList: IStyle;
   detailsListWithBorder: IStyle;
+  detailsListColumnHeader: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
   suggestionItems: IStyle;

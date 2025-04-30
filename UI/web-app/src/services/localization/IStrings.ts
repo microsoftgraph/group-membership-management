@@ -57,6 +57,13 @@ export type IStrings = {
     levelsPlural: string;
     down: string;
     up: string;
+    andOrInfoTitle: string;
+    andLogicDescription: string;
+    orLogicDescription: string;
+    AND: string;
+    OR: string;
+    any: string;
+    allLowercase: string;
   },
   Components: {
     AppHeader: {

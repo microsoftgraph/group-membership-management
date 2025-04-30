@@ -75,6 +75,11 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     detailsList: {
       minWidth: 1200
     },
+    detailsListColumnHeader:{
+      fontWeight: 600,
+      fontSize: 14,
+      paddingLeft: 24
+    },
     betweenGroupsDropdown: {
       width: 100,
       marginLeft: 0

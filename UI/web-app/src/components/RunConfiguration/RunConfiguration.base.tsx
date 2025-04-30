@@ -97,10 +97,6 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
   return (
     <div className={classNames.root}>
       <ChoiceGroup
-        styles={{
-          root: classNames.horizontalChoiceGroup,
-          flexContainer: classNames.horizontalChoiceGroupContainer
-        }}
         label={strings.ManageMembership.labels.selectStartDate}
         selectedKey={startDateOption}
         options={startDateOptions}
