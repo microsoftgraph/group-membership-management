@@ -30,6 +30,7 @@ import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError } from '../../store/settings.slice';
+import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -89,7 +90,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [expanded, setExpanded] = useState(true);
   const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
-
+  const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
   const emailError = useSelector(selectSupportEmailError);
@@ -1859,7 +1860,7 @@ const getOptions = (
        
 
       <div className={classNames.error}>
-        {orgErrorMessage}
+        {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && orgErrorMessage}
       </div>
       <br />
 
