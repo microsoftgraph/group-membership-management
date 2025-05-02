@@ -23,3 +23,12 @@ test('Admin', async ({ page }) => {
   await expect(page.locator('text="Admin Center"')).toBeVisible();
   console.log("✅ Admin test completed successfully.");
 });
+
+test('Download button is visible', async ({ page }) => {
+  const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
+  await page.goto(url);
+  await page.waitForTimeout(5000);
+  const downloadButton = page.getByRole('button', { name: 'Download' });
+  await expect(downloadButton).toBeVisible();
+  console.log('✅ Download button is visible');
+});
