@@ -130,9 +130,9 @@ namespace Hosts.GroupMembershipObtainer
                     var deltaLinkFile = $"/cache/delta_{request.SourceGroupId}_{timeStamp}.json";
                     await _blobStorageRepository.UploadFileAsync(deltaLinkFile, request.DeltaUrl);
 
-                    // Delete blobs for adds and removes, leave commented for testing 
-                    //await _blobStorageRepository.DeleteFileAsync(prefixAdds);
-                    //await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
+                    // Delete blobs for adds and removes 
+                    await _blobStorageRepository.DeleteFileAsync(prefixAdds);
+                    await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
                 }
                 else
                 {
