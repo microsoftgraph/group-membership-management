@@ -24,6 +24,8 @@ export interface IJobsListStyles {
   footer: IStyle;
   noMembershipsFoundText: IStyle;
   errorMessageBar: IStyle;
+  header: IStyle;
+  manageMembershipButton: IStyle;
 }
 
 export interface IJobsListStyleProps {

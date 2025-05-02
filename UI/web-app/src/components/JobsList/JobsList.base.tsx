@@ -6,19 +6,24 @@ import {
   DetailsRow,
   IColumn,
   IDetailsRowProps,
+  ISelection,
   SelectionMode,
 } from '@fluentui/react/lib/DetailsList';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchJobs } from '../../store/jobs.api';
+import { downloadJobs, fetchJobs } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
   setGetJobsError,
-  clearJob
+  clearJob,
+  selectJobsToDownload,
+  downloadJobsLoading,
+  clearJobsToDownload
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
+import { Selection, IObjectWithKey, Stack } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 import {
   classNamesFunction,
@@ -74,6 +79,10 @@ const getClassNames = classNamesFunction<
   IJobsListStyles
 >();
 
+interface IItem extends IObjectWithKey {
+  syncJobId?: string;
+}
+
 export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   props: IJobsListProps
 ) => {
@@ -104,6 +113,25 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
+  const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
+  const jobsToDownloadLoading = useSelector(downloadJobsLoading);
+  const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
+
+  const selectionRef = useRef<ISelection<IObjectWithKey>>(
+    new Selection<IItem>({
+      getKey: (item) => item.syncJobId || '',
+      onSelectionChanged: () => {
+        const selected = selectionRef.current.getSelection();
+        setSelectedItems(selected as IItem[]);
+      }
+    }) as ISelection<IObjectWithKey>
+  );
+
+  const clearSelection = () => {
+    selectionRef.current.setItems(items, true);
+    selectionRef.current.setAllSelected(false);
+    setSelectedItems([]);
+  };
 
   const getJobsByPage = (): void => {
     setIsShimmerEnabled(true);
@@ -113,6 +141,28 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   useEffect(() => {
     dispatch(setPagingBarVisible(true));
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!jobsToDownload) return;
+    const header = Object.keys(jobsToDownload[0]).join(',');
+    const rows = jobsToDownload.map(item =>
+      Object.values(item).map(val =>
+        `"${String(val).replace(/"/g, '""')}"`
+      ).join(',')
+    );
+    const csvContent = [header, ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'selected-items.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    dispatch(clearJobsToDownload());
+    clearSelection();
+  }, [dispatch, jobsToDownload]);
 
   useEffect(() => {
     dispatch(fetchJobs(pagingOptions));
@@ -131,7 +181,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const navigate = useNavigate();
 
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
-  const items = jobs;
+  const items: IItem[] = (jobs || []).map(job => ({
+    ...job,
+    key: job.syncJobId,
+  }));
   const columns = [
     {
       key: 'targetGroupType',
@@ -265,13 +318,27 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     if (item && item.syncJobId) {
       navigate(`/JobDetails/${item.syncJobId}`);
     }
+    const selectedItems = selectionRef.current.getSelection();
+    if (!selectedItems.includes(item)) {
+      selectionRef.current.setItems(
+        [...selectedItems, item] as IObjectWithKey[],
+        false
+      );
+    }
   };
 
   const onRenderRow = (props?: IDetailsRowProps): JSX.Element => {
     if (!props) return <></>;
   
     const { item } = props;
-    const handleRowClick = (): void => {
+    const handleRowClick = (event: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
+      const target = event.target as HTMLElement;
+      if (
+        target.closest('.ms-DetailsRow-cellCheck') ||
+        target.closest('button')
+      ) {
+        return;
+      }
       if (item?.targetGroupName === null) {
         navigate('/NotFound', { replace: true, state: { item } });
       } else if (item?.syncJobId) {
@@ -389,6 +456,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     }
   };
 
+  const handleDownloadButtonClick = () => {
+    if (selectedItems.length === 0) return;
+    dispatch(downloadJobs(selectedItems.map(item => item.syncJobId).filter((id): id is string => id !== undefined)));
+  };
+
   return (
     <div className={classNames.root}>
       <div className={classNames.jobsListFilter}>
@@ -414,11 +486,22 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
             {isJobWriter && 
+              <div className={classNames.header}>
+              <div>
+              <PrimaryButton
+                text={jobsToDownloadLoading ? strings.ManageMembership.downloadingButton : strings.ManageMembership.downloadButton}
+                onClick={handleDownloadButtonClick}
+                disabled={selectedItems.length === 0 || jobsToDownloadLoading}
+              />
+              </div>
+              <div className={classNames.manageMembershipButton}>
               <PrimaryButton
                 text={strings.ManageMembership.manageMembershipButton}
                 menuProps={menuProps}
                 persistMenu={true}
               />
+              </div>
+              </div>
             }
           </div>
           <div className={classNames.tabContent}>
@@ -429,7 +512,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               columns={columns}
               enableShimmer={!jobs || isShimmerEnabled}
               layoutMode={DetailsListLayoutMode.justified}
-              selectionMode={SelectionMode.none}
+              selectionMode={SelectionMode.multiple}
               ariaLabelForShimmer="Content is being fetched"
               ariaLabelForGrid="Item details"
               selectionPreservedOnEmptyClick={true}
@@ -439,6 +522,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               onRenderItemColumn={_renderItemColumn}
               onItemInvoked={onItemInvoked} // Handle tab and enter key navigation
               onRenderRow={onRenderRow} // Handle row click
+              selection={selectionRef.current}
             />
 
             {jobs?.length === 0 && (

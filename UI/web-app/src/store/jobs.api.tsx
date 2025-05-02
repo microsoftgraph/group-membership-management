@@ -34,6 +34,19 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
   }
 );
 
+export const downloadJobs = createAsyncThunk<Job[], string[], ThunkConfig>(
+  'jobs/downloadJobs',
+  async (syncJobIds: string[], { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      const response = await gmmApi.jobs.downloadJobs(syncJobIds);
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to fetch jobs!');
+    }
+  }
+);
+
 export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
   'jobs/postJob',
   async (newJob: NewJob, { extra }) => {

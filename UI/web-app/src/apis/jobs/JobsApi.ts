@@ -26,6 +26,12 @@ export class JobsApi extends ApiBase implements IJobsApi {
     return jobsPage;
   }
 
+  public async downloadJobs(syncJobIds: string[]): Promise<AxiosResponse> {
+    const response = await this.httpClient.post('/bulkDownload', syncJobIds);
+    this.ensureSuccessStatusCode(response);
+    return response;
+  }
+
   public async postNewJob(job: NewJob): Promise<AxiosResponse> {
     const jobWithSerializedQuery = {
       ...job,

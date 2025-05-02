@@ -21,13 +21,16 @@ namespace WebApi.Controllers.v1.Jobs
     {
         private readonly IRequestHandler<GetJobsRequest, GetJobsResponse> _getJobsRequestHandler;
         private readonly IRequestHandler<PostJobRequest, PostJobResponse> _postJobRequestHandler;
+        private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
 
         public JobsController(
             IRequestHandler<GetJobsRequest, GetJobsResponse> getJobsRequestHandler,
-            IRequestHandler<PostJobRequest, PostJobResponse> postJobRequestHandler)
+            IRequestHandler<PostJobRequest, PostJobResponse> postJobRequestHandler,
+            IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobDetailsRequestHandler)
         {
             _getJobsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _postJobRequestHandler = postJobRequestHandler ?? throw new ArgumentNullException(nameof(postJobRequestHandler));
+            _getJobDetailsRequestHandler = getJobDetailsRequestHandler ?? throw new ArgumentNullException(nameof(getJobDetailsRequestHandler));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -79,6 +82,34 @@ namespace WebApi.Controllers.v1.Jobs
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
             }
         }
+
+        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpPost("bulkDownload")]
+        public async Task<ActionResult<IEnumerable<SyncJob>>> BulkGetJobsDetailsAsync([FromBody] string[] syncJobIds)
+        {
+            var jobDetailsResponses = new List<GetJobDetailsResponse>();
+
+            for (int i = 0; i < syncJobIds.Length; i++)
+            {
+                if (!Guid.TryParse(syncJobIds[i], out Guid guid))
+                {
+                    return BadRequest($"Invalid GUID format: {syncJobIds[i]}");
+                }
+
+                syncJobIds[i] = guid.ToString();
+                var response = await _getJobDetailsRequestHandler.ExecuteAsync(new GetJobDetailsRequest(guid));
+                jobDetailsResponses.Add(response);
+            }
+
+            var successfulJobs = jobDetailsResponses
+                .Where(r => r.StatusCode == System.Net.HttpStatusCode.OK)
+                .Select(r => r.Model)
+                .OfType<SyncJobDetails>()
+                .ToList();
+
+            return successfulJobs.Count == 0
+                ? NotFound()
+                : Ok(successfulJobs);
+        }
     }
 }
-

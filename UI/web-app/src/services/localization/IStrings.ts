@@ -342,6 +342,8 @@ export type IStrings = {
     manageMembershipButton: string;
     addSyncButton: string;
     bulkAddSyncsButton: string;
+    downloadButton: string;
+    downloadingButton: string;
     labels: {
       abandonOnboarding: string;
       abandonOnboardingDescription: string;

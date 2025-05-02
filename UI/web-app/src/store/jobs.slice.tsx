@@ -4,7 +4,7 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
 import { fetchJobChanges, fetchJobDetails, patchJobDetails, getGroupDetails, removeGMM, getChannelDetails } from './jobDetails.api';
-import { fetchJobs, postJob, getPeoplePickerSuggestions } from './jobs.api';
+import { fetchJobs, postJob, getPeoplePickerSuggestions, downloadJobs } from './jobs.api';
 import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
@@ -23,6 +23,9 @@ export interface JobsState {
   patchJobDetailsError: string | undefined;
   postJobLoading: boolean;
   postJobError: string | undefined;
+  jobsToDownload?: Job[];
+  downloadJobsLoading: boolean;
+  downloadJobsError: string | undefined;
   jobOwnerFilterSuggestions?: PeoplePickerPersona[];
   removeGMMLoading: boolean;
   removeGMMResponse: RemoveGMMResponse | undefined;
@@ -44,6 +47,9 @@ const initialState: JobsState = {
   patchJobDetailsError: undefined,
   postJobLoading: false,
   postJobError: undefined,
+  jobsToDownload: undefined,
+  downloadJobsLoading: false,
+  downloadJobsError: undefined,
   jobOwnerFilterSuggestions: [],
   removeGMMLoading: false,
   removeGMMResponse: undefined,
@@ -68,6 +74,9 @@ export const jobsSlice = createSlice({
     },
     clearJob: (state) => {
       state.selectedJob = undefined;
+    },
+    clearJobsToDownload: (state) => {
+      state.jobsToDownload = undefined;
     }
   },
   extraReducers: (builder) => {
@@ -151,6 +160,20 @@ export const jobsSlice = createSlice({
       state.postJobError = action.error.message;
     });
 
+    // downloadJobs
+    builder.addCase(downloadJobs.pending, (state) => {
+      state.downloadJobsLoading = true;
+      state.downloadJobsError = undefined;
+    });
+    builder.addCase(downloadJobs.fulfilled, (state, action) => {
+      state.downloadJobsLoading = false;
+      state.jobsToDownload = action.payload;
+    });
+    builder.addCase(downloadJobs.rejected, (state, action) => {
+      state.downloadJobsLoading = false;
+      state.downloadJobsError = action.error.message;
+    });
+
     // jobOwnerFilterSuggestions
     builder.addCase(getPeoplePickerSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
       state.jobOwnerFilterSuggestions = payload;
@@ -187,7 +210,7 @@ export const jobsSlice = createSlice({
 });
 
 
-export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob } =
+export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;
@@ -195,6 +218,10 @@ export const selectJobsLoading = (state: RootState) => state.jobs.jobsLoading;
 
 export const selectSelectedJobDetails = (state: RootState) =>
   state.jobs.selectedJob;
+
+export const downloadJobsLoading = (state: RootState) => state.jobs.downloadJobsLoading;
+export const selectJobsToDownload = (state: RootState) => state.jobs.jobsToDownload;
+export const downloadJobsError = (state: RootState) => state.jobs.downloadJobsError;
 
 export const selectSelectedJobLoading = (state: RootState) =>
   state.jobs.selectedJobLoading;

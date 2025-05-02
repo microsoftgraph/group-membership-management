@@ -76,6 +76,13 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     errorMessageBar: {
       borderRadius: 5,
       marginBottom: 22,
+    },
+    header: {
+      display: 'flex',
+      marginBottom: '10px'
+    },
+    manageMembershipButton: {
+        marginLeft: '20px'
     }
   };
 };

@@ -116,6 +116,7 @@ namespace Services
                 period: job.Period
             )
             {
+                SyncJobId = job.Id,
                 TargetGroupId = groupId,
                 TargetGroupName = targetGroupName,
                 TargetGroupType = type,

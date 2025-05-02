@@ -347,6 +347,8 @@ export const strings: IStrings = {
     manageMembershipButton: 'Manage Membership',
     addSyncButton: 'Add Sync',
     bulkAddSyncsButton: 'Bulk Add Syncs',
+    downloadButton: 'Download',
+    downloadingButton: 'Downloading',
     labels: {
       abandonOnboarding: 'Abandon Onboarding?',
       abandonOnboardingDescription: 'Are you sure you want to abandon the in-progress onboarding and go back?',
