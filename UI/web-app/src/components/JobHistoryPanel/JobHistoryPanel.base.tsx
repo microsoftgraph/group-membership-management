@@ -82,6 +82,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         return strings.JobDetails.Panel.submissionApproved;
                     case SyncJobChangeReason.SubmissionRejected:
                         return strings.JobDetails.Panel.submissionRejected;
+                    case SyncJobChangeReason.GroupSettings:
+                        return strings.JobDetails.Panel.groupSettings;
                     default:
                         return item.changeReason;
                 }

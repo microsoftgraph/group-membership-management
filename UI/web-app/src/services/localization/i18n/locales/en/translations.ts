@@ -250,6 +250,7 @@ export const strings: IStrings = {
       submissionApproved: 'Submission Approved',
       submissionRejected: 'Submission Rejected',
       businessJustification: 'Business Justification',
+      groupSettings: 'Group Settings'
     },
     openInAzure: 'Open in Azure',
     openInTeams: 'Open in Teams',
@@ -444,6 +445,12 @@ export const strings: IStrings = {
       creating: 'Creating...',
       created: 'Created',
       createGroup: 'Create group',
+      authorizedSenders: 'Authorized Senders',
+      authorizedSendersToolTip: 'Users or groups who will be able to send emails to this group',
+      hiddenFromExchangeClients: 'Hidden from Exchange clients',
+      hiddenFromExchangeClientsToolTip: 'This group will not be visible in the address book or in the Outlook client',
+      welcomeMessageEnabled: 'Welcome message enabled',
+      welcomeMessageEnabledToolTip: 'Send a welcome message to new members when they are added to the group'
     }
   },
   copy: 'Copy',

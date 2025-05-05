@@ -10,6 +10,7 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { manageMembershipCreatedGroupId, manageMembershipCreateGroupErrorMessage, manageMembershipCreateGroupLoading, setCreateGroupErrorMessage } from '../../store/manageMembership.slice';
 import { AppDispatch } from '../../store';
+import { GroupSetting } from '../GroupSetting';
 
 const getClassNames = classNamesFunction<ICreateGroupStyleProps, ICreateGroupStyles>();
 
@@ -78,6 +79,7 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
             value={groupAlias}
             onChange={handleGroupAliasChange}
           />
+          <GroupSetting />
         </Stack.Item>
         { (
           <Stack.Item>

@@ -245,6 +245,7 @@ export type IStrings = {
       submissionApproved: string;
       submissionRejected: string;
       businessJustification: string;
+      groupSettings: string;
     };
     notFound: string;
     openInAzure: string;
@@ -439,6 +440,12 @@ export type IStrings = {
       creating: string;
       created: string;
       createGroup: string;
+      authorizedSenders: string;
+      authorizedSendersToolTip: string;
+      hiddenFromExchangeClients: string
+      hiddenFromExchangeClientsToolTip: string
+      welcomeMessageEnabled: string;
+      welcomeMessageEnabledToolTip: string;
     }
   };
   copy: string;

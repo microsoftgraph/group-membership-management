@@ -253,6 +253,7 @@ export const strings: IStrings = {
       submissionApproved: 'Solicitud aprobada',
       submissionRejected: 'Solicitud rechazada',
       businessJustification: 'Justificación del cambio',
+      groupSettings: 'Configuración del grupo',
     },
     notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
     openInAzure: 'Abrir en Azure',
@@ -447,6 +448,12 @@ export const strings: IStrings = {
       creating: 'Creando...',
       created: 'Creado',
       createGroup: 'Crear grupo',
+      authorizedSenders: 'Remitentes autorizados',
+      authorizedSendersToolTip: 'Usuarios o grupos que podrán enviar correos electrónicos a este grupo',
+      hiddenFromExchangeClients: 'Ocultar de los clientes de Exchange',
+      hiddenFromExchangeClientsToolTip: 'Ocultar este grupo de la libreta de direcciones de Exchange y clientes de Outlook.',
+      welcomeMessageEnabled: 'Mensaje de bienvenida habilitado',
+      welcomeMessageEnabledToolTip: 'Enviar un mensaje de bienvenida a los nuevos miembros del grupo'
     }
   },
   copy: 'Copiar',

@@ -222,6 +222,38 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                   groupName={selectedDestination.name}
                 />
               }
+              {selectedDestination && selectedDestination.groupSettings &&
+                selectedDestination.groupSettings.authorizedSenders && selectedDestination.groupSettings.authorizedSenders.length > 0 &&
+                <Stack.Item align="start">
+                  <Text className={classNames.itemTitle} block>
+                    {strings.ManageMembership.CreateGroup.authorizedSenders}
+                  </Text>
+                  <Text className={classNames.itemData} block>
+                    {selectedDestination.groupSettings.authorizedSenders.map((sender) => sender.mail).join(', ')}
+                  </Text>
+                </Stack.Item>
+              }
+              {selectedDestination && selectedDestination.groupSettings &&
+                selectedDestination.groupSettings.hiddenFromExchangeClients &&
+                <Stack.Item align="start">
+                  <Text className={classNames.itemTitle} block>
+                    {strings.ManageMembership.CreateGroup.hiddenFromExchangeClients}
+                  </Text>
+                  <Text className={classNames.itemData} block>
+                    {selectedDestination.groupSettings.hiddenFromExchangeClients ? strings.yes : strings.no}
+                  </Text>
+                </Stack.Item>
+              }
+              {selectedDestination && selectedDestination.groupSettings &&
+                <Stack.Item align="start">
+                  <Text className={classNames.itemTitle} block>
+                    {strings.ManageMembership.CreateGroup.welcomeMessageEnabled}
+                  </Text>
+                  <Text className={classNames.itemData} block>
+                    {selectedDestination.groupSettings.welcomeMessageEnabled ? strings.yes : strings.no}
+                  </Text>
+                </Stack.Item>
+              }
             </Stack>
           </div>)}
 

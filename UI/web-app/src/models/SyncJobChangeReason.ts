@@ -6,5 +6,6 @@ export const enum SyncJobChangeReason {
     StatusUpdate = 'StatusUpdate',
     Update = 'Update',
     SubmissionApproved = 'SubmissionApproved',
-    SubmissionRejected = 'SubmissionRejected'
+    SubmissionRejected = 'SubmissionRejected',
+    GroupSettings = 'GroupSettings'
 }

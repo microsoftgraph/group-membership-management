@@ -52,7 +52,9 @@ import {
   manageMembershipBusinessJustification,
   setBusinessJustification,
   manageMembershipLastModifiedOnBehalfOfDisplayName,
-  manageMembershipLastModifiedOnBehalfOfObjectId
+  manageMembershipLastModifiedOnBehalfOfObjectId,
+  setGroupSettings,
+  manageMembershipGroupSettings
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -76,6 +78,7 @@ import { createGroup } from '../../store/groups.api';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { DestinationType } from '../../models/DestinationType';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
+import { GroupSettings } from '../../models/GroupSettings';
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -161,6 +164,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const thresholdPercentageForRemovals = useSelector(manageMembershipThresholdPercentageForRemovals);
   const createdGroupId = useSelector(manageMembershipCreatedGroupId);
   const createdGroupName = useSelector(manageMembershipCreatedGroupName);
+  const groupSettings = useSelector(manageMembershipGroupSettings);
   const currentUser = useSelector(selectAccountUsername) ?? '';
   const inputRequestor = useSelector(manageMembershipRequestor);
   const requestor: string = inputRequestor === '' ? currentUser : inputRequestor;
@@ -257,12 +261,13 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       const selectedDestination: Destination = {
         id: createdGroupId,
         name: createdGroupName,
-        type: DestinationType.GroupMembership // Make type configurable once we support Teams Channel creation
+        type: DestinationType.GroupMembership, // Make type configurable once we support Teams Channel creation
+        groupSettings: groupSettings
       };
       dispatch(setSelectedDestination(selectedDestination));
       dispatch(getGroupEndpoints(createdGroupId));
     }
-  }, [createdGroupId, createdGroupName, dispatch]);
+  }, [createdGroupId, createdGroupName, groupSettings, dispatch]);
 
   const handleEditBusinessJustification = (justification: string) => {
     dispatch(setBusinessJustification(justification));
@@ -379,7 +384,8 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         thresholdPercentageForAdditions: thresholdPercentageForAdditions,
         thresholdPercentageForRemovals: thresholdPercentageForRemovals,
         status: 'Idle',
-        businessJustification: businessJustification
+        businessJustification: businessJustification,
+        groupSettings: groupSettings,
       };
 
       setIsPostingJob(true);

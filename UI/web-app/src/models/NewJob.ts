@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { GroupSettings } from "./GroupSettings";
 import { SyncJobQuery } from "./SyncJobQuery";
 
 export type NewJob = {
@@ -15,4 +16,5 @@ export type NewJob = {
     businessJustification: string;
     lastModifiedOnBehalfOfDisplayName?: string;
     lastModifiedOnBehalfOfObjectId?: string;
+    groupSettings?: GroupSettings | undefined;
 };

@@ -43,6 +43,7 @@ import { debounce } from '../../utils/jobUtils';
 import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { SourcePartType } from '../../models/SourcePartType';
 import { DestinationType } from '../../models/DestinationType';
+import { GroupSetting } from '../GroupSetting/GroupSetting';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
@@ -334,6 +335,9 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {alreadyOnboardedWarning}
                 {teamsNotSupportedWarning}
               </div>
+              {selectedDestination && selectedDestination.groupSettings && (
+                <GroupSetting />
+              )}
             </>
           )}
         </div>

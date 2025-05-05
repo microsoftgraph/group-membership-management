@@ -21,6 +21,7 @@ import { SourcePartType } from '../models/SourcePartType';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
 import { createGroup } from './groups.api';
+import { GroupSettings } from '../models/GroupSettings';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -43,6 +44,7 @@ export interface ManageMembershipState {
     isEditingExistingJob: boolean;
     createdGroupId?: string | undefined;
     createdGroupName?: string | undefined;
+    groupSettings?: GroupSettings | undefined;
     createGroupLoading: boolean;
     createGroupErrorMessage?: string | undefined;
     businessJustification?: string;
@@ -81,6 +83,7 @@ const initialState: ManageMembershipState = {
     isEditingExistingJob: false,
     createdGroupId: undefined,
     createdGroupName: undefined,
+    groupSettings: undefined,
     createGroupLoading: false,
     createGroupErrorMessage: undefined,
     businessJustification: '',
@@ -317,6 +320,9 @@ const manageMembershipSlice = createSlice({
         setBusinessJustification: (state, action: PayloadAction<string>) => {
             state.businessJustification = action.payload;
         },
+        setGroupSettings: (state, action: PayloadAction<GroupSettings | undefined>) => {
+            state.groupSettings = action.payload;
+        }
     },
     extraReducers: (builder) => {
         builder.addCase(getGroupOnboardingStatus.fulfilled, (state, action) => {
@@ -414,7 +420,8 @@ export const {
     setIsEditingExistingJob,
     setCreatedGroupName,
     setCreateGroupErrorMessage,
-    setBusinessJustification
+    setBusinessJustification,
+    setGroupSettings
 } = manageMembershipSlice.actions;
 
 // General
@@ -446,6 +453,7 @@ export const manageMembershipCreateGroupErrorMessage = (state: RootState) => sta
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
     return state.manageMembership.onboardingStatus === OnboardingStatus.ReadyForOnboarding;
 };
+export const manageMembershipGroupSettings = (state: RootState) => state.manageMembership.groupSettings;
 
 // 2- Membership Configuration
 export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
