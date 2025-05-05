@@ -446,11 +446,11 @@ export const strings: IStrings = {
       created: 'Created',
       createGroup: 'Create group',
       authorizedSenders: 'Authorized Senders',
-      authorizedSendersToolTip: 'Users or groups who will be able to send emails to this group',
+      authorizedSendersToolTip: 'Specify individuals or groups who are permitted to send messages. If a group is specified, all members of that group will have send permissions. Leave blank to allow anyone to send. This field is required for groups with more than 5,000 members.',
       hiddenFromExchangeClients: 'Hidden from Exchange clients',
-      hiddenFromExchangeClientsToolTip: 'This group will not be visible in the address book or in the Outlook client',
+      hiddenFromExchangeClientsToolTip: 'When hidden, this group will not appear in the Groups section of the Outlook client. Setting this to true also removes member access to the group mailbox, including historical messages and calendar invites.',
       welcomeMessageEnabled: 'Welcome message enabled',
-      welcomeMessageEnabledToolTip: 'Send a welcome message to new members when they are added to the group'
+      welcomeMessageEnabledToolTip: 'Controls whether a welcome message is delivered in email when new members are added to the group.'
     }
   },
   copy: 'Copy',

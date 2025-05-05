@@ -449,11 +449,11 @@ export const strings: IStrings = {
       created: 'Creado',
       createGroup: 'Crear grupo',
       authorizedSenders: 'Remitentes autorizados',
-      authorizedSendersToolTip: 'Usuarios o grupos que podrán enviar correos electrónicos a este grupo',
+      authorizedSendersToolTip: 'Especifica las personas o grupos que tienen permiso para enviar mensajes. Si se especifica un grupo, todos los miembros de ese grupo tendrán permisos de envío. Déjalo en blanco para permitir que cualquiera envíe mensajes. Este campo es obligatorio para grupos con más de 5,000 miembros.',
       hiddenFromExchangeClients: 'Ocultar de los clientes de Exchange',
-      hiddenFromExchangeClientsToolTip: 'Ocultar este grupo de la libreta de direcciones de Exchange y clientes de Outlook.',
+      hiddenFromExchangeClientsToolTip: 'Cuando está oculto, este grupo no aparecerá en la sección de Grupos del cliente de Outlook. También elimina el acceso de los miembros al buzón del grupo, incluidos el historial de mensajes y las invitaciones del calendario.',
       welcomeMessageEnabled: 'Mensaje de bienvenida habilitado',
-      welcomeMessageEnabledToolTip: 'Enviar un mensaje de bienvenida a los nuevos miembros del grupo'
+      welcomeMessageEnabledToolTip: 'Controla si se envía un mensaje de bienvenida por correo electrónico cuando se agregan nuevos miembros al grupo.'
     }
   },
   copy: 'Copiar',
