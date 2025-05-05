@@ -139,7 +139,7 @@ namespace Services.WebApi
                 var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
 
                 // Verify that the submitter is still an owner
-                var destinationOwners = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid>() { syncJob.Group.GroupId });
+                var destinationOwners = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid>() { (Guid) groupId });
                 var isSubmitterOwner = false;
                 if (destinationOwners != null && submission.ChangedByObjectId.HasValue)
                 {
