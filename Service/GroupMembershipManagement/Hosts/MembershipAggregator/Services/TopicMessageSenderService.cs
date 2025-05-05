@@ -47,7 +47,7 @@ namespace Services
             message.ApplicationProperties.Add("Type", request.SyncJob.MembershipType);
 
             // Send message to the appropriate queue or topic
-            if (_multilaneConfig.IsEnabled)
+            if (_multilaneConfig.IsEnabled && request.SyncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
             {
                 await SendMessageToTopicAsync(message, request);
             }
