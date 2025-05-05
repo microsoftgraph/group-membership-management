@@ -94,6 +94,23 @@ namespace Services
                         ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName != null && changedOnBehalfOfDisplayName != request.UserDisplayName ? changedOnBehalfOfDisplayName : null,
                         ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != request.UserIdentity ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
                     });
+
+                    if (request.NewSyncJob.GroupSettings != null)
+                    {
+                        await _syncJobChangeRepository.Save(new SyncJobChange
+                        {
+                            SyncJobId = newSyncJobId,
+                            ChangeTime = DateTime.UtcNow,
+                            ChangedByObjectId = Guid.Parse(request.UserIdentity),
+                            ChangedByDisplayName = request.UserDisplayName,
+                            ChangeSource = SyncJobChangeSource.WebApp,
+                            ChangeReason = SyncJobChangeReason.GroupSettings.ToString(),
+                            ChangeDetails = JsonSerializer.Serialize(request.NewSyncJob.GroupSettings),
+                            BusinessJustification = request.BusinessJustification,
+                            ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName != null && changedOnBehalfOfDisplayName != request.UserDisplayName ? changedOnBehalfOfDisplayName : null,
+                            ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != request.UserIdentity ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
+                        });
+                    }
                 }
                 else
                 {

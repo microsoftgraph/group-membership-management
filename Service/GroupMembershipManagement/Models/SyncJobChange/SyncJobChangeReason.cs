@@ -10,6 +10,7 @@ namespace Models.SyncJobChange
         Update,
         SubmissionApproved,
         SubmissionRejected,
-        IgnoreThresholdOnce
+        IgnoreThresholdOnce,
+        GroupSettings
     }
 }
