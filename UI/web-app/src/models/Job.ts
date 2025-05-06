@@ -4,8 +4,10 @@
 export type Job = {
   syncJobId: string;
   targetGroupId: string;
+  targetChannelId: string;
   targetGroupType: string;
   targetGroupName: string;
+  targetChannelName: string;
   email: string;
   startDate: string;
   lastSuccessfulStartTime: string;

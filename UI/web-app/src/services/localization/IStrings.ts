@@ -248,6 +248,7 @@ export type IStrings = {
     };
     notFound: string;
     openInAzure: string;
+    openInTeams: string;
     viewDetails: string;
     editButton: string;
   };

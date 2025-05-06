@@ -256,6 +256,7 @@ export const strings: IStrings = {
     },
     notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
     openInAzure: 'Abrir en Azure',
+    openInTeams: 'Abrir en Teams',
     viewDetails: 'Ver Detalles',
     editButton: 'Editar',
   },

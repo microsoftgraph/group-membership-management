@@ -252,6 +252,7 @@ export const strings: IStrings = {
       businessJustification: 'Business Justification',
     },
     openInAzure: 'Open in Azure',
+    openInTeams: 'Open in Teams',
     viewDetails: 'View Details',
     editButton: 'Edit',
     notFound: 'Membership syncs for group with object Id {0} are now disabled because the group no longer exists.',

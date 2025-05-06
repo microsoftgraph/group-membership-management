@@ -122,8 +122,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     dispatch(setGetJobDetailsError());
   };
 
-  const openInAzure = (): void => {
-    var url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job?.targetGroupId}`;
+  const openInService = (): void => {
+    var url;
+    if (job?.targetGroupType === 'Group') {
+      url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job?.targetGroupId}`;
+    } else if (job?.targetGroupType === 'Channel') {
+      url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
+    }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -231,7 +236,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               <ContentContainer
                 title={strings.JobDetails.labels.destination}
                 actionButtons={[
-                  { text: strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInAzure }
+                  { text: job.targetGroupType === 'Channel' ? strings.JobDetails.openInTeams : strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInService }
                 ]}
                 children={<MembershipDestination job={job} classNames={classNames} />}
               />
@@ -312,7 +317,8 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
     <div className={classNames.card}>
       <div>
         <Text className={classNames.title} block>
-          {strings.JobDetails.labels.pageTitle} - {props.job.targetGroupName}
+          {props.job.targetGroupType === 'Group' && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}`}
+          {props.job.targetGroupType === 'Channel' && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}: ${props.job.targetChannelName}`}
         </Text>
       </div>
       {/* <div> // Hidden until feature is enabled
@@ -624,6 +630,26 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               {job?.targetGroupId}
             </Text>
           </Stack.Item>
+          {job?.targetGroupType === 'Channel' &&
+            <Stack.Item align="start">
+              <Text className={classNames.itemTitle} block>
+                {strings.JobDetails.labels.channelName}
+              </Text>
+              <Text className={classNames.itemData} block>
+                {job.targetChannelName ?? '-'}
+              </Text>
+            </Stack.Item> 
+          }
+          {job?.targetGroupType === 'Channel' &&
+            <Stack.Item align="start">
+              <Text className={classNames.itemTitle} block>
+                {strings.JobDetails.labels.channelId}
+              </Text>
+              <Text className={classNames.itemData} block>
+                {job.targetChannelId ?? '-'}
+              </Text>
+            </Stack.Item>
+          }
         </Stack>
       </Stack.Item>
         <EndpointsList 
