@@ -157,7 +157,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       }
       await dispatch(removeGMM({ syncJobId: jobId ?? job.syncJobId }));
       setShowRemoveGMMDialog(false);
-      var url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
+      
+      var url;
+      if (job?.targetGroupType === 'Group') {
+        url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
+      } else if (job?.targetGroupType === 'Channel') {
+        url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
+      }
       window.open(url, '_blank', 'noopener,noreferrer');
       navigate('/');
     } catch (error) {
