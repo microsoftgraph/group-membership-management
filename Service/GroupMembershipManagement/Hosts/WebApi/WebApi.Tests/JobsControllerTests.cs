@@ -14,6 +14,7 @@ using Models;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.TeamsChannel;
 using System.Data;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
@@ -44,6 +45,7 @@ namespace Services.Tests
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository = null!;
         private Mock<GraphServiceClient> _graphServiceClient = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private ODataQueryOptions<SyncJob> _odataQueryOptions = null!;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
@@ -82,6 +84,8 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => "GroupNameTest");
+
+            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
 
             var destinationGuid = Guid.NewGuid();
             var ownerGuid = Guid.NewGuid();
@@ -186,6 +190,7 @@ namespace Services.Tests
                                                 _databaseSyncJobsRepository.Object,
                                                 _syncJobChangeRepository.Object,
                                                 _graphGroupRepository.Object,
+                                                _teamsChannelRepository.Object,
                                                 _httpContextAccessor.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);

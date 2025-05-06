@@ -20,6 +20,7 @@ using Roles = WebApi.Models.Roles;
 using SyncJob = Models.SyncJob;
 using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
 using Channel = Models.Channel;
+using Models.Entities;
 
 namespace Services.Tests
 {
@@ -44,6 +45,7 @@ namespace Services.Tests
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
+        private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
@@ -63,6 +65,11 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
                                     .ReturnsAsync(() => _isGroupOwner);
+
+            _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => "Group Name");
+
+            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
 
             _jobEntity = new SyncJob
             {
@@ -150,6 +157,7 @@ namespace Services.Tests
                                                              _syncJobRepository.Object,
                                                              _syncJobChangeRepository.Object,
                                                              _graphGroupRepository.Object,
+                                                             _teamsChannelRepository.Object,
                                                              _httpContextAccessor.Object);
 
             _patchJobHandler = new PatchJobHandler(_loggingRepository.Object,
@@ -180,21 +188,11 @@ namespace Services.Tests
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
         }
 
-        private async IAsyncEnumerable<T> GetItemsAsync<T>(List<T> list)
-        {
-            foreach (var item in list)
-            {
-                yield return item;
-            }
-
-            await Task.CompletedTask;
-        }
-
         [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_READER)]
         [DataRow("UserRole")]
-        public async Task GetJobDetailsTestAsync(string role)
+        public async Task GetJobDetailsForGroupTestAsync(string role)
         {
             var userId = Guid.NewGuid().ToString();
             _jobEntity.DestinationOwners = new List<DestinationOwner>
@@ -226,6 +224,57 @@ namespace Services.Tests
             Assert.IsNotNull(job.StartDate);
             Assert.IsNotNull(job.Requestor);
             Assert.IsNotNull(job.Query);
+            Assert.IsNotNull(job.TargetGroupId);
+            Assert.IsNotNull(job.TargetGroupName);
+            Assert.IsNull(job.TargetChannelId);
+            Assert.IsNull(job.TargetChannelName);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        [DataRow("UserRole")]
+        public async Task GetJobDetailsForChannelTestAsync(string role)
+        {
+            _jobEntity.MembershipType = MembershipTypes.TeamsChannelMembership.ToString();
+            _jobEntity.Channel = _channel;
+            _teamsChannelRepository.Setup(x => x.GetTeamsChannelNameAsync(It.IsAny<AzureADTeamsChannel>()))
+                                    .ReturnsAsync(() => "Channel Name");
+
+            var userId = Guid.NewGuid().ToString();
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+                {
+                    new DestinationOwner
+                    {
+                        ObjectId = Guid.Parse(userId)
+                    }
+                };
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            var response = await _jobDetailsController.GetJobDetailsAsync(_jobEntity.Id);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.IsNotNull(result.Value);
+
+            var job = result.Value as SyncJobDetails;
+
+            Assert.IsNotNull(job.StartDate);
+            Assert.IsNotNull(job.Requestor);
+            Assert.IsNotNull(job.Query);
+            Assert.IsNotNull(job.TargetGroupId);
+            Assert.IsNotNull(job.TargetGroupName);
+            Assert.IsNotNull(job.TargetChannelId);
+            Assert.IsNotNull(job.TargetChannelName);
         }
 
         [TestMethod]
@@ -336,6 +385,7 @@ namespace Services.Tests
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
                                      _graphGroupRepository.Object,
+                                     _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
@@ -427,6 +477,7 @@ namespace Services.Tests
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
                                      _graphGroupRepository.Object,
+                                     _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
@@ -467,6 +518,7 @@ namespace Services.Tests
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
                                      _graphGroupRepository.Object,
+                                     _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
