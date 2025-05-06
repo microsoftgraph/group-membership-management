@@ -276,7 +276,6 @@ function Set-PrereqResources {
     )
 
     $directoryPath = $TemplateFilePath
-    $currentUser = Get-AzADUser -SignedIn
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
 
     # deploy prereq resources
@@ -294,6 +293,7 @@ function Set-PrereqResources {
 
     # grant permissions to prereqs key vault
     if ($setRBACPermissions -eq $true) {
+        $currentUser = Get-AzADUser -SignedIn
         Set-AdminKeyVaultRoles `
             -UserObjectId $currentUser.Id `
             -KeyVaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
@@ -320,7 +320,6 @@ function Set-DataResources {
     Write-Host "`nCreating data resources"
 
     $directoryPath = $TemplateFilePath
-    $currentUser = Get-AzADUser -SignedIn
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 
     $dataResourcesParameters = `
@@ -336,6 +335,7 @@ function Set-DataResources {
 
     # grant permissions to data key vault
     if ($setRBACPermissions -eq $true) {
+        $currentUser = Get-AzADUser -SignedIn
         Set-AdminKeyVaultRoles `
             -UserObjectId $currentUser.Id `
             -KeyVaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
@@ -414,7 +414,8 @@ function Set-GMMResources {
     $teamsChannelAppCertificateName = $parameterObject.parameters["teamsChannelAppCertificateName"].value ?? "not-set";
     $tenantDomain = $parameterObject.parameters["tenantDomain"].value ?? "not-set";
     $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
-
+    $secondaryTenantId = [string]::IsNullOrEmpty($parameterObject.parameters["secondaryTenantId"].value) ? $null : $parameterObject.parameters["secondaryTenantId"].value
+    
     # deploy resource groups
     Write-Host "`nCreating resource groups"
     $resourceGroupsParameters = `
@@ -457,7 +458,7 @@ function Set-GMMResources {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
-        -SecondaryTenantId $SecondaryTenantId `
+        -SecondaryTenantId $secondaryTenantId `
         -GraphAppCertificateName $graphAppCertificateName `
         -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
         -TenantDomain $tenantDomain `
@@ -776,10 +777,10 @@ function Disable-KeyVaultFirewallRules {
     # disable firewall rules for key vaults
     Write-Host "Disabling firewall rules for key vaults"
 
-    # apply firewall rules to key vaults
     foreach ($resourceGroup in $ResourceGroups) {
         $rgObject = Get-AzResourceGroup -Name $resourceGroup -ErrorAction SilentlyContinue
         if ($null -eq $rgObject) {
+            Write-Warning "Resource group '$resourceGroup' not found. Skipping."
             continue
         }
 

@@ -68,6 +68,12 @@
         "description": "The Azure AD tenant id."
       }
     },
+    "secondaryTenantId": {
+      "value": "",
+      "metadata": {
+        "description": "The Azure AD secondary tenant id. Only requires if the Azure resources are hosted in a different tenant from the one where users reside."
+      }
+    },
     "sqlAdministratorsGroupId": {
       "value": "",
       "metadata": {
