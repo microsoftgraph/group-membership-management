@@ -19,6 +19,7 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -26,11 +27,13 @@ namespace Services
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               ISyncJobChangeRepository syncJobChangesRepository,
                               IGraphGroupRepository graphGroupRepository,
+                              ITeamsChannelRepository teamsChannelRepository,
                               IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
@@ -51,7 +54,8 @@ namespace Services
                 return response;
             }
 
-            var groupId = job.MembershipType.Contains("GroupMembership") ? job.Group.GroupId : job.Channel.GroupId;
+            var type = job.MembershipType == MembershipTypes.GroupMembership.ToString() ? "Group" : "Channel";
+            var groupId = job.MembershipType == MembershipTypes.GroupMembership.ToString() ? job.Group.GroupId : job.Channel.GroupId;
 
             try
             {
@@ -65,8 +69,12 @@ namespace Services
                 });
             }
 
-            var type = job.MembershipType.Equals("GroupMembership") ? "Group" : "Channel";
             var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
+
+            var targetChannelId = job.Channel?.ChannelId;
+            var targetChannelName = job.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() ?
+                    await _teamsChannelRepository.GetTeamsChannelNameAsync(new Models.Entities.AzureADTeamsChannel { ChannelId = job.Channel!.ChannelId }) : null;
+               
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
@@ -119,6 +127,8 @@ namespace Services
                 SyncJobId = job.Id,
                 TargetGroupId = groupId,
                 TargetGroupName = targetGroupName,
+                TargetChannelId = targetChannelId,
+                TargetChannelName = targetChannelName,
                 TargetGroupType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
