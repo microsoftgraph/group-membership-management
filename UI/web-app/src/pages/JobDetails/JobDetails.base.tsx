@@ -128,6 +128,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job?.targetGroupId}`;
     } else if (job?.targetGroupType === 'Channel') {
       url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
+    } else {
+      console.error('Unexpected destination:', job?.targetGroupType);
     }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -163,6 +165,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
       } else if (job?.targetGroupType === 'Channel') {
         url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
+      } else {
+        console.error('Unexpected destination type:', job?.targetGroupType);
       }
       window.open(url, '_blank', 'noopener,noreferrer');
       navigate('/');
