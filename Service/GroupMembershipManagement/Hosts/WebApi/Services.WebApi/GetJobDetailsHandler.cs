@@ -83,6 +83,7 @@ namespace Services
             var lastModifiedByObjectId = string.Empty;
             var lastModifiedOnBehalfOfDisplayName = string.Empty;
             var lastModifiedOnBehalfOfObjectId = string.Empty;
+            var groupSettings = string.Empty;
 
             var res = await _syncJobChangesRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
             if (res != null)
@@ -96,6 +97,9 @@ namespace Services
                     lastModifiedOnBehalfOfObjectId = await UpdateChangedOnBehalfOfObjectIdAsync(res, lastModifiedOnBehalfOfDisplayName);
                 }
             }
+
+            var gs = await _syncJobChangesRepository.GetRecentGroupSettingsBySyncJobIdAsync(request.SyncJobId);
+            if (gs != null) groupSettings = gs?.ChangeDetails?.ToString();
 
             DateTime estimatedNextRunTime;
             if (!jobStartsInFuture && !jobScheduledForFuture)
@@ -136,7 +140,8 @@ namespace Services
                 LastModifiedByDisplayName = lastModifiedByDisplayName,
                 LastModifiedByObjectId = lastModifiedByObjectId,
                 LastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName,
-                LastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId
+                LastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId,
+                GroupSettings = groupSettings
             };
 
             response.Model = dto;

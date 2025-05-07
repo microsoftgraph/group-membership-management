@@ -34,5 +34,6 @@ namespace Repositories.Contracts
         /// </summary>
         Task<SyncJobChange> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId);
         Task<SyncJobChange> GetLastSyncJobChangeWithOnboardingOrUpdateBySyncJobIdAsync(Guid syncJobId);
+        Task<SyncJobChange> GetRecentGroupSettingsBySyncJobIdAsync(Guid syncJobId);
     }
 }

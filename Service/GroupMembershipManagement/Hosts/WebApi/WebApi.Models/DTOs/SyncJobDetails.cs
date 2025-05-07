@@ -50,5 +50,6 @@ namespace WebApi.Models.DTOs
         public string? LastModifiedByObjectId { get; set; }
         public string? LastModifiedOnBehalfOfDisplayName { get; set; }
         public string? LastModifiedOnBehalfOfObjectId { get; set; }
+        public string? GroupSettings { get; set; }
     }
 }

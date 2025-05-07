@@ -116,6 +116,16 @@ namespace Repositories.EntityFramework
             return entity == null ? null : MapEntityToModel(entity);
         }
 
+        public async Task<SyncJobChange?> GetRecentGroupSettingsBySyncJobIdAsync(Guid syncJobId)
+        {
+            var entity = await _readContext.SyncJobChanges
+                                                .Where(s => s.SyncJobId == syncJobId && s.ChangeReason == SyncJobChangeReason.GroupSettings.ToString())
+                                                .OrderByDescending(s => s.ChangeTime)
+                                                .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
+        }
+
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
         private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {
