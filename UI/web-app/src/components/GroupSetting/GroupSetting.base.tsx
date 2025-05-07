@@ -1,5 +1,7 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import * as React from 'react';
-import { useState, useEffect } from 'react';
 import { IProcessedStyleSet, classNamesFunction, useTheme } from '@fluentui/react';
 import { IGroupSettingProps, IGroupSettingStyleProps, IGroupSettingStyles } from "./GroupSetting.types";
 import { AppDispatch } from '../../store';
