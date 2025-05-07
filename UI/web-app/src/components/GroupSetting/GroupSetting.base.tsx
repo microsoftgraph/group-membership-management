@@ -26,7 +26,6 @@ export const GroupSettingBase: React.FunctionComponent<IGroupSettingProps> = (pr
     });
 
     const groupSettings = useSelector(manageMembershipGroupSettings);
-    console.log('groupSettings', groupSettings);
 
     function removeDuplicates(personas: IPersonaProps[], possibleDupes: IPersonaProps[]) {
         return personas.filter(persona => !listContainsPersona(persona, possibleDupes));
