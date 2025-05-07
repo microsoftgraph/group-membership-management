@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Common.DependencyInjection;
-using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
@@ -10,7 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.TeamsChannel;
 using Services;
@@ -33,21 +32,42 @@ namespace Hosts.DestinationAttributesUpdater
             .AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
+            builder.Services.Configure<GraphCredentials>("TeamsGraphCredentials", builder.GetContext().Configuration.GetSection("TeamsGraphCredentials"));
+
             builder.Services.AddTransient<ITeamsChannelRepository, TeamsChannelRepository>((services) =>
             {
                 var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                 var telemetryClient = services.GetRequiredService<TelemetryClient>();
 
                 var configuration = services.GetService<IConfiguration>();
-                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-                graphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
-                graphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
-                var graphServiceClient = new GraphServiceClient(FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials));
+                var teamsGraphCredentials = services.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
+                var channelReadWriteApplicationPermissionGranted = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
+
+                TokenCredential graphTokenCredential;
+
+                if (channelReadWriteApplicationPermissionGranted)
+                {
+                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(teamsGraphCredentials);
+                }
+                else
+                {
+                    teamsGraphCredentials.ServiceAccountUserName = configuration["teamsChannelServiceAccountUsername"];
+                    teamsGraphCredentials.ServiceAccountPassword = configuration["teamsChannelServiceAccountPassword"];
+
+                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(teamsGraphCredentials);
+                }
+                var graphServiceClient = new GraphServiceClient(graphTokenCredential);
 
                 return new TeamsChannelRepository(loggingRepository, graphServiceClient, telemetryClient);
             });
 
             builder.Services.AddScoped<IDestinationAttributesUpdaterService, DestinationAttributesUpdaterService>();
+        }
+
+        private bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            return checkParse ? value : defaultValue;
         }
     }
 }
