@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import { styled } from '@fluentui/react';
 import { DisclaimerBase } from './Disclaimer.base';
 import { getStyles } from './Disclaimer.styles';

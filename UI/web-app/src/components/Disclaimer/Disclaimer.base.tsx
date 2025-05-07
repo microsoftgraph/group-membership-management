@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 import React, { useState, useEffect } from 'react';
 import { Checkbox, PrimaryButton, Stack, Text, Modal, classNamesFunction, IProcessedStyleSet } from '@fluentui/react';
 import { IDisclaimerProps, IDisclaimerStyleProps, IDisclaimerStyles } from './Disclaimer.types';

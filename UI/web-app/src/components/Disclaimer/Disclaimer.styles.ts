@@ -1,4 +1,7 @@
-import { IStyleFunctionOrObject, IStackStyles } from '@fluentui/react';
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+import { IStyleFunctionOrObject } from '@fluentui/react';
 import { IDisclaimerStyleProps, IDisclaimerStyles } from './Disclaimer.types';
 
 export const getStyles: IStyleFunctionOrObject<IDisclaimerStyleProps, IDisclaimerStyles> = () => {
