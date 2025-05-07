@@ -163,62 +163,7 @@ namespace Hosts.FunctionBase
                                 settings.AuthenticationType = authenticationType;
                             });
 
-            builder.Services.AddOptions<EmailSenderRecipient>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.SenderAddress = configuration.GetValue<string>("senderAddress");
-                settings.SenderPassword = configuration.GetValue<string>("senderPassword");
-                settings.SupportEmailAddresses = configuration.GetValue<string>("supportEmailAddresses");
-            });
-
-            builder.Services.AddSingleton<IEmailSenderRecipient>(services =>
-            {
-                var creds = services.GetService<IOptions<EmailSenderRecipient>>();
-                return new EmailSenderRecipient(
-                    creds.Value.SenderAddress,
-                    creds.Value.SenderPassword,
-                    creds.Value.SupportEmailAddresses);
-            });
-
-            builder.Services.AddSingleton<IMailConfig>(services =>
-            {
-                var configuration = services.GetService<IConfiguration>();
-                return new MailConfig(configuration.GetValue<bool>("Mail:IsAdaptiveCardEnabled"),
-                    configuration.GetValue("Mail:IsMailApplicationPermissionGranted", false),
-                    configuration.GetValue<string>("senderAddress"),
-                    configuration.GetValue("Mail:SkipMailNotifications", false));
-            });
-
-            builder.Services.AddScoped<IMailRepository>(services =>
-            {
-                var mailConfig = services.GetService<IMailConfig>();
-                var graphCredentials = services.GetService<IOptions<GraphCredentials>>().Value;
-
-                TokenCredential graphTokenCredential;
-
-                if (mailConfig.GMMHasSendMailApplicationPermissions)
-                {
-                    graphTokenCredential = FunctionAppDI.CreateAuthProviderFromSecret(graphCredentials);
-                }
-                else
-                {
-                    var mailCredentials = services.GetService<IOptions<EmailSenderRecipient>>();
-                    graphCredentials.ServiceAccountUserName = mailCredentials.Value.SenderAddress;
-                    graphCredentials.ServiceAccountPassword = mailCredentials.Value.SenderPassword;
-
-                    graphTokenCredential = FunctionAppDI.CreateServiceAccountAuthProvider(graphCredentials);
-                }
-
-                return new MailRepository(
-                    new GraphServiceClient(graphTokenCredential),
-                        services.GetService<IMailConfig>(),
-                        services.GetService<ILocalizationRepository>(),
-                        services.GetService<ILoggingRepository>(),
-                        GetValueOrDefault("actionableEmailProviderId"),
-                        services.GetService<IGraphGroupRepository>(),
-                        services.GetService<IDatabaseSettingsRepository>(),
-                        services.GetService<IRetryPolicyProvider>()
-                        );
-            });
+            builder.Services.AddScopedMailRepository();
 
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
