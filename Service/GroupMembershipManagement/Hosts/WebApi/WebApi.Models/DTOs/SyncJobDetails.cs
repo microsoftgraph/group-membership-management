@@ -44,7 +44,7 @@ namespace WebApi.Models.DTOs
         public string? TargetChannelName { get; set; }
         public string? TargetChannelId { get; set; }
         public Guid? SyncJobId { get; set; }
-        public string? TargetGroupType { get; set; }
+        public string? TargetDestinationType { get; set; }
         public DateTime? LastSuccessfulRunTime { get; set; }
         public DateTime? EstimatedNextRunTime { get; set; }
         public string? Status { get; set; }

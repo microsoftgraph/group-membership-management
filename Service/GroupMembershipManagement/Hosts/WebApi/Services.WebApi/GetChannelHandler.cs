@@ -63,7 +63,7 @@ namespace Services
                 });
             }
 
-            var type = job.MembershipType.Contains("GroupMembership") ? "Group" : "Channel";
+            var type = job.MembershipType;
             var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(request.GroupId);
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
@@ -99,7 +99,7 @@ namespace Services
                 SyncJobId = job.Id,
                 TargetGroupId = request.GroupId,
                 TargetGroupName = targetGroupName,
-                TargetGroupType = type,
+                TargetDestinationType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
                 Status = job.Status

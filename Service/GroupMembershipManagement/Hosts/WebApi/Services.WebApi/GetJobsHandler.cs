@@ -81,7 +81,7 @@ namespace Services
 
             foreach (var job in jobs)
             {
-                var type = job.MembershipType.Equals("GroupMembership") ? "Group" : "Channel";
+                var type = job.MembershipType;
                 var groupId = job.MembershipType.Contains("GroupMembership") ? job.Group.GroupId : job.Channel.GroupId;
                 var currentTime = DateTime.UtcNow;
                 var jobStartsInFuture = currentTime < job.StartDate;
@@ -113,7 +113,7 @@ namespace Services
                 {
                     TargetGroupName = targetGroups.ContainsKey(groupId) ? targetGroups[groupId].Name : null,
                     TargetGroupEmail = targetGroups.ContainsKey(groupId)? targetGroups[groupId].Email : null,
-                    TargetGroupType = type
+                    TargetDestinationType = type
                 };
 
                 response.Model.Add(dto);

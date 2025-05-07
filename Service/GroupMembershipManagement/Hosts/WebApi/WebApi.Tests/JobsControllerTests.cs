@@ -242,7 +242,7 @@ namespace Services.Tests
             Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
             Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(x.Period)));
             Assert.IsTrue(jobs.All(x => x.Status != null));
-            Assert.IsTrue(jobs.All(x => x.TargetGroupType != null));
+            Assert.IsTrue(jobs.All(x => x.TargetDestinationType != null));
         }
 
         [TestMethod]
@@ -291,7 +291,7 @@ namespace Services.Tests
             Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
             Assert.IsTrue(jobs.All(x => x.EstimatedNextRunTime == x.LastSuccessfulRunTime.AddHours(x.Period)));
             Assert.IsTrue(jobs.All(x => x.Status != null));
-            Assert.IsTrue(jobs.All(x => x.TargetGroupType == "Group"));
+            Assert.IsTrue(jobs.All(x => x.TargetDestinationType == MembershipTypes.GroupMembership.ToString()));
 
         }
 

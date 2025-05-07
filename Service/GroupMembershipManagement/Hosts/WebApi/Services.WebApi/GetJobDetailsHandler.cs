@@ -54,7 +54,7 @@ namespace Services
                 return response;
             }
 
-            var type = job.MembershipType == MembershipTypes.GroupMembership.ToString() ? "Group" : "Channel";
+            var type = job.MembershipType;
             var groupId = job.MembershipType == MembershipTypes.GroupMembership.ToString() ? job.Group.GroupId : job.Channel.GroupId;
 
             try
@@ -133,7 +133,7 @@ namespace Services
                 TargetGroupName = targetGroupName,
                 TargetChannelId = targetChannelId,
                 TargetChannelName = targetChannelName,
-                TargetGroupType = type,
+                TargetDestinationType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
                 Status = job.Status,
