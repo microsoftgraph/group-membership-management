@@ -5,6 +5,8 @@ namespace WebApi.Models.DTOs
 {
     public class SyncJobDetails
     {
+        public SyncJobDetails() { }
+
         public SyncJobDetails(
             DateTime startDate,
             DateTime lastSuccessfulStartTime,
