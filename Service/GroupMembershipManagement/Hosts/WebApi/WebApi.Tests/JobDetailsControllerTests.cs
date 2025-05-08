@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using MockQueryable.Moq;
 using Models;
+using Models.Entities;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
@@ -16,11 +17,10 @@ using System.Net;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models.DTOs;
+using Channel = Models.Channel;
 using Roles = WebApi.Models.Roles;
 using SyncJob = Models.SyncJob;
 using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
-using Channel = Models.Channel;
-using Models.Entities;
 
 namespace Services.Tests
 {
@@ -150,6 +150,16 @@ namespace Services.Tests
                                   var jobs = new List<SyncJob> { _jobEntity };
                                   return jobs.BuildMock();
                               });
+
+            _syncJobRepository.Setup(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()))
+                .Callback<IEnumerable<SyncJob>, SyncStatus?>((jobs, status) =>
+                {
+                    var updatedJob = jobs.FirstOrDefault(j => j.Id == _jobEntity.Id);
+                    if (updatedJob != null)
+                    {
+                        _jobEntity = updatedJob;
+                    }
+                });
 
             _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()));
 
@@ -424,9 +434,9 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
-        public async Task GetJobDetailsWhenNoJobIsFound(string role)
-        {
-            var syncJobId = Guid.NewGuid();
+            public async Task GetJobDetailsWhenNoJobIsFound(string role)
+            {
+                var syncJobId = Guid.NewGuid();
 
             var context = CreateHttpContext(new List<Claim>
                 {
@@ -537,8 +547,10 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        [DataRow(Roles.JOB_OWNER_ENABLER)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_WRITER)]
-        public async Task PatchJobWithInvalidStatus(string role)
+        public async Task EnableJobSuccessAsync(string role)
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
@@ -549,27 +561,28 @@ namespace Services.Tests
                     SyncJobChangeReason.StatusUpdate.ToString())
             };
 
+            var newStatus = SyncStatus.Idle.ToString();
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "InvalidStatus");
+            patchDocument.Replace(x => x.Status, newStatus);
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as BadRequestObjectResult;
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
-            Assert.IsNotNull(result.Value);
-
-            var responseObject = result.Value as PatchJobResponse;
-            Assert.IsNotNull(responseObject);
-            Assert.AreEqual("StatusIsNotValid", responseObject.ErrorCode);
-
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+            Assert.AreEqual(200, result.StatusCode);
+            Assert.AreEqual(newStatus, _jobEntity.Status);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
 
+
+
         [TestMethod]
+        [DataRow(Roles.JOB_OWNER_ENABLER)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_WRITER)]
-        public async Task PatchJobWithEmptyStatus(string role)
+        public async Task EnablePendingReviewJobFailedAsync(string role)
         {
+            _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
@@ -579,262 +592,118 @@ namespace Services.Tests
                     SyncJobChangeReason.StatusUpdate.ToString())
             };
 
+            var newStatus = SyncStatus.Idle.ToString();
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, null);
+            patchDocument.Replace(x => x.Status, newStatus);
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as BadRequestObjectResult;
-
-            Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
-
-            var responseObject = result.Value as PatchJobResponse;
-            Assert.IsNotNull(responseObject);
-            Assert.AreEqual("StatusIsRequired", responseObject.ErrorCode);
-
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.JOB_TENANT_WRITER)]
-        public async Task PatchJobStatusWhenJobIsInProgress(string role)
-        {
-            _jobEntity.Status = SyncStatus.InProgress.ToString();
-
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(
-                    new List<Claim> {
-                        new Claim(ClaimTypes.Name, "user@domain.com"),
-                        new Claim(ClaimTypes.Role, role),
-                        new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                    },
-                    "Testing status change"
-                )
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
             var result = response as ObjectResult;
+            var problem = result.Value as ProblemDetails;
 
             Assert.IsNotNull(result);
-            Assert.AreEqual(412, result.StatusCode);
-
-            var details = result.Value as ProblemDetails;
-
-            Assert.IsNotNull(details);
-            Assert.AreEqual("JobInProgress", details.Detail);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _jobEntity.Status);
+            Assert.AreEqual((int)HttpStatusCode.PreconditionFailed, problem.Status);
+            Assert.AreEqual("JobInPendingReviewStateCannotBeUpdated", problem.Detail);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
         [TestMethod]
-        [DataRow(Roles.JOB_TENANT_WRITER)]
-        public async Task PatchNonExistentJob(string role)
-        {
-            _jobEntity = null;
-
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler,_getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
-            var result = response as NotFoundObjectResult;
-
-            Assert.IsNotNull(result);
-            Assert.AreEqual(404, result.StatusCode);
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.JOB_TENANT_WRITER)]
-        public async Task PatchRejectedWhenSubmitterNotAnOwner(string role)
-        {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
-                    SyncJobChangeReason.SubmissionApproved.ToString())
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
-
-            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
-                                    .ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { _jobEntity.Group.GroupId, new List<Guid> { Guid.NewGuid() } } });
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as BadRequestObjectResult;
-
-            Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
-            var responseObject = result.Value as PatchJobResponse;
-            Assert.IsNotNull(responseObject);
-            Assert.AreEqual("SubmitterNotOwner", responseObject.ErrorCode);
-
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.JOB_OWNER_WRITER)]
-        public async Task PatchJobRejectsWhenSubmitterNotInOwnerList(string role)
-        {
-            var groupId = Guid.NewGuid();
-            var unrelatedOwnerId = Guid.NewGuid();
-
-            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
-                .ReturnsAsync(new Dictionary<Guid, List<Guid>>
-                {
-                    { groupId, new List<Guid> { unrelatedOwnerId } } // Submitter is not in the owner list
-                });
-
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
-                    SyncJobChangeReason.SubmissionApproved.ToString())
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as BadRequestObjectResult;
-
-            Assert.IsNotNull(result);
-            Assert.AreEqual(400, result.StatusCode);
-            var responseObject = result.Value as PatchJobResponse;
-            Assert.IsNotNull(responseObject);
-            Assert.AreEqual("SubmitterNotOwner", responseObject.ErrorCode);
-            
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.JOB_OWNER_WRITER)]
-        public async Task PatchJobWhenIsNotOwnerOfTheGroup(string role)
-        {
-            _isGroupOwner = false;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
-                    SyncJobChangeReason.Update.ToString())
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "CustomerPaused");
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as ForbidResult;
-
-            Assert.IsNotNull(result);
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.JOB_TENANT_WRITER)]
-        public async Task PatchJobWhenIsNotOwnerOfTheGroupButIsJobTenantWriter(string role)
-        {
-            _isGroupOwner = false;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
-                    SyncJobChangeReason.Update.ToString())
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "CustomerPaused");
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as OkObjectResult;
-
-            Assert.IsNotNull(result);
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
-        }
-
-        [TestMethod]
-        [DataRow(Roles.JOB_OWNER_WRITER)]
-        public async Task PatchJobWhenIsAnOwner(string role)
-        {
-            var userId = Guid.NewGuid().ToString();
-            _jobEntity.DestinationOwners = new List<DestinationOwner>
-                {
-                    new DestinationOwner
-                    {
-                        ObjectId = Guid.Parse(userId)
-                    }
-                };
-
-            var context = CreateHttpContext(new List<Claim> {
-                    new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
-                    SyncJobChangeReason.Update.ToString());
-
-            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
-
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
-            {
-                ControllerContext = CreateControllerContext(context)
-            };
-
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "CustomerPaused");
-
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as OkObjectResult;
-
-            Assert.IsNotNull(result);
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
-        }
-
-        [TestMethod]
-        public async Task PatchJobThrowsExceptionReturnsInternalServerError()
+        [DataRow(Roles.SUBMISSION_REVIEWER)]
+        public async Task ReviewJobAsync(string role)
         {
             var userId = Guid.NewGuid().ToString();
             var context = CreateHttpContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "user@domain.com"),
-                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim(ClaimTypes.Role, role),
                 new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
             });
-
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
-            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>())).ThrowsAsync(new Exception());
 
-            _patchJobHandler = new PatchJobHandler(_loggingRepository.Object,
-                                                   _graphGroupRepository.Object,
-                                                   _syncJobRepository.Object,
-                                                   _syncJobChangeRepository.Object,
-                                                   _settingsRepository.Object);
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler,_getJobChangesHandler);
+            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync((List<Guid> objectIds) =>
+                {
+                    return new Dictionary<Guid, List<Guid>>
+                    {
+                        { Guid.NewGuid(), new List<Guid> { (Guid)_syncJobChange.ChangedByObjectId } }
+                    };
+                });
+            _jobEntity.Status = SyncStatus.PendingReview.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.SubmissionApproved.ToString())
+            };
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(Guid.NewGuid(), patchDocument);
-            var result = response as ObjectResult;
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
-            Assert.AreEqual(500, result.StatusCode);
+            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), _jobEntity.Status);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task UpdateJobSuccessAsync(string role)
+        {
+            _jobEntity.Status = SyncStatus.Idle.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.Update.ToString())
+            };
+
+            var newQuery = "UpdatedQuery";
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Query, newQuery);
+
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _jobEntity.Status);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task UpdatePendingReviewJobFailureAsync(string role)
+        {
+            _jobEntity.Status = SyncStatus.PendingReview.ToString();
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.Update.ToString())
+            };
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Query, "UpdatedQuery");
+
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as ObjectResult;
+            var problem = result.Value as ProblemDetails;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.PendingReview.ToString(), _jobEntity.Status);
+            Assert.AreEqual((int)HttpStatusCode.PreconditionFailed, problem.Status);
+            Assert.AreEqual("JobInPendingReviewStateCannotBeUpdated", problem.Detail);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
 
@@ -854,7 +723,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "InvalidStatus");
 
-            var response = await _jobDetailsController.UpdateSyncJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
             var result = response as BadRequestObjectResult;
 
             Assert.IsNotNull(result);

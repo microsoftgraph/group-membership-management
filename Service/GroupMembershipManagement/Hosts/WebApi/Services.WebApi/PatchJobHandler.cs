@@ -12,6 +12,7 @@ using Services.WebApi.Validators;
 using System.Net;
 using WebApi.Models.DTOs;
 using SyncJob = Models.SyncJob;
+using SyncJobChange = Models.SyncJobChange.SyncJobChange;
 
 namespace Services.WebApi
 {
@@ -47,15 +48,8 @@ namespace Services.WebApi
                 return response;
             }
 
-            if (string.IsNullOrWhiteSpace(request.ChangeReason))
-            {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                response.ErrorCode = "ChangeReasonIsRequired";
-                return response;
-            }
-
-            var groupId = syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() 
-                ? syncJob.Channel?.GroupId 
+            var groupId = syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString()
+                ? syncJob.Channel?.GroupId
                 : syncJob.Group?.GroupId;
 
             if (groupId == null)
@@ -65,7 +59,7 @@ namespace Services.WebApi
                 return response;
             }
 
-            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, (Guid) groupId);
+            var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, (Guid)groupId);
             if (!(isGroupOwner || request.IsAllowed))
             {
                 response.StatusCode = HttpStatusCode.Forbidden;
@@ -76,20 +70,6 @@ namespace Services.WebApi
             {
                 response.StatusCode = HttpStatusCode.PreconditionFailed;
                 response.ErrorCode = "JobInProgress";
-                return response;
-            }
-
-            if (syncJob.Status == SyncStatus.PendingReview.ToString() && !request.IsAllowed)
-            {
-                response.StatusCode = HttpStatusCode.Forbidden;
-                return response;
-            }
-
-            var status = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Status")?.value?.ToString();
-            if (status == null)
-            {
-                response.StatusCode = HttpStatusCode.BadRequest;
-                response.ErrorCode = "StatusIsRequired";
                 return response;
             }
 
@@ -108,22 +88,7 @@ namespace Services.WebApi
                 ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != request.UserIdentity ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
             };
 
-            if (!string.IsNullOrEmpty(changedOnBehalfOfObjectId))
-            {
-                var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(changedOnBehalfOfObjectId, false);
-                syncJob.Requestor = userResponse.UserPrincipalName;
-            }
-
-            var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
-
-            // Enabling or disabling a job status update change
-            if (request.ChangeReason == SyncJobChangeReason.StatusUpdate.ToString())
-            {
-                var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, request.ChangeReason, status);
-                if (result != null) return result;
-            }
-
-            // Approving or rejecting a submission
+            // Handle Reject/Approve
             if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() || request.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())
             {
                 var canReviewOwnSubmissions = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions);
@@ -139,7 +104,7 @@ namespace Services.WebApi
                 var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
 
                 // Verify that the submitter is still an owner
-                var destinationOwners = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid>() { (Guid) groupId });
+                var destinationOwners = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid>() { (Guid)groupId });
                 var isSubmitterOwner = false;
                 if (destinationOwners != null && submission.ChangedByObjectId.HasValue)
                 {
@@ -164,25 +129,62 @@ namespace Services.WebApi
                     }
                 }
 
-                var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, request.ChangeReason, status);
+                var newStatus = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Status")?.value?.ToString();
+                if (newStatus != SyncStatus.Idle.ToString() && newStatus != SyncStatus.SubmissionRejected.ToString())
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = "ValidUpdateStatusIsRequired";
+                    return response;
+                }
+
+                var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, newStatus);
+                if (result != null) return result;
+            }
+            // If the job is in the PendingReview state, it cannot be updated
+            else if (syncJob.Status == SyncStatus.PendingReview.ToString())
+            {
+                response.StatusCode = HttpStatusCode.PreconditionFailed;
+                response.ErrorCode = "JobInPendingReviewStateCannotBeUpdated";
+                return response;
+            }
+
+            // Handle Enable/Disable/Pause
+            if (request.ChangeReason == SyncJobChangeReason.StatusUpdate.ToString())
+            {
+                var newStatus = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Status")?.value?.ToString();
+                if (newStatus != SyncStatus.Idle.ToString() && newStatus != SyncStatus.CustomerPaused.ToString())
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = "ValidUpdateStatusIsRequired";
+                    return response;
+                }
+
+                var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, newStatus);
                 if (result != null) return result;
             }
 
-            // Updating a job
+            // Handle General Update
             if (request.ChangeReason == SyncJobChangeReason.Update.ToString())
             {
-                var result = await ValidateAndUpdateSyncJob(request, syncJobToPatch, syncJob, syncJobChange, SyncJobChangeReason.Update.ToString(), SyncStatus.PendingReview.ToString());
+                var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                 if (result != null) return result;
             }
 
             return response;
         }
 
-        private async Task<PatchJobResponse?> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJobPatch syncJobToPatch, SyncJob syncJob, SyncJobChange syncJobChange, string changeReason, string status)
+        private async Task<PatchJobResponse?> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJob syncJob, SyncJobChange syncJobChange, string status)
         {
+            var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
+            var changeReason = request.ChangeReason;
+
             var response = new PatchJobResponse();
 
-            request.PatchDocument.ApplyTo(syncJobToPatch);
+            if(request.ChangeReason == SyncJobChangeReason.Update.ToString())
+            {
+                request.PatchDocument.ApplyTo(syncJobToPatch);
+            }
+            syncJobToPatch.Status = status;
 
             var validationResult = Validate(syncJobToPatch);
             if (!validationResult.IsValid)
@@ -193,7 +195,6 @@ namespace Services.WebApi
             }
 
             var updatedSyncJob = MapDtoToEntity(syncJob, syncJobToPatch, request.SyncJobId);
-            updatedSyncJob.Status = status;
             await _databaseSyncJobsRepository.UpdateSyncJobsAsync(new[] { updatedSyncJob });
 
             syncJobChange.ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(updatedSyncJob);

@@ -3,9 +3,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
+using Models.SyncJobChange;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System.Net;
 using System.Security.Claims;
 using WebApi.Models.DTOs;
 
@@ -83,10 +85,10 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_ENABLER}, {Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}, {Models.Roles.JOB_OWNER_CONFIGURATION_EDITOR}, {Models.Roles.SUBMISSION_REVIEWER}")]
-        [HttpPatch("{syncJobId}")]
+        [Authorize(Roles = Models.Roles.SUBMISSION_REVIEWER)]
+        [HttpPatch("{syncJobId}/review")]
         [Consumes("application/json-patch+json")]
-        public async Task<ActionResult> UpdateSyncJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
+        public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
         {
             try
             {
@@ -94,18 +96,24 @@ namespace WebApi.Controllers.v1.Jobs
                 var claimsIdentity = User.Identity as ClaimsIdentity;
                 var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
                 var displayName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
-                var changeReason = Request.Headers["X-Change-Reason"].ToString();
-                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
 
                 if (string.IsNullOrEmpty(userId))
                 {
                     return new ForbidResult();
                 }
 
-                // This is a double check right now, keeping this in place for future use when the api call is open up to all users
-                var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
-                
+                var changeReason = Request.Headers["X-Change-Reason"].ToString();
+                var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.SubmissionApproved.ToString(), SyncJobChangeReason.SubmissionRejected.ToString()],
+                    "Invalid change reason. Only 'SubmissionRejected' and 'SubmissionApproved' are allowed.");
+                if (changeReasonValidation != null)
+                {
+                    return changeReasonValidation;
+                }
+
+                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
+
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+
                 var patchJobResponse = new PatchJobResponse
                 {
                     StatusCode = response.StatusCode,
@@ -125,7 +133,113 @@ namespace WebApi.Controllers.v1.Jobs
             }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: ${ex}");
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_ENABLER}, {Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}")]
+        [HttpPatch("{syncJobId}/enable")]
+        [Consumes("application/json-patch+json")]
+        public async Task<ActionResult> EnableJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
+        {
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+                var displayName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var changeReason = Request.Headers["X-Change-Reason"].ToString();
+                var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.StatusUpdate.ToString()],
+                    "Invalid change reason. Only 'StatusUpdate' is allowed.");
+                if (changeReasonValidation != null)
+                {
+                    return changeReasonValidation;
+                }
+
+                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
+
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+
+                var patchJobResponse = new PatchJobResponse
+                {
+                    StatusCode = response.StatusCode,
+                    ErrorCode = response.ErrorCode,
+                    ResponseData = response.ResponseData
+                };
+
+                return response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.OK => Ok(patchJobResponse),
+                    System.Net.HttpStatusCode.NotFound => NotFound(patchJobResponse),
+                    System.Net.HttpStatusCode.BadRequest => BadRequest(patchJobResponse),
+                    System.Net.HttpStatusCode.Forbidden => Forbid(),
+                    System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
+                    _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: response.ErrorCode)
+                };
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [Authorize(Roles = $"{Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}")]
+        [HttpPatch("{syncJobId}/update")]
+        [Consumes("application/json-patch+json")]
+        public async Task<ActionResult> UpdateJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
+        {
+            try
+            {
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value;
+                var displayName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "name")?.Value;
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    return new ForbidResult();
+                }
+
+                var changeReason = Request.Headers["X-Change-Reason"].ToString();
+                var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.Update.ToString()],
+                    "Invalid change reason. Only 'Update' is allowed.");
+                if (changeReasonValidation != null)
+                {
+                    return changeReasonValidation;
+                }
+
+                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
+
+                // This is a double check right now, keeping this in place for future use when the api call is open up to all users
+                var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+
+                var patchJobResponse = new PatchJobResponse
+                {
+                    StatusCode = response.StatusCode,
+                    ErrorCode = response.ErrorCode,
+                    ResponseData = response.ResponseData
+                };
+
+                return response.StatusCode switch
+                {
+                    System.Net.HttpStatusCode.OK => Ok(patchJobResponse),
+                    System.Net.HttpStatusCode.NotFound => NotFound(patchJobResponse),
+                    System.Net.HttpStatusCode.BadRequest => BadRequest(patchJobResponse),
+                    System.Net.HttpStatusCode.Forbidden => Forbid(),
+                    System.Net.HttpStatusCode.PreconditionFailed => Problem(statusCode: (int)System.Net.HttpStatusCode.PreconditionFailed, detail: response.ErrorCode),
+                    _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: response.ErrorCode)
+                };
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
             }
         }
 
@@ -176,6 +290,29 @@ namespace WebApi.Controllers.v1.Jobs
                 System.Net.HttpStatusCode.Forbidden => Forbid(),
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
+        }
+        private ActionResult ValidateChangeReason(string changeReason, List<string> expectedReasons, string errorMessage)
+        {
+            if (string.IsNullOrWhiteSpace(changeReason))
+            {
+                return BadRequest(new PatchJobResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "ChangeReasonIsRequired"
+                });
+            }
+
+            if (!expectedReasons.Contains(changeReason))
+            {
+                return BadRequest(new PatchJobResponse
+                {
+                    StatusCode = HttpStatusCode.BadRequest,
+                    ErrorCode = "InvalidChangeReason",
+                    ResponseData = new List<string> { errorMessage }
+                });
+            }
+
+            return null;
         }
     }
 }
