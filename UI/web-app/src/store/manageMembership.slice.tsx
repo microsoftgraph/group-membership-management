@@ -22,6 +22,7 @@ import { SourcePartQuery } from '../models/SourcePartQuery';
 import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUtils';
 import { createGroup } from './groups.api';
 import { GroupSettings } from '../models/GroupSettings';
+import { DestinationType } from '../models/DestinationType';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -373,7 +374,7 @@ const manageMembershipSlice = createSlice({
                     ...state.selectedDestination,
                     id: action.payload.groupId,
                     name: state.createdGroupName,
-                    type: 'Group',
+                    type: DestinationType.GroupMembership,
                 };
                 state.onboardingStatus = OnboardingStatus.ReadyForOnboarding;
             }

@@ -458,7 +458,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
           {currentStep === OnboardingSteps.Confirmation && <OnboardingStep
             stepTitle={strings.ManageMembership.labels.step4title}
             stepDescription={strings.ManageMembership.labels.step4description}
-            destinationType={selectedDestination?.type ?? jobDetailsRef.current?.targetGroupType}
+            destinationType={selectedDestination?.type ?? jobDetailsRef.current?.targetDestinationType}
             destinationName={selectedDestination?.name ?? jobDetailsRef.current?.targetGroupName}
             children={
               <Confirmation

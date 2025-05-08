@@ -73,6 +73,7 @@ import {
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -97,6 +98,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   );
 
   const strings = useStrings();
+
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
 
@@ -185,18 +187,23 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     ...job,
     key: job.syncJobId,
   }));
+
   const columns = [
     {
-      key: 'targetGroupType',
+      key: 'targetDestinationType',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.type,
-      fieldName: 'targetGroupType',
+      fieldName: 'targetDestinationType',
       minWidth: 100,
       maxWidth: 100,
       isMultiline: false,
       isResizable: true,
-      isSorted: sortKey === 'targetGroupType',
+      isSorted: sortKey === 'targetDestinationType',
       isSortedDescending,
       columnActionsMode: 0,
+      onRender: (item: any) => {
+        const localizedType = destinationTypeLocalization[item.targetDestinationType] || item.targetDestinationType;
+        return <span>{localizedType}</span>;
+      },
     },
     {
       key: 'targetGroupName',

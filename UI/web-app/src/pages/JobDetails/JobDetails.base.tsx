@@ -72,6 +72,8 @@ import { JobHistoryPanel } from '../../components/JobHistoryPanel/JobHistoryPane
 import { EndpointsList } from '../../components/EndpointsList';
 import { getProfilePhotoUsingId } from '../../store/profile.api';
 import { selectLastModifiedOnBehalfOfUserProfile, selectLastModifiedUserProfile } from '../../store/profile.slice';
+import { DestinationType } from '../../models/DestinationType';
+import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -124,12 +126,12 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const openInService = (): void => {
     var url;
-    if (job?.targetGroupType === 'Group') {
+    if (job?.targetDestinationType === DestinationType.GroupMembership) {
       url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job?.targetGroupId}`;
-    } else if (job?.targetGroupType === 'Channel') {
+    } else if (job?.targetDestinationType === DestinationType.TeamsChannelMembership) {
       url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
     } else {
-      console.error('Unexpected destination:', job?.targetGroupType);
+      console.error('Unexpected destination:', job?.targetDestinationType);
     }
     window.open(url, '_blank', 'noopener,noreferrer');
   };
@@ -161,12 +163,12 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       setShowRemoveGMMDialog(false);
       
       var url;
-      if (job?.targetGroupType === 'Group') {
+      if (job?.targetDestinationType === DestinationType.GroupMembership) {
         url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
-      } else if (job?.targetGroupType === 'Channel') {
+      } else if (job?.targetDestinationType === DestinationType.TeamsChannelMembership) {
         url = `https://teams.microsoft.com/l/channel/${job.targetChannelId}`;
       } else {
-        console.error('Unexpected destination type:', job?.targetGroupType);
+        console.error('Unexpected destination type:', job?.targetDestinationType);
       }
       window.open(url, '_blank', 'noopener,noreferrer');
       navigate('/');
@@ -246,7 +248,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               <ContentContainer
                 title={strings.JobDetails.labels.destination}
                 actionButtons={[
-                  { text: job.targetGroupType === 'Channel' ? strings.JobDetails.openInTeams : strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInService }
+                  { text: job.targetDestinationType === DestinationType.TeamsChannelMembership ? strings.JobDetails.openInTeams : strings.JobDetails.openInAzure, icon: OpenInNewWindowIcon, onClick: openInService }
                 ]}
                 children={<MembershipDestination job={job} classNames={classNames} />}
               />
@@ -327,8 +329,8 @@ const MembershipDetails: React.FunctionComponent<IContentProps> = (
     <div className={classNames.card}>
       <div>
         <Text className={classNames.title} block>
-          {props.job.targetGroupType === 'Group' && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}`}
-          {props.job.targetGroupType === 'Channel' && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}: ${props.job.targetChannelName}`}
+          {props.job.targetDestinationType === DestinationType.GroupMembership && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}`}
+          {props.job.targetDestinationType === DestinationType.TeamsChannelMembership && `${strings.JobDetails.labels.pageTitle} - ${props.job.targetGroupName}: ${props.job.targetChannelName}`}
         </Text>
       </div>
       {/* <div> // Hidden until feature is enabled
@@ -591,6 +593,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
   props: IContentProps
 ) => {
   const strings = useStrings();
+
   const { job, classNames } = props;
 
   const itemAlignmentsStackTokens: IStackTokens = {
@@ -618,7 +621,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               description={strings.JobDetails.descriptions.type}
             />
             <Text className={classNames.itemData} block>
-              {job?.targetGroupType}
+              {destinationTypeLocalization[job?.targetDestinationType] || job?.targetDestinationType}
             </Text>
           </Stack.Item>
 
@@ -640,7 +643,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               {job?.targetGroupId}
             </Text>
           </Stack.Item>
-          {job?.targetGroupType === 'Channel' &&
+          {job?.targetDestinationType === DestinationType.TeamsChannelMembership &&
             <Stack.Item align="start">
               <Text className={classNames.itemTitle} block>
                 {strings.JobDetails.labels.channelName}
@@ -650,7 +653,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               </Text>
             </Stack.Item> 
           }
-          {job?.targetGroupType === 'Channel' &&
+          {job?.targetDestinationType === DestinationType.TeamsChannelMembership &&
             <Stack.Item align="start">
               <Text className={classNames.itemTitle} block>
                 {strings.JobDetails.labels.channelId}

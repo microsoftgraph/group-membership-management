@@ -16,6 +16,7 @@ import { useStrings } from "../../store/hooks";
 import { PageSection } from "../PageSection";
 import { useSelector } from "react-redux";
 import { manageMembershipSelectedDestinationName, manageMembershipSelectedDestinationType } from "../../store/manageMembership.slice";
+import { destinationTypeLocalization } from "../../utils/destinationTypeUtils";
 
 const getClassNames = classNamesFunction<
   IOnboardingStepStyleProps,
@@ -25,6 +26,7 @@ const getClassNames = classNamesFunction<
 export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> = (props) => {
   const { className, styles, children, stepTitle, stepDescription } = props;
   const strings = useStrings();
+  
   const classNames: IProcessedStyleSet<IOnboardingStepStyles> = getClassNames(
     styles,
     {
@@ -35,10 +37,7 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
   const destinationType = useSelector(manageMembershipSelectedDestinationType);
   const destinationName = useSelector(manageMembershipSelectedDestinationName);
 
-  const destinationTypeLabel: string =
-    destinationType === "GroupMembership" ?
-      strings.ManageMembership.labels.group
-      : destinationType ? destinationType.toString() : '';
+  const destinationTypeLabel: string = destinationTypeLocalization[destinationType!] || destinationType!
 
   return (
     <div className={classNames.root}>

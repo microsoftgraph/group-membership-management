@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 import React  from 'react';
-import { useCallback } from 'react';
 import {
   IProcessedStyleSet,
   Stack,
@@ -52,7 +51,6 @@ import { useLocation, useParams } from 'react-router-dom';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { EndpointsList } from '../EndpointsList';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
-import { debounce } from '../../utils/jobUtils';
 import { InfoLabel } from '../InfoLabel';
 import { selectPeoplePickerSuggestions, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { selectLastModifiedOnBehalfOfUserProfile } from '../../store/profile.slice';
@@ -60,6 +58,7 @@ import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { SourcePartType } from '../../models/SourcePartType';
+import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
   IConfirmationStyleProps,
@@ -74,6 +73,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
     onEditBusinessJustification
   } = props;
   const strings = useStrings();
+
   const classNames: IProcessedStyleSet<IConfirmationStyles> = getClassNames(
     styles,
     {
@@ -176,7 +176,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                     {strings.JobDetails.labels.type}
                   </Text>
                   <Text className={classNames.itemData} block>
-                    {selectedDestination?.type ?? '-'}
+                  {destinationTypeLocalization[selectedDestination!.type] || selectedDestination?.type}
                   </Text>
                 </Stack.Item>
                 <Stack.Item align="start">

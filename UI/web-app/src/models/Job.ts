@@ -5,7 +5,7 @@ export type Job = {
   syncJobId: string;
   targetGroupId: string;
   targetChannelId: string;
-  targetGroupType: string;
+  targetDestinationType: string;
   targetGroupName: string;
   targetChannelName: string;
   email: string;
