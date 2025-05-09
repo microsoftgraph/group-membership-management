@@ -41,6 +41,9 @@ export type IStrings = {
     orAndOperator: string;
     attributeInfo: string;
     equalityOperatorInfo: string;
+    equalityOperatorInfoTitle: string;
+    inOperatorDescription: string;
+    notEqualToOperatorDescription: string;
     attributeValueInfo: string;
     orAndOperatorInfo: string;
     missingAttributeErrorMessage: string;
@@ -64,6 +67,8 @@ export type IStrings = {
     OR: string;
     any: string;
     allLowercase: string;
+    IN: string;
+    notEqualTo: string;
   },
   Components: {
     AppHeader: {

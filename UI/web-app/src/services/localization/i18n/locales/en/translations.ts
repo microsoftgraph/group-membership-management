@@ -44,6 +44,9 @@ export const strings: IStrings = {
     orAndOperator: "And/Or",
     attributeInfo: "Select the attribute",
     equalityOperatorInfo: "Select the equality operator",
+    equalityOperatorInfoTitle: 'How to use the operators:',
+    inOperatorDescription: '{0} Operator — "Is it one of these?"{1} The {0} operator checks if a value matches any value in a list.{1}→ Example: Get users who live in Seattle, Portland, or San Francisco. → City {0} (Seattle, Portland, San Francisco) will return all users who live in any of these cities.',
+    notEqualToOperatorDescription: '{0} Operator — "Is it different?"{1} The {0} operator means "not equal to". It checks if a value is different from another.{1}→ Example: Get users who do not live in Seattle. → City {0} Seattle will return all users who do not live in Seattle.',
     attributeValueInfo: "Select the attribute value",
     orAndOperatorInfo: "Select And/Or",
     missingAttributeErrorMessage: "Please provide missing info in the previous attribute",
@@ -67,6 +70,8 @@ export const strings: IStrings = {
     OR: "OR",
     any: "any",
     allLowercase: "all",
+    IN: "IN",
+    notEqualTo: "<>",
   },
   Components: {
     AppHeader: {

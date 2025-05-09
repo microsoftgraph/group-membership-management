@@ -1382,13 +1382,41 @@ const getOptions = (
             </span>
           );
         }
+        else if (column?.key === 'equalityOperator') {
+          return (
+            <span className={classNames.detailsListColumnHeader} >
+              <InfoWord
+                label={column.name}
+                description={<div>
+                  <b>{strings.HROnboarding.equalityOperatorInfoTitle}</b>
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ margin: 0 }}>
+                      {jsxFormat(
+                          strings.HROnboarding.inOperatorDescription,
+                          <strong>{strings.HROnboarding.IN}</strong>,
+                          <br />
+                        )}
+                    </p>
+                    <br />
+                    <p style={{ margin: 0 }}>
+                    {jsxFormat(
+                          strings.HROnboarding.notEqualToOperatorDescription,
+                          <strong>{strings.HROnboarding.notEqualTo}</strong>,
+                          <br />
+                        )}
+                    </p>
+                  </div>
+                </div>}
+                />
+            </span>
+          );
+        }
         else {
           return <span className={classNames.detailsListColumnHeader}>{column?.name}</span>;
         }
-  
       },
     };
-  
+
     return <DetailsHeader {...customProps} />;
   };
 

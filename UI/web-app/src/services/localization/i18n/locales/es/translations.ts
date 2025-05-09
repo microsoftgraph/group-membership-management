@@ -45,6 +45,9 @@ export const strings: IStrings = {
     orAndOperator: "Seleccione And/Or",
     attributeInfo: "Seleccione el atributo",
     equalityOperatorInfo: "Seleccione el operador de igualdad",
+    equalityOperatorInfoTitle: 'Cómo usar los operadores:',
+    inOperatorDescription: '{0} Operador — "¿Es uno de estos?" El operador {0} verifica si un valor coincide con alguno de los valores en una lista.{1}→ Ejemplo: Obtener usuarios que viven en Seattle, Portland o San Francisco. → Ciudad {0} (Seattle, Portland, San Francisco) devolverá todos los usuarios que viven en cualquiera de estas ciudades.',
+    notEqualToOperatorDescription: '{0} Operador — "¿Es diferente?"{1} El operador {0} significa "distinto de". Verifica si un valor es diferente de otro.{1} → Ejemplo: Obtener usuarios que no viven en Seattle. → Ciudad {0} Seattle devolverá todos los usuarios que no viven en Seattle.',
     attributeValueInfo: "Seleccione el operador de igualdad",
     orAndOperatorInfo: "Seleccione Y/O",
     missingAttributeErrorMessage: "Proporcione la información que falta en el atributo anterior",
@@ -68,6 +71,8 @@ export const strings: IStrings = {
     OR: "OR",
     any: "alguna",
     allLowercase: "todas",
+    IN: "IN",
+    notEqualTo: "<>"
   },
   Components: {
     AppHeader: {
