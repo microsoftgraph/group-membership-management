@@ -16,6 +16,7 @@ namespace Services
 {
     public class PostJobHandler : RequestHandlerBase<PostJobRequest, PostJobResponse>
     {
+        private const int DEFAULT_PERIOD = 24;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IDatabaseDestinationAttributesRepository _destinationAttributesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
@@ -178,7 +179,7 @@ namespace Services
                 Destination = syncJob.Destination,
                 Requestor = syncJob.Requestor,
                 StartDate = DateTime.Parse(syncJob.StartDate),
-                Period = syncJob.Period,
+                Period = syncJob.Period == DEFAULT_PERIOD ? syncJob.Period : DEFAULT_PERIOD,
                 Query = convertedQuery,
                 ThresholdPercentageForAdditions = syncJob.ThresholdPercentageForAdditions,
                 ThresholdPercentageForRemovals = syncJob.ThresholdPercentageForRemovals,

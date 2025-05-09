@@ -14,6 +14,7 @@ import {
     horizontalChoiceGroupContainer: IStyle;
     horizontalCheckboxes: IStyle;
     controlWidth: IStyle;
+    frequencyLabel: IStyle;
     checkboxDropdownPair: IStyle;
     checkboxPairsContainer: IStyle;
     thresholdDropdown: IStyle;

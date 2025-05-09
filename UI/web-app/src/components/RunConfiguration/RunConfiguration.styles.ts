@@ -38,6 +38,9 @@ import {
       controlWidth: {
         width: '30%',
       },
+      frequencyLabel: {
+        fontWeight: 'normal'
+      },
       horizontalCheckboxes: {
         display: 'flex',
         flexDirection: 'row',

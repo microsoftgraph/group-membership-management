@@ -399,7 +399,6 @@ export type IStrings = {
       requestedDate: string;
       selectRequestedStartDate: string;
       from: string;
-      selectFrequency: string;
       hrs: string;
       frequency: string;
       preventAutomaticSync: string;

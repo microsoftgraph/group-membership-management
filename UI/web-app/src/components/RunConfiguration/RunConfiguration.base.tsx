@@ -7,7 +7,8 @@ import {
   classNamesFunction,
   useTheme,
   ChoiceGroup, IChoiceGroupOption, DatePicker, Dropdown, Checkbox,
-  MessageBar, MessageBarType
+  MessageBar, MessageBarType,
+  Label
 } from '@fluentui/react';
 import {
   IRunConfigurationProps,
@@ -25,7 +26,6 @@ import {
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals,
   manageMembershipUseThresholdLimits,
-  setNewJobPeriod,
   setNewJobStartDate,
   setNewJobThresholdPercentageForAdditions,
   setNewJobThresholdPercentageForRemovals,
@@ -69,6 +69,7 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
 
   const defaultIncreaseThreshold: number = 100;
   const defaultDecreaseThreshold: number = 20;
+  const defaultPeriod: number = 24;
 
   const startDateOptions: IChoiceGroupOption[] = [
     { key: 'ASAP', text: strings.ManageMembership.labels.ASAP },
@@ -79,17 +80,6 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
     { key: 'Yes', text: strings.yes },
     { key: 'No', text: strings.no },
   ];
-
-  const predefinedFrequencyOptions  = [
-    { key: '12', text: `12 ${strings.ManageMembership.labels.hrs}` },
-    { key: '24', text: `24 ${strings.ManageMembership.labels.hrs}` },
-    { key: '36', text: `36 ${strings.ManageMembership.labels.hrs}` }
-  ];
-
-  const frequencyOptions = [...predefinedFrequencyOptions];
-  if (!predefinedFrequencyOptions.some(option => option.key === period.toString())) {
-    frequencyOptions.push({ key: period.toString(), text: `${period} ${strings.ManageMembership.labels.hrs}` });
-  }
 
   const increaseOptions = Array.from({ length: 10 }, (_, i) => ({ key: `${(i + 1) * 10}`, text: `${(i + 1) * 10}%` }));
   const decreaseOptions = Array.from({ length: 11 }, (_, i) => ({ key: `${i * 5}`, text: `${i * 5}%` }));
@@ -127,20 +117,10 @@ export const RunConfigurationBase: React.FunctionComponent<IRunConfigurationProp
         />
       )}
       <div>
-        {strings.ManageMembership.labels.selectFrequency}
-        <Dropdown
-          styles={{ title: classNames.dropdownTitle }}
-          className={classNames.controlWidth}
-          label={strings.ManageMembership.labels.frequency}
-          options={frequencyOptions}
-          defaultSelectedKey={period ? period.toString() : predefinedFrequencyOptions[0].key}
-          onChange={(event, option) => {
-            if (option) {
-              dispatch(setNewJobPeriod(Number(option.key)));
-            }
-          }}
-          disabled={!isJobWriter}
-        />
+        <Label>{strings.ManageMembership.labels.frequency}</Label>
+        <Label styles={{ root: classNames.frequencyLabel }}>
+          {period ? `${period} ${strings.ManageMembership.labels.hrs}` : `${defaultPeriod} ${strings.ManageMembership.labels.hrs}`}
+        </Label>
       </div>
       <div>
         <InfoLabel

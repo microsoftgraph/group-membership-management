@@ -132,9 +132,6 @@ const manageMembershipSlice = createSlice({
         setNewJobStartDate: (state, action: PayloadAction<string>) => {
             state.newJob.startDate = action.payload;
         },
-        setNewJobPeriod: (state, action: PayloadAction<number>) => {
-            state.newJob.period = action.payload;
-        },
         setNewJobThresholdPercentageForAdditions: (state, action: PayloadAction<number>) => {
             state.newJob.thresholdPercentageForAdditions = action.payload;
         },
@@ -399,7 +396,6 @@ export const {
     setIsAdvancedQueryValid,
     setSelectedDestination,
     setNewJobStartDate,
-    setNewJobPeriod,
     setNewJobThresholdPercentageForAdditions,
     setNewJobThresholdPercentageForRemovals,
     setAdvancedViewQuery,
