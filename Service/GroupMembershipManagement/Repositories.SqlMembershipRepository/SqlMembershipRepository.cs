@@ -420,7 +420,7 @@ namespace Repositories.SqlMembershipRepository
 
             try
             {
-                var selectQuery = $"SELECT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
+                var selectQuery = $"SELECT DISTINCT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
 
                 await retryPolicy.ExecuteAsync(async () =>
                 {
