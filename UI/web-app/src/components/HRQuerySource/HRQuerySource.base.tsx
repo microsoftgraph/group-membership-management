@@ -260,6 +260,7 @@ const getOptions = (
     })) || [];
     const selectedOptions = valueOptions.filter(option => selectedKeys?.includes(option.key));
     const unselectedOptions = valueOptions.filter(option => !selectedKeys?.includes(option.key));
+    selectedOptions.sort((a, b) => a.text.localeCompare(b.text));
     unselectedOptions.sort((a, b) => a.text.localeCompare(b.text));
     return [...selectedOptions, ...unselectedOptions];
   };
