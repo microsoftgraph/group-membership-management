@@ -12,6 +12,7 @@ import { PatchJobRequest } from '../models/PatchJobRequest';
 import { processJob } from '../utils/jobUtils';
 import { GetJobChangesRequest } from '../models/GetJobChangesRequest';
 import { GetChannelRequest } from '../models/GetChannelRequest';
+import { SyncJobChangeReason } from '../models/SyncJobChangeReason';
 
 export const fetchJobDetails = createAsyncThunk<
   Job,
@@ -116,11 +117,26 @@ export const patchJobDetails = createAsyncThunk<
     body: JSON.stringify(request.patchOperation),
   };
 
+  let patchJobDetailsApiUrl: string;
+
+  switch (request.changeReason) {
+    case SyncJobChangeReason.SubmissionApproved:
+    case SyncJobChangeReason.SubmissionRejected:
+      patchJobDetailsApiUrl = `${config.patchReviewJob(request.syncJobId)}`;
+      break;
+    case SyncJobChangeReason.StatusUpdate:
+      patchJobDetailsApiUrl = `${config.patchEnableJob(request.syncJobId)}`;
+      break;
+    case SyncJobChangeReason.Update:
+      patchJobDetailsApiUrl = `${config.patchUpdateJob(request.syncJobId)}`;
+      break;
+    default:
+      throw new Error('Invalid change reason');
+  }
+
   try {
     const response = await fetch(
-      `${config.patchJobDetails}/${encodeURIComponent(
-        request.syncJobId
-      )}`,
+      patchJobDetailsApiUrl,
       options
     ).then(async (response) => {
       if (response.ok) {
