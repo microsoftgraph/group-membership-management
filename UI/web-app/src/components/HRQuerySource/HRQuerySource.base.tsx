@@ -1420,6 +1420,20 @@ const getOptions = (
     return <DetailsHeader {...customProps} />;
   };
 
+  function getValidOperatorsForType(dataType?: string): IDropdownOption[] {
+    const validOperatorsMap: Record<string, string[]> = {
+      bit: ['=', '<>'],
+      datetime2: ['=', '<>', '<', '<=', '>', '>=', 'IN'],
+      float: ['=', '<>', '<', '<=', '>', '>=', 'IN'],
+      int: ['=', '<>', '<', '<=', '>', '>=', 'IN'],
+      nvarchar: ['=', '<>', '<', '<=', '>', '>=', 'IN']
+    };
+
+    const validKeys = dataType ? validOperatorsMap[dataType.toLowerCase()] : undefined;
+    const keysToUse = validKeys ?? equalityOperatorOptions.map(option => option.key as string);
+    return equalityOperatorOptions.filter(option => keysToUse.includes(option.key as string));
+  }
+
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number, childIndex?: number): JSX.Element => {
     if (typeof index !== 'undefined' && items[index]) {
       const currentAttributeKey = items[index].attribute;
@@ -1484,7 +1498,7 @@ const getOptions = (
           return <Dropdown
           selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
           onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
-          options={equalityOperatorOptions}
+          options={getValidOperatorsForType(attribute?.type)}
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
           disabled={isAttributeDisabled || !isJobWriter || !isEditable}
           title={strings.HROnboarding.equalityOperator}
