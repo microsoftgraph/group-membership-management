@@ -1037,7 +1037,7 @@ function Set-GMMAppRegistrations {
         -CertificateName $TeamsChannelCertificateName `
         -Clean $false
 
-    $null = Set-AzContext -Tenant $mainTenantId
+    $null = Set-AzContext -Tenant $mainTenantId -Subscription $subscriptionName
 
     return @{
         UIApplicationId            = $uiInformation.ApplicationId;
