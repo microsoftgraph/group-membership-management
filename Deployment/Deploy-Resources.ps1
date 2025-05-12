@@ -416,6 +416,7 @@ function Set-GMMResources {
     $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
     $secondaryTenantId = [string]::IsNullOrEmpty($parameterObject.parameters["secondaryTenantId"].value) ? $null : $parameterObject.parameters["secondaryTenantId"].value
     $createAppRegistrations = $parameterObject.parameters["createAppRegistrations"].value ?? $true;
+    $applyDBMigrations = $parameterObject.parameters["applyDBMigrations"].value ?? $true;
 
     $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     
@@ -540,6 +541,7 @@ function Set-GMMResources {
         CreateAppRegistrations = $createAppRegistrations
         AppRegistrations = $appRegistrations
         SecondaryTenantId = $secondaryTenantId
+        ApplyDBMigrations = $applyDBMigrations
         TenantDomain = $tenantDomain
         SharepointDomain = $sharepointDomain
     }
@@ -1394,9 +1396,11 @@ function Deploy-Resources {
         -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
     }
     
-    Set-DBMigrations `
-        -ConnectionString $connectionString `
-        -ScriptsDirectory "$scriptsDirectory\function_packages"
+    if ($true -eq $response.ApplyDBMigrations) {
+        Set-DBMigrations `
+            -ConnectionString $connectionString `
+            -ScriptsDirectory "$scriptsDirectory\function_packages"
+    }
 
     Set-FunctionAppCode `
         -ComputeResourceGroup $computeResourceGroup `
