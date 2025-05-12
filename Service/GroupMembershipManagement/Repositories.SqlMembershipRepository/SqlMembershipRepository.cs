@@ -3,6 +3,8 @@
 using Azure.Core.Pipeline;
 using Azure.Identity;
 using Microsoft.Data.SqlClient;
+using Microsoft.Graph.Models;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
@@ -511,16 +513,28 @@ namespace Repositories.SqlMembershipRepository
             {
                 try
                 {
-                    var selectQuery = $@"SET NOEXEC ON; SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
+                    var whereStatement = $@"SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
 
-                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    var (isValid, errorMessage) = IsValidWhereClause(whereStatement);
+
+                    if (!isValid)
                     {
-                        await conn.OpenAsync();
+                        exceptionsList.TryAdd(sqlFilter.Key, errorMessage);
+                        return;
+                    }
+                    else
+                    {
+                        var validSelectQuery = $@"SET NOEXEC ON; {whereStatement}";
 
-                        var cmd = new SqlCommand(selectQuery, conn);
-                        await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
+                        using (var conn = new SqlConnection(_sqlServerConnectionString))
+                        {
+                            await conn.OpenAsync();
 
-                        await conn.CloseAsync();
+                            var cmd = new SqlCommand(validSelectQuery, conn);
+                            await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.CloseConnection);
+
+                            await conn.CloseAsync();
+                        }
                     }
                 }
                 catch (SqlException ex)
@@ -540,6 +554,33 @@ namespace Repositories.SqlMembershipRepository
             await Task.WhenAll(tasks);
 
             return exceptionsList.ToDictionary();
+        }
+
+        private (bool, string) IsValidWhereClause(string whereStatement)
+        {
+            var parser = new TSql150Parser(false);
+            using var reader = new StringReader(whereStatement);
+            var fragment = parser.Parse(reader, out IList<ParseError> errors);
+
+            if (errors.Count > 0)
+            {
+                return (false, errors[0].Message.ToString());
+            }
+            else
+            {
+                // Count the number of T-SQL statements, there should only be 1, the SELECT .. WHERE clause we set
+                if (fragment is TSqlScript script && script.Batches != null)
+                {
+                    int statementCount = script.Batches
+                    .SelectMany(batch => batch.Statements)
+                    .Count();
+
+                    if (statementCount > 1)
+                        return (false, "Multiple SQL statements are not allowed.");
+                }
+
+                return (true, string.Empty);
+            }
         }
 
         private AsyncRetryPolicy GetRetryPolicyAsync()
