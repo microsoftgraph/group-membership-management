@@ -320,6 +320,12 @@
         "description": "Flag to set RBAC permissions for the service principals."
       }
     },
+    "createAppRegistrations": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to create and set up the App Registrations leveraged by GMM."
+      }
+    },
     "availableMessageSplitterSubscriptions": {
       "value": [
         {

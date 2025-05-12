@@ -415,7 +415,8 @@ function Set-GMMResources {
     $tenantDomain = $parameterObject.parameters["tenantDomain"].value ?? "not-set";
     $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
     $secondaryTenantId = [string]::IsNullOrEmpty($parameterObject.parameters["secondaryTenantId"].value) ? $null : $parameterObject.parameters["secondaryTenantId"].value
-    
+    $createAppRegistrations = $parameterObject.parameters["createAppRegistrations"].value ?? $true;
+
     $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     
     # deploy resource groups
@@ -453,25 +454,27 @@ function Set-GMMResources {
         -Region $Location
 
     # creating app registrations
-    Write-Host "`nCreating app registrations"
-    $appRegistrations = `
-        Set-GMMAppRegistrations `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -ScriptsDirectory "$scriptsDirectory\Scripts" `
-        -SecondaryTenantId $secondaryTenantId `
-        -GraphAppCertificateName $graphAppCertificateName `
-        -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
-        -TenantDomain $tenantDomain `
-        -SharepointDomain $sharepointDomain
-
-    # add app registrations to common parameters
-    $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
-    $commonParametersObject.parameters["uiAppTenantId"] = @{ "value" = $appRegistrations.UITenantId }
-    $commonParametersObject.parameters["uiAppClientId"] = @{ "value" = $appRegistrations.UIApplicationId }
-
-    Start-Sleep -Seconds 10
-
+    if ($createAppRegistrations -eq $true) {
+        Write-Host "`nCreating app registrations"
+        $appRegistrations = `
+            Set-GMMAppRegistrations `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -ScriptsDirectory "$scriptsDirectory\Scripts" `
+            -SecondaryTenantId $secondaryTenantId `
+            -GraphAppCertificateName $graphAppCertificateName `
+            -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
+            -TenantDomain $tenantDomain `
+            -SharepointDomain $sharepointDomain
+    
+        # add app registrations to common parameters
+        $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
+        $commonParametersObject.parameters["uiAppTenantId"] = @{ "value" = $appRegistrations.UITenantId }
+        $commonParametersObject.parameters["uiAppClientId"] = @{ "value" = $appRegistrations.UIApplicationId }
+    
+        Start-Sleep -Seconds 10
+    }
+   
     # deploy data resources
     Retry-Operation `
         -Operation ${function:Set-DataResources} `
@@ -534,7 +537,9 @@ function Set-GMMResources {
     Write-Host "`nResources deployed"
 
     return @{
+        CreateAppRegistrations = $createAppRegistrations
         AppRegistrations = $appRegistrations
+        SecondaryTenantId = $secondaryTenantId
         TenantDomain = $tenantDomain
         SharepointDomain = $sharepointDomain
     }
@@ -1059,9 +1064,14 @@ function Set-ConfigureWebApps {
         [string]$UIWebAppName,
         [Parameter(Mandatory = $true)]
         [string]$UIAppRegistrationId,
+        [Parameter(Mandatory = $False)]
+        [System.Nullable[Guid]] $DevTenantId,
         [Parameter(Mandatory = $true)]
         [string]$ComputeResourceGroup
     )
+
+    $currentContext = Get-AzContext
+    $mainTenantId = $currentContext.Tenant.Id
 
     # Set CORS for web apps
     $allowedOrigins = @()
@@ -1126,8 +1136,13 @@ function Set-ConfigureWebApps {
     }
 
     # Set UI Redirect URIs
+	if(-not [string]::IsNullOrWhiteSpace($DevTenantId) -and $mainTenantId -ne $DevTenantId) {
+        Write-Host "Please sign in to your dev tenant."
+		Connect-AzAccount -Tenant $DevTenantId
+	}
+
     $uiApp = Get-AzADApplication -ApplicationId $UIAppRegistrationId
-    $currentRedirectUris = $uiApp.Spa.RedirectUri
+    $currentRedirectUris = $uiApp.Spa.RedirectUri ??  @()
     $newRedirectUris = @()
 
     foreach ($origin in $allowedOrigins) {
@@ -1137,7 +1152,6 @@ function Set-ConfigureWebApps {
     }
 
     if ($newRedirectUris.Count -gt 0) {
-
         # preserve the existing redirect URIs
         $currentRedirectUris | ForEach-Object {
             $newRedirectUris += $_
@@ -1147,15 +1161,20 @@ function Set-ConfigureWebApps {
             -ObjectId $uiApp.Id `
             -SPARedirectUri $newRedirectUris
     }
+
+    if(-not [string]::IsNullOrWhiteSpace($DevTenantId) -and $mainTenantId -ne $DevTenantId) {
+        Write-Host "Please sign in to your main tenant."
+		Connect-AzAccount -Tenant $mainTenantId
+	}
 }
 
 function Set-PublishUICode {
     param (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string]$UIClientId,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string]$UITenantId,
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string]$WebApiClientId,
         [Parameter(Mandatory = $true)]
         [string]$WebApiBaseUri,
@@ -1179,6 +1198,28 @@ function Set-PublishUICode {
         [string]$SubscriptionId
     )
 
+
+    if ([string]::IsNullOrWhiteSpace($UIClientId)) {
+        $UIClientId = Get-AzKeyVaultSecret `
+                        -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+                        -Name "uiAppId" `
+                        -AsPlainText
+    } 
+
+    if ([string]::IsNullOrWhiteSpace($UITenantId)) {
+        $UITenantId = Get-AzKeyVaultSecret `
+                        -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+                        -Name "uiTenantId" `
+                        -AsPlainText
+    } 
+
+    if ([string]::IsNullOrWhiteSpace($WebApiClientId)) {
+        $WebApiClientId = Get-AzKeyVaultSecret `
+                            -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+                            -Name "webApiClientId" `
+                            -AsPlainText
+    } 
+    
     $appInsights = Get-AzApplicationInsights -ResourceGroupName $DataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $appInsightsConnectionString = $appInsights.ConnectionString
 
@@ -1358,11 +1399,14 @@ function Deploy-Resources {
         -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
 
     # Configure web apps
-    Set-ConfigureWebApps `
-        -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
-        -UIWebAppName "$SolutionAbbreviation-ui" `
-        -UIAppRegistrationId $response.AppRegistrations.UIApplicationId `
-        -ComputeResourceGroup $computeResourceGroup
+    if ($true -eq $response.CreateAppRegistrations) {
+        Set-ConfigureWebApps `
+            -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
+            -UIWebAppName "$SolutionAbbreviation-ui" `
+            -DevTenantId $response.SecondaryTenantId `
+            -UIAppRegistrationId $response.AppRegistrations.UIApplicationId `
+            -ComputeResourceGroup $computeResourceGroup
+    }
 
     # Publish UI code
     Set-PublishUICode `
