@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -22,7 +22,7 @@ import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeI
 import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeMappings } from '../../store/sqlMembershipSources.api';
-import { selectAttributes, selectSource, selectAttributeMappings, setAttributeMappings } from '../../store/sqlMembershipSources.slice';
+import { selectAttributes, selectSource, selectAttributeMappings, setAttributeMappings, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
 import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
@@ -73,6 +73,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
   const attributeMappings = useSelector(selectAttributeMappings);
+  const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
   const hrSource = useSelector(selectSource);
   const [childIndexForAttribute, setChildIndexForAttribute] = useState<number>(-1);
   const [groupIndexForAttribute, setGroupIndexForAttribute] = useState<number>(-1);
@@ -1520,7 +1521,10 @@ const getOptions = (
             );
           }
           else {
-            if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
+            if(areAttributeMappingsLoading && attribute?.hasMapping && (!attributeMappings[items[index].attribute] || attributeMappings[items[index].attribute].mappings.length == 0)) {
+              return <Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />
+            }
+            else if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
               return <VirtualizedComboBox
               selectedKey={item.equalityOperator === 'IN' ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={attributeValueOptions}

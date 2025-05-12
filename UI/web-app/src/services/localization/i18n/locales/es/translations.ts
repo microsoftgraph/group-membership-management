@@ -72,7 +72,8 @@ export const strings: IStrings = {
     any: "alguna",
     allLowercase: "todas",
     IN: "IN",
-    notEqualTo: "<>"
+    notEqualTo: "<>",
+    loadingText: "Cargando...",
   },
   Components: {
     AppHeader: {

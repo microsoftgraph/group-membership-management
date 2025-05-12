@@ -72,6 +72,7 @@ export const strings: IStrings = {
     allLowercase: "all",
     IN: "IN",
     notEqualTo: "<>",
+    loadingText: "Loading...",
   },
   Components: {
     AppHeader: {

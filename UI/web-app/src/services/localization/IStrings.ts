@@ -69,6 +69,7 @@ export type IStrings = {
     allLowercase: string;
     IN: string;
     notEqualTo: string;
+    loadingText: string;
   },
   Components: {
     AppHeader: {
