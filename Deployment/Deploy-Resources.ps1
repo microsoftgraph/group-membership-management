@@ -1248,9 +1248,14 @@ function Set-PublishUICode {
     $currentLocation = Get-Location
 
     Set-Location -Path $WebAppDirectory
-    swa login --tenant-id $MainTenantId --subscription-id $SubscriptionId
+
+    # Get the web app deployment token
+    $webAppName = "$SolutionAbbreviation-ui"
+    $webAppSecrets = (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $ComputeResourceGroup).Property | ConvertFrom-Json
+    $webAppDeploymentToken = $webAppSecrets.apiKey
+
     swa build
-    swa deploy "build" --env "Production" -n "$SolutionAbbreviation-ui" -R $ComputeResourceGroup
+    swa deploy "build" --env "Production" -n $webAppName -R $ComputeResourceGroup --deployment-token $webAppDeploymentToken
 
     Set-Location -Path $currentLocation
 }
