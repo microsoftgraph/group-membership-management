@@ -3,7 +3,7 @@
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
-import { OnboardingStatus } from '../models/GroupOnboardingStatus';
+import { GroupOnboardingStatus } from '../models/GroupOnboardingStatus';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
 import { Destination, DestinationPickerPersona } from '../models';
@@ -84,7 +84,7 @@ export const searchChannels = createAsyncThunk<DestinationPickerPersona[], Searc
   }
 );
 
-export const getGroupOnboardingStatus = createAsyncThunk<OnboardingStatus, string, ThunkConfig>(
+export const getGroupOnboardingStatus = createAsyncThunk<GroupOnboardingStatus, string, ThunkConfig>(
   'groups/getGroupOnboardingStatus',
   async (groupId: string, { extra }) => {
     const { authenticationService } = extra.services;
@@ -103,7 +103,7 @@ export const getGroupOnboardingStatus = createAsyncThunk<OnboardingStatus, strin
       if (!response.ok) {
         throw new Error('Failed to fetch group onboarding status!');
       }
-      const data: OnboardingStatus = await response.json();
+      const data: GroupOnboardingStatus = await response.json();
       return data;
     } catch (error) {
       throw new Error('Failed to fetch group onboarding status!');
@@ -111,7 +111,7 @@ export const getGroupOnboardingStatus = createAsyncThunk<OnboardingStatus, strin
   }
 );
 
-export const getChannelOnboardingStatus = createAsyncThunk<OnboardingStatus, ChannelOnboardingStatusRequest, ThunkConfig>(
+export const getChannelOnboardingStatus = createAsyncThunk<GroupOnboardingStatus, ChannelOnboardingStatusRequest, ThunkConfig>(
   'groups/getChannelOnboardingStatus',
   async (channelOnboardingStatusRequest: ChannelOnboardingStatusRequest, { extra }) => {
     const { authenticationService } = extra.services;
@@ -130,7 +130,7 @@ export const getChannelOnboardingStatus = createAsyncThunk<OnboardingStatus, Cha
       if (!response.ok) {
         throw new Error('Failed to fetch channel onboarding status!');
       }
-      const data: OnboardingStatus = await response.json();
+      const data: GroupOnboardingStatus = await response.json();
       return data;
     } catch (error) {
       throw new Error('Failed to fetch channel onboarding status!');

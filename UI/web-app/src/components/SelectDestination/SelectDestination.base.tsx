@@ -16,6 +16,8 @@ import {
   Text,
   ChoiceGroup,
   IChoiceGroupOption,
+  IIconProps,
+  IconButton,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -25,13 +27,13 @@ import {
 import { useStrings } from '../../store/hooks';
 import { PageSection } from '../PageSection';
 import { AppDispatch } from '../../store';
-import { searchChannels, searchDestinations } from '../../store/manageMembership.api';
+import { searchChannels, searchDestinations, getGroupOnboardingStatus, getChannelOnboardingStatus } from '../../store/manageMembership.api';
 import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipSearchResults,
   manageMembershipChannelPickerSearchResults,
   manageMembershipLoadingSearchResults,
-  manageMembershipGroupOnboardingStatus
+  manageMembershipGroupOnboardingStatus,
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
 import { SearchChannelRequest } from '../../models/SearchChannelRequest';
@@ -44,6 +46,8 @@ import { selectIsJobTenantWriter } from '../../store/roles.slice';
 import { SourcePartType } from '../../models/SourcePartType';
 import { DestinationType } from '../../models/DestinationType';
 import { GroupSetting } from '../GroupSetting/GroupSetting';
+import { jsxFormat } from '../../utils/stringUtils';
+import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 
 const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDestinationStyles>();
 
@@ -187,30 +191,50 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`;
 
+  const refreshIcon: IIconProps = { iconName: 'Refresh' };
+  const checkOwnership = (
+  item?: any,
+  index?: number,
+  ev?: React.FocusEvent<HTMLElement>
+  ): void => {
+     if(selectedDestination?.id && selectedDestination?.type === DestinationType.GroupMembership){
+      dispatch(getGroupOnboardingStatus(selectedDestination?.id));
+     }
+     else if(selectedDestination?.id && selectedDestination?.type === DestinationType.TeamsChannelMembership){
+      const channelOnboardingStatusRequest: ChannelOnboardingStatusRequest = {
+              teamId: selectedDestination.id!,
+              channelId: selectedDestination.channelId!,
+            };
+      dispatch(getChannelOnboardingStatus(channelOnboardingStatusRequest));
+     }
+  };
+
   const appIdNotOwnerWarning =
-    onboardingStatus === OnboardingStatus.GmmNotOwner ? (
+    onboardingStatus?.status === OnboardingStatus.GmmNotOwner ? (
       <div className={classNames.ownershipWarning}>
-        {selectedDestination?.type === DestinationType.TeamsChannelMembership ? strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning : strings.ManageMembership.labels.appIdNotOwnerWarning}{' '}
-        {selectedDestination?.type === DestinationType.GroupMembership && 
-          <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
-            {strings.ManageMembership.labels.clickHere}
-          </a>
-        }
+        {selectedDestination?.type === DestinationType.TeamsChannelMembership
+          ? strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning
+          : jsxFormat(strings.ManageMembership.labels.appIdNotOwnerWarning,
+                     selectedDestination?.type === DestinationType.GroupMembership && <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{strings.ManageMembership.labels.clickHere}</a>,
+                     onboardingStatus?.additionalDetails?.["owner"],
+                     <IconButton title={strings.refresh} iconProps={refreshIcon} onClick={checkOwnership} />,
+                     <br />,
+                     )}{' '}
       </div>
     ) : null;
 
   const userNotOwnerWarning =
-    onboardingStatus === OnboardingStatus.UserNotOwner ? (
+    onboardingStatus?.status === OnboardingStatus.UserNotOwner ? (
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.userNotOwnerWarning}</div>
     ) : null;
 
   const alreadyOnboardedWarning =
-    onboardingStatus === OnboardingStatus.Onboarded ? (
+    onboardingStatus?.status === OnboardingStatus.Onboarded ? (
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.alreadyOnboardedWarning}</div>
     ) : null;
 
   const teamsNotSupportedWarning =
-    onboardingStatus == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === DestinationType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
+    onboardingStatus?.status == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === DestinationType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.teamsNotSupportedWarning}</div>
     ) : null;
 

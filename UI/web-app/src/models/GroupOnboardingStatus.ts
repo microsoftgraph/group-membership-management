@@ -3,6 +3,7 @@
 
 export type GroupOnboardingStatus = {
     status: OnboardingStatus;
+    additionalDetails?: {[key: string]: string};
 };
 
 export enum OnboardingStatus {

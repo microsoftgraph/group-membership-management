@@ -12,7 +12,7 @@ import {
     searchDestinations,
     searchChannels
 } from './manageMembership.api';
-import { OnboardingStatus } from '../models/GroupOnboardingStatus';
+import { GroupOnboardingStatus, OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
 import { DestinationPickerPersona, Job } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
@@ -29,7 +29,7 @@ export interface ManageMembershipState {
     searchResults?: DestinationPickerPersona[];
     channelPickerSearchResults?: DestinationPickerPersona[];
     selectedDestination: Destination | undefined;
-    onboardingStatus: OnboardingStatus | null;
+    onboardingStatus: GroupOnboardingStatus | null;
     hasChanges: boolean;
     currentStep: number;
     isAdvancedQueryValid: boolean;
@@ -373,7 +373,7 @@ const manageMembershipSlice = createSlice({
                     name: state.createdGroupName,
                     type: DestinationType.GroupMembership,
                 };
-                state.onboardingStatus = OnboardingStatus.ReadyForOnboarding;
+                state.onboardingStatus = { status : OnboardingStatus.ReadyForOnboarding };
             }
             if (action.payload.responseData){
                 state.createGroupErrorMessage = action.payload.responseData;
@@ -448,7 +448,7 @@ export const manageMembershipCreatedGroupName = (state: RootState) => state.mana
 export const manageMembershipCreateGroupLoading = (state: RootState) => state.manageMembership.createGroupLoading;
 export const manageMembershipCreateGroupErrorMessage = (state: RootState) => state.manageMembership.createGroupErrorMessage;
 export const manageMembershipIsGroupReadyForOnboarding = (state: RootState): boolean => {
-    return state.manageMembership.onboardingStatus === OnboardingStatus.ReadyForOnboarding;
+    return state.manageMembership.onboardingStatus?.status === OnboardingStatus.ReadyForOnboarding;
 };
 export const manageMembershipGroupSettings = (state: RootState) => state.manageMembership.groupSettings;
 

@@ -6,6 +6,7 @@ import { IStrings } from '../../../IStrings';
 export const strings: IStrings = {
   emptyList: 'No hay grupos administrados por GMM',
   loading: 'Cargando',
+  refresh: 'Actualizar',
   addOwner204Message: 'Agregado correctamente.',
   addOwner400Message: 'GMM ya está agregado como propietario.',
   addOwner403Message: 'No tiene permiso para completar esta operación.',
@@ -393,7 +394,7 @@ export const strings: IStrings = {
       entraSecurityGroup: 'Este es un grupo de seguridad de Entra',
       outlookWarning: 'Hay configuraciones importantes que deben considerarse antes de enviar un correo electrónico a este grupo de Outlook. Por favor, siga las instrucciones proporcionadas por su organización.',
       teamsNotSupportedWarning: "Atención: Este grupo de Teams no es compatible con GMM. Por favor, seleccione un grupo diferente.",
-      appIdNotOwnerWarning: 'Atención: GMM no es dueño de este grupo Por favor agrégalo como propietrario antes de continuar.',
+      appIdNotOwnerWarning: 'Para que GMM pueda administrar la membresía de este grupo, debe ser propietario del grupo. Por favor, {0} para agregar a {1} como propietario. {3} Una vez agregado, regrese aquí y haga clic en {2} para continuar.',
       teamsServiceAccountNotOwnerWarning: 'Atención: GMM no es dueño de este canal de Teams. Por favor agrégalo como propietario antes de continuar.',
       userNotOwnerWarning: 'Atención: No eres dueño de este grupo. Solo los propietarios pueden administrar la membresía.',
       groupDescription: 'Los grupos pueden ser de Outlook / M365, Grupos de seguridad de Entra, Teams, comunidades de Viva Engage o sitios de SharePoint, etc.',

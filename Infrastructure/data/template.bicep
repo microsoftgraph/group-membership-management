@@ -654,13 +654,34 @@ module appInsightsTemplate 'applicationInsights.bicep' = {
   ]
 }
 
+var defaultAppConfigurationKeyData = [
+  {
+    key: 'GraphAPI:GraphAppName'
+    value: '${solutionAbbreviation}-Graph-${environmentAbbreviation}'
+    contentType: 'string'
+    tag: {
+      tag1: 'GraphAPI'
+    }
+    description: 'Name of the application registered in Azure AD for Graph API.'
+  }
+  {
+    key: 'GraphAPI:GraphUAMIName'
+    value: '${solutionAbbreviation}-identity-${environmentAbbreviation}-graph'
+    contentType: 'string'
+    tag: {
+      tag1: 'GraphAPI'
+    }
+    description: 'Name of the user assigned managed identity for Graph API.'
+  }
+]
+
 module appConfigurationTemplate 'appConfiguration.bicep' = {
   name: 'appConfigurationTemplate'
   params: {
     configStoreName: appConfigurationName
     appConfigurationSku: appConfigurationSku
     location: location
-    appConfigurationKeyData: appConfigurationKeyData
+    appConfigurationKeyData: union(appConfigurationKeyData, defaultAppConfigurationKeyData)
     featureFlags: appConfigurationfeatureFlags
   }
 }
