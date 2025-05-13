@@ -63,7 +63,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
   const isJobWriter = useSelector(selectIsJobWriter);
   const [isDragAndDropEnabled, setIsDragAndDropEnabled] = useState(false);
-  const [isDisabled, setIsDisabled] = useState(true);
+  const [isDisabled, setIsDisabled] = useState(false);
   const [includeOrg, setIncludeOrg] = useState(false);
   const [includeFilter, setIncludeFilter] = useState(false);
   const [orgErrorMessage, setOrgErrorMessage] = useState<string>('');
@@ -333,8 +333,8 @@ const getOptions = (
   }, [props.source.filter]);
 
   useEffect(() => {
-    setIsDisabled(!orgLeaderDetails.maxDepth);
-  }, [orgLeaderDetails.maxDepth]);
+    setIsDisabled(!objectIdEmployeeIdMapping);
+  }, [objectIdEmployeeIdMapping]);
 
   useEffect(() => {
     if (orgLeaderUpdated && orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
@@ -349,7 +349,7 @@ const getOptions = (
       setSource(newSource);
       onSourceChange(newSource, partId);
     }
-  }, [orgLeaderUpdated, orgLeaderDetails.employeeId, orgLeaderDetails.objectId]);
+  }, [objectIdEmployeeIdMapping]);
 
   useEffect(() => {
     if (source?.manager?.id) {
@@ -449,7 +449,7 @@ const getOptions = (
   const depthOptions: IDropdownOption[] = [
     { key: '0', text: strings.HROnboarding.all },
   ].concat(
-    Array.from({ length: orgLeaderDetails.maxDepth - 1 }, (_, i) => ({
+    Array.from({ length: objectIdEmployeeIdMapping[source.manager?.id || 0]?.maxDepth - 1 || 0 }, (_, i) => ({
       key: (i + 2).toString(), // Start keys from 2 to hide level 1 (leader only)
       text: `${i + 1} ${strings.HROnboarding.level}${i + 1 === 1 ? '' : `${strings.HROnboarding.levelsPlural}`} ${strings.HROnboarding.down}`,
     }))
@@ -1908,7 +1908,7 @@ const getOptions = (
               key={'normal'}
               resolveDelay={300}
               itemLimit={1}
-              selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled ? [
+              selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled && orgLeaderDataReturned && orgLeaderDetails.employeeId > 0? [
                 {
                   key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
                   text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
@@ -1938,7 +1938,7 @@ const getOptions = (
             </div>
             <Dropdown
               title={strings.HROnboarding.depth}
-              selectedKey={source.manager?.depth?.toString() ?? '0'}
+              selectedKey={source?.manager?.depth?.toString() ?? '0'}
               onChange={handleDepthChange}
               options={depthOptions}
               styles={{ root: classNames.root, title: classNames.dropdownTitle }}

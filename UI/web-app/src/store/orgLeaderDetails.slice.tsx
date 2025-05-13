@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { RootState } from './store';
 import { fetchOrgLeaderDetails } from './orgLeaderDetails.api';
 
-type ObjectIdEmployeeIdMapping = Record<number, { objectId: string; text: string }>;
+type ObjectIdEmployeeIdMapping = Record<number, { objectId: string; text: string; maxDepth: number; }>;
 
 // Define a type for the slice state
 export type orgLeaderDetails = {
@@ -42,7 +42,7 @@ export const orgLeaderDetailsSlice = createSlice({
     builder.addCase(fetchOrgLeaderDetails.fulfilled, (state, action) => {
       const updatedMapping = {
         ...state.mapping,
-        [action.payload.employeeId]: { objectId: action.payload.objectId, text: action.payload.text }
+        [action.payload.employeeId]: { objectId: action.payload.objectId, text: action.payload.text, maxDepth: action.payload.maxDepth },
       };
       return {
         maxDepth: action.payload.maxDepth,
