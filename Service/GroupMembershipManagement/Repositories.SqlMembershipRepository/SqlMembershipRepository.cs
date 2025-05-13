@@ -508,6 +508,7 @@ namespace Repositories.SqlMembershipRepository
         public async Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName)
         {
             var exceptionsList = new ConcurrentDictionary<int, string>();
+            var validColumnNames = await GetColumnNamesAsync(tableName);
 
             var tasks = sqlFilters.Select(async sqlFilter =>
             {
@@ -515,7 +516,7 @@ namespace Repositories.SqlMembershipRepository
                 {
                     var whereStatement = $@"SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
 
-                    var (isValid, errorMessage) = IsValidWhereClause(whereStatement);
+                    var (isValid, errorMessage) = IsValidWhereClause(whereStatement, validColumnNames);
 
                     if (!isValid)
                     {
@@ -556,7 +557,7 @@ namespace Repositories.SqlMembershipRepository
             return exceptionsList.ToDictionary();
         }
 
-        private (bool, string) IsValidWhereClause(string whereStatement)
+        private (bool, string) IsValidWhereClause(string whereStatement, List<string> validColumnNames)
         {
             var parser = new TSql150Parser(false);
             using var reader = new StringReader(whereStatement);
@@ -579,9 +580,37 @@ namespace Repositories.SqlMembershipRepository
                         return (false, "Multiple SQL statements are not allowed.");
                 }
 
+                // Collect column names
+                var columnCollector = new ColumnCollector();
+                fragment.Accept(columnCollector);
+
+                foreach (var column in columnCollector.ColumnNames)
+                {
+                    if (!validColumnNames.Contains(column, StringComparer.OrdinalIgnoreCase))
+                    {
+                        return (false, $"Invalid column name detected: {column}");
+                    }
+                }
+
                 return (true, string.Empty);
             }
         }
+
+        // Helper class to collect column names
+        public class ColumnCollector : TSqlFragmentVisitor
+        {
+            public HashSet<string> ColumnNames { get; } = new();
+
+            public override void Visit(ColumnReferenceExpression node)
+            {
+                if (node.MultiPartIdentifier != null)
+                {
+                    var column = node.MultiPartIdentifier.Identifiers.Last().Value;
+                    ColumnNames.Add(column);
+                }
+            }
+        }
+
 
         private AsyncRetryPolicy GetRetryPolicyAsync()
         {
