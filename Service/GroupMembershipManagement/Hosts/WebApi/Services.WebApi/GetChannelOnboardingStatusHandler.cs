@@ -18,6 +18,7 @@ namespace Services
         private readonly ITeamsChannelConfig _teamsChannelConfig;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly string _gmmAppId;
+        private readonly string _serviceAccount;
 
         public GetChannelOnboardingStatusHandler(ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository,
@@ -31,6 +32,7 @@ namespace Services
             _teamsChannelConfig = teamsChannelConfig ?? throw new ArgumentNullException(nameof(teamsChannelConfig));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _gmmAppId = graphCredentials.Value.GMMOwnerAppId;
+            _serviceAccount = graphCredentials.Value.ServiceAccountUserName;
         }
 
         protected override async Task<GetOnboardingStatusResponse> ExecuteCoreAsync(GetChannelOnboardingStatusRequest request)
@@ -55,6 +57,10 @@ namespace Services
             else if (!isServiceAccountOwner)
             {
                 response.Status = OnboardingStatus.GmmNotOwner;
+                response.AdditionalDetails = new Dictionary<string, string>
+                {
+                   { "owner", _serviceAccount}
+                };
             }
             else if (!isUserOwner)
             {

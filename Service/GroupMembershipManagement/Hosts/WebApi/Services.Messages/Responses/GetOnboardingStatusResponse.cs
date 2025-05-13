@@ -9,5 +9,6 @@ namespace Services.Messages.Responses
     public class GetOnboardingStatusResponse : ResponseBase
     {
         public OnboardingStatus Status { get; set; }
+        public Dictionary<string, string>? AdditionalDetails { get; set; }
     }
 }

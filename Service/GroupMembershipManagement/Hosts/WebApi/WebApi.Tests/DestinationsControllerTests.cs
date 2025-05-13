@@ -62,7 +62,11 @@ namespace Services.Tests
             _graphCredentials = new Mock<IOptions<GraphCredentials>>();
             var testGraphCredentials = new GraphCredentials
             {
-                ClientId = "00000003-0000-0000-c000-000000000000"
+                ClientId = "00000003-0000-0000-c000-000000000000",
+                AuthenticationType = AuthenticationType.ClientSecret,
+                AppRegistrationName = "<sol>-Graph-<env>",
+                UAMIName = "<sol>-identity-<env>-graph",
+                ServiceAccountUserName = "alias@domain.com"
             };
 
             _graphCredentials.Setup(gc => gc.Value).Returns(testGraphCredentials);
@@ -197,9 +201,9 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus.Status);
         }
 
         [TestMethod]
@@ -217,9 +221,9 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus.Status);
         }
 
         [TestMethod]
@@ -237,9 +241,12 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.GmmNotOwner, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.GmmNotOwner, onboardingStatus.Status);
+            Assert.IsNotNull(onboardingStatus.AdditionalDetails);
+            Assert.IsNotNull(onboardingStatus.AdditionalDetails["owner"]);
+            Assert.AreEqual(_graphCredentials.Object.Value.AppRegistrationName, onboardingStatus.AdditionalDetails["owner"]);
         }
 
         [TestMethod]
@@ -267,9 +274,9 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.UserNotOwner, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.UserNotOwner, onboardingStatus.Status);
         }
 
         [TestMethod]
@@ -329,9 +336,9 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.Onboarded, onboardingStatus.Status);
         }
 
         [TestMethod]
@@ -349,9 +356,9 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.ReadyForOnboarding, onboardingStatus.Status);
         }
 
         [TestMethod]
@@ -369,9 +376,12 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.GmmNotOwner, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.GmmNotOwner, onboardingStatus.Status);
+            Assert.IsNotNull(onboardingStatus.AdditionalDetails);
+            Assert.IsNotNull(onboardingStatus.AdditionalDetails["owner"]);
+            Assert.AreEqual(_graphCredentials.Object.Value.ServiceAccountUserName, onboardingStatus.AdditionalDetails["owner"]);
         }
 
         [TestMethod]
@@ -405,9 +415,9 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.IsNotNull(result?.Value);
 
-            var onboardingStatus = result.Value;
+            var onboardingStatus = result.Value as GetOnboardingStatusResponse;
             Assert.IsNotNull(onboardingStatus);
-            Assert.AreEqual(OnboardingStatus.UserNotOwner, onboardingStatus);
+            Assert.AreEqual(OnboardingStatus.UserNotOwner, onboardingStatus.Status);
         }
 
         [TestMethod]

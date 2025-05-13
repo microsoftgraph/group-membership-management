@@ -15,6 +15,7 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly string _gmmAppId;
+        private readonly string _gmmAppName;
 
         public GetGroupOnboardingStatusHandler(ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository,
@@ -24,6 +25,7 @@ namespace Services
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _gmmAppId = graphCredentials.Value.GMMOwnerAppId;
+            _gmmAppName = graphCredentials.Value.GMMOwnerAppName;
         }
 
         protected override async Task<GetOnboardingStatusResponse> ExecuteCoreAsync(GetGroupOnboardingStatusRequest request)
@@ -42,6 +44,10 @@ namespace Services
             else if (!isAppIdOwner)
             {
                 response.Status = OnboardingStatus.GmmNotOwner;
+                response.AdditionalDetails = new Dictionary<string, string>
+                {
+                    { "owner", _gmmAppName }
+                };
             }
             else if (!isUserOwner)
             {

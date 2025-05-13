@@ -85,7 +85,7 @@ namespace WebApi.Controllers.v1.Destination
                 }
 
                 var response = await _getGroupOnboardingStatusHandler.ExecuteAsync(new GetGroupOnboardingStatusRequest(groupId, userId, isJobTenantWriter));
-                return Ok(response.Status);
+                return Ok(response);
             }
             catch (Exception ex)
             {
@@ -111,7 +111,7 @@ namespace WebApi.Controllers.v1.Destination
                 }
 
                 var response = await _getChannelOnboardingStatusHandler.ExecuteAsync(new GetChannelOnboardingStatusRequest(teamId, channelId, userId, isJobTenantWriter));
-                return Ok(response.Status);
+                return Ok(response);
             }
             catch (Exception ex)
             {

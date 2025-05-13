@@ -260,7 +260,13 @@ namespace WebApi
 
             builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 
-            builder.Services.Configure<GraphCredentials>(builder.Configuration.GetSection("Settings:GraphCredentials"));
+            builder.Services.Configure<GraphCredentials>(options =>
+            {
+                builder.Configuration.GetSection("Settings:GraphCredentials").Bind(options);
+                options.AppRegistrationName = builder.Configuration["GraphAPI:GraphAppName"];
+                options.UAMIName = builder.Configuration["GraphAPI:GraphUAMIName"];
+            });
+
             builder.Services.AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>();
 
