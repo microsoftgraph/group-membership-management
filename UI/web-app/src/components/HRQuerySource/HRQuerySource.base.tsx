@@ -19,7 +19,7 @@ import { fetchOrgLeaderDetails, fetchOrgLeaderDetailsUsingId } from '../../store
 import { getSupportEmailAddress } from '../../store/settings.api';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { updateOrgLeaderDetails, selectOrgLeaderDetails, selectObjectIdEmployeeIdMapping } from '../../store/orgLeaderDetails.slice';
-import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
+import { selectPeoplePickerSuggestions, updateJobOwnerFilterSuggestions } from '../../store/jobs.slice';
 import { fetchDefaultSqlMembershipSourceAttributes } from '../../store/sqlMembershipSources.api';
 import { fetchAttributeMappings } from '../../store/sqlMembershipSources.api';
 import { selectAttributes, selectSource, selectAttributeMappings, setAttributeMappings, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
@@ -394,6 +394,7 @@ const getOptions = (
   const handleOrgLeaderInputChange = (input: string): string => {
     setIncludeOrg(true);
     setOrgErrorMessage('');
+    dispatch(updateJobOwnerFilterSuggestions());
     dispatch(getPeoplePickerSuggestions(input))
     return input;
   }

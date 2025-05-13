@@ -77,6 +77,9 @@ export const jobsSlice = createSlice({
     },
     clearJobsToDownload: (state) => {
       state.jobsToDownload = undefined;
+    },
+    updateJobOwnerFilterSuggestions: (state) => {
+      state.jobOwnerFilterSuggestions = [];
     }
   },
   extraReducers: (builder) => {
@@ -210,7 +213,7 @@ export const jobsSlice = createSlice({
 });
 
 
-export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload } =
+export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload, updateJobOwnerFilterSuggestions } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;
