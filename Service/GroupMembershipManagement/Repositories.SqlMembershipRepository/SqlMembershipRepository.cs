@@ -510,46 +510,18 @@ namespace Repositories.SqlMembershipRepository
             var exceptionsList = new ConcurrentDictionary<int, string>();
             var validColumnNames = await GetColumnNamesAsync(tableName);
 
-            var tasks = sqlFilters.Select(async sqlFilter =>
+            var tasks = sqlFilters.Select(sqlFilter =>
             {
-                try
+                var whereStatement = $@"SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
+
+                var (isValid, errorMessage) = IsValidWhereClause(whereStatement, validColumnNames);
+
+                if (!isValid)
                 {
-                    var whereStatement = $@"SELECT * FROM [users].[{tableName}] WHERE {sqlFilter.Value}";
-
-                    var (isValid, errorMessage) = IsValidWhereClause(whereStatement, validColumnNames);
-
-                    if (!isValid)
-                    {
-                        exceptionsList.TryAdd(sqlFilter.Key, errorMessage);
-                        return;
-                    }
-                    else
-                    {
-                        var validSelectQuery = $@"SET NOEXEC ON; {whereStatement}";
-
-                        using (var conn = new SqlConnection(_sqlServerConnectionString))
-                        {
-                            await conn.OpenAsync();
-
-                            var cmd = new SqlCommand(validSelectQuery, conn);
-                            await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.CloseConnection);
-
-                            await conn.CloseAsync();
-                        }
-                    }
-                }
-                catch (SqlException ex)
-                {
-                    var uniqueErrors = new HashSet<string>();
-
-                    foreach (SqlError error in ex.Errors)
-                    {
-                        uniqueErrors.Add(error.Message);
-                    }
-
-                    var errorMessage = string.Join(", ", uniqueErrors);
                     exceptionsList.TryAdd(sqlFilter.Key, errorMessage);
                 }
+
+                return Task.CompletedTask;
             });
 
             await Task.WhenAll(tasks);
