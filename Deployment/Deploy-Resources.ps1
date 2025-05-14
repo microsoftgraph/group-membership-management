@@ -435,7 +435,8 @@ function Set-GMMResources {
     $applyDBMigrations       = Get-Default -Value $parameters['applyDBMigrations'].value       -Default $true
     $skipAppRegistrationSetupIfAppExists = Get-Default -Value $parameters['skipAppRegistrationSetupIfAppExists'].value -Default $false
     $setRBACPermissionsBicep = Get-Default -Value $parameters['setRBACPermissionsBicep'].value -Default $false
-
+    $createResourceGroups = Get-Default -Value $parameters['createResourceGroups'].value -Default $false
+    
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
     $teamsChannelAppCertificateName = Get-DefaultString -Value $parameters['teamsChannelAppCertificateName'].value -Default 'not-set'
@@ -446,17 +447,19 @@ function Set-GMMResources {
     $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     
     # deploy resource groups
-    Write-Host "`nCreating resource groups"
-    $resourceGroupsParameters = `
-        Get-TemplateParameters `
-        -TemplateFilePath "$directoryPath\resourceGroups.json" `
-        -ParametersFilePath $ParameterFilePath `
-        -AdditionalParameters $commonParametersObject
+    if ($createResourceGroups -eq $true) {
+        Write-Host "`nCreating resource groups"
+        $resourceGroupsParameters = `
+            Get-TemplateParameters `
+            -TemplateFilePath "$directoryPath\resourceGroups.json" `
+            -ParametersFilePath $ParameterFilePath `
+            -AdditionalParameters $commonParametersObject
 
-    New-AzDeployment `
-        -TemplateFile "$directoryPath\resourceGroups.json" `
-        -TemplateParameterObject $resourceGroupsParameters `
-        -Location $Location
+        New-AzDeployment `
+            -TemplateFile "$directoryPath\resourceGroups.json" `
+            -TemplateParameterObject $resourceGroupsParameters `
+            -Location $Location
+    }
 
     # deploy prereq resources
     Retry-Operation `

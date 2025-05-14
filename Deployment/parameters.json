@@ -344,6 +344,12 @@
         "description": "Flag to skip the app registration setup (API permissions). Set it to true to speed up the deployment if your App Registrations are already up to date with the required API permissions."
       }
     },
+    "createResourceGroups": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to create resource groups. Set to true on initial deployment."
+      }
+    },
     "availableMessageSplitterSubscriptions": {
       "value": [
         {
