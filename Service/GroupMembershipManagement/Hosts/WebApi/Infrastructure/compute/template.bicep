@@ -202,6 +202,10 @@ var appSettings = [
     value: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountPassword, '2019-09-01').secretUriWithVersion})' : 'not-set'
   }
   {
+    name: 'Settings:TeamsGraphCredentials:AppName'
+    value: '${solutionAbbreviation}-TeamsChannel-${environmentAbbreviation}'
+  }
+  {
     name: 'Settings:ActionableEmailProviderId'
     value: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   }

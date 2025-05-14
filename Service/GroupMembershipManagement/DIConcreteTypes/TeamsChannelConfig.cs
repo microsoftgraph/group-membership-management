@@ -12,6 +12,7 @@ namespace DIConcreteTypes
         public Guid TeamsChannelServiceAccountObjectId { get; set; }
         public string TeamsChannelServiceAccountUsername { get; set; }
         public string TeamsChannelServiceAccountPassword { get; set; }
+        public string TeamsChannelAppRegistrationName { get; set; }
 
         public TeamsChannelConfig(bool gmmHasTeamsChannelApplicationPermissions)
         {
