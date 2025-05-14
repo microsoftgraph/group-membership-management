@@ -5,6 +5,7 @@ export type IStrings = {
   emptyList: string;
   loading: string;
   refresh: string;
+  continue: string;
   addOwner204Message: string;
   addOwner400Message: string;
   addOwner403Message: string;

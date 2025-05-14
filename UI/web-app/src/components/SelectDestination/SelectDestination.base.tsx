@@ -17,7 +17,8 @@ import {
   ChoiceGroup,
   IChoiceGroupOption,
   IIconProps,
-  IconButton,
+  DefaultButton,
+  IButtonStyles,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -192,6 +193,19 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const addGroupOwnerLink: string = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/${selectedDestination?.id}/menuId/`;
 
   const refreshIcon: IIconProps = { iconName: 'Refresh' };
+  const smallButtonStyles: IButtonStyles = {
+    root: {
+      border: 'none',
+      backgroundColor: 'transparent',
+      padding: '2px 4px',
+      height: 18,
+      fontSize: 12,
+    },
+   icon: {
+     fontSize: 12,
+    },
+  };
+
   const checkOwnership = (
   item?: any,
   index?: number,
@@ -213,11 +227,14 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     onboardingStatus?.status === OnboardingStatus.GmmNotOwner ? (
       <div className={classNames.ownershipWarning}>
         {selectedDestination?.type === DestinationType.TeamsChannelMembership
-          ? strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning
+          ? jsxFormat(strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning,
+                      onboardingStatus?.additionalDetails?.["owner"],
+                      <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={smallButtonStyles} onClick={checkOwnership} />,
+                      <br />,
+            )
           : jsxFormat(strings.ManageMembership.labels.appIdNotOwnerWarning,
-                     selectedDestination?.type === DestinationType.GroupMembership && <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{strings.ManageMembership.labels.clickHere}</a>,
-                     onboardingStatus?.additionalDetails?.["owner"],
-                     <IconButton title={strings.refresh} iconProps={refreshIcon} onClick={checkOwnership} />,
+                     selectedDestination?.type === DestinationType.GroupMembership && <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{onboardingStatus?.additionalDetails?.["owner"]}</a>,
+                     <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={smallButtonStyles} onClick={checkOwnership} />,
                      <br />,
                      )}{' '}
       </div>
