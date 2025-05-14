@@ -81,7 +81,7 @@ integrationTestPassword='<password>'
 To run tests locally: 
    - Ensure your `.env` file contains the necessary environment variables, including the Playwright test secrets (domain, email, and password) in the following format:
    ```
-   INTEGRATION_TEST_DOMAIN='<domain>' // i.e. 'domain.com'
+   INTEGRATION_TEST_DOMAIN=<domain> // i.e. 'domain.com' or http://localhost:3000 *
    INTEGRATION_TEST_EMAIL='<user>@<domain>' // i.e. 'user@domain.com'
    INTEGRATION_TEST_PASSWORD='<password>'
    ```
@@ -93,6 +93,7 @@ Run the tests:
      ```
    - This will run all the integration tests defined in your Playwright test suite.
 
+* Note: If you want to run tests against local changes, make sure you set the domain to `http://localhost:3000`, and add it to the UI app registration as redirect URI. If you are running tests for the first time, you will need to run it against a remotely deployed UI in order to get a valid `storageState.json` file.
 
 ### Accessibility Testing
 #### Installing Accessibility Insights for Web

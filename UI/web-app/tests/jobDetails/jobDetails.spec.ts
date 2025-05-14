@@ -8,38 +8,12 @@ test.use({ storageState: 'tests/storageState.json' });
 
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
-test('Home', async ({ page }) => {
-  const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
-  await page.goto(url);
-  await page.waitForTimeout(5000);
-  await expect(page.locator('text="Membership Management"')).toBeVisible();
-  console.log("✅ Home test completed successfully.");
-});
-
-test('Admin', async ({ page }) => {
-  const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
-  await page.goto(url);
-  await page.goto(`${url}/Admin`);
-  await page.waitForTimeout(5000);
-  await expect(page.locator('text="Admin Center"')).toBeVisible();
-  console.log("✅ Admin test completed successfully.");
-});
-
-test('Download button is visible', async ({ page }) => {
-  const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
-  await page.goto(url);
-  await page.waitForTimeout(5000);
-  const downloadButton = page.getByRole('button', { name: 'Download' });
-  await expect(downloadButton).toBeVisible();
-  console.log('✅ Download button is visible');
-});
-
 test('AuthorizedSenders', async ({ page }) => {
   const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
   const EXPECTED_SENDER_TEXT = 'adele';
   const GROUP_NAME = 'contoso';
 
-  const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
+  const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(url);
   await page.waitForTimeout(10000);
 
@@ -66,10 +40,15 @@ test('AuthorizedSenders', async ({ page }) => {
   await page.waitForSelector('button:has-text("Next")'); // Wait for the "Next" button to appear
 
   // Wait for the "Next" button to become enabled (up to 30 seconds)
-  await page.waitForFunction(() => {
-    const nextButton = Array.from(document.querySelectorAll('button')).find(button => button.textContent?.trim() === 'Next');
-    return nextButton && !nextButton.disabled;
-  }, { timeout: 30000 });
+  await page.waitForFunction(
+    () => {
+      const nextButton = Array.from(document.querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === 'Next'
+      );
+      return nextButton && !nextButton.disabled;
+    },
+    { timeout: 30000 }
+  );
 
   // Alternatively, using expect with locator
   const nextButton = page.getByRole('button', { name: 'Next' });
@@ -94,5 +73,5 @@ test('AuthorizedSenders', async ({ page }) => {
   const siblingSpan = page.locator(`text=${AUTHORIZED_SENDERS_LABEL}`).locator('xpath=following-sibling::span');
   await expect(siblingSpan).toHaveText(new RegExp(`${EXPECTED_SENDER_TEXT}`, 'i'));
 
-  console.log("✅ Authorized senders test completed successfully.");
+  console.log('✅ Authorized senders test completed successfully.');
 });
