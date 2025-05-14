@@ -388,6 +388,7 @@ export type IStrings = {
       outlookWarning: string;
       teamsNotSupportedWarning: string;
       appIdNotOwnerWarning: string;
+      addOwnerMessage: string;
       teamsServiceAccountNotOwnerWarning: string;
       userNotOwnerWarning: string;
       groupDescription: string;

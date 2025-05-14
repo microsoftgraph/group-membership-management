@@ -197,12 +197,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     root: {
       border: 'none',
       backgroundColor: 'transparent',
-      padding: '2px 4px',
-      height: 18,
-      fontSize: 12,
-    },
-   icon: {
-     fontSize: 12,
+      padding: '0px 0px',
     },
   };
 
@@ -228,12 +223,15 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       <div className={classNames.ownershipWarning}>
         {selectedDestination?.type === DestinationType.TeamsChannelMembership
           ? jsxFormat(strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning,
-                      onboardingStatus?.additionalDetails?.["owner"],
+                      jsxFormat(strings.ManageMembership.labels.addOwnerMessage, onboardingStatus?.additionalDetails?.["owner"]),
                       <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={smallButtonStyles} onClick={checkOwnership} />,
                       <br />,
             )
           : jsxFormat(strings.ManageMembership.labels.appIdNotOwnerWarning,
-                     selectedDestination?.type === DestinationType.GroupMembership && <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{onboardingStatus?.additionalDetails?.["owner"]}</a>,
+                     selectedDestination?.type === DestinationType.GroupMembership
+                      && <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
+                          {jsxFormat(strings.ManageMembership.labels.addOwnerMessage, onboardingStatus?.additionalDetails?.["owner"])}
+                        </a>,
                      <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={smallButtonStyles} onClick={checkOwnership} />,
                      <br />,
                      )}{' '}
