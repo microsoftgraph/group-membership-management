@@ -897,7 +897,14 @@ const getOptions = (
         words = segments[index].trim().split(' ');
       }
       if (words.length > 0) {
-          words[1] = item.text;
+        const prevOperator = words[1];
+        words[1] = item.text;
+        if (prevOperator === "IN" && item.text !== "IN") {
+          var result = findValueAndOr(words);
+          words.splice(2);
+          words.splice(2, 0, "");
+          if (result.andOr !== '') { words.push(result.andOr + ' '); }
+        }
       }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
