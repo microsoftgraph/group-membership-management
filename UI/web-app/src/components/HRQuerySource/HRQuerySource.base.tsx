@@ -714,7 +714,7 @@ const getOptions = (
       if (!source.manager?.id)
       {
         setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
-          orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + hrSource?.name + strings.HROnboarding.source :
+          orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + (hrSource?.customLabel || hrSource?.name) + strings.HROnboarding.source :
           orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
         return;
       }
@@ -730,6 +730,12 @@ const getOptions = (
         const regex = new RegExp(`(And|Or) ${excludeLeaderQuery}|${excludeLeaderQuery} (And|Or)|${excludeLeaderQuery}`, 'g');
         filter = props.source.filter?.replace(regex, '').trim();
       }
+
+      const childrenToRemoveIndex = children.findIndex(child => child.filter.includes(excludeLeaderQuery));
+      if (childrenToRemoveIndex !== -1) {
+        setChildren(prevChildren => prevChildren.filter((_, index) => index !== childrenToRemoveIndex));
+      }
+      removeComponent(childrenToRemoveIndex)
     }
     setSource(prevSource => {
       const newSource = { ...prevSource, filter };
