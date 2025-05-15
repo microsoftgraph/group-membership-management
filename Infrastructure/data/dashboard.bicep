@@ -56,7 +56,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 1
               y: 0
-              colSpan: 6
+              colSpan: 8
               rowSpan: 2
             }
             metadata: {
@@ -77,7 +77,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '2': {
             position: {
-              x: 7
+              x: 9
               y: 0
               colSpan: 3
               rowSpan: 2
@@ -198,10 +198,97 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '3': {
             position: {
-              x: 10
-              y: 0
+              x: 0
+              y: 1
+              colSpan: 1
+              rowSpan: 1
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'id'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_Azure_Storage/PartType/StorageBrowserPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Storage/storageAccounts/${jobsStorageAccountName}/storageexplorer'
+            }
+          }
+          '4': {
+            position: {
+              x: 0
+              y: 2
+              colSpan: 1
+              rowSpan: 1
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'demoMode'
+                  isOptional: true
+                }
+                {
+                  name: 'initiator'
+                  value: 'PinnedAzBladePart'
+                }
+                {
+                  name: 'scope'
+                  value: {
+                    resources: [
+                      {
+                        resourceId: '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
+                      }
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'cachedResourceType'
+                  isOptional: true
+                }
+                {
+                  name: 'workspaceResourceId'
+                  isOptional: true
+                }
+                {
+                  name: 'query'
+                  isOptional: true
+                }
+                {
+                  name: 'isQueryBase64Compressed'
+                  isOptional: true
+                }
+                {
+                  name: 'timespanInIsoFormat'
+                  isOptional: true
+                }
+                {
+                  name: 'isQueryEditorVisible'
+                  isOptional: true
+                }
+                {
+                  name: 'environment'
+                  isOptional: true
+                }
+                {
+                  name: 'telemetryInfo'
+                  isOptional: true
+                }
+                {
+                  name: 'tabTitle'
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/AnalyticsPart'
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.OperationalInsights/workspaces/${resourceGroup}/logs'
+            }
+          }
+          '5': {
+            position: {
+              x: 1
+              y: 2
               colSpan: 4
-              rowSpan: 2
+              rowSpan: 3
             }
             metadata: {
               inputs: [
@@ -320,12 +407,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '4': {
+          '6': {
             position: {
-              x: 14
-              y: 0
+              x: 5
+              y: 2
               colSpan: 3
-              rowSpan: 2
+              rowSpan: 3
             }
             metadata: {
               inputs: [
@@ -423,97 +510,129 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '5': {
+          '7': {
             position: {
-              x: 0
-              y: 1
-              colSpan: 1
-              rowSpan: 1
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'id'
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/Microsoft_Azure_Storage/PartType/StorageBrowserPart'
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Storage/storageAccounts/${jobsStorageAccountName}/storageexplorer'
-            }
-          }
-          '6': {
-            position: {
-              x: 0
+              x: 8
               y: 2
-              colSpan: 1
-              rowSpan: 1
+              colSpan: 4
+              rowSpan: 3
             }
             metadata: {
               inputs: [
                 {
-                  name: 'demoMode'
+                  name: 'resourceTypeMode'
                   isOptional: true
                 }
                 {
-                  name: 'initiator'
-                  value: 'PinnedAzBladePart'
+                  name: 'ComponentId'
+                  isOptional: true
                 }
                 {
-                  name: 'scope'
+                  name: 'Scope'
                   value: {
-                    resources: [
-                      {
-                        resourceId: '/subscriptions/${subscriptionId}/resourcegroups/${resourceGroup}/providers/microsoft.operationalinsights/workspaces/${resourceGroup}'
-                      }
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
                     ]
                   }
                   isOptional: true
                 }
                 {
-                  name: 'cachedResourceType'
+                  name: 'PartId'
+                  value: '31b3bb7c-aaa5-4dda-b4b5-5e50b11814e5'
                   isOptional: true
                 }
                 {
-                  name: 'workspaceResourceId'
+                  name: 'Version'
+                  value: '2.0'
                   isOptional: true
                 }
                 {
-                  name: 'query'
+                  name: 'TimeRange'
+                  value: 'P7D'
                   isOptional: true
                 }
                 {
-                  name: 'isQueryBase64Compressed'
+                  name: 'DashboardId'
                   isOptional: true
                 }
                 {
-                  name: 'timespanInIsoFormat'
+                  name: 'DraftRequestParameters'
                   isOptional: true
                 }
                 {
-                  name: 'isQueryEditorVisible'
+                  name: 'Query'
+                  value: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project\n    timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Lane = customDimensions["Identifier"]\n| where Result == "Success" and DryRun == false and Lane == "onboarding"\n| distinct Destination\n| summarize Count = count()\n'
                   isOptional: true
                 }
                 {
-                  name: 'environment'
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
                   isOptional: true
                 }
                 {
-                  name: 'telemetryInfo'
+                  name: 'SpecificChart'
                   isOptional: true
                 }
                 {
-                  name: 'tabTitle'
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
                   isOptional: true
                 }
               ]
-              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/AnalyticsPart'
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.OperationalInsights/workspaces/${resourceGroup}/logs'
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| project\n    timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"]),\n    Lane = tostring(customDimensions["Identifier"])\n| where Result == "Success" and DryRun == false and Lane in ("onboarding", "small", "medium", "large")\n| summarize SyncCount = dcount(Destination) by Lane\n| project\n    LaneSize = case(Lane == "onboarding", "Onboarding",\n                     Lane == "small", "Small",\n                     Lane == "medium", "Medium",\n                     Lane == "large", "Large",\n                     "Other"),\n    SyncCount\n| order by LaneSize\n\n'
+                  PartTitle: 'Sync Count By Laze Size'
+                }
+              }
             }
           }
-          '7': {
+          '8': {
+            position: {
+              x: 0
+              y: 3
+              colSpan: 1
+              rowSpan: 1
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'ResourceId'
+                  value: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                }
+              ]
+              type: 'Extension/AppInsightsExtension/PartType/CuratedBladeFailuresPinnedPart'
+              isAdapter: true
+              asset: {
+                idInputName: 'ResourceId'
+                type: 'ApplicationInsights'
+              }
+              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}/failures'
+            }
+          }
+          '9': {
             position: {
               x: 1
-              y: 2
+              y: 5
               colSpan: 6
               rowSpan: 4
             }
@@ -631,10 +750,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '8': {
+          '10': {
             position: {
               x: 7
-              y: 2
+              y: 5
               colSpan: 6
               rowSpan: 4
             }
@@ -752,10 +871,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '9': {
+          '11': {
             position: {
               x: 13
-              y: 2
+              y: 5
               colSpan: 4
               rowSpan: 2
             }
@@ -849,33 +968,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '10': {
-            position: {
-              x: 0
-              y: 3
-              colSpan: 1
-              rowSpan: 1
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'ResourceId'
-                  value: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                }
-              ]
-              type: 'Extension/AppInsightsExtension/PartType/CuratedBladeFailuresPinnedPart'
-              isAdapter: true
-              asset: {
-                idInputName: 'ResourceId'
-                type: 'ApplicationInsights'
-              }
-              deepLink: '#@microsoft.onmicrosoft.com/resource/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/Microsoft.Insights/components/${resourceGroup}/failures'
-            }
-          }
-          '11': {
+          '12': {
             position: {
               x: 13
-              y: 4
+              y: 7
               colSpan: 4
               rowSpan: 2
             }
@@ -969,10 +1065,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '12': {
+          '13': {
             position: {
               x: 1
-              y: 6
+              y: 9
               colSpan: 6
               rowSpan: 4
             }
@@ -1089,139 +1185,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '13': {
-            position: {
-              x: 7
-              y: 6
-              colSpan: 5
-              rowSpan: 4
-            }
-            metadata: {
-              inputs: [
-                {
-                  name: 'sharedTimeRange'
-                  isOptional: true
-                }
-                {
-                  name: 'options'
-                  value: {
-                    chart: {
-                      metrics: [
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersAdded'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersAdded'
-                          }
-                        }
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersRemoved'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersRemoved'
-                          }
-                        }
-                      ]
-                      title: 'Sync Members Added and Removed'
-                      titleKind: 2
-                      visualization: {
-                        chartType: 2
-                        legendVisualization: {
-                          isVisible: true
-                          position: 2
-                          hideSubtitle: false
-                        }
-                        axisVisualization: {
-                          x: {
-                            isVisible: true
-                            axisType: 2
-                          }
-                          y: {
-                            isVisible: true
-                            axisType: 1
-                          }
-                        }
-                      }
-                      timespan: {
-                        relative: {
-                          duration: 604800000
-                        }
-                        showUTCTime: false
-                        grain: 1
-                      }
-                    }
-                  }
-                  isOptional: true
-                }
-              ]
-              type: 'Extension/HubsExtension/PartType/MonitorChartPart'
-              settings: {
-                content: {
-                  options: {
-                    chart: {
-                      metrics: [
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersAdded'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersAdded'
-                          }
-                        }
-                        {
-                          resourceMetadata: {
-                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
-                          }
-                          name: 'customMetrics/MembersRemoved'
-                          aggregationType: 1
-                          namespace: 'microsoft.insights/components/kusto'
-                          metricVisualization: {
-                            displayName: 'MembersRemoved'
-                          }
-                        }
-                      ]
-                      title: 'Sync Members Added and Removed'
-                      titleKind: 2
-                      visualization: {
-                        chartType: 2
-                        legendVisualization: {
-                          isVisible: true
-                          position: 2
-                          hideSubtitle: false
-                        }
-                        axisVisualization: {
-                          x: {
-                            isVisible: true
-                            axisType: 2
-                          }
-                          y: {
-                            isVisible: true
-                            axisType: 1
-                          }
-                        }
-                        disablePinning: true
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
           '14': {
             position: {
-              x: 12
-              y: 6
+              x: 7
+              y: 9
               colSpan: 5
               rowSpan: 4
             }
@@ -1240,26 +1207,26 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                           resourceMetadata: {
                             id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
                           }
-                          name: 'customMetrics/MembersAddedFromOnboarding'
+                          name: 'customMetrics/MembersAdded'
                           aggregationType: 1
                           namespace: 'microsoft.insights/components/kusto'
                           metricVisualization: {
-                            displayName: 'MembersAddedFromOnboarding'
+                            displayName: 'MembersAdded'
                           }
                         }
                         {
                           resourceMetadata: {
                             id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
                           }
-                          name: 'customMetrics/MembersRemovedFromOnboarding'
+                          name: 'customMetrics/MembersRemoved'
                           aggregationType: 1
                           namespace: 'microsoft.insights/components/kusto'
                           metricVisualization: {
-                            displayName: 'MembersRemovedFromOnboarding'
+                            displayName: 'MembersRemoved'
                           }
                         }
                       ]
-                      title: 'Onboarding Members Added and Removed'
+                      title: 'Sync Members Added and Removed'
                       titleKind: 2
                       visualization: {
                         chartType: 2
@@ -1301,26 +1268,26 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                           resourceMetadata: {
                             id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
                           }
-                          name: 'customMetrics/MembersAddedFromOnboarding'
+                          name: 'customMetrics/MembersAdded'
                           aggregationType: 1
                           namespace: 'microsoft.insights/components/kusto'
                           metricVisualization: {
-                            displayName: 'MembersAddedFromOnboarding'
+                            displayName: 'MembersAdded'
                           }
                         }
                         {
                           resourceMetadata: {
                             id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
                           }
-                          name: 'customMetrics/MembersRemovedFromOnboarding'
+                          name: 'customMetrics/MembersRemoved'
                           aggregationType: 1
                           namespace: 'microsoft.insights/components/kusto'
                           metricVisualization: {
-                            displayName: 'MembersRemovedFromOnboarding'
+                            displayName: 'MembersRemoved'
                           }
                         }
                       ]
-                      title: 'Onboarding Members Added and Removed'
+                      title: 'Sync Members Added and Removed'
                       titleKind: 2
                       visualization: {
                         chartType: 2
@@ -1349,8 +1316,137 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
           }
           '15': {
             position: {
+              x: 12
+              y: 9
+              colSpan: 5
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'sharedTimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'options'
+                  value: {
+                    chart: {
+                      metrics: [
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersAddedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersAddedFromOnboarding'
+                          }
+                        }
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersRemovedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersRemovedFromOnboarding'
+                          }
+                        }
+                      ]
+                      title: 'Onboarding Members Added and Removed'
+                      titleKind: 2
+                      visualization: {
+                        chartType: 2
+                        legendVisualization: {
+                          isVisible: true
+                          position: 2
+                          hideSubtitle: false
+                        }
+                        axisVisualization: {
+                          x: {
+                            isVisible: true
+                            axisType: 2
+                          }
+                          y: {
+                            isVisible: true
+                            axisType: 1
+                          }
+                        }
+                      }
+                      timespan: {
+                        relative: {
+                          duration: 604800000
+                        }
+                        showUTCTime: false
+                        grain: 1
+                      }
+                    }
+                  }
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/HubsExtension/PartType/MonitorChartPart'
+              settings: {
+                content: {
+                  options: {
+                    chart: {
+                      metrics: [
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersAddedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersAddedFromOnboarding'
+                          }
+                        }
+                        {
+                          resourceMetadata: {
+                            id: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                          }
+                          name: 'customMetrics/MembersRemovedFromOnboarding'
+                          aggregationType: 1
+                          namespace: 'microsoft.insights/components/kusto'
+                          metricVisualization: {
+                            displayName: 'MembersRemovedFromOnboarding'
+                          }
+                        }
+                      ]
+                      title: 'Onboarding Members Added and Removed'
+                      titleKind: 2
+                      visualization: {
+                        chartType: 2
+                        legendVisualization: {
+                          isVisible: true
+                          position: 2
+                          hideSubtitle: false
+                        }
+                        axisVisualization: {
+                          x: {
+                            isVisible: true
+                            axisType: 2
+                          }
+                          y: {
+                            isVisible: true
+                            axisType: 1
+                          }
+                        }
+                        disablePinning: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          '16': {
+            position: {
               x: 1
-              y: 10
+              y: 13
               colSpan: 6
               rowSpan: 4
             }
@@ -1468,10 +1564,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '16': {
+          '17': {
             position: {
               x: 7
-              y: 10
+              y: 13
               colSpan: 6
               rowSpan: 4
             }
@@ -1589,10 +1685,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '17': {
+          '18': {
             position: {
               x: 13
-              y: 10
+              y: 13
               colSpan: 5
               rowSpan: 2
             }
@@ -1708,10 +1804,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '18': {
+          '19': {
             position: {
               x: 13
-              y: 12
+              y: 15
               colSpan: 5
               rowSpan: 2
             }
@@ -1811,10 +1907,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '19': {
+          '20': {
             position: {
               x: 1
-              y: 14
+              y: 17
               colSpan: 5
               rowSpan: 4
             }
@@ -1930,10 +2026,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '20': {
+          '21': {
             position: {
               x: 6
-              y: 14
+              y: 17
               colSpan: 5
               rowSpan: 4
             }
@@ -2049,11 +2145,11 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '21': {
+          '22': {
             position: {
-              x: 12
-              y: 14
-              colSpan: 6
+              x: 13
+              y: 17
+              colSpan: 5
               rowSpan: 2
             }
             metadata: {
@@ -2148,10 +2244,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '22': {
+          '23': {
             position: {
               x: 1
-              y: 18
+              y: 21
               colSpan: 6
               rowSpan: 4
             }
@@ -2246,10 +2342,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '23': {
+          '24': {
             position: {
               x: 7
-              y: 18
+              y: 21
               colSpan: 6
               rowSpan: 4
             }
@@ -2344,10 +2440,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '24': {
+          '25': {
             position: {
               x: 13
-              y: 18
+              y: 21
               colSpan: 6
               rowSpan: 4
             }
@@ -2442,10 +2538,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '25': {
+          '26': {
             position: {
               x: 1
-              y: 22
+              y: 25
               colSpan: 19
               rowSpan: 2
             }
@@ -2562,10 +2658,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '26': {
+          '27': {
             position: {
               x: 1
-              y: 24
+              y: 27
               colSpan: 17
               rowSpan: 2
             }
@@ -2682,10 +2778,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '27': {
+          '28': {
             position: {
               x: 1
-              y: 26
+              y: 29
               colSpan: 7
               rowSpan: 3
             }
@@ -2812,10 +2908,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '28': {
+          '29': {
             position: {
               x: 8
-              y: 26
+              y: 29
               colSpan: 7
               rowSpan: 3
             }
@@ -2943,10 +3039,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '29': {
+          '30': {
             position: {
               x: 15
-              y: 26
+              y: 29
               colSpan: 6
               rowSpan: 3
             }
@@ -3045,10 +3141,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '30': {
+          '31': {
             position: {
               x: 1
-              y: 30
+              y: 32
               colSpan: 7
               rowSpan: 2
             }
@@ -3068,10 +3164,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '31': {
+          '32': {
             position: {
               x: 1
-              y: 32
+              y: 34
               colSpan: 14
               rowSpan: 2
             }
@@ -3173,10 +3269,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '32': {
+          '33': {
               position: {
                 x: 1
-                y: 34
+                y: 36
                 colSpan: 3
                 rowSpan: 8
               }
@@ -3196,10 +3292,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
           }
-          '33': {
+          '34': {
             position: {
               x: 4
-              y: 34
+              y: 36
               rowSpan: 2
               colSpan: 11
             }
@@ -3300,10 +3396,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '34': {
+          '35': {
             position: {
               x: 4
-              y: 36
+              y: 38
               rowSpan: 2
               colSpan: 11
             }
@@ -3404,10 +3500,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '35': {
+          '36': {
             position: {
               x: 4
-              y: 38
+              y: 40
               rowSpan: 2
               colSpan: 11
             }
@@ -3508,10 +3604,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '36': {
+          '37': {
             position: {
               x: 4
-              y: 40
+              y: 42
               rowSpan: 2
               colSpan: 11
             }
@@ -3612,10 +3708,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '37': {
+          '38': {
             position: {
               x: 1
-              y: 42
+              y: 44
               colSpan: 3
               rowSpan: 4
             }
@@ -3635,10 +3731,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '38': {
+          '40': {
             position: {
               x: 4
-              y: 42
+              y: 44
               colSpan: 11
               rowSpan: 2
             }
@@ -3739,10 +3835,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '39': {
+          '41': {
             position: {
               x: 4
-              y: 44
+              y: 46
               colSpan: 11
               rowSpan: 2
             }
@@ -3843,10 +3939,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '40': {
+          '42': {
             position: {
               x: 1
-              y: 46
+              y: 48
               colSpan: 6
               rowSpan: 4
             }
@@ -3963,10 +4059,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '41': {
+          '43': {
             position: {
               x: 7
-              y: 46
+              y: 48
               colSpan: 6
               rowSpan: 4
             }
@@ -4082,10 +4178,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '42': {
+          '44': {
             position: {
               x: 13
-              y: 46
+              y: 48
               colSpan: 10
               rowSpan: 4
             }
@@ -4207,10 +4303,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '43': {
+          '45': {
             position: {
               x: 1
-              y: 50
+              y: 52
               colSpan: 6
               rowSpan: 4
             }
@@ -4278,7 +4374,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'PartSubTitle'
-                  value: 'gmm-data-prodv2'
+                  value: resourceGroup
                   isOptional: true
                 }
                 {
@@ -4321,10 +4417,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '44': {
+          '46': {
             position: {
               x: 1
-              y: 54
+              y: 56
               colSpan: 9
               rowSpan: 2
             }
@@ -4344,10 +4440,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '45': {
+          '47': {
             position: {
               x: 1
-              y: 56
+              y: 58
               colSpan: 6
               rowSpan: 4
             }
@@ -4465,10 +4561,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '46': {
+          '48': {
             position: {
               x: 7
-              y: 56
+              y: 58
               colSpan: 9
               rowSpan: 4
             }
@@ -4564,10 +4660,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '47': {
+          '49': {
             position: {
               x: 1
-              y: 60
+              y: 62
               colSpan: 8
               rowSpan: 4
             }
@@ -4661,10 +4757,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '48': {
+          '50': {
             position: {
               x: 9
-              y: 60
+              y: 62
               colSpan: 7
               rowSpan: 4
             }
@@ -4758,10 +4854,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '49': {
+          '51': {
             position: {
               x: 1
-              y: 64
+              y: 66
               colSpan: 8
               rowSpan: 4
             }
@@ -4880,10 +4976,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '50': {
+          '52': {
             position: {
               x: 9
-              y: 64
+              y: 66
               colSpan: 8
               rowSpan: 4
             }
@@ -4984,10 +5080,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '51': {
+          '53': {
             position: {
               x: 1
-              y: 68
+              y: 70
               colSpan: 16
               rowSpan: 5
             }
@@ -5090,10 +5186,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '52': {
+          '54': {
             position: {
               x: 1
-              y: 73
+              y: 75
               colSpan: 10
               rowSpan: 2
             }
@@ -5111,10 +5207,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '53': {
+          '55': {
             position: {
               x: 1
-              y: 75
+              y: 77
               colSpan: 6
               rowSpan: 4
             }
@@ -5227,10 +5323,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '54': {
+          '56': {
             position: {
               x: 7
-              y: 75
+              y: 77
               colSpan: 6
               rowSpan: 4
             }
@@ -5343,10 +5439,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
-          '55': {
+          '57': {
             position: {
               x: 1
-              y: 79
+              y: 81
               colSpan: 6
               rowSpan: 4
             }
