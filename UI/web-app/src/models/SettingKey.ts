@@ -11,3 +11,14 @@ export const enum SettingKey {
     IsBusinessJustificationRequired = 6,
     IsDisclaimerEnabled = 7,
 }
+
+export const SettingKeyMap: Record<SettingKey, string> = {
+    [SettingKey.DashboardUrl]: 'DashboardUrl',
+    [SettingKey.OutlookWarningUrl]: 'OutlookWarningUrl',
+    [SettingKey.PrivacyPolicyUrl]: 'PrivacyPolicyUrl',
+    [SettingKey.UIUrl]: 'UIUrl',
+    [SettingKey.CanReviewOwnSubmissions]: 'CanReviewOwnSubmissions',
+    [SettingKey.CreateGroupFeatureEnabled]: 'CreateGroupFeatureEnabled',
+    [SettingKey.IsBusinessJustificationRequired]: 'IsBusinessJustificationRequired',
+    [SettingKey.IsDisclaimerEnabled]: 'IsDisclaimerEnabled',
+};

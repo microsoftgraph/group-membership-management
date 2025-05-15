@@ -37,6 +37,36 @@ async function globalSetup(config: FullConfig) {
 
     await page.getByText("Don't show this again").click();
     await page.getByRole('button', { name: 'Yes' }).click();
+
+    // Check if the disclaimer modal is visible and submit it if needed
+    const modal = page.locator('#disclaimerModal');
+    if (await modal.isVisible()) {
+      // Check all checkboxes in the disclaimer modal
+      const checkboxes = page.locator('#disclaimerModal .ms-Checkbox-checkbox');
+      const checkboxCount = await checkboxes.count();
+      for (let i = 0; i < checkboxCount; i++) {
+        const checkbox = checkboxes.nth(i);
+        // Find the corresponding input to check if it's already checked
+        const input = page.locator('#disclaimerModal input[type="checkbox"]').nth(i);
+        if (!(await input.isChecked())) {
+          await checkbox.click();
+        }
+      }
+      // Click the submit button by ID
+      const submitButton = page.locator('#disclaimerSubmitButton');
+      await expect(submitButton).toBeEnabled();
+      await submitButton.click();
+      // Explicitly set disclaimerSubmitted in localStorage to ensure persistence
+      await page.evaluate(() => {
+        localStorage.setItem('disclaimerSubmitted', 'true');
+      });
+    } else {
+      // If modal is not visible, still ensure disclaimerSubmitted is set
+      await page.evaluate(() => {
+        localStorage.setItem('disclaimerSubmitted', 'true');
+      });
+    }
+
     await expect(page.locator('text="Membership Management"')).toBeVisible({ timeout: 10000 });
 
     console.log('⏳ Waiting for dashboard to load...');

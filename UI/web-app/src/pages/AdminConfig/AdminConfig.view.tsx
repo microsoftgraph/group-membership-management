@@ -19,7 +19,7 @@ import { HyperlinkSetting } from '../../components/HyperlinkSetting';
 import { Operation } from '../../components/Operation';
 import { Page } from '../../components/Page';
 import { PageHeader } from '../../components/PageHeader';
-import { SettingKey, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
+import { SettingKey, SettingKeyMap, SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { GeneralSetting } from '../../components/GeneralSetting';
 
 const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyles>();
@@ -182,24 +182,28 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
   return (
     <div>
       <GeneralSetting
+        id={SettingKeyMap[SettingKey.DashboardUrl]}
         title={strings.GeneralSettings.labels.reviewOwnSubmissionTitle}
         description={strings.GeneralSettings.labels.reviewOwnSubmissionDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.CanReviewOwnSubmissions)}
         generalSettingValue={settings[SettingKey.CanReviewOwnSubmissions]}
       />
       <GeneralSetting
+        id={SettingKeyMap[SettingKey.CreateGroupFeatureEnabled]}
         title={strings.GeneralSettings.labels.createGroupTitle}
         description={strings.GeneralSettings.labels.createGroupDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.CreateGroupFeatureEnabled)}
         generalSettingValue={settings[SettingKey.CreateGroupFeatureEnabled]}
       />
       <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsBusinessJustificationRequired]}
         title={strings.GeneralSettings.labels.businessJustificationTitle}
         description={strings.GeneralSettings.labels.businessJustificationDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsBusinessJustificationRequired)}
         generalSettingValue={settings[SettingKey.IsBusinessJustificationRequired]}
       />
       <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsDisclaimerEnabled]}
         title={strings.GeneralSettings.labels.isDisclaimerEnabledTitle}
         description={strings.GeneralSettings.labels.isDisclaimerEnabledDescription}
         onGeneralSettingChange={handleSettingChange(SettingKey.IsDisclaimerEnabled)}
