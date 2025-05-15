@@ -1958,7 +1958,7 @@ const getOptions = (
                 root: classNames.horizontalChoiceGroup,
                 flexContainer: classNames.horizontalChoiceGroupContainer
               }}
-              disabled={!isJobWriter || !isEditable}
+              disabled={source?.manager?.id == undefined || isDisabled || !isJobWriter || !isEditable}
             />
           </div>
         </Stack.Item>
