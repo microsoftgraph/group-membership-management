@@ -78,7 +78,7 @@ namespace Hosts.NonProdService
                     RunId = runId
                 });
 
-            var targetGroupIds = syncJobsResponse.SyncJobs.Select(x => x.Group.GroupId).ToList();
+            var targetGroupIds = syncJobsResponse.SyncJobs.Where(x => x.MembershipType == MembershipTypes.GroupMembership.ToString()).Select(x => x.Group.GroupId).ToList();
 
             // If all groups exist, make sure they all have a sync job.
             if (groupsToCreate.Count == 0)
