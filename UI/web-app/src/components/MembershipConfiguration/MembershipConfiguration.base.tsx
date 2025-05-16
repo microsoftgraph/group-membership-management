@@ -153,7 +153,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   }, [dispatch, sourceParts]);
   
   useEffect(() => {
-    if (jobDetails?.query) {
+    // Always re-initialize from DB when NOT editing
+    if (jobDetails?.query && !isEditingExistingJob) {
       try {
         const parsedQuery: SyncJobQuery = JSON.parse(jobDetails.query);
         const updatedSourceParts = parsedQuery.map((query, index) => {
@@ -168,11 +169,14 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         });
         dispatch(setSourceParts(updatedSourceParts));
         dispatch(setAdvancedViewQuery(jobDetails.query));
+        dispatch(setCompositeQuery(parsedQuery));
       } catch (error) {
         console.error(`Error parsing job details query:`, error);
       }
     }
-  }, [dispatch, jobDetails]);
+    // If editing, do NOT overwrite local state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, jobDetails, isEditingExistingJob]);
 
   return (
     <div>

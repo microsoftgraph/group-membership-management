@@ -17,7 +17,7 @@ namespace Models
             { SettingKey.CanReviewOwnSubmissions, Guid.Parse("F901FC06-E92E-4361-B4CF-7F7283FB312B")},
             { SettingKey.CreateGroupFeatureEnabled, Guid.Parse("A4B0C3E1-7F8D-4E9F-9A2C-5B6A0B8D7F1B") },
             { SettingKey.IsBusinessJustificationRequired, Guid.Parse("CDE677B2-F55C-4AD8-AB09-DE59F87AA5EE") },
-            { SettingKey.IsDisclaimerEnabled, Guid.Parse("A4B0C3E1-7F8D-4E9F-9A2C-5B6A0B8D7F1B") },
+            { SettingKey.IsDisclaimerEnabled, Guid.Parse("99D83E89-9507-4DC5-AC22-C8962B936B67") },
         };
     }
 }

@@ -83,61 +83,66 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     dispatch(fetchAttributeValues(attribute));
   }
 
-  // Create an event handler that should be called when the user clicks the save button.
+  // Update boolean values to strings before dispatching patchSetting
   const handleSave = (newSettings: { readonly [key in SettingKey]: string }, newSqlMembershipSource: SqlMembershipSource | undefined, newSqlMembershipAttributes: SqlMembershipAttribute[] | undefined) => {
-   
-    // save new settings
-    if (JSON.stringify(newSettings) !== JSON.stringify(settings)) {
-
-      setSettings(newSettings);
-
+    const formattedSettings = {
+      ...newSettings,
+      [SettingKey.CanReviewOwnSubmissions]: newSettings[SettingKey.CanReviewOwnSubmissions] === 'true' ? 'true' : 'false',
+      [SettingKey.CreateGroupFeatureEnabled]: newSettings[SettingKey.CreateGroupFeatureEnabled] === 'true' ? 'true' : 'false',
+      [SettingKey.IsBusinessJustificationRequired]: newSettings[SettingKey.IsBusinessJustificationRequired] === 'true' ? 'true' : 'false',
+      [SettingKey.IsDisclaimerEnabled]: newSettings[SettingKey.IsDisclaimerEnabled] === 'true' ? 'true' : 'false',
+    };
+  
+    if (JSON.stringify(formattedSettings) !== JSON.stringify(settings)) {
+      setSettings(formattedSettings);
+  
       dispatch(
         patchSetting({
           settingKey: SettingKey.DashboardUrl,
-          settingValue: newSettings[SettingKey.DashboardUrl],
+          settingValue: formattedSettings[SettingKey.DashboardUrl],
         })
       );
       dispatch(patchSetting({
         settingKey: SettingKey.OutlookWarningUrl,
-        settingValue: newSettings[SettingKey.OutlookWarningUrl]
+        settingValue: formattedSettings[SettingKey.OutlookWarningUrl]
       }));
       dispatch(
         patchSetting({
           settingKey: SettingKey.PrivacyPolicyUrl,
-          settingValue: newSettings[SettingKey.PrivacyPolicyUrl],
+          settingValue: formattedSettings[SettingKey.PrivacyPolicyUrl],
         })
       );
       dispatch(
         patchSetting({
           settingKey: SettingKey.CanReviewOwnSubmissions,
-          settingValue: newSettings[SettingKey.CanReviewOwnSubmissions],
+          settingValue: formattedSettings[SettingKey.CanReviewOwnSubmissions],
         })
       );
       dispatch(
         patchSetting({
           settingKey: SettingKey.CreateGroupFeatureEnabled,
-          settingValue: newSettings[SettingKey.CreateGroupFeatureEnabled],
+          settingValue: formattedSettings[SettingKey.CreateGroupFeatureEnabled],
         })
       );
       dispatch(
         patchSetting({
           settingKey: SettingKey.IsBusinessJustificationRequired,
-          settingValue: newSettings[SettingKey.IsBusinessJustificationRequired],
+          settingValue: formattedSettings[SettingKey.IsBusinessJustificationRequired],
         })
       );
       dispatch(
         patchSetting({
           settingKey: SettingKey.IsDisclaimerEnabled,
-          settingValue: newSettings[SettingKey.IsDisclaimerEnabled],
+          settingValue: formattedSettings[SettingKey.IsDisclaimerEnabled],
         })
       );
     }
-
+  
     if (JSON.stringify(newSqlMembershipSource) !== JSON.stringify(sqlMembershipSource)) {
       dispatch(
         patchDefaultSqlMembershipSourceCustomLabel(newSqlMembershipSource?.customLabel ?? '')
       );
-
+  
       dispatch(
         setSource(newSqlMembershipSource)
       );
@@ -147,7 +152,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       dispatch(
         patchDefaultSqlMembershipSourceAttributes(newSqlMembershipAttributes ?? [])
       );
-
+  
       dispatch(
         setAttributes(newSqlMembershipAttributes)
       );

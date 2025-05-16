@@ -18,7 +18,7 @@ export const GeneralSettingBase: React.FunctionComponent<GeneralSettingProps> = 
   const [isToggleEnabled, setIsToggleEnabled] = useState<boolean>(isGeneralSettingEnabled);
 
   const handleSubmissionReviewerSettingChange = (ev: React.MouseEvent<HTMLElement>, checked?: boolean) => {
-    const wrappedValue = checked ? '"true"' : '"false"';
+    const wrappedValue = checked ? "true" : "false";
     onGeneralSettingChange(wrappedValue);
     setIsToggleEnabled(checked ?? false);
   };

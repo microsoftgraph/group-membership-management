@@ -119,30 +119,25 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
   const isJobWriter = useSelector(selectIsJobWriter);
-
   // Existing job
   const jobDetailsRef = useRef(useSelector(selectSelectedJobDetails));
   const isLoading = useSelector(selectSelectedJobLoading);
 
   useEffect(() => {
-    dispatch(resetManageMembership());
-    let editingExistingJob = !!jobId;
+    const editingExistingJob = !!jobId;
     dispatch(setIsEditingExistingJob(editingExistingJob));
-
     if (!editingExistingJob) {
       jobDetailsRef.current = undefined;
+      dispatch(resetManageMembership());
     }
-
+    
     if (locationState?.currentStep) {
       dispatch(setCurrentStep(locationState.currentStep));
     }
-
     if (jobId) {
       dispatch(fetchJobDetails({
         syncJobId: jobId
       }));
-    } else {
-      dispatch(resetManageMembership());
     }
   }, [dispatch, jobId, locationState, location]);
 
@@ -155,6 +150,13 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   useEffect(() => {
     setIsStep1ConditionsMet(!!selectedDestination && isGroupReadyForOnboarding === true);
   }, [selectedDestination, isGroupReadyForOnboarding]);
+
+  // Reset isEditingExistingJob when leaving ManageMembership page
+  useEffect(() => {
+    return () => {
+      dispatch(setIsEditingExistingJob(false));
+    };
+  }, [dispatch]);
 
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
   const allSourcePartsValid = useSelector(areAllSourcePartsValid);
