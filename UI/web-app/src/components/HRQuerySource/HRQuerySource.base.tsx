@@ -942,14 +942,6 @@ const getOptions = (
     if (item) {
       const selectedValue = operator && operator.toString().toUpperCase() === "IN" ? selectedValues : item.key.toString();
       const selectedValueAfterConversion = operator && (operator.toString().toUpperCase() === "IS" || operator.toString().toUpperCase() === "IN") ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
-      const updatedItems = items.map((it, idx) => {
-        if (idx === index) {
-          return { ...it, value: selectedValueAfterConversion || selectedValue };
-        }
-        return it;
-      });
-
-      setItems(updatedItems);
 
       if (groupingEnabled && index != null) {
         const updateParams: UpdateParam = {
