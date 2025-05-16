@@ -1981,7 +1981,7 @@ const getOptions = (
        
 
       <div className={classNames.error}>
-        {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && orgErrorMessage}
+        {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && partId === orgLeaderDetails.partId && orgErrorMessage}
       </div>
       <br />
 
