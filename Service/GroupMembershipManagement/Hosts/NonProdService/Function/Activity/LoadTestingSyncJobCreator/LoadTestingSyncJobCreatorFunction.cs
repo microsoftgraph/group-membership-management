@@ -59,7 +59,7 @@ namespace Hosts.NonProdService
 
                     var destination = "[{\"type\":\"GroupMembership\",\"value\":{\"objectId\":\"" + groupId + "\"}}]";
 
-                    var offset = (int)(groupSize * ((decimal)options.SyncJobChangePercent / 100));
+                    var offset = (int)Math.Ceiling(groupSize * ((decimal)options.SyncJobChangePercent / 100));
                     var offsetProbabilityAsMS = (int)(1000 * ((decimal)options.SyncJobProbabilityOfChangePercent / 100));
                     var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2*P}) < {P}) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2 * P}) >= {P})";
                     var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\"}}]";
