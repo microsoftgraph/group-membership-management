@@ -998,11 +998,11 @@ const getOptions = (
     }
   };
 
-  const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number) => {
+  const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string) => {
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const selectedValueAfterConversion = selectedAttribute?.type ? checkType(selectedValue, selectedAttribute?.type) : selectedValue;
-
+    const isInOperator = operator?.toString().toUpperCase() === "IN";
+    const selectedValueAfterConversion = isInOperator ? selectedValue : checkType(selectedValue, selectedAttribute?.type) ?? selectedValue;
     const updatedItems = items.map((it, idx) => {
         if (idx === index) {
             return { ...it, value: selectedValueAfterConversion || selectedValue };
@@ -1022,14 +1022,15 @@ const getOptions = (
     }
   }
 
-  const handleBlur = (attribute: string, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
+  const handleBlur = (attribute: string, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number, operator?: string) => {
     if (groupingEnabled && index != null) {
       return;
     }
     var newValue = event.target.value.trim();
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const selectedValueAfterConversion = selectedAttribute?.type ? checkType(selectedValue, selectedAttribute.type) : selectedValue;
+    const isInOperator = operator?.toString().toUpperCase() === "IN";
+    const selectedValueAfterConversion = isInOperator ? selectedValue : checkType(selectedValue, selectedAttribute?.type) ?? selectedValue;
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
@@ -1558,8 +1559,8 @@ const getOptions = (
           } else {
             return <TextField
               value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-              onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index)}
-              onBlur={(event) => handleBlur(item.attribute, event, index)}
+              onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index, item.equalityOperator)}
+              onBlur={(event) => handleBlur(item.attribute, event, index, item.equalityOperator)}
               styles={{ fieldGroup: classNames.textField }}
               validateOnLoad={false}
               validateOnFocusOut={false}
