@@ -589,9 +589,9 @@ const getOptions = (
     }
 
     if (!orgLeaderName && !orgLeaderNameMatch) {
-      const orgLeaderNameMatch2 = currentTitle.match(/\d+ level\(s\) of direct reports of (.*)/);
-      if (orgLeaderNameMatch2 && orgLeaderNameMatch2[1]) {
-        orgLeaderName = orgLeaderNameMatch2[1].trim();
+      const orgLeaderNameMatch2 = currentTitle.match(/\d+ (level(s?)|level) of direct reports of (.*)/);
+      if (orgLeaderNameMatch2 && orgLeaderNameMatch2[3]) {
+        orgLeaderName = orgLeaderNameMatch2[3].trim();
       }
     }
 
@@ -610,7 +610,14 @@ const getOptions = (
       });
       return;
     }
-    newTitle = `${depth - 1} level(s) of direct reports of ${orgLeaderName}`;
+
+    const levels = depth - 1;
+    if (levels === 1) {
+      newTitle = `${levels} level of direct reports of ${orgLeaderName}`;
+    } else if (levels > 1) {
+      newTitle = `${levels} levels of direct reports of ${orgLeaderName}`;
+    }
+
     setSource(prevSource => {
       const newSource = {
         ...prevSource,

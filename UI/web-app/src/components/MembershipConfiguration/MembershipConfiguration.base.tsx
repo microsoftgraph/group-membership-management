@@ -114,8 +114,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           const updatedSourceParts: ISourcePart[] = compositeQuery.map((query, index) => {
             const originalPart = sourceParts[index];
             const newPart: ISourcePart = {
-              id: uuidv4(),
-              title: "",
+              id: sourceParts && sourceParts[index] ? sourceParts[index].id : uuidv4(),
+              title: sourceParts && sourceParts[index] ? sourceParts[index].title : "",
               query: {
                 type: SourcePartType.HR,
                 source: sourcePartQuery,

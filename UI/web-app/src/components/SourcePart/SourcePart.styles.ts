@@ -26,11 +26,30 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             flexDirection: 'row',
             justifyContent: 'space-between',
         },
+        titleTextField: {
+            borderRadius: 4,
+            border: '1px solid',
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            minWidth: 500,
+            width: '100%',
+            marginLeft: 30
+        },
+        editButton: {
+            marginLeft: 30
+        },
         title: {
-            fontWeight: 600,
             fontSize: 16,
             fontFamily: 'Segoe UI',
-            marginRight: 'auto'
+            marginRight: 'auto',
+            display: 'flex',
+            alignItems: 'center'
+        },
+        exisitngTitile: {
+            fontWeight: 600
+        },
+        generatedTitle: {
+            fontWeight: 400
         },
         expandButton: {
             color: theme.semanticColors.bodyText,

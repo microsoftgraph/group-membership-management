@@ -185,8 +185,8 @@ const manageMembershipSlice = createSlice({
                             state.sourceParts = parsedQuery.map((query, index) => {
                                 const originalPart = state.sourceParts[index];
                                 return {
-                                    id: uuidv4(),
-                                    title: "",
+                                    id: state.sourceParts[index].id ?? uuidv4(),
+                                    title: state.sourceParts[index].title ?? "",
                                     query: query,
                                     isNew: originalPart?.isNew ?? false,
                                     isExpanded: originalPart?.isExpanded ?? false

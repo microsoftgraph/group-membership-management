@@ -10,7 +10,11 @@ export type SourcePartStyles = {
   root: IStyle;
   card: IStyle;
   header: IStyle;
+  titleTextField: IStyle;
+  editButton: IStyle;
   title: IStyle;
+  exisitngTitile: IStyle;
+  generatedTitle: IStyle;
   expandButton: IStyle;
   content: IStyle;
   controls: IStyle;

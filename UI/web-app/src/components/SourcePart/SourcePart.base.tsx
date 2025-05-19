@@ -10,6 +10,7 @@ import {
   Dropdown,
   IDropdownOption,
   IProcessedStyleSet,
+  TextField,
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -57,7 +58,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
-
+  const [isEditEnabled, setIsEditEnabled] = useState<boolean>(false);
+  const [isEditButtonClicked, setIsEditButtonClicked] = useState<boolean>(false);
   const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
   
@@ -122,6 +124,18 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     setErrorMessage('');
   }, [query, expanded]);
 
+  const onEditButtonClick = (partId: string, partTitle: string) => {
+    setIsEditButtonClicked(true);
+  };
+
+  const onTitleChange = (partId: string, partTitle: string) => {
+    dispatch(updateSourcePart({ ...part, title: partTitle }));
+  };
+
+  const handleBlur = () => {
+    setIsEditButtonClicked(false);
+  };
+
   const getOptions = (hrSource?: SqlMembershipSource): IDropdownOption[] => {
     const sourceTypeOptions: IDropdownOption[] = [];
     if (hrSource) {
@@ -166,20 +180,26 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const generateTitle = async () => {
     console.log("before title", part.title);
+    const orgLeaderPattern = /^(Everyone in .+'s org|\d+\slevels? of direct reports of .+)( with the following summarized criteria: .+)?$/;
+    console.log("match", orgLeaderPattern.test(part.title));
 
     if (part.query.type === SourcePartType.HR) {
       const generatedTitle = await generateTitleUsingOpenAI(part.query.source.filter);
       let newTitle = part.title;
 
-      if (part.title === "") {
-        newTitle = `Everyone with the following criteria: ${generatedTitle}`;
-      } else if (part.title.includes("following criteria")) {
-        newTitle = part.title.split("following criteria")[0] + "following criteria: " + generatedTitle;
+      if (orgLeaderPattern.test(part.title)) {
+        if (part.title.includes("with the following summarized criteria:")) {
+          newTitle = part.title.replace(/with the following summarized criteria: .+/, `with the following summarized criteria: ${generatedTitle}`);
+        } else {
+            newTitle = `${part.title} with the following summarized criteria: ${generatedTitle}`;
+        }
       } else {
-        newTitle = `${part.title} with the following criteria: ${generatedTitle}`;
+        newTitle = generatedTitle;
       }
 
       console.log("new title", newTitle);
+
+      setIsEditEnabled(true);
 
       dispatch(updateSourcePart({ ...part, title: newTitle }));
     }
@@ -214,7 +234,35 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-          {strings.ManageMembership.labels.sourcePart} {part.title || props.title || ""}
+        <div className={classNames.exisitngTitile}>{strings.ManageMembership.labels.sourcePart}</div>
+        { !isEditButtonClicked && (part.title || props.title) &&
+            <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
+        }
+
+        { (isEditButtonClicked) &&
+        <div>
+        <TextField
+          value={part.title || props.title}
+          onChange={(event, newValue) => onTitleChange(part.id, newValue || '')}
+          onBlur={(event) => handleBlur}
+          styles={{
+            fieldGroup: classNames.titleTextField,
+          }}
+        ></TextField>
+        </div>
+        }
+
+        { (isEditEnabled) &&
+        <div className={classNames.editButton}>
+        <ActionButton
+          iconProps={{ iconName: 'Edit' }}
+          styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+          onClick={() => onEditButtonClick(part.id, part.title)}>
+          {strings.edit}
+        </ActionButton>
+        </div>
+        }
+
         </div>
         <IconButton
           className={classNames.expandButton}
