@@ -147,7 +147,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   }, [part.query.type, part.query.exclusionary, part.query.source]);
 
 
-  const handleSourceChange = (source: HRSourcePartSource, partId: string) => {
+  const handleSourceChange = (source: HRSourcePartSource, partId: string, title?: string) => {
     const newQuery: HRSourcePart = {
       type: SourcePartType.HR,
       source: source,
@@ -155,7 +155,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: partId,
-      title: "",
+      title: title ?? "",
       query: newQuery,
       isExpanded: true,
       isNew: false
@@ -237,7 +237,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} partId={partId} onSourceChange={handleSourceChange} isEditable={isEditable} />
+              <HRQuerySource source={hrSourcePartSource} title={part.title} partId={partId} onSourceChange={handleSourceChange} isEditable={isEditable} />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (

@@ -92,6 +92,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [expanded, setExpanded] = useState(true);
   const [orgLeaderUpdated, setOrgLeaderUpdated] = useState(false);
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
+  const [localTitle, setLocalTitle] = useState<string>("");
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
@@ -491,8 +492,9 @@ const getOptions = (
           id: id
         }
       };
+      const updatedTitle = localTitle || props.title || "";
       setSource(newSource);
-      onSourceChange(newSource, partId);
+      onSourceChange(newSource, partId, updatedTitle);
     }
   }, [objectIdEmployeeIdMapping]);
 
@@ -548,6 +550,16 @@ const getOptions = (
     setIncludeOrg(true);
     setIsDisabled(true);
     if (items !== undefined && items.length > 0) {
+      let newSource: HRSourcePartSource = {
+        ...props.source,
+        manager: {
+          ...props.source.manager,
+          id: items[0].key as number
+        }
+      };
+      const newTitle = `All Users in ${items[0].text}'s org`;
+      setLocalTitle(newTitle);
+      onSourceChange(newSource, partId, newTitle);
       dispatch(fetchOrgLeaderDetails({
         objectId: items[0].id as string,
         key: items[0].key as number,
@@ -560,10 +572,27 @@ const getOptions = (
 
   const handleDepthChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
     if (!option) return;
-  
+
     const depth = parseInt(option.key as string);
+    const currentTitle = localTitle || props.title || "";
+    let newTitle = currentTitle;
+
+    let orgLeaderName = "";
+    const orgLeaderNameMatch = currentTitle.match(/All Users in (.*)'s org/);
+
+    if (orgLeaderNameMatch && orgLeaderNameMatch[1]) {
+      orgLeaderName = orgLeaderNameMatch[1];
+    }
+
+    if (!orgLeaderName && !orgLeaderNameMatch) {
+      const orgLeaderNameMatch2 = currentTitle.match(/\d+ level\(s\) of direct reports of (.*)/);
+      if (orgLeaderNameMatch2 && orgLeaderNameMatch2[1]) {
+        orgLeaderName = orgLeaderNameMatch2[1].trim();
+      }
+    }
 
     if(depth === 0) {
+      newTitle = `All Users in ${orgLeaderName}'s org`;
       setSource(prevSource => {
         const newSource = {
           ...prevSource,
@@ -572,12 +601,12 @@ const getOptions = (
             depth: undefined
           }
         };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, newTitle);
         return newSource;
       });
       return;
     }
-  
+    newTitle = `${depth - 1} level(s) of direct reports of ${orgLeaderName}`;
     setSource(prevSource => {
       const newSource = {
         ...prevSource,
@@ -586,9 +615,11 @@ const getOptions = (
           depth
         }
       };
-      onSourceChange(newSource, partId);
+      onSourceChange(newSource, partId, newTitle);
       return newSource;
     });
+
+    setLocalTitle(newTitle);
   };
 
   const depthOptions: IDropdownOption[] = [
