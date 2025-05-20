@@ -60,8 +60,7 @@ namespace Services
                 SyncStatus.MembershipDataNotFound,
                 SyncStatus.NotOwnerOfDestinationGroup,
                 SyncStatus.SecurityGroupNotFound,
-                SyncStatus.ThresholdExceeded,
-                SyncStatus.SubmissionRejected);
+                SyncStatus.ThresholdExceeded);
 
             var jobsToBePurged = ApplyJobTriggerFilters(jobs).ToList();
 
