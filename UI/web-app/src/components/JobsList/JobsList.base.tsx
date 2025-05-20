@@ -492,24 +492,26 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.title}>
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
-            {isJobWriter && 
-              <div className={classNames.header}>
-              <div>
-              <PrimaryButton
-                text={jobsToDownloadLoading ? strings.ManageMembership.downloadingButton : strings.ManageMembership.downloadButton}
-                onClick={handleDownloadButtonClick}
-                disabled={selectedItems.length === 0 || jobsToDownloadLoading}
-              />
-              </div>
-              <div className={classNames.manageMembershipButton}>
-              <PrimaryButton
-                text={strings.ManageMembership.manageMembershipButton}
-                menuProps={menuProps}
-                persistMenu={true}
-              />
-              </div>
-              </div>
-            }
+            <div className={classNames.header}>
+              {isTenantJobWriter &&
+                <div>
+                  <PrimaryButton
+                    text={jobsToDownloadLoading ? strings.ManageMembership.downloadingButton : strings.ManageMembership.downloadButton}
+                    onClick={handleDownloadButtonClick}
+                    disabled={selectedItems.length === 0 || jobsToDownloadLoading}
+                  />
+                </div>
+              }
+              {isJobWriter &&
+                <div className={classNames.manageMembershipButton}>
+                  <PrimaryButton
+                    text={strings.ManageMembership.manageMembershipButton}
+                    menuProps={menuProps}
+                    persistMenu={true}
+                  />
+                </div>
+              }
+            </div>
           </div>
           <div className={classNames.tabContent}>
             <ShimmeredDetailsList
