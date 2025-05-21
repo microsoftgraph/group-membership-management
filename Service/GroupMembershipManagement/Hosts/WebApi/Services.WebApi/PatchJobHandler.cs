@@ -99,7 +99,7 @@ namespace Services.WebApi
 
                 if (canReviewOwnSubmissionsValue == false && (requestorUserId == submission.ChangedByObjectId))
                 {
-                    response.StatusCode = HttpStatusCode.Forbidden;
+                    response.StatusCode = HttpStatusCode.BadRequest;
                     response.ErrorCode = "ReviewerCannotReviewOwnSubmission";
                     return response;
                 }

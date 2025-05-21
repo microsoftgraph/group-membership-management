@@ -689,12 +689,12 @@ namespace Services.Tests
         [DataRow(Roles.SUBMISSION_REVIEWER)]
         public async Task ReviewOwnSubmissionWithoutPermission(string role)
         {
-            var userId = Guid.NewGuid().ToString();
+            var userId = Guid.NewGuid();
             var context = CreateHttpContext(new List<Claim>
             {
                 new Claim(ClaimTypes.Name, "user@domain.com"),
                 new Claim(ClaimTypes.Role, role),
-                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())
             });
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
@@ -703,7 +703,7 @@ namespace Services.Tests
                 {
                     return new Dictionary<Guid, List<Guid>>
                     {
-                        { Guid.NewGuid(), new List<Guid> { (Guid)_syncJobChange.ChangedByObjectId } }
+                        { Guid.NewGuid(), new List<Guid> { userId } }
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
@@ -712,7 +712,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())},
                     SyncJobChangeReason.SubmissionApproved.ToString())
             };
 
@@ -722,10 +722,18 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
-            var result = response as ForbidResult;
+            var syncJobChangeByUserId = new SyncJobChange
+            {
+                ChangedByObjectId = userId
+            };
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
+                                    .ReturnsAsync(() => syncJobChangeByUserId);
 
-            Assert.IsNotNull(result);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as BadRequestObjectResult;
+            var patchResponse = result.Value as PatchJobResponse;
+            Assert.IsNotNull(patchResponse);
+            Assert.AreEqual("ReviewerCannotReviewOwnSubmission", patchResponse.ErrorCode);
             Assert.AreEqual(SyncStatus.PendingReview.ToString(), _jobEntity.Status);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
         }
