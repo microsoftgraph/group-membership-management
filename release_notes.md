@@ -1,14 +1,24 @@
 # Release Notes:
 
+## Release 5/21/2025
+- Added configurable first visit disclaimer to the UI.
+- Fixed transitive/delta calls to address OOME in GMO.
+- Added metrics to track P values per lane.
+- Enabled UI Bulk Download + added console app to update group settings using exported csv file from bulk download.
+- Set default frequency to 24 in UI.
+- Org Leader ID/Depth fixes.
+- Deployment script fixes and improvements.
+- Added equality operator descriptions in the UI.
+
 ## Release 4/1/2025
-- Added check to verify if submission requestor is still an owner at review time
-- Added optional business justification field for onboardings and updates in the UI
-- Updated Source Parts component in the UI to include an expand/collapse all button and preserve their state
-- Set-up Playwright UI integration tests
-- Removed trace logging from several azure functions
-- Updated PostDeployment.ps1 to grant access to storage accounts
-- Add build number to binaries
-- Added disable and purge dates to the threshold email
+- Added check to verify if submission requestor is still an owner at review time.
+- Added optional business justification field for onboardings and updates in the UI.
+- Updated Source Parts component in the UI to include an expand/collapse all button and preserve their state.
+- Set-up Playwright UI integration tests.
+- Removed trace logging from several azure functions.
+- Updated PostDeployment.ps1 to grant access to storage accounts.
+- Add build number to binaries.
+- Added disable and purge dates to the threshold email.
 
 ## Release 3/1/2025
 
