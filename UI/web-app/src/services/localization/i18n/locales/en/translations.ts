@@ -248,7 +248,8 @@ export const strings: IStrings = {
       forbidden: 'This action is forbidden.',
       internalError: 'We can\'t process your request at this time. Please try again later',
       removeGMMError: 'Error removing GMM management from this group:',
-      submitterNotOwner: 'This submission was rejected because the requestor was no longer an owner when the submission was reviewed.'
+      submitterNotOwner: 'This submission was rejected because the requestor was no longer an owner when the submission was reviewed.',
+      reviewerCannotReviewOwnSubmission: 'This cannot be completed because the reviewer cannot review their own submission.',
     },
     Panel: {
       dismissButtonAriaLabel: 'Dismiss job history panel',

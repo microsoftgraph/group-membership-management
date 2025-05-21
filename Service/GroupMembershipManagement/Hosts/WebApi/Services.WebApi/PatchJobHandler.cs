@@ -95,13 +95,14 @@ namespace Services.WebApi
                 var canReviewOwnSubmissionsValue = canReviewOwnSubmissions != null ? bool.Parse(canReviewOwnSubmissions.SettingValue) : true;
                 var requestorUserId = Guid.Parse(request.UserIdentity);
 
-                if (canReviewOwnSubmissionsValue == false && (requestorUserId == syncJobChange.ChangedByObjectId))
+                var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
+
+                if (canReviewOwnSubmissionsValue == false && (requestorUserId == submission.ChangedByObjectId))
                 {
                     response.StatusCode = HttpStatusCode.Forbidden;
+                    response.ErrorCode = "ReviewerCannotReviewOwnSubmission";
                     return response;
                 }
-
-                var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
 
                 // Verify that the submitter is still an owner
                 var destinationOwners = await _graphGroupRepository.GetDestinationOwnersAsync(new List<Guid>() { (Guid)groupId });

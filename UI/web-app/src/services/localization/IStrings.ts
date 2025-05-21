@@ -244,6 +244,7 @@ export type IStrings = {
       internalError: string;
       removeGMMError: string;
       submitterNotOwner: string;
+      reviewerCannotReviewOwnSubmission: string;
     };
     Panel: {
       dismissButtonAriaLabel: string;

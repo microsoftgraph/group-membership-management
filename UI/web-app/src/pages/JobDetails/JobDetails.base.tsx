@@ -455,6 +455,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         return strings.JobDetails.Errors.internalError;
       case 'SubmitterNotOwner':
         return strings.JobDetails.Errors.submitterNotOwner;
+      case 'ReviewerCannotReviewOwnSubmission':
+        return strings.JobDetails.Errors.reviewerCannotReviewOwnSubmission;
       default:
         return "";
     }

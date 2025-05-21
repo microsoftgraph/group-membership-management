@@ -252,6 +252,7 @@ export const strings: IStrings = {
       internalError: 'No podemos procesar su solicitud en este momento. Por favor, inténtelo de nuevo más tarde.',
       removeGMMError: 'Error al dejar de administrar con GMM.',
       submitterNotOwner: 'Esta solicitud fue rechazada ya que el solicitante ya no era propietario cuando se revisó la solicitud.',
+      reviewerCannotReviewOwnSubmission: 'Esto no puede ser completado ya que no está permitido revisar revisar tu propia solicitud.',
     },
     Panel: {
       dismissButtonAriaLabel: 'Cerrar panel de historial',
