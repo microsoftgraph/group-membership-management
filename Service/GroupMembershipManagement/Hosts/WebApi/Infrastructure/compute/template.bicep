@@ -67,6 +67,13 @@ param setRBACPermissions bool = false
 @description('Allowed origins for the SignalR service.')
 param signalrCORS array = ['https://microsoft.com']
 
+@description('Location for the OpenAI resource.')
+param aiLocation string
+
+@description('The name of the Azure OpenAI resource.')
+param openAIResourceName string = '${solutionAbbreviation}-compute-${environmentAbbreviation}-openai'
+
+
 param featureFlags object = {
   enableTeamsChannel: false
 }
@@ -95,6 +102,7 @@ var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataReso
 var sqlServerMSIConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'sqlServerMSIConnectionString')
 var graphUserAssignedManagedIdentityClientId = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'graphUserAssignedManagedIdentityClientId')
 var azureSignalRConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'azureSignalRConnectionString')
+var openAIEndpoint = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'openAIEndpoint')
 
 var serviceBusFQN = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
 var serviceBusMembershipAggregatorQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipAggregatorQueue')
@@ -234,6 +242,10 @@ var appSettings = [
     value: '@Microsoft.KeyVault(SecretUri=${reference(azureSignalRConnectionString, '2019-09-01').secretUriWithVersion})'
   }
   {
+    name: 'Settings:OpenAIEndpoint'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(openAIEndpoint, '2019-09-01').secretUriWithVersion})'
+  }
+  {
     name: 'ADF:Pipeline'
     value: adfPipeline
   }
@@ -322,6 +334,44 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
         value: 'Default'
       }
     ]
+  }
+}
+
+resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
+  name: openAIResourceName
+  location: aiLocation
+  kind: 'OpenAI'
+  sku: {
+    name: 'S0'
+  }
+  properties: {
+    apiProperties: {}
+    customSubDomainName: toLower(openAIResourceName)
+    networkAcls: {
+      defaultAction: 'Allow'
+      virtualNetworkRules: []
+      ipRules: []
+    }
+    allowProjectManagement: false
+    publicNetworkAccess: 'Enabled'
+  }
+  tags: {
+  }
+}
+
+resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
+  parent: openAI
+  name: 'gpt-4o'
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-4o'
+      version: '2024-05-13'
+    }
+  }
+  sku: {
+    name: 'standard'
+    capacity: 1
   }
 }
 

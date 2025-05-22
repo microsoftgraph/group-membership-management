@@ -78,7 +78,12 @@ function Set-WebAPIAccessRoles {
 				-Scope $signalRResource.Id `
 				-RoleDefinitionName "SignalR App Server"
 
-
+			$openAIResource = Get-AzResource -ResourceGroupName $ComputeResourceGroupName -ResourceType "Microsoft.CognitiveServices/accounts" -Name "$ComputeResourceGroupName-openai"
+			Set-RoleAssignment `
+				-ObjectId $webApiServicePrincipal.Id `
+				-DisplayName $webApi.Name `
+				-Scope $openAIResource.Id `
+				-RoleDefinitionName "Cognitive Services OpenAI User"
 		}
 		elseif ($null -eq $webApiServicePrincipal) {
 			Write-Host "Web API $($webApi.Name) was not found!"

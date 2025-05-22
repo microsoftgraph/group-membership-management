@@ -17,6 +17,7 @@ param appConfigurationName string = '${solutionAbbreviation}-appConfig-${environ
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 var azureSignalRConnectionString = 'Endpoint=https://${solutionAbbreviation}-compute-${environmentAbbreviation}-signalr.service.signalr.net;AuthType=azure.msi;Version=1.0;'
+var openAIEndpoint = 'https://${solutionAbbreviation}-compute-${environmentAbbreviation}.openai.azure.com'
 
 param appConfigurationKeyData array = [
   {
@@ -46,6 +47,10 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
         {
           name: 'azureSignalRConnectionString'
           value: azureSignalRConnectionString
+        }
+        {
+          name: 'openAIEndpoint'
+          value: openAIEndpoint
         }
       ]
     }

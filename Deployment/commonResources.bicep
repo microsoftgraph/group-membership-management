@@ -1,6 +1,7 @@
 targetScope = 'subscription'
 
 param location string
+param aiLocation string
 param tenantId string
 param solutionAbbreviation string
 param environmentAbbreviation string
@@ -105,6 +106,7 @@ module computeResources 'computeResources.bicep' = {
   scope: resourceGroup(computeResourceGroupName)
   params: {
     location: location
+    aiLocation: aiLocation
     uiLocation: uiLocation
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
