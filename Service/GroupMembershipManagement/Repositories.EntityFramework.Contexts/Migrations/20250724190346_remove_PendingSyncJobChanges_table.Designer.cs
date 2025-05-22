@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Repositories.EntityFramework.Contexts;
 
@@ -11,9 +12,11 @@ using Repositories.EntityFramework.Contexts;
 namespace Repositories.EntityFramework.Contexts.Migrations
 {
     [DbContext(typeof(GMMContext))]
-    partial class GMMContextModelSnapshot : ModelSnapshot
+    [Migration("20250724190346_remove_PendingSyncJobChanges_table")]
+    partial class remove_PendingSyncJobChanges_table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -102,7 +105,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("ebdf6538-f8db-4f43-8c6d-677c5931338c"),
+                            Id = new Guid("d7fe2449-d0a7-437c-9f37-b06f9fd62624"),
                             Name = "SqlMembership"
                         });
                 });
@@ -130,7 +133,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Property<DateTime>("ChangeTime")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
-                        .HasDefaultValue(new DateTime(2025, 7, 15, 23, 2, 16, 594, DateTimeKind.Utc).AddTicks(7104));
+                        .HasDefaultValue(new DateTime(2025, 7, 24, 19, 3, 46, 491, DateTimeKind.Utc).AddTicks(6212));
 
                     b.Property<string>("ChangedByDisplayName")
                         .HasColumnType("nvarchar(max)");
@@ -654,8 +657,13 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWSEQUENTIALID()");
 
-                    b.Property<TimeSpan?>("Duration")
-                        .HasColumnType("time");
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int?>("Duration")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("EndTime")
                         .HasColumnType("datetime2");
@@ -667,23 +675,27 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("SyncJobId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<int>("ThresholdViolations")
+                    b.Property<int?>("ThresholdViolations")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<string>("UpdatedByFunction")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
 
-                    b.Property<int>("UsersAdded")
+                    b.Property<int?>("UsersAdded")
                         .HasColumnType("int");
 
-                    b.Property<int>("UsersRemoved")
+                    b.Property<int?>("UsersRemoved")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -695,7 +707,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
 
                     b.HasIndex("SyncJobId");
 
-                    b.ToTable("SyncJobHistory");
+                    b.ToTable("SyncJobHistory", (string)null);
                 });
 
             modelBuilder.Entity("DestinationOwnerSyncJob", b =>
@@ -801,6 +813,15 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("StatusDetails");
+                });
+
+            modelBuilder.Entity("Models.SyncJobHistory.SyncJobHistory", b =>
+                {
+                    b.HasOne("Models.SyncJob", null)
+                        .WithMany()
+                        .HasForeignKey("SyncJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Models.SyncJob", b =>
