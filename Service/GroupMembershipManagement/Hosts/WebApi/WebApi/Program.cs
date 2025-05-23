@@ -400,6 +400,7 @@ namespace WebApi
                 var settings = services.GetRequiredService<IOptions<OperationsSettings>>();
                 return settings.Value;
             });
+            builder.Services.AddSingleton<OpenAIService>();
 
             builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);
 
