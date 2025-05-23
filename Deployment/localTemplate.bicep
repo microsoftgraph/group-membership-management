@@ -1,6 +1,7 @@
 targetScope = 'subscription'
 
 param location string
+param aiLocation string
 param tenantId string
 param solutionAbbreviation string
 param environmentAbbreviation string
@@ -75,6 +76,7 @@ module gmmResources 'commonResources.bicep' = {
   scope: subscription()
   params: {
     location: location
+    aiLocation: aiLocation
     uiLocation: uiLocation
     tenantId: tenantId
     solutionAbbreviation: solutionAbbreviation
