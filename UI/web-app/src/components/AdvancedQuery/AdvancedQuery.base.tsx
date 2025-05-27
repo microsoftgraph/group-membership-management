@@ -49,24 +49,27 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
       theme: useTheme(),
     }
   );
-  const defaultAdvancedViewQuery: string = `[
+  const defaultAdvancedViewQuery = `[
     {
       "type": "SqlMembership",
       "source": {
-        "manager": {
-          "id": 0,
-          "depth": 0
-        },
-        "filter": ""
+        "manager": { "id": 1, "depth": 1 },
+        "filter": "EmployeeId < 0"
       },
+      "exclusionary": false
     },
     {
       "type": "GroupMembership",
-      "source": "00000000-0000-0000-0000-000000000000"
+      "source": "123e4567-e89b-12d3-a456-426614174000"
     },
     {
       "type": "GroupOwnership",
       "source": ["All"]
+    },
+    {
+      "type": "PlaceMembership",
+      "source": "SomePlace",
+      "exclusionary": false
     }
   ]`;
 
@@ -77,6 +80,10 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   const ajv = new Ajv();
   const advancedViewQueryFromStore = useSelector(manageMembershipAdvancedViewQuery);
   const isJobWriter = useSelector(selectIsJobWriter);
+
+  const PLACEHOLDER_GROUP_IDS = [
+    "123e4567-e89b-12d3-a456-426614174000"
+  ];
 
   useEffect(() => {
     setLocalQuery(advancedViewQueryFromStore || defaultAdvancedViewQuery);
@@ -145,15 +152,20 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     try {
       const parsedQuery = JSON.parse(localQuery || '[]');
       const validate = ajv.compile(schema);
-      var isValid = validate(parsedQuery);
+      let isValid = validate(parsedQuery);
 
       if (isValid) {
         const groupValidationResults = await Promise.all(
           (parsedQuery as Array<SourcePartQuery>).map(async (part) => {
-            if (part.type === SourcePartType.GroupMembership && part.source) {
+            if (
+              part.type === SourcePartType.GroupMembership &&
+              part.source &&
+              !PLACEHOLDER_GROUP_IDS.includes(part.source)
+            ) {
               const result = await dispatch(validateGroup(part.source)).unwrap();
               return result;
             }
+            // Skip validation for placeholder group IDs
             return { groupId: part.source, isValid: true };
           })
         );
