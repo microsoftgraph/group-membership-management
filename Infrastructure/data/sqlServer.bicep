@@ -296,3 +296,5 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
     }
   }
 }
+
+output sqlServerId string = sqlServer.id

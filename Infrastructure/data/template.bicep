@@ -517,10 +517,11 @@ module serviceBusTemplate 'serviceBus.bicep' = {
   ]
 }
 
-var allTopics = [for topic in serviceBusTopicSubscriptions: topic.topicName ]
+var allTopics = [for topic in serviceBusTopicSubscriptions: topic.topicName]
 var uniqueTopics = union(allTopics, [])
 
-module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [for topic in uniqueTopics: {
+module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [
+  for topic in uniqueTopics: {
     name: '${topic}-Template'
     params: {
       serviceBusName: serviceBusName
@@ -533,7 +534,8 @@ module serviceBusTopicTemplate 'serviceBusTopic.bicep' = [for topic in uniqueTop
   }
 ]
 
-module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [ for topic in serviceBusTopicSubscriptions: {
+module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [
+  for topic in serviceBusTopicSubscriptions: {
     name: '${topic.topicName}-${topic.subscriptionName}-Template'
     params: {
       serviceBusName: serviceBusName
@@ -543,7 +545,7 @@ module serviceBusSubscriptionsTemplate 'serviceBusSubscription.bicep' = [ for to
       serviceBusTopicTemplate
       logAnalyticsTemplate
     ]
- }
+  }
 ]
 
 module membershipAggregatorQueue 'serviceBusQueue.bicep' = {
@@ -818,6 +820,75 @@ module serviceBusQueueAlert 'serviceBusQueueAlert.bicep' = {
     appConfigurationTemplate
     actionGroupTemplate
     failedNotificationsQueue
+  ]
+}
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+var prereqsKeyVaultName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+// Deploy Network Security Perimeter, Profiles, and Resource Associations
+module prereqsNetworkSecurityPerimeterTemplate 'networkSecurityPerimeter.bicep' = {
+  name: 'prereqsNetworkSecurityPerimeterTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    nspLocation: location
+  }
+}
+
+module prereqsNetworkSecurityPerimeterProfilesTemplate 'networkSecurityPerimeterProfiles.bicep' = {
+  name: 'prereqsNetworkSecurityPerimeterProfilesTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    nspProfileNames: [
+      'keyvault'
+      'sql'
+      'storageaccount'
+    ]
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterTemplate
+  ]
+}
+
+module nspDataKeyVaultAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspDataKeyVaultAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'keyvault'
+    resourceId: resourceId('Microsoft.KeyVault/vaults', keyVaultName)
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspPrereqsKeyVaultAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspPrereqsKeyVaultAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'keyvault'
+    resourceId: resourceId(subscription().subscriptionId, prereqsResourceGroupName, 'Microsoft.KeyVault/vaults', prereqsKeyVaultName)
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspSqlServerAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspSqlServerAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'sql'
+    resourceId: sqlServer.outputs.sqlServerId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
   ]
 }
 
