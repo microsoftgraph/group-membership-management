@@ -150,7 +150,8 @@ namespace Hosts.GroupMembershipObtainer
                                     CountOfUsersFromAADGroup = countOfUsersFromAADGroup,
                                     CurrentPart = request.CurrentPart,
                                     SyncJob = request.SyncJob,
-                                    DeltaUrl = deltaLink
+                                    DeltaUrl = deltaLink,
+                                    Exclusionary = request.Exclusionary
                                 });
 
                                 if (!response.CacheMatchesGroupCount)
