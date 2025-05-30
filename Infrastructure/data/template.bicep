@@ -892,6 +892,19 @@ module nspSqlServerAssociationTemplate 'networkSecurityPerimeterResourceAssociat
   ]
 }
 
+module nspReplicaSqlServerAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspReplicaSqlServerAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'sql'
+    resourceId: sqlServer.outputs.replicaSqlServerId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
 output storageAccountName string = storageAccountName
 output serviceBusName string = serviceBusName
 output serviceBusTopicName string = syncJobsTopicName
