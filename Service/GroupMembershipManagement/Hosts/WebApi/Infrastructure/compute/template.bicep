@@ -359,6 +359,14 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   }
 }
 
+resource openAIResourceName_Default 'Microsoft.CognitiveServices/accounts/defenderForAISettings@2025-04-01-preview' = {
+  parent: openAI
+  name: 'Default'
+  properties: {
+    state: 'Disabled'
+  }
+}
+
 resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
   parent: openAI
   name: 'gpt-4o'
