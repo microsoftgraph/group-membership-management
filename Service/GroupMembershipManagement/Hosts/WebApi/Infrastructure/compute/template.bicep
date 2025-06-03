@@ -337,52 +337,13 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
   }
 }
 
-resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
-  name: openAIResourceName
-  location: aiLocation
-  kind: 'OpenAI'
-  sku: {
-    name: 'S0'
-  }
-  properties: {
-    apiProperties: {}
-    customSubDomainName: toLower(openAIResourceName)
-    networkAcls: {
-      defaultAction: 'Allow'
-      virtualNetworkRules: []
-      ipRules: []
-    }
-    allowProjectManagement: false
-    publicNetworkAccess: 'Enabled'
-  }
-  tags: {
+module openAIResources 'openAIResources.bicep' = {
+  name: 'openAIResources'
+  params: {
+    aiLocation: aiLocation
+    openAIResourceName: openAIResourceName
   }
 }
-
-resource openAIResourceName_Default 'Microsoft.CognitiveServices/accounts/defenderForAISettings@2025-04-01-preview' = {
-  parent: openAI
-  name: 'Default'
-  properties: {
-    state: 'Disabled'
-  }
-}
-
-resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  parent: openAI
-  name: 'gpt-4o'
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: 'gpt-4o'
-      version: '2024-05-13'
-    }
-  }
-  sku: {
-    name: 'standard'
-    capacity: 1
-  }
-}
-
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-WebApi'
   params: {
@@ -393,7 +354,6 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
-
 module appService 'appService.bicep' = {
   name: 'appServiceTemplate-WebApi'
   params: {
