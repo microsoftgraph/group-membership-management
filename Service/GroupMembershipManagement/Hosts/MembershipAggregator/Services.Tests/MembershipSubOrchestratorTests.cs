@@ -283,6 +283,12 @@ namespace Services.Tests
                                 await CallFileUploaderFunctionAsync(request as FileUploaderRequest);
                             });
 
+            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileDeleterFunction)), It.IsAny<FileDeleterRequest>()))
+                            .Callback<string, object>(async (name, request) =>
+                            {
+                                await CallFileDeleterFunctionAsync(request as FileDeleterRequest);
+                            });
+
             _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
                             .Callback<string, object>(async (name, request) =>
                             {
@@ -618,10 +624,15 @@ namespace Services.Tests
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
             _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
 
+
+            _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
+            _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
+
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("Aggregated")),
                                                                  It.IsAny<string>(),
                                                                  It.IsAny<Dictionary<string, string>>()), Times.Once());
 
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Reading from blobs")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()), Times.Never());
 
@@ -863,6 +874,12 @@ namespace Services.Tests
         {
             var function = new FileUploaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
             await function.UploadFileAsync(request);
+        }
+
+        private async Task CallFileDeleterFunctionAsync(FileDeleterRequest request)
+        {
+            var function = new FileDeleterFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            await function.DeleteFileAsync(request);
         }
 
         private async Task CallLoggerFunctionAsync(LoggerRequest request)

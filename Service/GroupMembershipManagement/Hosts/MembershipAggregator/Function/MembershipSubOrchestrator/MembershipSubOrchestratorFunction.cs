@@ -154,6 +154,15 @@ namespace Hosts.MembershipAggregator
                 deltaCalculatorRequest.ReadFromBlobs = true;
                 deltaCalculatorRequest.SourceMembershipFilePath = sourceFilePath;
                 deltaCalculatorRequest.DestinationMembershipFilePath = destinationFilePath;
+
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
+                {
+                    Message = new LogMessage
+                    {
+                        Message = $"Reading from blobs, SourceMembershipFilePath: {deltaCalculatorRequest.SourceMembershipFilePath}, DestinationMembershipFilePath: {deltaCalculatorRequest.DestinationMembershipFilePath}",
+                        RunId = runId
+                    }
+                });
             }
             else
             {
@@ -162,6 +171,20 @@ namespace Hosts.MembershipAggregator
             }
 
             var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
+
+            if (deltaResponse != null && deltaCalculatorRequest.ReadFromBlobs && deltaCalculatorRequest.SourceMembershipFilePath != null && deltaCalculatorRequest.DestinationMembershipFilePath != null)
+            {
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
+                {
+                    Message = new LogMessage
+                    {
+                        Message = $"deltaResponse: {deltaResponse.MembershipDeltaStatus}, SourceMembershipFilePath: {deltaCalculatorRequest.SourceMembershipFilePath}, DestinationMembershipFilePath: {deltaCalculatorRequest.DestinationMembershipFilePath}",
+                        RunId = runId
+                    }
+                });
+                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest { FilePath = deltaCalculatorRequest.SourceMembershipFilePath, RunId = request.SyncJob.RunId });
+                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest { FilePath = deltaCalculatorRequest.DestinationMembershipFilePath, RunId = request.SyncJob.RunId });
+            }
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
             {

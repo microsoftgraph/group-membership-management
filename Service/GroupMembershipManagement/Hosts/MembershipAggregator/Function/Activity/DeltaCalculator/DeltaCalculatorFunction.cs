@@ -7,6 +7,7 @@ using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using Services.Contracts;
+using Services.Entities;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -61,8 +62,40 @@ namespace Hosts.MembershipAggregator
                     },
                     VerbosityLevel.DEBUG
                 );
-                await _blobStorageRepository.DeleteFileAsync(request.SourceMembershipFilePath);
-                await _blobStorageRepository.DeleteFileAsync(request.DestinationMembershipFilePath);
+
+                if (sourceBlobResult.BlobStatus == BlobStatus.NotFound)
+                {
+                    await _loggingRepository.LogMessageAsync(
+                        new LogMessage
+                        {
+                            Message = "SourceMembership blob not found",
+                            RunId = request.RunId
+                        },
+                        VerbosityLevel.DEBUG
+                    );
+
+                    return new DeltaCalculatorResponse
+                    {
+                        MembershipDeltaStatus = MembershipDeltaStatus.Error
+                    };
+                }
+
+                if (destinationBlobResult.BlobStatus == BlobStatus.NotFound)
+                {
+                    await _loggingRepository.LogMessageAsync(
+                        new LogMessage
+                        {
+                            Message = "DestinationMembership blob not found",
+                            RunId = request.RunId
+                        },
+                        VerbosityLevel.DEBUG
+                    );
+
+                    return new DeltaCalculatorResponse
+                    {
+                        MembershipDeltaStatus = MembershipDeltaStatus.Error
+                    };
+                }
 
                 sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceBlobResult.Content);
                 destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationBlobResult.Content);
