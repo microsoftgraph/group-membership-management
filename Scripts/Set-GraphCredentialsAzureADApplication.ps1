@@ -175,7 +175,6 @@ function Set-GraphCredentialsAzureADApplication {
 
 		Update-AzADApplication	-ObjectId $($graphApp.Id) `
                                 -DisplayName $graphAppDisplayName `
-                                -ReplyUrls $replyUrls `
                                 -RequiredResourceAccess $requiredResourceAccess `
 								-AvailableToOtherTenants $false `
 								-Web $webSettings

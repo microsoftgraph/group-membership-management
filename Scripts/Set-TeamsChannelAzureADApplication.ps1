@@ -180,7 +180,6 @@ function Set-TeamsChannelAzureADApplication {
 
 			Update-AzADApplication	-ObjectId $($teamsChannelApp.Id) `
 									-DisplayName $teamsChannelAppDisplayName `
-									-ReplyUrls $replyUrls `
 									-RequiredResourceAccess $requiredResourceAccess `
 									-AvailableToOtherTenants $false `
 									-Web $webSettings
