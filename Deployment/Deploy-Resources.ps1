@@ -374,6 +374,24 @@ function Set-ComputeResources {
 
 }
 
+function Get-DefaultString {
+    param(
+        [string]$Value,
+        [string]$Default
+    )
+    if ([string]::IsNullOrWhiteSpace($Value)) { return $Default }
+    return $Value
+}
+
+function Get-Default {
+    param(
+        [Parameter(Mandatory)][object]$Value,
+        [Parameter(Mandatory)][object]$Default
+    )
+    if ($null -eq $Value) { return $Default }
+    return $Value
+}
+
 function Set-GMMResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -409,14 +427,19 @@ function Set-GMMResources {
     $commonParametersObject.parameters["apiServiceBaseUri"] = @{"value" = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" }
 
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
-    $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
-    $graphAppCertificateName = $parameterObject.parameters["graphAppCertificateName"].value ?? "not-set";
-    $teamsChannelAppCertificateName = $parameterObject.parameters["teamsChannelAppCertificateName"].value ?? "not-set";
-    $tenantDomain = $parameterObject.parameters["tenantDomain"].value ?? "not-set";
-    $sharepointDomain = $parameterObject.parameters["sharepointDomain"].value ?? "not-set";
-    $secondaryTenantId = [string]::IsNullOrEmpty($parameterObject.parameters["secondaryTenantId"].value) ? $null : $parameterObject.parameters["secondaryTenantId"].value
-    $createAppRegistrations = $parameterObject.parameters["createAppRegistrations"].value ?? $true;
-    $applyDBMigrations = $parameterObject.parameters["applyDBMigrations"].value ?? $true;
+    $parameters = $parameterObject.parameters
+
+    # booleans
+    $setRBACPermissions      = Get-Default -Value $parameters['setRBACPermissions'].value      -Default $false
+    $createAppRegistrations  = Get-Default -Value $parameters['createAppRegistrations'].value  -Default $true
+    $applyDBMigrations       = Get-Default -Value $parameters['applyDBMigrations'].value       -Default $true
+
+    # strings
+    $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
+    $teamsChannelAppCertificateName = Get-DefaultString -Value $parameters['teamsChannelAppCertificateName'].value -Default 'not-set'
+    $tenantDomain                   = Get-DefaultString -Value $parameters['tenantDomain'].value                   -Default 'not-set'
+    $sharepointDomain               = Get-DefaultString -Value $parameters['sharepointDomain'].value               -Default 'not-set'
+    $secondaryTenantId              = Get-DefaultString -Value $parameters['secondaryTenantId'].value -Default $null
 
     $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     
@@ -544,6 +567,7 @@ function Set-GMMResources {
         ApplyDBMigrations = $applyDBMigrations
         TenantDomain = $tenantDomain
         SharepointDomain = $sharepointDomain
+        SetRBACPermissions = $setRBACPermissions
     }
 }
 
@@ -1024,7 +1048,7 @@ function Set-GMMAppRegistrations {
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -TenantIdToCreateAppIn ($SecondaryTenantId ?? $mainTenantId) `
+        -TenantIdToCreateAppIn (Get-Default -Value $SecondaryTenantId -Default $mainTenantId) `
         -TenantIdWithKeyVault $mainTenantId `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
@@ -1037,7 +1061,7 @@ function Set-GMMAppRegistrations {
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -TenantIdToCreateAppIn ($SecondaryTenantId ?? $mainTenantId) `
+        -TenantIdToCreateAppIn (Get-Default -Value $SecondaryTenantId -Default $mainTenantId) `
         -TenantIdWithKeyVault $mainTenantId `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
@@ -1144,7 +1168,7 @@ function Set-ConfigureWebApps {
 	}
 
     $uiApp = Get-AzADApplication -ApplicationId $UIAppRegistrationId
-    $currentRedirectUris = $uiApp.Spa.RedirectUri ??  @()
+    $currentRedirectUris = Get-Default -Value $uiApp.Spa.RedirectUri -Default @()
     $newRedirectUris = @()
 
     foreach ($origin in $allowedOrigins) {
@@ -1386,9 +1410,7 @@ function Deploy-Resources {
         -ComputeResourceGroup $computeResourceGroup `
         -DataResourceGroup $dataResourceGroup
 
-    $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
-    $setRBACPermissions = $parameterObject.parameters["setRBACPermissions"].value ?? $false;
-    if ($setRBACPermissions -eq $true) {
+    if ($true -eq $response.SetRBACPermissions) {
         Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
