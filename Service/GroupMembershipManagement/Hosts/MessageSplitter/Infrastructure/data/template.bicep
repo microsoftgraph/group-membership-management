@@ -22,10 +22,13 @@ param location string
 ])
 param instanceIdentifier string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('ms${solutionAbbreviation}${environmentAbbreviation}prod${instanceIdentifier}${uniqueString(resourceGroup().id)}',0,23)
 
-module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
+module messageSplitterStorageAccountProd 'storageAccount.bicep' = {
   name: 'ms${instanceIdentifier}ProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
@@ -33,5 +36,18 @@ module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'messageSplitter${instanceIdentifier}StorageAccountProd'
+  }
+}
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module msStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'msStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: messageSplitterStorageAccountProd.outputs.storageAccountId
   }
 }

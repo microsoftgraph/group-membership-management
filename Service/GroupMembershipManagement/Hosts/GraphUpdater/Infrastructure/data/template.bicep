@@ -24,6 +24,9 @@ param location string
 param instanceIdentifier string = ''
 var instanceSuffix = empty(instanceIdentifier) ? '' : '${instanceIdentifier}'
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('gu${solutionAbbreviation}${environmentAbbreviation}prod${instanceSuffix}${uniqueString(resourceGroup().id)}',0,23)
 
@@ -35,5 +38,18 @@ module graphUpdaterStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'graphUpdater${instanceSuffix}StorageAccountProd'
+  }
+}
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module guStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'guStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: graphUpdaterStorageAccountProd.outputs.storageAccountId
   }
 }

@@ -905,6 +905,32 @@ module nspReplicaSqlServerAssociationTemplate 'networkSecurityPerimeterResourceA
   ]
 }
 
+module nspStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: storageAccountTemplate.outputs.storageAccountId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
+module nspJobsStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'nspJobsStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: jobsStorageAccountTemplate.outputs.storageAccountId
+  }
+  dependsOn: [
+    prereqsNetworkSecurityPerimeterProfilesTemplate
+  ]
+}
+
 output storageAccountName string = storageAccountName
 output serviceBusName string = serviceBusName
 output serviceBusTopicName string = syncJobsTopicName

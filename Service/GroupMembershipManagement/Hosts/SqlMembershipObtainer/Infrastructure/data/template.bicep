@@ -11,6 +11,9 @@ param solutionAbbreviation string = 'gmm'
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 @description('SqlMembershipObtainer function internal storage account sku.')
 param storageAccountSku string = 'Standard_LRS'
 
@@ -28,5 +31,18 @@ module smoStorageAccountProd 'storageAccount.bicep' = {
     location: location
     sqlMembershipObtainerStorageAccountName: 'sqlMembershipObtainerStorageAccountNameProd'
     storageAccountSettingName: 'sqlMembershipObtainerStorageAccountProd'
+  }
+}
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module smoStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'smoStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: smoStorageAccountProd.outputs.storageAccountId
   }
 }

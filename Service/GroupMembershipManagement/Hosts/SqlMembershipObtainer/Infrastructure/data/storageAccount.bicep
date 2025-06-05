@@ -114,3 +114,5 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     }
   }
 }
+
+output storageAccountId string = storageAccount.id

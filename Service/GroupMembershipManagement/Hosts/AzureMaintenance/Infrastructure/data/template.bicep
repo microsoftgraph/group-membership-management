@@ -13,6 +13,9 @@ param storageAccountSku string = 'Standard_LRS'
 @description('Resource location.')
 param location string
 
+@description('Classify the types of resources in prereqs resource group.')
+param prereqsResourceGroupClassification string = 'prereqs'
+
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('am${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
@@ -24,5 +27,18 @@ module azureMaintenanceStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'azureMaintenanceStorageAccountProd'
+  }
+}
+
+var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
+var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
+
+module amStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'amStorageAccountAssociationTemplate'
+  scope: resourceGroup(prereqsResourceGroupName)
+  params: {
+    nspName: nspName
+    profileName: 'storageaccount'
+    resourceId: azureMaintenanceStorageAccountProd.outputs.storageAccountId
   }
 }
