@@ -377,7 +377,7 @@ function Set-ComputeResources {
 function Get-DefaultString {
     param(
         [string]$Value,
-        [string]$Default
+        $Default
     )
     if ([string]::IsNullOrWhiteSpace($Value)) { return $Default }
     return $Value
@@ -385,8 +385,8 @@ function Get-DefaultString {
 
 function Get-Default {
     param(
-        [Parameter(Mandatory)][object]$Value,
-        [Parameter(Mandatory)][object]$Default
+        [object]$Value,
+        [object]$Default
     )
     if ($null -eq $Value) { return $Default }
     return $Value
@@ -1268,8 +1268,6 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_VERSION_NUMBER=$buildVersion`n"
     $envContent += "DISABLE_ESLINT_PLUGIN=true`n"
 
-    Install-SwaIfNeeded
-
     Set-Content -Path "$WebAppDirectory\.env" -Value $envContent -Force
     $currentLocation = Get-Location
 
@@ -1286,48 +1284,116 @@ function Set-PublishUICode {
     Set-Location -Path $currentLocation
 }
 
-function Install-SwaIfNeeded {
+function Test-ScriptDependencies {
+    $dependenciesPresent = $true
+    Write-Host "🔍 Checking required dependencies..."
 
-    # Check if npm is available
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Error "npm is not installed. Please install Node.js and npm first."
-        return $false
+    # PowerShell Core
+    if ($PSVersionTable.PSEdition -ne "Core") {
+        Write-Error "❌ This script requires PowerShell Core (pwsh). Current edition: $($PSVersionTable.PSEdition)"
+        exit 1
+    } else {
+        Write-Host "✅ Running on PowerShell Core version $($PSVersionTable.PSVersion)" -ForegroundColor Green
     }
 
+    # 64-bit
+    if (-not [Environment]::Is64BitProcess) {
+        Write-Error "❌ This script must be run in a 64-bit PowerShell session."
+        exit 1
+    } else {
+        Write-Host "✅ Running in a 64-bit PowerShell session." -ForegroundColor Green
+    }
+
+    # Node.js
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Error "❌ Node.js is not installed. Download it from https://nodejs.org/."
+        $dependenciesPresent = $false
+    } else {
+        Write-Host "✅ Node.js $((node -v).Trim()) is installed." -ForegroundColor Green
+    }
+
+    # npm
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Error "❌ npm is not installed. It should be included with Node.js."
+        $dependenciesPresent = $false
+    } else {
+        Write-Host "✅ npm $((npm -v).Trim()) is installed." -ForegroundColor Green
+    }
+
+    # pnpm
+    if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+        Write-Warning "⚠️ pnpm is not installed. Attempting to install..."
+        npm install -g pnpm
+
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ pnpm installation failed."
+            exit 1
+        }
+
+        Write-Host "✅ pnpm installed successfully." -ForegroundColor Green
+    } else {
+        Write-Host "✅ pnpm is already installed." -ForegroundColor Green
+    }
+
+    # swa CLI
     $desiredVersion = "2.0.5"
     $swaInstalled = Get-Command swa -ErrorAction SilentlyContinue
 
     if ($swaInstalled) {
-        # Check installed version
-        $installedVersion = (npm list -g @azure/static-web-apps-cli --depth=0 | Select-String -Pattern "@azure/static-web-apps-cli@([\d\.]+)" | ForEach-Object {
-            $_.Matches[0].Groups[1].Value
-        })
+        $installedVersion = (npm list -g @azure/static-web-apps-cli --depth=0 | 
+            Select-String -Pattern "@azure/static-web-apps-cli@([\d\.]+)" | 
+            ForEach-Object { $_.Matches[0].Groups[1].Value })
 
         if ($installedVersion -eq $desiredVersion) {
-            Write-Output "'swa' version $desiredVersion is already installed."
-            return $true
+            Write-Host "✅ swa version $desiredVersion is already installed." -ForegroundColor Green
         } else {
-            Write-Output "'swa' is installed but not version $desiredVersion. Updating..."
+            Write-Warning "⚠️ swa version is $installedVersion, expected $desiredVersion. Updating..."
+            npm install -g @azure/static-web-apps-cli@$desiredVersion
         }
     } else {
-        Write-Output "'swa' is not installed. Installing version $desiredVersion..."
+        Write-Host "📦 Installing swa CLI version $desiredVersion..."
+        npm install -g @azure/static-web-apps-cli@$desiredVersion
     }
 
-    # Install specific version
-    npm install -g @azure/static-web-apps-cli@$desiredVersion
-
-    # Verify installation
-    $installedVersion = (npm list -g @azure/static-web-apps-cli --depth=0 | Select-String -Pattern "@azure/static-web-apps-cli@([\d\.]+)" | ForEach-Object {
-        $_.Matches[0].Groups[1].Value
-    })
+    # Confirm swa version installed
+    $installedVersion = (npm list -g @azure/static-web-apps-cli --depth=0 | 
+        Select-String -Pattern "@azure/static-web-apps-cli@([\d\.]+)" | 
+        ForEach-Object { $_.Matches[0].Groups[1].Value })
 
     if ($installedVersion -eq $desiredVersion) {
-        Write-Output "'swa' version $desiredVersion installed successfully."
-        return $true
+        Write-Host "✅ swa version $desiredVersion installed successfully." -ForegroundColor Green
     } else {
-        Write-Error "Failed to install 'swa' version $desiredVersion."
-        return $false
+        Write-Error "❌ Failed to install swa version $desiredVersion."
+        exit 1
     }
+
+    # Required paths and files
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    $requiredPaths = @{
+        "function_packages"        = "$scriptsDirectory\function_packages"
+        "webapi_package"          = "$scriptsDirectory\webapi_package"
+        "webapp_package\web-app"  = "$scriptsDirectory\webapp_package\web-app"
+        "Scripts"                 = "$scriptsDirectory\Scripts"
+        "Scripts\PostDeployment"  = "$scriptsDirectory\Scripts\PostDeployment"
+        "efbundle.exe"            = "$scriptsDirectory\function_packages\efbundle.exe"
+    }
+
+    foreach ($item in $requiredPaths.GetEnumerator()) {
+        $pathType = if ($item.Key -eq "efbundle.exe") { "Leaf" } else { "Container" }
+        if (-not (Test-Path -Path $item.Value -PathType $pathType)) {
+            Write-Error "❌ Missing: $($item.Key) at $($item.Value)"
+            $dependenciesPresent = $false
+        } else {
+            Write-Host "✅ Found $($item.Key)." -ForegroundColor Green
+        }
+    }
+
+    if (-not $dependenciesPresent) {
+        Write-Error "❌ One or more dependencies are missing. Please resolve them before continuing."
+        exit 1
+    }
+
+    Write-Host "🎉 All dependencies verified successfully!" -ForegroundColor Green
 }
 
 function Deploy-Resources {
@@ -1354,6 +1420,8 @@ function Deploy-Resources {
         [Parameter(Mandatory = $false)]
         [System.Nullable[Guid]]$SecondaryTenantId
     )
+
+    Test-ScriptDependencies
 
     # define the resource groups
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
