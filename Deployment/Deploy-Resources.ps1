@@ -433,6 +433,7 @@ function Set-GMMResources {
     $setRBACPermissions      = Get-Default -Value $parameters['setRBACPermissions'].value      -Default $false
     $createAppRegistrations  = Get-Default -Value $parameters['createAppRegistrations'].value  -Default $true
     $applyDBMigrations       = Get-Default -Value $parameters['applyDBMigrations'].value       -Default $true
+    $skipAppRegistrationSetupIfAppExists = Get-Default -Value $parameters['skipAppRegistrationSetupIfAppExists'].value -Default $false
 
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
@@ -489,7 +490,8 @@ function Set-GMMResources {
             -GraphAppCertificateName $graphAppCertificateName `
             -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
             -TenantDomain $tenantDomain `
-            -SharepointDomain $sharepointDomain
+            -SharepointDomain $sharepointDomain `
+            -SkipAppRegistrationSetupIfAppExists $skipAppRegistrationSetupIfAppExists
     
         # add app registrations to common parameters
         $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
@@ -1008,6 +1010,8 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $False)]
         [string] $TenantDomain,
         [Parameter(Mandatory = $False)]
+        [boolean] $SkipAppRegistrationSetupIfAppExists = $false,
+        [Parameter(Mandatory = $False)]
         [string] $SharepointDomain
     )
 
@@ -1028,7 +1032,7 @@ function Set-GMMAppRegistrations {
         -SharepointDomain $SharepointDomain `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
-        -SkipIfApplicationExists $true `
+        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -Clean $false
 
     . ($ScriptsDirectory + '\Set-WebApiAzureADApplication.ps1')
@@ -1040,7 +1044,7 @@ function Set-GMMAppRegistrations {
         -DevTenantId $SecondaryTenantId `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
-        -SkipIfApplicationExists $true `
+        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -Clean $false
 
     . ($ScriptsDirectory + '\Set-GraphCredentialsAzureADApplication.ps1')
@@ -1052,7 +1056,7 @@ function Set-GMMAppRegistrations {
         -TenantIdWithKeyVault $mainTenantId `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
-        -SkipIfApplicationExists $true `
+        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -CertificateName $GraphAppCertificateName `
         -Clean $false
 
@@ -1065,6 +1069,7 @@ function Set-GMMAppRegistrations {
         -TenantIdWithKeyVault $mainTenantId `
         -SaveToKeyVault $true `
         -SkipPrompts $true `
+        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -CertificateName $TeamsChannelCertificateName `
         -Clean $false
 

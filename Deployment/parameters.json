@@ -332,6 +332,12 @@
         "description": "Flag to apply database migrations."
       }
     },
+    "skipAppRegistrationSetupIfAppExists": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the app registration setup (API permissions). Set it to true to speed up the deployment if your App Registrations are already up to date with the required API permissions."
+      }
+    },
     "availableMessageSplitterSubscriptions": {
       "value": [
         {

@@ -221,6 +221,7 @@ function Set-WebApiAzureADApplication {
 								-DisplayName $webApiAppDisplayName `
 								-OptionalClaim $optionalClaim `
 								-Web $webSettings `
+								-RequiredResourceAccess $requiredResourceAccess `
 								-AvailableToOtherTenants $false
 	}
 

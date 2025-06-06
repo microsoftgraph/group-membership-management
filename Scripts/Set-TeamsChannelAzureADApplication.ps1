@@ -81,6 +81,8 @@ function Set-TeamsChannelAzureADApplication {
 		[boolean] $SkipPrompts = $False,
 		[Parameter(Mandatory=$False)]
 		[boolean] $Clean = $False,
+		[Parameter(Mandatory = $False)]
+		[boolean] $SkipIfApplicationExists = $True,
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
 	)
@@ -109,12 +111,12 @@ function Set-TeamsChannelAzureADApplication {
     $teamsChannelAppDisplayName = "$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation"
 	$teamsChannelApp = (Get-AzADApplication -DisplayName $teamsChannelAppDisplayName)
 
-	if($null -ne $teamsChannelApp -and $Clean -eq $false)
+	if($null -ne $teamsChannelApp -and $Clean -eq $false -and $SkipIfApplicationExists -eq $true)
 	{
-		Write-Host "Application $teamsChannelAppDisplayName already exists. Skipping creation..."
+		Write-Host "Skipping creation of Teams Channel Azure AD application as it already exists."
 		Write-Host @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; }
-	}
-
+		return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+	}	
 	else {
 
 		if($Clean -eq $true)
