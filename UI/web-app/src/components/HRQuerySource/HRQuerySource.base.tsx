@@ -645,7 +645,41 @@ const getOptions = (
       setFilteredOptions({});
       setFilteredValueOptions({});
       const childToRemove = children[indexToRemove];
+      const updatedChildren = [...children];
       const newFilter = props.source.filter?.replace(childToRemove.filter, '').trim();
+      
+      const prevIndex = indexToRemove - 1;
+      const isSecondLast = prevIndex === children.length - 2;
+
+      if (prevIndex >= 0 && children[prevIndex].filter && isSecondLast) {
+        const prevChild = children[prevIndex];
+        let words = children[prevIndex].filter.split(' ');
+
+        if (words[0] === "") {
+          words = children[prevIndex].filter.trim().split(' ');
+        }
+        if (words.length > 0) {
+          const result = findValueAndOr(words);
+          const indexAfterValue = 2 + result.value.split(' ').length;
+          words.splice(indexAfterValue);
+
+          const newPrevfilter = words.join(' ');
+          updatedChildren[prevIndex] = { ...prevChild, filter: newPrevfilter };
+        
+          const filterWithoutChild  = props.source.filter?.replace(childToRemove.filter, '').trim();
+          const cleanedFilter = filterWithoutChild ?.replace(/\s+$/, '').replace(prevChild.filter.replace(/\s+$/, ''), newPrevfilter.trim()).trim();
+
+          setSource(prevSource => {
+              const newSource = { ...prevSource, filter: cleanedFilter };
+              onSourceChange(newSource, partId);
+              return newSource;
+          });          
+
+          setChildren(updatedChildren.filter((_, index) => index !== indexToRemove));
+          return;
+        }
+      }
+
       setSource(prevSource => {
           const newSource = { ...prevSource, filter: newFilter };
           onSourceChange(newSource, partId);
