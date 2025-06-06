@@ -434,6 +434,7 @@ function Set-GMMResources {
     $createAppRegistrations  = Get-Default -Value $parameters['createAppRegistrations'].value  -Default $true
     $applyDBMigrations       = Get-Default -Value $parameters['applyDBMigrations'].value       -Default $true
     $skipAppRegistrationSetupIfAppExists = Get-Default -Value $parameters['skipAppRegistrationSetupIfAppExists'].value -Default $false
+    $setRBACPermissionsBicep = Get-Default -Value $parameters['setRBACPermissionsBicep'].value -Default $false
 
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
@@ -467,7 +468,7 @@ function Set-GMMResources {
         TemplateFilePath        = $TemplateFilePath
         ParameterFilePath       = $ParameterFilePath
         AdditionalParameters    = $commonParametersObject
-        SetRBACPermissions      = $setRBACPermissions
+        SetRBACPermissions      = $setRBACPermissionsBicep
     }
 
     Start-Sleep -Seconds 10
@@ -511,7 +512,7 @@ function Set-GMMResources {
         TemplateFilePath        = $TemplateFilePath
         ParameterFilePath       = $ParameterFilePath
         AdditionalParameters    = $commonParametersObject
-        SetRBACPermissions      = $setRBACPermissions
+        SetRBACPermissions      = $setRBACPermissionsBicep
     }
     Start-Sleep -Seconds 10
 
