@@ -1312,6 +1312,8 @@ function Set-PublishUICode {
 
 function Test-ScriptDependencies {
     $dependenciesPresent = $true
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+
     Write-Host "🔍 Checking required dependencies..."
 
     # PowerShell Core
@@ -1328,6 +1330,20 @@ function Test-ScriptDependencies {
         exit 1
     } else {
         Write-Host "✅ Running in a 64-bit PowerShell session." -ForegroundColor Green
+    }
+
+    # MS Graph PowerShell modules
+    Write-Host "Checking Microsoft Graph PowerShell modules..."
+		
+    $requiredGraphModules = @(
+        "Microsoft.Graph.Authentication",
+        "Microsoft.Graph.Applications"
+    )
+
+    . ($scriptsDirectory + '\scripts\Install-ModuleIfNeeded.ps1')
+
+    foreach ($module in $requiredGraphModules) {
+        Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
     }
 
     # Node.js
@@ -1394,7 +1410,6 @@ function Test-ScriptDependencies {
     }
 
     # Required paths and files
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
     $requiredPaths = @{
         "function_packages"        = "$scriptsDirectory\function_packages"
         "webapi_package"          = "$scriptsDirectory\webapi_package"
