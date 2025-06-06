@@ -110,12 +110,13 @@ function Set-TeamsChannelAzureADApplication {
 	#region Delete Application / Service Principal if they already exist
     $teamsChannelAppDisplayName = "$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation"
 	$teamsChannelApp = (Get-AzADApplication -DisplayName $teamsChannelAppDisplayName)
+	$updatedAPIPermissions = $false
 
 	if($null -ne $teamsChannelApp -and $Clean -eq $false -and $SkipIfApplicationExists -eq $true)
 	{
 		Write-Host "Skipping creation of Teams Channel Azure AD application as it already exists."
 		Write-Host @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; }
-		return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+		return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $teamsChannelAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 	}	
 	else {
 
@@ -161,6 +162,8 @@ function Set-TeamsChannelAzureADApplication {
 											-RequiredResourceAccess $requiredResourceAccess `
 											-AvailableToOtherTenants $false `
 											-IsFallbackPublicClient
+			
+			$updatedAPIPermissions = $true
 
 			New-AzADServicePrincipal -ApplicationId $teamsChannelApp.AppId
 
@@ -185,13 +188,15 @@ function Set-TeamsChannelAzureADApplication {
 									-RequiredResourceAccess $requiredResourceAccess `
 									-AvailableToOtherTenants $false `
 									-Web $webSettings
+			
+			$updatedAPIPermissions = $true
 		}
 	}
 
 	if($SaveToKeyVault -eq $false)
 	{
 		Write-Verbose "Set-TeamsChannelAzureADApplication completed."
-		return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+		return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $teamsChannelAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	}
 
 	Set-TeamsChannelAppKeyVaultSecrets -SubscriptionName $SubscriptionName `
@@ -203,7 +208,7 @@ function Set-TeamsChannelAzureADApplication {
 								-CertificateName $CertificateName `
 								-SkipPrompts $SkipPrompts
 
-	return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+	return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $teamsChannelAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	Write-Verbose "Set-TeamsChannelAzureADApplication completed."
 }
 

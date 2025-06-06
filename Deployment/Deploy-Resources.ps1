@@ -1076,6 +1076,23 @@ function Set-GMMAppRegistrations {
 
     $null = Set-AzContext -Tenant $mainTenantId -Subscription $subscriptionName
 
+    # determine which apps need admin consent
+    $appInformationObjects = @(
+        $uiInformation,
+        $apiInformation,
+        $graphInformation,
+        $teamsChannelInformation
+    )
+
+    $appsThatNeedAdminConsent = @()
+
+    foreach ($appInfo in $appInformationObjects) {
+        if ($appInfo.UpdatedApiPermissions) {
+            $appsThatNeedAdminConsent += $appInfo.ApplicationName
+        }
+    }
+
+    #return the response
     return @{
         UIApplicationId            = $uiInformation.ApplicationId;
         UITenantId                 = $uiInformation.TenantId;
@@ -1085,6 +1102,7 @@ function Set-GMMAppRegistrations {
         GraphTenantId              = $graphInformation.TenantId;
         TeamsChannelApplicationId  = $teamsChannelInformation.ApplicationId;
         TeamsChannelTenantId       = $teamsChannelInformation.TenantId;
+        AppsThatNeedAdminConsent = $appsThatNeedAdminConsent;
     }
 }
 
@@ -1538,6 +1556,18 @@ function Deploy-Resources {
     if ($StartFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
+
+    if ($response.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
+        Write-Host "`n======================" -ForegroundColor Yellow
+        Write-Host "The following applications require admin consent:" -ForegroundColor Yellow
+        Write-Host "======================" -ForegroundColor Yellow
+        foreach ($app in $response.AppRegistrations.AppsThatNeedAdminConsent) {
+            Write-Host $app
+        }
+        Write-Host "`nPlease visit the Azure portal to grant admin consent for these applications." -ForegroundColor Yellow
+    }
+
+    Start-Sleep -Seconds 10
 
     # open the web app
     $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup

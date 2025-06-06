@@ -101,11 +101,12 @@ function Set-GraphCredentialsAzureADApplication {
 	#region Delete Application / Service Principal if they already exist
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
 	$graphApp = (Get-AzADApplication -DisplayName $graphAppDisplayName)
+	$updatedAPIPermissions = $false
 
 	if($null -ne $graphApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false)
 	{
 		Write-Host "Application $graphAppDisplayName already exists. Skipping creation..."
-		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 	}
 
 	if($Clean -eq $true)
@@ -154,7 +155,9 @@ function Set-GraphCredentialsAzureADApplication {
                                         -RequiredResourceAccess $requiredResourceAccess `
 										-AvailableToOtherTenants $false `
 										-IsFallbackPublicClient
-
+		
+		$updatedAPIPermissions = $true
+		
         New-AzADServicePrincipal -ApplicationId $graphApp.AppId
 
 		$webSettings = $graphApp.Web
@@ -178,12 +181,14 @@ function Set-GraphCredentialsAzureADApplication {
                                 -RequiredResourceAccess $requiredResourceAccess `
 								-AvailableToOtherTenants $false `
 								-Web $webSettings
+
+		$updatedAPIPermissions = $true
     }
 
 	if($SaveToKeyVault -eq $false)
 	{
 		Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
-		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	}
 
 	Set-GraphAppKeyVaultSecrets -SubscriptionName $SubscriptionName `
@@ -195,7 +200,7 @@ function Set-GraphCredentialsAzureADApplication {
 								-CertificateName $CertificateName `
 								-SkipPrompts $SkipPrompts
 
-	return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; }
+	return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
 }
 

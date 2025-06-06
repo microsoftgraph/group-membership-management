@@ -109,10 +109,11 @@ function Set-UIAzureADApplication {
 	#region Delete Application / Service Principal if they already exist
 	$uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
 	$uiApp = (Get-AzADApplication -DisplayName $uiAppDisplayName)
+	$updatedAPIPermissions = $false
 
 	if ($null -ne $uiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
 		Write-Host "Application $uiAppDisplayName already exists. Skipping creation..."
-		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; }
+		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	}
 
 	if ($Clean) {
@@ -133,22 +134,22 @@ function Set-UIAzureADApplication {
 	#endregion
 
 	#region Create Appplication
+	$requiredResourceAccess = @{
+		ResourceAppId  = "00000003-0000-0000-c000-000000000000";
+		ResourceAccess = @(
+			@{
+				Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"; # User.Read
+				Type = "Scope"
+			},
+			@{
+				Id   = "b340eb25-3456-403f-be2f-af7a0d370277"; # User.ReadBasic.All
+				Type = "Scope"
+			}
+		)
+	}
+
 	if ($null -eq $uiApp) {
 		Write-Verbose "Creating Azure AD app $uiAppDisplayName"
-
-		$requiredResourceAccess = @{
-			ResourceAppId  = "00000003-0000-0000-c000-000000000000";
-			ResourceAccess = @(
-				@{
-					Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"; # User.Read
-					Type = "Scope"
-				},
-				@{
-					Id   = "b340eb25-3456-403f-be2f-af7a0d370277"; # User.ReadBasic.All
-					Type = "Scope"
-				}
-			)
-		}
 
 		if ($EnvironmentAbbreviation -eq "prodv2") {
 			$url = "https://$SolutionAbbreviation.microsoft.com"
@@ -164,6 +165,8 @@ function Set-UIAzureADApplication {
 										-AvailableToOtherTenants $false `
 										-SPARedirectUri $replyUrls `
 										-RequiredResourceAccess $requiredResourceAccess
+		
+		$updatedAPIPermissions = $true
 
 		New-AzADServicePrincipal -ApplicationId $uiApp.AppId
 
@@ -186,14 +189,17 @@ function Set-UIAzureADApplication {
 		Update-AzADApplication	-ObjectId $($uiApp.Id) `
 								-DisplayName $uiAppDisplayName `
 								-Web $webSettings `
+								-RequiredResourceAccess $requiredResourceAccess `
 								-AvailableToOtherTenants $false
+		
+		$updatedAPIPermissions = $true
 	}
 
 	Start-Sleep -Seconds 30
 
 	if($SaveToKeyVault -eq $false) {
 		Write-Verbose "Set-UIAzureADApplication completed."
-		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; }
+		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	}
 
 	Set-UIKeyVaultSecrets -SubscriptionName $SubscriptionName `
@@ -205,7 +211,7 @@ function Set-UIAzureADApplication {
 						  -CertificateName $CertificateName `
 						  -SkipPrompts $SkipPrompts
 
-	return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; }
+	return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	Write-Verbose "Set-UIAzureADApplication completed."
 }
 

@@ -99,6 +99,7 @@ function Set-WebApiAzureADApplication {
 	#region Delete Application / Service Principal if they already exist
 	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
 	$webApiApp = (Get-AzADApplication -DisplayName $webApiAppDisplayName)
+	$updatedAPIPermissions = $false
 
 	if ($null -ne $webApiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
 		Write-Host "Application $webApiAppDisplayName already exists. Skipping creation..."
@@ -107,7 +108,7 @@ function Set-WebApiAzureADApplication {
 		. ($scriptsDirectory + '\Scripts\Set-AppRolesIfNeeded.ps1')
 		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
-		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
+		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	}
 
 	if ($Clean) {
@@ -128,10 +129,7 @@ function Set-WebApiAzureADApplication {
 	#endregion
 
 	#region Create Application
-	if ($null -eq $webApiApp) {
-		Write-Verbose "Creating Azure AD app $webApiAppDisplayName"
-
-		$requiredResourceAccess = @{
+	$requiredResourceAccess = @{
 			ResourceAppId  = "00000003-0000-0000-c000-000000000000";
 			ResourceAccess = @(
 				@{
@@ -140,6 +138,9 @@ function Set-WebApiAzureADApplication {
 				}
 			)
 		}
+
+	if ($null -eq $webApiApp) {
+		Write-Verbose "Creating Azure AD app $webApiAppDisplayName"
 
 		# These are the function apps that need to interact with swagger.
 		# Add this url -> "https://localhost:7224/swagger/oauth2-redirect.html" if you want to test the WebAPI locally.
@@ -150,6 +151,8 @@ function Set-WebApiAzureADApplication {
 			-ReplyUrls $replyUrls `
 			-RequiredResourceAccess $requiredResourceAccess
 
+		$updatedAPIPermissions = $true
+		
 		New-AzADServicePrincipal -ApplicationId $webApiApp.AppId
 
 		$permissionScope = New-Object Microsoft.Azure.Powershell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPermissionScope
@@ -223,6 +226,8 @@ function Set-WebApiAzureADApplication {
 								-Web $webSettings `
 								-RequiredResourceAccess $requiredResourceAccess `
 								-AvailableToOtherTenants $false
+
+		$updatedAPIPermissions = $true
 	}
 
 	Start-Sleep -Seconds 30
@@ -233,7 +238,7 @@ function Set-WebApiAzureADApplication {
 
 	if($SaveToKeyVault -eq $false) {
 		Write-Verbose "Set-WebApiAzureADApplication completed."
-		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
+		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	}
 
 	Set-WebAPIKeyVaultSecrets -SubscriptionName $SubscriptionName `
@@ -245,7 +250,7 @@ function Set-WebApiAzureADApplication {
 							  -CertificateName $CertificateName `
 							  -SkipPrompts $SkipPrompts
 
-	return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; }
+	return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 	Write-Verbose "Set-WebApiAzureADApplication completed."
 }
 
