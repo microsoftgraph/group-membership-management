@@ -730,7 +730,9 @@ function Set-RBACPermissions {
     Set-PostDeploymentRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
+        -InstallRequiredModules $false `
+        -ConnectToMsGraph $false 
 
 }
 

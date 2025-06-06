@@ -22,20 +22,37 @@ function Set-UserManagedIdentityPermissions {
 		[Parameter(Mandatory = $True)]
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
-		[string] $EnvironmentAbbreviation
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory = $False)]
+		[boolean] $InstallRequiredModules = $True,
+		[Parameter(Mandatory = $False)]
+		[boolean] $ConnectToMsGraph = $True
 	)
 
 	Write-Host "Setting permissions for User Assigned Managed Identity"
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	
+	if ($InstallRequiredModules) {
+		Write-Host "Installing required modules for User Managed Identity permissions setup..."
+		
+		$requiredGraphModules = @(
+			"Microsoft.Graph.Authentication",
+			"Microsoft.Graph.Applications"
+    	)
 
-	. ($scriptsDirectory + '\Install-MSGraphIfNeeded.ps1')
-	Install-MSGraphIfNeeded
+		. ($scriptsDirectory + '\Install-ModuleIfNeeded.ps1')
 
-	$currentTenantId = (Get-AzContext).Tenant.Id
+		foreach ($module in $requiredGraphModules) {
+			Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
+		}
+	}
 
 	# Connect to Microsoft Graph
-	Connect-MgGraph -Scopes "Directory.ReadWrite.All" -TenantId $currentTenantId
+	if ($ConnectToMsGraph) {
+		$currentTenantId = (Get-AzContext).Tenant.Id
+		Connect-MgGraph -Scopes "Directory.ReadWrite.All" -TenantId $currentTenantId
+	}	
 
 	# Get the User Assigned Managed Identity and Graph Service Principal
 	$uamiName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-Graph"
