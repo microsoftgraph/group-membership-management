@@ -2,7 +2,7 @@ import { Group } from "../../models/Group";
 import { IFilterPart } from "../../models/IFilterPart";
 
 export function containsSqlExpression(filter: string): boolean {
-  const sqlExpressions = [' NOT IN ', ' BETWEEN ', ' LIKE ', ' NOT LIKE '];
+  const sqlExpressions = [' BETWEEN ', ' LIKE ', ' NOT LIKE '];
   const regex = new RegExp(`(${sqlExpressions.join('|').trim()})`, 'i');
   return regex.test(filter);
 };
@@ -50,8 +50,8 @@ export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: num
       result += ')';
       result += ` ${group.children[group.children.length-1].andOr} `;
     }
-
-    result = result.includes(" IN ") ? replaceBracketsWithParentheses(result) : result;
+    
+    result = result.includes(" IN ") || result.includes(" NOT IN ") ? replaceBracketsWithParentheses(result) : result;
     return result;
 }
 
@@ -60,7 +60,7 @@ function replaceBracketsWithParentheses(input: string): string {
 };
 
 function replaceInClause(input: string): string {
-  const regex = /IN\s*\(\s*('([^']+)')(?:,\s*('([^']+)'))*\s*\)/g;
+  const regex = /(NOT\s+)?IN\s*\(\s*('([^']+)')(?:,\s*('([^']+)'))*\s*\)/g;
   return input.replace(regex, (match) => {
       return match.replace('(', '[').replace(')', ']');
   });
@@ -80,7 +80,7 @@ export function stringifyGroups(groups: Group[]): string {
 }
 
 function parseFilterPart(part: string): IFilterPart {
-  const operators = ["<=", ">=", "<>", "=", ">", "<", "IS", "IN"];
+  const operators = ["NOT IN", "<=", ">=", "<>", "=", ">", "<", "IS", "IN"];
   let operatorFound = '';
   let operatorIndex = -1;
 

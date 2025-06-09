@@ -73,6 +73,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
   const attributeMappings = useSelector(selectAttributeMappings);
+
   const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
   const hrSource = useSelector(selectSource);
   const [childIndexForAttribute, setChildIndexForAttribute] = useState<number>(-1);
@@ -116,10 +117,21 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       } else {
         let items: IFilterPart[] = children.map((child, index) => {
           const parts = child.filter.split(' ');
+          
+          // Handle two-word operators like "NOT IN"
+          let attribute, equalityOperator;
+          if (parts.length > 2 && parts[1] === "NOT" && parts[2] === "IN") {
+            attribute = parts[0];
+            equalityOperator = "NOT IN";
+          } else {
+            attribute = parts[0];
+            equalityOperator = parts[1];
+          }
+          
           var result = findValueAndOr(parts);
           const filterPart: IFilterPart = {
-            attribute: parts[0],
-            equalityOperator: parts[1],
+            attribute,
+            equalityOperator,
             value: result.value,
             andOr: result.andOr
           };
@@ -169,11 +181,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       }
     }
   }, [children]);
-
   function findValueAndOr(words: string[]): { andOr: string, value: string } {
     let value = '';
     let andOr = '';
+    // Check if it's a two-word operator like "NOT IN"
     let startIndex = 2;
+    if (words.length > 2 && words[1] === "NOT" && words[2] === "IN") {
+      startIndex = 3;
+    }
+    
     for (let i = startIndex; i < words.length; i++) {
       const part = words[i].toLowerCase();
       if (part === 'and' || part === 'or') {
@@ -953,7 +969,7 @@ const getOptions = (
 
   const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, existingValues?: string, item?: IComboBoxOption, index?: number, operator?: string): void => {
     let selectedValues = "";
-    if (operator && operator.toString().toUpperCase() === "IN") {
+    if (operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")) {
       let selected = item?.selected;
       if (item) {
         setSelectedKeys(prevSelectedKeys => {
@@ -972,10 +988,10 @@ const getOptions = (
         });
       }
     }
-
+    
     if (item) {
-      const selectedValue = operator && operator.toString().toUpperCase() === "IN" ? selectedValues : item.key.toString();
-      const selectedValueAfterConversion = operator && (operator.toString().toUpperCase() === "IS" || operator.toString().toUpperCase() === "IN") ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
+      const selectedValue = operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN") ? selectedValues : item.key.toString();
+      const selectedValueAfterConversion = operator && (operator.toString().toUpperCase() === "IS" || operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN") ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
 
       if (groupingEnabled && index != null) {
         const updateParams: UpdateParam = {
@@ -1027,7 +1043,7 @@ const getOptions = (
   const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string) => {
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const isInOperator = operator?.toString().toUpperCase() === "IN";
+    const isInOperator = operator?.toString().toUpperCase() === "IN" || operator?.toString().toUpperCase() === "NOT IN";
     const selectedValueAfterConversion = isInOperator ? selectedValue : checkType(selectedValue, selectedAttribute?.type) ?? selectedValue;
     const updatedItems = items.map((it, idx) => {
         if (idx === index) {
@@ -1055,7 +1071,7 @@ const getOptions = (
     var newValue = event.target.value.trim();
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const isInOperator = operator?.toString().toUpperCase() === "IN";
+    const isInOperator = operator?.toString().toUpperCase() === "IN" || operator?.toString().toUpperCase() === "NOT IN";
     const selectedValueAfterConversion = isInOperator ? selectedValue : checkType(selectedValue, selectedAttribute?.type) ?? selectedValue;
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
@@ -1466,10 +1482,10 @@ const getOptions = (
   function getValidOperatorsForType(dataType?: string): IDropdownOption[] {
     const validOperatorsMap: Record<string, string[]> = {
       bit: ['=', '<>'],
-      datetime2: ['=', '<>', '<', '<=', '>', '>=', 'IN'],
-      float: ['=', '<>', '<', '<=', '>', '>=', 'IN'],
-      int: ['=', '<>', '<', '<=', '>', '>=', 'IN'],
-      nvarchar: ['=', '<>', '<', '<=', '>', '>=', 'IN']
+      datetime2: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
+      float: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
+      int: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
+      nvarchar: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN']
     };
 
     const validKeys = dataType ? validOperatorsMap[dataType.toLowerCase()] : undefined;
@@ -1565,16 +1581,15 @@ const getOptions = (
             if(areAttributeMappingsLoading && attribute?.hasMapping && (!attributeMappings[items[index].attribute] || attributeMappings[items[index].attribute].mappings.length == 0)) {
               return <Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />
             }
-            else if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {
-              return <VirtualizedComboBox
-              selectedKey={item.equalityOperator === 'IN' ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+            else if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {              return <VirtualizedComboBox
+              selectedKey={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={attributeValueOptions}
               onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
               onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
               onRenderOption={onRenderValueComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
-              allowFreeInput={item.equalityOperator === 'IN' ? false : true}
-              multiSelect={item.equalityOperator === 'IN' ? true : false}
+              allowFreeInput={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? false : true}
+              multiSelect={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? true : false}
               autoComplete="off"
               useComboBoxAsMenuWidth={false}
               dropdownMaxWidth={500}

@@ -28,5 +28,6 @@ export const equalityOperatorOptions: IDropdownOption[] = [
     { key: '>=', text: '>=' },
     { key: '<>', text: '<>' },
     //{ key: 'IS', text: 'IS' },
-    { key: 'IN', text: 'IN' }
+    { key: 'IN', text: 'IN' },
+    { key: 'NOT IN', text: 'NOT IN' }
 ];
