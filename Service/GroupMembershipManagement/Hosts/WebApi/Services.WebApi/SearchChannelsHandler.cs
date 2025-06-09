@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Graph.Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -33,9 +34,11 @@ namespace Services
 
             foreach (var channel in channels)
             {
-                var dto = new ChannelDTO(request.TeamId, channel.Id!, channel.DisplayName!);
-
-                response.Model.Add(dto);
+                if (channel.MembershipType != ChannelMembershipType.Private && channel.MembershipType != ChannelMembershipType.Standard)
+                {
+                    var dto = new ChannelDTO(request.TeamId, channel.Id!, channel.DisplayName!);
+                    response.Model.Add(dto);
+                }
             }
 
             return response;

@@ -378,7 +378,7 @@ namespace Repositories.TeamsChannel
                     .Channels
                     .GetAsync(requestConfig =>
                     {
-                        requestConfig.QueryParameters.Select = ["id", "displayName"];
+                        requestConfig.QueryParameters.Select = ["id", "displayName", "membershipType"];
                         requestConfig.QueryParameters.Filter = filter;
                     });
 
