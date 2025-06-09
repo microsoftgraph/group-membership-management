@@ -1073,7 +1073,7 @@ function Set-GMMAppRegistrations {
         -SaveToKeyVault $true `
         -SkipPrompts $true `
         -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
-        -CertificateName $TeamsChannelCertificateName `
+        -CertificateName $TeamsChannelAppCertificateName `
         -Clean $false
 
     $null = Set-AzContext -Tenant $mainTenantId -Subscription $subscriptionName
