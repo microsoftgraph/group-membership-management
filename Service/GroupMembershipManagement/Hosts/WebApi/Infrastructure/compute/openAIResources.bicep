@@ -21,6 +21,7 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     }
     allowProjectManagement: false
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: true
   }
   tags: {
   }

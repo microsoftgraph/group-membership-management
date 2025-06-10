@@ -76,6 +76,7 @@ param openAIResourceName string = '${solutionAbbreviation}-compute-${environment
 
 param featureFlags object = {
   enableTeamsChannel: false
+  enableOpenAI: false
 }
 
 var subscriptionId = subscription().subscriptionId
@@ -243,7 +244,7 @@ var appSettings = [
   }
   {
     name: 'Settings:OpenAIEndpoint'
-    value: '@Microsoft.KeyVault(SecretUri=${reference(openAIEndpoint, '2019-09-01').secretUriWithVersion})'
+    value: featureFlags.enableOpenAI ? '@Microsoft.KeyVault(SecretUri=${reference(openAIEndpoint, '2019-09-01').secretUriWithVersion})' : 'not-set'
   }
   {
     name: 'ADF:Pipeline'
@@ -337,7 +338,7 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
   }
 }
 
-module openAIResources 'openAIResources.bicep' = {
+module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
   name: 'openAIResources'
   params: {
     aiLocation: aiLocation
@@ -369,7 +370,7 @@ module appService 'appService.bicep' = {
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
-    setRBACPermissions: setRBACPermissions
+    setRBACPermissions: setRBACPermissions 
   }
   dependsOn: [
     appInsights
