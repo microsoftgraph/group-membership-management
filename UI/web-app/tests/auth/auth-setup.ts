@@ -22,13 +22,11 @@ async function globalSetup(config: FullConfig) {
   try {
     console.log('🔗 Navigating to login page...');
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
-    await page.goto(url);
-
-    console.log('📝 Filling in login details...');
-    await page.getByRole('textbox', { name: 'Enter your email, phone, or' }).fill(EMAIL);
+    await page.goto(url);    console.log('📝 Filling in login details...');
+    await page.locator('input[type="email"]').fill(EMAIL);
     await page.getByRole('button', { name: 'Next' }).click();
 
-    await page.getByRole('textbox', { name: 'Enter the password for' }).fill(PASSWORD);
+    await page.locator('input[type="password"]').fill(PASSWORD);
     await page.getByRole('button', { name: 'Sign in' }).click();
 
     const displaySignContainer = await page.locator('.display-sign-container');

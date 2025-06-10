@@ -3,16 +3,100 @@
 
 import { test, expect } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
+import { SettingKey, SettingKeyMap } from '../../src/models';
 
 test.use({ storageState: 'tests/storageState.json' });
 
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
-test('AuthorizedSenders', async ({ page }) => {
+// Track the original state of the group creation setting
+let originalGroupCreationState: boolean | null = null;
+
+// Ensure group creation is enabled before running tests
+test.beforeAll(async ({ browser }) => {
+  const context = await browser.newContext({ storageState: 'tests/storageState.json' });
+  const page = await context.newPage();
+  
+  try {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    await page.goto(`${url}/Admin`);
+    await page.locator('text="General"').click();
+    
+    // Wait for the page to fully load and any async validations to complete
+    await page.waitForTimeout(3000);
+    
+    const groupCreationToggleId = SettingKeyMap[SettingKey.CreateGroupFeatureEnabled];
+    const isGroupCreationEnabled = await page.locator(`#${groupCreationToggleId}`).isChecked();
+    
+    // Store the original state
+    originalGroupCreationState = isGroupCreationEnabled;
+    
+    if (!isGroupCreationEnabled) {
+      console.log('⚙️ Enabling group creation feature...');
+      await page.locator(`#${groupCreationToggleId}`).click();
+      
+      // Wait for the Save button to become enabled (URL validations might need to complete)
+      // Use role selector for better reliability than text selector
+      const saveButton = page.locator('text="Save"');
+      await expect(saveButton).toBeVisible({ timeout: 10000 });
+      await expect(saveButton).toBeEnabled({ timeout: 10000 });
+      
+      await saveButton.click();
+      await page.waitForTimeout(5000);
+      console.log('✅ Group creation feature enabled.');
+    } else {
+      console.log('✅ Group creation feature is already enabled.');
+    }
+  } catch (error) {
+    console.error('❌ Failed to enable group creation feature:', error);
+    throw error;
+  } finally {
+    await context.close();
+  }
+});
+
+// Reset group creation setting to original state if it was originally disabled
+test.afterAll(async ({ browser }) => {
+  if (originalGroupCreationState === false) {
+    const context = await browser.newContext({ storageState: 'tests/storageState.json' });
+    const page = await context.newPage();
+    
+    try {
+      const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+      await page.goto(`${url}/Admin`);
+      await page.locator('text="General"').click();
+      
+      // Wait for the page to fully load and any async validations to complete
+      await page.waitForTimeout(3000);
+      
+      const groupCreationToggleId = SettingKeyMap[SettingKey.CreateGroupFeatureEnabled];
+      console.log('🔄 Resetting group creation feature to disabled state...');
+      await page.locator(`#${groupCreationToggleId}`).click();
+      
+      // Wait for the Save button to become enabled
+      const saveButton = page.locator('text="Save"');
+      await expect(saveButton).toBeVisible({ timeout: 10000 });
+      await expect(saveButton).toBeEnabled({ timeout: 10000 });
+      
+      await saveButton.click();
+      await page.waitForTimeout(5000);
+      console.log('✅ Group creation feature reset to disabled state.');
+    } catch (error) {
+      console.error('❌ Failed to reset group creation feature:', error);
+    } finally {
+      await context.close();
+    }
+  } else if (originalGroupCreationState === true) {
+    console.log('ℹ️ Group creation feature was originally enabled, leaving it enabled.');
+  } else {
+    console.log('⚠️ Could not determine original group creation state, leaving current state unchanged.');
+  }
+});
+
+test('Create a group with AuthorizedSenders', async ({ page }) => {
   const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
   const EXPECTED_SENDER_TEXT = 'adele';
   const GROUP_NAME = 'contoso';
-
   const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(url);
   await page.waitForTimeout(10000);
@@ -59,8 +143,8 @@ test('AuthorizedSenders', async ({ page }) => {
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Add Source Part' }).click();
 
-  // Select group membership
-  await page.getByText('SqlMembership').click();
+  // Select group membership - use dropdown directly to avoid depending on source part label
+  await page.locator('.ms-Dropdown').first().click();
   await page.getByRole('option', { name: 'Group Membership' }).click();
 
   // Search and select group name
