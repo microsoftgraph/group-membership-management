@@ -202,7 +202,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     <Page>
       <PageHeader />
       {showLoader ? <Loader />
-        : <>
+        : ( <>
           {/* Error Message */}
           <div>
             {error && (
@@ -230,6 +230,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               </MessageBar>
             )}
           </div>
+          {job.status === SyncStatus.DestinationGroupNotFound ? (
+            <div className={classNames.root}>
+              <div className={classNames.notFound}>
+                {format(strings.JobDetails.notFound, job.targetGroupId)}
+              </div>
+            </div>
+          ) : ( <>
           { selectedJob && (
           <div className={classNames.root}>
               <div className={classNames.historyButtonContainer}>
@@ -273,16 +280,6 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                     isEditable={false}
                   />}
               />
-              <div className={classNames.removeGMM}>
-                {canDeleteJob &&
-                  <ActionButton
-                    iconProps={{ iconName: 'Delete' }}
-                    title={strings.JobDetails.labels.removeGMM}
-                    ariaLabel={strings.JobDetails.labels.removeGMM}
-                    onClick={onRemoveGMMButtonClick}>
-                    {strings.JobDetails.labels.removeGMM}
-                  </ActionButton>}
-              </div>
             </div>
           )}
           {jobId && (
@@ -292,29 +289,41 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               jobId={jobId}
             />
           )}
-          <Dialog
-            hidden={!showRemoveGMMDialog}
-            onDismiss={onDialogClose}
-            dialogContentProps={{
-              type: DialogType.normal,
-              title: strings.JobDetails.labels.removeGMM,
-              subText: strings.JobDetails.labels.removeGMMWarning
-            }}
-            modalProps={{
-              isBlocking: true
-            }}
-          >
-            <DialogFooter>
-              <PrimaryButton
-                onClick={onConfirmRemove}
-                text={strings.JobDetails.labels.removeGMMConfirmation}
-                styles={{ root: { padding: '16px' } }}
-              />
-              <DefaultButton onClick={onDialogClose} text={strings.cancel} />
-            </DialogFooter>
-          </Dialog>
         </>
-      }
+      )}      
+      <div className={classNames.removeGMM}>
+        {canDeleteJob &&
+        <ActionButton
+          iconProps={{ iconName: 'Delete' }}
+          title={strings.JobDetails.labels.removeGMM}
+          ariaLabel={strings.JobDetails.labels.removeGMM}
+          onClick={onRemoveGMMButtonClick}>
+          {strings.JobDetails.labels.removeGMM}
+        </ActionButton>}
+      </div>
+      <Dialog
+        hidden={!showRemoveGMMDialog}
+        onDismiss={onDialogClose}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: strings.JobDetails.labels.removeGMM,
+          subText: strings.JobDetails.labels.removeGMMWarning
+        }}
+        modalProps={{
+          isBlocking: true
+        }}
+      >
+        <DialogFooter>
+          <PrimaryButton
+            onClick={onConfirmRemove}
+            text={strings.JobDetails.labels.removeGMMConfirmation}
+            styles={{ root: { padding: '16px' } }}
+          />
+          <DefaultButton onClick={onDialogClose} text={strings.cancel} />
+        </DialogFooter>
+      </Dialog>
+      </>
+      )}
     </Page >
   );
 };

@@ -31,6 +31,7 @@ export interface IJobDetailsStyles {
     removeGMM: IStyle;
     historyButtonContainer: IStyle;
     userPersona: IStyle;
+    notFound: IStyle;
 }
 
 export interface IJobDetailsStyleProps {

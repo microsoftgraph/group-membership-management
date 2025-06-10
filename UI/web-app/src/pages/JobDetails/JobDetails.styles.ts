@@ -109,6 +109,19 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         userPersona: {
             height: 48,
             width: 48
+        },
+        notFound: {
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            fontSize: '20px',
+            padding: '9px 36px 0px 36px',
+            maxWidth: '600px',
+            width: '100%',         
+            margin: '0 auto',      
+            height: '20vh'
         }
     };
 };

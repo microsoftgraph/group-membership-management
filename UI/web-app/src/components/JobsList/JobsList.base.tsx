@@ -51,7 +51,7 @@ import {
   ErrorBadgeIcon,
 } from '@fluentui/react-icons-mdl2';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
-import { ActionRequired, PagingOptions } from '../../models';
+import { ActionRequired, PagingOptions, SyncStatus } from '../../models';
 import { useStrings } from '../../store/hooks';
 import {
   selectPagingBarPageNumber,
@@ -320,7 +320,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     ev?: Event
   ): void => {
     if(item.targetGroupName === null){
-      navigate('/NotFound', { replace: true, state: { item: item} });
+      if (item.targetGroupName === null && item.status === SyncStatus.DestinationGroupNotFound) {
+        navigate(`/JobDetails/${item.syncJobId}`);
+      }
+      else {
+        navigate('/NotFound', { replace: true, state: { item: item} });
+      }
     }
     if (item && item.syncJobId) {
       navigate(`/JobDetails/${item.syncJobId}`);
@@ -347,7 +352,13 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         return;
       }
       if (item?.targetGroupName === null) {
-        navigate('/NotFound', { replace: true, state: { item } });
+        if (item.targetGroupName === null && item.status === SyncStatus.DestinationGroupNotFound) {
+          console.log('item?.targetDestinationType', item?.targetDestinationType);
+          navigate(`/JobDetails/${item.syncJobId}`);
+        }
+        else {
+          navigate('/NotFound', { replace: true, state: { item: item} });
+        }
       } else if (item?.syncJobId) {
         navigate(`/JobDetails/${item.syncJobId}`);
       }
