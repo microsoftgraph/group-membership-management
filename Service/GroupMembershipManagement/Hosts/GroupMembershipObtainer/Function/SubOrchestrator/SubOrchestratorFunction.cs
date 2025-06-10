@@ -154,6 +154,11 @@ namespace Hosts.GroupMembershipObtainer
                                     Exclusionary = request.Exclusionary
                                 });
 
+                                if (!context.IsReplaying)
+                                {
+                                    TrackCachedUsersEvent(request.RunId, response.CacheCount, request.SourceGroup.ObjectId);
+                                }
+                                
                                 if (!response.CacheMatchesGroupCount)
                                 {
                                     if(!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {countOfUsersFromAADGroup} users but cache {response.CacheCount} users. Running delta query..." });
