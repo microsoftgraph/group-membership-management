@@ -23,3 +23,15 @@ test('Download button is visible', async ({ page }) => {
   await expect(downloadButton).toBeVisible();
   console.log('✅ Download button is visible');
 });
+
+test('Row click navigates to JobDetails if targetGroupName is null and status is DestinationGroupNotFound', async ({ page }) => {
+  const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+  await page.goto(url);
+  await page.waitForTimeout(5000);
+
+  const row = page.locator('.ms-DetailsRow').first();
+  await row.click();
+
+  await expect(page).toHaveURL(/\/JobDetails\/\w+/);
+  console.log('✅ Row click navigates to JobDetails as expected');
+});
