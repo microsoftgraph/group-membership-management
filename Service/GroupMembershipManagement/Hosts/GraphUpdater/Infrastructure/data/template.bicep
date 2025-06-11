@@ -45,7 +45,7 @@ var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
 var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
 
 module guStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'guStorageAccountAssociationTemplate'
+  name: 'gu${instanceSuffix}StorageAccountAssociationTemplate'
   scope: resourceGroup(prereqsResourceGroupName)
   params: {
     nspName: nspName

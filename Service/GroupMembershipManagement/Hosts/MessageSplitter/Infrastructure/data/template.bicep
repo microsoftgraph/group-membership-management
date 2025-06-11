@@ -43,7 +43,7 @@ var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
 var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
 
 module msStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'msStorageAccountAssociationTemplate'
+  name: 'ms${instanceIdentifier}StorageAccountAssociationTemplate'
   scope: resourceGroup(prereqsResourceGroupName)
   params: {
     nspName: nspName
