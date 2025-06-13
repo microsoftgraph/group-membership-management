@@ -224,16 +224,25 @@ function Reset-GMM {
     $api_url = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/api/v1/operations/servicestatus"
     $response = Invoke-RestMethod -Uri $api_url -Headers $headers -Method GET
     [int]$statusCode = [int]$response.status
+    $startTime = Get-Date
+
     while ($response.status -ne 0) {
         Write-Output "Current service status: $($serviceStatuses[$statusCode])"
         Start-Sleep -Seconds 60
         $api_url = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/api/v1/operations/servicestatus"
         $response = Invoke-RestMethod -Uri $api_url -Headers $headers -Method GET
+
+        if ((Get-Date) - $startTime -gt (New-TimeSpan -Minutes 10)) {
+            Write-Host "Wait for 10 minutes to reset GMM, proceeding to next step."
+            break
+        }
     }
 
     if ($response.status -eq 0) {
         Write-Output "Current service status: $($serviceStatuses[$statusCode])"
     }
+
+    return $serviceStatuses[$statusCode];
 }
 
 function Run-JobScheduler {
