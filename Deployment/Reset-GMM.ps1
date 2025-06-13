@@ -1,3 +1,7 @@
+<#
+    Helper functions for resetting GMM.
+#>
+
 function Get-KeyVaultSecretWithFirewallRetry {
     param (
         [Parameter(Mandatory = $true)]
@@ -229,5 +233,51 @@ function Reset-GMM {
 
     if ($response.status -eq 0) {
         Write-Output "Current service status: $($serviceStatuses[$statusCode])"
+    }
+}
+
+function Run-JobScheduler {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation
+    )
+
+
+    $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $functionKey = Get-KeyVaultSecretWithFirewallRetry -VaultName $dataKeyVaultName -ResourceGroup $dataKeyVaultName -SecretName "jobSchedulerFunctionKey"
+    $baseUrl = Get-KeyVaultSecretWithFirewallRetry -VaultName $dataKeyVaultName -ResourceGroup $dataKeyVaultName -SecretName "jobSchedulerFunctionBaseUrl"
+    if (-not $functionKey -or -not $baseUrl) {
+        Write-Error "❌ Missing JobScheduler settings. Please ensure the secrets are set in the Key Vault."
+        return
+    }
+
+    $fullUrl = "$baseUrl/api/pipelineinvocationstarterfunction?code=$functionKey"
+    $body = @{
+        DelayForDeploymentInMinutes = 5
+    } | ConvertTo-Json
+
+    $response = Invoke-RestMethod -Uri $fullUrl -Method Post -ContentType "application/json" -Body $body
+    if ($response -and $response.statusQueryGetUri) {
+        Write-Host "✅ Job Scheduler invoked successfully."
+
+        $statusResponse = $null
+        $startTime = Get-Date
+        while ($statusResponse.runtimeStatus -ne "Completed" -and $statusResponse.runtimeStatus -ne "Failed") {
+            Start-Sleep -Seconds 5
+            $statusResponse = Invoke-RestMethod -Uri $response.statusQueryGetUri -Method GET
+
+            if ((Get-Date) - $startTime -gt (New-TimeSpan -Minutes 5)) {
+                Write-Host "Waited Job Scheduler to complete for 5 minutes, proceeding to next step."
+                 break
+            }
+        }
+
+        Write-Host "Job Scheduler status: $($statusResponse.runtimeStatus)"
+    }
+    else {
+        Write-Error "❌ Failed to invoke Job Scheduler. Response: $($response | ConvertTo-Json)"
     }
 }

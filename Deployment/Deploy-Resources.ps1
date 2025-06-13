@@ -1463,7 +1463,12 @@ function Deploy-Resources {
         [Parameter(Mandatory = $false)]
         [bool] $SetUserAssignedManagedIdentityPermissions = $true,
         [Parameter(Mandatory = $false)]
-        [System.Nullable[Guid]]$SecondaryTenantId
+        [System.Nullable[Guid]]$SecondaryTenantId,
+        [Parameter(Mandatory = $false)]
+        [bool]$IsInitialDeployment = $false,
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("Credentials", "ServicePrincipal","Skip")]
+        [string]$ResetGMMType = "Skip"
     )
 
     Test-ScriptDependencies
@@ -1495,7 +1500,13 @@ function Deploy-Resources {
         Set-ResourceProviders
     }
 
-    # Stop-FunctionApps -ResourceGroupName $computeResourceGroup
+    if(!$IsInitialDeployment) {
+
+        $jobTrigger = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup `
+                                        -Name "$computeResourceGroup-JobTrigger"       
+
+        Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
+    }
 
     $response = Set-GMMResources `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1582,7 +1593,27 @@ function Deploy-Resources {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$ScriptsDirectory\scripts"
-        
+
+    if(!$IsInitialDeployment -and $ResetGMMType -ne "Skip") {
+        Write-Host "`nStopping function apps in resource group $computeResourceGroup"
+        Stop-FunctionApps -ResourceGroupName $computeResourceGroup
+
+        . ($scriptsDirectory + '\deployment\Reset-GMM.ps1')
+
+        if($ResetGMMType -eq "Credentials") {
+            Reset-GMM-WithCredentials `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
+        } elseif ($ResetGMMType -eq "ServicePrincipal") {
+            Reset-GMM-WithServicePrincipal `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
+        }
+
+        Run-JobScheduler `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation
+    }
 
     if ($StartFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
