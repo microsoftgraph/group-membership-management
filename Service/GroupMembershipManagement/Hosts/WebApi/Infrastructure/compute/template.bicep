@@ -343,6 +343,8 @@ module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) 
   params: {
     aiLocation: aiLocation
     openAIResourceName: openAIResourceName
+    solutionAbbreviation: solutionAbbreviation
+    environmentAbbreviation: environmentAbbreviation
   }
 }
 module servicePlanTemplate 'servicePlan.bicep' = {
