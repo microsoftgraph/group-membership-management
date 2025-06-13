@@ -22,15 +22,18 @@ namespace WebApi.Controllers.v1.Jobs
         private const int DEFAULT_PAGE_SIZE = 10;
         private const int MAX_PAGE_SIZE = 100;
         private readonly IRequestHandler<GetJobsRequest, GetJobsResponse> _getJobsRequestHandler;
+        private readonly IRequestHandler<PatchJobsRequest, NullResponse> _patchJobsRequestHandler;
         private readonly IRequestHandler<PostJobRequest, PostJobResponse> _postJobRequestHandler;
         private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
 
         public JobsController(
             IRequestHandler<GetJobsRequest, GetJobsResponse> getJobsRequestHandler,
+            IRequestHandler<PatchJobsRequest, NullResponse> patchJobsRequestHandler,
             IRequestHandler<PostJobRequest, PostJobResponse> postJobRequestHandler,
             IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobDetailsRequestHandler)
         {
             _getJobsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
+            _patchJobsRequestHandler = patchJobsRequestHandler ?? throw new ArgumentNullException(nameof(patchJobsRequestHandler));
             _postJobRequestHandler = postJobRequestHandler ?? throw new ArgumentNullException(nameof(postJobRequestHandler));
             _getJobDetailsRequestHandler = getJobDetailsRequestHandler ?? throw new ArgumentNullException(nameof(getJobDetailsRequestHandler));
         }
@@ -75,6 +78,21 @@ namespace WebApi.Controllers.v1.Jobs
             };
 
             return Ok(pagedResponse);
+        }
+
+        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpPost("bulkApprove")]
+        public async Task<ActionResult> BulkApproveJobsAsync([FromBody] string[] syncJobIds)
+        {
+            try
+            {
+                await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds));
+                return NoContent();
+            }
+            catch (Exception)
+            {
+                return StatusCode(500);
+            }
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]

@@ -215,5 +215,19 @@ namespace Repositories.EntityFramework
 
             await _writeContext.SaveChangesAsync();
         }
+
+        public async Task BulkApproveSyncJobsAsync(List<string> syncJobIds)
+        {
+            var existingJobs = await _writeContext.SyncJobs
+                .Where(job => syncJobIds.Contains(job.Id.ToString()))
+                .ToListAsync();
+
+            foreach (var job in existingJobs)
+            {
+                job.Status = SyncStatus.Idle.ToString();
+            }
+
+            await _writeContext.SaveChangesAsync();
+        }
     }
 }

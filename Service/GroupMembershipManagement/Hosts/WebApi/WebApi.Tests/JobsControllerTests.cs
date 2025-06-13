@@ -36,6 +36,7 @@ namespace Services.Tests
         private List<AzureADGroup> _groups = null!;
         private JobsController _jobsController = null!;
         private GetJobsHandler _getJobsHandler = null!;
+        private PatchJobsHandler _patchJobsHandler = null!;
         private PostJobHandler _postJobHandler = null!;
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
         private TelemetryClient _telemetryClient = null!;
@@ -181,6 +182,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _httpContextAccessor.Object);
 
+            _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
+                                                 _databaseSyncJobsRepository.Object);
+
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -194,7 +198,7 @@ namespace Services.Tests
                                                 _teamsChannelRepository.Object,
                                                 _httpContextAccessor.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -276,7 +280,7 @@ namespace Services.Tests
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler,_postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -336,7 +340,7 @@ namespace Services.Tests
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -366,7 +370,7 @@ namespace Services.Tests
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -403,7 +407,7 @@ namespace Services.Tests
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -437,7 +441,7 @@ namespace Services.Tests
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -474,7 +478,7 @@ namespace Services.Tests
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context
@@ -514,7 +518,7 @@ namespace Services.Tests
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _jobsController = new JobsController(_getJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
             _jobsController.ControllerContext = new ControllerContext
             {
                 HttpContext = _context

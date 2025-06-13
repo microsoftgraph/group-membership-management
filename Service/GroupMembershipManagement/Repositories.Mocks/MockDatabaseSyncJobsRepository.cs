@@ -91,6 +91,11 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
+        public Task BulkApproveSyncJobsAsync(List<string> syncJobIds)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs)
         {
             throw new NotImplementedException();

@@ -34,6 +34,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetSqlValidationRequest, GetSqlValidationResponse>, GetSqlValidationHandler>();
 
             services.AddTransient<IRequestHandler<GetJobsRequest, GetJobsResponse>, GetJobsHandler>();
+            services.AddTransient<IRequestHandler<PatchJobsRequest, NullResponse>, PatchJobsHandler>();
             services.AddTransient<IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse>, GetJobDetailsHandler>();
             services.AddTransient<IRequestHandler<GetGroupRequest, GetGroupResponse>, GetGroupHandler>();
             services.AddTransient<IRequestHandler<GetChannelRequest, GetChannelResponse>, GetChannelHandler>();

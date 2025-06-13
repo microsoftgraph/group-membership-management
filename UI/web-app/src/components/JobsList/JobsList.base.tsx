@@ -9,9 +9,9 @@ import {
   ISelection,
   SelectionMode,
 } from '@fluentui/react/lib/DetailsList';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { downloadJobs, fetchJobs } from '../../store/jobs.api';
+import { approveJobs, downloadJobs, fetchJobs } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
@@ -19,11 +19,15 @@ import {
   clearJob,
   selectJobsToDownload,
   downloadJobsLoading,
-  clearJobsToDownload
+  clearJobsToDownload,
+  selectApproveJobsLoading,
+  selectApproveJobsResponse,
+  setApproveJobsResponse,
+  setApproveJobsLoading
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
-import { Selection, IObjectWithKey, Stack } from '@fluentui/react';
+import { Selection, IObjectWithKey, Stack, Label, ProgressIndicator, Panel, PanelType, Spinner, SpinnerSize, Icon } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
 import {
   classNamesFunction,
@@ -72,6 +76,7 @@ import {
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
+import Papa from 'papaparse';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
@@ -118,6 +123,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
   const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
+  const approveJobsLoading = useSelector(selectApproveJobsLoading);
+  const approveJobsResponse = useSelector(selectApproveJobsResponse);
 
   const selectionRef = useRef<ISelection<IObjectWithKey>>(
     new Selection<IItem>({
@@ -294,6 +301,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       dispatch(clearJob());
       navigate('/ManageMembership', { replace: false, state: { item: 1 } });
     }
+
+    if (item!.key === 'bulkApproveSyncs') {
+      setIsPanelOpen(true);
+    }
   };
 
   function onColumnHeaderClick(event?: any, column?: IColumn) {
@@ -399,6 +410,15 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     };
   }
 
+  if (isTenantJobWriter) {
+    menuProps.items[2] = {
+      key: 'bulkApproveSyncs',
+      text: strings.ManageMembership.bulkApproveSyncsButton,
+      iconProps: { iconName: 'CheckMark' },
+      onClick: onContextualItemClicked
+    };
+  }
+
   const refreshIcon: IIconProps = { iconName: 'Refresh' };
 
   const _renderItemColumn = (
@@ -474,6 +494,77 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(downloadJobs(selectedItems.map(item => item.syncJobId).filter((id): id is string => id !== undefined)));
   };
 
+  const handleBulkApproveButtonClick = () => {
+    dispatch(approveJobs(syncJobIds));
+    navigate('/');
+  };
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [syncJobIds, setSyncJobIds] = useState<string[]>([]);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  const onDismissPanel = useCallback(() => {
+    setIsPanelOpen(false);
+    setFileName('');
+    setUploading(false);
+    setUploaded(false);
+    setProgress(0);
+    setApproveJobsResponse();
+    setApproveJobsLoading();
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file || file.type !== "text/csv") {
+      alert("Please upload a valid CSV file.");
+      return;
+    }
+
+    setUploading(true);
+    setUploaded(false);
+    setProgress(0);
+    setFileName(file.name);
+
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const next = prev + 0.1;
+        if (next >= 1) {
+          clearInterval(interval);
+          setUploading(false);
+          setUploaded(true);
+        }
+        return next >= 1 ? 1 : next;
+      });
+    }, 200);
+
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const data = results.data as Array<Record<string, string>>;
+        const ids = data
+          .map(row => row['syncJobId'])
+          .filter(id => !!id);
+        setSyncJobIds(ids);
+      },
+      error: (err: any) => {
+        console.error("Error parsing CSV:", err);
+        alert("Failed to parse CSV file.");
+      }
+    });
+  };
+
   return (
     <div className={classNames.root}>
       <div className={classNames.jobsListFilter}>
@@ -506,6 +597,49 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                     onClick={handleDownloadButtonClick}
                     disabled={selectedItems.length === 0 || jobsToDownloadLoading}
                   />
+                <>
+                  <input
+                    id="file-uploader"
+                    type="file"
+                    accept=".csv"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    style={{ display: "none" }}
+                  />
+                  <Panel
+                    type={PanelType.medium}
+                    isOpen={isPanelOpen}
+                    onDismiss={onDismissPanel}
+                    headerText="Upload CSV File">
+                    <Stack tokens={{ childrenGap: 15 }} style={{ width: 400 }}>
+                      <Label>Select CSV File</Label>
+                      <Label htmlFor="file-uploader">
+                        <span style={{ color: "#0078d4", cursor: "pointer", textDecoration: "underline" }}>Choose File</span>
+                      </Label>
+                      {uploading && (
+                        <ProgressIndicator label="Uploading…" percentComplete={progress} />
+                      )}
+                      {uploaded && (
+                        <Label>
+                          <Icon iconName="CheckMark" style={{ color: 'green', fontSize: 20, verticalAlign: 'middle' }} /> Upload complete: <strong>{fileName}</strong>
+                        </Label>
+                      )}
+                      {!approveJobsResponse && (
+                        <PrimaryButton
+                          text="Approve"
+                          disabled={!uploaded}
+                          onClick={handleBulkApproveButtonClick}
+                        />
+                      )}
+                      {approveJobsLoading && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />)}
+                      {approveJobsResponse !== undefined && (
+                        <Label>
+                          <Icon iconName="CheckMark" style={{ color: 'green', fontSize: 20, verticalAlign: 'middle' }} /> All jobs approved
+                        </Label>
+                      )}
+                    </Stack>
+                  </Panel>
+                </>
                 </div>
               }
               {isJobWriter &&

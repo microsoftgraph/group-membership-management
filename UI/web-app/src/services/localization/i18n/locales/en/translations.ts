@@ -369,6 +369,7 @@ export const strings: IStrings = {
     manageMembershipButton: 'Manage Membership',
     addSyncButton: 'Add Sync',
     bulkAddSyncsButton: 'Bulk Add Syncs',
+    bulkApproveSyncsButton: 'Bulk Approve Syncs',
     downloadButton: 'Download',
     downloadingButton: 'Downloading',
     labels: {

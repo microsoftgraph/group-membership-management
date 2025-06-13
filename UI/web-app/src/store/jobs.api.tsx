@@ -47,6 +47,19 @@ export const downloadJobs = createAsyncThunk<Job[], string[], ThunkConfig>(
   }
 );
 
+export const approveJobs = createAsyncThunk<string, string[], ThunkConfig>(
+  'jobs/approveJobs',
+  async (syncJobIds: string[], { extra }) => {
+    const { gmmApi } = extra.apis;
+    try {
+      const response = await gmmApi.jobs.approveJobs(syncJobIds);
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to approve jobs!');
+    }
+  }
+);
+
 export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
   'jobs/postJob',
   async (newJob: NewJob, { extra }) => {
