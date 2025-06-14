@@ -83,6 +83,16 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     },
     manageMembershipButton: {
         marginLeft: '20px'
+    },
+    status: {
+      color: theme.palette.green,
+      fontSize: 20,
+      verticalAlign: 'middle'
+    },
+    chooseFileButton: {
+      color: "#0078d4",
+      cursor: "pointer",
+      textDecoration: "underline"
     }
   };
 };

@@ -26,6 +26,8 @@ export interface IJobsListStyles {
   errorMessageBar: IStyle;
   header: IStyle;
   manageMembershipButton: IStyle;
+  status: IStyle;
+  chooseFileButton: IStyle;
 }
 
 export interface IJobsListStyleProps {

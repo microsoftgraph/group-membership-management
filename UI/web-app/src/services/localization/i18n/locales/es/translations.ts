@@ -375,6 +375,13 @@ export const strings: IStrings = {
     bulkApproveSyncsButton: 'Bulk Approve Syncs',
     downloadButton: 'Descargar',
     downloadingButton: 'Descargando',
+    uploadHeader: 'Upload CSV File',
+    uploadingLabel: 'Uploading…',
+    chooseFileButton: 'Choose File',
+    selectCSVFileLabel: 'Select CSV File',
+    uploadCompleteLabel: 'Upload complete:',
+    uploadStatusLabel: 'All jobs approved',
+    approveButton: 'Approve',
     labels: {
       abandonOnboarding: '¿Abandonar Onboarding?',
       abandonOnboardingDescription: '¿Estás seguro de que quieres abandonar el onboarding en progreso y regresar?',

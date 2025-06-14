@@ -513,8 +513,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     setUploading(false);
     setUploaded(false);
     setProgress(0);
-    setApproveJobsResponse();
-    setApproveJobsLoading();
+    dispatch(setApproveJobsResponse());
+    dispatch(setApproveJobsLoading());
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -525,7 +525,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     const file = event.target.files?.[0];
 
     if (!file || file.type !== "text/csv") {
-      alert("Please upload a valid CSV file.");
+      // alert("Please upload a valid CSV file.");
       return;
     }
 
@@ -559,8 +559,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         setSyncJobIds(ids);
       },
       error: (err: any) => {
-        console.error("Error parsing CSV:", err);
-        alert("Failed to parse CSV file.");
+        // console.error("Error parsing CSV:", err);
+        // alert("Failed to parse CSV file.");
       }
     });
   };
@@ -610,23 +610,23 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                     type={PanelType.medium}
                     isOpen={isPanelOpen}
                     onDismiss={onDismissPanel}
-                    headerText="Upload CSV File">
+                    headerText={strings.ManageMembership.uploadHeader}>
                     <Stack tokens={{ childrenGap: 15 }} style={{ width: 400 }}>
-                      <Label>Select CSV File</Label>
+                      <Label>{strings.ManageMembership.selectCSVFileLabel}</Label>
                       <Label htmlFor="file-uploader">
-                        <span style={{ color: "#0078d4", cursor: "pointer", textDecoration: "underline" }}>Choose File</span>
+                        <span className={classNames.chooseFileButton}>{strings.ManageMembership.chooseFileButton}</span>
                       </Label>
                       {uploading && (
-                        <ProgressIndicator label="Uploading…" percentComplete={progress} />
+                        <ProgressIndicator label={strings.ManageMembership.uploadingLabel} percentComplete={progress} />
                       )}
                       {uploaded && (
                         <Label>
-                          <Icon iconName="CheckMark" style={{ color: 'green', fontSize: 20, verticalAlign: 'middle' }} /> Upload complete: <strong>{fileName}</strong>
+                          <Icon iconName="CheckMark" className={classNames.status} /> {strings.ManageMembership.uploadCompleteLabel} <strong>{fileName}</strong>
                         </Label>
                       )}
                       {!approveJobsResponse && (
                         <PrimaryButton
-                          text="Approve"
+                          text={strings.ManageMembership.approveButton}
                           disabled={!uploaded}
                           onClick={handleBulkApproveButtonClick}
                         />
@@ -634,7 +634,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                       {approveJobsLoading && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />)}
                       {approveJobsResponse !== undefined && (
                         <Label>
-                          <Icon iconName="CheckMark" style={{ color: 'green', fontSize: 20, verticalAlign: 'middle' }} /> All jobs approved
+                          <Icon iconName="CheckMark" className={classNames.status} /> {strings.ManageMembership.uploadStatusLabel}
                         </Label>
                       )}
                     </Stack>

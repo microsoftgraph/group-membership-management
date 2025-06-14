@@ -367,6 +367,13 @@ export type IStrings = {
     bulkApproveSyncsButton: string;
     downloadButton: string;
     downloadingButton: string;
+    uploadHeader: string;
+    uploadingLabel: string;
+    selectCSVFileLabel: string;
+    chooseFileButton: string;
+    uploadCompleteLabel: string;
+    uploadStatusLabel: string;
+    approveButton: string;
     labels: {
       abandonOnboarding: string;
       abandonOnboardingDescription: string;

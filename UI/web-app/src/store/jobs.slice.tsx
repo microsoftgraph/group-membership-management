@@ -198,7 +198,6 @@ export const jobsSlice = createSlice({
     builder.addCase(approveJobs.fulfilled, (state, action) => {
       state.approveJobsLoading = false;
       state.approveJobsResponse = action.payload;
-      console.log('approveJobs fulfilled', action.payload);
     });
     builder.addCase(approveJobs.rejected, (state, action) => {
       state.approveJobsLoading = false;
