@@ -16,6 +16,7 @@ using Moq;
 using Repositories.Contracts;
 using Repositories.TeamsChannel;
 using System.Data;
+using System.Net;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
@@ -33,6 +34,7 @@ namespace Services.Tests
         private HttpContext _context = null!;
         private List<string> _groupTypes = null!;
         private List<SyncJob> _jobEntities = null!;
+        private List<string> _syncJobIds = null!;
         private List<AzureADGroup> _groups = null!;
         private JobsController _jobsController = null!;
         private GetJobsHandler _getJobsHandler = null!;
@@ -154,6 +156,12 @@ namespace Services.Tests
                     ObjectId = x.Group.GroupId,
                     Type = _groupTypes[Random.Shared.Next(0, _groupTypes.Count)]
                 });
+            });
+
+            _syncJobIds = new List<string>();
+            _jobEntities.ForEach(x =>
+            {
+                _syncJobIds.Add(x.Id.ToString());
             });
 
             _newSyncJob = new NewSyncJobDTO
@@ -535,7 +543,55 @@ namespace Services.Tests
             Assert.IsNotNull(result);
             Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
         }
-        
+
+        [TestMethod]
+        public async Task BulkApproveTestAsync()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Upn, "testuser@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+
+            _context = CreateHttpContext(claims);
+
+            var identity = new ClaimsIdentity(claims);
+            var user = new ClaimsPrincipal(identity);
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
+                                                 _databaseSyncJobsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            _databaseSyncJobsRepository.Verify(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task BulkApproveExceptionTestAsync()
+        {
+            _databaseSyncJobsRepository.Setup(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>()))
+                                        .ThrowsAsync(new Exception());
+
+            var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
+
+            Assert.IsInstanceOfType(response, typeof(StatusCodeResult));
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+        }
+
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)
         {
             foreach (var value in await Task.FromResult(input))
