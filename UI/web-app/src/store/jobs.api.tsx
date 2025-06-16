@@ -27,6 +27,7 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
       const jobsPage = await gmmApi.jobs.getAllJobs(pagingOptions);
       const mapped = jobsPage.items.map(processJob);
       jobsPage.items = mapped;
+      console.log('Fetched jobs:', jobsPage);
       return jobsPage;
     } catch (error) {
       throw new Error('Failed to fetch jobs!');

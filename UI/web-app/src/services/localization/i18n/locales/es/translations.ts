@@ -380,7 +380,8 @@ export const strings: IStrings = {
     chooseFileButton: 'Choose File',
     selectCSVFileLabel: 'Select CSV File',
     uploadCompleteLabel: 'Upload complete:',
-    uploadStatusLabel: 'All jobs approved',
+    approveStatusLabel: 'All jobs approved',
+    approveErrorStatusLabel: 'Error',
     approveButton: 'Approve',
     labels: {
       abandonOnboarding: '¿Abandonar Onboarding?',

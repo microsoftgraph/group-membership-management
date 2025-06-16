@@ -22,6 +22,7 @@ import {
   clearJobsToDownload,
   selectApproveJobsLoading,
   selectApproveJobsResponse,
+  selectApproveJobsrror,
   setApproveJobsResponse,
   setApproveJobsLoading
 } from '../../store/jobs.slice';
@@ -125,6 +126,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
   const approveJobsLoading = useSelector(selectApproveJobsLoading);
   const approveJobsResponse = useSelector(selectApproveJobsResponse);
+  const approveJobsError = useSelector(selectApproveJobsrror);
 
   const selectionRef = useRef<ISelection<IObjectWithKey>>(
     new Selection<IItem>({
@@ -494,9 +496,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(downloadJobs(selectedItems.map(item => item.syncJobId).filter((id): id is string => id !== undefined)));
   };
 
-  const handleBulkApproveButtonClick = () => {
-    dispatch(approveJobs(syncJobIds));
-    navigate('/');
+  const handleBulkApproveButtonClick = async () => {
+    await dispatch(approveJobs(syncJobIds));
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -621,7 +622,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                       )}
                       {uploaded && (
                         <Label>
-                          <Icon iconName="CheckMark" className={classNames.status} /> {strings.ManageMembership.uploadCompleteLabel} <strong>{fileName}</strong>
+                          <Icon iconName="CheckMark" className={classNames.successStatus} /> {strings.ManageMembership.uploadCompleteLabel} <strong>{fileName}</strong>
                         </Label>
                       )}
                       {!approveJobsResponse && (
@@ -634,7 +635,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                       {approveJobsLoading && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />)}
                       {approveJobsResponse !== undefined && (
                         <Label>
-                          <Icon iconName="CheckMark" className={classNames.status} /> {strings.ManageMembership.uploadStatusLabel}
+                          <Icon iconName="CheckMark" className={classNames.successStatus} /> {strings.ManageMembership.approveStatusLabel}
+                        </Label>
+                      )}
+                      {approveJobsError !== undefined && (
+                        <Label>
+                          <Icon iconName="ErrorBadge" className={classNames.errorStatus} /> {strings.ManageMembership.approveErrorStatusLabel}
                         </Label>
                       )}
                     </Stack>

@@ -84,8 +84,13 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     manageMembershipButton: {
         marginLeft: '20px'
     },
-    status: {
+    successStatus: {
       color: theme.palette.green,
+      fontSize: 20,
+      verticalAlign: 'middle'
+    },
+    errorStatus: {
+      color: theme.palette.red,
       fontSize: 20,
       verticalAlign: 'middle'
     },

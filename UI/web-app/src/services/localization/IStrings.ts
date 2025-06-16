@@ -372,7 +372,8 @@ export type IStrings = {
     selectCSVFileLabel: string;
     chooseFileButton: string;
     uploadCompleteLabel: string;
-    uploadStatusLabel: string;
+    approveStatusLabel: string;
+    approveErrorStatusLabel: string;
     approveButton: string;
     labels: {
       abandonOnboarding: string;
