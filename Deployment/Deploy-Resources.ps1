@@ -1337,7 +1337,9 @@ function Test-ScriptDependencies {
 		
     $requiredGraphModules = @(
         "Microsoft.Graph.Authentication",
-        "Microsoft.Graph.Applications"
+        "Microsoft.Graph.Applications",
+        "Microsoft.Graph.Identity.DirectoryManagement",
+        "Microsoft.Graph.Users"
     )
 
     . ($scriptsDirectory + '\scripts\Install-ModuleIfNeeded.ps1')
@@ -1457,6 +1459,8 @@ function Deploy-Resources {
         [Parameter(Mandatory = $false)]
         [bool]$StartFunctions = $true,
         [Parameter(Mandatory = $false)]
+        [bool]$AssertUserPermissions = $true,
+        [Parameter(Mandatory = $false)]
         [bool] $SetUserAssignedManagedIdentityPermissions = $true,
         [Parameter(Mandatory = $false)]
         [System.Nullable[Guid]]$SecondaryTenantId
@@ -1464,16 +1468,26 @@ function Deploy-Resources {
 
     Test-ScriptDependencies
 
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+
+    Set-Subscription `
+        -ScriptsDirectory "$scriptsDirectory\scripts" `
+        -SubscriptionId $SubscriptionId
+
+    if ($AssertUserPermissions -eq $true) {
+        . ($scriptsDirectory + '\scripts\Assert-RbacPermissionsForDeployment.ps1')
+        Assert-RbacPermissionsForDeployment `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation 
+
+        . ($scriptsDirectory + '\scripts\Assert-MicrosoftGraphPermissions.ps1')
+        Assert-MicrosoftGraphPermissions
+    }
+    
     # define the resource groups
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
-
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-
-    Set-Subscription `
-        -ScriptsDirectory "$scriptsDirectory\Scripts" `
-        -SubscriptionId $SubscriptionId
 
     $context = Get-AzContext
 
