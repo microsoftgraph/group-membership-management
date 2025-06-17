@@ -38,7 +38,7 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   }
 }
 
-resource openAIResourceName_Default 'Microsoft.CognitiveServices/accounts/defenderForAISettings@2025-04-01-preview' = {
+resource defenderForAISettings 'Microsoft.CognitiveServices/accounts/defenderForAISettings@2025-04-01-preview' = {
   parent: openAI
   name: 'Default'
   properties: {
@@ -61,7 +61,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
     capacity: 1
   }
   dependsOn: [
-    openAIResourceName_Default
+    defenderForAISettings
   ]
 }
 
@@ -107,4 +107,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       }
     ]
   }
+  dependsOn: [
+    gpt4oDeployment
+  ]
 }
