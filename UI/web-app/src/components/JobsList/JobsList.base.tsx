@@ -80,7 +80,7 @@ import {
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
 import Papa from 'papaparse';
-import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
@@ -123,6 +123,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
   const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
   const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
@@ -420,11 +421,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     };
   }
 
-  if (isTenantJobWriter) {
+  if (isSubmissionReviewer) {
     menuProps.items[2] = {
       key: 'bulkApproveSyncs',
       text: strings.ManageMembership.bulkApproveSyncsButton,
       iconProps: { iconName: 'CheckMark' },
+      disabled: true, // disabling until changes to run JobScheduler are completed
       onClick: onContextualItemClicked
     };
   }
