@@ -462,6 +462,8 @@ export type IStrings = {
       businessJustificationPlaceholder: string;
       requestedBy: string;
       requestedOnBehalfOf: string;
+      requestedOnBehalfOfPlaceholder: string;
+      requestedOnBehalfOfDescription: string;
       expandAll: string;
       collapseAll: string;
     },

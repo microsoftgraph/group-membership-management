@@ -469,6 +469,8 @@ export const strings: IStrings = {
       businessJustificationPlaceholder: 'Escriba su respuesta aquí...',
       requestedBy: 'Solicitado por',
       requestedOnBehalfOf: 'Solicitado en nombre de',
+      requestedOnBehalfOfPlaceholder: 'Seleccionar propietario del destino',
+      requestedOnBehalfOfDescription: 'Este es el propietario del destino a nombre de quien se está realizando la solicitud de administración de la membresía.',
       expandAll: 'Expandir todo',
       collapseAll: 'Contraer todo',
     },

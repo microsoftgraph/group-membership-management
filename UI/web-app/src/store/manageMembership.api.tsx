@@ -6,7 +6,7 @@ import { config } from '../authConfig';
 import { GroupOnboardingStatus } from '../models/GroupOnboardingStatus';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { Destination, DestinationPickerPersona } from '../models';
+import { Destination, DestinationPickerPersona, GroupOwner } from '../models';
 import { SearchChannelRequest } from '../models/SearchChannelRequest';
 import { Channel } from '../models/Channel';
 import { ChannelOnboardingStatusRequest } from '../models/ChannelOnboardingStatusRequest';
@@ -14,8 +14,8 @@ import { ChannelOnboardingStatusRequest } from '../models/ChannelOnboardingStatu
 export class OdataQueryOptions {
   pageSize?: number;
   itemsToSkip?: number;
-  filter?: String;
-  orderBy?: String;
+  filter?: string;
+  orderBy?: string;
 }
 
 export const searchDestinations = createAsyncThunk<DestinationPickerPersona[], string, ThunkConfig>(
@@ -160,6 +160,32 @@ export const getGroupEndpoints = createAsyncThunk<string[], string, ThunkConfig>
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch destination data!');
+    }
+  }
+);
+
+export const getGroupOwners = createAsyncThunk<GroupOwner[], string, ThunkConfig>(
+  'groupOwners',
+  async (groupId: string, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers();
+    const bearer = `Bearer ${token}`;
+    headers.append('Authorization', bearer);
+
+    const options = {
+      method: 'GET',
+      headers,
+    };
+
+    try {
+      const response = await fetch(`${config.getGroupOwners(groupId)}`, options).then(
+        async (response) => await response.json()
+      );
+      const payload: GroupOwner[] = response;
+      return payload;
+    } catch (error) {
+      throw new Error('Failed to fetch group owners!');
     }
   }
 );

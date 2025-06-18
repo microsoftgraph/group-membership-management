@@ -42,6 +42,7 @@ export const config = {
   createGroup: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups`,
   searchChannels: (teamId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/teams/${teamId}/searchChannels`,
   getGroupEndpoints: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/endpoints`,
+  getGroupOwners: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/owners`,
   getGroupOnboardingStatus: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/groups/${groupId}/onboarding-status`,
   getChannelOnboardingStatus: (teamId: string, channelId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/destinations/teams/${teamId}/channel/${channelId}/onboarding-status`,
   getGroupDetails: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/group/${groupId}`,

@@ -467,6 +467,8 @@ export const strings: IStrings = {
       businessJustificationPlaceholder: 'Enter your answer',
       requestedBy: 'Requested by',
       requestedOnBehalfOf: 'Requested on behalf of',
+      requestedOnBehalfOfPlaceholder: 'Select group owner',
+      requestedOnBehalfOfDescription: 'This is the group owner of the destination on whose behalf you are requesting this job.',
       expandAll: 'Expand all',
       collapseAll: 'Collapse all',
     },

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React  from 'react';
+import React, { useEffect } from 'react';
 import {
   IProcessedStyleSet,
   Stack,
@@ -15,10 +15,9 @@ import {
   Persona,
   PersonaSize,
   Shimmer,
-  NormalPeoplePicker,
-  IPersonaProps,
-  DirectionalHint,
-  Label
+  Label,
+  Dropdown,
+  IDropdownOption
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -34,17 +33,16 @@ import {
   manageMembershipIsAdvancedView,
   manageMembershipPeriod,
   manageMembershipQuery,
-  manageMembershipRequestor,
   manageMembershipSelectedDestination,
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipStartDate,
   manageMembershipThresholdPercentageForAdditions,
   manageMembershipThresholdPercentageForRemovals,
   manageMembershipBusinessJustification,
-  setNewJobRequestor,
   manageMembershipLastModifiedOnBehalfOfDisplayName,
   setNewJobLastModifiedOnBehalfOfDisplayName,
-  setNewJobLastModifiedOnBehalfOfObjectId
+  setNewJobLastModifiedOnBehalfOfObjectId,
+  manageMembershipGroupOwners
 } from '../../store/manageMembership.slice';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { useLocation, useParams } from 'react-router-dom';
@@ -52,11 +50,11 @@ import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.sl
 import { EndpointsList } from '../EndpointsList';
 import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
 import { InfoLabel } from '../InfoLabel';
-import { selectPeoplePickerSuggestions, selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectSelectedJobDetails } from '../../store/jobs.slice';
 import { selectLastModifiedOnBehalfOfUserProfile } from '../../store/profile.slice';
 import { SyncStatus } from '../../models';
 import { AppDispatch } from '../../store';
-import { getPeoplePickerSuggestions } from '../../store/jobs.api';
+import { getGroupOwners } from '../../store/manageMembership.api';
 import { SourcePartType } from '../../models/SourcePartType';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
@@ -89,12 +87,12 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const startDate: string = useSelector(manageMembershipStartDate);
   const thresholdPercentageForAdditions: number = useSelector(manageMembershipThresholdPercentageForAdditions);
   const thresholdPercentageForRemovals: number = useSelector(manageMembershipThresholdPercentageForRemovals);
-  const requestor: string = useSelector(manageMembershipRequestor);
   const lastModifiedOnBehalfOfDisplayName = useSelector(manageMembershipLastModifiedOnBehalfOfDisplayName);
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const jobDetails = useSelector(selectSelectedJobDetails);
   const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
+  const groupOwners = useSelector(manageMembershipGroupOwners);
   const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
     imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
     text: lastModifiedOnBehalfOfUserProfile?.displayName
@@ -113,42 +111,46 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const { jobId: urlJobId } = useParams<{ jobId: string }>();
   const jobId = locationState?.jobId ?? urlJobId;
 
-  const mapLastModifiedOnBehalfOfDisplayNameToPersonaProps = (lastModifiedOnBehalfOfDisplayName: string): IPersonaProps[] => {
-    if (!lastModifiedOnBehalfOfDisplayName) return [];
-    return [{
-      key: lastModifiedOnBehalfOfDisplayName,
-      text: lastModifiedOnBehalfOfDisplayName,
-      secondaryText: lastModifiedOnBehalfOfDisplayName,
-    }];
-  };
-
-  const lastModifiedOnBehalfOfDisplayNamePickerSuggestions = useSelector(selectPeoplePickerSuggestions);
-  const lastModifiedOnBehalfOfDisplayNamePersona = mapLastModifiedOnBehalfOfDisplayNameToPersonaProps(lastModifiedOnBehalfOfDisplayName || '');
-  const [lastModifiedOnBehalfOfDisplayNamePersonaState, setLastModifiedOnBehalfOfDisplayNamePersonaState] = React.useState<IPersonaProps[]>(mapLastModifiedOnBehalfOfDisplayNameToPersonaProps(requestor || ''));
   const isJobWriter = useSelector(selectIsJobWriter);
-
-  const getPickerSuggestions = async (
-      text: string
-  ): Promise<IPersonaProps[]> => {
-    return text && lastModifiedOnBehalfOfDisplayNamePickerSuggestions ? lastModifiedOnBehalfOfDisplayNamePickerSuggestions : [];
-  };
-
-  const handleLastModifiedOnBehalfOfDisplayNameInputChange = (input: string): string => {
-    if (input.trim() !== "") {
-      dispatch(getPeoplePickerSuggestions(input));
+  // Fetch group owners when we have a selected destination
+  useEffect(() => {
+    if (selectedDestination?.id && !jobId) {
+      dispatch(getGroupOwners(selectedDestination.id));
     }
-    return input;
-  };
+  }, [dispatch, selectedDestination?.id, jobId]);
 
-  const handleLastModifiedOnBehalfOfDisplayNameChange = (items?: IPersonaProps[] | undefined) => {
-    if (items && items.length > 0) {
-      dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(items[0].text || items[0].secondaryText || '' ));
-      dispatch(setNewJobLastModifiedOnBehalfOfObjectId(items[0].id || '' ));
+  // Create dropdown options from group owners
+  const groupOwnerOptions: IDropdownOption[] = React.useMemo(() => {
+    if (!groupOwners || groupOwners.length === 0) {
+      return [];
+    }
+    return groupOwners.map(owner => ({
+      key: owner.objectId,
+      text: owner.displayName,
+      data: owner
+    }));
+  }, [groupOwners]);
+    // Custom render function for dropdown options to display the email
+  const onRenderOption = (option?: IDropdownOption): JSX.Element => {
+    return option ? (
+      <div className={classNames.dropdownOptionContainer}>
+        <div>{option.text}</div>
+        <div className={classNames.dropdownOptionEmail}>
+          {option.data?.mail}
+        </div>
+      </div>
+    ) : <></>;
+  };
+  // Handle group owner selection
+  const handleGroupOwnerChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption) => {
+    if (option) {
+      const selectedOwner = option.data;
+      dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(selectedOwner.displayName));
+      dispatch(setNewJobLastModifiedOnBehalfOfObjectId(selectedOwner.objectId));
     } else {
       dispatch(setNewJobLastModifiedOnBehalfOfDisplayName(''));
       dispatch(setNewJobLastModifiedOnBehalfOfObjectId(''));
     }
-    setLastModifiedOnBehalfOfDisplayNamePersonaState(items || []);
   };
 
   return (
@@ -392,22 +394,27 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
             <div>
               <div className={classNames.cardHeader}>
                 <div className={classNames.cardTitle}>                  
-                  <Label required>{strings.ManageMembership.labels.requestedOnBehalfOf}</Label>
+                  <Label>{strings.ManageMembership.labels.requestedOnBehalfOf}</Label>
                 </div>
               </div>
               <Separator />
-              <NormalPeoplePicker
+              <Dropdown
+                id="groupOwnersDropdown"
+                label={strings.ManageMembership.labels.requestedOnBehalfOfDescription}
                 aria-label={strings.ManageMembership.labels.requestedOnBehalfOf}
-                onResolveSuggestions={getPickerSuggestions}
-                key={'normal'}
-                resolveDelay={300}
-                itemLimit={1}
-                selectedItems={lastModifiedOnBehalfOfDisplayNamePersona}
-                onInputChange={handleLastModifiedOnBehalfOfDisplayNameInputChange}
-                onChange={handleLastModifiedOnBehalfOfDisplayNameChange}
-                styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
-                pickerCalloutProps={{ directionalHint: DirectionalHint.bottomAutoEdge, calloutWidth: 300 }}
-                disabled={!isJobWriter}
+                placeholder={strings.ManageMembership.labels.requestedOnBehalfOfPlaceholder}
+                options={groupOwnerOptions}
+                selectedKey={lastModifiedOnBehalfOfDisplayName ? 
+                  groupOwners?.find(owner => owner.displayName === lastModifiedOnBehalfOfDisplayName)?.objectId : 
+                  undefined}
+                onChange={handleGroupOwnerChange}
+                disabled={!isJobWriter || groupOwnerOptions.length === 0}
+                styles={{ 
+                  dropdown: classNames.valuesDropdown, 
+                  title: classNames.dropdownTitle 
+                }}
+                onRenderOption={onRenderOption}
+                required
               />
             </div>
           ))}

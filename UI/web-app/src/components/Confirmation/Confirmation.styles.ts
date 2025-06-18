@@ -62,6 +62,27 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
         },
         textFieldGroup: {
             border: 'none'
-        }
+        },
+        valuesDropdown: {
+            maxWidth: 500
+        },
+        dropdownTitle: {
+            borderRadius: 4,
+            borderStyle: 'solid',
+            borderWidth: 1,
+            borderColor: theme.palette.neutralQuaternary,
+            backgroud: theme.palette.white,
+            maxWidth: 500
+        },
+        dropdownOptionContainer: {
+            display: 'flex',
+            flexDirection: 'column',
+            padding: 4
+        },
+        dropdownOptionEmail: {
+            fontSize: '12px',
+            color: theme.palette.neutralSecondary,
+            marginTop: '2px'
+        },
     };
 };

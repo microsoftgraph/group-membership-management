@@ -18,6 +18,10 @@ import {
     labelContainer: IStyle;
     textField: IStyle;
     textFieldGroup: IStyle;
+    dropdownTitle: IStyle;
+    valuesDropdown: IStyle;
+    dropdownOptionContainer: IStyle;
+    dropdownOptionEmail: IStyle;
   }
   
   export interface IConfirmationStyleProps {

@@ -8,6 +8,8 @@ import { SettingKey, SettingKeyMap } from '../../src/models';
 test.use({ storageState: 'tests/storageState.json' });
 
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
+const EMAIL = process.env.INTEGRATION_TEST_EMAIL || '';
+
 
 // Track the original state of the group creation setting
 let originalGroupCreationState: boolean | null = null;
@@ -120,6 +122,14 @@ test('Create a group with AuthorizedSenders', { tag: '@main' }, async ({ page })
   await expect(siblingSpan).toHaveText(new RegExp(`${EXPECTED_SENDER_TEXT}`, 'i'));
 
   console.log('✅ Authorized senders test completed successfully.');
+
+  // Test: Verify dropdown for RequestedOnBehalfOf displays current user since they are the creator/owner of the group
+  const requestedOnBehalfOfDropdown = page.locator('#groupOwnersDropdown');
+  await expect(requestedOnBehalfOfDropdown).toBeVisible();
+  await requestedOnBehalfOfDropdown.click();
+  const groupOwners = await requestedOnBehalfOfDropdown.locator('option').allTextContents();
+  await expect(groupOwners).toContain(EMAIL);
+  console.log('✅ RequestedOnBehalfOf dropdown test completed successfully.');
 });
 
 // Reset group creation setting to original state if it was originally disabled

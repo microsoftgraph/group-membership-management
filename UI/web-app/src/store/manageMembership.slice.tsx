@@ -9,12 +9,13 @@ import {
     getGroupOnboardingStatus,
     getChannelOnboardingStatus,
     getGroupEndpoints,
+    getGroupOwners,
     searchDestinations,
     searchChannels
 } from './manageMembership.api';
 import { GroupOnboardingStatus, OnboardingStatus } from '../models/GroupOnboardingStatus';
 import { Destination } from '../models/Destination';
-import { DestinationPickerPersona, Job } from '../models';
+import { DestinationPickerPersona, Job, GroupOwner } from '../models';
 import { SyncJobQuery } from '../models/SyncJobQuery';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
@@ -29,6 +30,7 @@ export interface ManageMembershipState {
     searchResults?: DestinationPickerPersona[];
     channelPickerSearchResults?: DestinationPickerPersona[];
     selectedDestination: Destination | undefined;
+    groupOwners?: GroupOwner[];
     onboardingStatus: GroupOnboardingStatus | null;
     hasChanges: boolean;
     currentStep: number;
@@ -56,6 +58,7 @@ const initialState: ManageMembershipState = {
     searchResults: [],
     channelPickerSearchResults: [],
     selectedDestination: undefined,
+    groupOwners: [],
     onboardingStatus: null,
     hasChanges: false,
     currentStep: 0,
@@ -383,6 +386,9 @@ const manageMembershipSlice = createSlice({
             state.createGroupLoading = false;
             state.createGroupErrorMessage = action.error.message;
         });
+        builder.addCase(getGroupOwners.fulfilled, (state, action) => {
+            state.groupOwners = action.payload;
+        });
     },
 });
 
@@ -466,6 +472,7 @@ export const areAllSourcePartsValid = (state: RootState): boolean => {
 export const manageMembershipBusinessJustification = (state: RootState) => state.manageMembership.businessJustification;
 export const manageMembershipLastModifiedOnBehalfOfDisplayName = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfDisplayName;
 export const manageMembershipLastModifiedOnBehalfOfObjectId = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfObjectId;
+export const manageMembershipGroupOwners = (state: RootState) => state.manageMembership.groupOwners;
 
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
