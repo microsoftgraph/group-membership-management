@@ -19,14 +19,15 @@ namespace WebApi.Controllers.v1.Destination
         private readonly IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> _searchGroupsRequestHandler;
         private readonly IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> _searchChannelsRequestHandler;
         private readonly IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> _getGroupEndpointsRequestHandler;
+        private readonly IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse> _getGroupOwnersRequestHandler;
         private readonly IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> _getGroupOnboardingStatusHandler;
         private readonly IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> _getChannelOnboardingStatusHandler;
         private readonly IRequestHandler<PostGroupRequest, PostGroupResponse> _postGroupHandler;
-
         public DestinationController
             (IRequestHandler<SearchGroupsRequest, SearchGroupsResponse> searchGroupsRequestHandler,
             IRequestHandler<SearchChannelsRequest, SearchChannelsResponse> searchChannelsRequestHandler,
             IRequestHandler<GetGroupEndpointsRequest, GetGroupEndpointsResponse> getGroupEndpointsRequestHandler,
+            IRequestHandler<GetGroupOwnersRequest, GetGroupOwnersResponse> getGroupOwnersRequestHandler,
             IRequestHandler<GetGroupOnboardingStatusRequest, GetOnboardingStatusResponse> getGroupOnboardingStatusHandler,
             IRequestHandler<GetChannelOnboardingStatusRequest, GetOnboardingStatusResponse> getChannelOnboardingStatusHandler,
             IRequestHandler<PostGroupRequest, PostGroupResponse> postGroupHandler)
@@ -34,6 +35,7 @@ namespace WebApi.Controllers.v1.Destination
             _searchGroupsRequestHandler = searchGroupsRequestHandler ?? throw new ArgumentNullException(nameof(searchGroupsRequestHandler));
             _searchChannelsRequestHandler = searchChannelsRequestHandler ?? throw new ArgumentNullException(nameof(searchChannelsRequestHandler));
             _getGroupEndpointsRequestHandler = getGroupEndpointsRequestHandler ?? throw new ArgumentNullException(nameof(getGroupEndpointsRequestHandler));
+            _getGroupOwnersRequestHandler = getGroupOwnersRequestHandler ?? throw new ArgumentNullException(nameof(getGroupOwnersRequestHandler));
             _getGroupOnboardingStatusHandler = getGroupOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getGroupOnboardingStatusHandler));
             _getChannelOnboardingStatusHandler = getChannelOnboardingStatusHandler ?? throw new ArgumentNullException(nameof(getChannelOnboardingStatusHandler));
             _postGroupHandler = postGroupHandler ?? throw new ArgumentNullException(nameof(postGroupHandler));
@@ -65,6 +67,21 @@ namespace WebApi.Controllers.v1.Destination
         {
             var response = await _getGroupEndpointsRequestHandler.ExecuteAsync(new GetGroupEndpointsRequest { GroupId = groupId });
             return Ok(response.Endpoints);
+        }
+
+        [Authorize()]
+        [HttpGet("groups/{groupId}/owners")]
+        public async Task<ActionResult<List<Models.DTOs.GroupOwner>>> GetGroupOwnersAsync(Guid groupId)
+        {
+            try
+            {
+                var response = await _getGroupOwnersRequestHandler.ExecuteAsync(new GetGroupOwnersRequest { GroupId = groupId });
+                return Ok(response.Owners);
+            }
+            catch (Exception ex)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+            }
         }
 
         [Authorize()]

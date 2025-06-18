@@ -123,6 +123,7 @@ namespace Repositories.GraphGroups
                     return owners.Select(x => new AzureADUser
                     {
                         ObjectId = Guid.Parse(x.Id),
+                        DisplayName = x.DisplayName,
                         Mail = x.Mail
                     })
                     .ToList();
