@@ -1609,10 +1609,6 @@ function Deploy-Resources {
                 -SolutionAbbreviation $SolutionAbbreviation `
                 -EnvironmentAbbreviation $EnvironmentAbbreviation
         }
-
-        Run-JobScheduler `
-            -SolutionAbbreviation $SolutionAbbreviation `
-            -EnvironmentAbbreviation $EnvironmentAbbreviation
     }
 
     if ($StartFunctions) {
