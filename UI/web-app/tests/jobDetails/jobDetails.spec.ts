@@ -55,45 +55,7 @@ test.beforeAll(async ({ browser }) => {
   }
 });
 
-// Reset group creation setting to original state if it was originally disabled
-test.afterAll(async ({ browser }) => {
-  if (originalGroupCreationState === false) {
-    const context = await browser.newContext({ storageState: 'tests/storageState.json' });
-    const page = await context.newPage();
-    
-    try {
-      const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
-      await page.goto(`${url}/Admin`);
-      await page.locator('text="General"').click();
-      
-      // Wait for the page to fully load and any async validations to complete
-      await page.waitForTimeout(3000);
-      
-      const groupCreationToggleId = SettingKeyMap[SettingKey.CreateGroupFeatureEnabled];
-      console.log('🔄 Resetting group creation feature to disabled state...');
-      await page.locator(`#${groupCreationToggleId}`).click();
-      
-      // Wait for the Save button to become enabled
-      const saveButton = page.locator('text="Save"');
-      await expect(saveButton).toBeVisible({ timeout: 10000 });
-      await expect(saveButton).toBeEnabled({ timeout: 10000 });
-      
-      await saveButton.click();
-      await page.waitForTimeout(5000);
-      console.log('✅ Group creation feature reset to disabled state.');
-    } catch (error) {
-      console.error('❌ Failed to reset group creation feature:', error);
-    } finally {
-      await context.close();
-    }
-  } else if (originalGroupCreationState === true) {
-    console.log('ℹ️ Group creation feature was originally enabled, leaving it enabled.');
-  } else {
-    console.log('⚠️ Could not determine original group creation state, leaving current state unchanged.');
-  }
-});
-
-test('Create a group with AuthorizedSenders', async ({ page }) => {
+test('Create a group with AuthorizedSenders', { tag: '@main' }, async ({ page }) => {
   const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
   const EXPECTED_SENDER_TEXT = 'adele';
   const GROUP_NAME = 'contoso';
@@ -158,4 +120,42 @@ test('Create a group with AuthorizedSenders', async ({ page }) => {
   await expect(siblingSpan).toHaveText(new RegExp(`${EXPECTED_SENDER_TEXT}`, 'i'));
 
   console.log('✅ Authorized senders test completed successfully.');
+});
+
+// Reset group creation setting to original state if it was originally disabled
+test.afterAll(async ({ browser }) => {
+  if (originalGroupCreationState === false) {
+    const context = await browser.newContext({ storageState: 'tests/storageState.json' });
+    const page = await context.newPage();
+    
+    try {
+      const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+      await page.goto(`${url}/Admin`);
+      await page.locator('text="General"').click();
+      
+      // Wait for the page to fully load and any async validations to complete
+      await page.waitForTimeout(3000);
+      
+      const groupCreationToggleId = SettingKeyMap[SettingKey.CreateGroupFeatureEnabled];
+      console.log('🔄 Resetting group creation feature to disabled state...');
+      await page.locator(`#${groupCreationToggleId}`).click();
+      
+      // Wait for the Save button to become enabled
+      const saveButton = page.locator('text="Save"');
+      await expect(saveButton).toBeVisible({ timeout: 10000 });
+      await expect(saveButton).toBeEnabled({ timeout: 10000 });
+      
+      await saveButton.click();
+      await page.waitForTimeout(5000);
+      console.log('✅ Group creation feature reset to disabled state.');
+    } catch (error) {
+      console.error('❌ Failed to reset group creation feature:', error);
+    } finally {
+      await context.close();
+    }
+  } else if (originalGroupCreationState === true) {
+    console.log('ℹ️ Group creation feature was originally enabled, leaving it enabled.');
+  } else {
+    console.log('⚠️ Could not determine original group creation state, leaving current state unchanged.');
+  }
 });

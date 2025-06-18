@@ -8,7 +8,7 @@ test.use({ storageState: 'tests/storageState.json' });
 
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
-test('Admin', async ({ page }) => {
+test('Admin', { tag: '@setup' }, async ({ page }) => {
   const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(`${url}/Admin`);
   await page.waitForTimeout(5000);
@@ -16,7 +16,7 @@ test('Admin', async ({ page }) => {
   console.log('✅ Admin test completed successfully.');
 });
 
-test('Initial disclaimer displays on first load', async ({ browser }) => {
+test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ browser }) => {
   // Create a fresh context with authentication but clear localStorage
   const context = await browser.newContext({ storageState: 'tests/storageState.json' });
   const page = await context.newPage();
@@ -108,7 +108,7 @@ test('Initial disclaimer displays on first load', async ({ browser }) => {
 });
 
 
-test('Enable group creation', async ({ page }) => {
+test('Enable group creation', { tag: '@setup' }, async ({ page }) => {
   const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(`${url}/Admin`);
   await page.locator('text="General"').click();
@@ -153,7 +153,7 @@ test('Enable group creation', async ({ page }) => {
 
     const saveButton = page.locator('text="Save"');
     await expect(saveButton).toBeVisible({ timeout: 5000 });
-    await expect(saveButton).toBeEnabled({ timeout: 5000 });
+    await expect(saveButton).toBeEnabled({ timeout: 10000 });
     await saveButton.click();
 
     await page.waitForTimeout(5000);

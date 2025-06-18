@@ -7,7 +7,7 @@ test.use({ storageState: 'tests/storageState.json' });
 
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
-test('Home', async ({ page }) => {
+test('Home', { tag: '@main' }, async ({ page }) => {
   const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(url);
   await page.waitForTimeout(5000);
@@ -15,7 +15,7 @@ test('Home', async ({ page }) => {
   console.log('✅ Home test completed successfully.');
 });
 
-test('Download button is visible', async ({ page }) => {
+test('Download button is visible', { tag: '@main' }, async ({ page }) => {
   const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(url);
   await page.waitForTimeout(5000);

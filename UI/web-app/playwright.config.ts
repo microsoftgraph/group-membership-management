@@ -16,8 +16,7 @@ export default defineConfig({
   testDir: './tests',
   globalSetup: require.resolve('./tests/auth/auth-setup.ts'),
   globalTeardown: require.resolve('./tests/global-teardown.ts'),
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
@@ -35,14 +34,26 @@ export default defineConfig({
     trace: 'on-first-retry',
     headless: true, // Set headless to false for visual debugging
   },
-
   /* Configure projects for major browsers */
   projects: [
+    // Setup project - runs admin tests first
     {
-      name: 'chromium',
+      name: 'setup',
+      testMatch: '**/admin/**/*.spec.ts',
       use: { 
         storageState: useStorage ? 'tests/storageState.json' : undefined,
-        ...devices['Desktop Chrome'] },
+        ...devices['Desktop Chrome'] 
+      },
+    },
+    // Main tests that depend on setup
+    {
+      name: 'chromium',
+      testIgnore: '**/admin/**/*.spec.ts',
+      dependencies: ['setup'],
+      use: { 
+        storageState: useStorage ? 'tests/storageState.json' : undefined,
+        ...devices['Desktop Chrome'] 
+      },
     },
   ],
 
