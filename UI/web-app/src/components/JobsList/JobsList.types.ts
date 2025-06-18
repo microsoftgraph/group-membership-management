@@ -29,6 +29,9 @@ export interface IJobsListStyles {
   successStatus: IStyle;
   errorStatus: IStyle;
   chooseFileButton: IStyle;
+  jobsHeader: IStyle;
+  approvedJobsLabel: IStyle;
+  totalJobsLabel: IStyle;
 }
 
 export interface IJobsListStyleProps {

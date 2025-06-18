@@ -22,6 +22,8 @@ import {
   clearJobsToDownload,
   selectApproveJobsLoading,
   selectApproveJobsResponse,
+  selectNumberOfApprovedJobs,
+  selectNumberOfJobs,
   selectApproveJobsrror,
   setApproveJobsResponse,
   setApproveJobsLoading
@@ -126,6 +128,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
   const approveJobsLoading = useSelector(selectApproveJobsLoading);
   const approveJobsResponse = useSelector(selectApproveJobsResponse);
+  const numberOfApprovedJobs = useSelector(selectNumberOfApprovedJobs);
+  const numberOfJobs = useSelector(selectNumberOfJobs);
   const approveJobsError = useSelector(selectApproveJobsrror);
 
   const selectionRef = useRef<ISelection<IObjectWithKey>>(
@@ -161,12 +165,16 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         `"${String(val).replace(/"/g, '""')}"`
       ).join(',')
     );
+    const numberOfJobs = rows.length;
     const csvContent = [header, ...rows].join('\r\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'selected-items.csv');
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const yyyyMMdd = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    link.setAttribute('download', `selected-items_${yyyyMMdd}_${numberOfJobs}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -497,14 +505,18 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   };
 
   const handleBulkApproveButtonClick = async () => {
-    await dispatch(approveJobs(syncJobIds));
+    await dispatch(approveJobs({
+      jobIdsToApprove: uploadedJobIdsToApprove,
+      totalNumberOfJobs: uploadedJobsCount ?? 0
+    }));
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [syncJobIds, setSyncJobIds] = useState<string[]>([]);
+  const [uploadedJobIdsToApprove, setUploadedJobIdsToApprove] = useState<string[]>([]);
+  const [uploadedJobsCount, setUploadedJobsCount] = useState<number>();
   const [fileName, setFileName] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
@@ -555,9 +567,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       complete: (results) => {
         const data = results.data as Array<Record<string, string>>;
         const ids = data
+          .filter(row => row['status'] === SyncStatus.PendingReview)
           .map(row => row['syncJobId'])
           .filter(id => !!id);
-        setSyncJobIds(ids);
+        setUploadedJobIdsToApprove(ids);
+        setUploadedJobsCount(data.length)
       },
       error: (err: any) => {
         // console.error("Error parsing CSV:", err);
@@ -634,9 +648,20 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                       )}
                       {approveJobsLoading && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />)}
                       {approveJobsResponse !== undefined && (
-                        <Label>
-                          <Icon iconName="CheckMark" className={classNames.successStatus} /> {strings.ManageMembership.approveStatusLabel}
-                        </Label>
+                        <div>
+                        <div className={classNames.jobsHeader}>
+                          <div className={classNames.approvedJobsLabel}>
+                          <Label>
+                          {strings.ManageMembership.totalNumberOfJobsLabel} {numberOfJobs}
+                          </Label>
+                          </div>
+                          <div className={classNames.totalJobsLabel}>
+                          <Label>
+                          {strings.ManageMembership.totalNumberOfApprovedJobsLabel} {numberOfApprovedJobs}
+                          </Label>
+                          </div>
+                        </div>
+                        </div>
                       )}
                       {approveJobsError !== undefined && (
                         <Label>

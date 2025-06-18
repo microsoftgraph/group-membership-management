@@ -98,6 +98,20 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       color: "#0078d4",
       cursor: "pointer",
       textDecoration: "underline"
+    },
+    jobsHeader: {
+      display: 'flex',
+      marginBottom: '10px'
+    },
+    approvedJobsLabel: {
+      width: '150px',
+      fontWeight: 'bold',
+      fontSize: 20
+    },
+    totalJobsLabel: {
+      marginLeft: '20px',
+      fontWeight: 'bold',
+      fontSize: 20
     }
   };
 };

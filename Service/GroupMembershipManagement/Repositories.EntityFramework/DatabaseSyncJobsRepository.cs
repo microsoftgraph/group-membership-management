@@ -224,7 +224,10 @@ namespace Repositories.EntityFramework
 
             foreach (var job in existingJobs)
             {
-                job.Status = SyncStatus.Idle.ToString();
+                if (job.Status == SyncStatus.PendingReview.ToString())
+                {
+                    job.Status = SyncStatus.Idle.ToString();
+                }
             }
 
             await _writeContext.SaveChangesAsync();

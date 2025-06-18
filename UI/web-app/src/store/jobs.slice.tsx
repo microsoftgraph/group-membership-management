@@ -26,6 +26,8 @@ export interface JobsState {
   jobsToDownload?: Job[];
   downloadJobsLoading: boolean;
   downloadJobsError: string | undefined;
+  totalNumberOfApprovedJobs: number;
+  totalNumberOfJobs: number;
   approveJobsLoading: boolean;
   approveJobsResponse: string | undefined;
   approveJobsError: string | undefined;
@@ -53,6 +55,8 @@ const initialState: JobsState = {
   jobsToDownload: undefined,
   downloadJobsLoading: false,
   downloadJobsError: undefined,
+  totalNumberOfApprovedJobs: 0,
+  totalNumberOfJobs: 0,
   approveJobsLoading: false,
   approveJobsResponse: undefined,
   approveJobsError: undefined,
@@ -197,7 +201,9 @@ export const jobsSlice = createSlice({
     });
     builder.addCase(approveJobs.fulfilled, (state, action) => {
       state.approveJobsLoading = false;
-      state.approveJobsResponse = action.payload;
+      state.approveJobsResponse = action.payload.data;
+      state.totalNumberOfApprovedJobs = action.payload.totalNumberOfApprovedJobs;
+      state.totalNumberOfJobs = action.payload.totalNumberOfJobs;
     });
     builder.addCase(approveJobs.rejected, (state, action) => {
       state.approveJobsLoading = false;
@@ -283,6 +289,8 @@ export const selectRemoveGMMError = (state: RootState) => state.jobs.removeGMMEr
 
 export const selectApproveJobsLoading = (state: RootState) => state.jobs.approveJobsLoading;
 export const selectApproveJobsResponse = (state: RootState) => state.jobs.approveJobsResponse;
+export const selectNumberOfApprovedJobs = (state: RootState) => state.jobs.totalNumberOfApprovedJobs;
+export const selectNumberOfJobs = (state: RootState) => state.jobs.totalNumberOfJobs;
 export const selectApproveJobsrror = (state: RootState) => state.jobs.approveJobsError;
 
 export default jobsSlice.reducer;

@@ -12,6 +12,8 @@ import {
   PeoplePickerPersona
 } from '../models';
 import { processJob } from '../utils/jobUtils';
+import { BulkApproveRequest } from '../models/BulkApproveRequest';
+import { BulkApproveResponse } from '../models/BulkApproveResponse';
 
 export interface JobsResponse {
   jobs: Job[];
@@ -48,13 +50,24 @@ export const downloadJobs = createAsyncThunk<Job[], string[], ThunkConfig>(
   }
 );
 
-export const approveJobs = createAsyncThunk<string, string[], ThunkConfig>(
+export const approveJobs = createAsyncThunk<BulkApproveResponse, BulkApproveRequest, ThunkConfig>(
   'jobs/approveJobs',
-  async (syncJobIds: string[], { extra }) => {
+  async (request: BulkApproveRequest, { extra , dispatch }) => {
     const { gmmApi } = extra.apis;
     try {
-      const response = await gmmApi.jobs.approveJobs(syncJobIds);
-      return response.data;
+      const response = await gmmApi.jobs.approveJobs(request.jobIdsToApprove);    
+      await dispatch(fetchJobs({
+        pageSize: 10,
+        itemsToSkip: 0,
+        orderBy: undefined,
+        filter: undefined,
+      }));
+      const payload: BulkApproveResponse = {
+        totalNumberOfApprovedJobs: request.jobIdsToApprove.length,
+        totalNumberOfJobs: request.totalNumberOfJobs,
+        data: response.data
+      };
+      return payload;
     } catch (error) {
       throw new Error('Failed to approve jobs!');
     }

@@ -372,7 +372,8 @@ export type IStrings = {
     selectCSVFileLabel: string;
     chooseFileButton: string;
     uploadCompleteLabel: string;
-    approveStatusLabel: string;
+    totalNumberOfJobsLabel: string;
+    totalNumberOfApprovedJobsLabel: string;
     approveErrorStatusLabel: string;
     approveButton: string;
     labels: {
