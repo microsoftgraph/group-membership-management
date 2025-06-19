@@ -290,3 +290,46 @@ function Run-JobScheduler {
         Write-Error "❌ Failed to invoke Job Scheduler. Response: $($response | ConvertTo-Json)"
     }
 }
+
+function Set-AppRoleToServicePrincipal {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$PrincipalId,
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceId,
+        [Parameter(Mandatory = $true)]
+        [string]$AppRoleId
+    )
+
+    $scriptsDirectory = Split-Path $PSScriptRoot
+
+    Write-Host "Setting app role to service principal with ID: $scriptsDirectory"
+
+    . ($scriptsDirectory + '\scripts\Install-MSGraphIfNeeded.ps1')
+	Install-MSGraphIfNeeded
+
+    # Connect to Microsoft Graph
+    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
+
+    # Retrieve existing app role assignments for the service principal
+    $existingAssignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $PrincipalId
+
+    # Check if the desired assignment already exists
+    $assignmentExists = $existingAssignments | Where-Object {
+        $_.AppRoleId -eq $AppRoleId -and $_.ResourceId -eq $ResourceId
+    }
+
+    if (-not $assignmentExists) {
+        # Assignment doesn't exist, so create it
+        New-MgServicePrincipalAppRoleAssignment `
+            -ServicePrincipalId $PrincipalId `
+            -BodyParameter @{
+                principalId = $PrincipalId
+                resourceId  = $ResourceId
+                appRoleId   = $AppRoleId
+            }
+    } else {
+        Write-Host "App role assignment already exists. Skipping creation."
+    }
+}

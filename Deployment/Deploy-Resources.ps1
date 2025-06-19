@@ -1598,7 +1598,7 @@ function Deploy-Resources {
         Write-Host "`nStopping function apps in resource group $computeResourceGroup"
         Stop-FunctionApps -ResourceGroupName $computeResourceGroup
 
-        . ($scriptsDirectory + '\deployment\Reset-GMM.ps1')
+        . ($scriptsDirectory + '\scripts\Reset-GMM.ps1')
 
         if($ResetGMMType -eq "Credentials") {
             Reset-GMM-WithCredentials `
