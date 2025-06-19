@@ -29,7 +29,6 @@ export const fetchJobs = createAsyncThunk<Page<Job>, PagingOptions | undefined, 
       const jobsPage = await gmmApi.jobs.getAllJobs(pagingOptions);
       const mapped = jobsPage.items.map(processJob);
       jobsPage.items = mapped;
-      console.log('Fetched jobs:', jobsPage);
       return jobsPage;
     } catch (error) {
       throw new Error('Failed to fetch jobs!');
@@ -55,7 +54,7 @@ export const approveJobs = createAsyncThunk<BulkApproveResponse, BulkApproveRequ
   async (request: BulkApproveRequest, { extra , dispatch }) => {
     const { gmmApi } = extra.apis;
     try {
-      const response = await gmmApi.jobs.approveJobs(request.jobIdsToApprove);    
+      const response = await gmmApi.jobs.approveJobs(request.jobIdsToApprove);
       await dispatch(fetchJobs({
         pageSize: 10,
         itemsToSkip: 0,
@@ -63,9 +62,8 @@ export const approveJobs = createAsyncThunk<BulkApproveResponse, BulkApproveRequ
         filter: undefined,
       }));
       const payload: BulkApproveResponse = {
-        totalNumberOfApprovedJobs: request.jobIdsToApprove.length,
-        totalNumberOfJobs: request.totalNumberOfJobs,
-        data: response.data
+        totalNumberOfApprovedJobs: response.data.approvedJobsCount,
+        totalNumberOfJobs: request.totalNumberOfJobs
       };
       return payload;
     } catch (error) {

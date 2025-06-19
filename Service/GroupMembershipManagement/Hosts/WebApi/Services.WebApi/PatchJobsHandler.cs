@@ -8,7 +8,7 @@ using Services.Messages.Responses;
 
 namespace Services
 {
-    public class PatchJobsHandler : RequestHandlerBase<PatchJobsRequest, NullResponse>
+    public class PatchJobsHandler : RequestHandlerBase<PatchJobsRequest, PatchJobsResponse>
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         public PatchJobsHandler(ILoggingRepository loggingRepository,
@@ -17,10 +17,10 @@ namespace Services
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
         }
 
-        protected override async Task<NullResponse> ExecuteCoreAsync(PatchJobsRequest request)
+        protected override async Task<PatchJobsResponse> ExecuteCoreAsync(PatchJobsRequest request)
         {
-            await _databaseSyncJobsRepository.BulkApproveSyncJobsAsync(request.SyncJobIds.ToList());
-            return new NullResponse();
+            var approvedCount = await _databaseSyncJobsRepository.BulkApproveSyncJobsAsync(request.SyncJobIds.ToList());
+            return new PatchJobsResponse { ApprovedJobsCount = approvedCount };
         }
     }
 }

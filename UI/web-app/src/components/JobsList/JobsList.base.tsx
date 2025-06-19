@@ -21,7 +21,6 @@ import {
   downloadJobsLoading,
   clearJobsToDownload,
   selectApproveJobsLoading,
-  selectApproveJobsResponse,
   selectNumberOfApprovedJobs,
   selectNumberOfJobs,
   selectApproveJobsrror,
@@ -128,7 +127,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
   const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
   const approveJobsLoading = useSelector(selectApproveJobsLoading);
-  const approveJobsResponse = useSelector(selectApproveJobsResponse);
   const numberOfApprovedJobs = useSelector(selectNumberOfApprovedJobs);
   const numberOfJobs = useSelector(selectNumberOfJobs);
   const approveJobsError = useSelector(selectApproveJobsrror);
@@ -426,7 +424,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'bulkApproveSyncs',
       text: strings.ManageMembership.bulkApproveSyncsButton,
       iconProps: { iconName: 'CheckMark' },
-      disabled: true, // disabling until changes to run JobScheduler are completed
       onClick: onContextualItemClicked
     };
   }
@@ -641,7 +638,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                           <Icon iconName="CheckMark" className={classNames.successStatus} /> {strings.ManageMembership.uploadCompleteLabel} <strong>{fileName}</strong>
                         </Label>
                       )}
-                      {!approveJobsResponse && (
+                      {!numberOfApprovedJobs && (
                         <PrimaryButton
                           text={strings.ManageMembership.approveButton}
                           disabled={!uploaded}
@@ -649,7 +646,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                         />
                       )}
                       {approveJobsLoading && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />)}
-                      {approveJobsResponse !== undefined && (
+                      {numberOfApprovedJobs !== undefined && (
                         <div>
                         <div className={classNames.jobsHeader}>
                           <div className={classNames.approvedJobsLabel}>

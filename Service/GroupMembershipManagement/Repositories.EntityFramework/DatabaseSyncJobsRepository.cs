@@ -216,21 +216,26 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
-        public async Task BulkApproveSyncJobsAsync(List<string> syncJobIds)
+        public async Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds)
         {
             var existingJobs = await _writeContext.SyncJobs
                 .Where(job => syncJobIds.Contains(job.Id.ToString()))
                 .ToListAsync();
+
+            int updatedToIdleCount = 0;
 
             foreach (var job in existingJobs)
             {
                 if (job.Status == SyncStatus.PendingReview.ToString())
                 {
                     job.Status = SyncStatus.Idle.ToString();
+                    updatedToIdleCount++;
                 }
             }
 
             await _writeContext.SaveChangesAsync();
+
+            return updatedToIdleCount;
         }
     }
 }

@@ -15,6 +15,7 @@ using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
 using Repositories.TeamsChannel;
+using Services.Messages.Responses;
 using System.Data;
 using System.Net;
 using System.Security.Claims;
@@ -572,7 +573,12 @@ namespace Services.Tests
             };
 
             var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
-            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            Assert.IsNotNull(response);
+            var okResult = response.Result as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            Assert.IsNotNull(okResult.Value);
+            var res = okResult.Value as PatchJobsResponse;
+            Assert.IsNotNull(res);
             _databaseSyncJobsRepository.Verify(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>()), Times.Once);
         }
 
@@ -584,12 +590,12 @@ namespace Services.Tests
 
             var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
 
-            Assert.IsInstanceOfType(response, typeof(StatusCodeResult));
+            Assert.IsInstanceOfType(response, typeof(ActionResult<int>));
 
-            var internalServerErrorResponse = response as StatusCodeResult;
+            var statusCodeResult = response.Result as StatusCodeResult;
 
-            Assert.IsNotNull(internalServerErrorResponse);
-            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+            Assert.IsNotNull(statusCodeResult);
+            Assert.AreEqual((int)HttpStatusCode.InternalServerError, statusCodeResult.StatusCode);
         }
 
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)

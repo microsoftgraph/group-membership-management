@@ -26,10 +26,9 @@ export interface JobsState {
   jobsToDownload?: Job[];
   downloadJobsLoading: boolean;
   downloadJobsError: string | undefined;
-  totalNumberOfApprovedJobs: number;
-  totalNumberOfJobs: number;
+  totalNumberOfApprovedJobs: number | undefined;
+  totalNumberOfJobs: number | undefined;
   approveJobsLoading: boolean;
-  approveJobsResponse: string | undefined;
   approveJobsError: string | undefined;
   jobOwnerFilterSuggestions?: PeoplePickerPersona[];
   removeGMMLoading: boolean;
@@ -55,10 +54,9 @@ const initialState: JobsState = {
   jobsToDownload: undefined,
   downloadJobsLoading: false,
   downloadJobsError: undefined,
-  totalNumberOfApprovedJobs: 0,
-  totalNumberOfJobs: 0,
+  totalNumberOfApprovedJobs: undefined,
+  totalNumberOfJobs: undefined,
   approveJobsLoading: false,
-  approveJobsResponse: undefined,
   approveJobsError: undefined,
   jobOwnerFilterSuggestions: [],
   removeGMMLoading: false,
@@ -95,7 +93,8 @@ export const jobsSlice = createSlice({
       state.approveJobsLoading = false;
     },
     setApproveJobsResponse: (state) => {
-      state.approveJobsResponse = undefined;
+      state.totalNumberOfApprovedJobs = undefined;
+      state.totalNumberOfJobs = undefined;
     }
   },
   extraReducers: (builder) => {
@@ -166,7 +165,7 @@ export const jobsSlice = createSlice({
       state.patchJobDetailsError = action.error.message;
     });
 
-    // postJob 
+    // postJob
     builder.addCase(postJob.pending, (state) => {
       state.postJobLoading = true;
       state.postJobError = undefined;
@@ -196,12 +195,10 @@ export const jobsSlice = createSlice({
     // approveJobs
     builder.addCase(approveJobs.pending, (state) => {
       state.approveJobsLoading = true;
-      state.approveJobsResponse = undefined;
       state.approveJobsError = undefined;
     });
     builder.addCase(approveJobs.fulfilled, (state, action) => {
       state.approveJobsLoading = false;
-      state.approveJobsResponse = action.payload.data;
       state.totalNumberOfApprovedJobs = action.payload.totalNumberOfApprovedJobs;
       state.totalNumberOfJobs = action.payload.totalNumberOfJobs;
     });
@@ -288,7 +285,6 @@ export const selectRemoveGMMResponse = (state: RootState) => state.jobs.removeGM
 export const selectRemoveGMMError = (state: RootState) => state.jobs.removeGMMError;
 
 export const selectApproveJobsLoading = (state: RootState) => state.jobs.approveJobsLoading;
-export const selectApproveJobsResponse = (state: RootState) => state.jobs.approveJobsResponse;
 export const selectNumberOfApprovedJobs = (state: RootState) => state.jobs.totalNumberOfApprovedJobs;
 export const selectNumberOfJobs = (state: RootState) => state.jobs.totalNumberOfJobs;
 export const selectApproveJobsrror = (state: RootState) => state.jobs.approveJobsError;

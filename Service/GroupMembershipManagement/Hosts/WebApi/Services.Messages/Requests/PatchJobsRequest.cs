@@ -7,7 +7,7 @@ namespace Services.Messages.Requests
 {
     public class PatchJobsRequest : RequestBase
     {
-        public string[] SyncJobIds { get; set; }
+        public string[] SyncJobIds { get; }
 
         public PatchJobsRequest(string[] syncJobIds)
         {

@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.OData.Query;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using WebApi.Models.DTOs;
-using SyncJobModel = Models.SyncJob;
-using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using System.Net;
 using System.Security.Claims;
+using WebApi.Models.DTOs;
+using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
+using SyncJobModel = Models.SyncJob;
 
 namespace WebApi.Controllers.v1.Jobs
 {
@@ -22,13 +22,13 @@ namespace WebApi.Controllers.v1.Jobs
         private const int DEFAULT_PAGE_SIZE = 10;
         private const int MAX_PAGE_SIZE = 100;
         private readonly IRequestHandler<GetJobsRequest, GetJobsResponse> _getJobsRequestHandler;
-        private readonly IRequestHandler<PatchJobsRequest, NullResponse> _patchJobsRequestHandler;
+        private readonly IRequestHandler<PatchJobsRequest, PatchJobsResponse> _patchJobsRequestHandler;
         private readonly IRequestHandler<PostJobRequest, PostJobResponse> _postJobRequestHandler;
         private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
 
         public JobsController(
             IRequestHandler<GetJobsRequest, GetJobsResponse> getJobsRequestHandler,
-            IRequestHandler<PatchJobsRequest, NullResponse> patchJobsRequestHandler,
+            IRequestHandler<PatchJobsRequest, PatchJobsResponse> patchJobsRequestHandler,
             IRequestHandler<PostJobRequest, PostJobResponse> postJobRequestHandler,
             IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobDetailsRequestHandler)
         {
@@ -80,14 +80,14 @@ namespace WebApi.Controllers.v1.Jobs
             return Ok(pagedResponse);
         }
 
-        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [Authorize(Roles = Models.Roles.SUBMISSION_REVIEWER)]
         [HttpPost("bulkApprove")]
-        public async Task<ActionResult> BulkApproveJobsAsync([FromBody] string[] syncJobIds)
+        public async Task<ActionResult<int>> BulkApproveJobsAsync([FromBody] string[] syncJobIds)
         {
             try
             {
-                await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds));
-                return NoContent();
+                var response = await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds));
+                return Ok(response);
             }
             catch (Exception)
             {
