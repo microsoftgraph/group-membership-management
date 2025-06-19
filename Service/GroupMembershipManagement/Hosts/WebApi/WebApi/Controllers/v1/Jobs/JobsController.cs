@@ -35,12 +35,23 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpGet()]
-        public async Task<ActionResult<IEnumerable<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions, [FromQuery] string? customSortBy = null)
+        public async Task<ActionResult<PagedResponse<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions, [FromQuery] string? customSortBy = null)
         {
             var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions, CustomSortBy = customSortBy });
-            Response.Headers.Add("x-total-pages", response.TotalNumberOfPages.ToString());
-            Response.Headers.Add("x-current-page", response.CurrentPage.ToString());
-            return Ok(response.Model);
+            
+            var pageSize = queryOptions?.Top?.Value ?? 10;
+            var totalItems = response.TotalNumberOfPages * pageSize;
+            
+            var pagedResponse = new PagedResponse<SyncJob>
+            {
+                Items = response.Model ?? new List<SyncJob>(),
+                TotalNumberOfPages = response.TotalNumberOfPages,
+                CurrentPage = response.CurrentPage,
+                PageSize = pageSize,
+                TotalItems = totalItems
+            };
+
+            return Ok(pagedResponse);
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_WRITER)]

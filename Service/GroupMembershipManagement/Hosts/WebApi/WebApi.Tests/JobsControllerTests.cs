@@ -21,6 +21,7 @@ using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
 using WebApi.Models.Responses;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
+using PagedResponseDTO = WebApi.Models.DTOs.PagedResponse<WebApi.Models.DTOs.SyncJob>;
 
 namespace Services.Tests
 {
@@ -232,11 +233,16 @@ namespace Services.Tests
 
             Assert.IsNotNull(response);
             Assert.IsNotNull(result);
-            Assert.IsNotNull(result.Value);
+            Assert.IsNotNull(result.Value);            
+            var pagedResponse = result.Value as PagedResponseDTO;
 
-            var jobs = result.Value as GetJobsModel;
-
-            Assert.IsNotNull(jobs);
+            Assert.IsNotNull(pagedResponse);
+            Assert.IsNotNull(pagedResponse.Items);
+            Assert.IsTrue(pagedResponse.TotalNumberOfPages > 0);
+            Assert.IsTrue(pagedResponse.CurrentPage > 0);
+            Assert.IsTrue(pagedResponse.PageSize > 0);
+            Assert.IsTrue(pagedResponse.TotalItems >= 0);
+            var jobs = pagedResponse.Items.ToList();
             Assert.AreEqual(_jobCount, jobs.Count);
             Assert.AreEqual(_jobCount, jobs.Select(x => x.TargetGroupId).Distinct().Count());
             Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));
@@ -281,11 +287,16 @@ namespace Services.Tests
 
             Assert.IsNotNull(response);
             Assert.IsNotNull(result);
-            Assert.IsNotNull(result.Value);
+            Assert.IsNotNull(result.Value);            
+            var pagedResponse = result.Value as PagedResponseDTO;
 
-            var jobs = result.Value as GetJobsModel;
-
-            Assert.IsNotNull(jobs);
+            Assert.IsNotNull(pagedResponse);
+            Assert.IsNotNull(pagedResponse.Items);
+            Assert.IsTrue(pagedResponse.TotalNumberOfPages > 0);
+            Assert.IsTrue(pagedResponse.CurrentPage > 0);
+            Assert.IsTrue(pagedResponse.PageSize > 0);
+            Assert.IsTrue(pagedResponse.TotalItems >= 0);
+            var jobs = pagedResponse.Items.ToList();
             Assert.AreEqual(_jobCount, jobs.Count);
             Assert.AreEqual(_jobCount, jobs.Select(x => x.TargetGroupId).Distinct().Count());
             Assert.IsTrue(jobs.All(x => x.SyncJobId.ToString() != null));

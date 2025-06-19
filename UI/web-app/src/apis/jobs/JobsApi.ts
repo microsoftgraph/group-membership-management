@@ -13,14 +13,22 @@ export class JobsApi extends ApiBase implements IJobsApi {
   public async getAllJobs(pagingOptions?: PagingOptions): Promise<Page<Job>> {
 
     const params = this.mapPagingOptionsToODataQueryOptions(pagingOptions);
-    const response = await this.httpClient.get<JobEntity[]>('/', { params });
+    const response = await this.httpClient.get<{
+      items: JobEntity[];
+      totalNumberOfPages: number;
+      currentPage: number;
+      pageSize: number;
+      totalItems: number;
+    }>('/', { params });
 
     this.ensureSuccessStatusCode(response);
 
-    const xTotalPages = response.headers['x-total-pages'];
     const jobsPage: Page<Job> = {
-      items: response.data.map((entity) => this.mapJobEntityToJob(entity)),
-      totalNumberOfPages: xTotalPages ? parseInt(xTotalPages) : 1,
+      items: response.data.items.map((entity) => this.mapJobEntityToJob(entity)),
+      totalNumberOfPages: response.data.totalNumberOfPages,
+      currentPage: response.data.currentPage,
+      pageSize: response.data.pageSize,
+      totalItems: response.data.totalItems,
     };
 
     return jobsPage;
