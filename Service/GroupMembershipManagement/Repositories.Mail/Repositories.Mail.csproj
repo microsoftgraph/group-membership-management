@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AdaptiveCards.Templating" Version="2.0.2" />
-    <PackageReference Include="Microsoft.Graph" Version="5.56.0" />
+    <PackageReference Include="AdaptiveCards.Templating" />
+    <PackageReference Include="Microsoft.Graph" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,8 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AdaptiveCards.Templating" Version="2.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+    <PackageReference Include="AdaptiveCards.Templating" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
   </ItemGroup>
 	
   <ItemGroup>

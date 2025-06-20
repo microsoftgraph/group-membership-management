@@ -5,8 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Polly" Version="8.4.1" />
-    <PackageReference Include="Microsoft.Graph" Version="5.56.0" />
+    <PackageReference Include="Polly" />
+    <PackageReference Include="Microsoft.Graph" />
   </ItemGroup>
 
   <ItemGroup>

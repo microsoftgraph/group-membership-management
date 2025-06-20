@@ -4,9 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-	  <PackageReference Include="Azure.Identity" Version="1.12.0" />
-	  <PackageReference Include="Azure.Monitor.Query" Version="1.4.0" />
-	  <PackageReference Include="Microsoft.ApplicationInsights" Version="2.22.0" />
+	  <PackageReference Include="Azure.Identity" />
+	  <PackageReference Include="Azure.Monitor.Query" />
+	  <PackageReference Include="Microsoft.ApplicationInsights" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
