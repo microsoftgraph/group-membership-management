@@ -350,6 +350,12 @@
         "description": "Flag to create resource groups. Set to true on initial deployment."
       }
     },
+    "aiLocation": {
+      "value": "westus3",
+      "metadata": {
+        "description": "Location of AI resources. Default is westus3."
+      }
+    },
     "availableMessageSplitterSubscriptions": {
       "value": [
         {
