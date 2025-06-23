@@ -4,7 +4,7 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-pnpmfileChecksum: zu76nzuydz5l6x5iknqy6tvksi
+pnpmfileChecksum: a4okc7zvol3rdeuiftlowfkck4
 
 importers:
 
@@ -56,8 +56,8 @@ importers:
         specifier: ^8.17.1
         version: 8.17.1
       axios:
-        specifier: 1.6.0
-        version: 1.6.0
+        specifier: 1.8.2
+        version: 1.8.2
       base32-encode:
         specifier: ^2.0.0
         version: 2.0.0
@@ -2060,8 +2060,8 @@ packages:
     resolution: {integrity: sha512-Xm7bpRXnDSX2YE2YFfBk2FnF0ep6tmG7xPh8iHee8MIcrgq762Nkce856dYtJYLkuIoYZvGfTs/PbZhideTcEg==}
     engines: {node: '>=4'}
 
-  axios@1.6.0:
-    resolution: {integrity: sha512-EZ1DYihju9pwVB+jg67ogm+Tmqc6JmhamRN6I4Zt8DfZu5lbcQGw3ozH9lFejSJgs/ibaef3A9PMXPLeefFGJg==}
+  axios@1.8.2:
+    resolution: {integrity: sha512-ls4GYBm5aig9vWx8AWDSGLpnpDQRtWAfrjU+EuytuODrFBkqesN2RkOQCBzrA1RQNHw1SmRMSDDDSwzNAYQ6Rg==}
 
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
@@ -8661,7 +8661,7 @@ snapshots:
 
   axe-core@4.10.3: {}
 
-  axios@1.6.0:
+  axios@1.8.2:
     dependencies:
       follow-redirects: 1.15.9
       form-data: 4.0.2
