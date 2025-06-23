@@ -114,10 +114,10 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const isJobWriter = useSelector(selectIsJobWriter);
   // Fetch group owners when we have a selected destination
   useEffect(() => {
-    if (selectedDestination?.id && !jobId) {
+    if (selectedDestination?.id) {
       dispatch(getGroupOwners(selectedDestination.id));
     }
-  }, [dispatch, selectedDestination?.id, jobId]);
+  }, [dispatch, selectedDestination?.id]);
 
   // Create dropdown options from group owners
   const groupOwnerOptions: IDropdownOption[] = React.useMemo(() => {

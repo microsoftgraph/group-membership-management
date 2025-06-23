@@ -4,5 +4,5 @@
 export interface GroupOwner {
   objectId: string;
   displayName: string;
-  mail: string;
+  mail?: string | null;
 }

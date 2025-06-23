@@ -179,10 +179,11 @@ export const getGroupOwners = createAsyncThunk<GroupOwner[], string, ThunkConfig
     };
 
     try {
-      const response = await fetch(`${config.getGroupOwners(groupId)}`, options).then(
-        async (response) => await response.json()
-      );
-      const payload: GroupOwner[] = response;
+      const response = await fetch(`${config.getGroupOwners(groupId)}`, options);
+      if (!response.ok) {
+        throw new Error('Failed to fetch group owners!');
+      }
+      const payload: GroupOwner[] = await response.json();
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch group owners!');
