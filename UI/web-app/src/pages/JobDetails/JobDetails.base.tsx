@@ -20,7 +20,8 @@ import {
   Persona,
   PersonaSize,
   IPersonaSharedProps,
-  Label
+  Label,
+  TextField
 } from '@fluentui/react';
 
 import {
@@ -384,6 +385,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const lastChange = jobChanges?.[0];
   const businessJustification = useSelector(manageMembershipBusinessJustification);
   const [loadingJobChanges, setLoadingJobChanges] = useState(true);
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [rejectionFeedback, setRejectionFeedback] = useState('');
 
   useEffect(() => {
     setJobStatus(job?.status ?? '');
@@ -404,7 +407,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     }
   }, [dispatch, jobDetails]);
 
-  const updateJobStatus = async (newStatus: string, changeReason: SyncJobChangeReason) => {
+  const updateJobStatus = async (newStatus: string, changeReason: SyncJobChangeReason, rejectionBusinessJustification?: string) => {
     if (jobId === undefined && job.syncJobId === undefined) {
       throw new Error('Job ID is not defined');
     }
@@ -419,7 +422,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       syncJobId: jobId ?? job.syncJobId,
       patchOperation,
       changeReason,
-      businessJustification: businessJustification ?? ''
+      businessJustification: rejectionBusinessJustification ?? businessJustification ?? ''
     };
 
     try {
@@ -444,9 +447,28 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   };
 
   const handleApproveSubmission = (approved: boolean) => {
-    const statusBasedOnReview = approved ? SyncStatus.Idle : SyncStatus.SubmissionRejected;
-    updateJobStatus(statusBasedOnReview, approved ? SyncJobChangeReason.SubmissionApproved : SyncJobChangeReason.SubmissionRejected);
-    resolveReview();
+    if (approved) {
+      updateJobStatus(SyncStatus.Idle, SyncJobChangeReason.SubmissionApproved);
+      resolveReview();
+    } else {
+      setShowRejectionDialog(true);
+    }
+  };
+
+  const handleRejectDialogClose = () => {
+    setShowRejectionDialog(false);
+    setRejectionFeedback('');
+  };
+
+  const handleRejectSubmission = async () => {
+    try {
+      await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback);
+      resolveReview();
+      setShowRejectionDialog(false);
+      setRejectionFeedback('');
+    } catch (error) {
+      throw new Error('Failed to reject submission');
+    }
   };
 
   const displayMessage = (patchResponse?: PatchJobResponse): string  => {
@@ -519,7 +541,11 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         )}
         {(jobStatus === SyncStatus.SubmissionRejected) && (
           <div>
-            <Text>{strings.JobDetails.labels.submissionRejected}</Text>
+            <>
+              <Text>{strings.JobDetails.labels.submissionRejected}</Text>
+              <Label>{strings.JobDetails.labels.businessJustification}</Label>
+                  {lastChange?.businessJustification}
+            </>
           </div>
         )}
       </div>
@@ -596,6 +622,36 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         </div>
         )}
         </div>
+      {/* Rejection Dialog */}
+      <Dialog
+        hidden={!showRejectionDialog}
+        onDismiss={handleRejectDialogClose}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: strings.JobDetails.labels.rejectionDialogTitle,
+          subText: strings.JobDetails.labels.rejectionDialogSubText
+        }}
+        modalProps={{
+          isBlocking: true
+        }}
+      >
+        <TextField
+          label={strings.JobDetails.labels.rejectionReasonLabel}
+          multiline
+          rows={4}
+          value={rejectionFeedback}
+          onChange={(_, newValue) => setRejectionFeedback(newValue || '')}
+          placeholder={strings.JobDetails.labels.rejectionReasonPlaceholder}
+          required
+        />
+        <DialogFooter>
+          <PrimaryButton
+            onClick={handleRejectSubmission}
+            text={strings.JobDetails.labels.submitRejection}
+            disabled={!rejectionFeedback.trim()}
+          />
+        </DialogFooter>
+      </Dialog>
     </div>
   )
 }

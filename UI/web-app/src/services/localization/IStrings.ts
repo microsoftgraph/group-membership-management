@@ -218,10 +218,15 @@ export type IStrings = {
       pendingReview: string;
       pendingReviewDescription: string;
       pendingReviewInstructions: string;
-      businessJustification: string;
+      businessJustification: string;      
       approve: string;
       reject: string;
       submissionRejected: string;
+      rejectionDialogTitle: string;
+      rejectionDialogSubText: string;
+      rejectionReasonLabel: string;
+      rejectionReasonPlaceholder: string;
+      submitRejection: string;
       removeGMM: string;
       removeGMMWarning: string;
       removeGMMConfirmation: string;
