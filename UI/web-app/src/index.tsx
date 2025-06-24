@@ -12,6 +12,7 @@ import './index.css';
 
 import { App } from './App';
 import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership, NotFound } from './pages';
+import { MaintenanceCheckWrapper } from './components/MaintenanceCheckWrapper';
 import { store } from './store';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
@@ -44,6 +45,14 @@ if (!connectionString || connectionString === '') {
 }
 
 initializeIcons();
+
+// Wrap components that should respect maintenance mode
+const JobsPageWithMaintenanceCheck = MaintenanceCheckWrapper(JobsPage);
+const JobDetailsWithMaintenanceCheck = MaintenanceCheckWrapper(JobDetails);
+const OwnerPageWithMaintenanceCheck = MaintenanceCheckWrapper(OwnerPage);
+const ManageMembershipWithMaintenanceCheck = MaintenanceCheckWrapper(ManageMembership);
+const NotFoundWithMaintenanceCheck = MaintenanceCheckWrapper(NotFound);
+
 ReactDOM.render(
   <ThemeProvider>
     <React.StrictMode>
@@ -51,15 +60,15 @@ ReactDOM.render(
         <BrowserRouter basename="/">
           <Routes>
             <Route path="" element={<App />}>
-              <Route path="/" element={<JobsPage />} />
-              <Route path="/JobDetails/:jobId" element={<JobDetails />} />
-              <Route path="/Groups/:groupId" element={<JobDetails />} />
-              <Route path="/Groups/:groupId/Channels/:channelId" element={<JobDetails />} />
-              <Route path="/OwnerPage" element={<OwnerPage />} />
+              <Route path="/" element={<JobsPageWithMaintenanceCheck />} />
+              <Route path="/JobDetails/:jobId" element={<JobDetailsWithMaintenanceCheck />} />
+              <Route path="/Groups/:groupId" element={<JobDetailsWithMaintenanceCheck />} />
+              <Route path="/Groups/:groupId/Channels/:channelId" element={<JobDetailsWithMaintenanceCheck />} />
+              <Route path="/OwnerPage" element={<OwnerPageWithMaintenanceCheck />} />
               <Route path="/Admin" element={<AdminConfig />} />
-              <Route path="/ManageMembership" element={<ManageMembership />} />
-              <Route path="/ManageMembership/:jobId" element={<ManageMembership />} />
-              <Route path="/NotFound" element={<NotFound />} />
+              <Route path="/ManageMembership" element={<ManageMembershipWithMaintenanceCheck />} />
+              <Route path="/ManageMembership/:jobId" element={<ManageMembershipWithMaintenanceCheck />} />
+              <Route path="/NotFound" element={<NotFoundWithMaintenanceCheck />} />
             </Route>
           </Routes>
         </BrowserRouter>

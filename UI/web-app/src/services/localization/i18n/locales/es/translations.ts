@@ -18,8 +18,9 @@ export const strings: IStrings = {
   groupIdPlaceHolder: 'ID de grupo',
   addOwnerButton: 'Agregar GMM como propietario',
   membershipManagement: 'Membership Management',
-  learnMembershipManagement:
-    'Aprenda cómo funciona Membership Management en su organización',
+  learnMembershipManagement: 'Aprenda cómo funciona Membership Management en su organización',
+  maintenanceTitle: 'Esta aplicación está en mantenimiento',
+  maintenanceMessage: 'La IU de GMM está en mantenimiento. Por favor intente de nuevo más tarde. Gracias por su paciencia.',
   permissionDenied: 'No tiene permiso para ver esta pagina. Por favor contacte a su administrador.',
   HROnboarding: {
     orgLeader: "Líder de la organización",

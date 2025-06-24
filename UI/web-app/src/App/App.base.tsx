@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-import { classNamesFunction, type IProcessedStyleSet } from '@fluentui/react';
+import { classNamesFunction, Icon, type IProcessedStyleSet } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
@@ -22,6 +22,9 @@ import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
 import { Disclaimer } from '../components/Disclaimer';
 import { jsxFormat } from '../utils/stringUtils';
 import { InfoWord } from '../components/InfoWord';
+import { fetchServiceStatus } from '../store/operations.api';
+import { selectOperationError } from '../store/operations.slice';
+import { MaintenancePage } from '../components/MaintenancePage';
 
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
@@ -40,6 +43,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const loggedIn = useSelector(selectLoggedIn);
   const hasAccess = useSelector(selectHasAccess);
   const isFetchingRoles = useSelector(selectIsFetchingRoles);
+  const operationStatusError = useSelector(selectOperationError);
 
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(() => {
     return localStorage.getItem('disclaimerSubmitted') !== 'true';
@@ -54,6 +58,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
     if (!loggedIn) {
       dispatch(loginAsync());
     }
+      dispatch(fetchServiceStatus());
   }, [dispatch, loggedIn]);
 
   useEffect(() => {
@@ -82,8 +87,11 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
       <div className={classNames.root}>
         <AppHeader />
         <div className={classNames.content}>
-          {hasAccess ?
-            <>
+          {operationStatusError === 'Failed to fetch service status.' ?
+          (<MaintenancePage />) :
+          (
+            hasAccess ?
+              <>
               {isDisclaimerOpen && (
                 <Disclaimer
                   checkboxes={[
@@ -142,7 +150,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
             <div className={classNames.permissionDenied}>
               <Text>{strings.permissionDenied}</Text>
             </div>
-          }
+          )
+        }
         </div>
         <AppFooter />
       </div>

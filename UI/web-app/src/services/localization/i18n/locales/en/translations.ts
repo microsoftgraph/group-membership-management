@@ -19,6 +19,8 @@ export const strings: IStrings = {
   addOwnerButton: 'Add GMM as an owner',
   membershipManagement: 'Membership Management',
   learnMembershipManagement:'Learn how Membership Management works in your organization',
+  maintenanceTitle: 'This application is currently under maintenance.',
+  maintenanceMessage: 'The GMM UI is under maintenance. Please try again later. Thank you for your patience.',
   permissionDenied: 'You do not have permission to view this page. Please contact your administrator.',
   HROnboarding: {
     orgLeader: "Org. leader",

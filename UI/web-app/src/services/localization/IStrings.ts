@@ -16,6 +16,8 @@ export type IStrings = {
   addOwnerButton: string;
   membershipManagement: string;
   learnMembershipManagement: string;
+  maintenanceTitle: string;
+  maintenanceMessage: string;
   permissionDenied: string;
   HROnboarding: {
     orgLeader: string;
