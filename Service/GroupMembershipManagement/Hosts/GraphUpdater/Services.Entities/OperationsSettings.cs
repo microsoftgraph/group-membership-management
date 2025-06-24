@@ -10,6 +10,7 @@ namespace Services.Entities
         public string MembershipUpdatersTopic { get; set; }
         public string MembershipAggregatorQueue { get; set; }
         public string PendingConfigurationQueue { get; set; }
+        public string NotificationsQueue { get; set; }
         public string JobSchedulerFunctionKey { get; set; }
         public string JobSchedulerFunctionBaseUrl { get; set; }
         public string DataResourceGroupName { get; set; }

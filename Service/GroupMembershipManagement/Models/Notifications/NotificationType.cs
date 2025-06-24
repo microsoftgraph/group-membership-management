@@ -13,5 +13,6 @@ namespace Models.Notifications
         NormalThresholdNotification = 8,
         InactiveSyncJobNotification = 9,
         GuestUserFailureNotification = 10,
+        SubmissionRejectedNotification = 11,
     }
 }

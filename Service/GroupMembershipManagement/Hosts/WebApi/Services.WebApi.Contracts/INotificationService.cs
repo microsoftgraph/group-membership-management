@@ -1,0 +1,20 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Models;
+using Models.Notifications;
+using Models.SyncJobChange;
+
+namespace Services.WebApi.Contracts
+{    public interface INotificationService
+    {
+        Task SendSubmissionRejectedNotificationAsync(
+            SyncJob syncJob, 
+            SyncJobChange submission);
+
+        Task SendNotificationAsync(
+            SyncJob syncJob,
+            NotificationMessageType notificationType,
+            Dictionary<string, object>? customProperties = null);
+    }
+}

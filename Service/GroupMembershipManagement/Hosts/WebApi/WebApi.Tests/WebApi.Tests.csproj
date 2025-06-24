@@ -30,6 +30,8 @@
     <ProjectReference Include="..\..\..\Repositories.Localization\Repositories.Localization.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SqlMembershipRepository\Repositories.SqlMembershipRepository.csproj" />
     <ProjectReference Include="..\Services.Messages\Services.Messages.csproj" />
+    <ProjectReference Include="..\Services.WebApi\Services.WebApi.csproj" />
+    <ProjectReference Include="..\Services.WebApi.Contracts\Services.WebApi.Contracts.csproj" />
     <ProjectReference Include="..\WebApi.Models\WebApi.Models.csproj" />
     <ProjectReference Include="..\WebApi\WebApi.csproj" />
   </ItemGroup>

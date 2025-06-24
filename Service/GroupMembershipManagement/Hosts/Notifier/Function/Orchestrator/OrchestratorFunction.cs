@@ -115,6 +115,13 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
+                case nameof(NotificationMessageType.SubmissionRejectedNotification):
+                    message.MessageTitle = NotificationConstants.SubmissionRejectedEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.SubmissionRejectedEmailSubject;
+                    message.ContentTemplate = NotificationConstants.SubmissionRejectedEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest

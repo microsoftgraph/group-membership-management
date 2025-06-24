@@ -1205,4 +1205,21 @@ Even though GMM couldn't add the guest users, it still **added the remaining {2}
 
 Please forward this message to the CC'ed email for support and they will guide you through the actions.</value>
   </data>
+  <data name="SubmissionRejectedEmailTitle" xml:space="preserve">
+    <value>Submission Rejected</value>
+  </data>
+  <data name="SubmissionRejectedEmailSubject" xml:space="preserve">
+    <value>[Action Required] Submission Rejected for {1}</value>
+  </data>
+  <data name="SubmissionRejectedEmailBody" xml:space="preserve">
+    <value>You received this notification because you submitted a change request for **{1}**.
+
+    Your submission to modify the sync job for group **{1}** with Id: {0} has been **rejected**.
+
+    **Reason for rejection:** {2}
+
+    If you believe this rejection was made in error or if you have questions about the decision, please forward this message to the CC'ed email for further assistance.
+
+    You can access the GMM UI to review the current sync job configuration and submit a new request if needed.</value>
+  </data>
 </root>

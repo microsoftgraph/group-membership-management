@@ -22,6 +22,7 @@
    - [14. ThresholdNotificationUnauthorized](#notification-name-thresholdnotificationunauthorized)
    - [15. ThresholdNotificationExpired](#notification-name-thresholdnotificationexpired)
    - [16. ThresholdNotificationFallback](#notification-name-thresholdnotificationfallback)
+   - [17. SubmissionRejectedNotification](#notification-name-submissionrejectednotification)
 4. [Conclusion](#conclusion)
 ---
 
@@ -306,6 +307,23 @@ This email is sent as a fallback notification when an Outlook Actionable Message
 
 ### Triggered By:
 - **Notifier**: Triggered when a Group Membership Management (GMM) notification using Outlook Actionable Messages fails to render properly. The fallback message ensures the user still receives the content of the notification.
+
+---
+
+## Notification Name SubmissionRejectedNotification
+
+### Purpose:
+This email informs the user that their submission to onboard a new or modify an existing sync job has been rejected. It provides the reason for rejection and guides the user on next steps, including how to contact support or submit a new request if needed.
+
+### Email Format:
+- Adaptive Card: Yes
+- ActionableMessage: Yes
+- Visual Example:
+
+![SubmissionRejectedNotification](/Documentation/NotificationImages/SubmissionRejectedNotification.png)
+
+### Triggered By:
+- **Review Process in the UI**: Triggered when a user's request to onboard a new/modify an existing sync job is reviewed and rejected by GMM administrators.
 
 ---
 

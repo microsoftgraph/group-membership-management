@@ -22,19 +22,22 @@ namespace Services.WebApi
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
+        private readonly INotificationService _notificationService;
 
         public PatchJobHandler(
             ILoggingRepository loggingRepository,
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
-            IDatabaseSettingsRepository databaseSettingsRepository)
+            IDatabaseSettingsRepository databaseSettingsRepository,
+            INotificationService notificationService)
             : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
+            _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
 
         protected override async Task<PatchJobResponse> ExecuteCoreAsync(PatchJobRequest request)
@@ -142,6 +145,11 @@ namespace Services.WebApi
 
                 var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, newStatus);
                 if (result != null) return result;
+
+                if (newStatus == SyncStatus.SubmissionRejected.ToString())
+                {
+                    await _notificationService.SendSubmissionRejectedNotificationAsync(syncJob, submission);
+                }
             }
             // If the job is in the PendingReview / PendingConfiguration state, it cannot be updated
             else if (syncJob.Status == SyncStatus.PendingReview.ToString() || syncJob.Status == SyncStatus.PendingConfiguration.ToString())

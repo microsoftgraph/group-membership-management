@@ -14,6 +14,7 @@ using Repositories.Contracts;
 using Repositories.EntityFramework;
 using Services.Messages.Responses;
 using Services.WebApi;
+using Services.WebApi.Contracts;
 using System.Data;
 using System.Net;
 using System.Security.Claims;
@@ -50,6 +51,7 @@ namespace Services.Tests
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
+        private Mock<INotificationService> _notificationService = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
@@ -64,6 +66,7 @@ namespace Services.Tests
             _channelRepository = new Mock<IDatabaseChannelsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
+            _notificationService = new Mock<INotificationService>();
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
@@ -178,7 +181,8 @@ namespace Services.Tests
                                                    _graphGroupRepository.Object,
                                                    _syncJobRepository.Object,
                                                    _syncJobChangeRepository.Object,
-                                                   _settingsRepository.Object);
+                                                   _settingsRepository.Object,
+                                                   _notificationService.Object);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object,
                                                     _graphGroupRepository.Object,

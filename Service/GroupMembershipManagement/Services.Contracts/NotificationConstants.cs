@@ -40,5 +40,8 @@ namespace Services.Contracts
         public const string SyncPurgedForInactivityEmailTitle = "SyncPurgedForInactivityEmailTitle";
         public const string GuestUserFailureEmailBody = "GuestUserFailureEmailBody";
         public const string ThresholdNotificationFallbackBody = "ThresholdNotificationFallbackBody";
+        public const string SubmissionRejectedEmailTitle = "SubmissionRejectedEmailTitle";
+        public const string SubmissionRejectedEmailSubject = "SubmissionRejectedEmailSubject";
+        public const string SubmissionRejectedEmailBody = "SubmissionRejectedEmailBody";
     }
 }

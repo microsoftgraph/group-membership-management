@@ -228,6 +228,8 @@ namespace WebApi
 
             builder.Services.InjectMessageHandlers();
 
+            builder.Services.AddTransient<INotificationService, NotificationService>();
+
             builder.Services.AddLocalization(options =>
             {
                 options.ResourcesPath = "Resources";
@@ -437,8 +439,18 @@ namespace WebApi
             {
                 var operationsSettings = services.GetRequiredService<OperationsSettings>();
                 var pendingConfigurationQueue = operationsSettings.PendingConfigurationQueue;
+                var notificationsQueue = operationsSettings.NotificationsQueue;
                 var client = services.GetRequiredService<ServiceBusClient>();
                 var sender = client.CreateSender(pendingConfigurationQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
+
+            builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("Notifications", (services, key) =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var notificationsQueue = operationsSettings.NotificationsQueue;
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(notificationsQueue);
                 return new ServiceBusQueueRepository(sender);
             });
 
