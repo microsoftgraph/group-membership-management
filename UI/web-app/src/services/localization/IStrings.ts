@@ -269,6 +269,7 @@ export type IStrings = {
       history: string;
       configurationPivotHeader: string;
       onboardingRequest: string;
+      onboardingAutoApproved: string;
       statusUpdate: string;
       update: string;
       submissionApproved: string;

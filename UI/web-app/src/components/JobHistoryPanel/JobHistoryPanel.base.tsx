@@ -74,6 +74,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 switch (item.changeReason) {
                     case SyncJobChangeReason.Onboarding:
                         return strings.JobDetails.Panel.onboardingRequest;
+                    case SyncJobChangeReason.OnboardingAutoApproved:
+                        return strings.JobDetails.Panel.onboardingAutoApproved;
                     case SyncJobChangeReason.StatusUpdate:
                         return strings.JobDetails.Panel.statusUpdate;
                     case SyncJobChangeReason.Update:

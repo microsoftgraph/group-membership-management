@@ -103,6 +103,7 @@ namespace Repositories.EntityFramework
             var entity = await _readContext.SyncJobChanges
                                                 .Where(s => s.SyncJobId == syncJobId &&
                                                             (s.ChangeReason == SyncJobChangeReason.Onboarding.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString() ||
                                                              s.ChangeReason == SyncJobChangeReason.Update.ToString() ||
                                                              s.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString()))
                                                 .OrderByDescending(s => s.ChangeTime)
@@ -116,6 +117,7 @@ namespace Repositories.EntityFramework
             var entity = await _readContext.SyncJobChanges
                                                 .Where(s => s.SyncJobId == syncJobId &&
                                                             (s.ChangeReason == SyncJobChangeReason.Onboarding.ToString() ||
+                                                             s.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString() ||
                                                              s.ChangeReason == SyncJobChangeReason.Update.ToString()))
                                                 .OrderByDescending(s => s.ChangeTime)
                                                 .FirstOrDefaultAsync();

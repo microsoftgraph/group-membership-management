@@ -274,6 +274,7 @@ export const strings: IStrings = {
       history: 'History',
       configurationPivotHeader: 'Configuration',
       onboardingRequest: 'Onboarding Request',
+      onboardingAutoApproved: 'Onboarding Auto-approved',
       statusUpdate: 'Status Update',
       update: 'Sync Update Request',
       submissionApproved: 'Submission Approved',

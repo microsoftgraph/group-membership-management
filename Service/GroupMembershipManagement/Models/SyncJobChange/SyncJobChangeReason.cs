@@ -6,6 +6,7 @@ namespace Models.SyncJobChange
     public enum SyncJobChangeReason
     {
         Onboarding,
+        OnboardingAutoApproved,
         StatusUpdate,
         Update,
         SubmissionApproved,

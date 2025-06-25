@@ -46,12 +46,16 @@ namespace Services
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
-
-                // Check if the job should be auto-approved
                 var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query);
                 if (shouldAutoApprove)
                 {
                     newSyncJobEntity.Status = SyncStatus.Idle.ToString();
+
+                    if (newSyncJobEntity.StartDate < DateTime.UtcNow)
+                    {
+                        newSyncJobEntity.StartDate = DateTime.UtcNow.AddHours(24);
+                    }
+
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
                         Message = $"Job auto-approved: All source parts are GroupMembership with acceptable visibility."
@@ -92,9 +96,9 @@ namespace Services
                         Owners = ownersDictionary.GetValueOrDefault(destinationId)
                     };
                     await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
-
                     var changedOnBehalfOfDisplayName = request.NewSyncJob.LastModifiedOnBehalfOfDisplayName;
                     var changedOnBehalfOfObjectId = request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
+                    var changeReason = shouldAutoApprove ? SyncJobChangeReason.OnboardingAutoApproved : SyncJobChangeReason.Onboarding;
 
                     await _syncJobChangeRepository.Save(new SyncJobChange
                     {
@@ -103,7 +107,7 @@ namespace Services
                         ChangedByObjectId = Guid.Parse(request.UserIdentity),
                         ChangedByDisplayName = request.UserDisplayName,
                         ChangeSource = SyncJobChangeSource.WebApp,
-                        ChangeReason = SyncJobChangeReason.Onboarding.ToString(),
+                        ChangeReason = changeReason.ToString(),
                         ChangeDetails = SyncJobSerializationHelper.SerializeSyncJob(newSyncJobEntity),
                         BusinessJustification = request.BusinessJustification,
                         ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName != null && changedOnBehalfOfDisplayName != request.UserDisplayName ? changedOnBehalfOfDisplayName : null,

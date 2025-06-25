@@ -97,7 +97,9 @@ namespace Services.WebApi
 
                 var submission = await _syncJobChangeRepository.GetLastSyncJobChangeBySyncJobIdAsync(request.SyncJobId);
 
-                if (canReviewOwnSubmissionsValue == false && (requestorUserId == submission.ChangedByObjectId))
+                if (canReviewOwnSubmissionsValue == false && (requestorUserId == submission.ChangedByObjectId) && 
+                    (submission.ChangeReason == SyncJobChangeReason.Onboarding.ToString() || (submission.ChangeReason == SyncJobChangeReason.Update.ToString()))
+                )
                 {
                     response.StatusCode = HttpStatusCode.BadRequest;
                     response.ErrorCode = "ReviewerCannotReviewOwnSubmission";
