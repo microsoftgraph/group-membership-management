@@ -12,6 +12,7 @@ namespace Models
         public string Type { get; set; }
         public string Name { get; set; }
 		public string Email { get; set; }
+		public string Visibility { get; set; }
 
         public override bool Equals(object obj)
 		{

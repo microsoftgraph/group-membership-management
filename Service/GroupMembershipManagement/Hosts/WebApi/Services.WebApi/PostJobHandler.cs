@@ -10,6 +10,7 @@ using Services.Messages.Responses;
 using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
 namespace Services
@@ -41,9 +42,22 @@ namespace Services
         {
             var response = new PostJobResponse();
 
+            
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
+
+                // Check if the job should be auto-approved
+                var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query);
+                if (shouldAutoApprove)
+                {
+                    newSyncJobEntity.Status = SyncStatus.Idle.ToString();
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Job auto-approved: All source parts are GroupMembership with acceptable visibility."
+                    });
+                }
+
                 var destinationId = newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString() ? newSyncJobEntity.Group.GroupId : newSyncJobEntity.Channel.GroupId;
                 var userIdentifier = string.IsNullOrEmpty(request.NewSyncJob.LastModifiedOnBehalfOfObjectId) ? request.UserIdentity : request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
                 var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentifier, false);
@@ -133,6 +147,63 @@ namespace Services
             }
 
             return response;
+        }
+
+        private async Task<bool> ShouldAutoApproveJobAsync(string query)
+        {
+            try
+            {
+                var queryArray = JsonNode.Parse(query)?.AsArray();
+                if (queryArray == null || queryArray.Count == 0)
+                    return false;
+
+                var groupIds = new List<Guid>();
+
+                foreach (var item in queryArray)
+                {
+                    var sourceObject = item?.AsObject();
+                    if (sourceObject == null)
+                        return false;
+
+                    var typeValue = sourceObject["type"]?.GetValue<string>();
+                    if (typeValue != "GroupMembership")
+                        return false;
+
+                    var sourceValue = sourceObject["source"]?.GetValue<string>();
+                    if (string.IsNullOrEmpty(sourceValue) || !Guid.TryParse(sourceValue, out var groupId))
+                        return false;
+
+                    groupIds.Add(groupId);
+                }
+
+                if (groupIds.Count == 0)
+                    return false;
+
+                var groups = await _graphGroupRepository.GetGroupsAsync(groupIds);
+                
+                foreach (var group in groups)
+                {
+                    if (string.Equals(group.Visibility, "HiddenMembership", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return false;
+                    }
+                }
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Auto-approval granted: All {groupIds.Count} source groups have acceptable visibility."
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error during auto-approval check: {ex.Message}"
+                });
+                return false;
+            }
         }
 
 
