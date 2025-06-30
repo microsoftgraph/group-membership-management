@@ -10,6 +10,7 @@ namespace Services.Messages.Responses
     {
         public int TotalNumberOfPages { get; set; }
         public int CurrentPage { get; set; }
+        public int TotalItems { get; set; }
         public GetJobsModel Model { get; set; } = new GetJobsModel();
     }
 }

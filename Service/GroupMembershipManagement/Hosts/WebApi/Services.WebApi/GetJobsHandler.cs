@@ -34,7 +34,8 @@ namespace Services
             var response = new GetJobsResponse
             {
                 CurrentPage = 1,
-                TotalNumberOfPages = 1
+                TotalNumberOfPages = 1,
+                TotalItems = 0
             };
 
             var odataSettings = new ODataQuerySettings
@@ -67,6 +68,8 @@ namespace Services
                     response.TotalNumberOfPages = (int)Math.Ceiling((double)numberOfJobs / request.QueryOptions.Top.Value);
                     response.CurrentPage = request.QueryOptions.Skip.Value / request.QueryOptions.Top.Value + 1;
                 }
+                
+                response.TotalItems = numberOfJobs;
             }
 
             var jobs = jobsQuery.ToList();

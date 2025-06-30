@@ -40,7 +40,7 @@ namespace WebApi.Controllers.v1.Jobs
             var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions, CustomSortBy = customSortBy });
             
             var pageSize = queryOptions?.Top?.Value ?? 10;
-            var totalItems = response.TotalNumberOfPages * pageSize;
+            var totalItems = response.TotalItems;
             
             var pagedResponse = new PagedResponse<SyncJob>
             {
