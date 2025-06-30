@@ -68,6 +68,30 @@ The WebApi provides roles that can be assigned to users. See these relevant sect
 - [Roles as policy to gate functionality](https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md#roles-as-policy-to-gate-functionality)
 - [Add a role to a group](https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/WebApi/Documentation/WebApiSetup.md#add-a-role-to-a-group)
 
+### Add the WebAPI as a user with the Operations.Reset role
+To add the WebAPI as a user with the Operations.Reset role, follow these steps:
+From the Scripts folder, run the following command in PowerShell 7.x:
+
+```
+    . .\Reset-GMM.ps1
+
+    Set-WebAPIAsResetAdministrator `
+        -SolutionAbbreviation "<solution-abbreviation>" `
+        -EnvironmentAbbreviation "<environment-abbreviation>"
+```
+
+This will add the WebAPI as a user with the Operations.Reset role in the specified environment.
+To reset GMM after the initial deployment when running the Deploy-Resources.ps1 script, you will need to set these parameters:
+
+```
+  $IsInitialDeployment = $false
+  $ResetGMMType = "Credentials | ServicePrincipal | Skip" (Pick one of the options)
+
+  Credentials: If you want to reset the GMM with a new set of credentials.
+  ServicePrincipal: If you want to reset the GMM with a new service principal. Not compatible with service principals that use Multi-Factor Authentication (MFA).
+  Skip: If you want to skip the reset of the GMM.
+```
+
 ### Creating and uploading the certificate
 
 If you opted to use a certificate for the Microsoft Graph API `<solutionAbbreviation>-Graph-<environmentAbbreviation>`, follow these steps to complete the configuration.

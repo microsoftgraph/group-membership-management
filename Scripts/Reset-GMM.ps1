@@ -329,7 +329,58 @@ function Set-AppRoleToServicePrincipal {
                 resourceId  = $ResourceId
                 appRoleId   = $AppRoleId
             }
+
+        Write-Host "✅ App role assignment created successfully."
     } else {
         Write-Host "App role assignment already exists. Skipping creation."
+    }
+}
+
+function Set-WebAPIAsResetAdministrator {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation
+    )
+
+    $scriptsDirectory = Split-Path $PSScriptRoot
+
+    Write-Host "Setting app role to service principal with ID: $scriptsDirectory"
+
+    . ($scriptsDirectory + '\scripts\Install-MSGraphIfNeeded.ps1')
+	Install-MSGraphIfNeeded
+
+    # Connect to Microsoft Graph
+    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
+
+    # Replace with the role value you're looking for
+    $targetRoleValue = "Operations.Reset"
+
+    # Get the application object
+    $app = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'"
+
+    # Search for the app role by value
+    $role = $app.AppRoles | Where-Object { $_.Value -eq $targetRoleValue }
+
+    if ($role) {
+        Write-Output "Role Found:"
+        Write-Output "Display Name: $($role.DisplayName)"
+        Write-Output "Value: $($role.Value)"
+        Write-Output "ID: $($role.Id)"
+
+        $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'"
+
+        Write-Host "Service Principal Found:"
+        Write-Host "Display Name: $($sp.DisplayName)"
+        Write-Host "ID: $($sp.Id)"
+
+        Set-AppRoleToServicePrincipal `
+        -PrincipalId $sp.Id `
+        -ResourceId $sp.Id `
+        -AppRoleId $role.Id
+    } else {
+        Write-Output "No app role found with value '$targetRoleValue'."
     }
 }
