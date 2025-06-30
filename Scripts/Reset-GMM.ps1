@@ -238,6 +238,8 @@ function Reset-GMM {
         }
     }
 
+    $statusCode = [int]$response.status
+
     if ($response.status -eq 0) {
         Write-Output "Current service status: $($serviceStatuses[$statusCode])"
     }
@@ -384,3 +386,7 @@ function Set-WebAPIAsResetAdministrator {
         Write-Output "No app role found with value '$targetRoleValue'."
     }
 }
+
+Reset-GMM-WithCredentials `
+    -SolutionAbbreviation "gmm" `
+    -EnvironmentAbbreviation "ar"
