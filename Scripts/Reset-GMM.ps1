@@ -5,14 +5,18 @@
 function Get-KeyVaultSecretWithFirewallRetry {
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$VaultName,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$ResourceGroup,
 
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SecretName,
 
+        [ValidateRange(1, 10)]
         [int]$MaxRetries = 2
     )
 
@@ -47,7 +51,7 @@ function Get-KeyVaultSecretWithFirewallRetry {
             }
         }
         else {
-            Write-Host "⚠️ No IP address found in the error message."
+            Write-Warning "⚠️ No IP address found in the error message."
         }
     }
 
@@ -61,14 +65,14 @@ function Get-KeyVaultSecretWithFirewallRetry {
         }
         catch {
             $errorMessage = $_.Exception.Message
-            Write-Host "❌ Error retrieving secret: $errorMessage"
+            Write-Error "❌ Error retrieving secret: $errorMessage"
 
             if ($retryCount -eq 0) {
                 Add-KeyVaultIpFromError -VaultName $VaultName -ResourceGroup $ResourceGroup -ErrorMessage $errorMessage
                 Write-Host "🔁 Retrying after updating firewall..."
             }
             else {
-                Write-Host "❌ Retry failed. Exiting."
+                Write-Error "❌ Retry failed. Exiting."
             }
 
             $retryCount++
@@ -82,8 +86,10 @@ function Get-ComputeWebApp {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SolutionAbbreviation
     )
 
@@ -97,48 +103,66 @@ function Get-ComputeWebApp {
     return $app
 }
 
-function Reset-GMM-WithServicePrincipal {
+function Reset-GMMWithServicePrincipal {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation
     )
 
     $app = Get-ComputeWebApp -EnvironmentAbbreviation $EnvironmentAbbreviation -SolutionAbbreviation $SolutionAbbreviation
     if (-not $app) {
-        Write-Error "❌ Unable to retrieve the web app for GMM reset."
-        return
+        throw "❌ Unable to retrieve the web app for GMM reset."
     }
 
     $prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $client_id = Get-KeyVaultSecretWithFirewallRetry -VaultName $prereqsKeyVaultName -ResourceGroup $prereqsKeyVaultName -SecretName "webApiClientId"
+    if (-not $client_id) {
+        throw "❌ Failed to retrieve webApiClientId from Key Vault."
+    }
     $resource = "api://$client_id"
     $token = (Get-AzAccessToken -ResourceUrl $resource).Token
-    $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
-        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
-    )
+    if ($token -is [System.Security.SecureString]) {
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
+        try {
+            $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+        }
+        finally {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+    else {
+        $plainToken = $token
+    }
 
     Reset-GMM `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AccessToken $plainToken
+
+    # Clear sensitive token from memory
+    $plainToken = $null
+    $client_id = $null
 }
 
-function Reset-GMM-WithCredentials {
+function Reset-GMMWithCredentials {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation
     )
 
     $app = Get-ComputeWebApp -EnvironmentAbbreviation $EnvironmentAbbreviation -SolutionAbbreviation $SolutionAbbreviation
     if (-not $app) {
-        Write-Error "❌ Unable to retrieve the web app for GMM reset."
-        return
+        throw "❌ Unable to retrieve the web app for GMM reset."
     }
 
     $prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
@@ -146,8 +170,7 @@ function Reset-GMM-WithCredentials {
     $tenant_id = Get-KeyVaultSecretWithFirewallRetry -VaultName $prereqsKeyVaultName -ResourceGroup $prereqsKeyVaultName -SecretName "webApiTenantId"
     $client_secret = Get-KeyVaultSecretWithFirewallRetry -VaultName $prereqsKeyVaultName -ResourceGroup $prereqsKeyVaultName -SecretName "webApiClientSecret"
     if (-not $client_id -or -not $tenant_id -or -not $client_secret) {
-        Write-Error "❌ Missing credentials for GMM reset. Please ensure the secrets are set in the Key Vault."
-        return
+        throw "❌ Missing credentials for GMM reset. Please ensure the secrets are set in the Key Vault."
     }
 
     $scope = "api://$client_id/.default"
@@ -161,22 +184,33 @@ function Reset-GMM-WithCredentials {
     $response = Invoke-RestMethod -Uri $token_url -Method Post -ContentType "application/x-www-form-urlencoded" -Body $body
     $access_token = $response.access_token
 
-    Reset-GMM `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -AccessToken $access_token
+    try {
+        Reset-GMM `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -AccessToken $access_token
 
-    Write-Host "Call reset endpoint is complete"
+        Write-Host "Call reset endpoint is complete"
+    }
+    finally {
+        # Clear sensitive data from memory
+        $client_secret = $null
+        $access_token = $null
+        $body = $null
+    }
 }
 
 function Reset-GMM {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$AccessToken
     )
 
@@ -199,11 +233,10 @@ function Reset-GMM {
     $attempt = 0
     $success = $false
     $response = $null
+    $baseDelay = 2
 
     while (-not $success -and $attempt -le $maxRetries) {
         try {
-            # Replace this with your actual HTTP call
-            # Example:
             $response = Invoke-RestMethod -Uri $api_url -Method POST -Headers $headers -ErrorAction Stop
             $success = $true
             Start-Sleep -Seconds 15
@@ -211,12 +244,13 @@ function Reset-GMM {
         catch {
             $attempt++
             if ($attempt -gt $maxRetries) {
-                Write-Host "HTTP call failed after $attempt attempts. Error: $($_.Exception.Message)"
+                Write-Error "❌ HTTP call failed after $attempt attempts. Error: $($_.Exception.Message)"
                 throw
             }
             else {
-                Write-Host "HTTP call attempt $attempt failed. Retrying in 2 seconds..."
-                Start-Sleep -Seconds 2
+                $delay = $baseDelay * [Math]::Pow(2, $attempt - 1)
+                Write-Host "HTTP call attempt $attempt failed. Retrying in $delay seconds..."
+                Start-Sleep -Seconds $delay
             }
         }
     }
@@ -227,7 +261,8 @@ function Reset-GMM {
     $startTime = Get-Date
 
     while ($response.status -ne 0) {
-        Write-Output "Current service status: $($serviceStatuses[$statusCode])"
+        $statusCode = [int]$response.status
+        Write-Output "Current service status: $($serviceStatuses[$statusCode]), checking again in 60 seconds..."
         Start-Sleep -Seconds 60
         $api_url = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/api/v1/operations/servicestatus"
         $response = Invoke-RestMethod -Uri $api_url -Headers $headers -Method GET
@@ -247,22 +282,22 @@ function Reset-GMM {
     return $serviceStatuses[$statusCode];
 }
 
-function Run-JobScheduler {
+function Start-JobScheduler {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation
     )
-
 
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $functionKey = Get-KeyVaultSecretWithFirewallRetry -VaultName $dataKeyVaultName -ResourceGroup $dataKeyVaultName -SecretName "jobSchedulerFunctionKey"
     $baseUrl = Get-KeyVaultSecretWithFirewallRetry -VaultName $dataKeyVaultName -ResourceGroup $dataKeyVaultName -SecretName "jobSchedulerFunctionBaseUrl"
     if (-not $functionKey -or -not $baseUrl) {
-        Write-Error "❌ Missing JobScheduler settings. Please ensure the secrets are set in the Key Vault."
-        return
+        throw "❌ Missing JobScheduler settings. Please ensure the secrets are set in the Key Vault."
     }
 
     $fullUrl = "$baseUrl/api/pipelineinvocationstarterfunction?code=$functionKey"
@@ -270,26 +305,43 @@ function Run-JobScheduler {
         DelayForDeploymentInMinutes = 5
     } | ConvertTo-Json
 
-    $response = Invoke-RestMethod -Uri $fullUrl -Method Post -ContentType "application/json" -Body $body
-    if ($response -and $response.statusQueryGetUri) {
-        Write-Host "✅ Job Scheduler invoked successfully."
+    try {
+        $response = Invoke-RestMethod -Uri $fullUrl -Method Post -ContentType "application/json" -Body $body
+        if ($response -and $response.statusQueryGetUri) {
+            Write-Host "✅ Job Scheduler invoked successfully."
 
-        $statusResponse = $null
-        $startTime = Get-Date
-        while ($statusResponse.runtimeStatus -ne "Completed" -and $statusResponse.runtimeStatus -ne "Failed") {
-            Start-Sleep -Seconds 5
-            $statusResponse = Invoke-RestMethod -Uri $response.statusQueryGetUri -Method GET
+            $statusResponse = $null
+            $startTime = Get-Date
+            $pollInterval = 5
+            $maxPollInterval = 30
+            while ((-not $statusResponse) -or ($statusResponse.runtimeStatus -ne "Completed" -and $statusResponse.runtimeStatus -ne "Failed")) {
+                Start-Sleep -Seconds $pollInterval
+                try {
+                    $statusResponse = Invoke-RestMethod -Uri $response.statusQueryGetUri -Method GET
+                    # Gradually increase poll interval to reduce API calls
+                    if ($pollInterval -lt $maxPollInterval) {
+                        $pollInterval = [Math]::Min($pollInterval + 2, $maxPollInterval)
+                    }
+                }
+                catch {
+                    Write-Warning "⚠️ Failed to get status response: $($_.Exception.Message)"
+                    break
+                }
 
-            if ((Get-Date) - $startTime -gt (New-TimeSpan -Minutes 5)) {
-                Write-Host "Waited Job Scheduler to complete for 5 minutes, proceeding to next step."
-                 break
+                if ((Get-Date) - $startTime -gt (New-TimeSpan -Minutes 5)) {
+                    Write-Host "Waited Job Scheduler to complete for 5 minutes, proceeding to next step."
+                    break
+                }
             }
-        }
 
-        Write-Host "Job Scheduler status: $($statusResponse.runtimeStatus)"
+            Write-Host "Job Scheduler status: $($statusResponse.runtimeStatus)"
+        }
+        else {
+            Write-Error "❌ Failed to invoke Job Scheduler. Response: $($response | ConvertTo-Json)"
+        }
     }
-    else {
-        Write-Error "❌ Failed to invoke Job Scheduler. Response: $($response | ConvertTo-Json)"
+    catch {
+        Write-Error "❌ Failed to invoke Job Scheduler: $($_.Exception.Message)"
     }
 }
 
@@ -297,44 +349,53 @@ function Set-AppRoleToServicePrincipal {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$PrincipalId,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$ResourceId,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$AppRoleId
     )
 
-    $scriptsDirectory = Split-Path $PSScriptRoot
+    $scriptsDirectory = $PSScriptRoot
 
-    Write-Host "Setting app role to service principal with ID: $scriptsDirectory"
+    Write-Host "Setting app role to service principal with ID: $PrincipalId"
 
-    . ($scriptsDirectory + '\scripts\Install-MSGraphIfNeeded.ps1')
+    . (Join-Path $scriptsDirectory 'Install-MSGraphIfNeeded.ps1')
 	Install-MSGraphIfNeeded
 
     # Connect to Microsoft Graph
     Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
 
-    # Retrieve existing app role assignments for the service principal
-    $existingAssignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $PrincipalId
+    try {
+        # Retrieve existing app role assignments for the service principal
+        $existingAssignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $PrincipalId
 
-    # Check if the desired assignment already exists
-    $assignmentExists = $existingAssignments | Where-Object {
-        $_.AppRoleId -eq $AppRoleId -and $_.ResourceId -eq $ResourceId
+        # Check if the desired assignment already exists
+        $assignmentExists = $existingAssignments | Where-Object {
+            $_.AppRoleId -eq $AppRoleId -and $_.ResourceId -eq $ResourceId
+        }
+
+        if (-not $assignmentExists) {
+            # Assignment doesn't exist, so create it
+            New-MgServicePrincipalAppRoleAssignment `
+                -ServicePrincipalId $PrincipalId `
+                -BodyParameter @{
+                    principalId = $PrincipalId
+                    resourceId  = $ResourceId
+                    appRoleId   = $AppRoleId
+                }
+
+            Write-Host "✅ App role assignment created successfully."
+        } else {
+            Write-Host "App role assignment already exists. Skipping creation."
+        }
     }
-
-    if (-not $assignmentExists) {
-        # Assignment doesn't exist, so create it
-        New-MgServicePrincipalAppRoleAssignment `
-            -ServicePrincipalId $PrincipalId `
-            -BodyParameter @{
-                principalId = $PrincipalId
-                resourceId  = $ResourceId
-                appRoleId   = $AppRoleId
-            }
-
-        Write-Host "✅ App role assignment created successfully."
-    } else {
-        Write-Host "App role assignment already exists. Skipping creation."
+    finally {
+        # Disconnect from Microsoft Graph
+        Disconnect-MgGraph -ErrorAction SilentlyContinue
     }
 }
 
@@ -342,51 +403,61 @@ function Set-WebAPIAsResetAdministrator {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
         [string]$EnvironmentAbbreviation
     )
 
-    $scriptsDirectory = Split-Path $PSScriptRoot
+    $scriptsDirectory = $PSScriptRoot
 
-    Write-Host "Setting app role to service principal with ID: $scriptsDirectory"
+    Write-Host "Setting WebAPI as Reset Administrator"
 
-    . ($scriptsDirectory + '\scripts\Install-MSGraphIfNeeded.ps1')
+    . (Join-Path $scriptsDirectory 'Install-MSGraphIfNeeded.ps1')
 	Install-MSGraphIfNeeded
 
     # Connect to Microsoft Graph
     Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
 
-    # Replace with the role value you're looking for
-    $targetRoleValue = "Operations.Reset"
+    try {
+        # Define the target role value
+        $targetRoleValue = "Operations.Reset"
 
-    # Get the application object
-    $app = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'"
+        # Get the application object
+        $app = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'" -ErrorAction SilentlyContinue
+        if (-not $app) {
+            throw "❌ Application '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation' not found."
+        }
 
-    # Search for the app role by value
-    $role = $app.AppRoles | Where-Object { $_.Value -eq $targetRoleValue }
+        # Search for the app role by value
+        $role = $app.AppRoles | Where-Object { $_.Value -eq $targetRoleValue }
 
-    if ($role) {
-        Write-Output "Role Found:"
-        Write-Output "Display Name: $($role.DisplayName)"
-        Write-Output "Value: $($role.Value)"
-        Write-Output "ID: $($role.Id)"
+        if ($role) {
+            Write-Host "Role Found:"
+            Write-Host "Display Name: $($role.DisplayName)"
+            Write-Host "Value: $($role.Value)"
+            Write-Host "ID: $($role.Id)"
 
-        $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'"
+            $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue
+            if (-not $sp) {
+                throw "❌ Service Principal for application '$($app.AppId)' not found."
+            }
 
-        Write-Host "Service Principal Found:"
-        Write-Host "Display Name: $($sp.DisplayName)"
-        Write-Host "ID: $($sp.Id)"
+            Write-Host "Service Principal Found:"
+            Write-Host "Display Name: $($sp.DisplayName)"
+            Write-Host "ID: $($sp.Id)"
 
-        Set-AppRoleToServicePrincipal `
-        -PrincipalId $sp.Id `
-        -ResourceId $sp.Id `
-        -AppRoleId $role.Id
-    } else {
-        Write-Output "No app role found with value '$targetRoleValue'."
+            Set-AppRoleToServicePrincipal `
+                -PrincipalId $sp.Id `
+                -ResourceId $sp.Id `
+                -AppRoleId $role.Id
+        } else {
+            Write-Host "No app role found with value '$targetRoleValue'."
+        }
+    }
+    finally {
+        # Disconnect from Microsoft Graph
+        Disconnect-MgGraph -ErrorAction SilentlyContinue
     }
 }
-
-Reset-GMM-WithCredentials `
-    -SolutionAbbreviation "gmm" `
-    -EnvironmentAbbreviation "ar"
