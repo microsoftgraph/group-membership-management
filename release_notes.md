@@ -1,5 +1,11 @@
 # Release Notes:
 
+## Release 6/30/2025
+- Added support for the 'NOT IN' operator in SqlMembership source parts.
+- Added dependency requirements check to the deployment script.
+- Added a new script to replace 'BETWEEN'/'NOT BETWEEN' with 'IN'/'NOT IN' in SQL filters.
+- Added 'Remove GMM Management' button for jobs with the status DestinationGroupNotFound.
+
 ## Release 5/21/2025
 - Added configurable first visit disclaimer to the UI.
 - Fixed transitive/delta calls to address OOME in GMO.
