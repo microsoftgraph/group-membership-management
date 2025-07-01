@@ -376,6 +376,8 @@ export const strings: IStrings = {
     uploadingLabel: 'Uploading…',
     chooseFileButton: 'Choose File',
     selectCSVFileLabel: 'Select CSV File',
+    csvErrorMessage: 'An unknown error occurred while parsing the CSV file. Please try again later.',
+    uploadErrorMessage: 'Please upload a valid CSV file.',
     uploadCompleteLabel: 'Upload complete:',
     totalNumberOfJobsLabel: 'Total # of jobs:',
     totalNumberOfApprovedJobsLabel: '# of approved jobs:',

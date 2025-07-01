@@ -379,6 +379,8 @@ export const strings: IStrings = {
     uploadingLabel: 'Subiendo…',
     chooseFileButton: 'Elegir archivo',
     selectCSVFileLabel: 'Seleccionar archivo CSV',
+    csvErrorMessage: 'Ocurrió un error desconocido al analizar el archivo CSV. Por favor, inténtelo de nuevo más tarde.',
+    uploadErrorMessage: 'Por favor, suba un archivo CSV válido.',
     uploadCompleteLabel: 'Carga completa:',
     totalNumberOfJobsLabel: 'Total # de trabajos:',
     totalNumberOfApprovedJobsLabel: '# de trabajos aprobados:',

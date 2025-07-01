@@ -23,7 +23,7 @@ import {
   selectApproveJobsLoading,
   selectNumberOfApprovedJobs,
   selectNumberOfJobs,
-  selectApproveJobsrror,
+  selectApproveJobsError,
   setApproveJobsResponse,
   setApproveJobsLoading
 } from '../../store/jobs.slice';
@@ -123,13 +123,14 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const [csvErrorMessage, setCsvErrorMessage] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
   const jobsToDownload = useSelector(selectJobsToDownload) ?? '';
   const approveJobsLoading = useSelector(selectApproveJobsLoading);
   const numberOfApprovedJobs = useSelector(selectNumberOfApprovedJobs);
   const numberOfJobs = useSelector(selectNumberOfJobs);
-  const approveJobsError = useSelector(selectApproveJobsrror);
+  const approveJobsError = useSelector(selectApproveJobsError);
 
   const selectionRef = useRef<ISelection<IObjectWithKey>>(
     new Selection<IItem>({
@@ -534,10 +535,13 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+
+    setCsvErrorMessage('');
+
     const file = event.target.files?.[0];
 
     if (!file || file.type !== "text/csv") {
-      // alert("Please upload a valid CSV file.");
+      setCsvErrorMessage(strings.ManageMembership.csvErrorMessage);
       return;
     }
 
@@ -573,8 +577,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         setUploadedJobsCount(data.length)
       },
       error: (err: any) => {
-        // console.error("Error parsing CSV:", err);
-        // alert("Failed to parse CSV file.");
+        setCsvErrorMessage(strings.ManageMembership.csvErrorMessage);
       }
     });
   };
@@ -665,6 +668,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                       {approveJobsError !== undefined && (
                         <Label>
                           <Icon iconName="ErrorBadge" className={classNames.errorStatus} /> {strings.ManageMembership.approveErrorStatusLabel}
+                        </Label>
+                      )}
+                      {csvErrorMessage !== '' && (
+                        <Label>
+                          <Icon iconName="ErrorBadge" className={classNames.errorStatus} /> {csvErrorMessage}
                         </Label>
                       )}
                     </Stack>

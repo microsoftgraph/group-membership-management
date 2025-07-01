@@ -371,6 +371,8 @@ export type IStrings = {
     uploadingLabel: string;
     selectCSVFileLabel: string;
     chooseFileButton: string;
+    csvErrorMessage: string;
+    uploadErrorMessage: string;
     uploadCompleteLabel: string;
     totalNumberOfJobsLabel: string;
     totalNumberOfApprovedJobsLabel: string;

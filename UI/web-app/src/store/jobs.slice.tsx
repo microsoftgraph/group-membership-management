@@ -287,6 +287,6 @@ export const selectRemoveGMMError = (state: RootState) => state.jobs.removeGMMEr
 export const selectApproveJobsLoading = (state: RootState) => state.jobs.approveJobsLoading;
 export const selectNumberOfApprovedJobs = (state: RootState) => state.jobs.totalNumberOfApprovedJobs;
 export const selectNumberOfJobs = (state: RootState) => state.jobs.totalNumberOfJobs;
-export const selectApproveJobsrror = (state: RootState) => state.jobs.approveJobsError;
+export const selectApproveJobsError = (state: RootState) => state.jobs.approveJobsError;
 
 export default jobsSlice.reducer;
