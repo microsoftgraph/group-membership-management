@@ -45,6 +45,7 @@ export type IStrings = {
     equalityOperatorInfo: string;
     equalityOperatorInfoTitle: string;
     inOperatorDescription: string;
+    notInOperatorDescription: string;
     notEqualToOperatorDescription: string;
     attributeValueInfo: string;
     orAndOperatorInfo: string;
@@ -70,6 +71,7 @@ export type IStrings = {
     any: string;
     allLowercase: string;
     IN: string;
+    NOTIN: string;
     notEqualTo: string;
     loadingText: string;
   },

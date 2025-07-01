@@ -60,7 +60,7 @@ function replaceBracketsWithParentheses(input: string): string {
 };
 
 function replaceInClause(input: string): string {
-  const regex = /(NOT\s+)?IN\s*\(\s*('([^']+)')(?:,\s*('([^']+)'))*\s*\)/g;
+  const regex = /(NOT\s+)?IN\s*\(\s*('([^']+)')(?:,\s*('([^']+)'))*\s*\)/gi;
   return input.replace(regex, (match) => {
       return match.replace('(', '[').replace(')', ']');
   });
