@@ -116,7 +116,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         setFilteredValueOptions({});
       } else {
         let items: IFilterPart[] = children.map((child, index) => {
-          const parts = child.filter.split(' ');
+          const parts = child.filter.trim().split(' ').filter(part => part !== '');
           
           // Handle two-word operators like "NOT IN"
           let attribute, equalityOperator;
@@ -190,16 +190,147 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       startIndex = 3;
     }
     
+    let andOrStartIndex = -1;
     for (let i = startIndex; i < words.length; i++) {
       const part = words[i].toLowerCase();
       if (part === 'and' || part === 'or') {
-        andOr = words[i];
-        value = words.slice(startIndex, i).join(' ');
+        andOrStartIndex = i;
+        andOr = words.slice(i).join(' ');
         break;
       }
     }
-    if (andOr === '') { value = words.slice(startIndex).join(' '); }
+    
+    if (andOrStartIndex > -1) {
+      // AND/OR found, value is everything from startIndex to andOrStartIndex
+      value = words.slice(startIndex, andOrStartIndex).join(' ');
+    } else {
+      // No AND/OR found, value is everything from startIndex to end
+      value = words.slice(startIndex).join(' ');
+    }
+    
     return { andOr, value };
+  }
+
+  /**
+   * Helper function to handle common filter word manipulation logic
+   * Handles operator changes and value updates while maintaining consistent spacing
+   */
+  function updateFilterWords(words: string[], newOperator?: string, newValue?: string, newAndOr?: string): string[] {
+    const result = findValueAndOr(words);
+    const prevOperator = words[1];
+    const isPrevNotIn = prevOperator === "NOT" && words.length > 2 && words[2] === "IN";
+    const isNewNotIn = newOperator === "NOT IN";
+    
+    if (newOperator) {
+      // Handle operator changes
+      if (isNewNotIn) {
+        // Check if we're already "NOT IN" - if so, no change needed
+        if (isPrevNotIn) {
+          return words;
+        }
+        // Replace single-word operator with two-word operator
+        words.splice(1); // Remove everything after attribute
+        words.push("NOT", "IN");
+        if (result.value) {
+          words.push(result.value);
+        }
+        if (result.andOr !== '') { 
+          words.push(result.andOr); 
+        }
+      } else {
+        // Handle single-word operators
+        if (isPrevNotIn) {
+          // Previous was "NOT IN", now changing to single-word operator
+          words.splice(1); // Remove everything after attribute
+          words.push(newOperator);
+          if (result.value) {
+            if (newOperator === "IN") {
+              // Special case: changing from "NOT IN" to "IN" - preserve the full value list
+              words.push(result.value);
+            } else {
+              // For non-IN operators, remove parentheses from values if they exist
+              let cleanValue = result.value;
+              if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
+                cleanValue = cleanValue.slice(1, -1);
+                // If it was a multi-value IN clause, take just the first value
+                const firstValue = cleanValue.split(',')[0].trim();
+                cleanValue = firstValue;
+              }
+              words.push(cleanValue);
+            }
+          }
+          if (result.andOr !== '') { 
+            words.push(result.andOr); 
+          }
+        } else {
+          // Normal single-word to single-word operator change
+          words[1] = newOperator;
+          if (prevOperator === "IN" && newOperator !== "IN") {
+            words.splice(2);
+            if (result.value) {
+              // For non-IN operators, remove parentheses from values if they exist
+              let cleanValue = result.value;
+              if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
+                cleanValue = cleanValue.slice(1, -1);
+                // If it was a multi-value IN clause, take just the first value
+                const firstValue = cleanValue.split(',')[0].trim();
+                cleanValue = firstValue;
+              }
+              words.push(cleanValue);
+            }
+            if (result.andOr !== '') { 
+              words.push(result.andOr); 
+            }
+          }
+        }
+      }
+    } else if (newValue !== undefined) {
+      // Handle value changes
+      const isNotInOperator = isPrevNotIn;
+      const valueStartIndex = isNotInOperator ? 3 : 2;
+      
+      words.splice(valueStartIndex);
+      
+      // Check if the newValue contains and/or at the end
+      const andOrMatch = newValue.match(/^(.+?)\s+(and|or)$/i);
+      if (andOrMatch) {
+        // Split the value and and/or parts
+        words.push(andOrMatch[1]);
+        words.push(andOrMatch[2]);
+      } else {
+        // Just the value, preserve existing and/or if any
+        words.push(newValue);
+        if (result.andOr !== '') { 
+          words.push(result.andOr); 
+        }
+      }
+    } else if (newAndOr !== undefined) {
+      // Handle adding/changing AND/OR operator only
+      const isNotInOperator = isPrevNotIn;
+      const valueStartIndex = isNotInOperator ? 3 : 2;
+      
+      // Preserve the existing value and only change the AND/OR part
+      if (result.value) {
+        // We have a value, so preserve it and just update the AND/OR part
+        // Remove everything after the value
+        const valueWords = result.value.split(' ');
+        const endOfValueIndex = valueStartIndex + valueWords.length;
+        words.splice(endOfValueIndex);
+        
+        // Add the new AND/OR if provided
+        if (newAndOr !== '') {
+          words.push(newAndOr);
+        }
+      } else {
+        // No value exists yet, so we can't add AND/OR
+        // This should not happen in normal flow, but handle gracefully
+        if (newAndOr !== '') {
+          words.push(newAndOr);
+        }
+      }
+    }
+    
+    return words;
   }
 
 function setItemsBasedOnGroups(groups: Group[]) {
@@ -341,7 +472,7 @@ const getOptions = (
             childFilters.push(currentFilter);
           }
           setChildren(childFilters.map(filter => ({
-            filter
+            filter: filter.trim()
           })));
         }
       }
@@ -947,74 +1078,7 @@ const getOptions = (
         words = segments[index].trim().split(' ');
       }
       if (words.length > 0) {
-        const prevOperator = words[1];
-        
-        // Handle two-word operators like "NOT IN"
-        if (item.text === "NOT IN") {
-          // Check if we're already "NOT IN" - if so, no change needed
-          if (prevOperator === "NOT" && words.length > 2 && words[2] === "IN") {
-            // Already "NOT IN", no change needed
-            return;
-          }
-          // Replace single-word operator with two-word operator
-          const result = findValueAndOr(words);
-          words.splice(1); // Remove everything after attribute
-          words.push("NOT", "IN");
-          if (result.value) {
-            words.push(result.value);
-          }
-          if (result.andOr !== '') { 
-            words.push(result.andOr); 
-          }
-        } else {
-          // Handle single-word operators
-          if (prevOperator === "NOT" && words.length > 2 && words[2] === "IN") {
-            // Previous was "NOT IN", now changing to single-word operator
-            const result = findValueAndOr(words);
-            words.splice(1); // Remove everything after attribute
-            words.push(item.text);
-            if (result.value) {
-              if (item.text === "IN") {
-                // Special case: changing from "NOT IN" to "IN" - preserve the full value list
-                words.push(result.value);
-              } else {
-                // For non-IN operators, remove parentheses from values if they exist
-                let cleanValue = result.value;
-                if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
-                  cleanValue = cleanValue.slice(1, -1);
-                  // If it was a multi-value IN clause, take just the first value
-                  const firstValue = cleanValue.split(',')[0].trim();
-                  cleanValue = firstValue;
-                }
-                words.push(cleanValue);
-              }
-            }
-            if (result.andOr !== '') { 
-              words.push(result.andOr); 
-            }
-          } else {
-            // Normal single-word to single-word operator change
-            words[1] = item.text;
-            if (prevOperator === "IN" && item.text !== "IN") {
-              const result = findValueAndOr(words);
-              words.splice(2);
-              if (result.value) {
-                // For non-IN operators, remove parentheses from values if they exist
-                let cleanValue = result.value;
-                if (cleanValue.startsWith('(') && cleanValue.endsWith(')')) {
-                  cleanValue = cleanValue.slice(1, -1);
-                  // If it was a multi-value IN clause, take just the first value
-                  const firstValue = cleanValue.split(',')[0].trim();
-                  cleanValue = firstValue;
-                }
-                words.push(cleanValue);
-              }
-              if (result.andOr !== '') { 
-                words.push(result.andOr); 
-              }
-            }
-          }
-        }
+        words = updateFilterWords(words, item.text);
       }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
@@ -1083,14 +1147,7 @@ const getOptions = (
           words = segments[index].trim().split(' ');
         }
         if (words.length > 0) {
-          const result = findValueAndOr(words);
-          // Check if it's a two-word operator like "NOT IN"
-          const isNotInOperator = words.length > 2 && words[1] === "NOT" && words[2] === "IN";
-          const valueStartIndex = isNotInOperator ? 3 : 2;
-          
-          words.splice(valueStartIndex);
-          words.splice(valueStartIndex, 0, selectedValueAfterConversion || selectedValue);
-          if (result.andOr !== '') { words.push(result.andOr + ' '); }
+          words = updateFilterWords(words, undefined, selectedValueAfterConversion || selectedValue);
         }
         segments[index] = words.join(' ');
         const updatedFilter = segments.join('');
@@ -1158,14 +1215,7 @@ const getOptions = (
         words = segments[index].trim().split(' ');
       }
       if (words.length > 0) {
-        const result = findValueAndOr(words);
-        // Check if it's a two-word operator like "NOT IN"
-        const isNotInOperator = words.length > 2 && words[1] === "NOT" && words[2] === "IN";
-        const valueStartIndex = isNotInOperator ? 3 : 2;
-        
-        words.splice(valueStartIndex);
-        words.splice(valueStartIndex, 0, selectedValueAfterConversion || selectedValue);
-        if (result.andOr !== '') { words.push(result.andOr + ' '); }
+        words = updateFilterWords(words, undefined, selectedValueAfterConversion || selectedValue);
       }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
@@ -1222,16 +1272,10 @@ const getOptions = (
 				words.pop();
 			}
       if (words.length > 0) {
-        const result = findValueAndOr(words);
-        // Check if it's a two-word operator like "NOT IN"
-        const isNotInOperator = words.length > 2 && words[1] === "NOT" && words[2] === "IN";
-        const operatorLength = isNotInOperator ? 2 : 1;
-        const indexAfterValue = (1 + operatorLength) + result.value.split(' ').length;
-        words.splice(indexAfterValue);
-        words.splice(indexAfterValue, 0, item.text);
+        words = updateFilterWords(words, undefined, undefined, item.text);
       }
       segments[index] = words.join(' ');
-      const updatedFilter = segments.join(' ');
+      const updatedFilter = segments.join('');
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
