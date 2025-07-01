@@ -19,6 +19,8 @@ namespace WebApi.Controllers.v1.Jobs
     [Route("api/v{version:apiVersion}/jobs")]
     public class JobsController : ControllerBase
     {
+        private const int DEFAULT_PAGE_SIZE = 10;
+        private const int MAX_PAGE_SIZE = 100;
         private readonly IRequestHandler<GetJobsRequest, GetJobsResponse> _getJobsRequestHandler;
         private readonly IRequestHandler<PostJobRequest, PostJobResponse> _postJobRequestHandler;
         private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
@@ -39,8 +41,29 @@ namespace WebApi.Controllers.v1.Jobs
         {
             var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions, CustomSortBy = customSortBy });
             
-            var pageSize = queryOptions?.Top?.Value ?? 10;
+            var pageSize = queryOptions?.Top?.Value ?? DEFAULT_PAGE_SIZE;
             var totalItems = response.TotalItems;
+            
+            // Validation
+            var validationErrors = new List<string>();
+            
+            if (totalItems < 0)
+                validationErrors.Add("Invalid total items count");
+                
+            if (pageSize <= 0)
+                validationErrors.Add("Page size must be positive");
+                
+            if (pageSize > MAX_PAGE_SIZE)
+                validationErrors.Add($"Page size cannot exceed {MAX_PAGE_SIZE}");
+                
+            if (response.CurrentPage < 1)
+                validationErrors.Add("Current page must be 1 or greater");
+                
+            if (response.TotalNumberOfPages < 1 && totalItems > 0)
+                validationErrors.Add("Total number of pages must be 1 or greater when items exist");
+            
+            if (validationErrors.Any())
+                return BadRequest(string.Join("; ", validationErrors));
             
             var pagedResponse = new PagedResponse<SyncJob>
             {
