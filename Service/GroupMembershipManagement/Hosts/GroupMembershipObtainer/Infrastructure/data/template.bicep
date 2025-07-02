@@ -27,6 +27,8 @@ module gmoStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'groupMembershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'groupMembershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
