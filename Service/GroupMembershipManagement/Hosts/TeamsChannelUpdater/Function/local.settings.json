@@ -23,6 +23,7 @@
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "membershipStorageAccountName": "",
     "membershipContainerName": "",
-    "triggerSchedule": "0,30 * * * * *"
+    "triggerSchedule": "0,30 * * * * *",
+    "serviceBusNotificationsQueue": ""
   }
 }
