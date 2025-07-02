@@ -2,7 +2,6 @@
 using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.Functions.Worker.Extensions.DurableTask.Http;
 using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Configuration.AzureAppConfiguration;
@@ -28,7 +27,6 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<IConfiguration> _configuration;
-        private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
@@ -40,14 +38,12 @@ namespace Tests.Services
         private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider;
         private Mock<IDatabaseDestinationAttributesRepository> _databaseDestinationAttributesRepository;
-        private Mock<ITeamsChannelRepository> _teamsChannelRepository;
         private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         private int _usersToReturn;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
         private SyncStatus _subOrchestratorResponseStatus;
         private SGMembershipCalculator _membershipCalculator;
-        private DurableHttpResponse _membershipAggregatorResponse;
         private TelemetryClient _telemetryClient;
         SchemaProvider _schemaProvider;
         private bool _isValid = true;
@@ -57,7 +53,6 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _configuration = new Mock<IConfiguration>();
-            _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
@@ -71,7 +66,6 @@ namespace Tests.Services
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _databaseDestinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
-            _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("GroupMembership");
 
@@ -122,8 +116,8 @@ namespace Tests.Services
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(group.GroupId);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                                 });
@@ -134,22 +128,22 @@ namespace Tests.Services
             AzureADGroup sourceGroup = null;
             string id = null;
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
-            .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
             {
                 var telemetryRequest = request as TelemetryTrackerRequest;
                 await CallTelemetryTrackerFunctionAsync(telemetryRequest);
             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADGroup, string)>(It.IsAny<string>(), It.IsAny<GroupReaderRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADGroup, string)>(It.IsAny<TaskName>(), It.IsAny<GroupReaderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     (sourceGroup, id) = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
                                 }).
                                 ReturnsAsync(() => (sourceGroup, id));
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                 .ReturnsAsync(() =>
                                 {
                                     return new SubOrchestratorResponse
@@ -160,8 +154,8 @@ namespace Tests.Services
                                 });
 
             string _filePath = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     _filePath = await CallUsersSenderFunctionAsync(request as UsersSenderRequest);
                                 })
@@ -178,49 +172,46 @@ namespace Tests.Services
                 return users;
             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     _filePath = await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
                                 })
                                 .ReturnsAsync(() => _filePath);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
                                 });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<DeltaLinkUploaderRequest>(), It.IsAny<TaskOptions>()))
-                               .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeltaLinkUploaderRequest>(), It.IsAny<TaskOptions>()))
+                               .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                {
                                    await CallDeltaLinkUploaderFunctionAsync(request as DeltaLinkUploaderRequest);
                                });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     await CallCacheUploaderFunctionAsync(request as CacheUploaderRequest);
                                 });
 
-            _membershipAggregatorResponse = new DurableHttpResponse(System.Net.HttpStatusCode.NoContent);
-            _durableOrchestrationContext.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>())).ReturnsAsync(() => _membershipAggregatorResponse);
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                                 });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()))
-                                .Callback<string, object, TaskOptions>(async (name, request, options) =>
+                                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
                                     await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
                                 });
             _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
-            .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
             {
                 await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
             })
@@ -362,7 +353,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestUnhandledExceptionAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                 .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -392,7 +383,7 @@ namespace Tests.Services
         {
             var exception = new Exception("The request timed out");
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                 .Throws(exception);
 
             var orchestratorFunction = new OrchestratorFunction(
@@ -421,7 +412,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPartRequestAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                .ReturnsAsync(() =>
                                {
                                    return new SubOrchestratorResponse
@@ -456,7 +447,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestTransitiveCallAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                .ReturnsAsync(() =>
                                {
                                    return new SubOrchestratorResponse
@@ -486,7 +477,7 @@ namespace Tests.Services
         public async Task TestDeltaCallAsync()
         {
 
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                .ReturnsAsync(() =>
                                {
                                    return new SubOrchestratorResponse
@@ -517,7 +508,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPartForTransitiveRequestAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                .ReturnsAsync(() =>
                                {
                                    return new SubOrchestratorResponse
@@ -526,14 +517,14 @@ namespace Tests.Services
                                    };
                                });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
-                        .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                         {
                             await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
                         });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
-                               .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                               .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                {
                                    await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
                                });
@@ -550,7 +541,7 @@ namespace Tests.Services
         [TestMethod]
         public async Task TestValidPartForDeltaRequestAsync()
         {
-            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
                                .ReturnsAsync(() =>
                                {
                                    return new SubOrchestratorResponse
@@ -559,20 +550,20 @@ namespace Tests.Services
                                    };
                                });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
                     });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(DeleteBlobFunction), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
-                   .Callback<string, object, TaskOptions>(async (name, request, options) =>
+                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                    {
                        await CallDeleteBlobFunctionAsync(request as DeleteBlobRequest);
                    });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(CacheUploaderFunction), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
-                   .Callback<string, object, TaskOptions>(async (name, request, options) =>
+                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                    {
                        await CallCacheUploaderFunctionAsync(request as CacheUploaderRequest);
                    });
@@ -589,7 +580,7 @@ namespace Tests.Services
             _schemaProvider = new SchemaProvider();
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
-            .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
             {
                 await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
             })
@@ -618,7 +609,7 @@ namespace Tests.Services
             _schemaProvider = SchemaProviderFactory.CreateMissingGroupMembershipSchemaProvider();
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
-            .Callback<string, object, TaskOptions>(async (name, request, options) =>
+            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
             {
                 await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
             })
@@ -652,7 +643,7 @@ namespace Tests.Services
                                             );
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
-           .Callback<string, object, TaskOptions>(async (name, request, options) =>
+           .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
            {
                await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
            })
