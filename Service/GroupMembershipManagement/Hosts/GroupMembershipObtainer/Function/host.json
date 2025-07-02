@@ -5,12 +5,6 @@
     "dynamicConcurrencyEnabled": true,
     "snapshotPersistenceEnabled": true
   },
-  "extensions": {
-    "durableTask": {
-      "extendedSessionsEnabled": true,
-      "extendedSessionIdleTimeoutInSeconds": 30
-    }
-  },
 "logging": {
     "applicationInsights": {
       "samplingSettings": {
