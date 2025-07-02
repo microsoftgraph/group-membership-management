@@ -1,6 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.Amqp.Framing;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -40,6 +39,13 @@ namespace Hosts.NonProdService
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"{nameof(LoadTestingGroupCalculatorFunction)} function started",
+                RunId = runId
+            }, VerbosityLevel.DEBUG);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Number of existing Load Test groups found: {existingGroupNames.Count(name =>
+                    name.StartsWith("LoadTesting_DestinationGroup_", StringComparison.OrdinalIgnoreCase))}",
                 RunId = runId
             }, VerbosityLevel.DEBUG);
 
@@ -86,6 +92,13 @@ namespace Hosts.NonProdService
                     fullTargetDistribution[smallestSize] = leftover;
             }
 
+            var distributionLog = string.Join(", ", fullTargetDistribution.OrderBy(kvp => kvp.Key).Select(kvp => $"[{kvp.Key}]={kvp.Value}"));
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Target Distribution: {distributionLog}",
+                RunId = runId
+            }, VerbosityLevel.DEBUG);
+
             // Step 4: Calculate missing groups per size
             var groupsToCreate = new Dictionary<int, int>();
             foreach (var kvp in fullTargetDistribution)
@@ -101,13 +114,22 @@ namespace Hosts.NonProdService
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Final groups to create: {string.Join(", ", groupsToCreate.Select(kvp => $"{kvp.Key} => {kvp.Value}"))}",
+                Message = $"Existing Groups: {string.Join(", ", existingGroupCounts.OrderBy(kvp => kvp.Key).Select(kvp => $"[{kvp.Key}]={existingGroupCounts.GetValueOrDefault(kvp.Key, 0)}"))}",
+                RunId = runId
+            }, VerbosityLevel.DEBUG);
+
+            var groupsTobeCreatedMessage = $"Groups to be Created : {string.Join(", ", groupsToCreate.OrderBy(kvp => kvp.Key).Select(kvp => $"[{kvp.Key}]={kvp.Value}"))}";
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = groupsToCreate.Count > 0 ? groupsTobeCreatedMessage : "No Groups Need to be Created.",
                 RunId = runId
             }, VerbosityLevel.DEBUG);
 
             return new LoadTestingGroupCalculatorResponse
             {
-                GroupSizesAndCounts = groupsToCreate
+                GroupSizesAndCounts = groupsToCreate,
+                ExpectedTargetDistribution = fullTargetDistribution
+
             };
         }
 
@@ -118,7 +140,7 @@ namespace Hosts.NonProdService
             int a = 1;
             int b = 2;
 
-            while (sequence.Count <= sequenceLength)
+            while (sequence.Count < sequenceLength)
             {
                 sequence.Add(a);
                 int c = a + b;

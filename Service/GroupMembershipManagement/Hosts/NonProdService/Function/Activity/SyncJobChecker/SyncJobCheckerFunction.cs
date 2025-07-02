@@ -28,26 +28,39 @@ namespace Hosts.NonProdService
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobCheckerFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
-            var groups = await _graphGroupRepository.GetGroupsByFilterAsync("startswith(displayName,'LoadTesting_DestinationGroup_')");
-            var existingGroups = groups.ToDictionary(g => g.ObjectId, g => g.Name);
+            var groupObjects = await _graphGroupRepository.GetGroupsByFilterAsync("startswith(displayName,'LoadTesting_DestinationGroup_')");
+            var existingGroups = groupObjects.ToDictionary(g => g.ObjectId, g => g.Name);
             var existingSyncJobs = request.TargetGroupIds.ToHashSet();
-            var missingJobs = existingGroups
-                .Where(group => !existingSyncJobs.Contains(group.Key))
-                .ToList();
-
             var groupSizesAndIds = new Dictionary<int, List<Guid>>();
-            foreach (var group in missingJobs)
+
+            foreach (var kvp in request.ExpectedTargetDistribution)
             {
-                var groupName = group.Value;
-                var groupSize = int.Parse(groupName.Split('_')[2]);
-                if (!groupSizesAndIds.ContainsKey(groupSize))
+                var groupSize = kvp.Key;
+                var expectedCount = kvp.Value;
+
+                var groups = existingGroups
+                    .Where(g => g.Value.Contains($"LoadTesting_DestinationGroup_{groupSize}_"))
+                    .Select(g => new { g.Key, g.Value })
+                    .ToList();
+
+                var numberOfGroupsWithJobs = groups
+                    .Where(g => existingSyncJobs.Contains(g.Key))
+                    .ToList()
+                    .Count;
+                
+                if (numberOfGroupsWithJobs < expectedCount)
                 {
-                    groupSizesAndIds[groupSize] = new List<Guid>();
+                    var missingCount = expectedCount - numberOfGroupsWithJobs;
+                    var missing = groups
+                        .Where(g => !existingSyncJobs.Contains(g.Key))
+                        .Take(missingCount) // only take up to the expected count
+                        .ToList();
+                    groupSizesAndIds[groupSize] = missing.Select(m => m.Key).ToList();
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Group size: {groupSize}, Expected Group Count: {expectedCount}, Existing Group Count: {groups.Count}, Existing Job Count: {numberOfGroupsWithJobs}, Missing Job Count: {missing.Count}", RunId = request.RunId }, VerbosityLevel.DEBUG);
                 }
 
-                groupSizesAndIds[groupSize].Add(group.Key);
             }
-
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobCheckerFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
 

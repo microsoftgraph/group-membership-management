@@ -37,6 +37,13 @@ namespace Hosts.NonProdService
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(LoadTestingSyncJobCreatorFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
 
+            var groupSizeCounts = groupSizesAndIds.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Count);
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"SyncJobs to be created: {string.Join(", ", groupSizeCounts.Select(kvp => $"{kvp.Key} => {kvp.Value}"))}",
+                RunId = runId
+            }, VerbosityLevel.DEBUG);
+
             // spread out jobs evenly across 1 day
             var totalJobsToCreate = groupSizesAndIds.Keys.Sum(groupSize => groupSizesAndIds[groupSize].Count);
             var minutesInADay = 60 * 24;

@@ -9,5 +9,6 @@ namespace Hosts.NonProdService
     {
         public List<Guid> TargetGroupIds { get; set; }
         public Guid RunId { get; set; }
+        public Dictionary<int, int> ExpectedTargetDistribution { get; set; }
     }
 }

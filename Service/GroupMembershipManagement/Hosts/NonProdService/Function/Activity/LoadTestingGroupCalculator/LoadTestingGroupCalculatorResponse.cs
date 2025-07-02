@@ -8,5 +8,6 @@ namespace Hosts.NonProdService
     public class LoadTestingGroupCalculatorResponse
     {
         public Dictionary<int,int> GroupSizesAndCounts { get; set; }
+        public Dictionary<int, int> ExpectedTargetDistribution { get; set; }
     }
 }

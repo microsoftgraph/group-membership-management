@@ -38,7 +38,8 @@ namespace Hosts.NonProdService
 
             await context.CallSubOrchestratorAsync<GraphUpdaterStatus>(
                 nameof(IntegrationTestingPrepSubOrchestratorFunction),
-                new IntegrationTestingPrepSubOrchestratorRequest {
+                new IntegrationTestingPrepSubOrchestratorRequest
+                {
                     RunId = runId,
                     TenantUserCount = tenantUserCount.Value
                 });

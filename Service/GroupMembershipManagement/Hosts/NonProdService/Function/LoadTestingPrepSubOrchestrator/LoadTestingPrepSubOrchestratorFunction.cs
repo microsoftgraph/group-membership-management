@@ -46,28 +46,36 @@ namespace Hosts.NonProdService
                 });
 
             var groupsToCreate = calcResponse.GroupSizesAndCounts;
-
-            // Create and retrieve groups
-            var groupSizesAndIds = new Dictionary<int, List<Guid>>();
+            
+            int batchSize = 200; 
             foreach (var groupSize in groupsToCreate.Keys)
             {
-                var groupCount = groupsToCreate[groupSize];
+                // this section needs to be updated once we transition this function to isolated-worker model. 
+                // In Isolated, we no longer need to batch these calls and we can just send the entire group count at once.
+                var totalGroupCount = groupsToCreate[groupSize];
+                var groupIds = new List<Guid>();
+                var cumulativeCreatedCount = 0; //We will not need this variable once we transition to isolated-worker model.
 
-                // Call the batch function to create and retrieve groups
-                var batchResponse = await context.CallActivityAsync<List<GroupCreatorAndRetrieverBatchResponse>>(
-                    nameof(GroupCreatorAndRetrieverBatchFunction),
-                    new GroupCreatorAndRetrieverBatchRequest
-                    {
-                        BaseGroupName = $"LoadTesting_DestinationGroup_{groupSize}",
-                        GroupCount = groupCount,
-                        GroupOwnersIds = new List<Guid> { destinationGroupOwnerId },
-                        RetrieveMembers = false,
-                        RunId = runId,
-                        ExistingGroupNames = allGroupNames.GroupNames
-                    });
+                for (int i = 0; i < totalGroupCount; i += batchSize)
+                {
+                    int currentBatchSize = Math.Min(batchSize, totalGroupCount - i);
 
-                var groupIds = batchResponse.Select(response => response.TargetGroup.ObjectId).ToList();
-                groupSizesAndIds.Add(groupSize, groupIds);
+                    var batchResponse = await context.CallActivityAsync<List<GroupCreatorAndRetrieverBatchResponse>>(
+                        nameof(GroupCreatorAndRetrieverBatchFunction),
+                        new GroupCreatorAndRetrieverBatchRequest
+                        {
+                            BaseGroupName = $"LoadTesting_DestinationGroup_{groupSize}",
+                            GroupCount = currentBatchSize,
+                            GroupOwnersIds = new List<Guid> { destinationGroupOwnerId },
+                            RetrieveMembers = false,
+                            RunId = runId,
+                            ExistingGroupNames = allGroupNames.GroupNames,
+                            StartingIndex = cumulativeCreatedCount // We will not need this parameter once we transition to isolated-worker model.
+                        });
+
+                    groupIds.AddRange(batchResponse.Select(response => response.TargetGroup.ObjectId));
+                    cumulativeCreatedCount += currentBatchSize; // We will not need this variable once we transition to isolated-worker model.
+                }
             }
 
             // Retrieve existing SyncJobs
@@ -80,17 +88,14 @@ namespace Hosts.NonProdService
 
             var targetGroupIds = syncJobsResponse.SyncJobs.Where(x => x.MembershipType == MembershipTypes.GroupMembership.ToString()).Select(x => x.Group.GroupId).ToList();
 
-            // If all groups exist, make sure they all have a sync job.
-            if (groupsToCreate.Count == 0)
+            var syncJobCheckerResponse = await context.CallActivityAsync<SyncJobCheckerResponse>(nameof(SyncJobCheckerFunction), new SyncJobCheckerRequest
             {
-                var syncJobCheckerResponse = await context.CallActivityAsync<SyncJobCheckerResponse>(nameof(SyncJobCheckerFunction), new SyncJobCheckerRequest
-                {
-                    RunId = runId,
-                    TargetGroupIds = targetGroupIds
-                });
+                RunId = runId,
+                TargetGroupIds = targetGroupIds,
+                ExpectedTargetDistribution = calcResponse.ExpectedTargetDistribution
+            });
 
-                groupSizesAndIds = syncJobCheckerResponse.GroupSizesAndIds;
-            }
+            var groupSizesAndIds = syncJobCheckerResponse.GroupSizesAndIds;
 
             if (groupSizesAndIds.Count == 0)
             {
@@ -99,17 +104,44 @@ namespace Hosts.NonProdService
             }
             else
             {
-                await context.CallActivityAsync(
-                    nameof(LoadTestingSyncJobCreatorFunction),
-                    new LoadTestingSyncJobCreatorRequest
-                    {
-                        GroupSizesAndIds = groupSizesAndIds,
-                        TargetGroupIds = targetGroupIds,
-                        RunId = runId
-                    });
+                // When we transition to isolated-worker model, we can remove this batching logic and just send the entire dictionary at once.  
+                batchSize = 500;
+
+                foreach (var batch in BatchGroupSizesAndIds(groupSizesAndIds, batchSize))
+                {
+                    await context.CallActivityAsync(
+                        nameof(LoadTestingSyncJobCreatorFunction),
+                        new LoadTestingSyncJobCreatorRequest
+                        {
+                            GroupSizesAndIds = batch,
+                            TargetGroupIds = targetGroupIds,
+                            RunId = runId
+                        });
+                }
             }
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(LoadTestingPrepSubOrchestratorFunction)} function completed", RunId = runId, Verbosity = VerbosityLevel.DEBUG });
+        }
+
+        public static IEnumerable<Dictionary<int, List<Guid>>> BatchGroupSizesAndIds(Dictionary<int, List<Guid>> fullDict, int batchSize)
+        {
+            var allEntries = fullDict.SelectMany(kvp => kvp.Value.Select(id => new { kvp.Key, Id = id })).ToList();
+
+            for (int i = 0; i < allEntries.Count; i += batchSize)
+            {
+                var batch = allEntries.Skip(i).Take(batchSize);
+
+                var dict = new Dictionary<int, List<Guid>>();
+                foreach (var item in batch)
+                {
+                    if (!dict.ContainsKey(item.Key))
+                        dict[item.Key] = new List<Guid>();
+
+                    dict[item.Key].Add(item.Id);
+                }
+
+                yield return dict;
+            }
         }
     }
 }

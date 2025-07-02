@@ -15,5 +15,6 @@ namespace Hosts.NonProdService
         public bool RetrieveMembers { get; set; }
         public Guid RunId { get; set; }
         public List<string> ExistingGroupNames { get; set; } 
+        public int StartingIndex { get; set; }
     }
 }

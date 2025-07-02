@@ -25,6 +25,12 @@ namespace Hosts.NonProdService
         [FunctionName(nameof(GroupCreatorAndRetrieverBatchFunction))]
         public async Task<List<GroupCreatorAndRetrieverBatchResponse>> RunBatchAsync([ActivityTrigger] GroupCreatorAndRetrieverBatchRequest request)
         {
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} function started.",
+                RunId = request.RunId
+            }, VerbosityLevel.DEBUG);
+
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
 
@@ -38,7 +44,8 @@ namespace Hosts.NonProdService
 
             for (int i = 0; i < request.GroupCount; i++)
             {
-                var groupName = $"{request.BaseGroupName}_{existingGroupCount + i + 1}";
+                //var groupName = $"{request.BaseGroupName}_{existingGroupCount + i + 1}";
+                var groupName = $"{request.BaseGroupName}_{existingGroupCount + request.StartingIndex + i + 1}"; //Remove this line and use the commented code above when transitioning to Isolated-Worker model
 
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} creating group {groupName}", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
@@ -75,6 +82,12 @@ namespace Hosts.NonProdService
                     Members = usersInGroup
                 });
             }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{nameof(GroupCreatorAndRetrieverBatchFunction)} function completed.",
+                RunId = request.RunId
+            }, VerbosityLevel.DEBUG);
 
             return responses;
         }
