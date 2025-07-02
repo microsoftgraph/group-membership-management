@@ -1,13 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
@@ -23,7 +19,7 @@ namespace Hosts.GroupMembershipObtainer
 			_calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
 		}
 
-		[FunctionName(nameof(GetTransitiveGroupCountFunction))]
+		[Function(nameof(GetTransitiveGroupCountFunction))]
 		public async Task<int> GetGroupsAsync([ActivityTrigger] GetTransitiveGroupCountRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(GetTransitiveGroupCountFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

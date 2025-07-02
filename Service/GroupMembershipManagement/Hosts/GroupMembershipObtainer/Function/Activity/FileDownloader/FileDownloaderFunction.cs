@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
@@ -26,7 +25,7 @@ namespace Hosts.GroupMembershipObtainer
         /// </summary>
         /// <param name="request"></param>
         /// <returns>Compressed file content</returns>
-        [FunctionName(nameof(FileDownloaderFunction))]
+        [Function(nameof(FileDownloaderFunction))]
         public async Task<string> DownloadFileAsync([ActivityTrigger] FileDownloaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

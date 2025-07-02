@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -20,7 +19,7 @@ namespace Hosts.GroupMembershipObtainer
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
         }
 
-        [FunctionName(nameof(CacheUploaderFunction))]
+        [Function(nameof(CacheUploaderFunction))]
         public async Task SendUsersAsync([ActivityTrigger] CacheUploaderRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUploaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

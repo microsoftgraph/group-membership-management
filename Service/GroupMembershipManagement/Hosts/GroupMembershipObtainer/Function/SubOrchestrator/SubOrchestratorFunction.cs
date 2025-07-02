@@ -1,17 +1,16 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.Graph;
 using Models;
 using Models.Helpers;
-using Models.ServiceBus;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -41,8 +40,8 @@ namespace Hosts.GroupMembershipObtainer
         /// </summary>
         /// <param name="context"></param>
         /// <returns>Compressed serialized SubOrchestratorResponse</returns>
-        [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(SubOrchestratorFunction))]
+        public async Task<SubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<GroupMembershipRequest>();
             var allUsers = new List<AzureADUser>();
@@ -248,7 +247,7 @@ namespace Hosts.GroupMembershipObtainer
             _telemetryClient.TrackEvent("UsersInCacheCount", cachedUsersEvent);
         }
 
-        public async Task<string> GetFileDownloaderFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob, bool checkFileAge)
+        public async Task<string> GetFileDownloaderFunction(TaskOrchestrationContext context, string filePath, SyncJob syncJob, bool checkFileAge)
         {
             var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                               new FileDownloaderRequest
@@ -260,7 +259,7 @@ namespace Hosts.GroupMembershipObtainer
             return fileContent;
         }
 
-        public async Task ClearCacheFunction(IDurableOrchestrationContext context, string filePath, SyncJob syncJob)
+        public async Task ClearCacheFunction(TaskOrchestrationContext context, string filePath, SyncJob syncJob)
         {
             await context.CallActivityAsync(nameof(FileDeleterFunction),
                                             new FileDeleterRequest
@@ -270,7 +269,7 @@ namespace Hosts.GroupMembershipObtainer
                                             });
         }
 
-        public async Task<int> GetUsersCountFunction(IDurableOrchestrationContext context, Guid groupId, Guid runId)
+        public async Task<int> GetUsersCountFunction(TaskOrchestrationContext context, Guid groupId, Guid runId)
         {
             return await context.CallActivityAsync<int>(nameof(GetUserCountFunction),
                                             new GetUserCountRequest
@@ -280,7 +279,7 @@ namespace Hosts.GroupMembershipObtainer
                                             });
         }
 
-        public async Task GetDeltaUsersSenderFunction(IDurableOrchestrationContext context, GroupMembershipRequest request, List<AzureADUser> allUsers, string deltaUrl)
+        public async Task GetDeltaUsersSenderFunction(TaskOrchestrationContext context, GroupMembershipRequest request, List<AzureADUser> allUsers, string deltaUrl)
         {
             var compressedUsers = TextCompressor.Compress(JsonSerializer.Serialize(allUsers));
 
@@ -296,7 +295,7 @@ namespace Hosts.GroupMembershipObtainer
                                                     });
         }
 
-        public async Task<ProcessCachedAndDeltaUsersResponse> ProcessCachedAndDeltaUsers(IDurableOrchestrationContext context, ProcessCachedAndDeltaUsersRequest request)
+        public async Task<ProcessCachedAndDeltaUsersResponse> ProcessCachedAndDeltaUsers(TaskOrchestrationContext context, ProcessCachedAndDeltaUsersRequest request)
         {
             var response = await context.CallActivityAsync<ProcessCachedAndDeltaUsersResponse>(nameof(ProcessCachedAndDeltaUsersFunction), request);
 
@@ -308,7 +307,7 @@ namespace Hosts.GroupMembershipObtainer
         /// </summary>
         /// <param name="context"></param>
         /// <param name="request"></param>
-        public async Task GetTransitiveMembers(IDurableOrchestrationContext context, GroupMembershipRequest request)
+        public async Task GetTransitiveMembers(TaskOrchestrationContext context, GroupMembershipRequest request)
         {
             if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Getting results from 1st page using transitive members query for group {request.SourceGroup.ObjectId}" });
             var nextPageUrl = await context.CallActivityAsync<string>(nameof(MembersReaderFunction), new MembersReaderRequest { RunId = request.RunId, GroupId = request.SourceGroup.ObjectId, TargetGroupId = request.GroupId, CurrentPart = request.CurrentPart });
@@ -326,7 +325,7 @@ namespace Hosts.GroupMembershipObtainer
         /// <param name="request"></param>
         /// <param name="deltaLink"></param>
         /// <returns>Membership file path</returns>
-        public async Task<string> ProcessGroupMembershipChangesAsync(IDurableOrchestrationContext context, GroupMembershipRequest request, string deltaLink = null)
+        public async Task<string> ProcessGroupMembershipChangesAsync(TaskOrchestrationContext context, GroupMembershipRequest request, string deltaLink = null)
         {
             var membershipFilePath = await context.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction), new TransitiveAndDeltaUsersSenderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart, Exclusionary = request.Exclusionary });
             await context.CallActivityAsync<string>(nameof(DeleteBlobFunction), new DeleteBlobRequest { GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart });
@@ -341,7 +340,7 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         public async Task<string> GetInitialDeltaUsers(
-                                                    IDurableOrchestrationContext context,
+                                                    TaskOrchestrationContext context,
                                                     GroupMembershipRequest request)
         {
             var response = await context.CallActivityAsync<DeltaUrls>(nameof(DeltaUserReaderFunction), new DeltaUserReaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, TargetGroupId = request.GroupId, CurrentPart = request.CurrentPart, PageCount = DELTAQUERY_PAGECOUNT });
@@ -363,7 +362,7 @@ namespace Hosts.GroupMembershipObtainer
             return response.DeltaUrl;
         }
 
-        public async Task<string> GetInitialDeltaLinkUsers(IDurableOrchestrationContext context, string fileContent, GroupMembershipRequest request)
+        public async Task<string> GetInitialDeltaLinkUsers(TaskOrchestrationContext context, string fileContent, GroupMembershipRequest request)
         {
             var response = await context.CallActivityAsync<DeltaUrls>(nameof(DeltaLinkUserReaderFunction), 
                 new DeltaLinkUserReaderRequest { 

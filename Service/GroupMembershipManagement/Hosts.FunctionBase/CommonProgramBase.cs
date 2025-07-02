@@ -216,5 +216,13 @@ namespace Hosts.FunctionBase
             var checkParse = int.TryParse(configuration[settingName], out int value);
             return checkParse ? value : defaultValue;
         }
+
+        public static bool GetBoolSettingBase(IConfiguration configuration, string settingName, bool defaultValue)
+        {
+            var checkParse = bool.TryParse(configuration[settingName], out bool value);
+            if (checkParse)
+                return value;
+            return defaultValue;
+        }
     }
 }

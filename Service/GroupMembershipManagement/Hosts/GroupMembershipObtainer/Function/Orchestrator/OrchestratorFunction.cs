@@ -1,15 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Models;
-using Models.Helpers;
 using Models.Notifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -36,8 +35,8 @@ namespace Hosts.GroupMembershipObtainer
             _emailSenderRecipient = emailSenderRecipient;
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest != null && mainRequest.SyncJob != null)

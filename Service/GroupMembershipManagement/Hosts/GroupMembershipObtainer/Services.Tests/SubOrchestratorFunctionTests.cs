@@ -3,10 +3,9 @@
 using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
-using Models.Helpers;
 using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
@@ -36,7 +35,7 @@ namespace Tests.Services
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository;
@@ -70,7 +69,7 @@ namespace Tests.Services
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();

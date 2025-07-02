@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Linq;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -26,7 +25,7 @@ namespace Hosts.GroupMembershipObtainer
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        [FunctionName(nameof(ProcessCachedAndDeltaUsersFunction))]
+        [Function(nameof(ProcessCachedAndDeltaUsersFunction))]
         public async Task<ProcessCachedAndDeltaUsersResponse> RunAsync([ActivityTrigger] ProcessCachedAndDeltaUsersRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(ProcessCachedAndDeltaUsersFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

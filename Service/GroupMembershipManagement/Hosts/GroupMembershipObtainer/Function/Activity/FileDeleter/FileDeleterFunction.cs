@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -20,7 +19,7 @@ namespace Hosts.GroupMembershipObtainer
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        [FunctionName(nameof(FileDeleterFunction))]
+        [Function(nameof(FileDeleterFunction))]
         public async Task DeleteFileAsync([ActivityTrigger] FileDeleterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Deleting file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

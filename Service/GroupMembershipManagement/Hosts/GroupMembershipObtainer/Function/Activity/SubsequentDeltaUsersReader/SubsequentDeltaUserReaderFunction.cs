@@ -1,16 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
-using Repositories.Contracts.InjectConfig;
 using System;
-using System.Collections.Generic;
-using System.Text.Json.Serialization;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
@@ -28,7 +23,7 @@ namespace Hosts.GroupMembershipObtainer
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
 		}
 
-		[FunctionName(nameof(SubsequentDeltaUserReaderFunction))]
+		[Function(nameof(SubsequentDeltaUserReaderFunction))]
 		public async Task<DeltaUrls> GetSubsequentDeltaUsersAsync([ActivityTrigger] SubsequentDeltaUserReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUserReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Identity.Client;
 using Models;
 using Models.Notifications;
@@ -10,7 +9,6 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -28,7 +26,7 @@ namespace Hosts.GroupMembershipObtainer
             _emailSenderAndRecipients = emailSenderAndRecipients;
         }
 
-        [FunctionName(nameof(GroupValidatorFunction))]
+        [Function(nameof(GroupValidatorFunction))]
         public async Task<bool> ValidateGroupAsync([ActivityTrigger] GroupValidatorRequest request)
         {
             bool isExistingGroup = false;

@@ -1,13 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
-using Models.Helpers;
 using Repositories.Contracts;
 using System;
-using System.Collections.Generic;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
@@ -23,7 +19,7 @@ namespace Hosts.GroupMembershipObtainer
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
         }
 
-        [FunctionName(nameof(DeltaLinkUploaderFunction))]
+        [Function(nameof(DeltaLinkUploaderFunction))]
         public async Task SendDeltaLinkAsync([ActivityTrigger] DeltaLinkUploaderRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaLinkUploaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);                       

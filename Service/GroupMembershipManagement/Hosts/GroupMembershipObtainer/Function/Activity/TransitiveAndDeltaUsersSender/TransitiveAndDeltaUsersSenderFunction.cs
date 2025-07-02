@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System.Threading.Tasks;
@@ -21,7 +20,7 @@ namespace Hosts.GroupMembershipObtainer
             _blobStorageRepository = blobStorageRepository;
         }
 
-        [FunctionName(nameof(TransitiveAndDeltaUsersSenderFunction))]
+        [Function(nameof(TransitiveAndDeltaUsersSenderFunction))]
         public async Task<string> SendUsersAsync([ActivityTrigger] TransitiveAndDeltaUsersSenderRequest request)
         {
             string filePath = null;
