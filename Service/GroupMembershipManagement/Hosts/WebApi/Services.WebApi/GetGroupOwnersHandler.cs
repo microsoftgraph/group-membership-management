@@ -34,27 +34,11 @@ namespace Services
                     owner.DisplayName ?? "",
                     owner.Mail ?? "")).ToList();
             }
-            catch (HttpRequestException httpEx)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"HTTP request error while retrieving group owners for group {request.GroupId}\n{httpEx.GetBaseException()}"
-                });
-                throw;
-            }
-            catch (TimeoutException timeoutEx)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Timeout error while retrieving group owners for group {request.GroupId}\n{timeoutEx.GetBaseException()}"
-                });
-                throw;
-            }
             catch (Exception ex)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Unable to retrieve group owners for group {request.GroupId}\n{ex.GetBaseException()}"
+                    Message = $"Unable to retrieve group owners for group {request.GroupId}\n{ex.Message}"
                 });
                 throw;
             }

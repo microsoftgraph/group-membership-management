@@ -605,7 +605,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
-                    new Claim("http://schemas.microsoft.com/identity/calls/objectidentifier", Guid.NewGuid().ToString())
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
                 })
             };
 

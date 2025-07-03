@@ -78,9 +78,18 @@ namespace WebApi.Controllers.v1.Destination
                 var response = await _getGroupOwnersRequestHandler.ExecuteAsync(new GetGroupOwnersRequest { GroupId = groupId });
                 return Ok(response.Owners);
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest($"Invalid group ID: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid("Insufficient permissions to access group owners");
+            }
             catch (Exception ex)
             {
-                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, 
+                               detail: "An error occurred while retrieving group owners");
             }
         }
 
