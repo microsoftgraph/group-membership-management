@@ -15,6 +15,9 @@ namespace Hosts.MessageSplitter
 {
     public class TopicMessageSenderFunction
     {
+        private const int MaxBatchSizeInBytes = 256 * 1024;
+        private const int ThrottleDelayMs = 500;
+
         private readonly ILoggingRepository _loggingRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IServiceBusTopicsRepository _membershipUpdaterSender;
@@ -77,10 +80,50 @@ namespace Hosts.MessageSplitter
                 messages.Add(message);
             }
 
-            await _membershipUpdaterSender.AddMessagesAsync(messages);
+            var currentBatch = new List<ServiceBusMessage>();
+            long currentBatchSize = 0;
+            int totalSent = 0;
+
+            foreach (var message in messages)
+            {
+                int messageSize = message.Body?.Length ?? 0;
+
+                if (messageSize > MaxBatchSizeInBytes)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Message {message.MessageId} exceeds the maximum batch size and will be sent individually.",
+                        RunId = request.MembershipRequest.SyncJob.RunId
+                    }, VerbosityLevel.INFO);
+
+                    await _membershipUpdaterSender.AddMessagesAsync(new List<ServiceBusMessage> { message });
+                    totalSent++;
+                    continue;
+                }
+
+                if (currentBatchSize + messageSize > MaxBatchSizeInBytes && currentBatch.Count > 0)
+                {
+
+                    await _membershipUpdaterSender.AddMessagesAsync(currentBatch);
+                    totalSent += currentBatch.Count;
+                    currentBatch.Clear();
+                    currentBatchSize = 0;
+                    await Task.Delay(ThrottleDelayMs);
+                }
+
+                currentBatch.Add(message);
+                currentBatchSize += messageSize;
+            }
+
+            if (currentBatch.Count > 0)
+            {
+                await _membershipUpdaterSender.AddMessagesAsync(currentBatch);
+                totalSent += currentBatch.Count;
+            }
+
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Sent {messages.Count} messages with {request.MembershipRequest.MembersToBeUpdated} total operations to {targetSubscription} membership updater",
+                Message = $"Sent {totalSent} messages with {request.MembershipRequest.MembersToBeUpdated} total operations to {targetSubscription} membership updater",
                 RunId = request.MembershipRequest.SyncJob.RunId
             }, VerbosityLevel.INFO);
 
