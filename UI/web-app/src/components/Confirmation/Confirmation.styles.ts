@@ -71,7 +71,7 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             borderStyle: 'solid',
             borderWidth: 1,
             borderColor: theme.palette.neutralQuaternary,
-            backgroud: theme.palette.white,
+            background: theme.palette.white,
             maxWidth: 500
         },
         dropdownOptionContainer: {

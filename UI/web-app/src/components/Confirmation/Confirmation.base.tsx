@@ -121,7 +121,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
 
   // Create dropdown options from group owners
   const groupOwnerOptions: IDropdownOption[] = React.useMemo(() => {
-    if (!groupOwners || groupOwners.length === 0) {
+    if (!groupOwners || !Array.isArray(groupOwners) || groupOwners.length === 0) {
       return [];
     }
     return groupOwners.map(owner => ({
@@ -404,8 +404,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 aria-label={strings.ManageMembership.labels.requestedOnBehalfOf}
                 placeholder={strings.ManageMembership.labels.requestedOnBehalfOfPlaceholder}
                 options={groupOwnerOptions}
-                selectedKey={lastModifiedOnBehalfOfDisplayName ? 
-                  groupOwners?.find(owner => owner.displayName === lastModifiedOnBehalfOfDisplayName)?.objectId : 
+                selectedKey={lastModifiedOnBehalfOfDisplayName && groupOwners ? 
+                  groupOwners.find(owner => owner.displayName === lastModifiedOnBehalfOfDisplayName)?.objectId : 
                   undefined}
                 onChange={handleGroupOwnerChange}
                 disabled={!isJobWriter || groupOwnerOptions.length === 0}
