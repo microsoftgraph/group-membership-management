@@ -180,6 +180,7 @@ module functionAppTemplate_GroupMembershipObtainer 'functionApp.bicep' = {
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
     appPackageContainerName: appPackageContainerNameReader.outputs.value
+    instanceMemoryMB: 4096
   }
   dependsOn: [
     servicePlanTemplate
