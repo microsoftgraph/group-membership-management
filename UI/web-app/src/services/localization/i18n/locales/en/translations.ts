@@ -180,6 +180,8 @@ export const strings: IStrings = {
         businessJustificationDescription: "Require users to provide business justification when requesting to manage a group or perform an update?",
         isDisclaimerEnabledTitle: "Is the initial visit disclaimer enabled?",
         isDisclaimerEnabledDescription: "Enable the disclaimer to be shown to users when they first visit GMM.",
+        isAutoApprovalForGroupBasedSyncsEnabledTitle: "Is auto-approval for group-based syncs enabled?",
+        isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
       }
     }
   },

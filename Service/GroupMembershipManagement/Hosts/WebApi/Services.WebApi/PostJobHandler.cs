@@ -5,6 +5,7 @@ using Models;
 using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
+using Services.Helpers;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
@@ -23,19 +24,22 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
+        private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
 
         public PostJobHandler(
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabaseDestinationAttributesRepository destinationAttributesRepository,
             IGraphGroupRepository graphGroupRepository,
             ILoggingRepository loggingRepository,
-            ISyncJobChangeRepository syncJobChangeRepository) : base(loggingRepository)
+            ISyncJobChangeRepository syncJobChangeRepository,
+            IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
+            _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }
 
         protected override async Task<PostJobResponse> ExecuteCoreAsync(PostJobRequest request)
@@ -46,7 +50,10 @@ namespace Services
             try
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
-                var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query);
+                
+                // Check if auto-approval feature is enabled
+                var isAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
+                var shouldAutoApprove = isAutoApprovalEnabled && await ShouldAutoApproveJobAsync(request.NewSyncJob.Query);
                 if (shouldAutoApprove)
                 {
                     newSyncJobEntity.Status = SyncStatus.Idle.ToString();
@@ -157,40 +164,16 @@ namespace Services
         {
             try
             {
-                var queryArray = JsonNode.Parse(query)?.AsArray();
-                if (queryArray == null || queryArray.Count == 0)
-                    return false;
-
-                var groupIds = new List<Guid>();
-
-                foreach (var item in queryArray)
-                {
-                    var sourceObject = item?.AsObject();
-                    if (sourceObject == null)
-                        return false;
-
-                    var typeValue = sourceObject["type"]?.GetValue<string>();
-                    if (typeValue != "GroupMembership")
-                        return false;
-
-                    var sourceValue = sourceObject["source"]?.GetValue<string>();
-                    if (string.IsNullOrEmpty(sourceValue) || !Guid.TryParse(sourceValue, out var groupId))
-                        return false;
-
-                    groupIds.Add(groupId);
-                }
-
-                if (groupIds.Count == 0)
+                var groupIds = JsonParser.GetGroupMembershipSourceIds(query);
+                if (groupIds == null)
                     return false;
 
                 var groups = await _graphGroupRepository.GetGroupsAsync(groupIds);
                 
-                foreach (var group in groups)
+                var hiddenGroupFound = groups.Any(group => string.Equals(group.Visibility, "HiddenMembership", StringComparison.OrdinalIgnoreCase));
+                if (hiddenGroupFound)
                 {
-                    if (string.Equals(group.Visibility, "HiddenMembership", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
@@ -210,6 +193,22 @@ namespace Services
             }
         }
 
+        private async Task<bool> IsAutoApprovalForGroupBasedSyncsEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled);
+                return setting != null && setting.SettingValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error retrieving auto-approval setting: {ex.Message}"
+                });
+                return false;
+            }
+        }
 
         private static SyncJob MapSyncJobDTOtoEntity(NewSyncJobDTO syncJob)
         {

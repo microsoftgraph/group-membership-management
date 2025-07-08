@@ -707,6 +707,10 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
+            
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions))
+                .ReturnsAsync(() => new Setting { SettingKey = SettingKey.CanReviewOwnSubmissions, SettingValue = "false" });
+
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
@@ -716,15 +720,13 @@ namespace Services.Tests
                     SyncJobChangeReason.SubmissionApproved.ToString())
             };
 
-            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions))
-                .ReturnsAsync(() => new Setting { SettingKey = SettingKey.CanReviewOwnSubmissions, SettingValue = "false" });
-
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
             var syncJobChangeByUserId = new SyncJobChange
             {
-                ChangedByObjectId = userId
+                ChangedByObjectId = userId,
+                ChangeReason = SyncJobChangeReason.Update.ToString()
             };
             _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => syncJobChangeByUserId);

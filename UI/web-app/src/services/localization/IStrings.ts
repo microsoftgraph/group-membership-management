@@ -177,6 +177,8 @@ export type IStrings = {
         businessJustificationDescription: string;
         isDisclaimerEnabledTitle: string;
         isDisclaimerEnabledDescription: string;
+        isAutoApprovalForGroupBasedSyncsEnabledTitle: string;
+        isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
       }
     }
   },

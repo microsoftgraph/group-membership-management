@@ -181,6 +181,8 @@ export const strings: IStrings = {
         businessJustificationDescription: "¿Debería GMM requerir una justificación de negocio para la administración de la membresía o realizar algun cambio?",
         isDisclaimerEnabledTitle: "¿Está habilitado el aviso de visita inicial?",
         isDisclaimerEnabledDescription: "Habilitar el aviso para que se muestre a los usuarios cuando visiten GMM por primera vez.",
+        isAutoApprovalForGroupBasedSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para sincronizaciones basadas en grupos?",
+        isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
       }
     }
   },

@@ -178,6 +178,15 @@ export const selectIsDisclaimerEnabled = (state: RootState) => {
   return isDisclaimerEnabledSetting ? isDisclaimerEnabledSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsAutoApprovalForGroupBasedSyncsEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isAutoApprovalForGroupBasedSyncsEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled);
+  return isAutoApprovalForGroupBasedSyncsEnabledSetting ? isAutoApprovalForGroupBasedSyncsEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

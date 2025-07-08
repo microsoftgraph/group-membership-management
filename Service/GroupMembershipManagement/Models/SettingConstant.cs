@@ -18,6 +18,7 @@ namespace Models
             { SettingKey.CreateGroupFeatureEnabled, Guid.Parse("A4B0C3E1-7F8D-4E9F-9A2C-5B6A0B8D7F1B") },
             { SettingKey.IsBusinessJustificationRequired, Guid.Parse("CDE677B2-F55C-4AD8-AB09-DE59F87AA5EE") },
             { SettingKey.IsDisclaimerEnabled, Guid.Parse("99D83E89-9507-4DC5-AC22-C8962B936B67") },
+            { SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, Guid.Parse("B2C4E6F8-1A3D-4C7E-9F2B-5A8C0D6E9F2A") },
         };
     }
 }

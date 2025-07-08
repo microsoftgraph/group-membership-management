@@ -10,6 +10,7 @@ export const enum SettingKey {
     CreateGroupFeatureEnabled = 5,
     IsBusinessJustificationRequired = 6,
     IsDisclaimerEnabled = 7,
+    IsAutoApprovalForGroupBasedSyncsEnabled = 8,
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -21,4 +22,5 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.CreateGroupFeatureEnabled]: 'CreateGroupFeatureEnabled',
     [SettingKey.IsBusinessJustificationRequired]: 'IsBusinessJustificationRequired',
     [SettingKey.IsDisclaimerEnabled]: 'IsDisclaimerEnabled',
+    [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'IsAutoApprovalForGroupBasedSyncsEnabled',
 };

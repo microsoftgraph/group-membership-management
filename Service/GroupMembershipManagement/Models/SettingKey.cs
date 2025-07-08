@@ -13,5 +13,6 @@ namespace Models
         CreateGroupFeatureEnabled = 5,
         IsBusinessJustificationRequired = 6,
         IsDisclaimerEnabled = 7,
+        IsAutoApprovalForGroupBasedSyncsEnabled = 8,
     }
 }
