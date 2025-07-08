@@ -21,7 +21,9 @@ import {
   PersonaSize,
   IPersonaSharedProps,
   Label,
-  TextField
+  TextField,
+  Spinner,
+  SpinnerSize
 } from '@fluentui/react';
 
 import {
@@ -387,6 +389,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const [loadingJobChanges, setLoadingJobChanges] = useState(true);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [rejectionFeedback, setRejectionFeedback] = useState('');
+  const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
 
   useEffect(() => {
     setJobStatus(job?.status ?? '');
@@ -458,15 +461,19 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const handleRejectDialogClose = () => {
     setShowRejectionDialog(false);
     setRejectionFeedback('');
+    setIsSubmittingRejection(false);
   };
 
   const handleRejectSubmission = async () => {
+    setIsSubmittingRejection(true);
     try {
       await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback);
       resolveReview();
       setShowRejectionDialog(false);
       setRejectionFeedback('');
+      setIsSubmittingRejection(false);
     } catch (error) {
+      setIsSubmittingRejection(false);
       throw new Error('Failed to reject submission');
     }
   };
@@ -625,7 +632,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       {/* Rejection Dialog */}
       <Dialog
         hidden={!showRejectionDialog}
-        onDismiss={handleRejectDialogClose}
+        onDismiss={isSubmittingRejection ? undefined : handleRejectDialogClose}
         dialogContentProps={{
           type: DialogType.normal,
           title: strings.JobDetails.labels.rejectionDialogTitle,
@@ -643,13 +650,18 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           onChange={(_, newValue) => setRejectionFeedback(newValue || '')}
           placeholder={strings.JobDetails.labels.rejectionReasonPlaceholder}
           required
+          disabled={isSubmittingRejection}
         />
         <DialogFooter>
           <PrimaryButton
             onClick={handleRejectSubmission}
-            text={strings.JobDetails.labels.submitRejection}
-            disabled={!rejectionFeedback.trim()}
-          />
+            disabled={!rejectionFeedback.trim() || isSubmittingRejection}
+          >
+            {isSubmittingRejection && (
+              <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+            )}
+            {isSubmittingRejection ? strings.JobDetails.labels.submittingRejection : strings.JobDetails.labels.submitRejection}
+          </PrimaryButton>
         </DialogFooter>
       </Dialog>
     </div>

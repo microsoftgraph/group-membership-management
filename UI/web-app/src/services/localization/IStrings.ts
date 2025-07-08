@@ -227,6 +227,7 @@ export type IStrings = {
       rejectionReasonLabel: string;
       rejectionReasonPlaceholder: string;
       submitRejection: string;
+      submittingRejection: string;
       removeGMM: string;
       removeGMMWarning: string;
       removeGMMConfirmation: string;

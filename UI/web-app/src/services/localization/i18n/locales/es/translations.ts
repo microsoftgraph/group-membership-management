@@ -231,6 +231,7 @@ export const strings: IStrings = {
       rejectionReasonLabel: 'Razón del rechazo',
       rejectionReasonPlaceholder: 'Ingresa la razón para rechazar esta solicitud...',
       submitRejection: 'Enviar',
+      submittingRejection: 'Enviando...',
       removeGMM: 'Dejar de administrar con GMM',
       removeGMMWarning: '¿Estás seguro de que deseas dejar de administrar este grupo con GMM? Deberás eliminar manualmente a GMM de los dueños del grupo.',
       removeGMMConfirmation: 'Confirmar (Liga se abrirá en una nueva pestaña.)',
