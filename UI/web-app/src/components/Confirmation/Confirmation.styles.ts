@@ -49,20 +49,6 @@ export const getStyles = (props: IConfirmationStyleProps): IConfirmationStyles =
             display: 'flex',
             alignItems: 'center'
         },
-        textField: {
-            fontWeight: 300,
-            fontSize: 16,
-            fontFamily: 'Segoe UI',
-            borderRadius: 4,
-            borderStyle: 'solid',
-            borderWidth: 1,
-            borderColor: theme.palette.neutralQuaternary,
-            minWidth: 100,
-            width: '20%'
-        },
-        textFieldGroup: {
-            border: 'none'
-        },
         valuesDropdown: {
             maxWidth: 500
         },
