@@ -2,7 +2,7 @@ import { Group } from "../../models/Group";
 import { IFilterPart } from "../../models/IFilterPart";
 
 export function containsSqlExpression(filter: string): boolean {
-  const sqlExpressions = [' BETWEEN ', ' LIKE ', ' NOT LIKE '];
+  const sqlExpressions = [' BETWEEN ', ' LIKE ', ' NOT LIKE ', ' IS ', ' IS NOT '];
   const regex = new RegExp(`(${sqlExpressions.join('|').trim()})`, 'i');
   return regex.test(filter);
 };
