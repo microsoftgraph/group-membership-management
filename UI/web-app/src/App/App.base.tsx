@@ -24,7 +24,7 @@ import { jsxFormat } from '../utils/stringUtils';
 import { InfoWord } from '../components/InfoWord';
 import { fetchServiceStatus } from '../store/operations.api';
 import { selectOperationError } from '../store/operations.slice';
-import { MaintenancePage } from '../components/MaintenancePage';
+import { Maintenance } from '../pages/Maintenance/Maintenance';
 
 
 const getClassNames = classNamesFunction<IAppStyleProps, IAppStyles>();
@@ -88,7 +88,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
         <AppHeader />
         <div className={classNames.content}>
           {operationStatusError === 'Failed to fetch service status.' ?
-          (<MaintenancePage />) :
+          (<Maintenance />) :
           (
             hasAccess ?
               <>

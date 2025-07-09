@@ -12,7 +12,7 @@ import './index.css';
 
 import { App } from './App';
 import { AdminConfig, JobsPage, JobDetails, OwnerPage, ManageMembership, NotFound } from './pages';
-import { MaintenanceCheckWrapper } from './components/MaintenanceCheckWrapper';
+import { MaintenanceCheckWrapper } from './pages/Maintenance/MaintenanceCheckWrapper';
 import { store } from './store';
 
 const connectionString = process.env.REACT_APP_APPINSIGHTS_CONNECTIONSTRING;
