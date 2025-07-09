@@ -31,7 +31,7 @@ export const MaintenanceBase: React.FunctionComponent<IMaintenanceProps> = (
   return (
     <div className={classNames.root}>
       <div className={classNames.container}>
-        <Icon iconName="Settings" className={classNames.icon} />
+        <Icon iconName="Settings" className={classNames.icon} aria-hidden="true"/>
         <Text variant="xxLarge" className={classNames.title}>
           {strings.maintenanceTitle}
         </Text>
