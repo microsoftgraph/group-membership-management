@@ -182,6 +182,8 @@ export const strings: IStrings = {
         isDisclaimerEnabledDescription: "Enable the disclaimer to be shown to users when they first visit GMM.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "Is auto-approval for group-based syncs enabled?",
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve single SqlMembership sync jobs when the manager ID matches the requestor's onPremisesImmutableId.",
       }
     }
   },

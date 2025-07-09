@@ -179,6 +179,8 @@ export type IStrings = {
         isDisclaimerEnabledDescription: string;
         isAutoApprovalForGroupBasedSyncsEnabledTitle: string;
         isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: string;
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: string;
       }
     }
   },

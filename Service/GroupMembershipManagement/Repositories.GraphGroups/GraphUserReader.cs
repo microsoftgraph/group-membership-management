@@ -57,7 +57,8 @@ namespace Repositories.GraphGroups
                 if (user != null) userDetails = new AzureADUser
                 {
                     ObjectId = Guid.Parse(user.Id),
-                    UserPrincipalName = user.UserPrincipalName
+                    UserPrincipalName = user.UserPrincipalName,
+                    OnPremisesImmutableId = user.OnPremisesImmutableId
                 };
 
                 if (includeMailProperty)

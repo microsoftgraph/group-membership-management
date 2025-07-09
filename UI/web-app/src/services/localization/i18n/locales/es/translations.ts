@@ -183,6 +183,8 @@ export const strings: IStrings = {
         isDisclaimerEnabledDescription: "Habilitar el aviso para que se muestre a los usuarios cuando visiten GMM por primera vez.",
         isAutoApprovalForGroupBasedSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para sincronizaciones basadas en grupos?",
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
+        isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización SqlMembership únicos cuando el ID del gerente coincide con el onPremisesImmutableId del solicitante.",
       }
     }
   },

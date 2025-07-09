@@ -53,7 +53,8 @@ namespace Services
                 
                 // Check if auto-approval feature is enabled
                 var isAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
-                var shouldAutoApprove = isAutoApprovalEnabled && await ShouldAutoApproveJobAsync(request.NewSyncJob.Query);
+                var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
+                var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query, request.UserIdentity, isAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
                 if (shouldAutoApprove)
                 {
                     newSyncJobEntity.Status = SyncStatus.Idle.ToString();
@@ -65,7 +66,7 @@ namespace Services
 
                     await _loggingRepository.LogMessageAsync(new LogMessage
                     {
-                        Message = $"Job auto-approved: All source parts are GroupMembership with acceptable visibility."
+                        Message = $"Job auto-approved based on configured auto-approval criteria."
                     });
                 }
 
@@ -160,12 +161,49 @@ namespace Services
             return response;
         }
 
-        private async Task<bool> ShouldAutoApproveJobAsync(string query)
+        private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled)
         {
             try
             {
+                // Check for GroupMembership auto-approval scenario (only if enabled)
+                if (isGroupBasedAutoApprovalEnabled)
+                {
+                    var groupMembershipApproval = await ShouldAutoApproveGroupMembershipJobAsync(query);
+                    if (groupMembershipApproval)
+                        return true;
+                }
+
+                // Check for SqlMembership manager auto-approval scenario (only if enabled)
+                if (isOrgLeaderAutoApprovalEnabled)
+                {
+                    var sqlMembershipApproval = await ShouldAutoApproveSqlMembershipJobAsync(query, userIdentity);
+                    if (sqlMembershipApproval)
+                        return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error during auto-approval check: {ex.Message}"
+                });
+                return false;
+            }
+        }
+
+        private async Task<bool> ShouldAutoApproveGroupMembershipJobAsync(string query)
+        {
+            try
+            {
+                // Use JsonParser to check if this is a GroupMembership-only query
+                if (!JsonParser.IsGroupMembershipOnlyQuery(query))
+                    return false;
+
+                // Get the group IDs to check visibility
                 var groupIds = JsonParser.GetGroupMembershipSourceIds(query);
-                if (groupIds == null)
+                if (groupIds == null || groupIds.Count == 0)
                     return false;
 
                 var groups = await _graphGroupRepository.GetGroupsAsync(groupIds);
@@ -187,9 +225,59 @@ namespace Services
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Error during auto-approval check: {ex.Message}"
+                    Message = $"Error during GroupMembership auto-approval check: {ex.Message}"
                 });
                 return false;
+            }
+        }
+
+        private async Task<bool> ShouldAutoApproveSqlMembershipJobAsync(string query, string userIdentity)
+        {
+            try
+            {
+                var userDetails = await GetUserOnPremisesImmutableIdAsync(userIdentity);
+                if (string.IsNullOrEmpty(userDetails))
+                    return false;
+
+                // Parse the user's onPremisesImmutableId as manager ID
+                if (!int.TryParse(userDetails, out var userImmutableId))
+                    return false;
+
+                // Use JsonParser to check if this is a single SqlMembership query with matching manager ID
+                if (!JsonParser.IsSingleSqlMembershipQueryWithManagerId(query, userImmutableId))
+                    return false;
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Auto-approval granted: Single SqlMembership query with manager ID matching requestor's onPremisesImmutableId."
+                });
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error during SqlMembership auto-approval check: {ex.Message}"
+                });
+                return false;
+            }
+        }
+
+        private async Task<string> GetUserOnPremisesImmutableIdAsync(string userIdentity)
+        {
+            try
+            {
+                var user = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentity, false);
+                return user?.OnPremisesImmutableId;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error retrieving user onPremisesImmutableId: {ex.Message}"
+                });
+                return null;
             }
         }
 
@@ -205,6 +293,23 @@ namespace Services
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = $"Error retrieving auto-approval setting: {ex.Message}"
+                });
+                return false;
+            }
+        }
+
+        private async Task<bool> IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
+                return setting != null && setting.SettingValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error retrieving org leader auto-approval setting: {ex.Message}"
                 });
                 return false;
             }

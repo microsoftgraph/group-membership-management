@@ -18,6 +18,7 @@ namespace Models
         public string UserPrincipalName { get; set; }
 
         public string DisplayName { get; set; }
+        public string OnPremisesImmutableId { get; set; }
 
         public virtual object Properties { get; set; }
 

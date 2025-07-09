@@ -92,6 +92,9 @@ namespace Services.Tests
             _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
                                       .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
 
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
             _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
                                     .ReturnsAsync(() => _groups);
 
@@ -857,6 +860,482 @@ namespace Services.Tests
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
                 change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        // New tests for org leader auto-approval scenarios
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledAndMatchingManagerIdTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup group-based auto-approval setting to disabled (ensure it doesn't interfere)
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user with onPremisesImmutableId matching manager ID
+            var userOnPremisesImmutableId = "12345";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with single SqlMembership query where manager ID matches user's onPremisesImmutableId
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was auto-approved (status should be Idle)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.Idle.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with OnboardingAutoApproved reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButNonMatchingManagerIdTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user with onPremisesImmutableId different from manager ID
+            var userOnPremisesImmutableId = "12345";
+            var differentManagerId = "67890";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with single SqlMembership query where manager ID does NOT match user's onPremisesImmutableId
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{differentManagerId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalDisabledTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to disabled (default)
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            // Setup user with onPremisesImmutableId matching manager ID
+            var userOnPremisesImmutableId = "12345";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with single SqlMembership query where manager ID matches user's onPremisesImmutableId
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButMultipleSqlMembershipQueriesTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user with onPremisesImmutableId
+            var userOnPremisesImmutableId = "12345";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with multiple SqlMembership queries (should not auto-approve)
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}},{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButNonSqlMembershipQueryTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user with onPremisesImmutableId
+            var userOnPremisesImmutableId = "12345";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with non-SqlMembership query (e.g., GroupMembership)
+            var groupId = Guid.NewGuid();
+            _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButUserWithoutOnPremisesImmutableIdTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user without onPremisesImmutableId (null or empty)
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = null // User has no onPremisesImmutableId
+                                });
+
+            // Setup sync job with single SqlMembership query
+            var managerId = "12345";
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithBothAutoApprovalSettingsEnabledButOnlyGroupBasedMatches_TestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup both auto-approval settings to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup groups with acceptable visibility
+            var groupId1 = Guid.NewGuid();
+            var groupId2 = Guid.NewGuid();
+            _groups.AddRange(new List<AzureADGroup>
+            {
+                new AzureADGroup { ObjectId = groupId1, Visibility = "Public" },
+                new AzureADGroup { ObjectId = groupId2, Visibility = "Private" }
+            });
+
+            // Setup user with onPremisesImmutableId
+            var userOnPremisesImmutableId = "12345";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userUpn, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with GroupMembership query (should trigger group-based auto-approval)
+            _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was auto-approved (status should be Idle)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.Idle.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with OnboardingAutoApproved reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithBothAutoApprovalSettingsEnabledButOnlyOrgLeaderMatches_TestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup both auto-approval settings to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user with onPremisesImmutableId matching manager ID
+            var userOnPremisesImmutableId = "12345";
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = userOnPremisesImmutableId 
+                                });
+
+            // Setup sync job with single SqlMembership query where manager ID matches user's onPremisesImmutableId
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was auto-approved (status should be Idle)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.Idle.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with OnboardingAutoApproved reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
         }
     }
 }

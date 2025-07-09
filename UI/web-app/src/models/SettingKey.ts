@@ -11,6 +11,7 @@ export const enum SettingKey {
     IsBusinessJustificationRequired = 6,
     IsDisclaimerEnabled = 7,
     IsAutoApprovalForGroupBasedSyncsEnabled = 8,
+    IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = 9,
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -23,4 +24,5 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.IsBusinessJustificationRequired]: 'IsBusinessJustificationRequired',
     [SettingKey.IsDisclaimerEnabled]: 'IsDisclaimerEnabled',
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'IsAutoApprovalForGroupBasedSyncsEnabled',
+    [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled',
 };

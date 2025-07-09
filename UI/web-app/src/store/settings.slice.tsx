@@ -187,6 +187,15 @@ export const selectIsAutoApprovalForGroupBasedSyncsEnabled = (state: RootState) 
   return isAutoApprovalForGroupBasedSyncsEnabledSetting ? isAutoApprovalForGroupBasedSyncsEnabledSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
+  return isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting ? isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

@@ -14,5 +14,6 @@ namespace Models
         IsBusinessJustificationRequired = 6,
         IsDisclaimerEnabled = 7,
         IsAutoApprovalForGroupBasedSyncsEnabled = 8,
+        IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = 9,
     }
 }

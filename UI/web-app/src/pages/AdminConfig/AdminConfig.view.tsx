@@ -216,6 +216,13 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]}
       />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
+        title={strings.GeneralSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle}
+        description={strings.GeneralSettings.labels.isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
+        generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
+      />
     </div>
   );
 }
@@ -234,6 +241,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.IsBusinessJustificationRequired]: true,
     [SettingKey.IsDisclaimerEnabled]: true,
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
+    [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
   });
 
   useEffect(() => {
