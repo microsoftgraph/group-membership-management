@@ -264,6 +264,7 @@ export const strings: IStrings = {
       removeGMMError: 'Error al dejar de administrar con GMM.',
       submitterNotOwner: 'Esta solicitud fue rechazada ya que el solicitante ya no era propietario cuando se revisó la solicitud.',
       reviewerCannotReviewOwnSubmission: 'Esto no puede ser completado ya que no está permitido revisar revisar tu propia solicitud.',
+      rejectionError: 'Error al rechazar la solicitud. Por favor, inténtelo de nuevo.',
     },
     Panel: {
       dismissButtonAriaLabel: 'Cerrar panel de historial',

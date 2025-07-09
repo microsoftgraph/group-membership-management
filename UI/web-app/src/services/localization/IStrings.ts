@@ -257,6 +257,7 @@ export type IStrings = {
       removeGMMError: string;
       submitterNotOwner: string;
       reviewerCannotReviewOwnSubmission: string;
+      rejectionError: string;
     };
     Panel: {
       dismissButtonAriaLabel: string;

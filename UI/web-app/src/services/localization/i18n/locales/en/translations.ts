@@ -262,6 +262,7 @@ export const strings: IStrings = {
       removeGMMError: 'Error removing GMM management from this group:',
       submitterNotOwner: 'This submission was rejected because the requestor was no longer an owner when the submission was reviewed.',
       reviewerCannotReviewOwnSubmission: 'This cannot be completed because the reviewer cannot review their own submission.',
+      rejectionError: 'Failed to reject submission. Please try again.',
     },
     Panel: {
       dismissButtonAriaLabel: 'Dismiss job history panel',

@@ -390,6 +390,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [rejectionFeedback, setRejectionFeedback] = useState('');
   const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
+  const [rejectionError, setRejectionError] = useState<string | null>(null);
 
   useEffect(() => {
     setJobStatus(job?.status ?? '');
@@ -462,10 +463,12 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
     setShowRejectionDialog(false);
     setRejectionFeedback('');
     setIsSubmittingRejection(false);
+    setRejectionError(null);
   };
 
   const handleRejectSubmission = async () => {
     setIsSubmittingRejection(true);
+    setRejectionError(null);
     try {
       await updateJobStatus(SyncStatus.SubmissionRejected, SyncJobChangeReason.SubmissionRejected, rejectionFeedback);
       resolveReview();
@@ -474,7 +477,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       setIsSubmittingRejection(false);
     } catch (error) {
       setIsSubmittingRejection(false);
-      throw new Error('Failed to reject submission');
+      setRejectionError(strings.JobDetails.Errors.rejectionError);
     }
   };
 
@@ -642,6 +645,16 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           isBlocking: true
         }}
       >
+        {rejectionError && (
+          <MessageBar
+            messageBarType={MessageBarType.error}
+            isMultiline={false}
+            onDismiss={() => setRejectionError(null)}
+            dismissButtonAriaLabel={strings.close}
+          >
+            {rejectionError}
+          </MessageBar>
+        )}
         <TextField
           label={strings.JobDetails.labels.rejectionReasonLabel}
           multiline
