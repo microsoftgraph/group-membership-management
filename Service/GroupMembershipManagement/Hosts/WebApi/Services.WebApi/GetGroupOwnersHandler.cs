@@ -28,7 +28,7 @@ namespace Services
 
             try
             {
-                var owners = await _graphGroupRepository.GetGroupOwnersAsync(request.GroupId, 0);
+                var owners = await _graphGroupRepository.GetGroupOwnersAsync(request.GroupId);
                 response.Owners = owners.Select(owner => new GroupOwnerDTO(
                     owner.ObjectId,
                     owner.DisplayName ?? "",
