@@ -183,6 +183,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       {isJobTenantWriter && (
         <div className={classNames.toggleContainer}>
           <Toggle
+            id="advancedViewToggle"
             inlineLabel
             onText={strings.ManageMembership.labels.advancedView}
             offText={strings.ManageMembership.labels.advancedView}
@@ -195,6 +196,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       {!isAdvancedView ? (<>
         <div className={classNames.expandCollapseButton}>
           <ActionButton
+              id="expandCollapseAllButton"
               iconProps={{ iconName: allSourcePartsExpanded ? 'ChevronUp' : 'ChevronDown' }}
               onClick={handleExpandCollapseAll}
             >

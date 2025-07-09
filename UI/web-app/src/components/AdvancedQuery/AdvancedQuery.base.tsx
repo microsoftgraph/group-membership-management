@@ -220,6 +220,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     <div className={classNames.root}>
       {strings.ManageMembership.labels.query}
       <TextField
+        id="advancedQueryTextField"
         title={strings.ManageMembership.labels.query}
         styles={{ root: classNames.textField, fieldGroup: classNames.textFieldGroup }}
         multiline

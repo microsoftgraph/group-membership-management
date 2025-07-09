@@ -132,6 +132,67 @@ test('Create a group with AuthorizedSenders', { tag: '@main' }, async ({ page })
   console.log('✅ RequestedOnBehalfOf dropdown test completed successfully.');
 });
 
+test('Render textfield if query has unsupported operator', async ({ page }) => {
+  const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
+  const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+  await page.goto(url);
+  await page.waitForTimeout(10000);
+
+  await page.getByRole('button', { name: 'Manage Membership' }).click();
+  await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+  await page.getByText('Create a new group').click();
+  await page.getByPlaceholder('Enter the name of the group').click();
+
+  const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
+  console.log(`Group name: ${groupName}`);
+
+  // Fill group name
+  await page.getByPlaceholder('Enter the name of the group').fill(groupName);
+
+  // Select authorized senders
+  await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
+  await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('adele');
+  await page.getByRole('option', { name: 'Adele Vance' }).click();
+  await page.getByRole('combobox', { name: AUTHORIZED_SENDERS_LABEL }).fill('alex');
+  await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
+
+  // Create group
+  await page.getByRole('button', { name: 'Create group' }).click();
+  await page.waitForSelector('button:has-text("Next")'); // Wait for the "Next" button to appear
+
+  // Wait for the "Next" button to become enabled (up to 30 seconds)
+  await page.waitForFunction(
+    () => {
+      const nextButton = Array.from(document.querySelectorAll('button')).find(
+        (button) => button.textContent?.trim() === 'Next'
+      );
+      return nextButton && !nextButton.disabled;
+    },
+    { timeout: 30000 }
+  );
+
+  // Alternatively, using expect with locator
+  const nextButton = page.getByRole('button', { name: 'Next' });
+  await expect(nextButton).toBeEnabled({ timeout: 30000 });
+
+  // Navigate through steps
+  await page.getByRole('button', { name: 'Next' }).click();
+  await page.getByRole('button', { name: 'Next' }).click();
+  
+  // Fill in the advanced view textfield with unsupported IS operator
+  await page.locator(`#advancedViewToggle`).click();
+  await page.locator(`#advancedQueryTextField`).fill('[{"type":"SqlMembership","source":{"filter":"LocationAreaDetail_Code IS NULL"}}]');
+  
+  // Tab out to trigger validation
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(1000);
+  await page.locator(`#advancedViewToggle`).click();
+  await page.locator(`#expandCollapseAllButton`).click();
+  await expect(page.locator('#filterTextField')).toBeVisible();
+
+  console.log('✅ Render textfield if query has unsupported operator test completed successfully.');
+});
+
 // Reset group creation setting to original state if it was originally disabled
 test.afterAll(async ({ browser }) => {
   if (originalGroupCreationState === false) {

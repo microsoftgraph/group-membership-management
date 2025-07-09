@@ -2186,6 +2186,7 @@ const getOptions = (
         </TooltipHost>
         </div>
         <TextField
+          id="filterTextField"
           placeholder={strings.HROnboarding.filterPlaceHolder}
           multiline rows={3}
           resizable={true}
