@@ -659,14 +659,14 @@ function Set-GMMResources {
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
     $parameters = $parameterObject.parameters
 
-    # booleans
     $setRBACPermissions      = Get-Default -Value $parameters['setRBACPermissions'].value      -Default $false
     $createAppRegistrations  = Get-Default -Value $parameters['createAppRegistrations'].value  -Default $true
     $applyDBMigrations       = Get-Default -Value $parameters['applyDBMigrations'].value       -Default $true
     $skipAppRegistrationSetupIfAppExists = Get-Default -Value $parameters['skipAppRegistrationSetupIfAppExists'].value -Default $false
     $setRBACPermissionsBicep = Get-Default -Value $parameters['setRBACPermissionsBicep'].value -Default $false
     $createResourceGroups = Get-Default -Value $parameters['createResourceGroups'].value -Default $false
-    
+    $ipRangesToWhiteList = Get-Default -Value $parameters['IpRangesToWhiteList'].value -Default @()
+
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
     $teamsChannelAppCertificateName = Get-DefaultString -Value $parameters['teamsChannelAppCertificateName'].value -Default 'not-set'
@@ -674,7 +674,8 @@ function Set-GMMResources {
     $sharepointDomain               = Get-DefaultString -Value $parameters['sharepointDomain'].value               -Default 'not-set'
     $secondaryTenantId              = Get-DefaultString -Value $parameters['secondaryTenantId'].value -Default $null
 
-    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    $hostIpAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    $ipAddressesToWhiteList = $ipRangesToWhiteList + @($hostIpAddress)
     
     # deploy resource groups
     if ($createResourceGroups -eq $true) {
@@ -701,7 +702,7 @@ function Set-GMMResources {
 
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($prereqsResourceGroup) `
-        -ipAddress $ipAddress `
+        -ipAddresses $ipAddressesToWhiteList `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -Region $Location
 
@@ -742,7 +743,7 @@ function Set-GMMResources {
 
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($dataResourceGroup) `
-        -ipAddress $ipAddress `
+        -ipAddresses $ipAddressesToWhiteList `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -Region $Location
     
@@ -1017,7 +1018,7 @@ function Set-KeyVaultFirewallRules {
         [Parameter(Mandatory = $true)]
         [string[]]$ResourceGroups,
         [Parameter(Mandatory = $true)]
-        [string]$ipAddress,
+        [string[]]$ipAddresses,
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
@@ -1029,7 +1030,7 @@ function Set-KeyVaultFirewallRules {
     # Get IP rules from script
     . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
     $newIpRules = Get-Content "$ScriptsDirectory\ipRules.txt"
-    $newIpRules += $ipAddress
+    $newIpRules += $ipAddresses
 
     foreach ($resourceGroup in $ResourceGroups) {
         $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
