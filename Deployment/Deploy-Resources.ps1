@@ -167,14 +167,13 @@ function Get-TemplateParameters {
 
     $TemplateObject = Get-TemplateAsHashtable -TemplateFilePath $TemplateFilePath
     $ParametersObject = Get-TemplateAsHashtable -TemplateFilePath $ParametersFilePath
-
     $commonParametersObject = @{}
 
     # add those with a default value
     $TemplateObject.parameters.Keys | ForEach-Object {
         $parameter = $TemplateObject.parameters[$_]
         if ($parameter.Keys -contains "defaultValue") {
-            $commonParametersObject[$_] = $parameter.defaultValue
+            $commonParametersObject[$_] = @{ value = $parameter.defaultValue }
         }
     }
 
@@ -182,7 +181,7 @@ function Get-TemplateParameters {
     if ($AdditionalParameters.parameters.Keys.Count -gt 0) {
         $TemplateObject.parameters.Keys | ForEach-Object {
             if ($AdditionalParameters.parameters.Keys -contains $_) {
-                $commonParametersObject[$_] = $AdditionalParameters.parameters[$_].value
+                $commonParametersObject[$_] = @{ value = $AdditionalParameters.parameters[$_].value }
             }
         }
     }
@@ -190,7 +189,7 @@ function Get-TemplateParameters {
     # add (or overwrite) from the parameters file
     $TemplateObject.parameters.Keys | ForEach-Object {
         if ($ParametersObject.parameters.Keys -contains $_) {
-            $commonParametersObject[$_] = $ParametersObject.parameters[$_].value
+            $commonParametersObject[$_] = @{ value = $ParametersObject.parameters[$_].value }
         }
     }
 
@@ -259,6 +258,194 @@ function Set-AdminKeyVaultRoles {
         -KeyVaultName $keyVault.VaultName
 }
 
+function Get-BearerToken {
+    param (
+        [string]$Resource = "https://management.azure.com/"
+    )
+
+    $token = (Get-AzAccessToken -ResourceUrl $Resource).Token
+    if ($token -is [System.Security.SecureString]) {
+        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
+        try {
+            $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+        }
+        finally {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+    else {
+        $plainToken = $token
+    }
+    return $plainToken
+}
+
+function Start-ResourceDeployment {
+    param (
+        [Parameter(Mandatory = $true)][string]$SubscriptionId,
+        [Parameter(Mandatory = $true)][string]$TemplateFilePath,
+        [Parameter(Mandatory = $true)][string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)][string]$ResourceGroupName,
+        [Parameter(Mandatory = $false)][boolean]$IsResourceGroupCreation = $false,
+        [Parameter(Mandatory = $false)][string]$Location,
+        [Parameter(Mandatory = $false)][Hashtable]$AdditionalParameters = @{ parameters = @{} }
+    )
+
+    if ($IsResourceGroupCreation -eq $false -and [string]::IsNullOrWhiteSpace($ResourceGroupName)) {
+        throw "Start-ResourceDeployment: Parameter ResourceGroupName is required when parameter IsResourceGroupCreation is set to false."
+    }
+    elseif ($IsResourceGroupCreation -eq $true -and [string]::IsNullOrWhiteSpace($Location)) {
+        throw "Start-ResourceDeployment: Parameter Location is required when parameter IsResourceGroupCreation is set to true."
+    }
+
+    if (-not $IsResourceGroupCreation) {
+        Write-Host "Starting REST deployment to resource group: $ResourceGroupName"
+    }
+    else {
+        Write-Host "Starting REST deployment of resource groups."
+    }
+    
+    Write-Host "Using template file: $TemplateFilePath"
+    Write-Host "Using parameter file: $ParameterFilePath"
+
+    if (-not (Test-Path $TemplateFilePath)) { throw "Template file not found at path: $TemplateFilePath" }
+    if (-not (Test-Path $ParameterFilePath)) { throw "Parameter file not found at path: $ParameterFilePath" }
+
+    $deploymentName = "deployment-$(Get-Date -Format yyyyMMddHHmmss)"
+    $templateContent = Get-TemplateAsHashtable -TemplateFilePath $TemplateFilePath
+    $templateParameters = Get-TemplateParameters `
+        -TemplateFilePath $TemplateFilePath `
+        -ParametersFilePath $ParameterFilePath `
+        -AdditionalParameters $AdditionalParameters
+
+    $body = ""
+    $baseUri = ""
+
+    if ($IsResourceGroupCreation) {
+        $body = @{
+            location = $Location
+            properties = @{
+                mode = 'Incremental'
+                template = $templateContent
+                parameters = $templateParameters
+            }
+        } | ConvertTo-Json -Depth 30
+        $baseUri = "https://management.azure.com/subscriptions/$SubscriptionId/providers/Microsoft.Resources/deployments/$deploymentName"
+    }
+    else {
+        $body = @{
+            properties = @{
+                mode = 'Incremental'
+                template = $templateContent
+                parameters = $templateParameters
+            }
+        } | ConvertTo-Json -Depth 30
+        $baseUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$deploymentName"
+    }
+
+    $uri = "$($baseUri)?api-version=2025-03-01"
+    $token = Get-BearerToken
+    $headers = @{
+        Authorization = "Bearer $token"
+        'Content-Type' = 'application/json'
+    }
+
+    try {
+        Write-Host "Invoking deployment via REST API..."
+        $initialResponse = Invoke-RestMethod -Uri $uri -Method Put -Headers $headers -Body $body
+
+        $maxAttempts = 50
+        $delaySeconds = 15
+        $attempt = 0
+        $provisioningState = $initialResponse.properties.provisioningState
+
+        while ($provisioningState -in @("Accepted", "Running", "InProgress")) {
+            Start-Sleep -Seconds $delaySeconds
+            $attempt++
+
+            Write-Host "Polling deployment status (Attempt $attempt/$maxAttempts)..."
+            $statusResponse = Invoke-RestMethod -Uri $uri -Method Get -Headers $headers
+            $provisioningState = $statusResponse.properties.provisioningState
+            Write-Host "Current state: $provisioningState"
+
+            if ($attempt -ge $maxAttempts) {
+                throw "Deployment status check timed out after $maxAttempts attempts."
+            }
+        }
+
+        if ($provisioningState -ne "Succeeded") {
+            Write-Host "`n❌ Deployment failed. Final state: $provisioningState"
+
+            # Log top-level error
+            if ($statusResponse.properties.error) {
+                Write-Host "`n🔸 Top-Level Error details:"
+                Write-Host "    Error Code: $($statusResponse.properties.error.code)"
+                Write-Host "    Error Message: $($statusResponse.properties.error.message)"
+            }
+
+            # Fetch deployment operations
+            $opsUri = "$baseUri/operations?api-version=2025-03-01"
+            $opsResponse = Invoke-RestMethod -Uri $opsUri -Method Get -Headers $headers
+
+            $opsResponse.value | Where-Object { $_.properties.provisioningState -eq 'Failed' } | ForEach-Object {
+                Write-Host "`n🔸🔸 Failed operation: $($_.properties.targetResource.resourceName)"
+                Write-Host "        - Type: $($_.properties.targetResource.resourceType)"
+                Write-Host "        - Status: $($_.properties.provisioningState)"
+                Write-Host "        - Error: $($_.properties.statusMessage.error.message)"
+                $_.properties.statusMessage.error.details | ForEach-Object {
+                    Write-Host "           - Error Detail:"
+                    Write-Host "               - Code: $($_.code)"
+                    Write-Host "               - Message: $($_.message)"
+                }
+            }
+
+            throw "Deployment failed. See logs above."
+        }
+
+        Write-Host "`n✅ Deployment succeeded."
+        return $statusResponse
+    }
+    catch {
+        Write-Error "`n❌ Deployment failed unexpectedly: $_"
+        throw
+    }
+    finally {
+       # Clear sensitive token from memory
+        $token = $null
+        $headers = $null
+    }
+}
+
+function Set-ResourceGroups {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$Location,
+        [Parameter(Mandatory = $true)]
+        [string]$ResourceGroupTemplateDirectoryPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} },
+        [Parameter(Mandatory = $false)]
+        [bool] $SetRBACPermissions
+    )
+    
+    Write-Host "`nCreating resource groups:"
+    $templateFilePath = "$ResourceGroupTemplateDirectoryPath\resourceGroups.json"
+    Retry-Operation `
+        -Operation ${function:Start-ResourceDeployment} `
+        -OperationName "Create Resource Groups" `
+        -params @{
+        SubscriptionId          = $SubscriptionId
+        Location                = $Location
+        TemplateFilePath        = $templateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $AdditionalParameters
+        IsResourceGroupCreation = $true
+    }
+}
+
 function Set-PrereqResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -266,7 +453,9 @@ function Set-PrereqResources {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$TemplateFilePath,
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$PrereqsTemplateDirectoryPath,
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
@@ -275,24 +464,22 @@ function Set-PrereqResources {
         [bool] $SetRBACPermissions
     )
 
-    $directoryPath = $TemplateFilePath
-    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-
-    # deploy prereq resources
     Write-Host "`nCreating prereqs resources"
-    $prereqResourcesParameters = `
-        Get-TemplateParameters `
-        -TemplateFilePath "$directoryPath\prereqResources.json" `
-        -ParametersFilePath $ParameterFilePath `
-        -AdditionalParameters $AdditionalParameters
-
-    New-AzResourceGroupDeployment `
-        -ResourceGroupName $prereqsResourceGroup `
-        -TemplateFile "$directoryPath\prereqResources.json" `
-        -TemplateParameterObject $prereqResourcesParameters
+    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $templateFilePath = "$PrereqsTemplateDirectoryPath\prereqResources.json"
+    Retry-Operation `
+        -Operation ${function:Start-ResourceDeployment} `
+        -OperationName "Create prereqs resources" `
+        -params @{
+        ResourceGroupName       = $prereqsResourceGroup
+        SubscriptionId          = $SubscriptionId
+        TemplateFilePath        = $templateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $AdditionalParameters
+    }
 
     # grant permissions to prereqs key vault
-    if ($setRBACPermissions -eq $true) {
+    if ($SetRBACPermissions -eq $true) {
         $currentUser = Get-AzADUser -SignedIn
         Set-AdminKeyVaultRoles `
             -UserObjectId $currentUser.Id `
@@ -308,7 +495,9 @@ function Set-DataResources {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$TemplateFilePath,
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$DataTemplateDirectoryPath,
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
@@ -316,22 +505,20 @@ function Set-DataResources {
         [Parameter(Mandatory = $false)]
         [bool] $SetRBACPermissions
     )
-
+    
     Write-Host "`nCreating data resources"
-
-    $directoryPath = $TemplateFilePath
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-
-    $dataResourcesParameters = `
-        Get-TemplateParameters `
-        -TemplateFilePath "$directoryPath\dataResources.json" `
-        -ParametersFilePath $ParameterFilePath `
-        -AdditionalParameters $AdditionalParameters
-
-    New-AzResourceGroupDeployment `
-        -ResourceGroupName $dataResourceGroup `
-        -TemplateFile "$directoryPath\dataResources.json" `
-        -TemplateParameterObject $dataResourcesParameters
+    $templateFilePath = "$DataTemplateDirectoryPath\dataResources.json"
+    Retry-Operation `
+        -Operation ${function:Start-ResourceDeployment} `
+        -OperationName "Create data resources" `
+        -params @{
+        ResourceGroupName       = $dataResourceGroup
+        SubscriptionId          = $SubscriptionId
+        TemplateFilePath        = $templateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $AdditionalParameters
+    }
 
     # grant permissions to data key vault
     if ($setRBACPermissions -eq $true) {
@@ -350,28 +537,72 @@ function Set-ComputeResources {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$TemplateFilePath,
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$ComputeTemplateDirectoryPath,
         [Parameter(Mandatory = $true)]
         [string]$ParameterFilePath,
         [Parameter(Mandatory = $false)]
         [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
-    $directoryPath = $TemplateFilePath
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-
     Write-Host "`nCreating compute resources"
-    $computeResourcesParameters = `
-        Get-TemplateParameters `
-        -TemplateFilePath "$directoryPath\computeResources.json" `
-        -ParametersFilePath $ParameterFilePath `
-        -AdditionalParameters $AdditionalParameters
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $templateFilePath = "$ComputeTemplateDirectoryPath\computeResources.json"
+    Retry-Operation `
+        -Operation ${function:Start-ResourceDeployment} `
+        -OperationName "Create compute resources" `
+        -params @{
+        ResourceGroupName       = $computeResourceGroup
+        SubscriptionId          = $SubscriptionId
+        TemplateFilePath        = $templateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $AdditionalParameters
+    }
+}
 
-    New-AzResourceGroupDeployment `
-        -ResourceGroupName $computeResourceGroup `
-        -TemplateFile "$directoryPath\computeResources.json" `
-        -TemplateParameterObject $computeResourcesParameters
+function Set-ADFResources {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$ADFTemplateDirectoryPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath,
+        [Parameter(Mandatory = $false)]
+        [Hashtable]$AdditionalParameters = @{ parameters = @{} }
+    )
 
+    # Ensure ADF secrets are set in the Key Vault
+    write-Host "`nEnsuring ADF secrets are set in the Key Vault"
+    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
+    foreach ($secret in $adfDataSecrets) {
+        $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
+        if (-not $secretExists) {
+            $secretValue = New-Object System.Security.SecureString
+            "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
+            Set-AzKeyVaultSecret -VaultName $dataResourceGroup -Name $secret -SecretValue $secretValue
+        }
+    }
+
+    # Deploy ADF resources
+    Write-Host "`nCreating ADF resources"
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $templateFilePath = "$ADFTemplateDirectoryPath\adfHRResources.json"
+    Retry-Operation `
+        -Operation ${function:Start-ResourceDeployment} `
+        -OperationName "Create ADF resources" `
+        -params @{
+        ResourceGroupName       = $dataResourceGroup
+        SubscriptionId          = $SubscriptionId
+        TemplateFilePath        = $templateFilePath
+        ParameterFilePath       = $ParameterFilePath
+        AdditionalParameters    = $AdditionalParameters
+    }
 }
 
 function Get-DefaultString {
@@ -408,7 +639,6 @@ function Set-GMMResources {
 
     # deploy resources
     Write-Host "`nDeploying resources"
-    $directoryPath = $TemplateFilePath
 
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -448,31 +678,24 @@ function Set-GMMResources {
     
     # deploy resource groups
     if ($createResourceGroups -eq $true) {
-        Write-Host "`nCreating resource groups"
-        $resourceGroupsParameters = `
-            Get-TemplateParameters `
-            -TemplateFilePath "$directoryPath\resourceGroups.json" `
-            -ParametersFilePath $ParameterFilePath `
-            -AdditionalParameters $commonParametersObject
-
-        New-AzDeployment `
-            -TemplateFile "$directoryPath\resourceGroups.json" `
-            -TemplateParameterObject $resourceGroupsParameters `
-            -Location $Location
+        Set-ResourceGroups `
+            -SubscriptionId $SubscriptionId `
+            -Location $Location `
+            -ResourceGroupTemplateDirectoryPath $TemplateFilePath `
+            -ParameterFilePath $ParameterFilePath `
+            -AdditionalParameters $commonParametersObject `
+            -SetRBACPermissions $setRBACPermissions
     }
 
     # deploy prereq resources
-    Retry-Operation `
-        -Operation ${function:Set-PrereqResources} `
-        -OperationName "Create prereq resources" `
-        -params @{
-        SolutionAbbreviation    = $SolutionAbbreviation
-        EnvironmentAbbreviation = $EnvironmentAbbreviation
-        TemplateFilePath        = $TemplateFilePath
-        ParameterFilePath       = $ParameterFilePath
-        AdditionalParameters    = $commonParametersObject
-        SetRBACPermissions      = $setRBACPermissionsBicep
-    }
+    Set-PrereqResources `
+        -SolutionAbbreviation           $SolutionAbbreviation `
+        -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+        -SubscriptionId                 $SubscriptionId `
+        -PrereqsTemplateDirectoryPath   $TemplateFilePath `
+        -ParameterFilePath              $ParameterFilePath `
+        -AdditionalParameters           $commonParametersObject `
+        -SetRBACPermissions             $setRBACPermissionsBicep
 
     Start-Sleep -Seconds 10
 
@@ -506,17 +729,15 @@ function Set-GMMResources {
     }
    
     # deploy data resources
-    Retry-Operation `
-        -Operation ${function:Set-DataResources} `
-        -OperationName "Create data resources" `
-        -params @{
-        SolutionAbbreviation    = $SolutionAbbreviation
-        EnvironmentAbbreviation = $EnvironmentAbbreviation
-        TemplateFilePath        = $TemplateFilePath
-        ParameterFilePath       = $ParameterFilePath
-        AdditionalParameters    = $commonParametersObject
-        SetRBACPermissions      = $setRBACPermissionsBicep
-    }
+    Set-DataResources `
+        -SolutionAbbreviation       $SolutionAbbreviation `
+        -EnvironmentAbbreviation    $EnvironmentAbbreviation `
+        -SubscriptionId             $SubscriptionId `
+        -DataTemplateDirectoryPath  $TemplateFilePath `
+        -ParameterFilePath          $ParameterFilePath `
+        -AdditionalParameters       $commonParametersObject `
+        -SetRBACPermissions         $setRBACPermissionsBicep 
+
     Start-Sleep -Seconds 10
 
     Set-KeyVaultFirewallRules `
@@ -526,41 +747,24 @@ function Set-GMMResources {
         -Region $Location
     
     # deploy compute resources
-    Retry-Operation `
-        -Operation ${function:Set-ComputeResources} `
-        -OperationName "Create compute resources" `
-        -params @{
-        SolutionAbbreviation    = $SolutionAbbreviation
-        EnvironmentAbbreviation = $EnvironmentAbbreviation
-        TemplateFilePath        = $TemplateFilePath
-        ParameterFilePath       = $ParameterFilePath
-        AdditionalParameters    = $commonParametersObject
-    }
+    Set-ComputeResources `
+        -SolutionAbbreviation           $SolutionAbbreviation `
+        -EnvironmentAbbreviation        $EnvironmentAbbreviation `
+        -SubscriptionId                 $SubscriptionId `
+        -ComputeTemplateDirectoryPath   $TemplateFilePath `
+        -ParameterFilePath              $ParameterFilePath `
+        -AdditionalParameters           $commonParametersObject
 
     Start-Sleep -Seconds 10
 
     # deploy ADF resources
-    Write-Host "`nCreating ADF resources"
-    $adfResourcesParameters = `
-        Get-TemplateParameters `
-        -TemplateFilePath "$directoryPath\adfHRResources.json" `
-        -ParametersFilePath $ParameterFilePath `
-        -AdditionalParameters $commonParametersObject
-
-    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
-    foreach ($secret in $adfDataSecrets) {
-        $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
-        if (-not $secretExists) {
-            $secretValue = New-Object System.Security.SecureString
-            "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
-            Set-AzKeyVaultSecret -VaultName $dataResourceGroup -Name $secret -SecretValue $secretValue
-        }
-    }
-
-    New-AzResourceGroupDeployment `
-        -ResourceGroupName $dataResourceGroup `
-        -TemplateFile "$directoryPath\adfHRResources.json" `
-        -TemplateParameterObject $adfResourcesParameters
+    Set-ADFResources `
+        -SolutionAbbreviation       $SolutionAbbreviation `
+        -EnvironmentAbbreviation    $EnvironmentAbbreviation `
+        -SubscriptionId             $SubscriptionId `
+        -ADFTemplateDirectoryPath   $TemplateFilePath `
+        -ParameterFilePath          $ParameterFilePath `
+        -AdditionalParameters       $commonParametersObject
 
     Start-Sleep -Seconds 10
 
