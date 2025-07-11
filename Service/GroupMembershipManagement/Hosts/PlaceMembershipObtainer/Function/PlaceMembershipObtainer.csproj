@@ -4,7 +4,7 @@
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" VersionOverride="7.18.1" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" VersionOverride="5.16.2" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" />
