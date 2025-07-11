@@ -665,6 +665,7 @@ function Set-GMMResources {
     $skipAppRegistrationSetupIfAppExists = Get-Default -Value $parameters['skipAppRegistrationSetupIfAppExists'].value -Default $false
     $setRBACPermissionsBicep = Get-Default -Value $parameters['setRBACPermissionsBicep'].value -Default $false
     $createResourceGroups = Get-Default -Value $parameters['createResourceGroups'].value -Default $false
+    $skipAzureDataFactoryDeployment = Get-Default -Value $parameters['skipAzureDataFactoryDeployment'].value -Default $false
     $ipRangesToWhiteList = Get-Default -Value $parameters['IpRangesToWhiteList'].value -Default @()
 
     # strings
@@ -759,15 +760,20 @@ function Set-GMMResources {
     Start-Sleep -Seconds 10
 
     # deploy ADF resources
-    Set-ADFResources `
-        -SolutionAbbreviation       $SolutionAbbreviation `
-        -EnvironmentAbbreviation    $EnvironmentAbbreviation `
-        -SubscriptionId             $SubscriptionId `
-        -ADFTemplateDirectoryPath   $TemplateFilePath `
-        -ParameterFilePath          $ParameterFilePath `
-        -AdditionalParameters       $commonParametersObject
-
-    Start-Sleep -Seconds 10
+    if ($skipAzureDataFactoryDeployment -eq $false) {
+        Write-Host "`nCreating Azure Data Factory resources"
+        Set-ADFResources `
+            -SolutionAbbreviation       $SolutionAbbreviation `
+            -EnvironmentAbbreviation    $EnvironmentAbbreviation `
+            -SubscriptionId             $SubscriptionId `
+            -ADFTemplateDirectoryPath   $TemplateFilePath `
+            -ParameterFilePath          $ParameterFilePath `
+            -AdditionalParameters       $commonParametersObject
+        Start-Sleep -Seconds 10
+    }
+    else {
+        Write-Host "`nSkipping Azure Data Factory deployment as per configuration."
+    }
 
     Write-Host "`nResources deployed"
 
