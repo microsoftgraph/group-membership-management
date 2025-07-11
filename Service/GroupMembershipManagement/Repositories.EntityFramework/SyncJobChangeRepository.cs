@@ -84,6 +84,13 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
+        public async Task BulkSaveAsync(IEnumerable<SyncJobChange> syncJobChanges)
+        {
+            var entities = syncJobChanges.Select(MapModelToEntity).ToList();
+            _writeContext.Set<Entities.SyncJobChange>().AddRange(entities);
+            await _writeContext.SaveChangesAsync();
+        }
+
         public async Task UpdateSyncJobChangeAsync(SyncJobChange syncJobChange)
         {
             var entry = _writeContext.Set<Entities.SyncJobChange>().Add(MapModelToEntity(syncJobChange));

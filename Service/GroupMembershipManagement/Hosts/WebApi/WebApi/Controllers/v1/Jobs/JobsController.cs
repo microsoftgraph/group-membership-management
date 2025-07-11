@@ -90,10 +90,12 @@ namespace WebApi.Controllers.v1.Jobs
         {
             try
             {
-                var response = await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds));
-
+                var user = User;
                 var claimsIdentity = User.Identity as ClaimsIdentity;
                 var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value ?? Guid.Empty.ToString();
+                var displayName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? string.Empty;
+
+                var response = await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds, userId, displayName));
                 await _postResetRequestHandler.ExecuteAsync(new PostOperationRequest(ServiceOperations.Reschedule, Guid.Parse(userId)));
 
                 return Ok(response);

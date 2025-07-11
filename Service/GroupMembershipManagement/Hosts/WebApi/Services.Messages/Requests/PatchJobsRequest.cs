@@ -8,10 +8,14 @@ namespace Services.Messages.Requests
     public class PatchJobsRequest : RequestBase
     {
         public string[] SyncJobIds { get; }
+        public string UserIdentity { get; }
+        public string UserDisplayName { get; set; }
 
-        public PatchJobsRequest(string[] syncJobIds)
+        public PatchJobsRequest(string[] syncJobIds, string userIdentity, string userDisplayName)
         {
             SyncJobIds = syncJobIds;
+            UserIdentity = userIdentity;
+            UserDisplayName = userDisplayName;
         }
     }
 }

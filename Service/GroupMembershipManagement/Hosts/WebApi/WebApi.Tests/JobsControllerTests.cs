@@ -203,7 +203,8 @@ namespace Services.Tests
                                                  _httpContextAccessor.Object);
 
             _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
-                                                 _databaseSyncJobsRepository.Object);
+                                                 _databaseSyncJobsRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -575,7 +576,8 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
             _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
-                                                 _databaseSyncJobsRepository.Object);
+                                                 _databaseSyncJobsRepository.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -591,6 +593,7 @@ namespace Services.Tests
             var res = okResult.Value as PatchJobsResponse;
             Assert.IsNotNull(res);
             _databaseSyncJobsRepository.Verify(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>()), Times.Once);
+            _syncJobChangeRepository.Verify(x => x.BulkSaveAsync(It.IsAny<IEnumerable<SyncJobChange>>()), Times.Once);
         }
 
         [TestMethod]
