@@ -666,6 +666,7 @@ function Set-GMMResources {
     $setRBACPermissionsBicep = Get-Default -Value $parameters['setRBACPermissionsBicep'].value -Default $false
     $createResourceGroups = Get-Default -Value $parameters['createResourceGroups'].value -Default $false
     $skipAzureDataFactoryDeployment = Get-Default -Value $parameters['skipAzureDataFactoryDeployment'].value -Default $false
+    $OpenUIAfterDeployment = Get-Default -Value $parameters['OpenUIAfterDeployment'].value -Default $true
     $ipRangesToWhiteList = Get-Default -Value $parameters['IpRangesToWhiteList'].value -Default @()
 
     # strings
@@ -785,6 +786,8 @@ function Set-GMMResources {
         TenantDomain = $tenantDomain
         SharepointDomain = $sharepointDomain
         SetRBACPermissions = $setRBACPermissions
+        OpenUIAfterDeployment = $OpenUIAfterDeployment
+        $SkipSqlServerPermissionSetup = $skipSqlServerPermissionSetup
     }
 }
 
@@ -1842,9 +1845,11 @@ function Deploy-Resources {
     Start-Sleep -Seconds 10
 
     # open the web app
-    $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
-    if ($null -ne $staticWebApp) {
-        Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
-        Start-Process "https://$($staticWebApp.DefaultHostname)"
+    if ($response.OpenUIAfterDeployment -eq $true) {
+        $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
+        if ($null -ne $staticWebApp) {
+            Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
+            Start-Process "https://$($staticWebApp.DefaultHostname)"
+        }
     }
 }

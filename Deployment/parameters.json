@@ -362,6 +362,12 @@
         "description": "List of IP ranges or individual addresses to whitelist. Example value: ['192.168.1.1/32', '10.0.0.1'] (make sure to use double quotes)."
       }
     },
+    "OpenUIAfterDeployment": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to open the UI after deployment."
+      }
+    },
     "aiLocation": {
       "value": "westus3",
       "metadata": {
