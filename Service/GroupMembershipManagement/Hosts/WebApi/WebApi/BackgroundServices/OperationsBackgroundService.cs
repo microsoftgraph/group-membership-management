@@ -100,6 +100,11 @@ namespace WebApi.BackgroundServices
                                         Message = "Start operation completed."
                                     });
                         }
+                        else if (operationDetails.Operation == Operations.Reschedule)
+                        {
+                            await CallJobSchedulerAsync(operationDetails.RequestorId, cancellationToken);
+                            await SetStatusAsync(ServiceStatuses.Running, operationDetails.RequestorId);
+                        }
                     }
 
                     await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);

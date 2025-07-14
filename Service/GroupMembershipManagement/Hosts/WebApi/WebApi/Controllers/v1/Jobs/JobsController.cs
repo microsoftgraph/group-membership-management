@@ -11,6 +11,7 @@ using System.Security.Claims;
 using WebApi.Models.DTOs;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using SyncJobModel = Models.SyncJob;
+using ServiceOperations = Models.Operations;
 
 namespace WebApi.Controllers.v1.Jobs
 {
@@ -25,17 +26,20 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<PatchJobsRequest, PatchJobsResponse> _patchJobsRequestHandler;
         private readonly IRequestHandler<PostJobRequest, PostJobResponse> _postJobRequestHandler;
         private readonly IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> _getJobDetailsRequestHandler;
+        private readonly IRequestHandler<PostOperationRequest, PostOperationResponse> _postResetRequestHandler;
 
         public JobsController(
             IRequestHandler<GetJobsRequest, GetJobsResponse> getJobsRequestHandler,
             IRequestHandler<PatchJobsRequest, PatchJobsResponse> patchJobsRequestHandler,
             IRequestHandler<PostJobRequest, PostJobResponse> postJobRequestHandler,
-            IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobDetailsRequestHandler)
+            IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobDetailsRequestHandler,
+            IRequestHandler<PostOperationRequest, PostOperationResponse> postResetRequestHandler)
         {
             _getJobsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _patchJobsRequestHandler = patchJobsRequestHandler ?? throw new ArgumentNullException(nameof(patchJobsRequestHandler));
             _postJobRequestHandler = postJobRequestHandler ?? throw new ArgumentNullException(nameof(postJobRequestHandler));
             _getJobDetailsRequestHandler = getJobDetailsRequestHandler ?? throw new ArgumentNullException(nameof(getJobDetailsRequestHandler));
+            _postResetRequestHandler = postResetRequestHandler ?? throw new ArgumentNullException(nameof(postResetRequestHandler));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -86,7 +90,14 @@ namespace WebApi.Controllers.v1.Jobs
         {
             try
             {
-                var response = await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds));
+                var user = User;
+                var claimsIdentity = User.Identity as ClaimsIdentity;
+                var userId = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "http://schemas.microsoft.com/identity/claims/objectidentifier")?.Value ?? Guid.Empty.ToString();
+                var displayName = claimsIdentity?.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? string.Empty;
+
+                var response = await _patchJobsRequestHandler.ExecuteAsync(new PatchJobsRequest(syncJobIds, userId, displayName));
+                await _postResetRequestHandler.ExecuteAsync(new PostOperationRequest(ServiceOperations.Reschedule, Guid.Parse(userId)));
+
                 return Ok(response);
             }
             catch (Exception)

@@ -10,6 +10,8 @@ namespace Models
         Resetting,
         Stopping,
         Starting,
+        Rescheduled,
+        Rescheduling,
         Error
     }
 }

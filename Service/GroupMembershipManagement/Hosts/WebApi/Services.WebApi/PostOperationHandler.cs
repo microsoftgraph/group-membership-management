@@ -85,6 +85,7 @@ namespace Services.WebApi
                     Operations.Start => ServiceStatuses.Starting,
                     Operations.Stop => ServiceStatuses.Stopping,
                     Operations.Reset => ServiceStatuses.Resetting,
+                    Operations.Reschedule => ServiceStatuses.Rescheduling,
                     _ => throw new InvalidOperationException($"Invalid operation {request.Operation}")
                 };
 

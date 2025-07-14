@@ -1,10 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using System;
-using System.Threading.Tasks;
 using Models;
 using Models.SyncJobChange;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Repositories.Contracts
 {
@@ -27,6 +28,7 @@ namespace Repositories.Contracts
         /// SyncJobChanges should be immutable once created, so this will not update existing records.
         /// </remarks>
         Task Save(SyncJobChange syncJobChange);
+        Task BulkSaveAsync(IEnumerable<SyncJobChange> syncJobChanges);
         Task UpdateSyncJobChangeAsync(SyncJobChange syncJobChange);
 
         /// <summary>

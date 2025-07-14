@@ -7,6 +7,7 @@ namespace Models
     {
         Reset,
         Stop,
-        Start
+        Start,
+        Reschedule
     }
 }
