@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Azure.AI.OpenAI" />
     <PackageReference Include="Azure.Data.Tables" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" VersionOverride="7.18.1" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
     <PackageReference Include="Azure.Storage.Queues" />
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />

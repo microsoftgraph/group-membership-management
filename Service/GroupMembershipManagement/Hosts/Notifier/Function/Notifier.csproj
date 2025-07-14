@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="AdaptiveCards.Templating" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" />
-    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" VersionOverride="5.16.2" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" />
   </ItemGroup>
   <ItemGroup>
