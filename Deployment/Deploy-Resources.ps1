@@ -798,12 +798,11 @@ function Set-SqlServerFirewallRule {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$Location,
-        [Parameter(Mandatory = $true)]
-        [string]$ipAddress
+        [string]$Location
     )
 
     Write-Host "`nSetting SQL Server firewall rule"
+    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     $sqlIPRule = Get-AzSqlServerFirewallRule `
         -FirewallRuleName "InitialDeployment" `
         -ResourceGroupName $dataResourceGroup `
@@ -1709,7 +1708,6 @@ function Deploy-Resources {
     # define the resource groups
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
 
     $context = Get-AzContext
 
@@ -1740,8 +1738,7 @@ function Deploy-Resources {
     Set-SqlServerFirewallRule `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -Location $Location `
-        -ipAddress $ipAddress
+        -Location $Location
 
     # retrieve SQL connection strings
     # Basic connection string
