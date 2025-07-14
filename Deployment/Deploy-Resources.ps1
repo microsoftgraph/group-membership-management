@@ -672,6 +672,7 @@ function Set-GMMResources {
     $skipAzureDataFactoryDeployment = Get-Default -Value $parameters['skipAzureDataFactoryDeployment'].value -Default $false
     $OpenUIAfterDeployment = Get-Default -Value $parameters['OpenUIAfterDeployment'].value -Default $true
     $ipRangesToWhiteList = Get-Default -Value $parameters['IpRangesToWhiteList'].value -Default @()
+    $skipSqlServerPermissionSetup = Get-Default -Value $parameters['skipSqlServerPermissionSetup'].value -Default $false
 
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
@@ -791,7 +792,7 @@ function Set-GMMResources {
         SharepointDomain = $sharepointDomain
         SetRBACPermissions = $setRBACPermissions
         OpenUIAfterDeployment = $OpenUIAfterDeployment
-        $SkipSqlServerPermissionSetup = $skipSqlServerPermissionSetup
+        SkipSqlServerPermissionSetup = $skipSqlServerPermissionSetup
     }
 }
 

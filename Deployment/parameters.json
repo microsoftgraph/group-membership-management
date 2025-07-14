@@ -350,6 +350,12 @@
         "description": "Flag to skip the deployment of Azure Data Factory resources."
       }
     },
+    "skipSqlServerPermissionSetup": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip setting up Sql Server permissions."
+      }
+    },
     "createResourceGroups": {
       "value": false,
       "metadata": {
