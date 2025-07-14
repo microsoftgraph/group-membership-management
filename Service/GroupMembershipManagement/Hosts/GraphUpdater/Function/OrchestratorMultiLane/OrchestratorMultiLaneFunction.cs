@@ -290,9 +290,16 @@ namespace Hosts.GraphUpdater
 
                     var message = GetUsersDataMessage(groupMembership.Destination.ObjectId, jobState.TotalMembersToAdd, jobState.TotalMembersToRemove);
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, SyncJob = syncJob });
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                        CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                      syncStatus, 0, groupMembership.RunId));
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), 
+                                                    CreateJobStatusUpdaterRequest(
+                                                                      groupMembership.SyncJobId,
+                                                                      syncStatus,
+                                                                      0,
+                                                                      groupMembership.RunId,
+                                                                      jobState.TotalMembersAdded,
+                                                                      jobState.TotalMembersRemoved,
+                                                                      context.CurrentUtcDateTime));
+
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
                                         new TelemetryTrackerRequest { JobStatus = syncStatus, ResultStatus = resultStatus, RunId = syncJob.RunId });
 
@@ -461,6 +468,20 @@ namespace Hosts.GraphUpdater
                 JobId = jobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
+            };
+        }
+
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId, int? usersAdded = null, int? usersRemoved = null, DateTime? endTime = null)
+        {
+            return new JobStatusUpdaterRequest
+            {
+                RunId = runId,
+                JobId = jobId,
+                Status = syncStatus,
+                ThresholdViolations = thresholdViolations,
+                UsersAddedCount = usersAdded,
+                UsersRemovedCount = usersRemoved,
+                JobEndTime = endTime
             };
         }
 

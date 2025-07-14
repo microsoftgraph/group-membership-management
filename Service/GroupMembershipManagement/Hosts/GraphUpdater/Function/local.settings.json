@@ -21,6 +21,7 @@
     "actionableEmailProviderId": "",
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "serviceBusMembershipUpdatersTopic": "",
+    "serviceBusSyncJobUpdaterQueue": "",
     "serviceBusNotificationsQueue": "",
     "triggerSchedule": "0,30 * * * * *",
     "triggerDelay": "0",
