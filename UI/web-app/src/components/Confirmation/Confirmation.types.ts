@@ -16,8 +16,6 @@ import {
     itemTitle: IStyle;
     itemData: IStyle;
     labelContainer: IStyle;
-    textField: IStyle;
-    textFieldGroup: IStyle;
     dropdownTitle: IStyle;
     valuesDropdown: IStyle;
     dropdownOptionContainer: IStyle;
