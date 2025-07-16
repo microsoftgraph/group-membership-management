@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
-using System;
+using Models.ServiceBus;
 using System.Threading.Tasks;
 
 namespace Services.Contracts
 {
     public interface ISyncJobUpdaterService
     {
-        Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status);
+        Task UpdateSyncJobStatusAsync(JobStatusUpdateQueueMessage message);
     }
 }

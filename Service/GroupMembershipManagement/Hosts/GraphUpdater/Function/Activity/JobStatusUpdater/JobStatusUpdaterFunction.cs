@@ -53,7 +53,7 @@ namespace Hosts.GraphUpdater
                 {
                     RunId = request.RunId,
                     JobId = request.JobId,
-                    Status = request.Status,
+                    NewStatus = request.Status,
                     ThresholdViolations = request.ThresholdViolations,
                     UsersAddedCount = request.UsersAddedCount,
                     UsersRemovedCount = request.UsersRemovedCount,

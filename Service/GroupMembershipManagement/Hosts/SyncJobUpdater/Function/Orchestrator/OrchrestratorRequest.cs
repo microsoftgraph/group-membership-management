@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
+using Models.ServiceBus;
 
 namespace Hosts.SyncJobUpdater
 {
     public class OrchestratorRequest
     {
-        public SyncJob SyncJob { get; set; }
-        public string Status { get; set; }
+        public JobStatusUpdateQueueMessage Message { get; set; }
     }
 }

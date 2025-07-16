@@ -7,27 +7,27 @@ namespace Models.ServiceBus
         /// <summary>
         /// The unique identifier for the job run
         /// </summary>
-        public Guid RunId { get; set; }
+        public required Guid RunId { get; set; }
 
         /// <summary>
         /// The unique identifier for the sync job
         /// </summary>
-        public Guid JobId { get; set; }
+        public required Guid JobId { get; set; }
 
         /// <summary>
         /// The new status to set for the job
         /// </summary>
-        public SyncStatus Status { get; set; }
+        public required SyncStatus NewStatus { get; set; }
 
         /// <summary>
         /// The number of threshold violations for this job
         /// </summary>
-        public int ThresholdViolations { get; set; }
+        public int? ThresholdViolations { get; set; }
 
         /// <summary>
         /// The name of the function that triggered this update
         /// </summary>
-        public string UpdatedByFunction { get; set; }
+        public required string UpdatedByFunction { get; set; }
 
         /// <summary>
         /// Users added count for job history tracking
@@ -48,5 +48,9 @@ namespace Models.ServiceBus
         /// Job end time for duration calculation
         /// </summary>
         public DateTime? JobEndTime { get; set; }
+
+        /// Current sync job details
+        /// </summary>
+        public required SyncJob SyncJob { get; set; }
     }
 }

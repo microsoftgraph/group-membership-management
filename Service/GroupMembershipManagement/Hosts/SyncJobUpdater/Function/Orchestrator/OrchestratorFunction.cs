@@ -2,9 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
 using Repositories.Contracts;
-using System;
 using System.Threading.Tasks;
 
 namespace Hosts.SyncJobUpdater
@@ -19,31 +17,20 @@ namespace Hosts.SyncJobUpdater
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
-            if (mainRequest != null && mainRequest.SyncJob != null)
+            if (mainRequest?.Message != null)
             {
-                var syncJob = mainRequest.SyncJob;
-                var runId = syncJob.RunId.GetValueOrDefault(Guid.Empty);
-                var syncjobStatus = mainRequest.Status;
-                SyncStatus status;
+                var message = mainRequest.Message;
+                var runId = message.RunId;
+                
                 await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                        {
-                            RunId = runId,
-                            Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
-                            Verbosity = VerbosityLevel.DEBUG
-                        });
-                if (!string.Equals(syncjobStatus, "unknown", StringComparison.OrdinalIgnoreCase))
+                new LoggerRequest
                 {
-                    status = (SyncStatus)Enum.Parse(typeof(SyncStatus), syncjobStatus, true);
+                    RunId = runId,
+                    Message = $"{nameof(OrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
+                    Verbosity = VerbosityLevel.DEBUG
+                });
 
-                }
-                else
-                {
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"Job with Id {syncJob.Id} pass an unknown status. Marking job as {SyncStatus.Error}.", Verbosity = VerbosityLevel.DEBUG });
-                    return;
-                }
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = status });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), message);
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { RunId = runId, Message = $"{nameof(OrchestratorFunction)} function completed", Verbosity = VerbosityLevel.DEBUG });
             }
         }

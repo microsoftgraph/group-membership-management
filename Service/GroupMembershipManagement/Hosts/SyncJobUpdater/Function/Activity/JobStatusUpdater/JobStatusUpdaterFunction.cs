@@ -1,11 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.ServiceBus;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using Services.Contracts;
+using System;
 
 namespace Hosts.SyncJobUpdater
 {
@@ -21,13 +23,13 @@ namespace Hosts.SyncJobUpdater
         }
 
         [FunctionName(nameof(JobStatusUpdaterFunction))]
-        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
+        public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdateQueueMessage message)
         {
-            if (request.SyncJob != null)
+            if (message != null && message.JobId != Guid.Empty)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-                await _syncJobUpdaterService.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = message.RunId }, VerbosityLevel.DEBUG);
+                await _syncJobUpdaterService.UpdateSyncJobStatusAsync(message);
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = message.RunId }, VerbosityLevel.DEBUG);
             }
         }
     }

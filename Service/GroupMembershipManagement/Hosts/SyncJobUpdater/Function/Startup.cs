@@ -28,7 +28,8 @@ namespace Hosts.SyncJobUpdater
             {
                 return new SyncJobUpdaterService(
                     services.GetRequiredService<IDatabaseSyncJobsRepository>(),
-                    services.GetRequiredService<ILoggingRepository>()
+                    services.GetRequiredService<ILoggingRepository>(),
+                    services.GetRequiredService<ISyncJobHistoryRepository>()
                 );
             });
         }
