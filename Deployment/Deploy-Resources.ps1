@@ -630,6 +630,8 @@ function Set-GMMResources {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
         [string]$Location,
         [Parameter(Mandatory = $true)]
         [string]$TemplateFilePath,
@@ -639,6 +641,8 @@ function Set-GMMResources {
 
     # deploy resources
     Write-Host "`nDeploying resources"
+
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -659,14 +663,17 @@ function Set-GMMResources {
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
     $parameters = $parameterObject.parameters
 
-    # booleans
     $setRBACPermissions      = Get-Default -Value $parameters['setRBACPermissions'].value      -Default $false
     $createAppRegistrations  = Get-Default -Value $parameters['createAppRegistrations'].value  -Default $true
     $applyDBMigrations       = Get-Default -Value $parameters['applyDBMigrations'].value       -Default $true
     $skipAppRegistrationSetupIfAppExists = Get-Default -Value $parameters['skipAppRegistrationSetupIfAppExists'].value -Default $false
     $setRBACPermissionsBicep = Get-Default -Value $parameters['setRBACPermissionsBicep'].value -Default $false
     $createResourceGroups = Get-Default -Value $parameters['createResourceGroups'].value -Default $false
-    
+    $skipAzureDataFactoryDeployment = Get-Default -Value $parameters['skipAzureDataFactoryDeployment'].value -Default $false
+    $OpenUIAfterDeployment = Get-Default -Value $parameters['OpenUIAfterDeployment'].value -Default $true
+    $ipRangesToWhiteList = Get-Default -Value $parameters['IpRangesToWhiteList'].value -Default @()
+    $skipSqlServerPermissionSetup = Get-Default -Value $parameters['skipSqlServerPermissionSetup'].value -Default $false
+
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $parameters['graphAppCertificateName'].value        -Default 'not-set'
     $teamsChannelAppCertificateName = Get-DefaultString -Value $parameters['teamsChannelAppCertificateName'].value -Default 'not-set'
@@ -674,7 +681,8 @@ function Set-GMMResources {
     $sharepointDomain               = Get-DefaultString -Value $parameters['sharepointDomain'].value               -Default 'not-set'
     $secondaryTenantId              = Get-DefaultString -Value $parameters['secondaryTenantId'].value -Default $null
 
-    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    $hostIpAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    $ipAddressesToWhiteList = $ipRangesToWhiteList + @($hostIpAddress)
     
     # deploy resource groups
     if ($createResourceGroups -eq $true) {
@@ -701,7 +709,7 @@ function Set-GMMResources {
 
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($prereqsResourceGroup) `
-        -ipAddress $ipAddress `
+        -ipAddresses $ipAddressesToWhiteList `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -Region $Location
 
@@ -742,7 +750,7 @@ function Set-GMMResources {
 
     Set-KeyVaultFirewallRules `
         -ResourceGroups @($dataResourceGroup) `
-        -ipAddress $ipAddress `
+        -ipAddresses $ipAddressesToWhiteList `
         -ScriptsDirectory "$scriptsDirectory\Scripts" `
         -Region $Location
     
@@ -758,15 +766,20 @@ function Set-GMMResources {
     Start-Sleep -Seconds 10
 
     # deploy ADF resources
-    Set-ADFResources `
-        -SolutionAbbreviation       $SolutionAbbreviation `
-        -EnvironmentAbbreviation    $EnvironmentAbbreviation `
-        -SubscriptionId             $SubscriptionId `
-        -ADFTemplateDirectoryPath   $TemplateFilePath `
-        -ParameterFilePath          $ParameterFilePath `
-        -AdditionalParameters       $commonParametersObject
-
-    Start-Sleep -Seconds 10
+    if ($skipAzureDataFactoryDeployment -eq $false) {
+        Write-Host "`nCreating Azure Data Factory resources"
+        Set-ADFResources `
+            -SolutionAbbreviation       $SolutionAbbreviation `
+            -EnvironmentAbbreviation    $EnvironmentAbbreviation `
+            -SubscriptionId             $SubscriptionId `
+            -ADFTemplateDirectoryPath   $TemplateFilePath `
+            -ParameterFilePath          $ParameterFilePath `
+            -AdditionalParameters       $commonParametersObject
+        Start-Sleep -Seconds 10
+    }
+    else {
+        Write-Host "`nSkipping Azure Data Factory deployment as per configuration."
+    }
 
     Write-Host "`nResources deployed"
 
@@ -778,6 +791,8 @@ function Set-GMMResources {
         TenantDomain = $tenantDomain
         SharepointDomain = $sharepointDomain
         SetRBACPermissions = $setRBACPermissions
+        OpenUIAfterDeployment = $OpenUIAfterDeployment
+        SkipSqlServerPermissionSetup = $skipSqlServerPermissionSetup
     }
 }
 
@@ -788,12 +803,11 @@ function Set-SqlServerFirewallRule {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$Location,
-        [Parameter(Mandatory = $true)]
-        [string]$ipAddress
+        [string]$Location
     )
 
     Write-Host "`nSetting SQL Server firewall rule"
+    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     $sqlIPRule = Get-AzSqlServerFirewallRule `
         -FirewallRuleName "InitialDeployment" `
         -ResourceGroupName $dataResourceGroup `
@@ -1017,7 +1031,7 @@ function Set-KeyVaultFirewallRules {
         [Parameter(Mandatory = $true)]
         [string[]]$ResourceGroups,
         [Parameter(Mandatory = $true)]
-        [string]$ipAddress,
+        [string[]]$ipAddresses,
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
@@ -1029,7 +1043,7 @@ function Set-KeyVaultFirewallRules {
     # Get IP rules from script
     . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
     $newIpRules = Get-Content "$ScriptsDirectory\ipRules.txt"
-    $newIpRules += $ipAddress
+    $newIpRules += $ipAddresses
 
     foreach ($resourceGroup in $ResourceGroups) {
         $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
@@ -1430,10 +1444,16 @@ function Set-ConfigureWebApps {
 function Set-PublishUICode {
     param (
         [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$UIClientId,
         [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$UITenantId,
         [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$WebApiClientId,
         [Parameter(Mandatory = $true)]
         [string]$WebApiBaseUri,
@@ -1646,7 +1666,7 @@ function Test-ScriptDependencies {
     Write-Host "🎉 All dependencies verified successfully!" -ForegroundColor Green
 }
 
-function Deploy-Resources {
+function Initialize-ScriptDependencies {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
@@ -1655,27 +1675,10 @@ function Deploy-Resources {
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
         [string]$Location,
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $true)]
         [string]$SubscriptionId,
-        [Parameter(Mandatory = $true)]
-        [string]$TemplateFilesDirectory, # absolute path
-        [Parameter(Mandatory = $true)]
-        [string]$ParameterFilePath, # absolute path
         [Parameter(Mandatory = $false)]
-        [bool]$SkipResourceProvidersCheck = $false,
-        [Parameter(Mandatory = $false)]
-        [bool]$StartFunctions = $true,
-        [Parameter(Mandatory = $false)]
-        [bool]$AssertUserPermissions = $true,
-        [Parameter(Mandatory = $false)]
-        [bool] $SetUserAssignedManagedIdentityPermissions = $true,
-        [Parameter(Mandatory = $false)]
-        [System.Nullable[Guid]]$SecondaryTenantId,
-        [Parameter(Mandatory = $false)]
-        [bool]$IsInitialDeployment = $false,
-        [Parameter(Mandatory = $false)]
-        [ValidateSet("Credentials", "ServicePrincipal","Skip")]
-        [string]$ResetGMMType = "Skip"
+        [bool]$AssertUserPermissions = $true
     )
 
     Test-ScriptDependencies
@@ -1683,8 +1686,8 @@ function Deploy-Resources {
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
     Set-Subscription `
-        -ScriptsDirectory "$scriptsDirectory\scripts" `
-        -SubscriptionId $SubscriptionId
+            -ScriptsDirectory "$scriptsDirectory\scripts" `
+            -SubscriptionId $SubscriptionId
 
     if ($AssertUserPermissions -eq $true) {
         . ($scriptsDirectory + '\scripts\Assert-RbacPermissionsForDeployment.ps1')
@@ -1695,13 +1698,30 @@ function Deploy-Resources {
         . ($scriptsDirectory + '\scripts\Assert-MicrosoftGraphPermissions.ps1')
         Assert-MicrosoftGraphPermissions
     }
-    
-    # define the resource groups
-    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+}
 
-    $context = Get-AzContext
+function Deploy-Resources-Stage1 {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$Location,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilesDirectory, # absolute path
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath, # absolute path
+        [Parameter(Mandatory = $false)]
+        [bool]$SkipResourceProvidersCheck = $false,
+        [Parameter(Mandatory = $false)]
+        [bool]$IsInitialDeployment = $false
+    )
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
 
     if (!$SkipResourceProvidersCheck) {
         Set-ResourceProviders
@@ -1718,20 +1738,48 @@ function Deploy-Resources {
     $response = Set-GMMResources `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId `
         -Location $Location `
         -TemplateFilePath $TemplateFilesDirectory `
         -ParameterFilePath $ParameterFilePath
 
-    Start-Sleep -Seconds 30
+    return $response
+}
+
+function Deploy-Resources-Stage2 {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$Location,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [object]$StageOneResponse,
+        [Parameter(Mandatory = $false)]
+        [bool]$StartFunctions = $true,
+        [Parameter(Mandatory = $false)]
+        [bool] $SetUserAssignedManagedIdentityPermissions = $true,
+        [Parameter(Mandatory = $false)]
+        [bool]$IsInitialDeployment = $false,
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("Credentials", "ServicePrincipal","Skip")]
+        [string]$ResetGMMType = "Skip"
+    )
+    
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 
     Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
-
 
     Set-SqlServerFirewallRule `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -Location $Location `
-        -ipAddress $ipAddress
+        -Location $Location
 
     # retrieve SQL connection strings
     # Basic connection string
@@ -1745,21 +1793,23 @@ function Deploy-Resources {
         -Name "sqlServerBasicConnectionString" `
         -AsPlainText
 
-    Set-SQLServerPermissions `
-        -ConnectionString $connectionString `
-        -ConnectionStringADF $connectionStringADF `
-        -ComputeResourceGroup $computeResourceGroup `
-        -DataResourceGroup $dataResourceGroup
+    if ($false -eq $StageOneResponse.SkipSqlServerPermissionSetup) {
+        Set-SQLServerPermissions `
+            -ConnectionString $connectionString `
+            -ConnectionStringADF $connectionStringADF `
+            -ComputeResourceGroup $computeResourceGroup `
+            -DataResourceGroup $dataResourceGroup
+    }
 
-    if ($true -eq $response.SetRBACPermissions) {
+    if ($true -eq $StageOneResponse.SetRBACPermissions) {
         Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment" `
         -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
     }
-    
-    if ($true -eq $response.ApplyDBMigrations) {
+
+    if ($true -eq $StageOneResponse.ApplyDBMigrations) {
         Set-DBMigrations `
             -ConnectionString $connectionString `
             -ScriptsDirectory "$scriptsDirectory\function_packages"
@@ -1771,20 +1821,22 @@ function Deploy-Resources {
         -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
 
     # Configure web apps
-    if ($true -eq $response.CreateAppRegistrations) {
+    if ($true -eq $StageOneResponse.CreateAppRegistrations) {
         Set-ConfigureWebApps `
             -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
             -UIWebAppName "$SolutionAbbreviation-ui" `
-            -DevTenantId $response.SecondaryTenantId `
-            -UIAppRegistrationId $response.AppRegistrations.UIApplicationId `
+            -DevTenantId $StageOneResponse.SecondaryTenantId `
+            -UIAppRegistrationId $StageOneResponse.AppRegistrations.UIApplicationId `
             -ComputeResourceGroup $computeResourceGroup
     }
 
+    $context = Get-AzContext
+
     # Publish UI code
     Set-PublishUICode `
-        -UIClientId $response.AppRegistrations.UIApplicationId `
-        -UITenantId $response.AppRegistrations.UITenantId `
-        -WebApiClientId $response.AppRegistrations.APIApplicationId `
+        -UIClientId $StageOneResponse.AppRegistrations.UIApplicationId `
+        -UITenantId $StageOneResponse.AppRegistrations.UITenantId `
+        -WebApiClientId $StageOneResponse.AppRegistrations.APIApplicationId `
         -WebApiBaseUri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
@@ -1792,14 +1844,14 @@ function Deploy-Resources {
         -ComputeResourceGroup $computeResourceGroup `
         -WebAppDirectory "$scriptsDirectory\webapp_package\web-app" `
         -MainTenantId $context.Tenant.Id `
-        -TenantDomain $response.TenantDomain `
-        -SharepointDomain $response.SharepointDomain `
+        -TenantDomain $StageOneResponse.TenantDomain `
+        -SharepointDomain $StageOneResponse.SharepointDomain `
         -SubscriptionId $SubscriptionId
 
     Deploy-PostDeploymentUpdates `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -ScriptsDirectory "$ScriptsDirectory\scripts"
+        -ScriptsDirectory "$scriptsDirectory\scripts"
 
     if(!$IsInitialDeployment -and $ResetGMMType -ne "Skip") {
         Write-Host "`nStopping function apps in resource group $computeResourceGroup"
@@ -1822,11 +1874,11 @@ function Deploy-Resources {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
 
-    if ($response.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
+    if ($StageOneResponse.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
         Write-Host "`n======================" -ForegroundColor Yellow
         Write-Host "The following applications require admin consent:" -ForegroundColor Yellow
         Write-Host "======================" -ForegroundColor Yellow
-        foreach ($app in $response.AppRegistrations.AppsThatNeedAdminConsent) {
+        foreach ($app in $StageOneResponse.AppRegistrations.AppsThatNeedAdminConsent) {
             Write-Host $app
         }
         Write-Host "`nPlease visit the Azure portal to grant admin consent for these applications." -ForegroundColor Yellow
@@ -1835,9 +1887,73 @@ function Deploy-Resources {
     Start-Sleep -Seconds 10
 
     # open the web app
-    $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
-    if ($null -ne $staticWebApp) {
-        Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
-        Start-Process "https://$($staticWebApp.DefaultHostname)"
+    if ($StageOneResponse.OpenUIAfterDeployment -eq $true) {
+        $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
+        if ($null -ne $staticWebApp) {
+            Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
+            Start-Process "https://$($staticWebApp.DefaultHostname)"
+        }
     }
+}
+
+function Deploy-Resources {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$Location,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $true)]
+        [string]$TemplateFilesDirectory, # absolute path
+        [Parameter(Mandatory = $true)]
+        [string]$ParameterFilePath, # absolute path
+        [Parameter(Mandatory = $false)]
+        [bool]$SkipResourceProvidersCheck = $false,
+        [Parameter(Mandatory = $false)]
+        [bool]$StartFunctions = $true,
+        [Parameter(Mandatory = $false)]
+        [bool]$AssertUserPermissions = $true,
+        [Parameter(Mandatory = $false)]
+        [bool] $SetUserAssignedManagedIdentityPermissions = $true,
+        [Parameter(Mandatory = $false)]
+        [bool]$IsInitialDeployment = $false,
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("Credentials", "ServicePrincipal","Skip")]
+        [string]$ResetGMMType = "Skip"
+    )
+
+    Initialize-ScriptDependencies `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Location $Location `
+        -SubscriptionId $SubscriptionId `
+        -AssertUserPermissions $AssertUserPermissions
+    
+    
+    $response = Deploy-Resources-Stage1 `
+                    -SolutionAbbreviation $SolutionAbbreviation `
+                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                    -Location $Location `
+                    -SubscriptionId $SubscriptionId `
+                    -TemplateFilesDirectory $TemplateFilesDirectory `
+                    -ParameterFilePath $ParameterFilePath `
+                    -SkipResourceProvidersCheck $SkipResourceProvidersCheck `
+                    -IsInitialDeployment $IsInitialDeployment
+
+    Start-Sleep -Seconds 30
+
+    Deploy-Resources-Stage2 `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Location $Location `
+        -SubscriptionId $SubscriptionId `
+        -IsInitialDeployment $IsInitialDeployment `
+        -StageOneResponse $response `
+        -StartFunctions $StartFunctions `
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
+        -ResetGMMType $ResetGMMType
 }

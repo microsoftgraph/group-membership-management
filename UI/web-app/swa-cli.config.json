@@ -4,7 +4,7 @@
     "default": {
       "appLocation": ".",
       "outputLocation": "build",
-      "appBuildCommand": "pnpm install && pnpm run build",
+      "appBuildCommand": "pnpm install --no-frozen-lockfile && pnpm run build",
       "run": "pnpm start",
       "appDevserverUrl": "http://localhost:3000"
     }
