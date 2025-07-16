@@ -58,7 +58,8 @@ namespace Hosts.GraphUpdater
                     UsersAddedCount = request.UsersAddedCount,
                     UsersRemovedCount = request.UsersRemovedCount,
                     JobEndTime = request.JobEndTime,
-                    UpdatedByFunction = "GraphUpdater"
+                    UpdatedByFunction = "GraphUpdater",
+                    SyncJob = syncJob
                 };
 
                 // Send message to SyncJobUpdater queue
