@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Models;
 using Models.Notifications;
+using Models.SyncJobHistory;
 using System.Text.Json;
 
 namespace Repositories.EntityFramework.Contexts
@@ -24,6 +25,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<DestinationOwner> DestinationOwners { get; set; }
         public DbSet<DestinationEmail> DestinationEmail { get; set; }
         public DbSet<Entities.SyncJobChange> SyncJobChanges { get; set; } = null!;
+        public DbSet<SyncJobHistory> SyncJobHistory { get; set; } = null!;
         public DbSet<ThresholdNotification> ThresholdNotifications { get; set; } = null!;
         public DbSet<ServiceStatus> ServiceStatus { get; set; }
         public DbSet<ServiceStatusHistory> ServiceStatusHistory { get; set; }
@@ -158,6 +160,34 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(s => s.ChangeTime).IsRequired().HasDefaultValue(DateTime.UtcNow);
                 entity.Property(s => s.ChangeReason).IsRequired();
             });
+
+            modelBuilder.Entity<SyncJobHistory>(entity =>
+            {
+                entity.HasKey(h => h.Id);
+                entity.Property(h => h.Id).ValueGeneratedOnAdd().HasDefaultValueSql("NEWSEQUENTIALID()");
+                entity.Property(h => h.SyncJobId).IsRequired();
+                entity.Property(h => h.RunId).IsRequired();
+                entity.Property(h => h.StartTime);
+                entity.Property(h => h.EndTime);
+                entity.Property(h => h.Duration);
+                entity.Property(h => h.Status);
+                entity.Property(h => h.UsersAdded);
+                entity.Property(h => h.UsersRemoved);
+                entity.Property(h => h.ThresholdViolations);
+                entity.Property(h => h.UpdatedByFunction).HasMaxLength(255);
+
+                entity.HasOne<SyncJob>()
+                       .WithMany()
+                       .HasForeignKey(h => h.SyncJobId)
+                       .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasIndex(h => h.SyncJobId);
+                entity.HasIndex(h => h.RunId).IsUnique();
+                entity.HasIndex(h => h.EndTime);
+
+                entity.ToTable("SyncJobHistory");
+            });
+
             modelBuilder.Entity<ThresholdNotification>(entity =>
             {
                 entity.HasKey(t => t.Id);
@@ -191,6 +221,7 @@ namespace Repositories.EntityFramework.Contexts
                     .OnDelete(DeleteBehavior.Cascade)
                     .HasPrincipalKey(s => s.Id);  
             });
+
             modelBuilder.Entity<NotificationType>(entity =>
             {
                 entity.HasKey(e => e.Id);

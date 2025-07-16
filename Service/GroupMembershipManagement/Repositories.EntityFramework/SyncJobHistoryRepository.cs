@@ -1,0 +1,63 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Microsoft.EntityFrameworkCore;
+using Models.SyncJobHistory;
+using Repositories.Contracts;
+using Repositories.EntityFramework.Contexts;
+
+namespace Repositories.EntityFramework
+{
+    public class SyncJobHistoryRepository : ISyncJobHistoryRepository
+    {
+        private readonly GMMContext _writeContext;
+        private readonly GMMReadContext _readContext;
+
+        public SyncJobHistoryRepository(GMMContext writeContext, GMMReadContext readContext)
+        {
+            _writeContext = writeContext ?? throw new ArgumentNullException(nameof(writeContext));
+            _readContext = readContext ?? throw new ArgumentNullException(nameof(readContext));
+        }
+
+        public async Task CreateAsync(SyncJobHistory jobHistory)
+        {
+            if (jobHistory == null) throw new ArgumentNullException(nameof(jobHistory));
+
+            await _writeContext.SyncJobHistory.AddAsync(jobHistory);
+            await _writeContext.SaveChangesAsync();
+        }
+
+        public async Task<List<SyncJobHistory>> GetBySyncJobIdAsync(Guid syncJobId, int pageSize = 50, int pageNumber = 1)
+        {
+            return await _readContext.SyncJobHistory
+                .Where(h => h.SyncJobId == syncJobId)
+                .OrderByDescending(h => h.EndTime)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
+        public async Task<SyncJobHistory?> GetByRunIdAsync(Guid runId)
+        {
+            return await _readContext.SyncJobHistory
+                .FirstOrDefaultAsync(h => h.RunId == runId);
+        }
+
+        public async Task<SyncJobHistory?> GetMostRecentAsync(Guid syncJobId)
+        {
+            return await _readContext.SyncJobHistory
+                .Where(h => h.SyncJobId == syncJobId)
+                .OrderByDescending(h => h.EndTime)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task UpdateAsync(SyncJobHistory jobHistory)
+        {
+            if (jobHistory == null) throw new ArgumentNullException(nameof(jobHistory));
+
+            _writeContext.SyncJobHistory.Update(jobHistory);
+            await _writeContext.SaveChangesAsync();
+        }
+    }
+}
+
