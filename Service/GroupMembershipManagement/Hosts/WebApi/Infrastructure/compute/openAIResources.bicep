@@ -33,6 +33,7 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     allowProjectManagement: false
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: true
+    restrictOutboundNetworkAccess: true
   }
   tags: {
   }
@@ -72,23 +73,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
     workspaceId: logAnalyticsWorkspace.id
     logs: [
       {
-        category: 'Audit'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'RequestResponse'
-        enabled: true
-        retentionPolicy: {
-          days: 0
-          enabled: false
-        }
-      }
-      {
-        category: 'Trace'
+        categoryGroup: 'allLogs'
         enabled: true
         retentionPolicy: {
           days: 0
@@ -98,7 +83,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
     ]
     metrics: [
       {
-        category: 'AllMetrics'
+        category: 'allMetrics'
         enabled: true
         retentionPolicy: {
           days: 0
