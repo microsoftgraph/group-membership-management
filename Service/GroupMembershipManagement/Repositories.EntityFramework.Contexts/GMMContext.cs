@@ -175,6 +175,10 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(h => h.UsersRemoved);
                 entity.Property(h => h.ThresholdViolations);
                 entity.Property(h => h.UpdatedByFunction).HasMaxLength(255);
+                entity.Property(h => h.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(h => h.UpdatedAt)
+                    .ValueGeneratedOnAddOrUpdate()
+                    .HasDefaultValueSql("GETUTCDATE()");
 
                 entity.HasOne<SyncJob>()
                        .WithMany()

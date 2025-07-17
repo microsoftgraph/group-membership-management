@@ -64,5 +64,15 @@ namespace Models.SyncJobHistory
         /// </summary>
         public string UpdatedByFunction { get; set; }
 
+        /// <summary>
+        /// Gets or sets the timestamp when this history entry was created
+        /// </summary>
+        public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// Gets or sets the timestamp when this history entry was last updated
+        /// </summary>
+        public DateTime UpdatedAt { get; set; }
+
     }
 }

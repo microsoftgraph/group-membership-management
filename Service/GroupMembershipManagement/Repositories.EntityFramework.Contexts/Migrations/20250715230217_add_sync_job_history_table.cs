@@ -24,7 +24,9 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     UsersAdded = table.Column<int>(type: "int", nullable: true),
                     UsersRemoved = table.Column<int>(type: "int", nullable: true),
                     ThresholdViolations = table.Column<int>(type: "int", nullable: true),
-                    UpdatedByFunction = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true)
+                    UpdatedByFunction = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "GETUTCDATE()")
                 },
                 constraints: table =>
                 {
@@ -37,20 +39,30 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-                migrationBuilder.CreateIndex(
-                    name: "IX_SyncJobHistory_SyncJobId",
-                    table: "SyncJobHistory",
-                    column: "SyncJobId");
+            migrationBuilder.CreateIndex(
+                name: "IX_SyncJobHistory_SyncJobId",
+                table: "SyncJobHistory",
+                column: "SyncJobId");
 
-                migrationBuilder.CreateIndex(
-                    name: "IX_SyncJobHistory_RunId",
-                    table: "SyncJobHistory",
-                    column: "RunId");
+            migrationBuilder.CreateIndex(
+                name: "IX_SyncJobHistory_RunId",
+                table: "SyncJobHistory",
+                column: "RunId");
 
-                migrationBuilder.CreateIndex(
-                    name: "IX_SyncJobHistory_EndTime",
+            migrationBuilder.CreateIndex(
+                name: "IX_SyncJobHistory_EndTime",
+                table: "SyncJobHistory",
+                column: "EndTime");
+
+            migrationBuilder.CreateIndex(
+                    name: "IX_SyncJobHistory_CreatedAt",
                     table: "SyncJobHistory",
-                    column: "EndTime");
+                    column: "CreatedAt");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SyncJobHistory_UpdatedAt",
+                table: "SyncJobHistory",
+                column: "UpdatedAt");
 
         }
 

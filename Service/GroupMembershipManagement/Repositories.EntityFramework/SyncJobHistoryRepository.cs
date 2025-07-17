@@ -31,7 +31,7 @@ namespace Repositories.EntityFramework
         {
             return await _readContext.SyncJobHistory
                 .Where(h => h.SyncJobId == syncJobId)
-                .OrderByDescending(h => h.EndTime)
+                .OrderByDescending(h => h.UpdatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -47,7 +47,7 @@ namespace Repositories.EntityFramework
         {
             return await _readContext.SyncJobHistory
                 .Where(h => h.SyncJobId == syncJobId)
-                .OrderByDescending(h => h.EndTime)
+                .OrderByDescending(h => h.UpdatedAt)
                 .FirstOrDefaultAsync();
         }
 

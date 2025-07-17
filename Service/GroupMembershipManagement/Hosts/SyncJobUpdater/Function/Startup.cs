@@ -1,14 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure.Messaging.ServiceBus;
-using Common.DependencyInjection;
-using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Repositories.Contracts;
-using Repositories.ServiceBusQueue;
+using Repositories.EntityFramework;
+using Services.Contracts;
 
 // see https://docs.microsoft.com/en-us/azure/azure-functions/functions-dotnet-dependency-injection
 [assembly: FunctionsStartup(typeof(Hosts.SyncJobUpdater.Startup))]
@@ -24,7 +21,8 @@ namespace Hosts.SyncJobUpdater
         {
             base.Configure(builder);
 
-            builder.Services.AddScoped(services =>
+            builder.Services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
+            builder.Services.AddScoped<ISyncJobUpdaterService>(services =>
             {
                 return new SyncJobUpdaterService(
                     services.GetRequiredService<IDatabaseSyncJobsRepository>(),
