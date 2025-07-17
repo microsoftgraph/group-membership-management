@@ -8,8 +8,8 @@ namespace SqlMembershipObtainer
 {
     public class OrganizationProcessorRequest
     {
-        public Query Query { get; set; }
-        public SyncJob SyncJob { get; set; }
-        public Guid GroupId { get; set; }
+        public required Query Query { get; init; }
+        public required SyncJob SyncJob { get; init; }
+        public required Guid GroupId { get; init; }
     }
 }

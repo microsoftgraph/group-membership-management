@@ -45,6 +45,7 @@ namespace SqlMembershipObtainer
                             {
                                 SyncJob = request.SyncJob,
                                 Message = "Table does not exist",
+                                Verbosity = VerbosityLevel.INFO
                             });
                 return response;
             }

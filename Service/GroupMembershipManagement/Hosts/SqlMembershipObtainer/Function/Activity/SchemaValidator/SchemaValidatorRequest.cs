@@ -6,7 +6,7 @@ namespace SqlMembershipObtainer
 {
     public class SchemaValidatorRequest
     {
-        public string Query { get; set; }
-        public Guid? RunId { get; set; }
+        public required string Query { get; init; }
+        public required Guid RunId { get; init; }
     }
 }

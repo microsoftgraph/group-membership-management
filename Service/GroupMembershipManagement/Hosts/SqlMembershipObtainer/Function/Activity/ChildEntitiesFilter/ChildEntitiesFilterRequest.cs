@@ -7,9 +7,9 @@ namespace SqlMembershipObtainer
 {
     public class ChildEntitiesFilterRequest
     {
-        public string Query { get; set; }
-        public string TableName { get; set; }
-        public Guid GroupId { get; set; }
-        public SyncJob SyncJob { get; set; }
+        public required string Query { get; init; }
+        public required string TableName { get; init; }
+        public required Guid GroupId { get; init; }
+        public required SyncJob SyncJob { get; init; }
     }
 }

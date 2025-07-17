@@ -63,7 +63,8 @@ namespace Services.Tests
             {
                 CurrentPart = 1,
                 TotalParts = 2,
-                SyncJob = _syncJob
+                SyncJob = _syncJob,
+                Exclusionary = false
             };
 
             _profiles = new List<GraphProfileInformation>();

@@ -7,7 +7,7 @@ namespace SqlMembershipObtainer
 {
     public class TableNameReaderRequest
     {
-        public Guid GroupId { get; set; }
-        public SyncJob SyncJob { get; set; }
+        public required SyncJob SyncJob { get; init; }
+        public required Guid GroupId { get; init; }
     }
 }

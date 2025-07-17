@@ -6,8 +6,8 @@ namespace SqlMembershipObtainer
 {
     public class FeatureFlagRequest
     {
-        public Guid? RunId { get; set; }
-        public string FeatureFlagName { get; set; }
-        public bool RefreshAppConfigurationValues { get; set; }
+        public required Guid RunId { get; init;  }
+        public required string FeatureFlagName { get; init; }
+        public required bool RefreshAppConfigurationValues { get; init; }
     }
 }

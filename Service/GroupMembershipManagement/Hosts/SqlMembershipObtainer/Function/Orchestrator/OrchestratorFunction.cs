@@ -52,6 +52,7 @@ namespace SqlMembershipObtainer
                            {
                                SyncJob = syncJob,
                                Message = $"The job Id:{syncJob.Id} Part#{mainRequest.CurrentPart} does not have a valid query!",
+                               Verbosity = VerbosityLevel.INFO
                            });
 
                     await context.CallActivityAsync(
@@ -61,7 +62,7 @@ namespace SqlMembershipObtainer
                                    SyncJob = syncJob,
                                    Status = SyncStatus.QueryNotValid
                                });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId ?? Guid.Empty });
                     return;
                 }
 
@@ -69,7 +70,7 @@ namespace SqlMembershipObtainer
                 {
                     try
                     {
-                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId });
+                        var hasValidJson = await context.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), new SchemaValidatorRequest { Query = currentPart.ToString(), RunId = syncJob.RunId ?? Guid.Empty });
                         if (!hasValidJson)
                         {
                             await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.SchemaError, SyncJob = syncJob });
@@ -82,7 +83,8 @@ namespace SqlMembershipObtainer
                                 new LoggerRequest
                                 {
                                     SyncJob = syncJob,
-                                    Message = $"Source query is not valid for job:{syncJob.Id}"
+                                    Message = $"Source query is not valid for job:{syncJob.Id}",
+                                    Verbosity = VerbosityLevel.INFO
                                 });
 
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
@@ -93,13 +95,13 @@ namespace SqlMembershipObtainer
                 var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), syncJob);
                 if (groupId.Equals(Guid.Empty))
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Unable to get group id for job:{syncJob.Id}", SyncJob = syncJob});
+                    await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Unable to get group id for job:{syncJob.Id}", SyncJob = syncJob, Verbosity = VerbosityLevel.INFO });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId ?? Guid.Empty });
                     return;
                 }
 
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob});
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob, Verbosity = VerbosityLevel.INFO });
                 var query = JsonSerializer.Deserialize<Query>(currentQueryAsString);
                 var graphProfilesResponse = await context.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
                             nameof(OrganizationProcessorFunction),
@@ -116,6 +118,7 @@ namespace SqlMembershipObtainer
                                {
                                    SyncJob = syncJob,
                                    Message = $"Retrieved {graphProfilesResponse.GraphProfileCount} total profiles from SqlMembershipObtainer",
+                                   Verbosity = VerbosityLevel.INFO
                                });
 
                 var senderResponse = await context.CallActivityAsync<(SyncStatus Status, string FilePath)>(
@@ -132,7 +135,7 @@ namespace SqlMembershipObtainer
 
                 if (senderResponse.Status != SyncStatus.InProgress)
                 {
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = senderResponse.Status, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = senderResponse.Status, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId ?? Guid.Empty });
                     return;
                 }
 
@@ -156,6 +159,7 @@ namespace SqlMembershipObtainer
                         {
                             SyncJob = syncJob,
                             Message = $"Membership file path is not valid, marking sync job as {SyncStatus.FilePathNotValid}.",
+                            Verbosity = VerbosityLevel.INFO
                         });
 
                     await context.CallActivityAsync(
@@ -165,7 +169,7 @@ namespace SqlMembershipObtainer
                                     SyncJob = syncJob,
                                     Status = SyncStatus.FilePathNotValid
                                 });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FilePathNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FilePathNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId ?? Guid.Empty });
                 }
 
             }
@@ -177,14 +181,15 @@ namespace SqlMembershipObtainer
                 {
                     SyncJob = syncJob,
                     Message = $"Rescheduling job at {syncJob.StartDate} due to {httpStatus} exception",
+                    Verbosity = VerbosityLevel.INFO
                 });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId ?? Guid.Empty });
                 return;
             }
             catch (SqlException sqlEx)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Caught SqlException, marking sync job as errored. Exception:\n{sqlEx}", SyncJob = syncJob });
+                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Caught SqlException, marking sync job as errored. Exception:\n{sqlEx}", SyncJob = syncJob, Verbosity = VerbosityLevel.INFO });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error });
                 throw;
             }
@@ -208,9 +213,10 @@ namespace SqlMembershipObtainer
                     {
                         SyncJob = syncJob,
                         Message = $"Rescheduling job at {syncJob.StartDate} due to Internal.NET Framework Data Provider error 6 exception",
+                        Verbosity = VerbosityLevel.INFO
                     });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle });
-                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
+                    await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId ?? Guid.Empty });
                     return;
                 }
 
@@ -220,6 +226,7 @@ namespace SqlMembershipObtainer
                                  {
                                      SyncJob = syncJob,
                                      Message = $"{nameof(OrchestratorFunction)} failed\n {message}",
+                                     Verbosity = VerbosityLevel.INFO
                                  });
 
                 await context.CallActivityAsync(
@@ -229,7 +236,7 @@ namespace SqlMembershipObtainer
                                     SyncJob = syncJob,
                                     Status = status
                                 });
-                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId ?? Guid.Empty });
             }
             finally
             {

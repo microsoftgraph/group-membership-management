@@ -10,11 +10,11 @@ namespace SqlMembershipObtainer
         /// <summary>
         /// Compressed serialized List<GraphProfileInformation>
         /// </summary>
-        public string Profiles { get; set; }
-        public SyncJob SyncJob { get; set; }
-        public Guid GroupId { get; set; }
-        public int CurrentPart { get; set; }
-        public bool Exclusionary { get; set; }
-        public string AdaptiveCardTemplateDirectory { get; set; }
+        public required string Profiles { get; init; }
+        public required SyncJob SyncJob { get; init; }
+        public required Guid GroupId { get; init; }
+        public required int CurrentPart { get; init; }
+        public required bool Exclusionary { get; init; }
+        public required string AdaptiveCardTemplateDirectory { get; init; }
     }
 }
