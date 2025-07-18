@@ -328,7 +328,7 @@ function Start-ResourceDeployment {
                 template = $templateContent
                 parameters = $templateParameters
             }
-        } | ConvertTo-Json -Depth 30
+        } | ConvertTo-Json -Depth 100
         $baseUri = "https://management.azure.com/subscriptions/$SubscriptionId/providers/Microsoft.Resources/deployments/$deploymentName"
     }
     else {
@@ -338,7 +338,7 @@ function Start-ResourceDeployment {
                 template = $templateContent
                 parameters = $templateParameters
             }
-        } | ConvertTo-Json -Depth 30
+        } | ConvertTo-Json -Depth 100
         $baseUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourcegroups/$ResourceGroupName/providers/Microsoft.Resources/deployments/$deploymentName"
     }
 
