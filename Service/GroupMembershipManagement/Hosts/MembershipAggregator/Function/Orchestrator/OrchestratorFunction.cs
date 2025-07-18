@@ -42,7 +42,7 @@ namespace Hosts.MembershipAggregator
                     Status = SyncStatus.Error, 
                     SyncJob = request.SyncJob,
                     IsDryRun = false,
-                    ThresholdViolations = 0,
+                    IncrementThresholdViolations = false,
                     DeltaStatus = MembershipDeltaStatus.Error
                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
@@ -143,7 +143,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.FileNotFound,
                                                     SyncJob = request.SyncJob,
                                                     IsDryRun = false,
-                                                    ThresholdViolations = 0,
+                                                    IncrementThresholdViolations = false,
                                                     DeltaStatus = MembershipDeltaStatus.Error
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = runId });
@@ -167,7 +167,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Error,
                                                     SyncJob = request.SyncJob,
                                                     IsDryRun = false,
-                                                    ThresholdViolations = 0,
+                                                    IncrementThresholdViolations = false,
                                                     DeltaStatus = MembershipDeltaStatus.Error
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });

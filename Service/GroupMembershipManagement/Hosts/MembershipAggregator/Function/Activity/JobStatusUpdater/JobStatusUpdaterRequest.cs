@@ -10,7 +10,7 @@ namespace Hosts.MembershipAggregator
         public required SyncJob SyncJob { get; init; }
         public required SyncStatus Status { get; init; }
         public required bool IsDryRun { get; init; }
-        public required int ThresholdViolations { get; init; }
+        public required bool IncrementThresholdViolations { get; init; }
         public required MembershipDeltaStatus DeltaStatus { get; init; }
     }
 }
