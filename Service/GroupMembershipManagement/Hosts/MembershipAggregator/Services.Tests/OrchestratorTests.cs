@@ -82,7 +82,7 @@ namespace Services.Tests
                 Requestor = "user@domail.com",
                 RunId = Guid.NewGuid(),
                 ThresholdViolations = 0,
-                Query = "[{\"type\":\"GroupMembership\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]"  ,
+                Query = "[{\"type\":\"GroupMembership\",\"source\":\"9e9b029b-52a7-467a-94fb-325b6241022b\"},{\"type\":\"GroupOwnership\",\"source\":[\"GroupMembership\"]}]",
                 MembershipType = "GroupMembership"
             };
 
@@ -97,7 +97,12 @@ namespace Services.Tests
                 FilePath = "/file-path.json",
                 SyncJob = _syncJob,
                 PartNumber = 1,
-                PartsCount = 1
+                PartsCount = 1,
+                ProjectedMemberCount = 100,
+                MembersToBeAdded = 50,
+                MembersToBeRemoved = 25,
+                GroupId = targetOfficeGroupId,
+                IsDestinationPart = false
             };
 
             _membershipSubOrchestratorResponse = new MembershipSubOrchestratorResponse
@@ -186,7 +191,18 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestMissingPartAsync()
         {
-            _membershipAggregatorHttpRequest.PartsCount = 2;
+            _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
+            {
+                FilePath = "/file-path.json",
+                SyncJob = _syncJob,
+                PartNumber = 1,
+                PartsCount = 2,
+                ProjectedMemberCount = 100,
+                MembersToBeAdded = 50,
+                MembersToBeRemoved = 25,
+                GroupId = _group.GroupId,
+                IsDestinationPart = false
+            };
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
@@ -200,7 +216,18 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestDestinationPartAsync()
         {
-            _membershipAggregatorHttpRequest.IsDestinationPart = true;
+            _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
+            {
+                FilePath = "/file-path.json",
+                SyncJob = _syncJob,
+                PartNumber = 1,
+                PartsCount = 1,
+                ProjectedMemberCount = 100,
+                MembersToBeAdded = 50,
+                MembersToBeRemoved = 25,
+                GroupId = _group.GroupId,
+                IsDestinationPart = true
+            };
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);

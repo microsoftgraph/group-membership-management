@@ -33,12 +33,18 @@ namespace Hosts.MembershipAggregator
         public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<MembershipAggregatorHttpRequest>();
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            var runId = request.SyncJob.RunId ?? Guid.Empty;
             var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), request.SyncJob);
             if (groupId.Equals(Guid.Empty))
             {
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = new LogMessage { Message = $"Unable to get group id for job:{request.SyncJob.Id}", RunId = runId}, Verbosity = VerbosityLevel.DEBUG });
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.Error, SyncJob = request.SyncJob });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { 
+                    Status = SyncStatus.Error, 
+                    SyncJob = request.SyncJob,
+                    IsDryRun = false,
+                    ThresholdViolations = 0,
+                    DeltaStatus = MembershipDeltaStatus.Error
+                });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                 return;
             }
@@ -49,7 +55,16 @@ namespace Hosts.MembershipAggregator
 
             try
             {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = new LogMessage { Message = $"Group Id for job:{request.SyncJob.Id} is {groupId}", RunId = runId }, Verbosity = VerbosityLevel.DEBUG });
+                await context.CallActivityAsync(nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
+                        {
+                            Message = $"Group Id for job:{request.SyncJob.Id} is {groupId}",
+                            RunId = runId
+                        },
+                        Verbosity = VerbosityLevel.DEBUG
+                    });
                 using (await context.LockAsync(entityId))
                 {
                     await proxy.SetTotalParts(request.PartsCount);
@@ -93,7 +108,7 @@ namespace Hosts.MembershipAggregator
                             GroupId = groupId,
                             ProjectedMemberCount = membershipResponse.ProjectedMemberCount,
                             MembersToBeAdded = membershipResponse.MembersToBeAdded,
-                            MembersToBeRemoved = membershipResponse.MembersToBeRemoved,
+                            MembersToBeRemoved = membershipResponse.MembersToBeRemoved
                         };
 
                         await context.CallActivityAsync(nameof(TopicMessageSenderFunction), updateRequestContent);
@@ -118,14 +133,18 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = fe.Message, RunId = runId }
+                        Message = new LogMessage { Message = fe.Message, RunId = runId },
+                        Verbosity = VerbosityLevel.INFO
                     });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     Status = SyncStatus.FileNotFound,
-                                                    SyncJob = request.SyncJob
+                                                    SyncJob = request.SyncJob,
+                                                    IsDryRun = false,
+                                                    ThresholdViolations = 0,
+                                                    DeltaStatus = MembershipDeltaStatus.Error
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = runId });
 
@@ -138,14 +157,18 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = $"Unexpected exception. {ex}", RunId = runId }
+                        Message = new LogMessage { Message = $"Unexpected exception. {ex}", RunId = runId },
+                        Verbosity = VerbosityLevel.INFO
                     });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     Status = SyncStatus.Error,
-                                                    SyncJob = request.SyncJob
+                                                    SyncJob = request.SyncJob,
+                                                    IsDryRun = false,
+                                                    ThresholdViolations = 0,
+                                                    DeltaStatus = MembershipDeltaStatus.Error
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
 

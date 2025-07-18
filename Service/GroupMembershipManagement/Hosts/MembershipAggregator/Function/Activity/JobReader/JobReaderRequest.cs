@@ -7,7 +7,7 @@ namespace Hosts.MembershipAggregator
 {
     public class JobReaderRequest
     {
-        public Guid JobId { get; set; }
-        public Guid RunId { get; set; }
+        public required Guid JobId { get; init; }
+        public required Guid RunId { get; init; }
     }
 }

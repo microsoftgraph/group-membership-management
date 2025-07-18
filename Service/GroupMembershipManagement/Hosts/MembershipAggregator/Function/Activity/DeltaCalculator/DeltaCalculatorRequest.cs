@@ -9,16 +9,16 @@ namespace Hosts.MembershipAggregator
         /// <summary>
         /// Compressed serialized GroupMembership
         /// </summary>
-        public string SourceGroupMembership { get; set; }
+        public required string SourceGroupMembership { get; init; }
 
         /// <summary>
         /// Compressed serialized GroupMembership
         /// </summary>
-        public string DestinationGroupMembership { get; set; }
-        public bool ReadFromBlobs { get; set; }
-        public string SourceMembershipFilePath { get; set; }
-        public string DestinationMembershipFilePath { get; set; }
-        public Guid? RunId { get; set; }
+        public required string DestinationGroupMembership { get; init; }
+        public required bool ReadFromBlobs { get; init; }
+        public required string SourceMembershipFilePath { get; init; }
+        public required string DestinationMembershipFilePath { get; init; }
+        public required Guid RunId { get; init; }
     }
 }
 

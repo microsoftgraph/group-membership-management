@@ -6,12 +6,12 @@ namespace Models
 {
     public class MembershipHttpRequest
     {
-        public string FilePath { get; set; }
-        public SyncJob SyncJob { get; set; }
-        public int? ProjectedMemberCount { get; set; }
-        public int MembersToBeAdded { get; set; }
-        public int MembersToBeRemoved { get; set; }
-        public Guid GroupId { get; set; }
+        public required string FilePath { get; init; }
+        public required SyncJob SyncJob { get; init; }
+        public required int ProjectedMemberCount { get; init; }
+        public required int MembersToBeAdded { get; init; }
+        public required int MembersToBeRemoved { get; init; }
+        public required Guid GroupId { get; init; }
         public int MembersToBeUpdated => MembersToBeAdded + MembersToBeRemoved;
     }
 }

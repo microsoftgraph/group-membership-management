@@ -62,7 +62,12 @@ namespace Services.Tests
                 FilePath = "file/path/name.json",
                 SyncJob = _syncJob,
                 PartNumber = 1,
-                PartsCount = 1
+                PartsCount = 1,
+                ProjectedMemberCount = 100,
+                MembersToBeAdded = 50,
+                MembersToBeRemoved = 25,
+                GroupId = Guid.NewGuid(),
+                IsDestinationPart = false
             };
 
             var contentBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content));

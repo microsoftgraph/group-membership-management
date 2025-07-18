@@ -9,6 +9,7 @@ using Models;
 using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
+using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
@@ -41,7 +42,7 @@ namespace Hosts.MembershipAggregator
         public async Task<MembershipSubOrchestratorResponse> RunMembershipSubOrchestratorFunctionAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            var runId = request.SyncJob.RunId ?? Guid.Empty;
             var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
             var state = await proxy.GetState();
             var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
@@ -54,10 +55,7 @@ namespace Hosts.MembershipAggregator
 
             var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
             var (SourceMembership, DestinationMembership) = ExtractMembershipInformationAsync(completedDownloadTasks, state.DestinationPart);
-            var deltaCalculatorRequest = new DeltaCalculatorRequest
-            {
-                RunId = request.SyncJob.RunId
-            };
+            DeltaCalculatorRequest deltaCalculatorRequest;
 
             if (SourceMembership == null || DestinationMembership == null)
             {
@@ -65,7 +63,10 @@ namespace Hosts.MembershipAggregator
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
-                                                    Status = SyncStatus.Error
+                                                    Status = SyncStatus.Error,
+                                                    IsDryRun = false,
+                                                    ThresholdViolations = 0,
+                                                    DeltaStatus = MembershipDeltaStatus.Error
                                                 });
 
                 if (SourceMembership == null)
@@ -96,7 +97,10 @@ namespace Hosts.MembershipAggregator
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
-                                                    Status = SyncStatus.MembershipDataNotFound
+                                                    Status = SyncStatus.MembershipDataNotFound,
+                                                    IsDryRun = false,
+                                                    ThresholdViolations = 0,
+                                                    DeltaStatus = MembershipDeltaStatus.Error
                                                 });
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
@@ -105,7 +109,8 @@ namespace Hosts.MembershipAggregator
                         {
                             Message = $"Sources are empty for TargetOfficeGroupId {request.GroupId}. Empty destination is not allowed for this group. Marking job as 'MembershipDataNotFound'.",
                             RunId = runId
-                        }
+                        },
+                        Verbosity = VerbosityLevel.INFO
                     });
 
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
@@ -151,9 +156,15 @@ namespace Hosts.MembershipAggregator
                     context.CallActivityAsync(nameof(FileUploaderFunction), destinationRequest)
                 );
 
-                deltaCalculatorRequest.ReadFromBlobs = true;
-                deltaCalculatorRequest.SourceMembershipFilePath = sourceFilePath;
-                deltaCalculatorRequest.DestinationMembershipFilePath = destinationFilePath;
+                deltaCalculatorRequest = new DeltaCalculatorRequest
+                {
+                    RunId = runId,
+                    SourceGroupMembership = string.Empty,
+                    DestinationGroupMembership = string.Empty,
+                    ReadFromBlobs = true,
+                    SourceMembershipFilePath = sourceFilePath,
+                    DestinationMembershipFilePath = destinationFilePath
+                };
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
                 {
@@ -161,13 +172,21 @@ namespace Hosts.MembershipAggregator
                     {
                         Message = $"Reading from blobs, SourceMembershipFilePath: {deltaCalculatorRequest.SourceMembershipFilePath}, DestinationMembershipFilePath: {deltaCalculatorRequest.DestinationMembershipFilePath}",
                         RunId = runId
-                    }
+                    },
+                    Verbosity = VerbosityLevel.INFO
                 });
             }
             else
             {
-                deltaCalculatorRequest.SourceGroupMembership = TextCompressor.Compress(JsonSerializer.Serialize(SourceMembership));
-                deltaCalculatorRequest.DestinationGroupMembership = TextCompressor.Compress(JsonSerializer.Serialize(DestinationMembership));
+                deltaCalculatorRequest = new DeltaCalculatorRequest
+                {
+                    RunId = runId,
+                    SourceGroupMembership = TextCompressor.Compress(JsonSerializer.Serialize(SourceMembership)),
+                    DestinationGroupMembership = TextCompressor.Compress(JsonSerializer.Serialize(DestinationMembership)),
+                    ReadFromBlobs = false,
+                    SourceMembershipFilePath = string.Empty,
+                    DestinationMembershipFilePath = string.Empty
+                };
             }
 
             var deltaResponse = await context.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), deltaCalculatorRequest);
@@ -180,10 +199,11 @@ namespace Hosts.MembershipAggregator
                     {
                         Message = $"deltaResponse: {deltaResponse.MembershipDeltaStatus}, SourceMembershipFilePath: {deltaCalculatorRequest.SourceMembershipFilePath}, DestinationMembershipFilePath: {deltaCalculatorRequest.DestinationMembershipFilePath}",
                         RunId = runId
-                    }
+                    },
+                    Verbosity = VerbosityLevel.INFO
                 });
-                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest { FilePath = deltaCalculatorRequest.SourceMembershipFilePath, RunId = request.SyncJob.RunId });
-                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest { FilePath = deltaCalculatorRequest.DestinationMembershipFilePath, RunId = request.SyncJob.RunId });
+                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest { FilePath = deltaCalculatorRequest.SourceMembershipFilePath, RunId = runId });
+                await context.CallActivityAsync(nameof(FileDeleterFunction), new FileDeleterRequest { FilePath = deltaCalculatorRequest.DestinationMembershipFilePath, RunId = runId });
             }
 
             if (deltaResponse.MembershipDeltaStatus == MembershipDeltaStatus.Ok)
@@ -197,7 +217,8 @@ namespace Hosts.MembershipAggregator
                         {
                             Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
                             RunId = runId
-                        }
+                        },
+                        Verbosity = VerbosityLevel.INFO
                     });
 
                 return new MembershipSubOrchestratorResponse
@@ -220,11 +241,12 @@ namespace Hosts.MembershipAggregator
                         {
                             Message = $"Uploaded membership file {uploadRequest.FilePath} with {SourceMembership.SourceMembers.Count} unique members",
                             RunId = runId
-                        }
+                        },
+                        Verbosity = VerbosityLevel.INFO
                     });
 
                 var currentThresholdViolations = request.SyncJob.ThresholdViolations + 1;
-                SyncStatus? status = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob
+                SyncStatus status = currentThresholdViolations >= _thresholdConfig.NumberOfThresholdViolationsToDisableJob
                                     ? SyncStatus.ThresholdExceeded
                                     : SyncStatus.Idle;
 
@@ -233,7 +255,9 @@ namespace Hosts.MembershipAggregator
                                                 {
                                                     SyncJob = request.SyncJob,
                                                     Status = status,
-                                                    ThresholdViolations = currentThresholdViolations
+                                                    IsDryRun = false,
+                                                    ThresholdViolations = currentThresholdViolations,
+                                                    DeltaStatus = MembershipDeltaStatus.ThresholdExceeded
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Success, RunId = runId });
             }
@@ -246,14 +270,17 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
-                        Message = new LogMessage { Message = message, RunId = runId }
+                        Message = new LogMessage { Message = message, RunId = runId },
+                        Verbosity = VerbosityLevel.INFO
                     });
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
                                                     Status = SyncStatus.Idle,
-                                                    IsDryRun = true
+                                                    IsDryRun = true,
+                                                    ThresholdViolations = 0,
+                                                    DeltaStatus = MembershipDeltaStatus.DryRun
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
             }
@@ -263,7 +290,10 @@ namespace Hosts.MembershipAggregator
                                                 new JobStatusUpdaterRequest
                                                 {
                                                     SyncJob = request.SyncJob,
-                                                    Status = SyncStatus.Error
+                                                    Status = SyncStatus.Error,
+                                                    IsDryRun = false,
+                                                    ThresholdViolations = 0,
+                                                    DeltaStatus = MembershipDeltaStatus.Error
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
             }
@@ -276,7 +306,8 @@ namespace Hosts.MembershipAggregator
                     {
                         Message = $"There are no membership changes for TargetOfficeGroupId {request.GroupId}.",
                         RunId = runId
-                    }
+                    },
+                    Verbosity = VerbosityLevel.INFO
                 });
 
                 var sourceTypeCounts = JsonParser.GetQueryTypes(request.SyncJob.Query);
@@ -304,7 +335,7 @@ namespace Hosts.MembershipAggregator
                                        new JobReaderRequest
                                        {
                                            JobId = request.SyncJob.Id,
-                                           RunId = request.SyncJob.RunId.GetValueOrDefault()
+                                           RunId = runId
                                        });
 
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
@@ -322,6 +353,7 @@ namespace Hosts.MembershipAggregator
                                 {
                                     SyncJob = request.SyncJob,
                                     Status = SyncStatus.Idle,
+                                    IsDryRun = false,
                                     ThresholdViolations = 0,
                                     DeltaStatus = MembershipDeltaStatus.NoChanges
                                 });
@@ -344,7 +376,8 @@ namespace Hosts.MembershipAggregator
                     {
                         Message = message,
                         RunId = runId
-                    }
+                    },
+                    Verbosity = VerbosityLevel.INFO
                 });
         }
 

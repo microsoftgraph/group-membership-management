@@ -7,12 +7,12 @@ namespace Hosts.MembershipAggregator
 {
     public class FileUploaderRequest
     {
-        public string FilePath { get; set; }
+        public required string FilePath { get; init; }
 
         /// <summary>
         /// Compressed serialized GroupMembership
         /// </summary>
-        public string Content { get; set; }
-        public SyncJob SyncJob { get; set; }
+        public required string Content { get; init; }
+        public required SyncJob SyncJob { get; init; }
     }
 }

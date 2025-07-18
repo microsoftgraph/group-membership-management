@@ -7,7 +7,7 @@ namespace Hosts.MembershipAggregator
 {
     public class LoggerRequest
     {
-        public LogMessage Message { get; set; }
-        public VerbosityLevel Verbosity { get; set; } = VerbosityLevel.INFO;
+        public required LogMessage Message { get; init; }
+        public required VerbosityLevel Verbosity { get; init; } = VerbosityLevel.INFO;
     }
 }

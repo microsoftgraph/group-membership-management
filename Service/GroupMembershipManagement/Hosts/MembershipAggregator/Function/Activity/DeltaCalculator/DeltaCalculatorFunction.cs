@@ -39,7 +39,7 @@ namespace Hosts.MembershipAggregator
             GroupMembership sourceMembership;
             GroupMembership destinationMembership;
 
-            _deltaCalculatorService.RunId = request.RunId.GetValueOrDefault(Guid.Empty);
+            _deltaCalculatorService.RunId = request.RunId;
 
             if (request.ReadFromBlobs)
             {

@@ -29,8 +29,8 @@ namespace Hosts.MembershipAggregator
             if (syncJob != null)
             {
                 var currentDate = DateTime.UtcNow;
-                if (request.ThresholdViolations.HasValue)
-                    syncJob.ThresholdViolations = request.ThresholdViolations.Value;
+                if (request.ThresholdViolations != 0)
+                    syncJob.ThresholdViolations = request.ThresholdViolations;
 
                 if (request.IsDryRun)
                     syncJob.DryRunTimeStamp = currentDate;

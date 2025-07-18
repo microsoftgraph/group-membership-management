@@ -7,7 +7,7 @@ namespace Hosts.MembershipAggregator
 {
     public class FileDeleterRequest
     {
-        public string FilePath { get; set; }
-        public Guid? RunId { get; set; }
+        public required string FilePath { get; init; }
+        public required Guid RunId { get; init; }
     }
 }

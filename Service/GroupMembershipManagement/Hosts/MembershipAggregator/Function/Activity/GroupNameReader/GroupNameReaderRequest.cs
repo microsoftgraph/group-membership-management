@@ -8,7 +8,7 @@ namespace Hosts.MembershipAggregator
 {
     public class GroupNameReaderRequest
     {
-        public SyncJob SyncJob { get; set; }
-        public Guid GroupId { get; set; }
+        public required SyncJob SyncJob { get; init; }
+        public required Guid GroupId { get; init; }
     }
 }
