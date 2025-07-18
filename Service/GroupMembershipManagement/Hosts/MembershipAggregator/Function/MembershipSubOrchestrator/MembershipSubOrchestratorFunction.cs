@@ -66,7 +66,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Error,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = false,
-                                                    DeltaStatus = MembershipDeltaStatus.Error
+                                                    IsNoOpSync = false
                                                 });
 
                 if (SourceMembership == null)
@@ -100,7 +100,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.MembershipDataNotFound,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = false,
-                                                    DeltaStatus = MembershipDeltaStatus.Error
+                                                    IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
@@ -257,7 +257,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = status,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = true,
-                                                    DeltaStatus = MembershipDeltaStatus.ThresholdExceeded
+                                                    IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Success, RunId = runId });
             }
@@ -280,7 +280,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Idle,
                                                     IsDryRun = true,
                                                     IncrementThresholdViolations = false,
-                                                    DeltaStatus = MembershipDeltaStatus.DryRun
+                                                    IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = runId });
             }
@@ -293,7 +293,7 @@ namespace Hosts.MembershipAggregator
                                                     Status = SyncStatus.Error,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = false,
-                                                    DeltaStatus = MembershipDeltaStatus.Error
+                                                    IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
             }
@@ -355,7 +355,7 @@ namespace Hosts.MembershipAggregator
                                     Status = SyncStatus.Idle,
                                     IsDryRun = false,
                                     IncrementThresholdViolations = false,
-                                    DeltaStatus = MembershipDeltaStatus.NoChanges
+                                    IsNoOpSync = true
                                 });
             }
 

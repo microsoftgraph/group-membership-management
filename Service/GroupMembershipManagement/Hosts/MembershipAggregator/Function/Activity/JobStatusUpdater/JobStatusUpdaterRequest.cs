@@ -11,6 +11,6 @@ namespace Hosts.MembershipAggregator
         public required SyncStatus Status { get; init; }
         public required bool IsDryRun { get; init; }
         public required bool IncrementThresholdViolations { get; init; }
-        public required MembershipDeltaStatus DeltaStatus { get; init; }
+        public required bool IsNoOpSync { get; init; }
     }
 }

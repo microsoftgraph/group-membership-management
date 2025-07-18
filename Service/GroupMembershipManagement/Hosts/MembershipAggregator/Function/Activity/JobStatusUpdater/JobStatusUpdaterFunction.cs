@@ -38,7 +38,7 @@ namespace Hosts.MembershipAggregator
                 {
                     syncJob.LastRunTime = currentDate;
 
-                    if (request.DeltaStatus == Services.Entities.MembershipDeltaStatus.NoChanges)
+                    if (request.IsNoOpSync)
                     {
                         if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 

@@ -43,7 +43,7 @@ namespace Hosts.MembershipAggregator
                     SyncJob = request.SyncJob,
                     IsDryRun = false,
                     IncrementThresholdViolations = false,
-                    DeltaStatus = MembershipDeltaStatus.Error
+                    IsNoOpSync = false
                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                 return;
@@ -144,7 +144,7 @@ namespace Hosts.MembershipAggregator
                                                     SyncJob = request.SyncJob,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = false,
-                                                    DeltaStatus = MembershipDeltaStatus.Error
+                                                    IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FileNotFound, ResultStatus = ResultStatus.Failure, RunId = runId });
 
@@ -168,7 +168,7 @@ namespace Hosts.MembershipAggregator
                                                     SyncJob = request.SyncJob,
                                                     IsDryRun = false,
                                                     IncrementThresholdViolations = false,
-                                                    DeltaStatus = MembershipDeltaStatus.Error
+                                                    IsNoOpSync = false
                                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
 
