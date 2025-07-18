@@ -378,7 +378,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     tenantId: tenantId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
-    storageAccountSecretName: 'storageAccountConnectionString'
+    storageAccountSecretName: 'sqlMembershipStorageAccountName'
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
   }
