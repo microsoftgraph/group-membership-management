@@ -42,6 +42,7 @@ namespace Hosts.MembershipAggregator
                     {
                         if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
 
+                        syncJob.ThresholdViolations = 0;
                         syncJob.LastSuccessfulRunTime = currentDate;
                     }
                 }
