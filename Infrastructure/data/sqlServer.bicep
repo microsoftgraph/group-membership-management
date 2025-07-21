@@ -249,36 +249,8 @@ module secureKeyvaultSecrets 'keyVaultSecretsSecure.bicep' = {
           value: '${sqlServerUrl}${jobsSqlDataBaseName}${sqlServerAdditionalSettings}'
         }
         {
-          name: 'sqlServerConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}${sqlServerAdditionalSettings}'
-        }
-        {
-          name: 'sqlServerBasicConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}${sqlServerAdditionalSettings}'
-        }
-        {
-          name: 'sqlServerMSIConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;Connection Timeout=90;'
-        }
-        {
-          name: 'replicaSqlServerMSIConnectionString'
-          value: '${sqlServerUrl}${sqlServerDataBaseName}Authentication=Active Directory Default;TrustServerCertificate=True;Encrypt=True;Connection Timeout=90;'
-        }
-        {
           name: 'sqlServerName'
           value: '${sqlServerName}${environment().suffixes.sqlServerHostname}'
-        }
-        {
-          name: 'sqlServerDataBaseName'
-          value: sqlServerName
-        }
-        {
-          name: 'replicaSqlServerName'
-          value: replicaSqlServerName
-        }
-        {
-          name: 'replicaSqlDataBaseName'
-          value: replicaSqlDatabaseName
         }
         {
           name: 'replicaSqlServerConnectionString'
