@@ -13,7 +13,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Contracts", ".
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Models", "..\..\..\Models\Models.csproj", "{F7C85A82-C663-4E0A-9016-693DE824A0E7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.SyncJobUpdater.Tests", "..\Services.SyncJobUpdater.Tests\Services.SyncJobUpdater.Tests.csproj", "{DFDF0FF1-54E0-4F16-B1A2-7FD0474FB2C8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.SyncJobUpdater.Tests\Services.Tests.csproj", "{DFDF0FF1-54E0-4F16-B1A2-7FD0474FB2C8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{1C0B2B77-6100-493A-ADE3-58C0234C9908}"
 EndProject

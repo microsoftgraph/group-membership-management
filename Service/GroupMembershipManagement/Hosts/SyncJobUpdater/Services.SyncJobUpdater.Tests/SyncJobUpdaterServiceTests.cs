@@ -1,15 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
-using System.Threading.Tasks;
+using Hosts.SyncJobUpdater;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using Models;
 using Models.ServiceBus;
+using Moq;
 using Repositories.Contracts;
 using Services.SyncJobUpdater.Tests.Mocks;
-using Services.Contracts;
-using Hosts.SyncJobUpdater;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Services.Tests
 {
@@ -20,10 +21,14 @@ namespace Services.Tests
         private Mock<ISyncJobHistoryRepository> _mockSyncJobHistoryRepository;
         private MockLoggingRepository _mockLoggingRepository;
         private SyncJobUpdaterService _syncJobUpdaterService;
+        private SyncJob _updatedJob = null;
+        private DateTime _currentDateTime;
 
         [TestInitialize]
         public void Setup()
         {
+            _currentDateTime = DateTime.UtcNow;
+
             _mockDatabaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _mockLoggingRepository = new MockLoggingRepository();
@@ -31,6 +36,13 @@ namespace Services.Tests
                 _mockDatabaseSyncJobsRepository.Object, 
                 _mockLoggingRepository,
                 _mockSyncJobHistoryRepository.Object);
+
+            _mockDatabaseSyncJobsRepository.Setup(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()))
+                .Callback<IEnumerable<SyncJob>, SyncStatus?>((jobs, status) => 
+                {
+                    _updatedJob = jobs.First();
+                    _updatedJob.Status = status?.ToString();
+                });
         }
 
         [TestMethod]
@@ -38,21 +50,29 @@ namespace Services.Tests
         {
             var jobId = Guid.NewGuid();
             var runId = Guid.NewGuid();
-            var syncJob = new SyncJob { Id = jobId, RunId = runId };
+            var syncJob = new SyncJob { Id = jobId, RunId = runId, Period = 24, IgnoreThresholdOnce = true };
             var message = new JobStatusUpdateQueueMessage
             {
                 JobId = jobId,
                 RunId = runId,
                 NewStatus = SyncStatus.Idle,
-                SyncJob = syncJob,
+                SyncJob = CloneJob(syncJob),
                 ThresholdViolations = 0,
                 UpdatedByFunction = "TestFunction"
             };
 
             await _syncJobUpdaterService.UpdateSyncJobStatusAsync(message);
 
-            _mockDatabaseSyncJobsRepository.Verify(repo => repo.UpdateSyncJobStatusAsync(It.Is<SyncJob[]>(jobs => jobs.Length == 1 && jobs[0] == syncJob), SyncStatus.Idle), Times.Once);
+            _mockDatabaseSyncJobsRepository.Verify(repo => repo.UpdateSyncJobStatusAsync(It.Is<SyncJob[]>(jobs => jobs.Length == 1), SyncStatus.Idle), Times.Once);
             _mockSyncJobHistoryRepository.Verify(repo => repo.GetByRunIdAsync(runId), Times.Once);
+
+            Assert.AreNotEqual(default, _updatedJob.LastRunTime);
+            Assert.AreEqual(message.NewStatus.ToString(), _updatedJob.Status);
+            Assert.AreEqual(_updatedJob.LastRunTime, _updatedJob.LastSuccessfulRunTime);
+            Assert.IsTrue(syncJob.LastRunTime < _updatedJob.LastRunTime);
+            Assert.IsTrue(syncJob.LastSuccessfulRunTime < _updatedJob.LastSuccessfulRunTime);
+            Assert.IsTrue(_updatedJob.ScheduledDate >= _currentDateTime.AddHours(24));
+            Assert.IsFalse(_updatedJob.IgnoreThresholdOnce);
         }
 
         [TestMethod]
@@ -60,7 +80,7 @@ namespace Services.Tests
         {
             var jobId = Guid.NewGuid();
             var runId = Guid.NewGuid();
-            var syncJob = new SyncJob { Id = jobId, RunId = runId };
+            var syncJob = new SyncJob { Id = jobId, RunId = runId, Period = 24, IgnoreThresholdOnce = true };
             var existingHistory = new Models.SyncJobHistory.SyncJobHistory
             {
                 Id = Guid.NewGuid(),
@@ -78,7 +98,7 @@ namespace Services.Tests
                 JobId = jobId,
                 RunId = runId,
                 NewStatus = SyncStatus.Idle,
-                SyncJob = syncJob,
+                SyncJob = CloneJob(syncJob),
                 JobEndTime = DateTime.UtcNow,
                 UpdatedByFunction = "NewFunction"
                 // Note: UsersAddedCount, UsersRemovedCount, ThresholdViolations are not provided
@@ -97,6 +117,14 @@ namespace Services.Tests
                 h.EndTime == message.JobEndTime && // Updated
                 h.Status == "Idle" // Updated
             )), Times.Once);
+
+            Assert.AreNotEqual(default, _updatedJob.LastRunTime);
+            Assert.AreEqual(message.NewStatus.ToString(), _updatedJob.Status);
+            Assert.AreEqual(_updatedJob.LastRunTime, _updatedJob.LastSuccessfulRunTime);
+            Assert.IsTrue(syncJob.LastRunTime < _updatedJob.LastRunTime);
+            Assert.IsTrue(syncJob.LastSuccessfulRunTime < _updatedJob.LastSuccessfulRunTime);
+            Assert.IsTrue(_updatedJob.ScheduledDate >= _currentDateTime.AddHours(24));
+            Assert.IsFalse(_updatedJob.IgnoreThresholdOnce);
         }
 
         [TestMethod]
@@ -104,13 +132,13 @@ namespace Services.Tests
         {
             var jobId = Guid.NewGuid();
             var runId = Guid.NewGuid();
-            var syncJob = new SyncJob { Id = jobId, RunId = runId };
+            var syncJob = new SyncJob { Id = jobId, RunId = runId, Period = 24, IgnoreThresholdOnce = true };
             var message = new JobStatusUpdateQueueMessage
             {
                 JobId = jobId,
                 RunId = runId,
                 NewStatus = SyncStatus.InProgress,
-                SyncJob = syncJob,
+                SyncJob = CloneJob(syncJob),
                 JobStartTime = DateTime.UtcNow.AddMinutes(-5),
                 UsersAddedCount = 15,
                 UsersRemovedCount = 3,
@@ -132,6 +160,28 @@ namespace Services.Tests
                 h.ThresholdViolations == 0 &&
                 h.UpdatedByFunction == "TestFunction"
             )), Times.Once);
+
+            Assert.AreNotEqual(default, _updatedJob.LastRunTime);
+            Assert.AreEqual(message.NewStatus.ToString(), _updatedJob.Status);
+            Assert.IsTrue(syncJob.LastRunTime < _updatedJob.LastRunTime);
+            Assert.IsTrue(syncJob.LastSuccessfulRunTime == _updatedJob.LastSuccessfulRunTime);
+            Assert.IsFalse(_updatedJob.IgnoreThresholdOnce);
+        }
+
+        private SyncJob CloneJob(SyncJob job)
+        {
+            return new SyncJob
+            {
+                Id = job.Id,
+                RunId = job.RunId,
+                Period = job.Period,
+                Status = job.Status,
+                LastRunTime = job.LastRunTime,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                ScheduledDate = job.ScheduledDate,
+                DryRunTimeStamp = job.DryRunTimeStamp,
+                IsDryRunEnabled = job.IsDryRunEnabled
+            };
         }
     }
 }

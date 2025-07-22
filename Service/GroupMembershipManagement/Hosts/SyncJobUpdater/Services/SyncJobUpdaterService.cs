@@ -5,6 +5,7 @@ using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Services.Contracts;
+using System;
 using System.Threading.Tasks;
 
 namespace Hosts.SyncJobUpdater
@@ -46,6 +47,25 @@ namespace Hosts.SyncJobUpdater
                 syncJob.ThresholdViolations = message.ThresholdViolations.Value;
             }
 
+            var isDryRunSync = syncJob.IsDryRunEnabled;
+            var currentDate = DateTime.UtcNow;
+            if (isDryRunSync)
+            {
+                syncJob.DryRunTimeStamp = currentDate;
+            }
+            else
+            {
+                if (message.NewStatus == SyncStatus.Idle)
+                {
+                    syncJob.LastSuccessfulRunTime = currentDate;
+                    syncJob.IgnoreThresholdOnce = false;
+                }
+
+                syncJob.LastRunTime = currentDate;
+            }
+
+            syncJob.ScheduledDate = currentDate.AddHours(syncJob.Period);
+
             // Update the sync job status
             await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, message.NewStatus);
 
@@ -73,6 +93,7 @@ namespace Hosts.SyncJobUpdater
                 existingHistory.UsersRemoved = message.UsersRemovedCount ?? existingHistory.UsersRemoved;
                 existingHistory.ThresholdViolations = message.ThresholdViolations ?? existingHistory.ThresholdViolations;
                 existingHistory.UpdatedByFunction = !string.IsNullOrEmpty(message.UpdatedByFunction) ? message.UpdatedByFunction : existingHistory.UpdatedByFunction;
+                existingHistory.UpdatedAt = DateTime.UtcNow;
                 
                 // Update StartTime only if provided and not already set
                 if (message.JobStartTime.HasValue && !existingHistory.StartTime.HasValue)
@@ -90,6 +111,7 @@ namespace Hosts.SyncJobUpdater
             }
             else
             {
+                var now = DateTime.UtcNow;
                 // Create new history entry
                 var newHistory = new SyncJobHistory
                 {
@@ -101,7 +123,9 @@ namespace Hosts.SyncJobUpdater
                     UsersAdded = message.UsersAddedCount,
                     UsersRemoved = message.UsersRemovedCount,
                     ThresholdViolations = message.ThresholdViolations,
-                    UpdatedByFunction = message.UpdatedByFunction
+                    UpdatedByFunction = message.UpdatedByFunction,
+                    CreatedAt = now,
+                    UpdatedAt = now
                 };
 
                 // Calculate duration if both start and end times are available
