@@ -289,7 +289,7 @@ const manageMembershipSlice = createSlice({
             state.sourceParts = [];
         },
         setJobDetailsForExistingJob: (state, action: PayloadAction<Job>) => {
-            const { query, requestor, lastModifiedOnBehalfOfDisplayName, lastModifiedOnBehalfOfObjectId, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals } = action.payload;
+            const { query, requestor, lastModifiedOnBehalfOfDisplayName, lastModifiedOnBehalfOfObjectId, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals, targetGroupId, targetGroupName, targetDestinationType, targetChannelId, targetChannelName } = action.payload;
             state.advancedViewQuery = JSON.stringify(query);
             state.compositeQuery = buildCompositeQuery(JSON.parse(query));
             state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
@@ -305,6 +305,17 @@ const manageMembershipSlice = createSlice({
             state.newJob.period = period || state.newJob.period;
             state.newJob.thresholdPercentageForAdditions = thresholdPercentageForAdditions || state.newJob.thresholdPercentageForAdditions;
             state.newJob.thresholdPercentageForRemovals = thresholdPercentageForRemovals || state.newJob.thresholdPercentageForRemovals;
+            
+            // Set the selected destination for existing jobs to enable group owner fetching
+            if (targetGroupId && targetGroupName) {
+                state.selectedDestination = {
+                    id: targetGroupId,
+                    name: targetGroupName,
+                    type: targetDestinationType || DestinationType.GroupMembership,
+                    channelId: targetChannelId,
+                    channelName: targetChannelName
+                };
+            }
         },
         setIsEditingExistingJob: (state, action: PayloadAction<boolean>) => {
             state.isEditingExistingJob = action.payload;
