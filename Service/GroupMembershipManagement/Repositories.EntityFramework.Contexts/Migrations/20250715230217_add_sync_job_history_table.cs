@@ -36,7 +36,7 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                         column: x => x.SyncJobId,
                         principalTable: "SyncJobs",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.NoAction);
                 });
 
             migrationBuilder.CreateIndex(
