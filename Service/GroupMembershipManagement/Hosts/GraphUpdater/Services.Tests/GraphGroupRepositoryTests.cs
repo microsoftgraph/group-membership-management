@@ -28,12 +28,16 @@ namespace Services.Tests
     {
         private const string GRAPH_API_V1_BASE_URL = "https://graph.microsoft.com/v1.0";
         private Mock<IRequestAdapter> _requestAdapter;
+        private Mock<IGraphRepositorySettings> _graphRepositorySettings;
 
         [TestInitialize]
         public void Setup()
         {
             _requestAdapter = new Mock<IRequestAdapter>();
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
+            _graphRepositorySettings = new Mock<IGraphRepositorySettings>();
+
+            _graphRepositorySettings.Setup(x => x.ConcurrentWriteRequests).Returns(10);
 
             string requestUrl = null;
             HttpMethod requestMethod = null;
@@ -146,7 +150,7 @@ namespace Services.Tests
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
             var targetGroup = new AzureADGroup { ObjectId = Guid.Empty };
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
             var response = await graphGroupRepository.AddUsersToGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
@@ -239,7 +243,7 @@ namespace Services.Tests
                             });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
             var response = await graphGroupRepository.RemoveUsersFromGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
@@ -340,7 +344,7 @@ namespace Services.Tests
             var logger = new Mock<ILoggingRepository>();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
 
             var usersToAdd = new List<AzureADUser>();
             Enumerable.Range(0, numberOfUsers)
@@ -457,7 +461,7 @@ namespace Services.Tests
             var logger = new Mock<ILoggingRepository>();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
             var usersToAdd = new List<AzureADUser>();
 
             Enumerable.Range(0, numberOfUsers)

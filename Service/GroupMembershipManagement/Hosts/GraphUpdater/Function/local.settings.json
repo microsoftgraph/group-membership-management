@@ -25,6 +25,7 @@
     "serviceBusNotificationsQueue": "",
     "triggerSchedule": "0,30 * * * * *",
     "triggerDelay": "0",
-    "instanceIdentifier": "small|medium|large|onboarding"
+    "instanceIdentifier": "small|medium|large|onboarding",
+    "concurrentWriteRequests": 10
   }
 }

@@ -21,7 +21,7 @@ namespace Repositories.GraphGroups
     internal class GraphGroupMembershipUpdater : GraphGroupRepositoryBase
     {
         private const int GraphBatchLimit = 20;
-        private const int ConcurrentRequests = 10;
+        private readonly int _concurrentWriteRequests;
 
         private static readonly HttpStatusCode[] _shouldRetry = new[]
             { HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout, HttpStatusCode.BadGateway, HttpStatusCode.InternalServerError };
@@ -42,9 +42,12 @@ namespace Repositories.GraphGroups
 
         public GraphGroupMembershipUpdater(GraphServiceClient graphServiceClient,
                                   ILoggingRepository loggingRepository,
-                                  GraphGroupMetricTracker graphGroupMetricTracker)
+                                  GraphGroupMetricTracker graphGroupMetricTracker,
+                                  IGraphRepositorySettings graphRepositorySettings)
                                   : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+        {
+            _concurrentWriteRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentWriteRequests;
+        }
 
 
         public Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
@@ -107,7 +110,7 @@ namespace Repositories.GraphGroups
                         Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
                     }));
 
-            var responses = await Task.WhenAll(Enumerable.Range(0, ConcurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
+            var responses = await Task.WhenAll(Enumerable.Range(0, _concurrentWriteRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
             var status = responses.Any(x => x.ResponseCode == ResponseCode.GuestError) ?
                 ResponseCode.GuestError :
                 (responses.Any(x => x.ResponseCode == ResponseCode.Error) ?

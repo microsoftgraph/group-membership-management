@@ -44,6 +44,16 @@ namespace Hosts.GraphUpdater
             });
 
             builder.Services.AddGraphAPIClient()
+            .AddSingleton<IGraphRepositorySettings>(services =>
+
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var batchRequests = GetIntSetting(configuration, "concurrentWriteRequests", 10);
+                return new GraphRepositorySettings
+                {
+                    ConcurrentWriteRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests
+                };
+            })
 
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphUpdaterService, GraphUpdaterService>()

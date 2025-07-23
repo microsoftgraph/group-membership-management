@@ -25,8 +25,16 @@ namespace Repositories.GraphGroups
         public Guid RunId { get; set; }
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
+                            TelemetryClient telemetryClient,
+                            ILoggingRepository loggingRepository)
+        : this(graphServiceClient, telemetryClient, loggingRepository, null)
+            {
+            }
+
+        public GraphGroupRepository(GraphServiceClient graphServiceClient,
                                     TelemetryClient telemetryClient,
-                                    ILoggingRepository loggingRepository)
+                                    ILoggingRepository loggingRepository,
+                                    IGraphRepositorySettings graphRepositorySettings)
         {
             if (graphServiceClient == null) throw new ArgumentNullException(nameof(graphServiceClient));
             _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -37,7 +45,7 @@ namespace Repositories.GraphGroups
             _graphGroupOwnerReader = new GraphGroupOwnerReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphUserReader = new GraphUserReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupMembershipReader = new GraphGroupMembershipReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(graphServiceClient, loggingRepository, graphGroupMetricTracker);
+            _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(graphServiceClient, loggingRepository, graphGroupMetricTracker, graphRepositorySettings);
             _graphGroupDeltaReader = new GraphGroupDeltaReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
             _graphGroupPlacesReader = new GraphGroupPlacesReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
         }
@@ -66,7 +74,7 @@ namespace Repositories.GraphGroups
         {
             return _graphGroupInformationReader.GetGroupNamesAsync(objectIds);
         }
-        
+
         public Task<string> GetGroupEmailAsync(Guid objectId)
         {
             return _graphGroupInformationReader.GetGroupEmailAsync(objectId, RunId);

@@ -148,6 +148,7 @@ var appSettings = {
   instanceIdentifier: instanceIdentifier  
   triggerSchedule: triggerSchedule  
   triggerDelay: triggerDelay 
+  concurrentWriteRequests: 10
 }
 
 var activityFunctionSettings = {
