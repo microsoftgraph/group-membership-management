@@ -13,5 +13,8 @@ namespace SqlMembershipObtainer
         public required int PersonnelNumber { get; init; }
         public required string TableName { get; init; }
         public required Guid GroupId { get; init; }
+        public required int CurrentPart { get; init; }
+        public required bool Exclusionary { get; init; }
+        public required string AdaptiveCardTemplateDirectory { get; init; }
     }
 }

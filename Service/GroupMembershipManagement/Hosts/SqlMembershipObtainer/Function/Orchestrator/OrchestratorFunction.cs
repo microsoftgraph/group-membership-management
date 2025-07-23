@@ -103,35 +103,17 @@ namespace SqlMembershipObtainer
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob, Verbosity = VerbosityLevel.INFO });
                 var query = JsonSerializer.Deserialize<Query>(currentQueryAsString);
-                var graphProfilesResponse = await context.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+                var senderResponse = await context.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
                             nameof(OrganizationProcessorFunction),
                             new OrganizationProcessorRequest
                             {
                                 Query = query,
                                 SyncJob = syncJob,
-                                GroupId = groupId
+                                GroupId = groupId,
+                                CurrentPart = mainRequest.CurrentPart,
+                                Exclusionary = mainRequest.Exclusionary,
+                                AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
                             });
-
-                await context.CallActivityAsync(
-                               nameof(LoggerFunction),
-                               new LoggerRequest
-                               {
-                                   SyncJob = syncJob,
-                                   Message = $"Retrieved {graphProfilesResponse.GraphProfileCount} total profiles from SqlMembershipObtainer",
-                                   Verbosity = VerbosityLevel.INFO
-                               });
-
-                var senderResponse = await context.CallActivityAsync<(SyncStatus Status, string FilePath)>(
-                                    nameof(GroupMembershipSenderFunction),
-                                    new GroupMembershipSenderRequest
-                                    {
-                                        SyncJob = syncJob,
-                                        GroupId = groupId,
-                                        Profiles = graphProfilesResponse.GraphProfiles,
-                                        CurrentPart = mainRequest.CurrentPart,
-                                        Exclusionary = mainRequest.Exclusionary,
-                                        AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
-                                    });
 
                 if (senderResponse.Status != SyncStatus.InProgress)
                 {

@@ -1,15 +1,11 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.Helpers;
-using Repositories.Contracts;
-using SqlMembershipObtainer.SubOrchestrator;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
+
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Models;
+using Repositories.Contracts;
+using SqlMembershipObtainer.Entities;
+using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
@@ -20,11 +16,9 @@ namespace SqlMembershipObtainer
         }
 
         [FunctionName(nameof(OrganizationProcessorFunction))]
-        public async Task<GraphProfileInformationResponse> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<GroupMembershipSenderResponse> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            List<GraphProfileInformation> graphProfileInformation = null;
-            var response = new GraphProfileInformationResponse();
-            var queryTasks = new List<Task<GraphProfileInformationResponse>>();
+            var response = new GroupMembershipSenderResponse();           
             var request = context.GetInput<OrganizationProcessorRequest>();
 
             await context.CallActivityAsync(
@@ -55,7 +49,7 @@ namespace SqlMembershipObtainer
 
             if (manager != null && manager.Id > 0)
             {
-                var res = await context.CallActivityAsync<GraphProfileInformationResponse>(
+                response = await context.CallActivityAsync<GroupMembershipSenderResponse>(
                                                     nameof(ManagerOrgReaderFunction),
                                                     new ManagerOrgReaderRequest
                                                     {
@@ -64,28 +58,26 @@ namespace SqlMembershipObtainer
                                                         PersonnelNumber = manager.Id,
                                                         SyncJob = request.SyncJob,
                                                         GroupId = request.GroupId,
+                                                        CurrentPart = request.CurrentPart,
+                                                        Exclusionary = request.Exclusionary,
+                                                        AdaptiveCardTemplateDirectory = request.AdaptiveCardTemplateDirectory,
                                                         TableName = tableName
                                                     });
-
-                graphProfileInformation = JsonSerializer.Deserialize<List<GraphProfileInformation>>(TextCompressor.Decompress(res.GraphProfiles));
-                graphProfileInformation = graphProfileInformation.GroupBy(user => user.Id).Select(userGrp => userGrp.First()).ToList();
-                response = new GraphProfileInformationResponse
-                {
-                    GraphProfiles = TextCompressor.Compress(JsonSerializer.Serialize(graphProfileInformation)),
-                    GraphProfileCount = res.GraphProfileCount
-                };
             }
             else
             {
                 if (!string.IsNullOrWhiteSpace(filter))
                 {
-                    response = await context.CallActivityAsync<GraphProfileInformationResponse>(
+                    response = await context.CallActivityAsync<GroupMembershipSenderResponse>(
                                                                 nameof(ChildEntitiesFilterFunction),
                                                                 new ChildEntitiesFilterRequest
                                                                 {
                                                                     Query = filter,
                                                                     SyncJob = request.SyncJob,
                                                                     GroupId = request.GroupId,
+                                                                    CurrentPart = request.CurrentPart,
+                                                                    Exclusionary = request.Exclusionary,
+                                                                    AdaptiveCardTemplateDirectory = request.AdaptiveCardTemplateDirectory,
                                                                     TableName = tableName
                                                                 });
                 }

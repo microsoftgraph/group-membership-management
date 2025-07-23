@@ -50,8 +50,7 @@ namespace Services
             _isSqlMembershipObtainerDryRunEnabled = dryRun == null ? throw new ArgumentNullException(nameof(dryRun)) : dryRun.DryRunEnabled;
             _dataFactoryService = dataFactoryService ?? throw new ArgumentNullException(nameof(dataFactoryService));
         }
-
-        public async Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, Guid? runId, Guid? targetOfficeGroupId)
+        public async Task<GroupMembershipSenderResponse> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory)
         {
             var children = new List<PersonEntity>();
 
@@ -61,52 +60,61 @@ namespace Services
             }
             catch (SqlException ex)
             {
-                var exceptionMessage = $"Sql Exception in SqlMembershipObtainer with RunId: {runId}, TargetOfficeGroupId: {targetOfficeGroupId}";
-                var ocSQLException = new SqlMembershipObtainerSQLException(exceptionMessage, ex, targetOfficeGroupId, runId);
+                var exceptionMessage = $"Sql Exception in SqlMembershipObtainer with RunId: {syncJob.RunId}, TargetOfficeGroupId: {targetOfficeGroupId}";
+                var ocSQLException = new SqlMembershipObtainerSQLException(exceptionMessage, ex, targetOfficeGroupId, syncJob.RunId);
 
                 _telemetryClient.TrackException(ocSQLException, new Dictionary<string, string>()
                 {
                     {"TargetOfficeGroupId", targetOfficeGroupId.ToString() },
-                    {"RunId", runId.ToString() },
+                    {"RunId", syncJob.RunId.ToString() ?? string.Empty },
                     {"Exception", ex.Message }
                 });
 
                 throw ocSQLException;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {children.Count} child entities from {tableName} table", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {children.Count} records from {tableName} table", RunId = syncJob.RunId });
 
-            return children;
+            var profiles = children.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).ToList();
+
+            var senderResponse = await SendGroupMembershipAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
+
+            return senderResponse;
+
         }
 
-        public async Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName, Guid? runId, Guid? targetOfficeGroupId)
+        public async Task<GroupMembershipSenderResponse> FilterChildEntitiesAsync(string query, string tableName, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Beginning to filter entities from {tableName} table", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Beginning to filter entities from {tableName} table", RunId = syncJob.RunId });
 
-            var filteredChildren = new List<PersonEntity>();
+            var filteredEntities = new List<PersonEntity>();
 
             try
             {
-                filteredChildren = await _sqlMembershipRepository.FilterChildEntitiesAsync(query, tableName);
+                filteredEntities = await _sqlMembershipRepository.FilterChildEntitiesAsync(query, tableName);
             }
             catch (SqlException ex)
             {
-                var exceptionMessage = $"Sql Exception in SqlMembershipObtainer with RunId: {runId}, TargetOfficeGroupId: {targetOfficeGroupId}";
-                var ocSQLException = new SqlMembershipObtainerSQLException(exceptionMessage, ex, targetOfficeGroupId, runId);
+                var exceptionMessage = $"Sql Exception in SqlMembershipObtainer with RunId: {syncJob.RunId}, TargetOfficeGroupId: {targetOfficeGroupId}";
+                var ocSQLException = new SqlMembershipObtainerSQLException(exceptionMessage, ex, targetOfficeGroupId, syncJob.RunId);
 
                 _telemetryClient.TrackException(ocSQLException, new Dictionary<string, string>()
                 {
                     {"TargetOfficeGroupId", targetOfficeGroupId.ToString() },
-                    {"RunId", runId.ToString() },
+                    {"RunId", syncJob.RunId.ToString() ?? string.Empty },
                     {"Exception", ex.Message }
                 });
 
                 throw ocSQLException;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {filteredChildren.Count} filtered entities from {tableName} table", RunId = runId });
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {filteredEntities.Count} records from {tableName} table", RunId = syncJob.RunId });
 
-            return filteredChildren;
+            var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).Distinct().ToList();
+
+            var senderResponse = await SendGroupMembershipAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
+
+            return senderResponse;
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
@@ -124,7 +132,7 @@ namespace Services
             return Guid.Empty;
         }
 
-        public async Task<(SyncStatus Status, string FilePath)> SendGroupMembershipAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "")
+        public async Task<GroupMembershipSenderResponse> SendGroupMembershipAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "")
         {
             var groupMemberToBeSent = new GroupMembership
             {
@@ -152,7 +160,10 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent {groupMemberToBeSent.SourceMembers.Count} members for group {groupId}", RunId = syncJob.RunId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"SqlMembershipObtainer service completed at: {DateTime.UtcNow}", RunId = syncJob.RunId });
 
-            return (status, fileName);
+            return new GroupMembershipSenderResponse {
+                Status = status,
+                FilePath = fileName
+            };
         }
 
         public async Task<string> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId)

@@ -3,13 +3,10 @@
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
-using Models.Helpers;
 using Repositories.Contracts;
 using Services.Contracts;
-using SqlMembershipObtainer.SubOrchestrator;
+using SqlMembershipObtainer.Entities;
 using System;
-using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
@@ -26,21 +23,15 @@ namespace SqlMembershipObtainer
         }
 
         [FunctionName(nameof(ChildEntitiesFilterFunction))]
-        public async Task<GraphProfileInformationResponse> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
+        public async Task<GroupMembershipSenderResponse> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var filteredEntities = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob.RunId, request.GroupId);
+            var response = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary, request.AdaptiveCardTemplateDirectory);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
-            var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).Distinct().ToList();
-
-            return new GraphProfileInformationResponse
-            {
-                GraphProfiles = TextCompressor.Compress(JsonSerializer.Serialize(profiles)),
-                GraphProfileCount = profiles.Count
-            };
+            return response;
         }
     }
 }
