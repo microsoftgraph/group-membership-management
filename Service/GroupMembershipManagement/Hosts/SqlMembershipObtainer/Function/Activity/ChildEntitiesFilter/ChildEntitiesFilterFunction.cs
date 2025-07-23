@@ -23,7 +23,7 @@ namespace SqlMembershipObtainer
         }
 
         [FunctionName(nameof(ChildEntitiesFilterFunction))]
-        public async Task<GroupMembershipSenderResponse> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
+        public async Task<MembershipFileResult> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 

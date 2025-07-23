@@ -77,7 +77,7 @@ namespace Services.Tests
                                             dryRunValue.Object,
                                             dfService.Object);
 
-            await sqlMembershipObtainerService.SendGroupMembershipAsync(profiles, syncJob, syncJob.Group.GroupId, currentPart, false);
+            await sqlMembershipObtainerService.UploadMembershipFileAsync(profiles, syncJob, syncJob.Group.GroupId, currentPart, false);
 
             blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             Assert.AreEqual(profiles.Count, groupMembership.SourceMembers.Count);
@@ -122,7 +122,7 @@ namespace Services.Tests
                 .ReturnsAsync(personEntities);
 
             var capturedProfiles = new List<GraphProfileInformation>();
-            var expectedResponse = new GroupMembershipSenderResponse { Status = SyncStatus.InProgress, FilePath = "file-path" };
+            var expectedResponse = new MembershipFileResult { Status = SyncStatus.InProgress, FilePath = "file-path" };
 
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
@@ -176,7 +176,7 @@ namespace Services.Tests
                 .ReturnsAsync(personEntities);
 
             var capturedProfiles = new List<GraphProfileInformation>();
-            var expectedResponse = new GroupMembershipSenderResponse { Status = SyncStatus.InProgress, FilePath = "file-path" };
+            var expectedResponse = new MembershipFileResult { Status = SyncStatus.InProgress, FilePath = "file-path" };
 
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,

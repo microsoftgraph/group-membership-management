@@ -16,7 +16,7 @@ namespace Services.Tests
     public class OrganizationProcessorFunctionTests
     {
         private Mock<ISqlMembershipObtainerService> _sqlMembershipObtainerService = null;
-        private GroupMembershipSenderResponse _groupMembershipSenderResponse = null;
+        private MembershipFileResult _groupMembershipSenderResponse = null;
 
         [TestInitialize]
         public void Setup()
@@ -69,15 +69,15 @@ namespace Services.Tests
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
             orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>()))
                 .ReturnsAsync("sometable");
-            orgProcessorContext.Setup(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()))
-                .ReturnsAsync(new GroupMembershipSenderResponse());
+                .ReturnsAsync(new MembershipFileResult());
 
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
-            orgProcessorContext.Verify(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()), Times.Once());
-            orgProcessorContext.Verify(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>()), Times.Never());
         }
 
@@ -104,15 +104,15 @@ namespace Services.Tests
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
             orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>()))
                 .ReturnsAsync("sometable");
-            orgProcessorContext.Setup(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()))
-                .ReturnsAsync(new GroupMembershipSenderResponse());
+                .ReturnsAsync(new MembershipFileResult());
 
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
-            orgProcessorContext.Verify(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()), Times.Never());
-            orgProcessorContext.Verify(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>()), Times.Once());
         }
     }

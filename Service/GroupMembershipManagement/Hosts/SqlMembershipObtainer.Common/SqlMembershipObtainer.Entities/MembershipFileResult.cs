@@ -5,7 +5,7 @@ using Models;
 
 namespace SqlMembershipObtainer.Entities
 {
-    public class GroupMembershipSenderResponse
+    public class MembershipFileResult
     {
         public SyncStatus Status { get; set; }
         public string FilePath { get; set; }

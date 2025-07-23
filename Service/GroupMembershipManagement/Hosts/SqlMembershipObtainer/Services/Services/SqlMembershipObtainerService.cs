@@ -50,7 +50,7 @@ namespace Services
             _isSqlMembershipObtainerDryRunEnabled = dryRun == null ? throw new ArgumentNullException(nameof(dryRun)) : dryRun.DryRunEnabled;
             _dataFactoryService = dataFactoryService ?? throw new ArgumentNullException(nameof(dataFactoryService));
         }
-        public async Task<GroupMembershipSenderResponse> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory)
+        public async Task<MembershipFileResult> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory)
         {
             var children = new List<PersonEntity>();
 
@@ -77,13 +77,13 @@ namespace Services
 
             var profiles = children.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).ToList();
 
-            var senderResponse = await SendGroupMembershipAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
+            var senderResponse = await UploadMembershipFileAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
 
             return senderResponse;
 
         }
 
-        public async Task<GroupMembershipSenderResponse> FilterChildEntitiesAsync(string query, string tableName, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory)
+        public async Task<MembershipFileResult> FilterChildEntitiesAsync(string query, string tableName, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Beginning to filter entities from {tableName} table", RunId = syncJob.RunId });
 
@@ -112,7 +112,7 @@ namespace Services
 
             var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).Distinct().ToList();
 
-            var senderResponse = await SendGroupMembershipAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
+            var senderResponse = await UploadMembershipFileAsync(profiles, syncJob, targetOfficeGroupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
 
             return senderResponse;
         }
@@ -132,7 +132,7 @@ namespace Services
             return Guid.Empty;
         }
 
-        public async Task<GroupMembershipSenderResponse> SendGroupMembershipAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "")
+        public async Task<MembershipFileResult> UploadMembershipFileAsync(List<GraphProfileInformation> profiles, SyncJob syncJob, Guid groupId, int currentPart, bool exclusionary, string adaptiveCardTemplateDirectory = "")
         {
             var groupMemberToBeSent = new GroupMembership
             {
@@ -160,7 +160,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent {groupMemberToBeSent.SourceMembers.Count} members for group {groupId}", RunId = syncJob.RunId });
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"SqlMembershipObtainer service completed at: {DateTime.UtcNow}", RunId = syncJob.RunId });
 
-            return new GroupMembershipSenderResponse {
+            return new MembershipFileResult {
                 Status = status,
                 FilePath = fileName
             };

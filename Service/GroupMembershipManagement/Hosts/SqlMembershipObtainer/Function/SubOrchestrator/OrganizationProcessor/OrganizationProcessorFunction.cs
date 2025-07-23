@@ -16,9 +16,9 @@ namespace SqlMembershipObtainer
         }
 
         [FunctionName(nameof(OrganizationProcessorFunction))]
-        public async Task<GroupMembershipSenderResponse> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        public async Task<MembershipFileResult> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
         {
-            var response = new GroupMembershipSenderResponse();           
+            var response = new MembershipFileResult();           
             var request = context.GetInput<OrganizationProcessorRequest>();
 
             await context.CallActivityAsync(
@@ -49,7 +49,7 @@ namespace SqlMembershipObtainer
 
             if (manager != null && manager.Id > 0)
             {
-                response = await context.CallActivityAsync<GroupMembershipSenderResponse>(
+                response = await context.CallActivityAsync<MembershipFileResult>(
                                                     nameof(ManagerOrgReaderFunction),
                                                     new ManagerOrgReaderRequest
                                                     {
@@ -68,7 +68,7 @@ namespace SqlMembershipObtainer
             {
                 if (!string.IsNullOrWhiteSpace(filter))
                 {
-                    response = await context.CallActivityAsync<GroupMembershipSenderResponse>(
+                    response = await context.CallActivityAsync<MembershipFileResult>(
                                                                 nameof(ChildEntitiesFilterFunction),
                                                                 new ChildEntitiesFilterRequest
                                                                 {

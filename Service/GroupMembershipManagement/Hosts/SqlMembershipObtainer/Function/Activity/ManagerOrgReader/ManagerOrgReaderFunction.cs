@@ -23,7 +23,7 @@ namespace SqlMembershipObtainer
         }
 
         [FunctionName(nameof(ManagerOrgReaderFunction))]
-        public async Task<GroupMembershipSenderResponse> ReadUsersAsync([ActivityTrigger] ManagerOrgReaderRequest request)
+        public async Task<MembershipFileResult> ReadUsersAsync([ActivityTrigger] ManagerOrgReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ManagerOrgReaderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 

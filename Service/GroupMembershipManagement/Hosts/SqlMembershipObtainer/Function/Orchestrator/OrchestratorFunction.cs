@@ -103,7 +103,7 @@ namespace SqlMembershipObtainer
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob, Verbosity = VerbosityLevel.INFO });
                 var query = JsonSerializer.Deserialize<Query>(currentQueryAsString);
-                var senderResponse = await context.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
+                var senderResponse = await context.CallSubOrchestratorAsync<MembershipFileResult>(
                             nameof(OrganizationProcessorFunction),
                             new OrganizationProcessorRequest
                             {

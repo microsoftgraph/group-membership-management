@@ -37,7 +37,7 @@ namespace Services.Tests
         private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         private SyncJob _syncJob;
         private OrchestratorRequest _mainRequest;
-        private GroupMembershipSenderResponse _groupMembershipSenderResponse;
+        private MembershipFileResult _groupMembershipSenderResponse;
         private SyncStatus _senderResponseStatus = SyncStatus.InProgress;
         private string _senderResponseFilePath = "file-path";
         private DurableHttpResponse _membershipAggregatorResponse;
@@ -79,7 +79,7 @@ namespace Services.Tests
                 });
             }
 
-            _groupMembershipSenderResponse = new GroupMembershipSenderResponse
+            _groupMembershipSenderResponse = new MembershipFileResult
             {
                 Status = _senderResponseStatus,
                 FilePath = _senderResponseFilePath
@@ -96,7 +96,7 @@ namespace Services.Tests
                         await CallLoggerFunctionAsync(request as LoggerRequest);
                     });
 
-            _context.Setup(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                         nameof(OrganizationProcessorFunction),
                                                         It.IsAny<OrganizationProcessorRequest>()
                                                         ))
@@ -109,7 +109,7 @@ namespace Services.Tests
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
-            _context.Setup(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            _context.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                                                         nameof(ChildEntitiesFilterFunction),
                                                         It.IsAny<ChildEntitiesFilterRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -138,13 +138,13 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestValidSqlMembershipQueryAsync()
         {
-            var expectedResponse = new GroupMembershipSenderResponse
+            var expectedResponse = new MembershipFileResult
             {
                 Status = _senderResponseStatus,
                 FilePath = _senderResponseFilePath
             };
 
-            _context.Setup(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+            _context.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ChildEntitiesFilterFunction),
                 It.IsAny<ChildEntitiesFilterRequest>()))
                 .ReturnsAsync(expectedResponse);
@@ -152,7 +152,7 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
+            _context.Verify(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                 nameof(OrganizationProcessorFunction),
                 It.IsAny<OrganizationProcessorRequest>()), Times.Once());
         }
@@ -222,7 +222,7 @@ namespace Services.Tests
         {
             _senderResponseFilePath = null;
 
-            _groupMembershipSenderResponse = new GroupMembershipSenderResponse
+            _groupMembershipSenderResponse = new MembershipFileResult
             {
                 Status = SyncStatus.InProgress,
                 FilePath = _senderResponseFilePath
@@ -252,7 +252,7 @@ namespace Services.Tests
             _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-hoursSinceLastSuccessfulRun);
 
             _context.Setup(x => x.CurrentUtcDateTime).Returns(originalStartDate);
-            _context.Setup(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                       nameof(OrganizationProcessorFunction),
                                                       It.IsAny<OrganizationProcessorRequest>()
                                                       ))
@@ -275,7 +275,7 @@ namespace Services.Tests
         [ExpectedException(typeof(Microsoft.Data.SqlClient.SqlException))]
         public async Task TestFailJobOnSqlExceptionAsync()
         {
-            _context.Setup(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                       nameof(OrganizationProcessorFunction),
                                                       It.IsAny<OrganizationProcessorRequest>()
                                                       ))
@@ -321,7 +321,7 @@ namespace Services.Tests
             await function.LogMessageAsync(request);
         }
 
-        private async Task<GroupMembershipSenderResponse> CallChildEntitiesFilterFunctionAsync(ChildEntitiesFilterRequest request)
+        private async Task<MembershipFileResult> CallChildEntitiesFilterFunctionAsync(ChildEntitiesFilterRequest request)
         {
             var function = new ChildEntitiesFilterFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
             return await function.FilterChildEntities(request);
