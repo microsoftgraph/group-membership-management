@@ -22,6 +22,7 @@ using Polly;
 using SqlMembershipObtainer;
 using SqlMembershipObtainer.SubOrchestrator;
 using System.Net;
+using SqlMembershipObtainer.Entities;
 
 namespace Services.Tests
 {
@@ -36,7 +37,7 @@ namespace Services.Tests
         private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         private SyncJob _syncJob;
         private OrchestratorRequest _mainRequest;
-        private GraphProfileInformationResponse _graphProfileInformationResponse;
+        private GroupMembershipSenderResponse _groupMembershipSenderResponse;
         private SyncStatus _senderResponseStatus = SyncStatus.InProgress;
         private string _senderResponseFilePath = "file-path";
         private DurableHttpResponse _membershipAggregatorResponse;
@@ -78,10 +79,10 @@ namespace Services.Tests
                 });
             }
 
-            _graphProfileInformationResponse = new GraphProfileInformationResponse
+            _groupMembershipSenderResponse = new GroupMembershipSenderResponse
             {
-                GraphProfiles = TextCompressor.Compress(JsonSerializer.Serialize(_profiles)),
-                GraphProfileCount = _profiles.Count
+                Status = _senderResponseStatus,
+                FilePath = _senderResponseFilePath
             };
 
             _membershipAggregatorResponse = new DurableHttpResponse(HttpStatusCode.NoContent);
@@ -95,11 +96,11 @@ namespace Services.Tests
                         await CallLoggerFunctionAsync(request as LoggerRequest);
                     });
 
-            _context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
                                                         nameof(OrganizationProcessorFunction),
                                                         It.IsAny<OrganizationProcessorRequest>()
                                                         ))
-                    .ReturnsAsync(() => _graphProfileInformationResponse);
+                    .ReturnsAsync(() => _groupMembershipSenderResponse);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
                     .Callback<string, object>(async (name, request) =>
@@ -108,14 +109,14 @@ namespace Services.Tests
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
-            _context.Setup(x => x.CallActivityAsync<(SyncStatus Status, string FilePath)>(
-                                                        nameof(GroupMembershipSenderFunction),
-                                                        It.IsAny<GroupMembershipSenderRequest>()))
+            _context.Setup(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+                                                        nameof(ChildEntitiesFilterFunction),
+                                                        It.IsAny<ChildEntitiesFilterRequest>()))
                     .Callback<string, object>(async (name, request) =>
                     {
-                        await CallGroupMembershipSenderFunctionAsync(request as GroupMembershipSenderRequest);
+                        await CallChildEntitiesFilterFunctionAsync(request as ChildEntitiesFilterRequest);
                     })
-                    .ReturnsAsync(() => (_senderResponseStatus, _senderResponseFilePath));
+                    .ReturnsAsync(() => _groupMembershipSenderResponse);
 
             _context.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>())).ReturnsAsync(() => _membershipAggregatorResponse);
 
@@ -137,38 +138,23 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestValidSqlMembershipQueryAsync()
         {
-            List<GraphProfileInformation> profilesSent = null;
-            _sqlMembershipObtainerService.Setup(x => x.SendGroupMembershipAsync(
-                                                        It.IsAny<List<GraphProfileInformation>>(),
-                                                        It.IsAny<SyncJob>(),
-                                                        It.IsAny<Guid>(),
-                                                        It.IsAny<int>(),
-                                                        It.IsAny<bool>(),
-                                                        It.IsAny<string>()))
-                                .Callback<List<GraphProfileInformation>, SyncJob, Guid, int, bool, string>((profiles, syncJob, groupId, currentPart, exclusionary, directory) =>
-                                {
-                                    profilesSent = profiles;
-                                })
-                                .ReturnsAsync(() => (_senderResponseStatus, _senderResponseFilePath));
+            var expectedResponse = new GroupMembershipSenderResponse
+            {
+                Status = _senderResponseStatus,
+                FilePath = _senderResponseFilePath
+            };
+
+            _context.Setup(x => x.CallActivityAsync<GroupMembershipSenderResponse>(
+                nameof(ChildEntitiesFilterFunction),
+                It.IsAny<ChildEntitiesFilterRequest>()))
+                .ReturnsAsync(expectedResponse);
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.StartsWith($"Retrieved {_profilesCount} total profiles from SqlMembershipObtainer")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
-
-            _sqlMembershipObtainerService.Verify(x => x.SendGroupMembershipAsync(It.IsAny<List<GraphProfileInformation>>(),
-                                                        It.IsAny<SyncJob>(),
-                                                        It.IsAny<Guid>(),
-                                                        It.IsAny<int>(),
-                                                        It.IsAny<bool>(),
-                                                        It.IsAny<string>()), Times.Once());
-
-            Assert.AreEqual(_profilesCount, profilesSent.Count);
-            Assert.IsTrue(profilesSent.All(x => _profiles.Contains(x)));
+            _context.Verify(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
+                nameof(OrganizationProcessorFunction),
+                It.IsAny<OrganizationProcessorRequest>()), Times.Once());
         }
 
         [TestMethod]
@@ -236,14 +222,14 @@ namespace Services.Tests
         {
             _senderResponseFilePath = null;
 
+            _groupMembershipSenderResponse = new GroupMembershipSenderResponse
+            {
+                Status = SyncStatus.InProgress,
+                FilePath = _senderResponseFilePath
+            };
+
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_context.Object, _executionContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.StartsWith($"Retrieved {_profilesCount} total profiles from SqlMembershipObtainer")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()), Times.Once());
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                     It.Is<LogMessage>(m => m.Message.StartsWith($"Membership file path is not valid, marking sync job as {SyncStatus.FilePathNotValid}")),
@@ -266,7 +252,7 @@ namespace Services.Tests
             _syncJob.LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-hoursSinceLastSuccessfulRun);
 
             _context.Setup(x => x.CurrentUtcDateTime).Returns(originalStartDate);
-            _context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
                                                       nameof(OrganizationProcessorFunction),
                                                       It.IsAny<OrganizationProcessorRequest>()
                                                       ))
@@ -289,7 +275,7 @@ namespace Services.Tests
         [ExpectedException(typeof(Microsoft.Data.SqlClient.SqlException))]
         public async Task TestFailJobOnSqlExceptionAsync()
         {
-            _context.Setup(x => x.CallSubOrchestratorAsync<GraphProfileInformationResponse>(
+            _context.Setup(x => x.CallSubOrchestratorAsync<GroupMembershipSenderResponse>(
                                                       nameof(OrganizationProcessorFunction),
                                                       It.IsAny<OrganizationProcessorRequest>()
                                                       ))
@@ -335,10 +321,10 @@ namespace Services.Tests
             await function.LogMessageAsync(request);
         }
 
-        private async Task<(SyncStatus Status, string FilePath)> CallGroupMembershipSenderFunctionAsync(GroupMembershipSenderRequest request)
+        private async Task<GroupMembershipSenderResponse> CallChildEntitiesFilterFunctionAsync(ChildEntitiesFilterRequest request)
         {
-            var function = new GroupMembershipSenderFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
-            return await function.SendGroupMembershipAsync(request);
+            var function = new ChildEntitiesFilterFunction(_sqlMembershipObtainerService.Object, _loggingRepository.Object);
+            return await function.FilterChildEntities(request);
         }
 
         private async Task<bool> CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
