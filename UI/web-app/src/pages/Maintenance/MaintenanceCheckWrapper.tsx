@@ -12,7 +12,9 @@ export const MaintenanceCheckWrapper = <P extends object>(Component: React.Compo
     const operationStatusError = useSelector(selectOperationError);
     const operationStatus = useSelector(selectOperationStatus);
 
-    if (operationStatusError != null || (operationStatus != null && operationStatus != ServiceStatuses.Running)) {
+    const allowedStatuses = [ServiceStatuses.Running, ServiceStatuses.Rescheduling];
+
+    if (operationStatusError != null || (operationStatus != null && !allowedStatuses.includes(operationStatus))) {
       return (
         <Maintenance />
       );

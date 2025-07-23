@@ -5,6 +5,7 @@ export const enum ServiceStatuses {
     Running,
     Stopped,
     Resetting,
+    Rescheduling,
     Stopping,
     Starting,
     Error
