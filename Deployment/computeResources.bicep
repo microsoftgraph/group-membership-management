@@ -20,6 +20,9 @@ param pipeline string
 // Message Splitter
 param availableMessageSplitterSubscriptions array
 
+//AzureUserReader
+param storageAccountSecretName string = '${solutionAbbreviation}${environmentAbbreviation}adf'
+
 @description('Object with flags to determine behaviour')
 param featureFlags object = {
   skipListingFunctionAppKeys : true
@@ -378,7 +381,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     tenantId: tenantId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
-    storageAccountSecretName: 'sqlMembershipStorageAccountName'
+    storageAccountSecretName: storageAccountSecretName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
   }
