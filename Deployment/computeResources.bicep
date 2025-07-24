@@ -21,7 +21,7 @@ param pipeline string
 param availableMessageSplitterSubscriptions array
 
 //AzureUserReader
-param storageAccountSecretName string = '${solutionAbbreviation}${environmentAbbreviation}adf'
+param storageAccountSecretName string = 'adfStorageAccountName'
 
 @description('Object with flags to determine behaviour')
 param featureFlags object = {
