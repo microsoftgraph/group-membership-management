@@ -1337,6 +1337,420 @@ namespace Services.Tests
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
                 change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
         }
+
+        [TestMethod]
+        public async Task PostJobWithAutoApprovalErrorDuringSettingsRetrievalTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup settings repository to throw exception
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ThrowsAsync(new Exception("Database error"));
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            // Setup sync job with GroupMembership query
+            var groupId = Guid.NewGuid();
+            _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved due to settings error (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithAutoApprovalErrorDuringGraphAPICallTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            // Setup Graph API to throw exception
+            var groupId = Guid.NewGuid();
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                .ThrowsAsync(new Exception("Graph API error"));
+
+            // Setup sync job with GroupMembership query
+            _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved due to Graph API error (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithAutoApprovalInvalidJSONQueryTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            // Setup required mocks for job creation
+            var destinationGuid = Guid.NewGuid();
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                                .ReturnsAsync(true);
+
+            _graphGroupRepository.Setup(x => x.GetGroupEmailAsync(It.IsAny<Guid>()))
+                                .ReturnsAsync("test@example.com");
+
+            _databaseSyncJobsRepository.Setup(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                                      .ReturnsAsync(Guid.NewGuid());
+
+            // Setup sync job with valid destination but invalid JSON query
+            _newSyncJob = new NewSyncJobDTO
+            {
+                Destination = $"[{{\"value\":{{\"objectId\":\"{destinationGuid}\"}},\"type\":\"GroupMembership\"}}]",
+                Status = SyncStatus.PendingReview.ToString(),
+                Period = 24,
+                Query = "invalid json {", // Invalid JSON query
+                Requestor = "user@domain.com",
+                StartDate = DateTime.UtcNow.AddDays(-1).ToString(),
+                ThresholdPercentageForAdditions = 100,
+                ThresholdPercentageForRemovals = 20
+            };
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as ObjectResult;
+            
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            
+            // Verify that the sync job repository was not called due to the JSON parsing exception
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+            
+            // Verify that the sync job change repository was not called due to the JSON parsing exception
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithAutoApprovalEmptyQueryArrayTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "true" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            // Setup required mocks for job creation
+            var destinationGuid = Guid.NewGuid();
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+                                .ReturnsAsync(true);
+
+            _graphGroupRepository.Setup(x => x.GetGroupEmailAsync(It.IsAny<Guid>()))
+                                .ReturnsAsync("test@example.com");
+
+            _databaseSyncJobsRepository.Setup(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()))
+                                      .ReturnsAsync(Guid.NewGuid());
+
+            // Setup sync job with valid destination but empty query array
+            _newSyncJob = new NewSyncJobDTO
+            {
+                Destination = $"[{{\"value\":{{\"objectId\":\"{destinationGuid}\"}},\"type\":\"GroupMembership\"}}]",
+                Status = SyncStatus.PendingReview.ToString(),
+                Period = 24,
+                Query = "[]", // Empty query array
+                Requestor = "user@domain.com",
+                StartDate = DateTime.UtcNow.AddDays(-1).ToString(),
+                ThresholdPercentageForAdditions = 100,
+                ThresholdPercentageForRemovals = 20
+            };
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved due to empty query (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalInvalidOnPremisesImmutableIdTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user with non-numeric onPremisesImmutableId
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ReturnsAsync(new AzureADUser { 
+                                    UserPrincipalName = userUpn, 
+                                    OnPremisesImmutableId = "abc123" // Non-numeric value
+                                });
+
+            // Setup sync job with single SqlMembership query
+            var managerId = "12345";
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved due to invalid onPremisesImmutableId (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithOrgLeaderAutoApprovalUserLookupErrorTestAsync()
+        {
+            // Setup context
+            var userUpn = "user@domain.com";
+            var userId = Guid.NewGuid().ToString();
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, userUpn),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup org leader auto-approval setting to enabled
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
+
+            // Setup user lookup to throw exception
+            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+                                .ThrowsAsync(new Exception("User lookup error"));
+
+            // Setup sync job with single SqlMembership query
+            var managerId = "12345";
+            _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as ObjectResult;
+            
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result.StatusCode);
+            
+            // Verify that the sync job repository was not called due to the exception
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+            
+            // Verify that the sync job change repository was not called due to the exception
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithAutoApprovalSettingNullValueTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup settings repository to return null setting
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync((Setting)null);
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync((Setting)null);
+
+            // Setup sync job with GroupMembership query
+            var groupId = Guid.NewGuid();
+            _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            
+            Assert.IsNotNull(result);
+            
+            // Verify that the job was NOT auto-approved due to null settings (status should be PendingReview)
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+            
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
     }
 }
 
