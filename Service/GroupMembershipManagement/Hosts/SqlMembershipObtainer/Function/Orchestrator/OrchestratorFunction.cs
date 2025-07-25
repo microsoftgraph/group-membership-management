@@ -128,7 +128,8 @@ namespace SqlMembershipObtainer
                         FilePath = senderResponse.FilePath,
                         PartNumber = mainRequest.CurrentPart,
                         PartsCount = mainRequest.TotalParts,
-                        SyncJob = mainRequest.SyncJob
+                        SyncJob = mainRequest.SyncJob,
+                        IsDestinationPart = false
                     };
 
                     await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
