@@ -98,10 +98,6 @@ namespace Services.Tests
                 SyncJob = _syncJob,
                 PartNumber = 1,
                 PartsCount = 1,
-                ProjectedMemberCount = 100,
-                MembersToBeAdded = 50,
-                MembersToBeRemoved = 25,
-                GroupId = targetOfficeGroupId,
                 IsDestinationPart = false
             };
 
@@ -197,10 +193,6 @@ namespace Services.Tests
                 SyncJob = _syncJob,
                 PartNumber = 1,
                 PartsCount = 2,
-                ProjectedMemberCount = 100,
-                MembersToBeAdded = 50,
-                MembersToBeRemoved = 25,
-                GroupId = _group.GroupId,
                 IsDestinationPart = false
             };
 
@@ -222,10 +214,6 @@ namespace Services.Tests
                 SyncJob = _syncJob,
                 PartNumber = 1,
                 PartsCount = 1,
-                ProjectedMemberCount = 100,
-                MembersToBeAdded = 50,
-                MembersToBeRemoved = 25,
-                GroupId = _group.GroupId,
                 IsDestinationPart = true
             };
 
