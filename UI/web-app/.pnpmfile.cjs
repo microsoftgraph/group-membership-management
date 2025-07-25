@@ -19,7 +19,8 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('body-parser', ['<1.20.3'], '1.20.3'),
     new PackageUpgradeStrategy('path-to-regexp', ['<0.1.10'], '0.1.10'),
     new PackageUpgradeStrategy('rollup', ['<2.79.2'], '2.79.2'),
-    new PackageUpgradeStrategy('http-proxy-middleware', ['<2.0.7'], '2.0.7')
+    new PackageUpgradeStrategy('http-proxy-middleware', ['<2.0.7'], '2.0.7'),
+    new PackageUpgradeStrategy('form-data', ['<4.0.2'], '4.0.4')
   ];
 
   const logger = new Logger(context);
