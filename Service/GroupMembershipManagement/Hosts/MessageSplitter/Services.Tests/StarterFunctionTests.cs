@@ -120,12 +120,14 @@ namespace Services.Tests
         public async Task ProcessServiceBusMessageAsync()
         {
             var starterFunction = new StarterFunction(_loggingRepository.Object, _messageSplitterService.Object, _membershipUpdaters);
-            var content = new MembershipAggregatorHttpRequest
+            var content = new MembershipHttpRequest
             {
                 FilePath = "file/path/name.json",
                 SyncJob = _syncJob,
-                PartNumber = 1,
-                PartsCount = 1
+                GroupId = _group.GroupId,
+                ProjectedMemberCount = 1000,
+                MembersToBeAdded = 1000,
+                MembersToBeRemoved = 0
             };
 
             var contentBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content));
@@ -156,13 +158,15 @@ namespace Services.Tests
         public async Task ProcessLargeServiceBusMessageAsync()
         {
             var starterFunction = new StarterFunction(_loggingRepository.Object, _messageSplitterService.Object, Helpers.GetAvailableMembershipUpdaters(currentLaneSize: "Large"));
-            var content = new MembershipAggregatorHttpRequest
+            var content = new MembershipHttpRequest
             {
                 FilePath = "file/path/name.json",
                 SyncJob = _syncJob,
-                PartNumber = 1,
-                PartsCount = 1
-            };
+                GroupId = _group.GroupId,
+                ProjectedMemberCount = 1000,
+                MembersToBeAdded = 1000,
+                MembersToBeRemoved = 0
+            }; 
 
             var contentBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content));
 
@@ -193,12 +197,14 @@ namespace Services.Tests
         public async Task ProcessServiceBusMessageWithInvalidTypeAsync()
         {
             var starterFunction = new StarterFunction(_loggingRepository.Object, _messageSplitterService.Object, _membershipUpdaters);
-            var content = new MembershipAggregatorHttpRequest
+            var content = new MembershipHttpRequest
             {
                 FilePath = "file/path/name.json",
                 SyncJob = _syncJob,
-                PartNumber = 1,
-                PartsCount = 1
+                GroupId = _group.GroupId,
+                ProjectedMemberCount = 1000,
+                MembersToBeAdded = 1000,
+                MembersToBeRemoved = 0
             };
 
             var contentBytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(content));

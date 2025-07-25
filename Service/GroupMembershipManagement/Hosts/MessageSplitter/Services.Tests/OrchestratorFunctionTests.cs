@@ -55,7 +55,12 @@ namespace Services.Tests
                 UpdaterType = "GroupMembership",
                 MembershipRequest = new MembershipHttpRequest
                 {
-                    SyncJob = _syncJob
+                    SyncJob = _syncJob,
+                    FilePath = "/test/path/file.json",
+                    ProjectedMemberCount = 100,
+                    MembersToBeAdded = 25,
+                    MembersToBeRemoved = 15,
+                    GroupId = _group.GroupId
                 }
             };
 

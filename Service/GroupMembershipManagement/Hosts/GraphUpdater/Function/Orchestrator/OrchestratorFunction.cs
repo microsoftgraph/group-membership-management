@@ -98,7 +98,7 @@ namespace Hosts.GraphUpdater
                 syncCompleteEvent.GroupId = groupId.ToString();
                 syncCompleteEvent.RunId = syncJob.RunId.ToString();
                 syncCompleteEvent.IsDryRunEnabled = false.ToString();
-                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.HasValue ? graphRequest.ProjectedMemberCount.ToString() : "Not provided";
+                syncCompleteEvent.ProjectedMemberCount = graphRequest.ProjectedMemberCount.ToString();
 
                 var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction),
                                                                             new FileDownloaderRequest

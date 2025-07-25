@@ -37,7 +37,9 @@ namespace Services.Tests
                     MembershipType = "TeamsChannelMembership"
                 },
                 FilePath = "file-path",
-                ProjectedMemberCount = 1
+                ProjectedMemberCount = 1,
+                MembersToBeAdded = 0,
+                MembersToBeRemoved = 0
             };
 
             _loggerMock = new Mock<ILoggingRepository>();

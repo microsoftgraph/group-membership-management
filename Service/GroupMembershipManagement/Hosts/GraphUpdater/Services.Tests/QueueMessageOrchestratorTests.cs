@@ -31,6 +31,8 @@ namespace Services.Tests
         [TestInitialize]
         public void SetupTest()
         {
+            var groupId = Guid.NewGuid();
+            
             _request = new MembershipHttpRequest
             {
                 SyncJob = new SyncJob
@@ -39,12 +41,14 @@ namespace Services.Tests
                     MembershipType = "GroupMembership",
                     Group = new Group
                     {
-                        GroupId = Guid.NewGuid()
+                        GroupId = groupId
                     }
                 },
                 FilePath = "file-path",
                 ProjectedMemberCount = 10,
-                MembersToBeAdded = 10
+                MembersToBeAdded = 10,
+                MembersToBeRemoved = 0,
+                GroupId = groupId
             };
 
             _loggerMock = new MockLoggingRepository();

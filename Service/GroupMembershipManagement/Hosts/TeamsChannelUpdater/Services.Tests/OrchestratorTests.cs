@@ -63,7 +63,10 @@ namespace Services.Tests
             {
                 FilePath = "/file/path/name.json",
                 SyncJob = _syncJob,
-                GroupId = groupMembership.Destination.ObjectId
+                GroupId = groupMembership.Destination.ObjectId,
+                ProjectedMemberCount = 2,
+                MembersToBeAdded = 1,
+                MembersToBeRemoved = 1
             };
 
             _mockDurableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
@@ -71,6 +74,10 @@ namespace Services.Tests
                 .Returns(input);
             _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>()))
                 .ReturnsAsync(_syncJob);
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>()))
+                .ReturnsAsync(groupMembership.Destination.ObjectId);
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(GetChannelFunction), It.IsAny<SyncJob>()))
+                .ReturnsAsync(_syncJob.Channel.ChannelId);
             _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>()))
                 .ReturnsAsync(_groupMembershipJson);
             _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
@@ -83,6 +90,8 @@ namespace Services.Tests
                 {
                     await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                 });
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>()))
+                .Returns(Task.CompletedTask);
             string groupName = "";
             _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(GroupNameReaderFunction), It.IsAny<GroupNameReaderRequest>()))
                 .Callback<string, object>(async (name, request) =>

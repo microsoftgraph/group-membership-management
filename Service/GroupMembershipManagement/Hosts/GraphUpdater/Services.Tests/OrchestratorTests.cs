@@ -97,7 +97,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var fileDownloaderRequest = new FileDownloaderRequest
@@ -203,7 +207,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var fileDownloaderRequest = new FileDownloaderRequest
@@ -326,7 +334,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var owners = new List<AzureADUser>();
@@ -456,7 +468,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var fileDownloaderRequest = new FileDownloaderRequest
@@ -558,7 +574,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var fileDownloaderRequest = new FileDownloaderRequest
@@ -635,7 +655,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = groupMembership.Destination.ObjectId
             };
 
             blobStorageRepository.Files.Add(input.FilePath, JsonSerializer.Serialize(groupMembership));
@@ -710,7 +734,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var fileDownloaderRequest = new FileDownloaderRequest
@@ -794,7 +822,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var context = new Mock<IDurableOrchestrationContext>();
@@ -883,7 +915,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var owners = new List<AzureADUser>();
@@ -1043,7 +1079,11 @@ namespace Services.Tests
             var input = new MembershipHttpRequest
             {
                 FilePath = "/file/path/name.json",
-                SyncJob = syncJob
+                SyncJob = syncJob,
+                ProjectedMemberCount = 10,
+                MembersToBeAdded = 5,
+                MembersToBeRemoved = 0,
+                GroupId = syncJob.Group.GroupId
             };
 
             var fileDownloaderRequest = new FileDownloaderRequest
