@@ -27,6 +27,8 @@ module azureUserReaderStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'azureUserReaderStorageAccountProd'
+    appPackageContainerSettingName: 'azureUserReaderAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
