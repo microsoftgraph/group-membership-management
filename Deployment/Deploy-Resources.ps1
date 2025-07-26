@@ -623,6 +623,33 @@ function Get-Default {
     return $Value
 }
 
+function Get-CommonParameters {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation
+    )
+
+    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    $commonParametersObject = @{ parameters = @{} }
+    $commonParametersObject.parameters["solutionAbbreviation"] = @{"value" = $SolutionAbbreviation }
+    $commonParametersObject.parameters["environmentAbbreviation"] = @{"value" = $EnvironmentAbbreviation }
+    $commonParametersObject.parameters["prereqsResourceGroupName"] = @{"value" = $prereqsResourceGroup }
+    $commonParametersObject.parameters["dataResourceGroupName"] = @{"value" = $dataResourceGroup }
+    $commonParametersObject.parameters["computeResourceGroupName"] = @{"value" = $computeResourceGroup }
+    $commonParametersObject.parameters["prereqsKeyVaultName"] = @{"value" = $prereqsResourceGroup }
+    $commonParametersObject.parameters["dataKeyVaultName"] = @{"value" = $dataResourceGroup }
+    $commonParametersObject.parameters["computeKeyVaultName"] = @{"value" = $computeResourceGroup }
+    $commonParametersObject.parameters["appConfigurationName"] = @{"value" = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation" }
+    $commonParametersObject.parameters["apiServiceBaseUri"] = @{"value" = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" }
+
+    return $commonParametersObject
+}
+
 function Set-GMMResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -646,19 +673,10 @@ function Set-GMMResources {
 
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
 
-    $commonParametersObject = @{ parameters = @{} }
-    $commonParametersObject.parameters["solutionAbbreviation"] = @{"value" = $SolutionAbbreviation }
-    $commonParametersObject.parameters["environmentAbbreviation"] = @{"value" = $EnvironmentAbbreviation }
-    $commonParametersObject.parameters["prereqsResourceGroupName"] = @{"value" = $prereqsResourceGroup }
-    $commonParametersObject.parameters["dataResourceGroupName"] = @{"value" = $dataResourceGroup }
-    $commonParametersObject.parameters["computeResourceGroupName"] = @{"value" = $computeResourceGroup }
-    $commonParametersObject.parameters["prereqsKeyVaultName"] = @{"value" = $prereqsResourceGroup }
-    $commonParametersObject.parameters["dataKeyVaultName"] = @{"value" = $dataResourceGroup }
-    $commonParametersObject.parameters["computeKeyVaultName"] = @{"value" = $computeResourceGroup }
-    $commonParametersObject.parameters["appConfigurationName"] = @{"value" = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation" }
-    $commonParametersObject.parameters["apiServiceBaseUri"] = @{"value" = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" }
+    $commonParametersObject = Get-CommonParameters `
+                                -SolutionAbbreviation $SolutionAbbreviation `
+                                -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
     $parameters = $parameterObject.parameters
