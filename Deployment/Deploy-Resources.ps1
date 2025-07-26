@@ -1700,202 +1700,6 @@ function Initialize-ScriptDependencies {
     }
 }
 
-function Deploy-Resources-Stage1 {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$SolutionAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$EnvironmentAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$Location,
-        [Parameter(Mandatory = $true)]
-        [string]$SubscriptionId,
-        [Parameter(Mandatory = $true)]
-        [string]$TemplateFilesDirectory, # absolute path
-        [Parameter(Mandatory = $true)]
-        [string]$ParameterFilePath, # absolute path
-        [Parameter(Mandatory = $false)]
-        [bool]$SkipResourceProvidersCheck = $false,
-        [Parameter(Mandatory = $false)]
-        [bool]$IsInitialDeployment = $false
-    )
-
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-
-    if (!$SkipResourceProvidersCheck) {
-        Set-ResourceProviders
-    }
-
-    if(!$IsInitialDeployment) {
-
-        $jobTrigger = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup `
-                                        -Name "$computeResourceGroup-JobTrigger"       
-
-        Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
-    }
-
-    $response = Set-GMMResources `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SubscriptionId $SubscriptionId `
-        -Location $Location `
-        -TemplateFilePath $TemplateFilesDirectory `
-        -ParameterFilePath $ParameterFilePath
-
-    return $response
-}
-
-function Deploy-Resources-Stage2 {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$SolutionAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$EnvironmentAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$Location,
-        [Parameter(Mandatory = $true)]
-        [string]$SubscriptionId,
-        [Parameter(Mandatory = $true)]
-        [object]$StageOneResponse,
-        [Parameter(Mandatory = $false)]
-        [bool]$StartFunctions = $true,
-        [Parameter(Mandatory = $false)]
-        [bool] $SetUserAssignedManagedIdentityPermissions = $true,
-        [Parameter(Mandatory = $false)]
-        [bool]$IsInitialDeployment = $false,
-        [Parameter(Mandatory = $false)]
-        [ValidateSet("Credentials", "ServicePrincipal","Skip")]
-        [string]$ResetGMMType = "Skip"
-    )
-    
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-
-    Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
-
-    Set-SqlServerFirewallRule `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -Location $Location
-
-    # retrieve SQL connection strings
-    # Basic connection string
-    $connectionString = Get-AzKeyVaultSecret `
-        -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
-        -Name "sqlDatabaseConnectionString" `
-        -AsPlainText
-
-    $connectionStringADF = Get-AzKeyVaultSecret `
-        -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
-        -Name "sqlServerBasicConnectionString" `
-        -AsPlainText
-
-    if ($false -eq $StageOneResponse.SkipSqlServerPermissionSetup) {
-        Set-SQLServerPermissions `
-            -ConnectionString $connectionString `
-            -ConnectionStringADF $connectionStringADF `
-            -ComputeResourceGroup $computeResourceGroup `
-            -DataResourceGroup $dataResourceGroup
-    }
-
-    if ($true -eq $StageOneResponse.SetRBACPermissions) {
-        Set-RBACPermissions `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment" `
-        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
-    }
-
-    if ($true -eq $StageOneResponse.ApplyDBMigrations) {
-        Set-DBMigrations `
-            -ConnectionString $connectionString `
-            -ScriptsDirectory "$scriptsDirectory\function_packages"
-    }
-
-    Set-FunctionAppCode `
-        -ComputeResourceGroup $computeResourceGroup `
-        -FunctionsPackagesDirectory "$scriptsDirectory\function_packages" `
-        -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
-
-    # Configure web apps
-    if ($true -eq $StageOneResponse.CreateAppRegistrations) {
-        Set-ConfigureWebApps `
-            -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
-            -UIWebAppName "$SolutionAbbreviation-ui" `
-            -DevTenantId $StageOneResponse.SecondaryTenantId `
-            -UIAppRegistrationId $StageOneResponse.AppRegistrations.UIApplicationId `
-            -ComputeResourceGroup $computeResourceGroup
-    }
-
-    $context = Get-AzContext
-
-    # Publish UI code
-    Set-PublishUICode `
-        -UIClientId $StageOneResponse.AppRegistrations.UIApplicationId `
-        -UITenantId $StageOneResponse.AppRegistrations.UITenantId `
-        -WebApiClientId $StageOneResponse.AppRegistrations.APIApplicationId `
-        -WebApiBaseUri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -DataResourceGroup $dataResourceGroup `
-        -ComputeResourceGroup $computeResourceGroup `
-        -WebAppDirectory "$scriptsDirectory\webapp_package\web-app" `
-        -MainTenantId $context.Tenant.Id `
-        -TenantDomain $StageOneResponse.TenantDomain `
-        -SharepointDomain $StageOneResponse.SharepointDomain `
-        -SubscriptionId $SubscriptionId
-
-    Deploy-PostDeploymentUpdates `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -ScriptsDirectory "$scriptsDirectory\scripts"
-
-    if(!$IsInitialDeployment -and $ResetGMMType -ne "Skip") {
-        Write-Host "`nStopping function apps in resource group $computeResourceGroup"
-        Stop-FunctionApps -ResourceGroupName $computeResourceGroup
-
-        . ($scriptsDirectory + '\scripts\Reset-GMM.ps1')
-
-        if($ResetGMMType -eq "Credentials") {
-            Reset-GMM-WithCredentials `
-                -SolutionAbbreviation $SolutionAbbreviation `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation
-        } elseif ($ResetGMMType -eq "ServicePrincipal") {
-            Reset-GMM-WithServicePrincipal `
-                -SolutionAbbreviation $SolutionAbbreviation `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation
-        }
-    }
-
-    if ($StartFunctions) {
-        Start-FunctionApps -ResourceGroupName $computeResourceGroup
-    }
-
-    if ($StageOneResponse.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
-        Write-Host "`n======================" -ForegroundColor Yellow
-        Write-Host "The following applications require admin consent:" -ForegroundColor Yellow
-        Write-Host "======================" -ForegroundColor Yellow
-        foreach ($app in $StageOneResponse.AppRegistrations.AppsThatNeedAdminConsent) {
-            Write-Host $app
-        }
-        Write-Host "`nPlease visit the Azure portal to grant admin consent for these applications." -ForegroundColor Yellow
-    }
-
-    Start-Sleep -Seconds 10
-
-    # open the web app
-    if ($StageOneResponse.OpenUIAfterDeployment -eq $true) {
-        $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
-        if ($null -ne $staticWebApp) {
-            Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
-            Start-Process "https://$($staticWebApp.DefaultHostname)"
-        }
-    }
-}
-
 function Deploy-Resources {
     [CmdletBinding()]
     param (
@@ -1932,28 +1736,151 @@ function Deploy-Resources {
         -Location $Location `
         -SubscriptionId $SubscriptionId `
         -AssertUserPermissions $AssertUserPermissions
-    
-    
-    $response = Deploy-Resources-Stage1 `
-                    -SolutionAbbreviation $SolutionAbbreviation `
-                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                    -Location $Location `
-                    -SubscriptionId $SubscriptionId `
-                    -TemplateFilesDirectory $TemplateFilesDirectory `
-                    -ParameterFilePath $ParameterFilePath `
-                    -SkipResourceProvidersCheck $SkipResourceProvidersCheck `
-                    -IsInitialDeployment $IsInitialDeployment
+         
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+
+    if (!$SkipResourceProvidersCheck) {
+        Set-ResourceProviders
+    }
+
+    if(!$IsInitialDeployment) {
+
+        $jobTrigger = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup `
+                                        -Name "$computeResourceGroup-JobTrigger"       
+
+        Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
+    }
+
+    $response = Set-GMMResources `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId `
+        -Location $Location `
+        -TemplateFilePath $TemplateFilesDirectory `
+        -ParameterFilePath $ParameterFilePath
 
     Start-Sleep -Seconds 30
 
-    Deploy-Resources-Stage2 `
+    Update-AppSettingsVersion -ComputeResourceGroupName $computeResourceGroup
+
+    Set-SqlServerFirewallRule `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -Location $Location `
-        -SubscriptionId $SubscriptionId `
-        -IsInitialDeployment $IsInitialDeployment `
-        -StageOneResponse $response `
-        -StartFunctions $StartFunctions `
-        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
-        -ResetGMMType $ResetGMMType
+        -Location $Location
+
+    # retrieve SQL connection strings
+    # Basic connection string
+    $connectionString = Get-AzKeyVaultSecret `
+        -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+        -Name "sqlDatabaseConnectionString" `
+        -AsPlainText
+
+    $connectionStringADF = Get-AzKeyVaultSecret `
+        -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+        -Name "sqlServerBasicConnectionString" `
+        -AsPlainText
+
+    if ($false -eq $response.SkipSqlServerPermissionSetup) {
+        Set-SQLServerPermissions `
+            -ConnectionString $connectionString `
+            -ConnectionStringADF $connectionStringADF `
+            -ComputeResourceGroup $computeResourceGroup `
+            -DataResourceGroup $dataResourceGroup
+    }
+
+    if ($true -eq $response.SetRBACPermissions) {
+        Set-RBACPermissions `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment" `
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
+    }
+
+    if ($true -eq $response.ApplyDBMigrations) {
+        Set-DBMigrations `
+            -ConnectionString $connectionString `
+            -ScriptsDirectory "$scriptsDirectory\function_packages"
+    }
+
+    Set-FunctionAppCode `
+        -ComputeResourceGroup $computeResourceGroup `
+        -FunctionsPackagesDirectory "$scriptsDirectory\function_packages" `
+        -WebApiPackagesDirectory "$scriptsDirectory\webapi_package"
+
+    # Configure web apps
+    if ($true -eq $response.CreateAppRegistrations) {
+        Set-ConfigureWebApps `
+            -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
+            -UIWebAppName "$SolutionAbbreviation-ui" `
+            -DevTenantId $response.SecondaryTenantId `
+            -UIAppRegistrationId $response.AppRegistrations.UIApplicationId `
+            -ComputeResourceGroup $computeResourceGroup
+    }
+
+    $context = Get-AzContext
+
+    # Publish UI code
+    Set-PublishUICode `
+        -UIClientId $response.AppRegistrations.UIApplicationId `
+        -UITenantId $response.AppRegistrations.UITenantId `
+        -WebApiClientId $response.AppRegistrations.APIApplicationId `
+        -WebApiBaseUri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -DataResourceGroup $dataResourceGroup `
+        -ComputeResourceGroup $computeResourceGroup `
+        -WebAppDirectory "$scriptsDirectory\webapp_package\web-app" `
+        -MainTenantId $context.Tenant.Id `
+        -TenantDomain $response.TenantDomain `
+        -SharepointDomain $response.SharepointDomain `
+        -SubscriptionId $SubscriptionId
+
+    Deploy-PostDeploymentUpdates `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -ScriptsDirectory "$scriptsDirectory\scripts"
+
+    if(!$IsInitialDeployment -and $ResetGMMType -ne "Skip") {
+        Write-Host "`nStopping function apps in resource group $computeResourceGroup"
+        Stop-FunctionApps -ResourceGroupName $computeResourceGroup
+
+        . ($scriptsDirectory + '\scripts\Reset-GMM.ps1')
+
+        if($ResetGMMType -eq "Credentials") {
+            Reset-GMM-WithCredentials `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
+        } elseif ($ResetGMMType -eq "ServicePrincipal") {
+            Reset-GMM-WithServicePrincipal `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation
+        }
+    }
+
+    if ($StartFunctions) {
+        Start-FunctionApps -ResourceGroupName $computeResourceGroup
+    }
+
+    if ($response.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
+        Write-Host "`n======================" -ForegroundColor Yellow
+        Write-Host "The following applications require admin consent:" -ForegroundColor Yellow
+        Write-Host "======================" -ForegroundColor Yellow
+        foreach ($app in $response.AppRegistrations.AppsThatNeedAdminConsent) {
+            Write-Host $app
+        }
+        Write-Host "`nPlease visit the Azure portal to grant admin consent for these applications." -ForegroundColor Yellow
+    }
+
+    Start-Sleep -Seconds 10
+
+    # open the web app
+    if ($response.OpenUIAfterDeployment -eq $true) {
+        $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
+        if ($null -ne $staticWebApp) {
+            Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
+            Start-Process "https://$($staticWebApp.DefaultHostname)"
+        }
+    }
 }
