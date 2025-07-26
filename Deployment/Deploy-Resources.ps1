@@ -728,11 +728,6 @@ function Set-GMMResources {
             -SharepointDomain $sharepointDomain `
             -SkipAppRegistrationSetupIfAppExists $skipAppRegistrationSetupIfAppExists
     
-        # add app registrations to common parameters
-        $commonParametersObject.parameters["apiAppClientId"] = @{ "value" = $appRegistrations.APIApplicationId }
-        $commonParametersObject.parameters["uiAppTenantId"] = @{ "value" = $appRegistrations.UITenantId }
-        $commonParametersObject.parameters["uiAppClientId"] = @{ "value" = $appRegistrations.UIApplicationId }
-    
         Start-Sleep -Seconds 10
     }
    
