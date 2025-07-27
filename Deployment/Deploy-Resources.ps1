@@ -546,6 +546,17 @@ function Set-ComputeResources {
         [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
+    write-Host "`nEnsuring secrets are set in the Key Vault"
+    $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
+    $parameters = $parameterObject.parameters
+    $storageAccountSecretName  = Get-DefaultString -Value $parameters['storageAccountSecretName'].value -Default "adfStorageAccountName"
+
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $secrets = @("sqlServerMSIConnectionString", $storageAccountSecretName)
+    Set-DefaultSecretsIfMissing `
+        -KeyVaultName $dataResourceGroup `
+        -SecretNames $secrets
+
     Write-Host "`nCreating compute resources"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $templateFilePath = "$ComputeTemplateDirectoryPath\computeResources.json"
@@ -577,21 +588,17 @@ function Set-ADFResources {
         [Hashtable]$AdditionalParameters = @{ parameters = @{} }
     )
 
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+
     # Ensure ADF secrets are set in the Key Vault
     write-Host "`nEnsuring ADF secrets are set in the Key Vault"
-    $adfDataSecrets = @("sqlAdminPassword", "azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
-    foreach ($secret in $adfDataSecrets) {
-        $secretExists = Check-IfKeyVaultSecretExists -VaultName $dataResourceGroup -SecretName $secret
-        if (-not $secretExists) {
-            $secretValue = New-Object System.Security.SecureString
-            "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
-            Set-AzKeyVaultSecret -VaultName $dataResourceGroup -Name $secret -SecretValue $secretValue
-        }
-    }
+    $adfDataSecrets = @("azureUserReaderUrl", "azureUserReaderKey", "adfStorageAccountName")
+    Set-DefaultSecretsIfMissing `
+        -KeyVaultName $dataResourceGroup `
+        -SecretNames $adfDataSecrets
 
     # Deploy ADF resources
     Write-Host "`nCreating ADF resources"
-    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $templateFilePath = "$ADFTemplateDirectoryPath\adfHRResources.json"
     Retry-Operation `
         -Operation ${function:Start-ResourceDeployment} `
@@ -602,6 +609,24 @@ function Set-ADFResources {
         TemplateFilePath        = $templateFilePath
         ParameterFilePath       = $ParameterFilePath
         AdditionalParameters    = $AdditionalParameters
+    }
+}
+
+function Set-DefaultSecretsIfMissing {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$KeyVaultName,
+        [Parameter(Mandatory = $true)]
+        [string[]]$SecretNames
+    )
+
+    foreach ($secretName in $SecretNames) {
+        $secretExists = Check-IfKeyVaultSecretExists -VaultName $KeyVaultName -SecretName $secretName
+        if (-not $secretExists) {
+            $secretValue = New-Object System.Security.SecureString
+            "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
+            Set-AzKeyVaultSecret -VaultName $KeyVaultName -Name $secretName -SecretValue $secretValue
+        }
     }
 }
 
