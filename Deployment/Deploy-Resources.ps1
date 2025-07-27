@@ -1376,7 +1376,7 @@ function Set-ConfigureWebApps {
         [Parameter(Mandatory = $true)]
         [string]$UIAppRegistrationId,
         [Parameter(Mandatory = $False)]
-        [System.Nullable[Guid]] $DevTenantId,
+        [System.Nullable[Guid]]$DevTenantId,
         [Parameter(Mandatory = $true)]
         [string]$ComputeResourceGroup
     )
