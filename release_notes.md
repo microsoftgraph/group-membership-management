@@ -1,5 +1,15 @@
 # Release Notes:
 
+## Release 7/28/2025
+- Enabled bulk approval via UI.
+- Added Maintenance Page to the UI.
+- Submission Reviewers can submit feedback on rejection.
+- Requested on behalf of is now a group owners dropdown.
+- Converted GMO to Flex Consumption.
+- Added Reset-GMM.ps1 to help reset GMM when deploying a new version using the deployment script.
+- Ordered deployment script parameters and labeled required ones.
+- Made the schedule of JobScheduler runs configurable.
+
 ## Release 6/30/2025
 - Added support for the 'NOT IN' operator in SqlMembership source parts.
 - Added dependency requirements check to the deployment script.
