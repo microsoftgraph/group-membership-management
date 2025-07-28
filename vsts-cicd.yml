@@ -5,8 +5,8 @@
 name: $(major).$(minor).$(Date:yyMM).$(Rev:r)
 
 trigger:
-- features/int
-- develop
+- stable
+- release
 - main
 
 schedules:
