@@ -52,9 +52,9 @@ namespace Services
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
                 
                 // Check if auto-approval feature is enabled
-                var isAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
+                var isGroupBasedAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
                 var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
-                var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query, request.UserIdentity, isAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
+                var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query, request.UserIdentity, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
                 if (shouldAutoApprove)
                 {
                     newSyncJobEntity.Status = SyncStatus.Idle.ToString();
