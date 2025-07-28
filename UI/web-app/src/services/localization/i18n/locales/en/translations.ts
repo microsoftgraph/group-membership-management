@@ -423,7 +423,7 @@ export const strings: IStrings = {
       teamsServiceAccountNotOwnerWarning: "GMM is not the owner of this Teams Channel! It will not be able to manage membership for this channel until you add it.{2} {0}{2}Once you have done that, come back and click:{2}{1}",
       userNotOwnerWarning: 'Warning: You are not the owner of this group! You can only manage memberships with GMM for groups you own.',
       groupDescription: 'Groups can be Outlook / M365 Group, Entra Security Group, Teams, Viva Engage community, and SharePoint site etc.',
-      channelDescription: 'Channel can be Teams private or shared channel.',
+      channelDescription: 'Channel can only be a Teams shared channel.',
       step2title: 'Step 2: Run Configuration',
       step2description: '',
       advancedQuery: 'Advanced Query',

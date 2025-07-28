@@ -425,7 +425,7 @@ export const strings: IStrings = {
       teamsServiceAccountNotOwnerWarning: 'GMM no es propietario de este canal de Teams. No podrá administrar la membresía de este canal hasta que lo agregues.{2} {0}{2}Una vez que hayas hecho eso, regresa y haz clic en: {2}{1}',
       userNotOwnerWarning: 'Atención: No eres dueño de este grupo. Solo los propietarios pueden administrar la membresía.',
       groupDescription: 'Los grupos pueden ser de Outlook / M365, Grupos de seguridad de Entra, Teams, comunidades de Viva Engage o sitios de SharePoint, etc.',
-      channelDescription: 'El canal puede ser un canal privado o compartido de Teams.',
+      channelDescription: 'El canal solo puede ser un canal compartido de Teams.',
       step2title: 'Paso 2: Configuración de ejecución ',
       step2description: '',
       advancedQuery: 'Consulta avanzada',
