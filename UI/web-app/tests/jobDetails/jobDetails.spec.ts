@@ -127,8 +127,9 @@ test('Create a group with AuthorizedSenders', { tag: '@main' }, async ({ page })
   const requestedOnBehalfOfDropdown = page.locator('#groupOwnersDropdown');
   await expect(requestedOnBehalfOfDropdown).toBeVisible();
   await requestedOnBehalfOfDropdown.click();
-  const groupOwners = await requestedOnBehalfOfDropdown.locator('option').allTextContents();
-  await expect(groupOwners).toContain(EMAIL);
+  const dropdownContent = page.locator('.ms-Dropdown-callout');
+  await expect(dropdownContent).toBeVisible();
+  await expect(dropdownContent).toContainText(EMAIL);
   console.log('✅ RequestedOnBehalfOf dropdown test completed successfully.');
 });
 
