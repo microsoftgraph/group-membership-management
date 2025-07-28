@@ -37,7 +37,7 @@ namespace Hosts.TeamsChannelUpdater
                 request = JsonSerializer.Deserialize<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
             return request;
         }
     }
