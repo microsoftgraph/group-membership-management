@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Azure.Core;
 using Azure.Identity;
+using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
@@ -31,6 +32,7 @@ using Repositories.GraphGroups;
 using Repositories.Localization;
 using Repositories.Logging;
 using Repositories.NotificationsRepository;
+using Repositories.ServiceBusQueue;
 using Repositories.ServiceStatus;
 using Repositories.SqlMembershipRepository;
 using Repositories.TeamsChannel;
@@ -399,6 +401,7 @@ namespace WebApi
                 settings.JobSchedulerFunctionKey = functionKey;
                 settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
                 settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
+                settings.PendingConfigurationQueue = configuration.GetValue<string>("Settings:ServiceBus:pendingConfigurationQueue");
             });
 
             builder.Services.AddSingleton(services =>
@@ -406,6 +409,27 @@ namespace WebApi
                 var settings = services.GetRequiredService<IOptions<OperationsSettings>>();
                 return settings.Value;
             });
+
+            builder.Services.AddSingleton(services =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var serviceBusFQN = operationsSettings.ServiceBusFQN;
+
+                if (string.IsNullOrWhiteSpace(serviceBusFQN))
+                    throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
+
+                return new ServiceBusClient(serviceBusFQN, new DefaultAzureCredential());
+            });
+
+            builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var pendingConfigurationQueue = operationsSettings.PendingConfigurationQueue;
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(pendingConfigurationQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
+
             builder.Services.AddSingleton<OpenAIService>();
 
             builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);
