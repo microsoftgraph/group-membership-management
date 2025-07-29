@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
@@ -28,7 +27,7 @@ namespace Hosts.NonProdService
         /// Creates a dictionary of group sizes and the number of groups of that size to create.
         /// It attempts to create many more smaller groups than larger groups to more closely resemble production usage.
         /// </summary>
-        [FunctionName(nameof(LoadTestingGroupCalculatorFunction))]
+        [Function(nameof(LoadTestingGroupCalculatorFunction))]
         public async Task<LoadTestingGroupCalculatorResponse> GenerateGroup([ActivityTrigger] LoadTestingGroupCalculatorRequest request, ILogger log)
         {
             var runId = request.RunId;

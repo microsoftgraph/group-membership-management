@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
@@ -23,7 +22,7 @@ namespace Hosts.NonProdService
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
-        [FunctionName(nameof(SyncJobCheckerFunction))]
+        [Function(nameof(SyncJobCheckerFunction))]
         public async Task<SyncJobCheckerResponse> CheckForMissingSyncJobsAsync([ActivityTrigger] SyncJobCheckerRequest request, ILogger log)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SyncJobCheckerFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

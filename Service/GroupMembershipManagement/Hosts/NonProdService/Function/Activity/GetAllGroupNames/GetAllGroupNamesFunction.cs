@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -22,7 +21,7 @@ namespace Hosts.NonProdService
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
-        [FunctionName(nameof(GetAllGroupNamesFunction))]
+        [Function(nameof(GetAllGroupNamesFunction))]
         public async Task<GetAllGroupNamesResponse> GetAllGroupNamesAsync([ActivityTrigger] GetAllGroupNamesRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetAllGroupNamesFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

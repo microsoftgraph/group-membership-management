@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Models;
@@ -27,7 +26,7 @@ namespace Hosts.NonProdService
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        [FunctionName(nameof(LoadTestingSyncJobCreatorFunction))]
+        [Function(nameof(LoadTestingSyncJobCreatorFunction))]
         public async Task CreateLoadTestingSyncJobs([ActivityTrigger] LoadTestingSyncJobCreatorRequest request, ILogger log)
         {
             var runId = request.RunId;
