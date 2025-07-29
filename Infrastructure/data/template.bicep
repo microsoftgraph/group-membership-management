@@ -413,6 +413,14 @@ param appConfigurationKeyData array = [
       tag1: 'MultiLane'
     }
   }
+  {
+    key: 'EnablePendingConfigurationStatus'
+    value: false
+    contentType: 'bool'
+    tag: {
+      tag1: 'PendingConfiguration'
+    }
+  }
 ]
 
 @description('Array of feature flags objects. {id:"value", description:"description", enabled:true }')
