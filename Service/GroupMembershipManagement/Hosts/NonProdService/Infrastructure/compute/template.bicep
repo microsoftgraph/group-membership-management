@@ -48,8 +48,9 @@ param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassific
   'I2'
   'I3'
   'Y1'
+  'FC1'
 ])
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -62,11 +63,9 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param functionAppKind string = 'functionapp'
-
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+param functionAppKind string = 'functionapp,linux'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -165,18 +164,9 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
 
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-  FUNCTIONS_INPROC_NET8_ENABLED : 1
-}
 
 var appSettings =  {
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
@@ -185,32 +175,16 @@ var appSettings =  {
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var activityFunctionSettings = {
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.IntegrationTestingPrepSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.LoadTestingPrepSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GroupCreatorAndRetrieverFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoadTestingGroupCalculatorFunction.Disabled': 0
-  'AzureWebJobs.LoadTestingSyncJobCreatorFunction.Disabled': 0
-  'AzureWebJobs.LoadTestingSyncJobRetrieverFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.TenantUserCountFunction.Disabled': 0
-  'AzureWebJobs.TenantUserReaderFunction.Disabled': 0
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -232,6 +206,16 @@ module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-NonProdService'
   params: {
     value: dataKeyVault.getSecret('nonProdServiceStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-NonProdService'
+  params: {
+    value: dataKeyVault.getSecret('nonProdServiceAppPackageContainerProd')
   }
   dependsOn: [
     dataKeyVault
@@ -262,7 +246,7 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: commonSettings
+    appSettings: appSettings
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
@@ -272,19 +256,11 @@ module functionAppTemplate_NonProdService 'functionApp.bicep' = {
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
-    existingLogAnalyticsWorkspace
   ]
 }
 
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-NonProdService/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, activityFunctionSettings)
-  dependsOn: [
-    functionAppTemplate_NonProdService
-  ]
-}

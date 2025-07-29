@@ -27,6 +27,8 @@ module nonProdServiceStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'nonProdServiceStorageAccountProd'
+    appPackageContainerSettingName: 'nonProdServiceAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
