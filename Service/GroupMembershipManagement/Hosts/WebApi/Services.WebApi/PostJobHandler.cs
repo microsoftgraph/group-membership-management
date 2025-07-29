@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Models;
+using Models.ServiceBus;
 using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -11,7 +12,6 @@ using Services.Messages.Responses;
 using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
 namespace Services
@@ -25,6 +25,7 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
+        private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         public PostJobHandler(
             IDatabaseSyncJobsRepository syncJobRepository,
@@ -32,7 +33,8 @@ namespace Services
             IGraphGroupRepository graphGroupRepository,
             ILoggingRepository loggingRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
-            IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
+            IDatabaseSettingsRepository databaseSettingsRepository,
+            IServiceBusQueueRepository serviceBusQueueRepository) : base(loggingRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));
@@ -40,12 +42,12 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
+            _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
         protected override async Task<PostJobResponse> ExecuteCoreAsync(PostJobRequest request)
         {
             var response = new PostJobResponse();
-
             
             try
             {
@@ -138,6 +140,22 @@ namespace Services
                             ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != request.UserIdentity ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
                         });
                     }
+
+                    var jobConfigurationQueueMessage = new JobConfigurationQueueMessage { JobId = newSyncJobId };
+                    var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(jobConfigurationQueueMessage));
+
+                    var message = new ServiceBusMessage
+                    {
+                        MessageId = newSyncJobId.ToString(),
+                        Body = body
+                    };
+
+                    await _serviceBusQueueRepository.SendMessageAsync(message);
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Sent message {message.MessageId} to configuration queue",
+                    });
                 }
                 else
                 {
