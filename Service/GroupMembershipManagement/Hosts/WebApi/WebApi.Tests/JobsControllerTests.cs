@@ -14,6 +14,7 @@ using Models;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.TeamsChannel;
 using Services.Messages.Responses;
 using Services.WebApi;
@@ -54,6 +55,8 @@ namespace Services.Tests
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private Mock<IDatabaseSettingsRepository> _databaseSettingsRepository = null!;
+        private Mock<IPendingConfigurationConfig> _pendingConfigurationConfig = null!;
+        private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private ODataQueryOptions<SyncJob> _odataQueryOptions = null!;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
         private PostOperationHandler _postResetRequestHandler = null!;
@@ -71,6 +74,11 @@ namespace Services.Tests
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
+            _pendingConfigurationConfig = new Mock<IPendingConfigurationConfig>();
+            _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+
+            // Setup default pending configuration setting to false
+            _pendingConfigurationConfig.Setup(x => x.EnablePendingConfigurationStatus).Returns(false);
 
             var builder = new ODataConventionModelBuilder();
             builder.EntitySet<SyncJob>("SyncJob");
@@ -220,7 +228,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
                                                 _databaseSyncJobsRepository.Object,
@@ -370,7 +380,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -401,7 +413,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -439,7 +453,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -474,7 +490,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -512,7 +530,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -553,7 +573,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -680,7 +702,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -736,7 +760,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -792,7 +818,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -840,7 +868,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext

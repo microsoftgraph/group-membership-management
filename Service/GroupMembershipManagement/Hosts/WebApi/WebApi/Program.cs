@@ -104,6 +104,7 @@ namespace WebApi
                     .Select("NumberOfThresholdViolationsToNotify")
                     .Select("NumberOfThresholdViolationsFollowUps")
                     .Select("NumberOfThresholdViolationsToDisableJob")
+                    .Select("EnablePendingConfigurationStatus")
                     .Select("TeamsChannel:*");
             });
 
@@ -401,7 +402,18 @@ namespace WebApi
                 settings.JobSchedulerFunctionKey = functionKey;
                 settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
                 settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
-                settings.PendingConfigurationQueue = configuration.GetValue<string>("Settings:ServiceBus:pendingConfigurationQueue");
+            });
+
+            builder.Services.AddOptions<PendingConfigurationConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                settings.EnablePendingConfigurationStatus = GetBoolSetting(configuration, "EnablePendingConfigurationStatus", false);
+            });
+            builder.Services.AddSingleton<IPendingConfigurationConfig>(services =>
+            {
+                return new PendingConfigurationConfig
+                    (
+                        services.GetService<IOptions<PendingConfigurationConfig>>().Value.EnablePendingConfigurationStatus
+                    );
             });
 
             builder.Services.AddSingleton(services =>

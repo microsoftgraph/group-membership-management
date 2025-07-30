@@ -5,6 +5,7 @@ using Models;
 using Models.ServiceBus;
 using Models.SyncJobChange;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Helpers;
 using Services.Messages.Requests;
@@ -25,6 +26,7 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
+        private readonly IPendingConfigurationConfig _pendingConfigurationConfig;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         public PostJobHandler(
@@ -34,6 +36,7 @@ namespace Services
             ILoggingRepository loggingRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
+            IPendingConfigurationConfig pendingConfigurationConfig,
             IServiceBusQueueRepository serviceBusQueueRepository) : base(loggingRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -42,6 +45,7 @@ namespace Services
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
+            _pendingConfigurationConfig = pendingConfigurationConfig ?? throw new ArgumentNullException(nameof(pendingConfigurationConfig));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
         }
 
@@ -57,19 +61,31 @@ namespace Services
                 var isGroupBasedAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
                 var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
                 var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query, request.UserIdentity, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
-                if (shouldAutoApprove)
+
+                var isPendingConfigurationEnabled = _pendingConfigurationConfig.EnablePendingConfigurationStatus;
+
+                // Check if pending configuration feature is enabled
+                if (isPendingConfigurationEnabled)
                 {
-                    newSyncJobEntity.Status = SyncStatus.Idle.ToString();
-
-                    if (newSyncJobEntity.StartDate < DateTime.UtcNow)
+                    newSyncJobEntity.Status = SyncStatus.PendingConfiguration.ToString();
+                }
+                else
+                {
+                    // Check if auto-approval feature is enabled
+                    if (shouldAutoApprove)
                     {
-                        newSyncJobEntity.StartDate = DateTime.UtcNow.AddHours(24);
+                        newSyncJobEntity.Status = SyncStatus.Idle.ToString();
+
+                        if (newSyncJobEntity.StartDate < DateTime.UtcNow)
+                        {
+                            newSyncJobEntity.StartDate = DateTime.UtcNow.AddHours(24);
+                        }
+
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Job auto-approved based on configured auto-approval criteria."
+                        });
                     }
-
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Job auto-approved based on configured auto-approval criteria."
-                    });
                 }
 
                 var destinationId = newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString() ? newSyncJobEntity.Group.GroupId : newSyncJobEntity.Channel.GroupId;
@@ -141,21 +157,24 @@ namespace Services
                         });
                     }
 
-                    var jobConfigurationQueueMessage = new JobConfigurationQueueMessage { JobId = newSyncJobId };
-                    var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(jobConfigurationQueueMessage));
-
-                    var message = new ServiceBusMessage
+                    if (isPendingConfigurationEnabled)
                     {
-                        MessageId = newSyncJobId.ToString(),
-                        Body = body
-                    };
+                        var jobConfigurationQueueMessage = new JobConfigurationQueueMessage { JobId = newSyncJobId };
+                        var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(jobConfigurationQueueMessage));
 
-                    await _serviceBusQueueRepository.SendMessageAsync(message);
+                        var message = new ServiceBusMessage
+                        {
+                            MessageId = newSyncJobId.ToString(),
+                            Body = body
+                        };
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Sent message {message.MessageId} to configuration queue",
-                    });
+                        await _serviceBusQueueRepository.SendMessageAsync(message);
+
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Sent message {message.MessageId} to configuration queue",
+                        });
+                    }
                 }
                 else
                 {
