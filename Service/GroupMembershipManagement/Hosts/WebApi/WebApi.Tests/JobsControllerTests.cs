@@ -11,6 +11,7 @@ using Microsoft.Kiota.Abstractions;
 using Microsoft.OData.ModelBuilder;
 using Microsoft.OData.UriParser;
 using Models;
+using Models.ServiceBus;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
@@ -933,7 +934,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -991,7 +994,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1048,7 +1053,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1105,7 +1112,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1163,7 +1172,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1220,7 +1231,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1287,7 +1300,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1346,7 +1361,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1397,7 +1414,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1452,7 +1471,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1523,7 +1544,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1593,7 +1616,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1653,7 +1678,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1710,7 +1737,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1760,7 +1789,9 @@ namespace Services.Tests
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
-                                                 _databaseSettingsRepository.Object);
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -1780,6 +1811,128 @@ namespace Services.Tests
             // Verify that the sync job change was saved with regular Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
                 change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithPendingConfigurationEnabledTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup pending configuration to enabled
+            _pendingConfigurationConfig.Setup(x => x.EnablePendingConfigurationStatus).Returns(true);
+
+            // Setup auto-approval settings to disabled (ensure they don't interfere)
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+
+            Assert.IsNotNull(result);
+
+            // Verify that the job was set to PendingConfiguration status
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job =>
+                job.Status == SyncStatus.PendingConfiguration.ToString())), Times.Once);
+
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+
+            // Verify that a message was sent to the service bus queue for configuration
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+
+            // Verify sending of service bus message was logged
+            _loggingRepository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(log => log.Message.Contains("to configuration queue")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithPendingConfigurationEnabledServiceBusExceptionTestAsync()
+        {
+            // Setup context
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup pending configuration to enabled
+            _pendingConfigurationConfig.Setup(x => x.EnablePendingConfigurationStatus).Returns(true);
+
+            // Setup auto-approval settings to disabled (ensure they don't interfere)
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, SettingValue = "false" });
+
+            _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
+                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
+
+            _serviceBusQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                                      .ThrowsAsync(new Exception("Service Bus error"));
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+
+            Assert.IsInstanceOfType(response, typeof(ObjectResult));
+            var result = response as ObjectResult;
+            Assert.IsNotNull(result);
+            Assert.AreEqual(StatusCodes.Status500InternalServerError, result.StatusCode);
+
+            // Verify that the job was set to PendingConfiguration status
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job =>
+                job.Status == SyncStatus.PendingConfiguration.ToString())), Times.Once);
+
+            // Verify that the sync job change was saved with regular Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+
+            // Verify that an attempt to send a message to the service bus queue for configuration was made
+            _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
         }
     }
 }
