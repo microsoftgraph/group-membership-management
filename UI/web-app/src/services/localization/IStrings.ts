@@ -34,7 +34,6 @@ export type IStrings = {
     filterInfo: string;
     includeOrg: string;
     includeFilter: string;
-    includeLeader: string;
     group: string;
     ungroup: string;
     attributeTitle: string;
@@ -461,7 +460,9 @@ export type IStrings = {
       collapse: string;
       sourceType: string;
       addSourcePart: string;
-      excludeSourcePart: string;
+      includeSourcePart: string;
+      yesInclusionary: string;
+      noInclusionary: string;
       deleteLastSourcePartWarning: string;
       errorOnSchema: string;
       searchGroupName: string;

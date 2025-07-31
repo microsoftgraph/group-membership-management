@@ -46,13 +46,13 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
   const [hrSourcePartSource, setHRSourcePartSource] = useState<HRSourcePartSource>(query.source as HRSourcePartSource);
 
-  const options: IChoiceGroupOption[] = [
-    { key: 'Yes', text: strings.yes },
-    { key: 'No', text: strings.no },
+  const inclusionaryOptions: IChoiceGroupOption[] = [
+    { key: 'Yes', text: strings.ManageMembership.labels.yesInclusionary },
+    { key: 'No', text: strings.ManageMembership.labels.noInclusionary },
   ];
 
   const dispatch = useDispatch<AppDispatch>();
-  const [isExclusionary, setIsExclusionary] = useState(query.exclusionary);
+  const [isInclusionary, setIsInclusionary] = useState(!(part.query.exclusionary ?? false));
   const [errorMessage, setErrorMessage] = useState<string>('');
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
@@ -86,7 +86,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       query: {
         type: SourcePartType.GroupMembership,
         source: sourceId,
-        exclusionary: isExclusionary,
+        exclusionary: !isInclusionary,
       },
     };
     dispatch(updateSourcePart(newQuery));
@@ -104,7 +104,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     const newQuery: HRSourcePart = {
       type: SourcePartType.HR,
       source: part.query.source as HRSourcePartSource,
-      exclusionary: isExclusionary
+      exclusionary: !isInclusionary
     }
     const newPart: ISourcePart = {
       id: uuidv4(),
@@ -138,7 +138,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   };
 
   useEffect(() => {
-    setIsExclusionary(part.query.exclusionary ?? false);
+    setIsInclusionary(!(part.query.exclusionary ?? false));
     if (part.query.type === SourcePartType.HR) {
       setHRSourcePartSource(part.query.source as HRSourcePartSource);
     }
@@ -149,7 +149,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     const newQuery: HRSourcePart = {
       type: SourcePartType.HR,
       source: source,
-      exclusionary: isExclusionary
+      exclusionary: !isInclusionary
     }
     const newPart: ISourcePart = {
       id: partId,
@@ -160,15 +160,15 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     dispatch(updateSourcePart(newPart));
   };
 
-  const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
+  const handleInclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
     if (!option) return;
-    const isExclusionarySelected = option.key === 'Yes';
+    const isInclusionarySelected = option.key === 'Yes';
 
-    setIsExclusionary(isExclusionarySelected);
+    setIsInclusionary(isInclusionarySelected);
     try {
       const updatedQuery: SourcePartQuery = {
         ...query,
-        exclusionary: isExclusionarySelected
+        exclusionary: !isInclusionarySelected
       };
 
       const updatedSourcePart: ISourcePart = {
@@ -200,24 +200,25 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       {expanded &&
         <div className={classNames.content}>
           <div className={classNames.controls}>
-            <Dropdown
-              styles={{ title: classNames.dropdownTitle }}
-              options={getOptions(hrSource)}
-              label={strings.ManageMembership.labels.sourceType}
-              required={true}
-              selectedKey={part.query.type}
-              onChange={handleSourceTypeChanged}
-              disabled={!isJobWriter || !isEditable}
-            />
-            <ChoiceGroup
-              className={classNames.exclusionaryPart}
-              options={options}
-              label={strings.ManageMembership.labels.excludeSourcePart}
-              required={true}
-              onChange={handleExclusionaryChange}
-              selectedKey={isExclusionary ? 'Yes' : 'No'}
-              disabled={!isJobWriter || !isEditable}
-            />
+            <div>
+              <Dropdown
+                styles={{ title: classNames.dropdownTitle }}
+                options={getOptions(hrSource)}
+                label={strings.ManageMembership.labels.sourceType}
+                required={true}
+                selectedKey={part.query.type}
+                onChange={handleSourceTypeChanged}
+                disabled={!isJobWriter || !isEditable}
+              />
+              <ChoiceGroup
+                options={inclusionaryOptions}
+                label={strings.ManageMembership.labels.includeSourcePart}
+                required={true}
+                onChange={handleInclusionaryChange}
+                selectedKey={isInclusionary ? 'Yes' : 'No'}
+                disabled={!isJobWriter || !isEditable}
+              />
+            </div>
             {isEditable &&
               <DefaultButton 
                   iconProps={{ iconName: 'Delete' }} 

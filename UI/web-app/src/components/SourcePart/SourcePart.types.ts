@@ -15,7 +15,6 @@ export type SourcePartStyles = {
   content: IStyle;
   controls: IStyle;
   advancedQuery: IStyle;
-  exclusionaryPart: IStyle;
   deleteButton: IStyle;
   error: IStyle;
   dropdownTitle: IStyle;

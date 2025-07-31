@@ -70,7 +70,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [filterErrorMessage, setFilterErrorMessage] = useState<string>('');
   const [source, setSource] = useState<HRSourcePartSource>(props.source);
   const [children, setChildren] = useState<ChildType[]>([]);
-  const excludeLeaderQuery = `EmployeeId <> ${source.manager?.id}`
   const attributes = useSelector(selectAttributes);
   const attributeMappings = useSelector(selectAttributeMappings);
 
@@ -82,7 +81,6 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [filteredOptions, setFilteredOptions] = useState<FilteredOptionsState>({});
   const [filteredValueOptions, setFilteredValueOptions] = useState<FilteredOptionsState>({});
   const [items, setItems] = useState<IFilterPart[]>([]);
-  let options: IComboBoxOption[] = [];
   const [childIndexForAttributeValue, setChildIndexForAttributeValue] = useState<number>(-1);
   const [groupIndexForAttributeValue, setGroupIndexForAttributeValue] = useState<number>(-1);
   const [itemIndexForAttributeValue, setItemIndexForAttributeValue] = useState<number>(-1);
@@ -886,43 +884,6 @@ const getOptions = (
         return newSource;
       });
     }
-  }
-
-  const handleIncludeLeaderChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption) => {
-    setOrgErrorMessage('');
-    let filter: string;
-    if (option?.key === "No") {
-      if (!source.manager?.id)
-      {
-        setOrgErrorMessage(hrSource?.name && hrSource?.name !== "" ?
-          orgLeaderDetails.text + strings.HROnboarding.customOrgLeaderMissingErrorMessage + (hrSource?.customLabel || hrSource?.name) + strings.HROnboarding.source :
-          orgLeaderDetails.text + strings.HROnboarding.orgLeaderMissingErrorMessage);
-        return;
-      }
-      if (source.filter && source.filter !== "") {
-        const endsWithAndOr = /( And| Or)$/i.test(source.filter);
-        filter = endsWithAndOr ? `${source.filter} ${excludeLeaderQuery}` : `${source.filter} And ${excludeLeaderQuery}`;
-      } else {
-        filter = excludeLeaderQuery;
-      }
-    }
-    else if (option?.key === "Yes") {
-      if (props.source.filter?.includes(excludeLeaderQuery)) {
-        const regex = new RegExp(`(And|Or) ${excludeLeaderQuery}|${excludeLeaderQuery} (And|Or)|${excludeLeaderQuery}`, 'g');
-        filter = props.source.filter?.replace(regex, '').trim();
-      }
-
-      const childrenToRemoveIndex = children.findIndex(child => child.filter.includes(excludeLeaderQuery));
-      if (childrenToRemoveIndex !== -1) {
-        setChildren(prevChildren => prevChildren.filter((_, index) => index !== childrenToRemoveIndex));
-      }
-      removeComponent(childrenToRemoveIndex)
-    }
-    setSource(prevSource => {
-      const newSource = { ...prevSource, filter };
-      onSourceChange(newSource, partId);
-      return newSource;
-    });
   }
 
   interface UpdateParam {
@@ -2120,22 +2081,6 @@ const getOptions = (
               onChange={handleDepthChange}
               options={depthOptions}
               styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-              disabled={source?.manager?.id == undefined || isDisabled || !isJobWriter || !isEditable}
-            />
-          </div>
-        </Stack.Item>
-
-        <Stack.Item align="start">
-          <div>
-            <Label>{strings.HROnboarding.includeLeader}</Label>
-            <ChoiceGroup
-              selectedKey={(source.filter?.includes(excludeLeaderQuery))? strings.no : strings.yes}
-              options={yesNoOptions}
-              onChange={handleIncludeLeaderChange}
-              styles={{
-                root: classNames.horizontalChoiceGroup,
-                flexContainer: classNames.horizontalChoiceGroupContainer
-              }}
               disabled={source?.manager?.id == undefined || isDisabled || !isJobWriter || !isEditable}
             />
           </div>

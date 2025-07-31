@@ -49,7 +49,7 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             flexDirection: 'row',
             flexWrap: 'wrap',
             flex: '0 1 auto',
-            gap: 32
+            gap: 16
         },
         advancedQuery: {
             display: 'flex',
@@ -58,13 +58,6 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             justifyContent: 'flex-start',
             flex: '1 0 auto',
             width: '100%',
-        },
-        exclusionaryPart: {
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            flex: '0 1 auto',
-            marginRight: '8px',
         },
         deleteButton: {
             marginLeft: 'auto',
