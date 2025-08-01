@@ -21,7 +21,7 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         [Function(nameof(GroupReaderFunction))]
-        public async Task<(AzureADGroup, string)> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
+        public async Task<GroupReaderResponse> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             if (request.IsDestinationPart)
@@ -41,35 +41,35 @@ namespace Hosts.GroupMembershipObtainer
                 });
             }
 
-            AzureADGroup azureAdGroup;
-            string groupId;
+            var response = new GroupReaderResponse();
 
             if (request.IsDestinationPart)
             {
-                azureAdGroup = new AzureADGroup { ObjectId = request.GroupId };
-                groupId = Guid.Empty.ToString();
+                response.SourceGroup = new AzureADGroup { ObjectId = request.GroupId };
+                response.SourceGroupId = Guid.Empty.ToString();
 
             }
             else
             {
-                var (group, extractedGroupId) = GetSourceGroup(request);
-                azureAdGroup = group;
-                groupId = extractedGroupId;
-
+                response = GetSourceGroup(request);
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return (azureAdGroup, groupId);
+            return response;
         }
 
-        public (AzureADGroup Group, string GroupId) GetSourceGroup(GroupReaderRequest request)
+        public GroupReaderResponse GetSourceGroup(GroupReaderRequest request)
         {
             var queryParts = JsonNode.Parse(request.SyncJob.Query).AsArray();
             var currentPart = queryParts[request.CurrentPart - 1];
             var currentQuery = currentPart.AsObject()["source"];
             var id = Convert.ToString(currentQuery);
             Guid.TryParse(id, out var parsed);
-            return (new AzureADGroup { ObjectId = parsed }, id);
+            return new GroupReaderResponse
+            {
+                SourceGroup = new AzureADGroup { ObjectId = parsed },
+                SourceGroupId = id
+            };
         }
     }
 }

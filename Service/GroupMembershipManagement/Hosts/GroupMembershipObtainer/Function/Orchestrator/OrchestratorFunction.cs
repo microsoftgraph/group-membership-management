@@ -36,7 +36,7 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         [Function(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context, ExecutionContext executionContext)
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest != null && mainRequest.SyncJob != null)
@@ -65,7 +65,7 @@ namespace Hosts.GroupMembershipObtainer
                         return;
                     }
                     if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { Message = $"Group Id for job:{syncJob.Id} is {groupId}", RunId = runId }, VerbosityLevel.DEBUG);
-                    var (sourceGroup, sourceGroupId) = await context.CallActivityAsync<(AzureADGroup, string)>(nameof(GroupReaderFunction),
+                    var response = await context.CallActivityAsync<GroupReaderResponse>(nameof(GroupReaderFunction),
                                                                                         new GroupReaderRequest
                                                                                         {
                                                                                             SyncJob = syncJob,
@@ -75,7 +75,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                             RunId = runId
                                                                                         });
 
-                    if (sourceGroup.ObjectId == Guid.Empty)
+                    if (response.SourceGroup.ObjectId == Guid.Empty)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Source group id is not a valid, Part# {mainRequest.CurrentPart} {syncJob.Query}. Marking job as {SyncStatus.QueryNotValid}." });
 
@@ -93,7 +93,7 @@ namespace Hosts.GroupMembershipObtainer
                         {
                             destinationName.ToString(),
                             groupId.ToString(),
-                            sourceGroupId.ToString(),
+                            response.SourceGroupId.ToString(),
                             DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotValidSourceNotification]
                         };
                         await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest {
@@ -133,7 +133,7 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                         {
                                                                                                                             SyncJob = syncJob,
                                                                                                                             GroupId = groupId,
-                                                                                                                            SourceGroup = sourceGroup,
+                                                                                                                            SourceGroup = response.SourceGroup,
                                                                                                                             CurrentPart = mainRequest.CurrentPart,
                                                                                                                             RunId = runId,
                                                                                                                             Exclusionary = mainRequest.Exclusionary
@@ -146,7 +146,7 @@ namespace Hosts.GroupMembershipObtainer
                             return;
                         }
 
-                        
+
                         filePath = sgResponse.FilePath;
 
                         var content = new MembershipAggregatorHttpRequest

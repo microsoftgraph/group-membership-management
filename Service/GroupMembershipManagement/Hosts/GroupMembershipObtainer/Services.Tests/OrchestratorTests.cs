@@ -125,8 +125,7 @@ namespace Tests.Services
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                                 .ReturnsAsync("ExpectedDestinationName");
 
-            AzureADGroup sourceGroup = null;
-            string id = null;
+            GroupReaderResponse groupReaderResponse = null;
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
             .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -135,12 +134,12 @@ namespace Tests.Services
                 await CallTelemetryTrackerFunctionAsync(telemetryRequest);
             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<(AzureADGroup, string)>(It.IsAny<TaskName>(), It.IsAny<GroupReaderRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupReaderResponse>(It.IsAny<TaskName>(), It.IsAny<GroupReaderRequest>(), It.IsAny<TaskOptions>()))
                                 .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
-                                    (sourceGroup, id) = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
+                                    groupReaderResponse = await CallSourceGroupsReaderFunctionAsync(request as GroupReaderRequest);
                                 }).
-                                ReturnsAsync(() => (sourceGroup, id));
+                                ReturnsAsync(() => groupReaderResponse);
 
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
             _durableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()))
@@ -231,7 +230,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
@@ -260,7 +259,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                            );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
@@ -293,7 +292,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                            );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains($"Marking job as {SyncStatus.QueryNotValid}")),
@@ -325,7 +324,7 @@ namespace Tests.Services
                                 _emailSenderRecipient.Object
                                );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), _orchestratorRequest.SyncJob, It.IsAny<TaskOptions>()), Times.Once());
 
         }
@@ -342,7 +341,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
                                                 It.IsAny<IEnumerable<SyncJob>>(),
@@ -363,7 +362,7 @@ namespace Tests.Services
                                     _emailSenderRecipient.Object
                                     );
 
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.StartsWith("Caught unexpected exception")),
@@ -393,7 +392,7 @@ namespace Tests.Services
                                     _emailSenderRecipient.Object
                                     );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.StartsWith("Rescheduling job at")),
@@ -429,7 +428,7 @@ namespace Tests.Services
                                     _emailSenderRecipient.Object
                                     );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
@@ -463,7 +462,7 @@ namespace Tests.Services
                                     _emailSenderRecipient.Object
                                     );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(UsersSenderFunction), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
@@ -495,7 +494,7 @@ namespace Tests.Services
                                     _emailSenderRecipient.Object
                                     );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(nameof(UsersSenderFunction), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never);
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                         It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"),
@@ -530,7 +529,7 @@ namespace Tests.Services
                                });
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipCalculator, _configuration.Object, _emailSenderRecipient.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _durableOrchestrationContext.Verify(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(nameof(SubOrchestratorFunction), It.IsAny<GroupMembershipRequest>(), It.IsAny<TaskOptions>()), Times.Once);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()), Times.Once);
@@ -569,7 +568,7 @@ namespace Tests.Services
                    });
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipCalculator, _configuration.Object, _emailSenderRecipient.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == $"{nameof(OrchestratorFunction)} function completed"), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
@@ -593,7 +592,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message == $"No json schemas have been loaded. Skipping schema validation."),
@@ -622,7 +621,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message == $"No GroupMembership schema has been loaded. Skipping schema validation."),
@@ -649,7 +648,7 @@ namespace Tests.Services
            })
            .ReturnsAsync(() => false);
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                             It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError), It.IsAny<TaskOptions>()), Times.Once());
         }
@@ -669,7 +668,7 @@ namespace Tests.Services
                                             _emailSenderRecipient.Object
                                             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Source query is not valid for job")),
@@ -694,14 +693,16 @@ namespace Tests.Services
             await function.UpdateJobStatusAsync(request);
         }
 
-        private async Task<(AzureADGroup, string)> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
+        private async Task<GroupReaderResponse> CallSourceGroupsReaderFunctionAsync(GroupReaderRequest request)
         {
             var function = new GroupReaderFunction(_loggingRepository.Object, _membershipCalculator);
-            var (group, groupId) = function.GetSourceGroup(request);
+            var response = function.GetSourceGroup(request);
             AzureADGroup azureAdGroup = request.IsDestinationPart
                                 ? azureAdGroup = new AzureADGroup { ObjectId = request.GroupId }
-                                : azureAdGroup = group;
-            return (azureAdGroup, groupId);
+                                : azureAdGroup = response.SourceGroup;
+
+            response.SourceGroup = azureAdGroup;
+            return response;
         }
 
         private async Task<string> CallUsersSenderFunctionAsync(UsersSenderRequest request)
