@@ -389,7 +389,7 @@ param appConfigurationKeyData array = [
     tag: {
       tag1: 'MultiLane'
     }
-    desription: 'small: equal or less than value.'
+    description: 'small: equal or less than value.'
   }
   {
     key: 'MultiLane:Medium'
@@ -398,7 +398,7 @@ param appConfigurationKeyData array = [
     tag: {
       tag1: 'MultiLane'
     }
-    desription: 'medium: equal or less than value, large will be anything greater.'
+    description: 'medium: equal or less than value, large will be anything greater.'
   }
   {
     key: 'MultiLane:IsEnabled'
