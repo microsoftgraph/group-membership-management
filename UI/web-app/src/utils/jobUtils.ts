@@ -52,12 +52,23 @@ export const processJob = (job: Job): Job => {
     case SyncStatus.PendingReview:
       job['actionRequired'] = ActionRequired.PendingReview;
       break;
+    case SyncStatus.PendingConfiguration:
+      job['actionRequired'] = ActionRequired.PendingConfiguration;
+      break;
     case SyncStatus.SubmissionRejected:
       job['actionRequired'] = ActionRequired.SubmissionRejected;
       break;
   }
 
   return job;
+};
+
+// Get the display action required for a job based on user role
+export const getDisplayActionRequired = (job: Job, isSubmissionReviewer: boolean): string => {
+  if (job.status === SyncStatus.PendingConfiguration && !isSubmissionReviewer) {
+    return ActionRequired.PendingReview;
+  }
+  return job.actionRequired;
 };
 
 export function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {

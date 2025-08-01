@@ -184,7 +184,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const [canEditJob, setCanEditJob] = useState<boolean>(false);
 
   useEffect(() => {
-    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview);
+    setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration);
   }, [isJobWriter, job?.status]);
   
   useEffect(() => {
@@ -513,7 +513,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           inlineLabel={true}
           checked={isJobEnabled}
           onChange={handleStatusChange}
-          disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.SubmissionRejected}
+          disabled={!canEnableJob || jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration || jobStatus === SyncStatus.SubmissionRejected}
         />
         <div>
           <div className={isJobEnabled ? classNames.jobEnabled : classNames.jobDisabled}>
@@ -525,15 +525,27 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         <div>
           {!patchResponse?.ok && (displayMessage(patchResponse))}
         </div>
-        {(jobStatus === SyncStatus.PendingReview) && (
+        {(jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration) && (
           <Stack>
-            <div className={classNames.membershipStatusPendingLabel}>
-              <Icon iconName='AlarmClock' className={classNames.clockIcon} />
-              <Text>{strings.JobDetails.labels.pendingReview}</Text>
-            </div>
+            {jobStatus === SyncStatus.PendingConfiguration && isSubmissionReviewer ?
+              <div className={classNames.membershipStatusPendingLabel}>
+                <Icon iconName='HourGlass' className={classNames.clockIcon} />
+                <Text>
+                  {strings.JobDetails.labels.pendingConfiguration}
+                </Text>
+              </div>
+              : <div className={classNames.membershipStatusPendingLabel}>
+                  <Icon iconName='AlarmClock' className={classNames.clockIcon} />
+                  <Text>
+                    {strings.JobDetails.labels.pendingReview}
+                  </Text>
+                </div>
+            }
             <Text>{isSubmissionReviewer ?
             <>
-              {strings.JobDetails.labels.pendingReviewInstructions}
+              {jobStatus === SyncStatus.PendingConfiguration
+                ? strings.JobDetails.labels.pendingConfigurationInstructions
+                : strings.JobDetails.labels.pendingReviewInstructions}
               {loadingJobChanges ? <Shimmer width="100%" /> :
               <>
               <Label>{strings.JobDetails.labels.businessJustification}</Label>
@@ -542,7 +554,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
               }
             </>
               : strings.JobDetails.labels.pendingReviewDescription}</Text>
-            {isSubmissionReviewer && (
+            {isSubmissionReviewer && jobStatus === SyncStatus.PendingReview && (
               <div className={classNames.membershipStatusActionButtons}>
                 <DefaultButton onClick={() => handleApproveSubmission(true)} text={strings.JobDetails.labels.approve} />
                 <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} />

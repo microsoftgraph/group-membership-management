@@ -50,6 +50,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   });
 
   const strings = useStrings();
+  const dispatch = useDispatch<AppDispatch>();
+  const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
+  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
 
   const statusDropdownOptions = [
     {
@@ -118,6 +122,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
       key: SyncStatus.PendingReview,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
     },
+    ...(isSubmissionReviewer ? [{
+      key: SyncStatus.PendingConfiguration,
+      text: 'Pending Configuration',
+    }] : []),
     {
       key: SyncStatus.SubmissionRejected,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.submissionRejected,
@@ -131,10 +139,6 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   const [destinationName, setDestinationName] = useState<string>();
   const [idValidationErrorMessage, setIdValidationErrorMessage] = useState<string>();
   const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>([]);
-  const isTenantJobWriter = useSelector(selectIsJobTenantWriter);
-  const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
-  const dispatch = useDispatch<AppDispatch>();
 
   const handleIdChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     const inputGuid = newValue || '';

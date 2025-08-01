@@ -222,6 +222,8 @@ export type IStrings = {
       pendingReview: string;
       pendingReviewDescription: string;
       pendingReviewInstructions: string;
+      pendingConfiguration: string;
+      pendingConfigurationInstructions: string;
       businessJustification: string;      
       approve: string;
       reject: string;

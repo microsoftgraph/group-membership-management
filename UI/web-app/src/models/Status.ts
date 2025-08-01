@@ -12,6 +12,7 @@ export enum SyncStatus {
   Idle = 'Idle',
   InProgress = 'InProgress',
   PendingReview = 'PendingReview',
+  PendingConfiguration = 'PendingConfiguration',
   SubmissionRejected = 'SubmissionRejected'
 }
 
@@ -24,5 +25,6 @@ export enum ActionRequired {
   NotOwnerOfDestinationGroup = 'Not Owner Of Destination Group',
   SecurityGroupNotFound = 'Security Group Not Found',
   PendingReview = 'Pending Review',
+  PendingConfiguration = 'Pending Configuration',
   SubmissionRejected = 'Submission Rejected',
 }

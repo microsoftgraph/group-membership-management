@@ -226,6 +226,8 @@ export const strings: IStrings = {
       pendingReview: 'Revisión pendiente',
       pendingReviewDescription: 'La configuración de la membresía está esperando ser verificada.',
       pendingReviewInstructions: 'Por favor revisa esta solicitud y luego aprueba o rechaza después de revisar la configuración de la membresía.',
+      pendingConfiguration: 'Configuración pendiente',
+      pendingConfigurationInstructions: 'Esta solicitud está pendiente de configuración. Una vez que esté configurada, estará lista para su revisión.',
       businessJustification: 'Justificación de la membresía',
       approve: 'Aprobar',
       reject: 'Rechazar',

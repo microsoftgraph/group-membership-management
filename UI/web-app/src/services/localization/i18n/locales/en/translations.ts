@@ -225,6 +225,8 @@ export const strings: IStrings = {
       pendingReview: 'Pending Review',
       pendingReviewDescription: 'Your submission is awaiting to be reviewed.',
       pendingReviewInstructions: 'Please review this request and then approve or decline after reviewing the membership configuration.',
+      pendingConfiguration: 'Pending Configuration',
+      pendingConfigurationInstructions: 'This request is pending configuration. Once it is configured, it will be ready to review.',
       businessJustification: 'Business Justification',
       approve: 'Approve',
       reject: 'Reject',
