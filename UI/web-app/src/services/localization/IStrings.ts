@@ -347,6 +347,7 @@ export type IStrings = {
             notOwnerOfDestinationGroup: string;
             securityGroupNotFound: string;
             pendingReview: string;
+            pendingConfiguration: string;
             submissionRejected: string;
           };
         };

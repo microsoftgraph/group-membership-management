@@ -55,6 +55,7 @@ import {
   ChevronRightMedIcon,
   AlarmClockIcon,
   ErrorBadgeIcon,
+  HourGlassIcon,
 } from '@fluentui/react-icons-mdl2';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
 import { ActionRequired, PagingOptions, SyncStatus } from '../../models';
@@ -81,6 +82,7 @@ import { resetManageMembership } from '../../store/manageMembership.slice';
 import Papa from 'papaparse';
 import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
+import { getDisplayActionRequired } from '../../utils/jobUtils';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -465,19 +467,24 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         );
 
       case 'actionRequired':
+        const displayActionRequired = getDisplayActionRequired(item, isSubmissionReviewer);
         return (
-          fieldContent ?
-            (fieldContent.includes(ActionRequired.PendingReview) ?
+          displayActionRequired ?
+            (displayActionRequired === ActionRequired.PendingReview ?
               <div>
-                <AlarmClockIcon className={classNames.pendingReviewIcon} /> {fieldContent}
+                <AlarmClockIcon className={classNames.pendingReviewIcon} /> {displayActionRequired}
               </div>
-              : fieldContent.includes(ActionRequired.SubmissionRejected) ?
+              : displayActionRequired === ActionRequired.PendingConfiguration ?
                 <div>
-                  <ErrorBadgeIcon className={classNames.rejectedIcon} /> {fieldContent}
+                  <HourGlassIcon className={classNames.pendingReviewIcon} /> {displayActionRequired}
                 </div>
-                : <div>
-                  <ReportHackedIcon className={classNames.actionRequiredIcon} /> {fieldContent}
-                </div>
+                : displayActionRequired === ActionRequired.SubmissionRejected ?
+                  <div>
+                    <ErrorBadgeIcon className={classNames.rejectedIcon} /> {displayActionRequired}
+                  </div>
+                  : <div>
+                    <ReportHackedIcon className={classNames.actionRequiredIcon} /> {displayActionRequired}
+                  </div>
             )
             : <></>
         );

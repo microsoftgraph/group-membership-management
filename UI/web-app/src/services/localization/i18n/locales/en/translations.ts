@@ -352,6 +352,7 @@ export const strings: IStrings = {
             notOwnerOfDestinationGroup: 'Not Owner Of Destination Group',
             securityGroupNotFound: 'Security Group Not Found',
             pendingReview: 'Pending Review',
+            pendingConfiguration: 'Pending Configuration',
             submissionRejected: 'Submission Rejected',
           },
         },
