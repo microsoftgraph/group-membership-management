@@ -143,8 +143,8 @@ namespace Services.WebApi
                 var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, newStatus);
                 if (result != null) return result;
             }
-            // If the job is in the PendingReview state, it cannot be updated
-            else if (syncJob.Status == SyncStatus.PendingReview.ToString())
+            // If the job is in the PendingReview / PendingConfiguration state, it cannot be updated
+            else if (syncJob.Status == SyncStatus.PendingReview.ToString() || syncJob.Status == SyncStatus.PendingConfiguration.ToString())
             {
                 response.StatusCode = HttpStatusCode.PreconditionFailed;
                 response.ErrorCode = "JobInPendingReviewStateCannotBeUpdated";
