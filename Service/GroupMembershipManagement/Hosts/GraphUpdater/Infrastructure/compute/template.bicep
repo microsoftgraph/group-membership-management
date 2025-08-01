@@ -75,6 +75,11 @@ param featureFlags object = {
   skipListingFunctionAppKeys : false
 }
 
+@description('Number of concurrent write requests to the Graph API.')
+@minValue(1)
+@maxValue(10)
+param concurrentWriteRequests int = 10
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
@@ -145,10 +150,10 @@ var appSettings = {
   serviceBusSyncJobUpdaterQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobUpdaterQueue, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
   'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-  instanceIdentifier: instanceIdentifier  
-  triggerSchedule: triggerSchedule  
-  triggerDelay: triggerDelay 
-  concurrentWriteRequests: 10
+  instanceIdentifier: instanceIdentifier
+  triggerSchedule: triggerSchedule
+  triggerDelay: triggerDelay
+  concurrentWriteRequests: concurrentWriteRequests
 }
 
 var activityFunctionSettings = {
