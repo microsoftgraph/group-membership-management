@@ -28,6 +28,7 @@ import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { generateTitleUsingOpenAI } from '../../apis/openai';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -163,7 +164,28 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     dispatch(updateSourcePart(newPart));
   };
 
-  const handleInclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
+  const generateTitle = async () => {
+    console.log("before title", part.title);
+
+    if (part.query.type === SourcePartType.HR) {
+      const generatedTitle = await generateTitleUsingOpenAI(part.query.source.filter);
+      let newTitle = part.title;
+
+      if (part.title === "") {
+        newTitle = `Everyone with the following criteria: ${generatedTitle}`;
+      } else if (part.title.includes("following criteria")) {
+        newTitle = part.title.split("following criteria")[0] + "following criteria: " + generatedTitle;
+      } else {
+        newTitle = `${part.title} with the following criteria: ${generatedTitle}`;
+      }
+
+      console.log("new title", newTitle);
+
+      dispatch(updateSourcePart({ ...part, title: newTitle }));
+    }
+  };
+
+  const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
     if (!option) return;
     const isInclusionarySelected = option.key === 'Yes';
 
@@ -237,7 +259,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
           {part.query.type === SourcePartType.HR && (
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
-              <HRQuerySource source={hrSourcePartSource} title={part.title} partId={partId} onSourceChange={handleSourceChange} isEditable={isEditable} />
+              <HRQuerySource
+                source={hrSourcePartSource}
+                title={part.title}
+                partId={partId}
+                onSourceChange={handleSourceChange}
+                onGenerateTitleBasedOnFilterClick={generateTitle}
+                isEditable={isEditable}
+              />
             </div>
           )}
           {part.query.type === SourcePartType.GroupMembership && (

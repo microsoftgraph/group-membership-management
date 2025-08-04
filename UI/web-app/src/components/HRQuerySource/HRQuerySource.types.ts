@@ -56,5 +56,6 @@ export type HRQuerySourceProps = React.AllHTMLAttributes<HTMLDivElement> & {
   partId: string;
   title: string;
   onSourceChange: (source: HRSourcePartSource, partId: string, title?: string) => void;
+  onGenerateTitleBasedOnFilterClick: () => void;
   isEditable?: boolean;
 };

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize, DefaultButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -38,7 +38,7 @@ export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuery
 
 export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (props: HRQuerySourceProps) => {
 
-  const { className, styles, partId, onSourceChange, isEditable } = props;
+  const { className, styles, partId, onSourceChange, onGenerateTitleBasedOnFilterClick, isEditable } = props;
   const classNames: IProcessedStyleSet<HRQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -174,7 +174,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       if (isDragAndDropEnabled) {
         setSource(prevSource => {
           const newSource = { ...prevSource, filter: newStr };
-          onSourceChange(newSource, partId);
+          onSourceChange(newSource, partId, props.title);
           return newSource;
         });
       }
@@ -348,12 +348,16 @@ const toggleExpand = () => {
   setExpanded(!expanded);
 };
 
+const generateTitleBasedOnFilter = () => {
+  onGenerateTitleBasedOnFilterClick();
+};
+
 const getGroupLabels = (groups: Group[]) => {
   const str = stringifyGroups(groups);
   const filter = str;
   setSource(prevSource => {
       const newSource = { ...prevSource, filter };
-      onSourceChange(newSource, partId);
+      onSourceChange(newSource, partId, props.title);
       return newSource;
   });
 }
@@ -557,7 +561,7 @@ const getOptions = (
           id: items[0].key as number
         }
       };
-      const newTitle = `All Users in ${items[0].text}'s org`;
+      const newTitle = `Everyone in ${items[0].text}'s org`;
       setLocalTitle(newTitle);
       onSourceChange(newSource, partId, newTitle);
       dispatch(fetchOrgLeaderDetails({
@@ -578,7 +582,7 @@ const getOptions = (
     let newTitle = currentTitle;
 
     let orgLeaderName = "";
-    const orgLeaderNameMatch = currentTitle.match(/All Users in (.*)'s org/);
+    const orgLeaderNameMatch = currentTitle.match(/Everyone in (.*)'s org/);
 
     if (orgLeaderNameMatch && orgLeaderNameMatch[1]) {
       orgLeaderName = orgLeaderNameMatch[1];
@@ -592,7 +596,7 @@ const getOptions = (
     }
 
     if(depth === 0) {
-      newTitle = `All Users in ${orgLeaderName}'s org`;
+      newTitle = `Everyone in ${orgLeaderName}'s org`;
       setSource(prevSource => {
         const newSource = {
           ...prevSource,
@@ -635,7 +639,7 @@ const getOptions = (
     const filter = newValue;
     setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
     });
   };
@@ -858,7 +862,7 @@ const getOptions = (
 
       setSource(prevSource => {
           const newSource = { ...prevSource, filter: newFilter };
-          onSourceChange(newSource, partId);
+          onSourceChange(newSource, partId, props.title);
           return newSource;
       });
       setChildren(prevChildren => prevChildren.filter((_, index) => index !== indexToRemove));
@@ -898,7 +902,7 @@ const getOptions = (
       const filter = "";
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -911,7 +915,7 @@ const getOptions = (
       dispatch(fetchDefaultSqlMembershipSourceAttributes());
       setSource(prevSource => {
         const newSource = { ...prevSource };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1015,7 +1019,7 @@ const getOptions = (
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1033,7 +1037,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1060,7 +1064,7 @@ const getOptions = (
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1077,7 +1081,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1129,7 +1133,7 @@ const getOptions = (
         }
         setSource(prevSource => {
           const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId);
+          onSourceChange(newSource, partId, props.title);
           return newSource;
         });
       }
@@ -1146,7 +1150,7 @@ const getOptions = (
         setSource(prevSource => {
           let filter = updatedFilter;
           const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId);
+          onSourceChange(newSource, partId, props.title);
           return newSource;
         });
       }
@@ -1197,7 +1201,7 @@ const getOptions = (
       }
       setSource(prevSource => {
           const newSource = { ...prevSource, filter };
-          onSourceChange(newSource, partId);
+          onSourceChange(newSource, partId, props.title);
           return newSource;
       });
     }
@@ -1214,7 +1218,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1251,7 +1255,7 @@ const getOptions = (
       }
       setSource(prevSource => {
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -1271,7 +1275,7 @@ const getOptions = (
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
-        onSourceChange(newSource, partId);
+        onSourceChange(newSource, partId, props.title);
         return newSource;
       });
     }
@@ -2137,6 +2141,8 @@ const getOptions = (
       </div>
       <br />
 
+      <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
+      <Stack.Item align="start">
       <Label>{format(strings.HROnboarding.includeFilter, hrSource?.customLabel ?? hrSource?.name)}</Label>
       <ChoiceGroup
         data-testid="hr-include-filter-choice"
@@ -2149,6 +2155,20 @@ const getOptions = (
         }}
         disabled={!isJobWriter || !isEditable}
       />
+      </Stack.Item>
+      <Stack.Item align="start">
+      {(source.filter) &&
+      <DefaultButton
+          iconProps={{ iconName: 'Refresh' }}
+          //className={classNames.deleteButton}
+          onClick={generateTitleBasedOnFilter}
+          disabled={!isJobWriter || !isEditable}
+        >
+        {"Generate title based on filter"}
+      </DefaultButton>
+      }
+      </Stack.Item>
+      </Stack>
 
       {(includeFilter || source.filter) &&
       <div className={classNames.cardHeader}>
