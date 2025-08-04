@@ -83,23 +83,20 @@ function Retry-Operation {
     } while ($true)
 }
 
-function Deploy-PostDeploymentUpdates {
+function Set-PostDeploymentUpdates {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
-        [string]$SolutionAbbreviation,
+        [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
-        [string]$EnvironmentAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptsDirectory
+        [string]$ConnectionString
     )
 
-    . ($ScriptsDirectory + '\main.ps1')
+    . ($ScriptsDirectory + '\PostDeploymentMigrations\Set-PostDeploymentMigrations.ps1')
     $currentContext = Get-AzContext
-    Update-GmmMigrationIfNeeded `
+    Set-PostDeploymentMigrations `
         -SubscriptionName $currentContext.Subscription.Name `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation
+        -ConnectionString $ConnectionString
 }
 
 function Set-Subscription {
@@ -1682,7 +1679,7 @@ function Test-ScriptDependencies {
         "webapi_package"          = "$scriptsDirectory\webapi_package"
         "webapp_package\web-app"  = "$scriptsDirectory\webapp_package\web-app"
         "Scripts"                 = "$scriptsDirectory\Scripts"
-        "Scripts\PostDeployment"  = "$scriptsDirectory\Scripts\PostDeployment"
+        "Scripts\PostDeploymentRoleAssignments"  = "$scriptsDirectory\Scripts\PostDeploymentRoleAssignments"
         "efbundle.exe"            = "$scriptsDirectory\function_packages\efbundle.exe"
     }
 
@@ -1832,7 +1829,7 @@ function Deploy-Resources {
         Set-RBACPermissions `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeployment" `
+        -ScriptsDirectory "$scriptsDirectory\Scripts\PostDeploymentRoleAssignments" `
         -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
     }
 
@@ -1875,10 +1872,9 @@ function Deploy-Resources {
         -SharepointDomain $response.SharepointDomain `
         -SubscriptionId $SubscriptionId
 
-    Deploy-PostDeploymentUpdates `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+    Set-PostDeploymentUpdates `
         -ScriptsDirectory "$scriptsDirectory\scripts"
+        -ConnectionString $connectionString
 
     if(!$IsInitialDeployment -and $ResetGMMType -ne "Skip") {
         Write-Host "`nStopping function apps in resource group $computeResourceGroup"
