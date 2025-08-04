@@ -100,6 +100,9 @@ param serviceBusSyncJobUpdaterQueue string = 'syncJobUpdater'
 @description('Enter pending configuration service bus queue name')
 param serviceBusConfigurationQueue string = 'configuration'
 
+@description('Enter failed pending configuration service bus queue name')
+param serviceBusFailedConfigurationQueue string = 'failedConfiguration'
+
 @description('Available membership updaters')
 param availableMembershipUpdaters array = [
   {
@@ -627,6 +630,20 @@ module configurationQueue 'serviceBusQueue.bicep' = {
   ]
 }
 
+module failedConfigurationQueue 'serviceBusQueue.bicep' = {
+  name: 'failedConfigurationQueue'
+  params: {
+    queueName: serviceBusFailedConfigurationQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn: [
+    serviceBusTemplate
+    logAnalyticsTemplate
+  ]
+}
+
 module storageAccountTemplate 'storageAccount.bicep' = {
   name: 'storageAccountTemplate'
   params: {
@@ -800,6 +817,10 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
       {
         name: 'serviceBusConfigurationQueue'
         value: serviceBusConfigurationQueue
+      }
+      {
+        name: 'serviceBusFailedConfigurationQueue'
+        value: serviceBusFailedConfigurationQueue
       }
       {
         name: 'graphUserAssignedManagedIdentityName'
