@@ -64,8 +64,8 @@ namespace Services
 
                 var isPendingConfigurationEnabled = _pendingConfigurationConfig.EnablePendingConfigurationStatus;
 
-                // Check if pending configuration feature is enabled
-                if (isPendingConfigurationEnabled)
+                // Check if pending configuration feature is enabled, only works for groups
+                if (isPendingConfigurationEnabled && newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString())
                 {
                     newSyncJobEntity.Status = SyncStatus.PendingConfiguration.ToString();
                 }
@@ -157,14 +157,17 @@ namespace Services
                         });
                     }
 
-                    if (isPendingConfigurationEnabled)
+                    if (isPendingConfigurationEnabled && newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString())
                     {
-                        var jobConfigurationQueueMessage = new JobConfigurationQueueMessage { JobId = newSyncJobId };
+                        var jobConfigurationQueueMessage = new JobConfigurationQueueMessage {
+                            JobId = newSyncJobId,
+                            GroupId = destinationId
+                        };
                         var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(jobConfigurationQueueMessage));
 
                         var message = new ServiceBusMessage
                         {
-                            MessageId = newSyncJobId.ToString(),
+                            MessageId = destinationId.ToString(),
                             Body = body
                         };
 
