@@ -79,7 +79,7 @@ namespace Services.Tests
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             // Setup default pending configuration setting to false
-            _pendingConfigurationConfig.Setup(x => x.EnablePendingConfigurationStatus).Returns(false);
+            _pendingConfigurationConfig.Setup(x => x.PendingConfigurationIsEnabled).Returns(false);
 
             var builder = new ODataConventionModelBuilder();
             builder.EntitySet<SyncJob>("SyncJob");
@@ -1827,7 +1827,7 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
             // Setup pending configuration to enabled
-            _pendingConfigurationConfig.Setup(x => x.EnablePendingConfigurationStatus).Returns(true);
+            _pendingConfigurationConfig.Setup(x => x.PendingConfigurationIsEnabled).Returns(true);
 
             // Setup auto-approval settings to disabled (ensure they don't interfere)
             _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))
@@ -1889,7 +1889,7 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
             // Setup pending configuration to enabled
-            _pendingConfigurationConfig.Setup(x => x.EnablePendingConfigurationStatus).Returns(true);
+            _pendingConfigurationConfig.Setup(x => x.PendingConfigurationIsEnabled).Returns(true);
 
             // Setup auto-approval settings to disabled (ensure they don't interfere)
             _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled))

@@ -6,15 +6,15 @@ namespace DIConcreteTypes
 {
     public class PendingConfigurationConfig : IPendingConfigurationConfig
     {
-        public bool EnablePendingConfigurationStatus { get; set; }
+        public bool PendingConfigurationIsEnabled { get; set; }
 
         public PendingConfigurationConfig()
         {
         }
 
-        public PendingConfigurationConfig(bool enablePendingConfigurationStatus)
+        public PendingConfigurationConfig(bool pendingConfigurationIsEnabled)
         {
-            EnablePendingConfigurationStatus = enablePendingConfigurationStatus;
+            PendingConfigurationIsEnabled = pendingConfigurationIsEnabled;
         }
     }
 }

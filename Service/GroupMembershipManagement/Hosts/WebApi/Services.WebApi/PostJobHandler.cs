@@ -62,7 +62,7 @@ namespace Services
                 var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
                 var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query, request.UserIdentity, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
 
-                var isPendingConfigurationEnabled = _pendingConfigurationConfig.EnablePendingConfigurationStatus;
+                var isPendingConfigurationEnabled = _pendingConfigurationConfig.PendingConfigurationIsEnabled;
 
                 // Check if pending configuration feature is enabled, only works for groups
                 if (isPendingConfigurationEnabled && newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString())

@@ -104,7 +104,7 @@ namespace WebApi
                     .Select("NumberOfThresholdViolationsToNotify")
                     .Select("NumberOfThresholdViolationsFollowUps")
                     .Select("NumberOfThresholdViolationsToDisableJob")
-                    .Select("EnablePendingConfigurationStatus")
+                    .Select("PendingConfiguration:*")
                     .Select("TeamsChannel:*");
             });
 
@@ -406,13 +406,13 @@ namespace WebApi
 
             builder.Services.AddOptions<PendingConfigurationConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.EnablePendingConfigurationStatus = GetBoolSetting(configuration, "EnablePendingConfigurationStatus", false);
+                settings.PendingConfigurationIsEnabled = GetBoolSetting(configuration, "PendingConfiguration:IsEnabled", false);
             });
             builder.Services.AddSingleton<IPendingConfigurationConfig>(services =>
             {
                 return new PendingConfigurationConfig
                     (
-                        services.GetService<IOptions<PendingConfigurationConfig>>().Value.EnablePendingConfigurationStatus
+                        services.GetService<IOptions<PendingConfigurationConfig>>().Value.PendingConfigurationIsEnabled
                     );
             });
 

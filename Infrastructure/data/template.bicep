@@ -420,7 +420,7 @@ param appConfigurationKeyData array = [
     }
   }
   {
-    key: 'EnablePendingConfigurationStatus'
+    key: 'PendingConfiguration:IsEnabled'
     value: false
     contentType: 'boolean'
     tag: {

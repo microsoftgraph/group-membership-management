@@ -4,7 +4,7 @@ namespace Repositories.Contracts.InjectConfig
 {
     public interface IPendingConfigurationConfig
     {
-        public bool EnablePendingConfigurationStatus { get; }
+        public bool PendingConfigurationIsEnabled { get; }
 
     }
 }
