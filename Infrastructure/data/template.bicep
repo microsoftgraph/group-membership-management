@@ -331,7 +331,7 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:IsAdaptiveCardEnabled'
     value: 'true'
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'Mail'
     }
@@ -347,7 +347,7 @@ param appConfigurationKeyData array = [
   {
     key: 'ThresholdNotification:IsThresholdNotificationEnabled'
     value: 'false'
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'ThresholdNotification'
     }
@@ -364,7 +364,7 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:IsMailApplicationPermissionGranted'
     value: isMailApplicationPermissionGranted
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'Mail'
     }
@@ -372,7 +372,7 @@ param appConfigurationKeyData array = [
   {
     key: 'Mail:SkipMailNotifications'
     value: skipMailNotifications
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'Mail'
     }
@@ -380,7 +380,7 @@ param appConfigurationKeyData array = [
   {
     key: 'TeamsChannel:IsChannelReadWriteApplicationPermissionGranted'
     value: isTeamsChannelApplicationPermissionGranted
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'TeamsChannel'
     }
@@ -406,7 +406,7 @@ param appConfigurationKeyData array = [
   {
     key: 'MultiLane:IsEnabled'
     value: false
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'MultiLane'
     }
@@ -422,7 +422,7 @@ param appConfigurationKeyData array = [
   {
     key: 'EnablePendingConfigurationStatus'
     value: false
-    contentType: 'bool'
+    contentType: 'boolean'
     tag: {
       tag1: 'PendingConfiguration'
     }
