@@ -1275,7 +1275,7 @@ const getOptions = (
         words = updateFilterWords(words, undefined, undefined, item.text);
       }
       segments[index] = words.join(' ');
-      const updatedFilter = segments.join('');
+      const updatedFilter = segments.join(' ');
       setSource(prevSource => {
         let filter = updatedFilter;
         const newSource = { ...prevSource, filter };
