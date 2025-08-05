@@ -85,7 +85,7 @@ namespace Hosts.FunctionBase
             });
 
             services.AddDbContext<GMMContext>(options =>
-                options.UseSqlServer(GetValueOrThrowBase("ConnectionStrings:JobsContext"), sqlServerOptions =>
+                options.UseSqlServer(GetValueOrThrowBase("ConnectionStrings__JobsContext"), sqlServerOptions =>
                 {
                     sqlServerOptions.EnableRetryOnFailure();
                 }),
@@ -93,7 +93,7 @@ namespace Hosts.FunctionBase
             );
 
             services.AddDbContext<GMMReadContext>(options =>
-                options.UseSqlServer(GetValueOrThrowBase("ConnectionStrings:JobsContextReadOnly"), sqlServerOptions =>
+                options.UseSqlServer(GetValueOrThrowBase("ConnectionStrings__JobsContextReadOnly"), sqlServerOptions =>
                 {
                     sqlServerOptions.EnableRetryOnFailure();
                 }),
@@ -120,7 +120,6 @@ namespace Hosts.FunctionBase
             services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
             services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
-            services.AddScoped<IDatabasePendingSyncJobChangesRepository, DatabasePendingSyncJobChangesRepository>();
             services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
