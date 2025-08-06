@@ -34,12 +34,13 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { InfoWord } from '../InfoWord';
 import { jsxFormat } from '../../utils/stringUtils';
 import { selectIsGeneratingTitle } from '../../store/title.slice';
+import { getTitle } from '../../store/title.api';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
 export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (props: HRQuerySourceProps) => {
 
-  const { className, styles, partId, onSourceChange, onGenerateTitleBasedOnFilterClick, isEditable } = props;
+  const { className, styles, partId, onSourceChange, onEnableEdit, isEditable } = props;
   const classNames: IProcessedStyleSet<HRQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -349,10 +350,6 @@ const toggleExpand = () => {
   setExpanded(!expanded);
 };
 
-const generateTitleBasedOnFilter = () => {
-  onGenerateTitleBasedOnFilterClick();
-};
-
 const getGroupLabels = (groups: Group[]) => {
   const str = stringifyGroups(groups);
   const filter = str;
@@ -535,6 +532,27 @@ const getOptions = (
         return keys;
     }
     return [];
+  };
+
+  const generateTitle = async () => {
+    let generatedTitle = "";
+    const orgLeaderPattern = /^(Everyone in .+'s org|\d+\slevels? of direct reports of .+)( with the following summarized criteria: .+)?$/;
+    if (source.filter) {
+      const result = await dispatch(getTitle(source.filter));
+      generatedTitle = result.payload as string;        
+    }
+    let newTitle = props.title;
+    if (props.title && orgLeaderPattern.test(props.title)) {
+      if (props.title.includes("with the following summarized criteria:")) {
+        newTitle = props.title.replace(/with the following summarized criteria: .+/, `with the following summarized criteria: ${generatedTitle}`);
+      } else {
+          newTitle = `${props.title} with the following summarized criteria: ${generatedTitle}`;
+      }
+    } else {
+      newTitle = generatedTitle;
+    }
+    onEnableEdit(true);
+    onSourceChange(props.source, partId, newTitle);
   };
 
   const getPickerSuggestions = async (
@@ -2172,7 +2190,7 @@ const getOptions = (
         <div className={classNames.generateTitleButton}>
         <PrimaryButton
           text={strings.HROnboarding.generateTitle}
-          onClick={generateTitleBasedOnFilter}
+          onClick={generateTitle}
           disabled={!isJobWriter || !isEditable}
         />
         </div>

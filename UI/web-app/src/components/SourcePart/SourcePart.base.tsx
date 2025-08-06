@@ -29,7 +29,6 @@ import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
-import { getTitle } from '../../store/title.api';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -112,7 +111,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     }
     const newPart: ISourcePart = {
       id: uuidv4(),
-      title: "",
+      title: part.title || "",
       query: newQuery,
       isExpanded: true,
       isNew: true
@@ -178,27 +177,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     dispatch(updateSourcePart(newPart));
   };
 
-  const generateTitle = async () => {
-    let generatedTitle = "";
-    const orgLeaderPattern = /^(Everyone in .+'s org|\d+\slevels? of direct reports of .+)( with the following summarized criteria: .+)?$/;
-    if (part.query.type === SourcePartType.HR) {
-      if (part.query.source.filter) {
-        const result = await dispatch(getTitle(part.query.source.filter));
-        generatedTitle = result.payload as string;
-      }
-      let newTitle = part.title;
-      if (orgLeaderPattern.test(part.title)) {
-        if (part.title.includes("with the following summarized criteria:")) {
-          newTitle = part.title.replace(/with the following summarized criteria: .+/, `with the following summarized criteria: ${generatedTitle}`);
-        } else {
-            newTitle = `${part.title} with the following summarized criteria: ${generatedTitle}`;
-        }
-      } else {
-        newTitle = generatedTitle;
-      }
-      setIsEditEnabled(true);
-      dispatch(updateSourcePart({ ...part, title: newTitle }));
-    }
+  const handleEnableEdit = (isEditEnabled: boolean) => {
+    setIsEditEnabled(isEditEnabled);
   };
 
   const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
@@ -308,7 +288,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                 title={part.title || props.title}
                 partId={partId}
                 onSourceChange={handleSourceChange}
-                onGenerateTitleBasedOnFilterClick={generateTitle}
+                onEnableEdit={handleEnableEdit}
                 isEditable={isEditable}
               />
             </div>
