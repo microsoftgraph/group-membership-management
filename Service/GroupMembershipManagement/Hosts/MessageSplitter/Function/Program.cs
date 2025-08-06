@@ -27,7 +27,7 @@ namespace Hosts.MessageSplitter
                         .ConfigureAppConfiguration((context, config) =>
                         {
                             var settings = config.Build();
-                            var appConfigEndpoint = CommonServices.GetValueOrThrowBase("appConfigurationEndpoint");
+                            var appConfigEndpoint = CommonServices.GetValueOrThrowBase(settings, "appConfigurationEndpoint");
 
                             config.AddAzureAppConfiguration(options =>
                             {
@@ -38,7 +38,7 @@ namespace Hosts.MessageSplitter
                         .ConfigureServices((context, services) =>
                         {
                             var configuration = context.Configuration;
-                            var instanceIdentifier = CommonServices.GetValueOrThrowBase("instanceIdentifier");
+                            var instanceIdentifier = CommonServices.GetValueOrThrowBase(configuration, "instanceIdentifier");
                             var functionName = $"MessageSplitter_{instanceIdentifier}";
                             var dryRunSettingName = string.Empty;
                             var rootPath = context.HostingEnvironment.ContentRootPath;
@@ -56,8 +56,9 @@ namespace Hosts.MessageSplitter
                             .AddSingleton(services =>
                             {
                                 var multilaneConfig = services.GetRequiredService<IOptions<MultiLaneConfig>>();
+                                var configuration = services.GetRequiredService<IConfiguration>();
                                 var availableMembershipUpdaters = JsonSerializer.Deserialize<List<MembershipUpdater>>(multilaneConfig.Value.AvailableMembershipUpdaters);
-                                var currentLaneSize = CommonServices.GetValueOrThrowBase("messageSplitterSubscription");
+                                var currentLaneSize = CommonServices.GetValueOrThrowBase(configuration, "messageSplitterSubscription");
                                 if (availableMembershipUpdaters == null) throw new Exception($"Unable to determine AvailableMembershipUpdaters");
                                 var membershipUpdatersConfig = new MembershipUpdatersConfiguration
                                 {

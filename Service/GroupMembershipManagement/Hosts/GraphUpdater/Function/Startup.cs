@@ -83,15 +83,17 @@ namespace Hosts.GraphUpdater
             .Services.AddSingleton(services =>
             {
                 var client = services.GetRequiredService<ServiceBusClient>();
-                var serviceBusMembershipUpdatersTopic = CommonServices.GetValueOrThrowBase("serviceBusMembershipUpdatersTopic");
+                var configuration = services.GetRequiredService<IConfiguration>();
+                var serviceBusMembershipUpdatersTopic = CommonServices.GetValueOrThrowBase(configuration, "serviceBusMembershipUpdatersTopic");
                 var receiver = client.CreateReceiver(serviceBusMembershipUpdatersTopic, "GraphUpdater");
                 return receiver;
             })
             .AddSingleton(services =>
             {
                 var multilaneConfig = services.GetRequiredService<IOptions<MultiLaneConfig>>();
+                var configuration = services.GetRequiredService<IConfiguration>();
                 var availableMembershipUpdaters = JsonSerializer.Deserialize<List<MembershipUpdater>>(multilaneConfig.Value.AvailableMembershipUpdaters);
-                var currentLaneSize = CommonServices.GetValueOrDefaultBase("instanceIdentifier");
+                var currentLaneSize = CommonServices.GetValueOrDefaultBase(configuration, "instanceIdentifier");
                 if (availableMembershipUpdaters == null) throw new Exception($"Unable to determine AvailableMembershipUpdaters");
                 var membershipUpdatersConfig = new MembershipUpdatersConfiguration
                 {
@@ -117,7 +119,7 @@ namespace Hosts.GraphUpdater
                 }
 
                 var membershipUpdaters = new MembershipUpdaters(currentLaneSize, instances);
-                membershipUpdaters.CurrentTopicName = CommonServices.GetValueOrThrowBase("serviceBusMembershipUpdatersTopic");
+                membershipUpdaters.CurrentTopicName = CommonServices.GetValueOrThrowBase(configuration, "serviceBusMembershipUpdatersTopic");
                 return membershipUpdaters;
             });
         }

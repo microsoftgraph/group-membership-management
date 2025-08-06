@@ -118,8 +118,8 @@ var appSettings = {
   serviceBusMessageSplitterTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMessageSplitterTopic, '2019-09-01').secretUriWithVersion})'
   instanceIdentifier: instanceIdentifier
   messageSplitterSubscription: messageSplitterSubscription
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
 }
 
 var activityFunctionSettings = {

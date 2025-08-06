@@ -30,7 +30,7 @@ namespace Hosts.GroupMembershipObtainer
                 .ConfigureAppConfiguration((context, config) =>
                 {
                     var settings = config.Build();
-                    var appConfigEndpoint = CommonServices.GetValueOrThrowBase("appConfigurationEndpoint");
+                    var appConfigEndpoint = CommonServices.GetValueOrThrowBase(settings, "appConfigurationEndpoint");
 
                     config.AddAzureAppConfiguration(options =>
                     {
