@@ -326,7 +326,7 @@ namespace Services
             try
             {
                 var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled);
-                return setting != null && setting.SettingValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+                return setting != null ? bool.Parse(setting.SettingValue) : false;
             }
             catch (Exception ex)
             {
@@ -343,7 +343,7 @@ namespace Services
             try
             {
                 var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
-                return setting != null && setting.SettingValue.Equals("true", StringComparison.OrdinalIgnoreCase);
+                return setting != null ? bool.Parse(setting.SettingValue) : false;
             }
             catch (Exception ex)
             {

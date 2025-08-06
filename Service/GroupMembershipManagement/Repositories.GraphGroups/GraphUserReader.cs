@@ -53,7 +53,18 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var user = await _graphServiceClient.Users[userIdentifier].GetAsync();
+                var selectProperties = new List<string> { "id", "userPrincipalName", "onPremisesImmutableId" };
+                if (includeMailProperty)
+                {
+                    selectProperties.Add("mail");
+                }
+
+                var user = await _graphServiceClient.Users[userIdentifier]
+                    .GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Select = selectProperties.ToArray();
+                    });
+
                 if (user != null) userDetails = new AzureADUser
                 {
                     ObjectId = Guid.Parse(user.Id),
