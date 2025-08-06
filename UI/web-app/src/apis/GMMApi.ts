@@ -3,6 +3,7 @@
 
 import { ApiOptions } from './ApiOptions';
 import { IGMMApi } from './IGMMApi';
+import { ITitleApi, TitleApi } from './titles';
 import { IJobsApi, JobsApi } from './jobs';
 import { IRolesApi, RolesApi } from './roles';
 import { ISettingsApi } from './settings/ISettingsApi';
@@ -13,6 +14,7 @@ import { IDestinationsApi } from './destinations/IDestinationsApi';
 import { DestinationsApi } from './destinations/DestinationsApi';
 
 export class GMMApi implements IGMMApi {
+  private _titleApi: ITitleApi;
   private _jobsApi: IJobsApi;
   private _settingsApi: ISettingsApi;
   private _rolesApi: IRolesApi;
@@ -22,6 +24,7 @@ export class GMMApi implements IGMMApi {
 
   constructor(options: ApiOptions) {
     const { baseUrl } = options;
+    this._titleApi = new TitleApi({ ...options, baseUrl: `${baseUrl}` });
     this._jobsApi = new JobsApi({ ...options, baseUrl: `${baseUrl}/jobs` });
     this._settingsApi = new SettingsApi({ ...options, baseUrl: `${baseUrl}/settings` });
     this._rolesApi = new RolesApi({ ...options, baseUrl: `${baseUrl}/roles` });
@@ -30,6 +33,9 @@ export class GMMApi implements IGMMApi {
     this._destinationsApi = new DestinationsApi({ ...options, baseUrl: `${baseUrl}/destinations` });
   }
 
+  public get title(): ITitleApi {
+    return this._titleApi;
+  }
   public get jobs(): IJobsApi {
     return this._jobsApi;
   }

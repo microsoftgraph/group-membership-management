@@ -26,6 +26,7 @@ export const graphRequest: PopupRequest = {
 
 // endpoints
 export const config = {
+  getTitle: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/OpenAI/generateTitle`,
   getJobs: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobs`,
   getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/job`,
   getJobChanges: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/history/configuration`,

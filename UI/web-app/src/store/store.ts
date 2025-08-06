@@ -16,6 +16,7 @@ import settingsReducer from './settings.slice';
 import rolesReducer from './roles.slice';
 import sqlMembershipSourcesReducer from './sqlMembershipSources.slice';
 import operationsReducer from './operations.slice';
+import titleReducer from './title.slice';
 
 import { Services } from '../services';
 import { MsalAuthenticationService, TokenType } from '../services/auth';
@@ -58,6 +59,7 @@ const rootReducer = combineReducers({
   roles: rolesReducer,
   sqlMembershipSources: sqlMembershipSourcesReducer,
   operations: operationsReducer,
+  title: titleReducer
 });
 
 export const store = configureStore({

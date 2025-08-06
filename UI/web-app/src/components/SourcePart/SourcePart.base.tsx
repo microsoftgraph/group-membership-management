@@ -29,7 +29,7 @@ import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
-import { generateTitleUsingOpenAI } from '../../apis/openai';
+import { getTitle } from '../../store/title.api';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -179,14 +179,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   };
 
   const generateTitle = async () => {
-    console.log("before title", part.title);
+    let generatedTitle = "";
     const orgLeaderPattern = /^(Everyone in .+'s org|\d+\slevels? of direct reports of .+)( with the following summarized criteria: .+)?$/;
-    console.log("match", orgLeaderPattern.test(part.title));
-
     if (part.query.type === SourcePartType.HR) {
-      const generatedTitle = await generateTitleUsingOpenAI(part.query.source.filter);
+      if (part.query.source.filter) {
+        const result = await dispatch(getTitle(part.query.source.filter));
+        generatedTitle = result.payload as string;
+      }
       let newTitle = part.title;
-
       if (orgLeaderPattern.test(part.title)) {
         if (part.title.includes("with the following summarized criteria:")) {
           newTitle = part.title.replace(/with the following summarized criteria: .+/, `with the following summarized criteria: ${generatedTitle}`);
@@ -196,11 +196,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       } else {
         newTitle = generatedTitle;
       }
-
-      console.log("new title", newTitle);
-
       setIsEditEnabled(true);
-
       dispatch(updateSourcePart({ ...part, title: newTitle }));
     }
   };

@@ -7,8 +7,10 @@ import { ISettingsApi } from './settings';
 import { ISqlMembershipSourcesApi } from './sqlMembershipSources';
 import { IOperationsApi } from './operations';
 import { IDestinationsApi } from './destinations/IDestinationsApi';
+import { ITitleApi } from './titles';
 
 export interface IGMMApi {
+  title: ITitleApi;
   settings: ISettingsApi;
   jobs: IJobsApi;
   roles: IRolesApi;
