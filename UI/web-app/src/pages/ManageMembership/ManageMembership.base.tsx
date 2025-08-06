@@ -318,7 +318,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         value: sourceParts.map(part => ({
           partId: part.id,
           name: part.title
-        }))
+        })).filter(part => part.name !== '')
       },
       {
         op: "replace",

@@ -309,7 +309,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
             <div key={SourcePartType.HR} className={classNames.advancedQuery}>
               <HRQuerySource
                 source={hrSourcePartSource}
-                title={part.title}
+                title={part.title || props.title}
                 partId={partId}
                 onSourceChange={handleSourceChange}
                 onGenerateTitleBasedOnFilterClick={generateTitle}

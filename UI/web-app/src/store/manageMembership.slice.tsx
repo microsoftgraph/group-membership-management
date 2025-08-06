@@ -295,12 +295,12 @@ const manageMembershipSlice = createSlice({
             state.sourceParts = [];
         },
         setJobDetailsForExistingJob: (state, action: PayloadAction<Job>) => {
-            const { query, requestor, lastModifiedOnBehalfOfDisplayName, lastModifiedOnBehalfOfObjectId, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals, targetGroupId, targetGroupName, targetDestinationType, targetChannelId, targetChannelName } = action.payload;
+            const { query, titles, requestor, lastModifiedOnBehalfOfDisplayName, lastModifiedOnBehalfOfObjectId, startDate, period, thresholdPercentageForAdditions, thresholdPercentageForRemovals, targetGroupId, targetGroupName, targetDestinationType, targetChannelId, targetChannelName } = action.payload;
             state.advancedViewQuery = JSON.stringify(query);
             state.compositeQuery = buildCompositeQuery(JSON.parse(query));
             state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
                 ...query,
-                id: index + 1,
+                id: titles[index]?.partId || uuidv4(),
                 query: query,
                 isValid: true
             }));
