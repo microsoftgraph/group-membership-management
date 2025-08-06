@@ -45,6 +45,11 @@ namespace Repositories.EntityFramework
         {
             foreach (var title in titles)
             {
+                if (string.IsNullOrEmpty(title.Name))
+                {
+                    continue;
+                }
+
                 var existingTitle = await _writeContext.Titles
                                                   .FirstOrDefaultAsync(t => t.PartId == title.PartId && t.SyncJobId == syncJobId);
 
