@@ -228,5 +228,10 @@ namespace Repositories.ServiceBusTopics.Tests
         {
             throw new NotImplementedException();
         }
+
+        public Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

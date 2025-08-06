@@ -110,6 +110,9 @@ namespace Services.Tests
             _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(It.IsAny<string>(), false))
                                     .ReturnsAsync(() => new AzureADUser { UserPrincipalName = "upn" } );
 
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(It.IsAny<string>(), It.IsAny<Guid?>()))
+                                    .ReturnsAsync(new AzureADUser { UserPrincipalName = "upn", OnPremisesImmutableId = "999" });
+
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => "GroupNameTest");
 
@@ -920,7 +923,7 @@ namespace Services.Tests
 
             // Setup user with onPremisesImmutableId matching manager ID
             var userOnPremisesImmutableId = "12345";
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = userOnPremisesImmutableId 
@@ -980,7 +983,7 @@ namespace Services.Tests
             // Setup user with onPremisesImmutableId different from manager ID
             var userOnPremisesImmutableId = "12345";
             var differentManagerId = "67890";
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = userOnPremisesImmutableId 
@@ -1039,7 +1042,7 @@ namespace Services.Tests
 
             // Setup user with onPremisesImmutableId matching manager ID
             var userOnPremisesImmutableId = "12345";
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = userOnPremisesImmutableId 
@@ -1098,7 +1101,7 @@ namespace Services.Tests
 
             // Setup user with onPremisesImmutableId
             var userOnPremisesImmutableId = "12345";
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = userOnPremisesImmutableId 
@@ -1157,7 +1160,7 @@ namespace Services.Tests
 
             // Setup user with onPremisesImmutableId
             var userOnPremisesImmutableId = "12345";
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = userOnPremisesImmutableId 
@@ -1216,7 +1219,7 @@ namespace Services.Tests
                                       .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
 
             // Setup user without onPremisesImmutableId (null or empty)
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = null // User has no onPremisesImmutableId
@@ -1347,7 +1350,7 @@ namespace Services.Tests
 
             // Setup user with onPremisesImmutableId matching manager ID
             var userOnPremisesImmutableId = "12345";
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = userOnPremisesImmutableId 
@@ -1663,7 +1666,7 @@ namespace Services.Tests
                                       .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
 
             // Setup user with non-numeric onPremisesImmutableId
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ReturnsAsync(new AzureADUser { 
                                     UserPrincipalName = userUpn, 
                                     OnPremisesImmutableId = "abc123" // Non-numeric value
@@ -1725,7 +1728,7 @@ namespace Services.Tests
                                       .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "true" });
 
             // Setup user lookup to throw exception
-            _graphGroupRepository.Setup(x => x.GetUserByUpnOrIdAsync(userId, false))
+            _graphGroupRepository.Setup(x => x.GetUserWithOnPremisesImmutableIdAsync(userId, It.IsAny<Guid?>()))
                                 .ThrowsAsync(new Exception("User lookup error"));
 
             // Setup sync job with single SqlMembership query
@@ -1748,16 +1751,17 @@ namespace Services.Tests
             };
 
             var response = await _jobsController.PostJobAsync(_newSyncJob);
-            var result = response as ObjectResult;
+            var result = response as CreatedResult;
             
             Assert.IsNotNull(result);
-            Assert.AreEqual(500, result.StatusCode);
             
-            // Verify that the sync job repository was not called due to the exception
-            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()), Times.Never);
+            // Verify that the job was created but NOT auto-approved due to the user lookup error
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
             
-            // Verify that the sync job change repository was not called due to the exception
-            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Never);
+            // Verify that the sync job change was saved with regular onboarding reason (not auto-approved)
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
         }
 
         [TestMethod]

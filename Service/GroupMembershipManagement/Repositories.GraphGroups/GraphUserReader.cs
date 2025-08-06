@@ -53,18 +53,7 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var selectProperties = new List<string> { "id", "userPrincipalName", "onPremisesImmutableId" };
-                if (includeMailProperty)
-                {
-                    selectProperties.Add("mail");
-                }
-
-                var user = await _graphServiceClient.Users[userIdentifier]
-                    .GetAsync(requestConfiguration =>
-                    {
-                        requestConfiguration.QueryParameters.Select = selectProperties.ToArray();
-                    });
-
+                var user = await _graphServiceClient.Users[userIdentifier].GetAsync();
                 if (user != null) userDetails = new AzureADUser
                 {
                     ObjectId = Guid.Parse(user.Id),
@@ -84,6 +73,37 @@ namespace Repositories.GraphGroups
                 {
                     RunId = runId,
                     Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByUpnOrIdAsync)}, UserIdentifier: {userIdentifier}"
+                });
+            }
+
+            return userDetails;
+        }
+
+        public async Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
+        {
+            AzureADUser userDetails = null;
+
+            try
+            {
+                var user = await _graphServiceClient.Users[userIdentifier]
+                    .GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Select = new string[] { "id", "userPrincipalName", "onPremisesImmutableId" };
+                    });
+
+                if (user != null) userDetails = new AzureADUser
+                {
+                    ObjectId = Guid.Parse(user.Id),
+                    UserPrincipalName = user.UserPrincipalName,
+                    OnPremisesImmutableId = user.OnPremisesImmutableId
+                };
+            }
+            catch (Exception exception)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    RunId = runId,
+                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserWithOnPremisesImmutableIdAsync)}, UserIdentifier: {userIdentifier}"
                 });
             }
 

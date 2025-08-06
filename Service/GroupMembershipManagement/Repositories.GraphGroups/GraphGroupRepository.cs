@@ -185,6 +185,11 @@ namespace Repositories.GraphGroups
             return await _graphUserReader.GetUserByUpnOrIdAsync(userIdentifier, RunId, includeMailProperty);
         }
 
+        public async Task<AzureADUser> GetUserWithOnPremisesImmutableIdAsync(string userIdentifier, Guid? runId)
+        {
+            return await _graphUserReader.GetUserWithOnPremisesImmutableIdAsync(userIdentifier, runId ?? RunId);
+        }
+
         public async Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)>
             GetFirstMembersPageAsync(string url)
         {

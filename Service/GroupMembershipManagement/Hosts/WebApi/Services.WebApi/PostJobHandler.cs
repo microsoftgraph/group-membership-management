@@ -308,7 +308,7 @@ namespace Services
         {
             try
             {
-                var user = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentity, false);
+                var user = await _graphGroupRepository.GetUserWithOnPremisesImmutableIdAsync(userIdentity, null);
                 return user?.OnPremisesImmutableId;
             }
             catch (Exception ex)
