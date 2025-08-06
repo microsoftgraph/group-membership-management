@@ -75,6 +75,8 @@ export type IStrings = {
     NOTIN: string;
     notEqualTo: string;
     loadingText: string;
+    generateTitle: string;
+    generatingTitleText: string;
   },
   Components: {
     AppHeader: {

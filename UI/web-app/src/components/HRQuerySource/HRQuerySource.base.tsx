@@ -2171,13 +2171,13 @@ const getOptions = (
       <div className={classNames.generateTitleHeader}>
         <div className={classNames.generateTitleButton}>
         <PrimaryButton
-          text={"Generate AI title"}
+          text={strings.HROnboarding.generateTitle}
           onClick={generateTitleBasedOnFilter}
           disabled={!isJobWriter || !isEditable}
         />
         </div>
         <div className={classNames.generateTitleSpinner}>
-        {isGeneratingTitle && (<Spinner size={SpinnerSize.small} label={"generating..."} />)}
+        {isGeneratingTitle && (<Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitleText} />)}
         </div>
       </div>
       </div>
