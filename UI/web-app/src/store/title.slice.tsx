@@ -3,6 +3,7 @@
 
 import { createSlice } from '@reduxjs/toolkit';
 import { getTitle } from './title.api';
+import { RootState } from './store';
 
 export interface TitleState {
   isGeneratingTitle: boolean;
@@ -34,5 +35,9 @@ const titleSlice = createSlice({
     });
   }
 });
+
+export const selectIsGeneratingTitle = (state: RootState) => state.title.isGeneratingTitle;
+export const selectTitle = (state: RootState) => state.title.title;
+export const selectTitleError = (state: RootState) => state.title.error;
 
 export default titleSlice.reducer;

@@ -35,6 +35,10 @@ export type HRQuerySourceStyles = {
   comboBoxOptionContainer: IStyle;
   comboBoxOptionList: IStyle;
   errorMessageStyles : IStyle;
+  content: IStyle;
+  generateTitleHeader: IStyle;
+  generateTitleButton: IStyle;
+  generateTitleSpinner: IStyle;
 };
 
 export type HRQuerySourceStyleProps = {

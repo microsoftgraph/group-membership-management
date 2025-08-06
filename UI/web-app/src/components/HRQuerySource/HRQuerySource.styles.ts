@@ -158,6 +158,23 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       whiteSpace: 'normal',
       wordWrap: 'break-word',
       overflowWrap: 'break-word',
-    }
+    },
+    content: {
+      maxHeight: '400px',
+      overflowY: 'auto',
+      padding: '0 20px'
+    },
+    generateTitleHeader: {
+      display: 'flex',
+      marginBottom: '10px'
+    },    
+    generateTitleButton: {
+      width: '150px',
+      fontWeight: 'bold'
+    },
+    generateTitleSpinner: {
+      marginLeft: '20px',
+      fontWeight: 'bold'
+    },
   };
 };

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize, DefaultButton } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize, PrimaryButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -33,6 +33,7 @@ import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError 
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { InfoWord } from '../InfoWord';
 import { jsxFormat } from '../../utils/stringUtils';
+import { selectIsGeneratingTitle } from '../../store/title.slice';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -72,7 +73,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [children, setChildren] = useState<ChildType[]>([]);
   const attributes = useSelector(selectAttributes);
   const attributeMappings = useSelector(selectAttributeMappings);
-
+  const isGeneratingTitle = useSelector(selectIsGeneratingTitle);
   const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
   const hrSource = useSelector(selectSource);
   const [childIndexForAttribute, setChildIndexForAttribute] = useState<number>(-1);
@@ -2163,16 +2164,23 @@ const getOptions = (
         disabled={!isJobWriter || !isEditable}
       />
       </Stack.Item>
+
       <Stack.Item align="start">
       {(source.filter) &&
-      <DefaultButton
-          iconProps={{ iconName: 'Refresh' }}
-          //className={classNames.deleteButton}
+      <div className={classNames.content}>
+      <div className={classNames.generateTitleHeader}>
+        <div className={classNames.generateTitleButton}>
+        <PrimaryButton
+          text={"Generate AI title"}
           onClick={generateTitleBasedOnFilter}
           disabled={!isJobWriter || !isEditable}
-        >
-        {"Generate title based on filter"}
-      </DefaultButton>
+        />
+        </div>
+        <div className={classNames.generateTitleSpinner}>
+        {isGeneratingTitle && (<Spinner size={SpinnerSize.small} label={"generating..."} />)}
+        </div>
+      </div>
+      </div>
       }
       </Stack.Item>
       </Stack>
