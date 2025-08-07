@@ -26,6 +26,7 @@ using SyncJob = Models.SyncJob;
 using Setting = Models.Setting;
 using SyncJobDetails = WebApi.Models.DTOs.SyncJobDetails;
 using Group = Models.Group;
+using Title = Models.Title;
 
 namespace Services.Tests
 {
@@ -35,6 +36,7 @@ namespace Services.Tests
         private SyncJob _jobEntity = null!;
         private Group _group = null!;
         private Channel _channel = null!;
+        private List<Title> _titles = null!;
         private SyncJobChange _syncJobChange = null!;
         private JobDetailsController _jobDetailsController = null!;
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
@@ -138,6 +140,24 @@ namespace Services.Tests
                 TotalPages = 1
              };
 
+            _titles = new List<Title>()
+            {
+                new Title
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Title 1",
+                    PartId = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id
+                },
+                new Title
+                {
+                    Id = Guid.NewGuid(),
+                    Name = "Title 2",
+                    PartId = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id
+                }
+            };
+
             _syncJobChangeRepository.Setup(x => x.GetPageBySyncJobId(_jobEntity.Id, 1, 10, SyncJobChangeSortingField.ChangeTime, false))
                             .ReturnsAsync(changes);
 
@@ -152,6 +172,9 @@ namespace Services.Tests
 
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(_jobEntity.Id))
                               .ReturnsAsync(() => _jobEntity);
+
+            _titlesRepository.Setup(x => x.GetTitlesAsync(It.IsAny<Guid>()))
+                             .ReturnsAsync(() => _titles);
 
             _syncJobRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
                               .Returns(() =>
@@ -249,6 +272,7 @@ namespace Services.Tests
             Assert.IsNotNull(job.TargetGroupName);
             Assert.IsNull(job.TargetChannelId);
             Assert.IsNull(job.TargetChannelName);
+            Assert.IsNotNull(job.Titles);
         }
 
         [TestMethod]
@@ -717,7 +741,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            
+
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions))
                 .ReturnsAsync(() => new Setting { SettingKey = SettingKey.CanReviewOwnSubmissions, SettingValue = "false" });
 

@@ -26,6 +26,7 @@ using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
 using WebApi.Models.Responses;
+using NewTitle = WebApi.Models.DTOs.NewTitle;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using PagedResponseDTO = WebApi.Models.DTOs.PagedResponse<WebApi.Models.DTOs.SyncJob>;
 
@@ -403,6 +404,66 @@ namespace Services.Tests
             var result = response as CreatedResult;
             Assert.IsNotNull(result);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithTitlesAsync()
+        {
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Upn, "testuser@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+
+            _context = CreateHttpContext(claims);
+
+            var identity = new ClaimsIdentity(claims);
+            var user = new ClaimsPrincipal(identity);
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            _getJobsHandler = new GetJobsHandler(
+                                     _loggingRepository.Object,
+                                     _databaseSyncJobsRepository.Object,
+                                     _graphGroupRepository.Object,
+                                     _httpContextAccessor.Object);
+
+            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _loggingRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            _newSyncJob.Titles =
+            [
+                new NewTitle
+                {
+                    PartId = "f8a4308b-4483-4f52-876e-93bbcf558032",
+                    Name = "Everyone in Test User 8877's org with the following summarized criteria: Building 103565"
+                },
+                new NewTitle
+                {
+                    PartId = "008e32e6-0a9e-4cbb-842e-76e1773a8e52",
+                    Name = "All Users in TestGroup1Members"
+                }
+            ];
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+            Assert.IsNotNull(result);
+            _titlesRepository.Verify(x => x.SaveTitlesAsync(It.IsAny<Dictionary<string, string>>(), It.IsAny<Guid>()), Times.Once);
         }
 
         [TestMethod]
