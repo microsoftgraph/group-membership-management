@@ -1607,12 +1607,13 @@ const getOptions = (
       switch (column?.key) {
         case 'upDown':
           return <div className={classNames.upDown}>
-            <ActionButton iconProps={{ iconName: 'ChevronUp' }} title={strings.HROnboarding.up} disabled={!isJobWriter || !isEditable } onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
-            <ActionButton iconProps={{ iconName: 'ChevronDown' }} title={strings.HROnboarding.down} disabled={!isJobWriter || !isEditable} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
+            <ActionButton data-testid="hr-up-button" iconProps={{ iconName: 'ChevronUp' }} title={strings.HROnboarding.up} disabled={!isJobWriter || !isEditable } onClick={() => onUpClick(index, items)} style={{ marginTop: '-15px', marginBottom: '-5px' }} />
+            <ActionButton data-testid="hr-down-button" iconProps={{ iconName: 'ChevronDown' }} title={strings.HROnboarding.down} disabled={!isJobWriter || !isEditable} onClick={() => onDownClick(index, items)} style={{ marginTop: '-5px', marginBottom: '-15px' }} />
           </div>;
         case 'attribute':
           return (
             <ComboBox
+              data-testid="hr-attribute-combobox"
               selectedKey={currentAttributeKey}
               options={attributeOptions}
               onInputValueChange={(text) => onAttributeChange(text, index, groupIndex, childIndex)}
@@ -1639,6 +1640,7 @@ const getOptions = (
           );
         case 'equalityOperator':
           return <Dropdown
+          data-testid="hr-equality-operator-dropdown"
           selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
           onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
           options={getValidOperatorsForType(attribute?.type)}
@@ -1650,6 +1652,7 @@ const getOptions = (
           if (item.equalityOperator && item.equalityOperator.toString().toUpperCase() === 'IS') {
             return (
               <ComboBox
+                data-testid="hr-value-combobox"
                 selectedKey={items[index].value.toUpperCase()}
                 options={nullOptions}
                 onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
@@ -1666,6 +1669,7 @@ const getOptions = (
               return <Spinner size={SpinnerSize.small} label={strings.HROnboarding.loadingText} />
             }
             else if (attributeMappings && attributeMappings[items[index].attribute] && attributeMappings[items[index].attribute].mappings.length > 0) {              return <VirtualizedComboBox
+              data-testid="hr-value-virtualized-combobox"
               selectedKey={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={attributeValueOptions}
               onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
@@ -1683,6 +1687,7 @@ const getOptions = (
               />
           } else {
             return <TextField
+              data-testid="hr-value-textfield"
               value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index, item.equalityOperator)}
               onBlur={(event) => handleBlur(item.attribute, event, index, item.equalityOperator)}
@@ -1698,6 +1703,7 @@ const getOptions = (
           return (
             (groups.length <= 0) ? (
               <Dropdown
+                data-testid="hr-andor-dropdown"
                 selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
                 onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                 options={orAndOperatorOptions}
@@ -1708,6 +1714,7 @@ const getOptions = (
             ) : (
               index >= 0 && index < items.length - 1 ? (
                 <Dropdown
+                  data-testid="hr-andor-dropdown"
                   selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
@@ -1717,6 +1724,7 @@ const getOptions = (
                 />
               ) : (
                 <Dropdown
+                  data-testid="hr-andor-dropdown"
                   onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
                   options={orAndOperatorOptions}
                   styles={{ root: classNames.root, title: classNames.dropdownTitle }}
@@ -1729,6 +1737,7 @@ const getOptions = (
         case 'remove':
           return (
             <ActionButton
+              data-testid="hr-remove-button"
               className={`${classNames.removeButton} ${(!isJobWriter || !isEditable) ? classNames.removeButtonDisabled : ''}`}
               iconProps={{ iconName: "Blocked2" }}
               onClick={() => removeComponent(index ?? -1)}
@@ -1935,6 +1944,7 @@ const getOptions = (
         <ActionButton iconProps={{ iconName: 'ChevronDown' }} onClick={() => onGroupDownClick(index)} style={{ marginBottom: '-15px'}} />
       </div>)} */}
       <DetailsList
+        data-testid="hr-attributes-table"
         styles={{ root: classNames.detailsList }}
         items={items}
         columns={columns}
@@ -2021,6 +2031,7 @@ const getOptions = (
     <div className={classNames.root}>
       <Label>{strings.HROnboarding.includeOrg}</Label>
       <ChoiceGroup
+        data-testid="hr-include-org-choice"
         selectedKey={(includeOrg || source?.manager?.id) ? strings.yes : strings.no}
         options={yesNoOptions}
         onChange={handleIncludeOrgChange}
@@ -2042,6 +2053,7 @@ const getOptions = (
               </TooltipHost>
             </div>
             <NormalPeoplePicker
+              data-testid="hr-org-leader-picker"
               aria-label={strings.HROnboarding.orgLeaderInfo}
               onResolveSuggestions={getPickerSuggestions}
               key={'normal'}
@@ -2096,6 +2108,7 @@ const getOptions = (
 
       <Label>{format(strings.HROnboarding.includeFilter, hrSource?.customLabel ?? hrSource?.name)}</Label>
       <ChoiceGroup
+        data-testid="hr-include-filter-choice"
         selectedKey={(includeFilter || source.filter) ? strings.yes : strings.no}
         options={yesNoOptions}
         onChange={handleIncludeFilterChange}
@@ -2146,12 +2159,14 @@ const getOptions = (
         (
           <div>
             <ActionButton
+              data-testid="hr-group-button"
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onGroupClick}
               disabled={(!(selectedIndices.length > 1)) || !isJobWriter || !isEditable}>
               {strings.HROnboarding.group}
             </ActionButton>
             <ActionButton
+              data-testid="hr-ungroup-button"
               iconProps={{ iconName: 'GroupObject' }}
               onClick={onUnGroupClick}
               disabled={(!(selectedIndices.length > 0 && groups.length > 0 && groupingEnabled)) || !isJobWriter || !isEditable}>
@@ -2164,7 +2179,7 @@ const getOptions = (
 
             <div>
               {groups.map((group: Group, index: number) => (
-                <div>
+                <div key={`group-${index}`}>
                 <React.Fragment key={index}>
                   {renderGroup(group, index)}
                 </React.Fragment>
@@ -2174,6 +2189,7 @@ const getOptions = (
             ) : (
 
             <DetailsList
+              data-testid="hr-attributes-table"
               setKey="items"
               items={items}
               columns={columns}
@@ -2189,7 +2205,12 @@ const getOptions = (
           )}
 
           {(!groupingEnabled) && 
-          <ActionButton styles={{ root: classNames.addAttribute }} disabled={!isJobWriter || !isEditable} iconProps={{ iconName: "CirclePlus" }} onClick={() => addComponent()}>
+          <ActionButton 
+            data-testid="hr-add-attribute-button"
+            styles={{ root: classNames.addAttribute }} 
+            disabled={!isJobWriter || !isEditable} 
+            iconProps={{ iconName: "CirclePlus" }} 
+            onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}
           </div>
