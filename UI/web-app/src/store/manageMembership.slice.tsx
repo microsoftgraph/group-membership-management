@@ -288,6 +288,7 @@ const manageMembershipSlice = createSlice({
 
         deleteSourcePart: (state, action: PayloadAction<string>) => {
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
+            state.newJob.titles = state.newJob.titles.filter(title => title.partId !== action.payload);
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;
         },
@@ -299,11 +300,12 @@ const manageMembershipSlice = createSlice({
             state.advancedViewQuery = JSON.stringify(query);
             state.compositeQuery = buildCompositeQuery(JSON.parse(query));
             state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
-                ...query,
                 id: titles[index]?.partId || uuidv4(),
+                title: titles[index]?.name || '',
                 query: query,
                 isValid: true
             }));
+            state.newJob.titles = titles || state.newJob.titles;
             state.newJob.requestor = requestor || state.newJob.requestor;
             state.newJob.lastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName || state.newJob.lastModifiedOnBehalfOfDisplayName;
             state.newJob.lastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId || state.newJob.lastModifiedOnBehalfOfObjectId;

@@ -211,7 +211,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             <SourcePart
               key={part.id}
               partId={part.id}
-              title={jobDetails && jobDetails.titles && jobDetails.titles[index] ? jobDetails.titles[index].name : part.title}
+              title={part.title}
               onDelete={removeSourcePart}
               totalSourceParts={sourceParts.length}
               query={part.query}

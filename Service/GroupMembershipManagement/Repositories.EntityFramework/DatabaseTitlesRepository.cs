@@ -43,26 +43,41 @@ namespace Repositories.EntityFramework
 
         public async Task UpdateTitlesAsync(List<Title> titles, Guid syncJobId)
         {
-            foreach (var title in titles)
+            var existingTitles = await _writeContext.Titles
+                .Where(t => t.SyncJobId == syncJobId)
+                .ToListAsync();
+
+            var existingTitlesDict = existingTitles.ToDictionary(t => t.PartId);
+            var validIncomingTitles = titles.Where(t => !string.IsNullOrEmpty(t.Name)).ToList();
+            var incomingPartIds = validIncomingTitles.Select(t => t.PartId).ToHashSet();
+
+            var titlesToAdd = new List<Title>();
+            foreach (var title in validIncomingTitles)
             {
-                if (string.IsNullOrEmpty(title.Name))
-                {
-                    continue;
-                }
-
-                var existingTitle = await _writeContext.Titles
-                                                  .FirstOrDefaultAsync(t => t.PartId == title.PartId && t.SyncJobId == syncJobId);
-
-                if (existingTitle != null)
+                if (existingTitlesDict.TryGetValue(title.PartId, out var existingTitle))
                 {
                     existingTitle.Name = title.Name;
-                    existingTitle.SyncJobId = title.SyncJobId;
                 }
                 else
                 {
-                    _writeContext.Titles.Add(title);
+                    titlesToAdd.Add(title);
                 }
             }
+
+            var titlesToDelete = existingTitles
+                .Where(t => !incomingPartIds.Contains(t.PartId))
+                .ToList();
+
+            if (titlesToAdd.Any())
+            {
+                await _writeContext.Titles.AddRangeAsync(titlesToAdd);
+            }
+
+            if (titlesToDelete.Any())
+            {
+                _writeContext.Titles.RemoveRange(titlesToDelete);
+            }
+
             await _writeContext.SaveChangesAsync();
         }
     }
