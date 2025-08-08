@@ -181,7 +181,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     setIsEditEnabled(isEditEnabled);
   };
 
-  const handleExclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
+  const handleInclusionaryChange = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, option?: IChoiceGroupOption): void => {
     if (!option) return;
     const isInclusionarySelected = option.key === 'Yes';
 
