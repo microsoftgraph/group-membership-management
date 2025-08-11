@@ -66,7 +66,7 @@ import { selectAccountUsername } from '../../store/account.slice';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
-import { selectSelectedJobDetails, selectSelectedJobLoading } from '../../store/jobs.slice';
+import { selectSelectedJobDetails, selectSelectedJobLoading, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
@@ -123,6 +123,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   // Existing job
   const jobDetailsRef = useRef(useSelector(selectSelectedJobDetails));
   const isLoading = useSelector(selectSelectedJobLoading);
+  const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
 
   useEffect(() => {
     const editingExistingJob = !!jobId;
@@ -311,56 +312,60 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const handleSaveButtonClick = async () => {
     if (jobId !== undefined) {
-      const patchOperation = [
-      {
-        op: "replace",
-        path: "/Titles",
-        value: sourceParts.map(part => ({
-          partId: part.id,
-          name: part.title
-        })).filter(part => part.name !== '')
-      },
-      {
-        op: "replace",
-        path: "/Query",
-        value: JSON.stringify(finalQuery)
-      },
-      {
-        op: "replace",
-        path: "/Status",
-        value: SyncStatus.PendingReview
-      },
-      {
-        op: "replace",
-        path: "/StartDate",
-        value: startDate
-      },
-      {
-        op: "replace",
-        path: "/Period",
-        value: period
-      },
-      {
-        op: "replace",
-        path: "/ThresholdPercentageForAdditions",
-        value: thresholdPercentageForAdditions
-      },
-      {
-        op: "replace",
-        path: "/ThresholdPercentageForRemovals",
-        value: thresholdPercentageForRemovals
-      },
-      {
-        op: "replace",
-        path: "/LastModifiedOnBehalfOfDisplayName",
-        value: lastModifiedOnBehalfOfDisplayName
-      },
-      {
-        op: "replace",
-        path: "/LastModifiedOnBehalfOfObjectId",
-        value: lastModifiedOnBehalfOfObjectId
+      const patchOperation = [];
+        if (!jobWithNoTitles) {
+          patchOperation.push({
+          op: "replace",
+          path: "/Titles",
+          value: sourceParts.map(part => ({
+            partId: part.id,
+            name: part.title
+          })).filter(part => part.name !== '')
+        });
       }
-    ];
+
+      patchOperation.push(
+        {
+          op: "replace",
+          path: "/Query",
+          value: JSON.stringify(finalQuery)
+        },
+        {
+          op: "replace",
+          path: "/Status",
+          value: SyncStatus.PendingReview
+        },
+        {
+          op: "replace",
+          path: "/StartDate",
+          value: startDate
+        },
+        {
+          op: "replace",
+          path: "/Period",
+          value: period
+        },
+        {
+          op: "replace",
+          path: "/ThresholdPercentageForAdditions",
+          value: thresholdPercentageForAdditions
+        },
+        {
+          op: "replace",
+          path: "/ThresholdPercentageForRemovals",
+          value: thresholdPercentageForRemovals
+        },
+        {
+          op: "replace",
+          path: "/LastModifiedOnBehalfOfDisplayName",
+          value: lastModifiedOnBehalfOfDisplayName
+        },
+        {
+          op: "replace",
+          path: "/LastModifiedOnBehalfOfObjectId",
+          value: lastModifiedOnBehalfOfObjectId
+        }
+      );
 
       setIsEditingJob(true);
       const patchRequest: PatchJobRequest = {

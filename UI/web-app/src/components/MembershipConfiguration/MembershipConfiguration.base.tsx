@@ -34,7 +34,7 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
-import { selectSelectedJobDetails } from '../../store/jobs.slice';
+import { selectSelectedJobDetails, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 
@@ -61,6 +61,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
 
   const getAllSourcePartsExpanded = () => {
     return sourceParts.every(part => part.isExpanded);
@@ -162,8 +163,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         const updatedSourceParts = parsedQuery.map((query, index) => {
           const originalPart = sourceParts[index];
           return {
-            id: jobDetails.titles && jobDetails.titles[index] ? jobDetails.titles[index].partId : uuidv4(),
-            title: jobDetails.titles && jobDetails.titles[index] ? jobDetails.titles[index].name : "",
+            id: jobWithNoTitles ? uuidv4() : jobDetails.titles[index].partId,
+            title: jobWithNoTitles ? "" : jobDetails.titles[index].name,
             query: query,
             isValid: true,
             isNew: originalPart?.isNew ?? false,

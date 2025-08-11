@@ -37,6 +37,7 @@ export interface JobsState {
   selectedJobChanges: SyncJobChange[] | undefined;
   selectedJobChangesLoading: boolean;
   selectedJobChangesError: string | undefined;
+  selectedJobWithNoTitles: boolean;
 }
 
 // Define the initial state using that type
@@ -65,6 +66,7 @@ const initialState: JobsState = {
   selectedJobChanges: undefined,
   selectedJobChangesLoading: false,
   selectedJobChangesError: undefined,
+  selectedJobWithNoTitles: false
 };
 
 export const jobsSlice = createSlice({
@@ -119,6 +121,7 @@ export const jobsSlice = createSlice({
     builder.addCase(fetchJobDetails.fulfilled, (state, action) => {
       state.selectedJobLoading = false;
       state.selectedJob = action.payload;
+      state.selectedJobWithNoTitles = !action.payload.titles || action.payload.titles.length === 0;
     });
     builder.addCase(fetchJobDetails.rejected, (state, action) => {
       state.selectedJobLoading = false;
@@ -289,4 +292,5 @@ export const selectNumberOfApprovedJobs = (state: RootState) => state.jobs.total
 export const selectNumberOfJobs = (state: RootState) => state.jobs.totalNumberOfJobs;
 export const selectApproveJobsError = (state: RootState) => state.jobs.approveJobsError;
 
+export const selectSelectedJobWithNoTitles = (state: RootState) => state.jobs.selectedJobWithNoTitles;
 export default jobsSlice.reducer;
