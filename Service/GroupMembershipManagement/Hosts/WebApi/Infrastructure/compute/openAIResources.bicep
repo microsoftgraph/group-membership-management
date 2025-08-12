@@ -19,6 +19,9 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
   name: openAIResourceName
   location: aiLocation
   kind: 'OpenAI'
+  identity: {
+    type: 'SystemAssigned'
+  }
   sku: {
     name: 'S0'
   }
