@@ -232,7 +232,7 @@ export const strings: IStrings = {
       reject: 'Rechazar',
       submissionRejected: 'Solicitud rechazada',
       rejectionDialogTitle: 'Rechazar solicitud',
-      rejectionDialogSubText: 'Por favor proporciona una razón para rechazar esta solicitud.',
+      rejectionDialogSubText: 'Por favor proporciona una razón para rechazar esta solicitud. Los dueños del destino recibirán un correo electrónico con los comentarios que ingreses aquí.',
       rejectionReasonLabel: 'Razón del rechazo',
       rejectionReasonPlaceholder: 'Ingresa la razón para rechazar esta solicitud...',
       submitRejection: 'Enviar',

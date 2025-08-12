@@ -231,7 +231,7 @@ export const strings: IStrings = {
       reject: 'Reject',
       submissionRejected: 'Submission Rejected',
       rejectionDialogTitle: 'Reject Submission',
-      rejectionDialogSubText: 'Please provide a reason for rejecting this submission.',
+      rejectionDialogSubText: 'Please provide a reason for rejecting this submission. Destination owners will receive an email with the feedback provided below.',
       rejectionReasonLabel: 'Rejection Reason',
       rejectionReasonPlaceholder: 'Enter the reason for rejecting this submission...',
       submitRejection: 'Submit',
