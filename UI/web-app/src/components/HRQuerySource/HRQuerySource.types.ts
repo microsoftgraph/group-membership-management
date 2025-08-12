@@ -8,12 +8,9 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 export type HRQuerySourceStyles = {
   root: IStyle;
   detailsList: IStyle;
-  detailsListWithBorder: IStyle;
   detailsListColumnHeader: IStyle;
   textFieldGroup: IStyle;
   textField: IStyle;
-  suggestionItems: IStyle;
-  spinButton: IStyle;
   labelContainer: IStyle;
   dropdownTitle: IStyle;
   upDown: IStyle;

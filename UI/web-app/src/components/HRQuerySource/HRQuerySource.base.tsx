@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useEffect, useState } from 'react';
-import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, NormalPeoplePicker, DirectionalHint, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, ITooltipHostProps, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize, PrimaryButton } from '@fluentui/react';
+import { classNamesFunction, Stack, type IProcessedStyleSet, IStackTokens, Label, IconButton, TooltipHost, Text, ChoiceGroup, IChoiceGroupOption, IDropdownOption, ActionButton, DetailsList, DetailsListLayoutMode, Dropdown, Selection, IColumn, ComboBox, IComboBoxOption, IComboBox, Separator, ISelectableOption, ISelectableDroppableTextProps, format, IDetailsHeaderProps, DetailsHeader, IRenderFunction, IDetailsColumnRenderTooltipProps, VirtualizedComboBox, Spinner, SpinnerSize, PrimaryButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
@@ -32,6 +32,7 @@ import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOption
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError } from '../../store/settings.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { InfoWord } from '../InfoWord';
+import { OrgLeader } from '../OrgLeader';
 import { jsxFormat } from '../../utils/stringUtils';
 import { selectIsGeneratingTitle } from '../../store/title.slice';
 import { getTitle } from '../../store/title.api';
@@ -2106,40 +2107,21 @@ const getOptions = (
       />
 
 {(includeOrg || (source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id])) && (
-      <Stack horizontal horizontalAlign="space-between" verticalAlign="center" tokens={stackTokens}>
+      <Stack horizontal verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
-          <div>
-            <div className={classNames.labelContainer}>
-              <Label>{strings.HROnboarding.provideOrgLeader}</Label>
-              <TooltipHost content={strings.HROnboarding.orgLeaderInfo} id="toolTipOrgLeaderId" calloutProps={{ gapSpace: 0 }}>
-                <IconButton title={strings.HROnboarding.orgLeaderInfo} iconProps={{ iconName: "Info" }} aria-describedby="toolTipOrgLeaderId" />
-              </TooltipHost>
-            </div>
-            <NormalPeoplePicker
-              data-testid="hr-org-leader-picker"
-              aria-label={strings.HROnboarding.orgLeaderInfo}
-              onResolveSuggestions={getPickerSuggestions}
-              key={'normal'}
-              resolveDelay={300}
-              itemLimit={1}
-              selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled && orgLeaderDataReturned && orgLeaderDetails.employeeId > 0? [
-                {
-                  key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
-                  text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
-                },
-              ] : undefined}
-              onInputChange={handleOrgLeaderInputChange}
-              onChange={handleOrgLeaderChange}
-              styles={{ root: classNames.textField, text: classNames.textFieldGroup }}
-              pickerCalloutProps={{directionalHint: DirectionalHint.bottomAutoEdge, calloutWidth: 300 }}
-              disabled={!isJobWriter || !isEditable}
-              pickerSuggestionsProps={{ className: classNames.suggestionItems }}
-            />
-            {source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id].text == undefined && 
-             <div className={classNames.error}>
-              {strings.HROnboarding.orgLeader} {strings.HROnboarding.orgLeaderMissingErrorMessage}
-             </div>}
-          </div>
+          <OrgLeader
+            selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled && orgLeaderDataReturned && orgLeaderDetails.employeeId > 0? [
+              {
+                key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
+                text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
+              },
+            ] : undefined}
+            onResolveSuggestions={getPickerSuggestions}
+            onInputChange={handleOrgLeaderInputChange}
+            onChange={handleOrgLeaderChange}
+            disabled={!isJobWriter || !isEditable}
+            showError={!!(source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id].text == undefined)}
+          />
         </Stack.Item>
 
         <Stack.Item align="start">

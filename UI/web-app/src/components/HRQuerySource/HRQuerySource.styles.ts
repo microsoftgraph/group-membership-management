@@ -65,13 +65,6 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     textFieldGroup: {
       border: 'none'
     },
-    suggestionItems: {
-     '.ms-Persona-secondaryText': {
-        whiteSpace: 'normal',
-        overflow: 'visible',
-        textOverflow: 'clip'
-      }
-    },
     detailsList: {
       minWidth: 1200
     },
@@ -96,13 +89,6 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       maxWidth: 100,
       marginLeft: -50
     },
-    detailsListWithBorder: {
-      minWidth: 1200,
-      borderStyle: 'solid',
-      borderRadius: 15,
-      borderColor: theme.palette.themeLighter,
-      marginLeft: 50
-    },
     dropdownTitle: {
       borderRadius: 4,
       borderStyle: 'solid',
@@ -116,16 +102,6 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     },
     addAttribute: {
       marginLeft: 60
-    },
-    spinButton: {
-      '&:after': {
-        borderColor: theme.palette.neutralQuaternary
-      },
-      selectors: {
-        [`@media (max-width: 600px)`]: {
-          width: 10
-        }
-      }
     },
     removeButton: {
       color: theme.semanticColors.primaryButtonBackground,
