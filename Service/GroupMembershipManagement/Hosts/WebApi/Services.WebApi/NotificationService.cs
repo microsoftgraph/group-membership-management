@@ -29,11 +29,13 @@ namespace Services.WebApi
             SyncJob syncJob,
             SyncJobChange submission)
         {
+            var businessJustification = submission.BusinessJustification ?? "No reason provided";
+
             var additionalContentParameters = new string[]
             {
                 syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
                 string.Empty,                             // {1} - Group Name (will be populated by TryAssignGroupNameAsync)
-                submission.BusinessJustification ?? "No reason provided"  // {2} - Rejection Reason
+                businessJustification                     // {2} - Rejection Reason
             };
 
             var customProperties = new Dictionary<string, object>
@@ -41,7 +43,7 @@ namespace Services.WebApi
                 { "AdditionalContentParameters", additionalContentParameters },
                 { "SubmitterObjectId", submission.ChangedByObjectId?.ToString() ?? string.Empty },
                 { "SubmitterDisplayName", submission.ChangedByDisplayName ?? string.Empty },
-                { "BusinessJustification", submission.BusinessJustification ?? string.Empty }
+                { "BusinessJustification", businessJustification }
             };
 
             await SendNotificationAsync(syncJob, NotificationMessageType.SubmissionRejectedNotification, customProperties);
@@ -63,7 +65,19 @@ namespace Services.WebApi
                 {
                     foreach (var property in customProperties)
                     {
-                        messageContent[property.Key] = property.Value;
+                        if (!messageContent.ContainsKey(property.Key))
+                        {
+                            messageContent[property.Key] = property.Value;
+                        }
+                        else
+                        {
+                            // Handle the conflict, e.g., log a warning or throw an exception
+                            await _loggingRepository.LogMessageAsync(new Models.LogMessage
+                            {
+                                RunId = syncJob.RunId,
+                                Message = $"Key conflict detected: {property.Key} already exists in messageContent and will not be overwritten."
+                            });
+                        }
                     }
                 }
 
@@ -92,7 +106,12 @@ namespace Services.WebApi
                 {
                     fullErrorMessage += $" Inner Exception: {ex.InnerException.Message}";
                 }
-                fullErrorMessage += $" StackTrace: {ex.StackTrace}";
+                // Avoid logging full stack trace to prevent exposure of sensitive information
+                _loggingRepository.LogMessageAsync(new Models.LogMessage
+                {
+                    RunId = syncJob.RunId,
+                    Message = $"StackTrace: {ex.StackTrace}"
+                });
 
                 await _loggingRepository.LogMessageAsync(new Models.LogMessage
                 {
