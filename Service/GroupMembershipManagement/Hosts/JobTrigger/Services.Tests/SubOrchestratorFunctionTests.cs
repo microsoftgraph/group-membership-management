@@ -26,6 +26,7 @@ using Models.Notifications;
 using Models.Helpers;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
+using Models.ServiceBus;
 
 namespace Services.Tests
 {
@@ -48,6 +49,7 @@ namespace Services.Tests
         int _frequency;
         JsonSchemaProvider _jsonSchemaProvider;
         bool _jsonValidationResult;
+        Mock<ServiceBusSender> _mockServiceBusSender;
 
         [TestInitialize]
         public void Setup()
@@ -128,7 +130,7 @@ namespace Services.Tests
                     .Callback<string, object>(async (name, request) =>
                     {
                         var updateRequest = request as JobUpdaterRequest;
-                        await CallJobStatusUpdaterFunctionAsync(updateRequest);
+                        _mockServiceBusSender = await CallJobStatusUpdaterFunctionAsync(updateRequest);
                         _syncStatus = updateRequest.Status;
                     });
 
@@ -181,8 +183,12 @@ namespace Services.Tests
                                                                 _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":16") && // SyncStatus.DestinationQueryNotValid = 16
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Destination query is not valid")),
@@ -208,8 +214,12 @@ namespace Services.Tests
                                                                 _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.DestinationQueryNotValid), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":16") && // SyncStatus.DestinationQueryNotValid = 16
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Destination query is empty or missing required fields")),
@@ -230,8 +240,12 @@ namespace Services.Tests
                                                                 _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":10") && // SyncStatus.QueryNotValid = 10
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Source query is not valid")),
@@ -259,8 +273,12 @@ namespace Services.Tests
                                                                 _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.SchemaError), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":20") && // SyncStatus.SchemaError = 20
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Unable to parse json for property")),
@@ -323,8 +341,12 @@ namespace Services.Tests
                                                                 _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.SchemaError, It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":20") && // SyncStatus.SchemaError = 20
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Schema is not valid for property")),
@@ -344,7 +366,12 @@ namespace Services.Tests
                                                                 _emailSenderAndRecipients.Object,
                                                                 _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.ErroredDueToStuckInProgress, It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":14") && // SyncStatus.ErroredDueToStuckInProgress = 14
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
         }
 
         [TestMethod]
@@ -366,7 +393,12 @@ namespace Services.Tests
                 It.IsAny<VerbosityLevel>(),
                 It.IsAny<string>(),
                 It.IsAny<string>()));
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(SyncStatus.Error, It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":3") && // SyncStatus.Error = 3
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
         }
 
         [TestMethod]
@@ -382,8 +414,12 @@ namespace Services.Tests
                                                     _gmmResources.Object);
             await suborchrestrator.RunSubOrchestratorAsync(_context.Object, _executionContext.Object);
 
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":10") && // SyncStatus.QueryNotValid = 10
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
             _loggingRespository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains("Source query is empty")),
@@ -431,8 +467,19 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendMessageAsync(It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":1") && // SyncStatus.InProgress = 1
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
+
+            // Verify logging for starting job
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message == "Starting job."),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.Once());
 
             Assert.AreEqual(SyncStatus.InProgress, _syncStatus);
         }
@@ -504,17 +551,21 @@ namespace Services.Tests
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":1") && // SyncStatus.InProgress = 1
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
-            serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<Azure.Messaging.ServiceBus.ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
-                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
                 It.IsAny<CancellationToken>()),
                 Times.Exactly(2));
 
             serviceBusSender.Verify(x => x.SendMessageAsync(
-                It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
                                               && (bool)m.ApplicationProperties["IsDestinationPart"]),
                 It.IsAny<CancellationToken>()),
                 Times.Once());
@@ -590,16 +641,27 @@ namespace Services.Tests
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.StuckInProgress), It.IsAny<SyncJob>()), Times.Once());
+            // Verify Service Bus message was sent with correct status
+            _mockServiceBusSender.Verify(x => x.SendMessageAsync(
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(msg => 
+                    msg.Body.ToString().Contains("\"NewStatus\":13") && // SyncStatus.StuckInProgress = 13
+                    msg.ApplicationProperties["MessageType"].ToString() == "JobStatusUpdate"),
+                It.IsAny<CancellationToken>()), Times.Once());
 
-            serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            // Verify logging for restarting stuck job
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message == "Restarting job stuck in InProgress."),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.Once());
+
+            serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<Azure.Messaging.ServiceBus.ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
-                It.Is<ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(m => (string)m.ApplicationProperties["Type"] == "GroupMembership"),
                 It.IsAny<CancellationToken>()), Times.Exactly(2));
 
             serviceBusSender.Verify(x => x.SendMessageAsync(
-                It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
+                It.Is<Azure.Messaging.ServiceBus.ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
                                               && (bool)m.ApplicationProperties["IsDestinationPart"]),
                 It.IsAny<CancellationToken>()), Times.Once());
 
@@ -719,10 +781,42 @@ namespace Services.Tests
             await telemetryTrackerFunction.TrackEventAsync(request);
         }
 
-        private async Task CallJobStatusUpdaterFunctionAsync(JobUpdaterRequest request)
+        private async Task<Mock<ServiceBusSender>> CallJobStatusUpdaterFunctionAsync(JobUpdaterRequest request)
         {
-            var jobStatusUpdaterFunction = new JobUpdaterFunction(_loggingRespository.Object, _jobTriggerService.Object);
+            var mockServiceBusClient = new Mock<ServiceBusClient>();
+            var mockSender = new Mock<ServiceBusSender>();
+            mockServiceBusClient.Setup(x => x.CreateSender(It.IsAny<string>())).Returns(mockSender.Object);
+            mockSender.Setup(x => x.SendMessageAsync(It.IsAny<Azure.Messaging.ServiceBus.ServiceBusMessage>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+            
+            var mockConfiguration = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+            mockConfiguration.Setup(x => x["serviceBusSyncJobUpdaterQueue"]).Returns("sync-job-updater-queue");
+            
+            // Capture the time before calling the function and original LastRunTime for verification
+            var timeBefore = DateTime.UtcNow;
+            var originalLastRunTime = request.SyncJob.LastRunTime;
+            
+            var jobStatusUpdaterFunction = new JobUpdaterFunction(_loggingRespository.Object, _jobTriggerService.Object, mockServiceBusClient.Object, mockConfiguration.Object);
             await jobStatusUpdaterFunction.UpdateJobAsync(request);
+            
+            // Verify that LastSuccessfulStartTime was set for InProgress status
+            if (request.Status == SyncStatus.InProgress)
+            {
+                Assert.IsNotNull(request.SyncJob.LastSuccessfulStartTime, "LastSuccessfulStartTime should be set for InProgress status");
+                Assert.IsTrue(request.SyncJob.LastSuccessfulStartTime >= timeBefore, "LastSuccessfulStartTime should be set to current time");
+                // LastRunTime should not be modified for InProgress status
+                Assert.AreEqual(originalLastRunTime, request.SyncJob.LastRunTime, "LastRunTime should not be modified for InProgress status");
+            }
+            
+            // Verify that both LastSuccessfulStartTime and LastRunTime were set for StuckInProgress status
+            if (request.Status == SyncStatus.StuckInProgress)
+            {
+                Assert.IsNotNull(request.SyncJob.LastSuccessfulStartTime, "LastSuccessfulStartTime should be set for StuckInProgress status");
+                Assert.IsNotNull(request.SyncJob.LastRunTime, "LastRunTime should be set for StuckInProgress status");
+                Assert.IsTrue(request.SyncJob.LastSuccessfulStartTime >= timeBefore, "LastSuccessfulStartTime should be set to current time");
+                Assert.IsTrue(request.SyncJob.LastRunTime >= timeBefore, "LastRunTime should be set to current time");
+            }
+            
+            return mockSender;
         }
 
         private async Task<DestinationVerifierResult> CallDestinationVerifierFunctionAsync()
@@ -760,5 +854,6 @@ namespace Services.Tests
             var validatorFunction = new SchemaValidatorFunction(_loggingRespository.Object, _jobTriggerService.Object, _jsonSchemaProvider);
             return await validatorFunction.ValidateSchemasAsync(job);
         }
+
     }
 }

@@ -168,6 +168,92 @@ namespace Services.Tests
             Assert.IsFalse(_updatedJob.IgnoreThresholdOnce);
         }
 
+        [TestMethod]
+        public async Task UpdateSyncJobStatusWithMessage_PreservesAllJobPropertiesIncludingDestination()
+        {
+            var jobId = Guid.NewGuid();
+            var runId = Guid.NewGuid();
+            var testGroupId = Guid.NewGuid();
+            var testDestination = $"[{{\"type\":\"GroupMembership\",\"value\":{{\"objectId\":\"{testGroupId}\"}}}}]";
+            
+            var syncJob = new SyncJob 
+            { 
+                Id = jobId, 
+                RunId = runId, 
+                Period = 24, 
+                IgnoreThresholdOnce = true,
+                Destination = testDestination,
+                Query = "[{\"type\":\"GroupMembership\",\"sources\":[{\"type\":\"SecurityGroup\",\"id\":\"source-group-id\"}]}]",
+                MembershipType = "GroupMembership",
+                Requestor = "test-requestor@example.com"
+            };
+
+            var message = new JobStatusUpdateQueueMessage
+            {
+                JobId = jobId,
+                RunId = runId,
+                NewStatus = SyncStatus.InProgress,
+                SyncJob = CloneJobWithAllProperties(syncJob),
+                ThresholdViolations = 2,
+                UpdatedByFunction = "JobTrigger"
+            };
+
+            await _syncJobUpdaterService.UpdateSyncJobStatusAsync(message);
+
+            _mockDatabaseSyncJobsRepository.Verify(repo => repo.UpdateSyncJobStatusAsync(
+                It.Is<SyncJob[]>(jobs => 
+                    jobs.Length == 1 && 
+                    jobs[0].Destination == testDestination &&
+                    jobs[0].Query == syncJob.Query &&
+                    jobs[0].MembershipType == "GroupMembership" &&
+                    jobs[0].Requestor == "test-requestor@example.com" &&
+                    jobs[0].ThresholdViolations == 2), 
+                SyncStatus.InProgress), Times.Once);
+
+            // Verify that all properties are preserved in the updated job
+            Assert.AreEqual(testDestination, _updatedJob.Destination);
+            Assert.AreEqual(syncJob.Query, _updatedJob.Query);
+            Assert.AreEqual("GroupMembership", _updatedJob.MembershipType);
+            Assert.AreEqual("test-requestor@example.com", _updatedJob.Requestor);
+            Assert.AreEqual(2, _updatedJob.ThresholdViolations);
+            Assert.AreEqual("InProgress", _updatedJob.Status);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusWithMessage_HandlesTeamsChannelDestination()
+        {
+            var jobId = Guid.NewGuid();
+            var runId = Guid.NewGuid();
+            var testGroupId = Guid.NewGuid();
+            var testChannelId = "test-channel-id";
+            var testDestination = $"[{{\"type\":\"TeamsChannelMembership\",\"value\":{{\"objectId\":\"{testGroupId}\",\"channelId\":\"{testChannelId}\"}}}}]";
+            
+            var syncJob = new SyncJob 
+            { 
+                Id = jobId, 
+                RunId = runId, 
+                Period = 12, 
+                Destination = testDestination,
+                MembershipType = "TeamsChannelMembership"
+            };
+
+            var message = new JobStatusUpdateQueueMessage
+            {
+                JobId = jobId,
+                RunId = runId,
+                NewStatus = SyncStatus.Idle,
+                SyncJob = CloneJobWithAllProperties(syncJob),
+                UpdatedByFunction = "GraphUpdater"
+            };
+
+            await _syncJobUpdaterService.UpdateSyncJobStatusAsync(message);
+
+            // Verify that Teams channel destination is properly handled
+            Assert.AreEqual(testDestination, _updatedJob.Destination);
+            Assert.AreEqual("TeamsChannelMembership", _updatedJob.MembershipType);
+            Assert.AreEqual("Idle", _updatedJob.Status);
+        }
+
         private SyncJob CloneJob(SyncJob job)
         {
             return new SyncJob
@@ -181,6 +267,30 @@ namespace Services.Tests
                 ScheduledDate = job.ScheduledDate,
                 DryRunTimeStamp = job.DryRunTimeStamp,
                 IsDryRunEnabled = job.IsDryRunEnabled
+            };
+        }
+
+        private SyncJob CloneJobWithAllProperties(SyncJob job)
+        {
+            return new SyncJob
+            {
+                Id = job.Id,
+                RunId = job.RunId,
+                Period = job.Period,
+                Status = job.Status,
+                LastRunTime = job.LastRunTime,
+                LastSuccessfulRunTime = job.LastSuccessfulRunTime,
+                ScheduledDate = job.ScheduledDate,
+                DryRunTimeStamp = job.DryRunTimeStamp,
+                IsDryRunEnabled = job.IsDryRunEnabled,
+                Destination = job.Destination,
+                Query = job.Query,
+                MembershipType = job.MembershipType,
+                Requestor = job.Requestor,
+                ThresholdViolations = job.ThresholdViolations,
+                ThresholdPercentageForAdditions = job.ThresholdPercentageForAdditions,
+                ThresholdPercentageForRemovals = job.ThresholdPercentageForRemovals,
+                IgnoreThresholdOnce = job.IgnoreThresholdOnce
             };
         }
     }
