@@ -10,6 +10,7 @@ using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using Services.WebApi.Validators;
 using System.Net;
+using System.Text.Json;
 using WebApi.Models.DTOs;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
@@ -21,6 +22,7 @@ namespace Services.WebApi
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
+        private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly INotificationService _notificationService;
 
@@ -29,13 +31,14 @@ namespace Services.WebApi
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
-            IDatabaseSettingsRepository databaseSettingsRepository,
-            INotificationService notificationService)
+            IDatabaseTitlesRepository titlesRepository,
+            IDatabaseSettingsRepository databaseSettingsRepository)
             : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
+            _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
         }
@@ -78,6 +81,7 @@ namespace Services.WebApi
 
             var changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
             var changedOnBehalfOfObjectId = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfObjectId")?.value?.ToString();
+            var titles = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Titles")?.value.ToString();
 
             var syncJobChange = new SyncJobChange
             {
@@ -179,6 +183,19 @@ namespace Services.WebApi
             {
                 var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, SyncStatus.PendingReview.ToString());
                 if (result != null) return result;
+            }
+
+            if (!string.IsNullOrEmpty(titles))
+            {
+                var titlesArray = JsonSerializer.Deserialize<List<Title>>(titles.ToString());
+                if (titlesArray != null && titlesArray.Any())
+                {
+                    foreach (var title in titlesArray)
+                    {
+                        title.SyncJobId = request.SyncJobId;
+                    }
+                    await _titlesRepository.UpdateTitlesAsync(titlesArray, request.SyncJobId);
+                }
             }
 
             return response;

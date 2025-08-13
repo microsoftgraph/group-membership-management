@@ -214,7 +214,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-          {strings.ManageMembership.labels.sourcePart}{part.title ? ": "+ part.title : ""}
+          {strings.ManageMembership.labels.sourcePart} {part.title || props.title || ""}
         </div>
         <IconButton
           className={classNames.expandButton}

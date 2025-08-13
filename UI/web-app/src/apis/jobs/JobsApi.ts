@@ -49,6 +49,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
   public async postNewJob(job: NewJob): Promise<AxiosResponse> {
     const jobWithSerializedQuery = {
       ...job,
+      titles: job.titles,
       query: JSON.stringify(job.query),
     };
     const response = await this.httpClient.post('/', jobWithSerializedQuery);
@@ -87,6 +88,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
       lastSuccessfulStartTime: entity.lastSuccessfulStartTime,
       lastSuccessfulRunTime: entity.lastSuccessfulRunTime,
       query: entity.query,
+      titles: entity.titles,
       actionRequired: entity.actionRequired,
       enabledOrNot: entity.enabledOrNot,
       status: entity.status,

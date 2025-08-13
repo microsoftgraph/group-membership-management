@@ -48,6 +48,7 @@ namespace Services.Tests
         private Mock<IDatabaseGroupsRepository> _groupRepository = null!;
         private Mock<IDatabaseChannelsRepository> _channelRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
+        private Mock<IDatabaseTitlesRepository> _titlesRepository = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
@@ -65,6 +66,7 @@ namespace Services.Tests
             _groupRepository = new Mock<IDatabaseGroupsRepository>();
             _channelRepository = new Mock<IDatabaseChannelsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();
 
@@ -173,6 +175,7 @@ namespace Services.Tests
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
                                                              _syncJobRepository.Object,
                                                              _syncJobChangeRepository.Object,
+                                                             _titlesRepository.Object,
                                                              _graphGroupRepository.Object,
                                                              _teamsChannelRepository.Object,
                                                              _httpContextAccessor.Object);
@@ -181,8 +184,8 @@ namespace Services.Tests
                                                    _graphGroupRepository.Object,
                                                    _syncJobRepository.Object,
                                                    _syncJobChangeRepository.Object,
-                                                   _settingsRepository.Object,
-                                                   _notificationService.Object);
+                                                   _titlesRepository.Object,
+                                                   _settingsRepository.Object);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object,
                                                     _graphGroupRepository.Object,
@@ -402,6 +405,7 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
+                                     _titlesRepository.Object,
                                      _graphGroupRepository.Object,
                                      _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
@@ -494,6 +498,7 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
+                                     _titlesRepository.Object,
                                      _graphGroupRepository.Object,
                                      _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
@@ -535,6 +540,7 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
+                                     _titlesRepository.Object,
                                      _graphGroupRepository.Object,
                                      _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);

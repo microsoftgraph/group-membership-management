@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
+
 namespace WebApi.Models.DTOs
 {
     public class SyncJobDetails
@@ -33,6 +35,7 @@ namespace WebApi.Models.DTOs
         public DateTime StartDate { get; set; }
         public DateTime LastSuccessfulStartTime { get; set; }
         public string Query { get; set; }
+        public List<Title> Titles { get; set; }
         public string Requestor { get; set; }
         public int ThresholdViolations { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }

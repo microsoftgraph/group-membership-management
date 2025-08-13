@@ -54,7 +54,8 @@ import {
   manageMembershipLastModifiedOnBehalfOfDisplayName,
   manageMembershipLastModifiedOnBehalfOfObjectId,
   setGroupSettings,
-  manageMembershipGroupSettings
+  manageMembershipGroupSettings,
+  getSourcePartsFromState
 } from '../../store/manageMembership.slice';
 import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus } from '../../store/manageMembership.api';
 import { NewJob } from '../../models/NewJob';
@@ -179,6 +180,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const isBusinessJustificationRequired = useSelector(selectIsBusinessJustificationRequired);
   const businessJustification: string = useSelector(manageMembershipBusinessJustification) ?? '';
   const isBusinessJustificationProvided = businessJustification !== '';
+  const sourceParts = useSelector(getSourcePartsFromState);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
     if (!sourcePartsQuery || sourcePartsQuery.length === 0) {
@@ -309,7 +311,16 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const handleSaveButtonClick = async () => {
     if (jobId !== undefined) {
-      const patchOperation = [{
+      const patchOperation = [
+      {
+        op: "replace",
+        path: "/Titles",
+        value: sourceParts.map(part => ({
+          partId: part.id,
+          name: part.title
+        }))
+      },
+      {
         op: "replace",
         path: "/Query",
         value: JSON.stringify(finalQuery)
@@ -383,6 +394,10 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         startDate: startDate,
         period: period,
         query: finalQuery,
+        titles: sourceParts.map(part => ({
+          partId: part.id, 
+          name: part.title
+        })),
         thresholdPercentageForAdditions: thresholdPercentageForAdditions,
         thresholdPercentageForRemovals: thresholdPercentageForRemovals,
         status: 'Idle',

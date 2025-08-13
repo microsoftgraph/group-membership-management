@@ -162,8 +162,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         const updatedSourceParts = parsedQuery.map((query, index) => {
           const originalPart = sourceParts[index];
           return {
-            id: uuidv4(),
-            title: "",
+            id: jobDetails.titles && jobDetails.titles[index] ? jobDetails.titles[index].partId : uuidv4(),
+            title: jobDetails.titles && jobDetails.titles[index] ? jobDetails.titles[index].name : "",
             query: query,
             isValid: true,
             isNew: originalPart?.isNew ?? false,
@@ -207,11 +207,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             </ActionButton>
         </div>
         <div>
-          {sourceParts.map((part) => (
+          {sourceParts.map((part, index) => (
             <SourcePart
               key={part.id}
               partId={part.id}
-              title={part.title}
+              title={jobDetails && jobDetails.titles && jobDetails.titles[index] ? jobDetails.titles[index].name : part.title}
               onDelete={removeSourcePart}
               totalSourceParts={sourceParts.length}
               query={part.query}

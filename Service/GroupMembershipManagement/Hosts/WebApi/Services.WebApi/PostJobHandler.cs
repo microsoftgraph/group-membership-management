@@ -22,6 +22,7 @@ namespace Services
         private const int DEFAULT_PERIOD = 24;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IDatabaseDestinationAttributesRepository _destinationAttributesRepository;
+        private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
@@ -32,6 +33,7 @@ namespace Services
         public PostJobHandler(
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabaseDestinationAttributesRepository destinationAttributesRepository,
+            IDatabaseTitlesRepository titlesRepository,
             IGraphGroupRepository graphGroupRepository,
             ILoggingRepository loggingRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
@@ -41,6 +43,7 @@ namespace Services
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));
+            _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
@@ -177,6 +180,12 @@ namespace Services
                         {
                             Message = $"Sent message {message.MessageId} to configuration queue",
                         });
+                    }
+
+                    if (request.NewSyncJob.Titles != null)
+                    {
+                        var titlesDictionary = request.NewSyncJob.Titles.ToDictionary(t => t.PartId, t => t.Name);
+                        await _titlesRepository.SaveTitlesAsync(titlesDictionary, newSyncJobId);
                     }
                 }
                 else

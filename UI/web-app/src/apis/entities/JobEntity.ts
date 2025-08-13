@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+import { Title } from "../../models/Title";
+
 export type JobEntity = {
   syncJobId: string;
   targetGroupId: string;
@@ -13,6 +15,7 @@ export type JobEntity = {
   lastSuccessfulStartTime: string;
   lastSuccessfulRunTime: string;
   query: string;
+  titles: Title[];
   actionRequired: string;
   enabledOrNot: boolean;
   status: string;

@@ -11,6 +11,7 @@ namespace WebApi.Models.DTOs
         public string? LastModifiedOnBehalfOfObjectId { get; set; }
         public Guid TargetOfficeGroupId { get; set; }
         public string Destination { get; set; }
+        public NewTitle[] Titles { get; set; }
         public bool AllowEmptyDestination { get; set; }
         public string Status { get; set; }
         public DateTime LastRunTime { get; set; }

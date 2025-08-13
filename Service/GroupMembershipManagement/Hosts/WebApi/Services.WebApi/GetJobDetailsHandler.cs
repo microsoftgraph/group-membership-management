@@ -18,6 +18,7 @@ namespace Services
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangesRepository;
+        private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly ILoggingRepository _loggingRepository;
@@ -26,12 +27,14 @@ namespace Services
         public GetJobDetailsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               ISyncJobChangeRepository syncJobChangesRepository,
+                              IDatabaseTitlesRepository titlesRepository,
                               IGraphGroupRepository graphGroupRepository,
                               ITeamsChannelRepository teamsChannelRepository,
                               IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
+            _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -69,6 +72,7 @@ namespace Services
                 });
             }
 
+            var titles = await _titlesRepository.GetTitlesAsync(request.SyncJobId);
             var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
 
             var targetChannelId = job.Channel?.ChannelId;
@@ -137,6 +141,7 @@ namespace Services
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
                 Status = job.Status,
+                Titles = titles,
                 LastModifiedByDisplayName = lastModifiedByDisplayName,
                 LastModifiedByObjectId = lastModifiedByObjectId,
                 LastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName,

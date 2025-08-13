@@ -137,6 +137,8 @@ namespace Models
         public DestinationName DestinationName { get; set; }
         public DestinationEmail DestinationEmail { get; set; }
         public List<DestinationOwner> DestinationOwners { get; set; }
+        [IgnoreLogging]
+        public ICollection<Title> Titles { get; set; }
         [NotMapped]
         public DateTimeOffset? Timestamp { get; set; }
         [NotMapped]

@@ -51,6 +51,7 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
+        private Mock<IDatabaseTitlesRepository> _titlesRepository = null!;
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository = null!;
         private Mock<GraphServiceClient> _graphServiceClient = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
@@ -73,6 +74,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
             _pendingConfigurationConfig = new Mock<IPendingConfigurationConfig>();
@@ -229,6 +231,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -239,6 +242,7 @@ namespace Services.Tests
             _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
                                                 _databaseSyncJobsRepository.Object,
                                                 _syncJobChangeRepository.Object,
+                                                _titlesRepository.Object,
                                                 _graphGroupRepository.Object,
                                                 _teamsChannelRepository.Object,
                                                 _httpContextAccessor.Object);
@@ -381,6 +385,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -414,6 +419,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -454,6 +460,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -491,6 +498,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -531,6 +539,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -574,6 +583,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -703,6 +713,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -761,6 +772,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -819,6 +831,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -869,6 +882,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -934,6 +948,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -994,6 +1009,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1053,6 +1069,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1112,6 +1129,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1172,6 +1190,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1231,6 +1250,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1300,6 +1320,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1361,6 +1382,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1414,6 +1436,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1471,6 +1494,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1544,6 +1568,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1616,6 +1641,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1678,6 +1704,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1737,6 +1764,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1790,6 +1818,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1842,6 +1871,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
@@ -1907,6 +1937,7 @@ namespace Services.Tests
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,

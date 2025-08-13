@@ -31,6 +31,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<MembershipType> MembershipTypes { get; set; }
         public DbSet<Group> Groups { get; set; }
         public DbSet<Channel> TeamsChannels { get; set; }
+        public DbSet<Title> Titles { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
