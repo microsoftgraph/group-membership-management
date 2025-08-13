@@ -116,14 +116,14 @@ namespace WebApi.Tests
             // Assert
             _mockServiceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
             
-            // Verify the message body contains empty strings for null values
+            // Verify the message body contains empty strings for null values, except BusinessJustification which defaults to "No reason provided"
             var messageBodyString = System.Text.Encoding.UTF8.GetString(capturedMessage.Body);
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(messageBodyString);
             
             Assert.IsNotNull(messageContent);
             Assert.AreEqual(string.Empty, messageContent["SubmitterObjectId"].GetString());
             Assert.AreEqual(string.Empty, messageContent["SubmitterDisplayName"].GetString());
-            Assert.AreEqual(string.Empty, messageContent["BusinessJustification"].GetString());
+            Assert.AreEqual("No reason provided", messageContent["BusinessJustification"].GetString());
         }
 
         [TestMethod]
