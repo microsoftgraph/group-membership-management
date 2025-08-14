@@ -31,12 +31,17 @@ export const getTitle = createAsyncThunk<
 
     try {
       const response = await fetch(config.getTitle, options);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const responseText = await response.text();
       return responseText;
     }
     catch (error: any) {
-      if (error.response && error.response.status === 429 && currentRetries > 0) {
-        console.warn(`Rate limit exceeded. Retrying in ${currentBackoff} ms...`);
+      if (currentRetries > 0) {
+        console.warn(`Error: ${error.message}. Retrying in ${currentBackoff} ms...`);
         await sleep(currentBackoff);
         return makeRequest(currentRetries - 1, currentBackoff * 2);
       } else {
