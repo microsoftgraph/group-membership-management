@@ -208,7 +208,8 @@ namespace Services.Tests
                                                    _syncJobRepository.Object,
                                                    _syncJobChangeRepository.Object,
                                                    _titlesRepository.Object,
-                                                   _settingsRepository.Object);
+                                                   _settingsRepository.Object,
+                                                    _notificationService.Object);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object,
                                                     _graphGroupRepository.Object,

@@ -24,6 +24,7 @@ namespace WebApi.Tests
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<ISyncJobChangeRepository> _mockSyncJobChangeRepository = null!;
+        private Mock<IDatabaseTitlesRepository> _mockTitle = null!;
         private Mock<IDatabaseSettingsRepository> _mockSettingsRepository = null!;
         private Mock<INotificationService> _mockNotificationService = null!;
         private PatchJobHandler _patchJobHandler = null!;
@@ -37,6 +38,7 @@ namespace WebApi.Tests
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            _mockTitle = new Mock<IDatabaseTitlesRepository>();
             _mockSettingsRepository = new Mock<IDatabaseSettingsRepository>();
             _mockNotificationService = new Mock<INotificationService>();
 
@@ -45,6 +47,7 @@ namespace WebApi.Tests
                 _mockGraphGroupRepository.Object,
                 _mockSyncJobRepository.Object,
                 _mockSyncJobChangeRepository.Object,
+                _mockTitle.Object,
                 _mockSettingsRepository.Object,
                 _mockNotificationService.Object);
 

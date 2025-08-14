@@ -32,7 +32,8 @@ namespace Services.WebApi
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseTitlesRepository titlesRepository,
-            IDatabaseSettingsRepository databaseSettingsRepository)
+            IDatabaseSettingsRepository databaseSettingsRepository,
+            INotificationService notificationService)
             : base(loggingRepository)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
