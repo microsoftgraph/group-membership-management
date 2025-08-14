@@ -13,7 +13,7 @@ export type SourcePartStyles = {
   titleTextField: IStyle;
   editButton: IStyle;
   title: IStyle;
-  exisitngTitile: IStyle;
+  existingTitle: IStyle;
   generatedTitle: IStyle;
   expandButton: IStyle;
   content: IStyle;

@@ -300,6 +300,7 @@ const manageMembershipSlice = createSlice({
             state.advancedViewQuery = JSON.stringify(query);
             state.compositeQuery = buildCompositeQuery(JSON.parse(query));
             state.sourceParts = JSON.parse(query).map((query: SourcePartQuery, index: number) => ({
+                ...query,
                 id: titles[index]?.partId || uuidv4(),
                 title: titles[index]?.name || '',
                 query: query,

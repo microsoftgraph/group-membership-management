@@ -45,7 +45,7 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             display: 'flex',
             alignItems: 'center'
         },
-        exisitngTitile: {
+        existingTitle: {
             fontWeight: 600
         },
         generatedTitle: {

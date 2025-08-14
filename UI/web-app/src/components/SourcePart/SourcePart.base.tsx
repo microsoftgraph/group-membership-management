@@ -210,7 +210,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     <div className={classNames.card}>
       <div className={classNames.header}>
         <div className={classNames.title}>
-        <div className={classNames.exisitngTitile}>{strings.ManageMembership.labels.sourcePart}</div>
+        <div className={classNames.existingTitle}>{strings.ManageMembership.labels.sourcePart}</div>
         { !isEditButtonClicked && (part.title || props.title) &&
             <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
         }
