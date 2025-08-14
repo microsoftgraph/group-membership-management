@@ -187,7 +187,7 @@ namespace Services.WebApi
 
             if (!string.IsNullOrEmpty(titles))
             {
-                var titlesArray = JsonSerializer.Deserialize<List<Title>>(titles.ToString());
+                var titlesArray = JsonSerializer.Deserialize<List<Title>>(titles);
                 if (titlesArray != null && titlesArray.Any())
                 {
                     foreach (var title in titlesArray)
