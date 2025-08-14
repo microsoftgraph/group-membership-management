@@ -674,7 +674,7 @@ const getOptions = (
     setFilterErrorMessage('');
     setSource(props.source);
 
-    if (groupingEnabled && groupIndex !== undefined) {
+    if (groupingEnabled) {
       const emptyItemIndex = items.findIndex(item =>
         item.attribute === "" &&
         item.equalityOperator === "" &&
@@ -686,14 +686,13 @@ const getOptions = (
         return;
       }
 
-
-      if (groupIndex !== undefined && childIndex !== undefined) {
+      if (groupIndex != undefined && childIndex !== undefined && groupIndex >= 0 && childIndex >= 0) {
         if (groups[groupIndex].children[childIndex].items[groups[groupIndex].children[childIndex].items.length-1].andOr === "" || groups[groupIndex].children[childIndex].items[groups[groupIndex].children[childIndex].items.length-1].andOr === undefined) {
           setFilterErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
           return;
         }
       }
-      else if (groupIndex !== undefined) {
+      else if (groupIndex !== undefined && groupIndex >= 0) {
         if (groups[groupIndex].items[groups[groupIndex].items.length-1].andOr === "" || groups[groupIndex].items[groups[groupIndex].items.length-1].andOr === undefined) {
           setFilterErrorMessage(strings.HROnboarding.missingAttributeErrorMessage);
           return;
@@ -952,7 +951,7 @@ const getOptions = (
     newValue: string;
   }
 
-  const updateGroupItem = (updateParams: UpdateParam, index: number, otherIndex?: number, gi?: number): void => {
+  const updateGroupItem = (updateParams: UpdateParam, index: number, gi?: number, ci?: number): void => {
     const { property, newValue } = updateParams;
     let a: number = -1;
     if ( selectedIndices[0] === -1) {
@@ -965,7 +964,7 @@ const getOptions = (
       a = emptyItemIndex;
     }
     selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
-    const groupIndex = groups.findIndex(group =>
+    const groupIndex = gi ?? groups.findIndex(group =>
       group.children?.some(child =>
           child.items.some(item =>
               JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
@@ -974,30 +973,16 @@ const getOptions = (
           JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
       )
     );
-    const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
+    const childIndex = groupIndex !== -1 ? ci ?? groups[groupIndex].children.findIndex(child =>
       child.items.some(item =>
           JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
       )
     ) : -1;
 
-    const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
-    const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
-
-    if(!ifGroupItem && !ifGroupChild && property === "andOr") {
-      if (otherIndex != null) {
-        groups[index].children[otherIndex].andOr = newValue;
-      } else {
-        groups[index].andOr = newValue;
-      }
-      setGroups(groups);
-      getGroupLabels(groups);
-      return;
-    }
-
-    if(ifGroupItem && groups[groupIndex].items[index ?? 0]) {
+    if(groupIndex >= 0 && groups[groupIndex].items[index ?? 0]) {
       groups[groupIndex].items[index ?? 0][property] = newValue;
     }
-    if(ifGroupChild && groups[groupIndex].children[childIndex].items[index ?? 0]) {
+    if(childIndex >= 0 && groups[groupIndex].children[childIndex].items[index ?? 0]) {
       groups[groupIndex].children[childIndex].items[index ?? 0][property] = newValue;
     }
 
@@ -1009,7 +994,7 @@ const getOptions = (
     getGroupLabels(groups);
   }
 
-  const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number): void => {
+  const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (item) {
       const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === item.key) || (!hasMapping && name === item.key)));
       if (attributeMappings && attributeMappings[item.key] === undefined) {
@@ -1029,7 +1014,7 @@ const getOptions = (
         property: "attribute",
         newValue: item.key.toString()
       };
-      updateGroupItem(updateParams, index, undefined, groupIndex);
+      updateGroupItem(updateParams, index, groupIndex, childIndex);
       return;
     }
 
@@ -1069,13 +1054,13 @@ const getOptions = (
     }
   };
 
-  const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
+  const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (groupingEnabled && item && index != null) {
       const updateParams: UpdateParam = {
         property: "equalityOperator",
         newValue: item.text
       };
-      updateGroupItem(updateParams, index);
+      updateGroupItem(updateParams, index, groupIndex, childIndex);
       return;
     }
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
@@ -1113,7 +1098,7 @@ const getOptions = (
     }
   };
 
-  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, existingValues?: string, item?: IComboBoxOption, index?: number, operator?: string): void => {
+  const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, existingValues?: string, item?: IComboBoxOption, index?: number, operator?: string, groupIndex?: number, childIndex?: number): void => {
     let selectedValues = "";
     if (operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")) {
       let selected = item?.selected;
@@ -1144,7 +1129,7 @@ const getOptions = (
           property: "value",
           newValue: selectedValueAfterConversion || selectedValue
         };
-        updateGroupItem(updateParams, index);
+        updateGroupItem(updateParams, index, groupIndex, childIndex);
         return;
       }
 
@@ -1183,7 +1168,7 @@ const getOptions = (
     }
   };
 
-  const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string) => {
+  const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string, groupIndex?: number, childIndex?: number) => {
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
     const isInOperator = operator?.toString().toUpperCase() === "IN" || operator?.toString().toUpperCase() === "NOT IN";
@@ -1202,7 +1187,7 @@ const getOptions = (
         property: "value",
         newValue: selectedValueAfterConversion || selectedValue
       };
-      updateGroupItem(updateParams, index);
+      updateGroupItem(updateParams, index, groupIndex, childIndex);
       return;
     }
   }
@@ -1250,24 +1235,26 @@ const getOptions = (
     }
   };
 
-  const handleGroupOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, childIndex?: number): void => {
-    if (groupingEnabled && item && index != null) {
-      const updateParams: UpdateParam = {
-        property: "andOr",
-        newValue: item.text
-      };
-      updateGroupItem(updateParams, index, childIndex, undefined);
-      return;
+  const handleGroupOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, parentIndex: number, childIndex: number, item?: IDropdownOption): void => {
+    if (item) {      
+      if (parentIndex >= 0 && childIndex >= 0) {
+        groups[parentIndex].children[childIndex].andOr = item.text;
+      }
+      if (parentIndex >= 0 && childIndex === -1) {
+        groups[parentIndex].andOr = item.text;
+      }
+      setGroups(groups);
+      getGroupLabels(groups);
     }
   }
 
-  const handleOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number): void => {
+  const handleOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (groupingEnabled && item && index != null) {
       const updateParams: UpdateParam = {
         property: "andOr",
         newValue: item.text
       };
-      updateGroupItem(updateParams, index);
+      updateGroupItem(updateParams, index, groupIndex, childIndex);
       return;
     }
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
@@ -1679,7 +1666,7 @@ const getOptions = (
               options={attributeOptions}
               onInputValueChange={(text) => onAttributeChange(text, index, groupIndex, childIndex)}
               onChange={(event, option) =>
-                handleAttributeChange(event, option, index, groupIndex)
+                handleAttributeChange(event, option, index, groupIndex, childIndex)
               }
               onRenderOption={onRenderAttributeComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
@@ -1703,7 +1690,7 @@ const getOptions = (
           return <Dropdown
           data-testid="hr-equality-operator-dropdown"
           selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
-          onChange={(event, option) => handleEqualityOperatorChange(event, option, index)}
+          onChange={(event, option) => handleEqualityOperatorChange(event, option, index, groupIndex, childIndex)}
           options={getValidOperatorsForType(attribute?.type)}
           styles={{root: classNames.root, title: classNames.dropdownTitle}}
           disabled={isAttributeDisabled || !isJobWriter || !isEditable}
@@ -1716,7 +1703,7 @@ const getOptions = (
                 data-testid="hr-value-combobox"
                 selectedKey={items[index].value.toUpperCase()}
                 options={nullOptions}
-                onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
+                onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex)}
                 allowFreeInput
                 autoComplete="off"
                 dropdownMaxWidth={500}
@@ -1734,7 +1721,7 @@ const getOptions = (
               selectedKey={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
               options={attributeValueOptions}
               onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
-              onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator)}
+              onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex)}
               onRenderOption={onRenderValueComboBoxOptions}
               onRenderList={onRenderValueComboBoxList}
               allowFreeInput={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? false : true}
@@ -1750,7 +1737,7 @@ const getOptions = (
             return <TextField
               data-testid="hr-value-textfield"
               value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-              onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index, item.equalityOperator)}
+              onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index, item.equalityOperator, groupIndex, childIndex)}
               onBlur={(event) => handleBlur(item.attribute, event, index, item.equalityOperator)}
               styles={{ fieldGroup: classNames.textField }}
               validateOnLoad={false}
@@ -1761,39 +1748,20 @@ const getOptions = (
           }
         }
         case 'andOr':
+          const isLastItem = index >= items.length - 1;
+          const selectedKey = item.andOr && item.andOr.trim() !== ''
+            ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase()
+            : (isLastItem ? null : undefined);
+
           return (
-            (groups.length <= 0) ? (
-              <Dropdown
-                data-testid="hr-andor-dropdown"
-                selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
-                onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
-                options={orAndOperatorOptions}
-                styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-                disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-                title={strings.HROnboarding.orAndOperator}
-              />
-            ) : (
-              index >= 0 && index < items.length - 1 ? (
-                <Dropdown
-                  data-testid="hr-andor-dropdown"
-                  selectedKey={item.andOr ? item.andOr.charAt(0).toUpperCase() + item.andOr.slice(1).toLowerCase() : ""}
-                  onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
-                  options={orAndOperatorOptions}
-                  styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-                  disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-                  title={strings.HROnboarding.orAndOperator}
-                />
-              ) : (
-                <Dropdown
-                  data-testid="hr-andor-dropdown"
-                  onChange={(event, option) => handleOrAndOperatorChange(event, option, index)}
-                  options={orAndOperatorOptions}
-                  styles={{ root: classNames.root, title: classNames.dropdownTitle }}
-                  disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-                  title={strings.HROnboarding.orAndOperator}
-                />
-              )
-            )
+            <Dropdown
+              selectedKey={selectedKey}
+              onChange={(event, option) => handleOrAndOperatorChange(event, option, index, groupIndex, childIndex)}
+              options={orAndOperatorOptions}
+              styles={{ root: classNames.root, title: classNames.dropdownTitle }}
+              disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+              title={strings.HROnboarding.orAndOperator}
+            />
           );
         case 'remove':
           return (
@@ -1984,6 +1952,23 @@ const getOptions = (
       filterItems(groupIndices[0]);
     }
     clonedNewGroups = clonedNewGroups.filter((group: { items: string | any[]; children: string | any[]; }) => group.items?.length > 0 || group.children?.length > 0);
+
+    clonedNewGroups.forEach((group: Group) => {
+      // Remove andOr from last item in main group items
+      if (group.items && group.items.length > 0) {
+        group.items[group.items.length - 1].andOr = '';
+      }
+
+      // Remove andOr from last item in each child group
+      if (group.children && group.children.length > 0) {
+        group.children.forEach((child: Group) => {
+          if (child.items && child.items.length > 0) {
+            child.items[child.items.length - 1].andOr = '';
+          }
+        });
+      }
+    });
+
     setGroups(clonedNewGroups);
     getGroupLabels(clonedNewGroups);
     setSelectedIndices([]);
@@ -1994,7 +1979,7 @@ const getOptions = (
     setFilteredValueOptions({});
   }
 
-  const renderItems = (items: IFilterPart[], isUpDownEnabled: boolean, groupIndex: number, childIndex?: number) => {
+  const renderItems = (items: IFilterPart[], isUpDownEnabled: boolean, groupIndex: number, childIndex: number) => {
     const selection: Selection = new Selection({
       onSelectionChanged: () => handleSelectionChange(selection)
     });
@@ -2030,11 +2015,11 @@ const getOptions = (
       <div>
       <Stack key={parentIndex}>
         <Stack tokens={{ childrenGap: 10 }}>
-          {group.items.length > 0 && renderItems(group.items, true, parentIndex)}
+          {group.items.length > 0 && renderItems(group.items, true, parentIndex, -1)}
           {((group.items && group.items.length > 0 && parentIndex !== groups.length - 1) || (group.children && group.children.length > 0)) && (
           <div>
           <Dropdown
-            onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex)}
+            onChange={(event, option) => handleGroupOrAndOperatorChange(event, parentIndex, -1, option)}
             selectedKey={group.andOr.charAt(0).toUpperCase() + group.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
             disabled={!isJobWriter || !isEditable}
@@ -2059,7 +2044,7 @@ const getOptions = (
           {((childGroup.items && childGroup.items.length > 0 && (childIndex !== children.length - 1 || parentIndex !== groups.length - 1)) || (childGroup.children && childGroup.children.length > 0)) && (
           <div>
           <Dropdown
-            onChange={(event, option) => handleGroupOrAndOperatorChange(event, option, parentIndex, childIndex)}
+            onChange={(event, option) => handleGroupOrAndOperatorChange(event, parentIndex, childIndex, option)}
             selectedKey={childGroup.andOr.charAt(0).toUpperCase() + childGroup.andOr.slice(1).toLowerCase()}
             options={orAndOperatorOptions}
             disabled={!isJobWriter || !isEditable}
