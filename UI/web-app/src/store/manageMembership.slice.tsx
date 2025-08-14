@@ -34,6 +34,7 @@ export interface ManageMembershipState {
     onboardingStatus: GroupOnboardingStatus | null;
     hasChanges: boolean;
     currentStep: number;
+    isMissingAndOrOperator: boolean;
     isAdvancedQueryValid: boolean;
     startDateOption: string;
     useThresholdLimits: string;
@@ -62,6 +63,7 @@ const initialState: ManageMembershipState = {
     onboardingStatus: null,
     hasChanges: false,
     currentStep: 0,
+    isMissingAndOrOperator: false,
     isAdvancedQueryValid: false,
     startDateOption: 'ASAP',
     useThresholdLimits: 'Yes',
@@ -129,6 +131,9 @@ const manageMembershipSlice = createSlice({
         },
         setNewJobLastModifiedOnBehalfOfObjectId: (state, action: PayloadAction<string>) => {
             state.newJob.lastModifiedOnBehalfOfObjectId = action.payload;
+        },
+        setIsMissingAndOrOperator: (state, action: PayloadAction<boolean>) => {
+            state.isMissingAndOrOperator = action.payload;
         },
         setIsAdvancedQueryValid: (state, action: PayloadAction<boolean>) => {
             state.isAdvancedQueryValid = action.payload;
@@ -419,6 +424,7 @@ export const {
     setNewJobRequestor,
     setNewJobLastModifiedOnBehalfOfDisplayName,
     setNewJobLastModifiedOnBehalfOfObjectId,
+    setIsMissingAndOrOperator,
     setIsAdvancedQueryValid,
     setSelectedDestination,
     setNewJobStartDate,
@@ -480,6 +486,7 @@ export const manageMembershipGroupSettings = (state: RootState) => state.manageM
 
 // 2- Membership Configuration
 export const manageMembershipIsAdvancedView = (state: RootState) => state.manageMembership.isAdvancedView;
+export const manageMembershipIsMissingAndOrOperator = (state: RootState) => state.manageMembership.isMissingAndOrOperator;
 export const manageMembershipisAdvancedQueryValid = (state: RootState) => state.manageMembership.isAdvancedQueryValid;
 export const manageMembershipCompositeQuery = (state: RootState) => state.manageMembership.compositeQuery;
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;

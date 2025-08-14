@@ -28,6 +28,7 @@ import {
   manageMembershipIsGroupReadyForOnboarding,
   manageMembershipCurrentStep,
   manageMembershipHasChanges,
+  manageMembershipIsMissingAndOrOperator,
   manageMembershipisAdvancedQueryValid,
   manageMembershipSelectedDestination,
   setCurrentStep,
@@ -160,6 +161,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     };
   }, [dispatch]);
 
+  const isMissingAndOrOperator = useSelector(manageMembershipIsMissingAndOrOperator);
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
   const allSourcePartsValid = useSelector(areAllSourcePartsValid);
   const startDate = useSelector(manageMembershipStartDate);
@@ -424,7 +426,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   };
 
-  const isStep3ConditionsMet = isAdvancedQueryValid || allSourcePartsValid;
+  const isStep3ConditionsMet = (isAdvancedQueryValid || allSourcePartsValid) && !isMissingAndOrOperator;
   let isNextDisabled = false;
 
   if (currentStep === OnboardingSteps.SelectDestination && !isStep1ConditionsMet) {

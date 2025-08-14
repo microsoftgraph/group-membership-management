@@ -33,8 +33,9 @@ import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError 
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { InfoWord } from '../InfoWord';
 import { jsxFormat } from '../../utils/stringUtils';
-import { selectIsGeneratingTitle } from '../../store/title.slice';
-import { getTitle } from '../../store/title.api';
+import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
+
+const PLACEHOLDER_OPERATOR = 'placeholder';
 
 export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuerySourceStyles>();
 
@@ -194,7 +195,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     let andOrStartIndex = -1;
     for (let i = startIndex; i < words.length; i++) {
       const part = words[i].toLowerCase();
-      if (part === 'and' || part === 'or') {
+      if (part === 'and' || part === 'or' || part === PLACEHOLDER_OPERATOR) {
         andOrStartIndex = i;
         andOr = words.slice(i).join(' ');
         break;
@@ -460,7 +461,7 @@ const getOptions = (
       }
 
       if (isParsingFilter) {
-        const regex = /( And | Or )/gi;
+        const regex = new RegExp(`( And | Or | ${PLACEHOLDER_OPERATOR} )`, 'gi');
         if (props.source.filter != undefined) {
           const parts = props.source.filter.split(regex);
           let childFilters = [];
@@ -1255,9 +1256,12 @@ const getOptions = (
         newValue: item.text
       };
       updateGroupItem(updateParams, index, groupIndex, childIndex);
+      if (item.text !== PLACEHOLDER_OPERATOR) {
+        dispatch(setIsMissingAndOrOperator(false));
+      }
       return;
     }
-    const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
+    const regex = new RegExp(`(?<= [Aa][Nn][Dd] | [Oo][Rr] | ${PLACEHOLDER_OPERATOR} )`);
     let segments = props.source.filter?.split(regex);
     if (item && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {
       let filter: string;
@@ -1287,6 +1291,9 @@ const getOptions = (
       const updatedFilter = segments.join(' ');
       setSource(prevSource => {
         let filter = updatedFilter;
+        if (!filter.includes(PLACEHOLDER_OPERATOR)) {
+          dispatch(setIsMissingAndOrOperator(false));
+        }
         const newSource = { ...prevSource, filter };
         onSourceChange(newSource, partId, props.title);
         return newSource;
@@ -1380,19 +1387,27 @@ const getOptions = (
     const insertIndex = newIndex;
     if (insertIndex < 0 || insertIndex >= items.length || index === newIndex) { return; }
 
-    let sourceItems: IFilterPart[] = [];
-    sourceItems.push(items[index]);
-    sourceItems.push(items[insertIndex]);
-    let transformedItems: ChildType[] = sourceItems.map((item) => {
-      const filter = `${item.attribute} ${item.equalityOperator} ${item.value}`;
-      return { filter: item.andOr ? `${filter} ${item.andOr}` : "undefined" };
-    });
-    const hasUndefined = transformedItems.some((item) => item.filter.includes("undefined"));
-    if (hasUndefined) { return; }
-
     setIsDragAndDropEnabled(true);
     newItems = newItems.filter((_, i) => i !== index);
     newItems.splice(insertIndex, 0, { ...items[index] });
+   
+    let hasPlaceholder = false;
+    newItems = newItems.map((item, itemIndex) => {
+      const shouldHaveAndOr = itemIndex < newItems.length - 1;
+      const andOrValue = shouldHaveAndOr ? (item.andOr || PLACEHOLDER_OPERATOR) : '';
+      if (andOrValue === PLACEHOLDER_OPERATOR) {
+        hasPlaceholder = true;
+      }
+      return {
+        ...item,
+        andOr: andOrValue
+      };
+    });
+
+    if (hasPlaceholder) {
+      dispatch(setIsMissingAndOrOperator(true));
+    }
+
     let newChildren: ChildType[] = newItems.map((item) => ({
       filter: `${item.attribute} ${item.equalityOperator} ${item.value} ${item.andOr}`,
     }));
