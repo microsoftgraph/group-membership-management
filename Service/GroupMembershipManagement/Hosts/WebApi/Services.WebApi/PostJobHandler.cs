@@ -91,6 +91,8 @@ namespace Services
                     }
                 }
 
+                var isAITitleEnabled = await IsAITitleEnabledAsync();
+
                 var destinationId = newSyncJobEntity.MembershipType == MembershipTypes.GroupMembership.ToString() ? newSyncJobEntity.Group.GroupId : newSyncJobEntity.Channel.GroupId;
                 var userIdentifier = string.IsNullOrEmpty(request.NewSyncJob.LastModifiedOnBehalfOfObjectId) ? request.UserIdentity : request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
                 var userResponse = await _graphGroupRepository.GetUserByUpnOrIdAsync(userIdentifier, false);
@@ -182,7 +184,7 @@ namespace Services
                         });
                     }
 
-                    if (request.NewSyncJob.Titles != null)
+                    if (isAITitleEnabled && request.NewSyncJob.Titles != null)
                     {
                         var titlesDictionary = request.NewSyncJob.Titles.ToDictionary(t => t.PartId, t => t.Name);
                         await _titlesRepository.SaveTitlesAsync(titlesDictionary, newSyncJobId);
@@ -359,6 +361,23 @@ namespace Services
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = $"Error retrieving org leader auto-approval setting: {ex.Message}"
+                });
+                return false;
+            }
+        }
+
+        private async Task<bool> IsAITitleEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled);
+                return setting != null && bool.TryParse(setting.SettingValue, out bool result) && result;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error retrieving AI title setting: {ex.Message}"
                 });
                 return false;
             }

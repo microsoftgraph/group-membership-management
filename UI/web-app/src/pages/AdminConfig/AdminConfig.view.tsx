@@ -223,6 +223,13 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
       />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAITitleEnabled]}
+        title={strings.GeneralSettings.labels.isAITitleEnabledTitle}
+        description={strings.GeneralSettings.labels.isAITitleEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
+        generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
+      />
     </div>
   );
 }
@@ -242,6 +249,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.IsDisclaimerEnabled]: true,
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
+    [SettingKey.IsAITitleEnabled]: true
   });
 
   useEffect(() => {

@@ -196,6 +196,15 @@ export const selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = (state: R
   return isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting ? isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsAITitleEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) {
+    return undefined;
+  }
+  const isAITitleEnabledSetting = settingsArray.find((setting) => setting.settingKey === SettingKey.IsAITitleEnabled);
+  return isAITitleEnabledSetting ? isAITitleEnabledSetting.settingValue === 'true' : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

@@ -20,6 +20,7 @@ namespace Models
             { SettingKey.IsDisclaimerEnabled, Guid.Parse("99D83E89-9507-4DC5-AC22-C8962B936B67") },
             { SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled, Guid.Parse("B2C4E6F8-1A3D-4C7E-9F2B-5A8C0D6E9F2A") },
             { SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, Guid.Parse("E5F7A9B1-2C4D-6E8F-0A1B-3C5D7E9F1A2B") },
+            { SettingKey.IsAITitleEnabled, Guid.Parse("F1E2D3C4-B5A6-7890-1234-56789ABCDEF0") }
         };
     }
 }

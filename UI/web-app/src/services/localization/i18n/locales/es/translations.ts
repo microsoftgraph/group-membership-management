@@ -186,6 +186,8 @@ export const strings: IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización SqlMembership únicos cuando el ID del gerente coincide con el onPremisesImmutableId del solicitante.",
+        isAITitleEnabledTitle: "¿Está habilitado el título de IA?",
+        isAITitleEnabledDescription: "Habilitar la generación de títulos de IA para ayudar a los usuarios a crear títulos descriptivos para sus sincronizaciones de membresía."
       }
     }
   },

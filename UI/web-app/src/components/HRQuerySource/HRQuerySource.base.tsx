@@ -29,7 +29,7 @@ import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
-import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError } from '../../store/settings.slice';
+import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError, selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { InfoWord } from '../InfoWord';
 import { OrgLeader } from '../OrgLeader';
@@ -64,6 +64,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   };
 
   const dispatch = useDispatch<AppDispatch>();
+  const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const orgLeaderDetails = useSelector(selectOrgLeaderDetails);
   const objectIdEmployeeIdMapping = useSelector(selectObjectIdEmployeeIdMapping);
   const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
@@ -2168,7 +2169,7 @@ const getOptions = (
       </Stack.Item>
 
       <Stack.Item align="start">
-      {(source.filter) &&
+      {(isAITitleEnabled && source.filter) &&
       <div className={classNames.content}>
       <div className={classNames.generateTitleHeader}>
         <div className={classNames.generateTitleButton}>

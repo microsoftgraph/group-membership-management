@@ -185,6 +185,8 @@ export const strings: IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve single SqlMembership sync jobs when the manager ID matches the requestor's onPremisesImmutableId.",
+        isAITitleEnabledTitle: "Is AI Title enabled?",
+        isAITitleEnabledDescription: "Enable AI Title generation to help users create descriptive titles for their membership syncs.",
       }
     }
   },

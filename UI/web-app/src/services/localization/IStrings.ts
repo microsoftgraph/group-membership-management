@@ -182,6 +182,8 @@ export type IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: string;
+        isAITitleEnabledTitle: string;
+        isAITitleEnabledDescription: string;
       }
     }
   },

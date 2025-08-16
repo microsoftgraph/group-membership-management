@@ -12,6 +12,7 @@ using Services.WebApi.Validators;
 using System.Net;
 using System.Text.Json;
 using WebApi.Models.DTOs;
+using LogMessage = Models.LogMessage;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
 
@@ -19,6 +20,7 @@ namespace Services.WebApi
 {
     public class PatchJobHandler : RequestHandlerBase<PatchJobRequest, PatchJobResponse>
     {
+        private readonly ILoggingRepository _loggingRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
@@ -36,6 +38,7 @@ namespace Services.WebApi
             INotificationService notificationService)
             : base(loggingRepository)
         {
+            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
@@ -79,6 +82,8 @@ namespace Services.WebApi
                 response.ErrorCode = "JobInProgress";
                 return response;
             }
+
+            var isAITitleEnabled = await IsAITitleEnabledAsync();
 
             var changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
             var changedOnBehalfOfObjectId = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfObjectId")?.value?.ToString();
@@ -186,7 +191,7 @@ namespace Services.WebApi
                 if (result != null) return result;
             }
 
-            if (!string.IsNullOrEmpty(titles))
+            if (isAITitleEnabled && !string.IsNullOrEmpty(titles))
             {
                 var titlesArray = JsonSerializer.Deserialize<List<Title>>(titles);
                 if (titlesArray != null && titlesArray.Any())
@@ -258,6 +263,22 @@ namespace Services.WebApi
                 IsValid = isValid,
                 ErrorCode = string.Join("\n", errors)
             };
+        }
+        private async Task<bool> IsAITitleEnabledAsync()
+        {
+            try
+            {
+                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled);
+                return setting != null && bool.TryParse(setting.SettingValue, out bool result) && result;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error retrieving AI title setting: {ex.Message}"
+                });
+                return false;
+            }
         }
 
         private SyncJobPatch MapEntityToDto(Guid syncJobId, SyncJob syncJob)

@@ -29,6 +29,7 @@ import { AdvancedViewSourcePart } from '../AdvancedViewSourcePart';
 import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsAITitleEnabled } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -61,6 +62,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [isEditButtonClicked, setIsEditButtonClicked] = useState<boolean>(false);
   const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
+  const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   
   useEffect(() => {
     if (part.isNew) {
@@ -211,33 +213,36 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       <div className={classNames.header}>
         <div className={classNames.title}>
         <div className={classNames.existingTitle}>{strings.ManageMembership.labels.sourcePart}</div>
-        { !isEditButtonClicked && (part.title || props.title) &&
-            <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
-        }
 
-        { (isEditButtonClicked) &&
-        <div>
-        <TextField
-          value={part.title || props.title}
-          onChange={(event, newValue) => onTitleChange(part.id, newValue || '')}
-          onBlur={(event) => handleBlur}
-          styles={{
-            fieldGroup: classNames.titleTextField,
-          }}
-        ></TextField>
-        </div>
-        }
-
-        { (isEditEnabled) &&
-        <div className={classNames.editButton}>
-        <ActionButton
-          iconProps={{ iconName: 'Edit' }}
-          styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
-          onClick={() => onEditButtonClick(part.id, part.title)}>
-          {strings.edit}
-        </ActionButton>
-        </div>
-        }
+        {isAITitleEnabled && (
+          <>
+            {!isEditButtonClicked && (part.title || props.title) && (
+              <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
+            )}
+            {isEditButtonClicked && (
+              <div>
+                <TextField
+                  value={part.title || props.title}
+                  onChange={(event, newValue) => onTitleChange(part.id, newValue || '')}
+                  onBlur={() => handleBlur()}
+                  styles={{
+                    fieldGroup: classNames.titleTextField,
+                  }}
+                />
+              </div>
+            )}
+            {isEditEnabled && (
+              <div className={classNames.editButton}>
+                <ActionButton
+                  iconProps={{ iconName: 'Edit' }}
+                  styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
+                  onClick={() => onEditButtonClick(part.id, part.title)}>
+                  {strings.edit}
+                </ActionButton>
+              </div>
+            )}
+          </>
+        )}
 
         </div>
         <IconButton
