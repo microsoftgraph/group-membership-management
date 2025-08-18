@@ -3,6 +3,7 @@
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Graph.Models;
 using MockQueryable.Moq;
@@ -18,6 +19,7 @@ using Services.WebApi.Contracts;
 using System.Data;
 using System.Net;
 using System.Security.Claims;
+using System.Text.Json;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models.DTOs;
 using Channel = Models.Channel;
@@ -79,6 +81,9 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => "Group Name");
+
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled))
+                                   .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "true" });
 
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
 
@@ -611,6 +616,112 @@ namespace Services.Tests
             Assert.AreEqual(200, result.StatusCode);
             Assert.AreEqual(newStatus, _jobEntity.Status);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_ENABLER)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchTitlesAsync(string role)
+        {
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled))
+                               .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "true" });
+
+            _jobEntity.Status = SyncStatus.Idle.ToString();
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.StatusUpdate.ToString())
+            };
+
+            var newStatus = SyncStatus.CustomerPaused.ToString();
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, newStatus);
+
+            var mockTitles = new List<Title>
+            {
+                new Title
+                {
+                    PartId = Guid.Parse("550e8400-e29b-41d4-a716-446655440000"),
+                    Name = "Software Engineers"
+                },
+                new Title
+                {
+                    PartId = Guid.Parse("550e8400-e29b-41d4-a716-446655440001"),
+                    Name = "Product Managers"
+                }
+            };
+            var titlesJson = JsonSerializer.Serialize(mockTitles);
+
+            patchDocument.Operations.Add(new Operation<SyncJobPatch>
+            {
+                op = "replace",
+                path = "/Titles",
+                value = titlesJson
+            });
+
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            Assert.AreEqual(newStatus, _jobEntity.Status);
+
+            _titlesRepository.Verify(x => x.UpdateTitlesAsync(
+                It.Is<List<Title>>(titles =>
+                    titles.Count == 2 &&
+                    titles.All(t => t.SyncJobId == _jobEntity.Id) &&
+                    titles.Any(t => t.Name == "Software Engineers") &&
+                    titles.Any(t => t.Name == "Product Managers")),
+                _jobEntity.Id), Times.Once);
+
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_OWNER_ENABLER)]
+        [DataRow(Roles.JOB_OWNER_WRITER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task PatchNoTitlesAsync(string role)
+        {
+
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled))
+                                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "false" });
+
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.StatusUpdate.ToString())
+            };
+
+            var newStatus = SyncStatus.Idle.ToString();
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, newStatus);
+
+            // Example for creating a patch document with titles
+            var titles = new NewTitle[]
+            {
+                new NewTitle { PartId = "550e8400-e29b-41d4-a716-446655440000", Name = "Software Engineers" },
+                new NewTitle { PartId = "550e8400-e29b-41d4-a716-446655440001", Name = "Product Managers" }
+            };
+
+            patchDocument.Replace(x => x.Titles, titles);
+
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result.StatusCode);
+            Assert.AreEqual(newStatus, _jobEntity.Status);
+            _titlesRepository.Verify(x => x.UpdateTitlesAsync(It.IsAny<List<Title>>(), It.IsAny<Guid>()), Times.Never);
         }
 
         [TestMethod]
