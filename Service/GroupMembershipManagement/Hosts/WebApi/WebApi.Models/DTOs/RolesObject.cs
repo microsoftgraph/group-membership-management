@@ -17,6 +17,7 @@ namespace WebApi.Models.DTOs
         public bool IsJobTenantReader { get; set; }
         public bool IsJobTenantWriter { get; set; }
         public bool IsSubmissionReviewer { get; set; }
+        public bool IsSubmissionRejector { get; set; }
         public bool IsHyperlinkAdministrator { get; set; }
         public bool IsCustomMembershipProviderAdministrator { get; set; }
         public bool IsOperationsResetAdministrator { get; set; }

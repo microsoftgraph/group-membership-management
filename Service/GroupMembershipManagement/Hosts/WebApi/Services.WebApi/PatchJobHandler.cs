@@ -70,7 +70,7 @@ namespace Services.WebApi
             }
 
             var isGroupOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, (Guid)groupId);
-            if (!(isGroupOwner || request.IsAllowed))
+            if (!isGroupOwner && !request.IsAllowed)
             {
                 response.StatusCode = HttpStatusCode.Forbidden;
                 return response;
@@ -101,9 +101,23 @@ namespace Services.WebApi
                 ChangedOnBehalfOfObjectId = !string.IsNullOrEmpty(changedOnBehalfOfObjectId) && changedOnBehalfOfObjectId != request.UserIdentity ? new Guid(changedOnBehalfOfObjectId) : (Guid?)null
             };
 
-            // Handle Reject/Approve
-            if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() || request.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())
+            // If the job is in the PendingConfiguration status, it cannot be updated
+            if (syncJob.Status == SyncStatus.PendingConfiguration.ToString())
             {
+                response.StatusCode = HttpStatusCode.PreconditionFailed;
+                response.ErrorCode = "JobInPendingConfigurationStateCannotBeUpdated";
+                return response;
+            }
+            // Handle Reject/Approve for PendingReview
+            else if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() || request.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())
+            {
+                if (request.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString() && !request.CanApproveJob)
+                {
+                    response.StatusCode = HttpStatusCode.BadRequest;
+                    response.ErrorCode = "OnlySubmissionReviewerCanApproveSubmission";
+                    return response;
+                }
+
                 var canReviewOwnSubmissions = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions);
                 var canReviewOwnSubmissionsValue = canReviewOwnSubmissions != null ? bool.Parse(canReviewOwnSubmissions.SettingValue) : true;
                 var requestorUserId = Guid.Parse(request.UserIdentity);
@@ -161,8 +175,8 @@ namespace Services.WebApi
                     await _notificationService.SendSubmissionRejectedNotificationAsync(syncJob, submission);
                 }
             }
-            // If the job is in the PendingReview / PendingConfiguration state, it cannot be updated
-            else if (syncJob.Status == SyncStatus.PendingReview.ToString() || syncJob.Status == SyncStatus.PendingConfiguration.ToString())
+            // If the job is in the PendingReview status, it cannot be updated
+            else if (syncJob.Status == SyncStatus.PendingReview.ToString())
             {
                 response.StatusCode = HttpStatusCode.PreconditionFailed;
                 response.ErrorCode = "JobInPendingReviewStateCannotBeUpdated";

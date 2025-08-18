@@ -115,7 +115,8 @@ namespace WebApi.Tests
                 patchDocument: patchDocument,
                 userDisplayName: "Reviewer",
                 changeReason: SyncJobChangeReason.SubmissionRejected.ToString(),
-                businessJustification: "Rejected for testing"
+                businessJustification: "Rejected for testing",
+                canApproveJob: true
             );
 
             // Act
@@ -143,7 +144,8 @@ namespace WebApi.Tests
                 patchDocument: patchDocument,
                 userDisplayName: "Reviewer",
                 changeReason: SyncJobChangeReason.SubmissionApproved.ToString(),
-                businessJustification: "Approved for testing"
+                businessJustification: "Approved for testing",
+                canApproveJob: true
             );
 
             // Act
@@ -172,7 +174,8 @@ namespace WebApi.Tests
                 patchDocument: patchDocument,
                 userDisplayName: "Reviewer",
                 changeReason: SyncJobChangeReason.SubmissionRejected.ToString(),
-                businessJustification: "Rejected for testing"
+                businessJustification: "Rejected for testing",
+                canApproveJob: true
             );            
             
             // Setup notification service to throw an exception

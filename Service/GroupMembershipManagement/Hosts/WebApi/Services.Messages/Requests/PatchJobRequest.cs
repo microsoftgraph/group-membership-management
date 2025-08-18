@@ -15,8 +15,17 @@ namespace Services.Messages.Requests
         public string UserDisplayName { get; set; }
         public string ChangeReason { get; set; }
         public string BusinessJustification { get; set; }
+        public bool CanApproveJob { get; set; }
 
-        public PatchJobRequest(bool isAllowed, string userIdentity, Guid syncJobId, JsonPatchDocument<SyncJobPatch> patchDocument, string userDisplayName, string changeReason, string businessJustification)
+        public PatchJobRequest(
+            bool isAllowed,
+            string userIdentity,
+            Guid syncJobId, 
+            JsonPatchDocument<SyncJobPatch> patchDocument, 
+            string userDisplayName, 
+            string changeReason, 
+            string businessJustification,
+            bool canApproveJob)
         {
             IsAllowed = isAllowed;
             UserIdentity = userIdentity;
@@ -25,6 +34,7 @@ namespace Services.Messages.Requests
             UserDisplayName = userDisplayName;
             ChangeReason = changeReason;
             BusinessJustification = businessJustification;
+            CanApproveJob = canApproveJob;
         }
     }
 }

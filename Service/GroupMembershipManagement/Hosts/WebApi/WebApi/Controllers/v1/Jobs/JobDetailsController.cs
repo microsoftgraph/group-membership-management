@@ -85,7 +85,7 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
-        [Authorize(Roles = Models.Roles.SUBMISSION_REVIEWER)]
+        [Authorize(Roles = $"{Models.Roles.SUBMISSION_REVIEWER}, {Models.Roles.SUBMISSION_REJECTOR}")]
         [HttpPatch("{syncJobId}/review")]
         [Consumes("application/json-patch+json")]
         public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
@@ -112,7 +112,9 @@ namespace WebApi.Controllers.v1.Jobs
 
                 var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+                var canApproveJob = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
+
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification, canApproveJob));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -164,7 +166,7 @@ namespace WebApi.Controllers.v1.Jobs
 
                 var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification, false));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -218,7 +220,7 @@ namespace WebApi.Controllers.v1.Jobs
 
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification, false));
 
                 var patchJobResponse = new PatchJobResponse
                 {
