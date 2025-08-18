@@ -78,7 +78,7 @@ param featureFlags object = {
 @description('Number of concurrent write requests to the Graph API.')
 @minValue(1)
 @maxValue(10)
-param concurrentWriteRequests int = 10
+param concurrentWriteRequests int = 1
 
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
@@ -154,6 +154,7 @@ var appSettings = {
   triggerSchedule: triggerSchedule
   triggerDelay: triggerDelay
   concurrentWriteRequests: concurrentWriteRequests
+  'GraphUpdater:UpdateBatchSize': 400
 }
 
 var activityFunctionSettings = {
