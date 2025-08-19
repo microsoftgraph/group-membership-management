@@ -113,6 +113,14 @@ function Set-AppRolesIfNeeded {
             AllowedMemberTypes = @($memberTypes)
         },
         @{
+            DisplayName        = "Submission Rejector"
+            Description        = "Can view and reject Submission Requests for all groups."
+            Value              = "Submission.Reject.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
             DisplayName        = "Hyperlink Administrator"
             Description        = "Can add, update, or remove custom URLs."
             Value              = "Hyperlink.ReadWrite.All"

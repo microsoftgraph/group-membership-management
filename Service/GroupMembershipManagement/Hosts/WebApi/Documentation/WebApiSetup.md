@@ -68,6 +68,12 @@ The roles are:
     - View user information from custom source.
     - _Note: for Submission Reviewers to be able to see all pending requests, they need to also have the Job Tenant Reader role_
 
+- Submission Rejector
+    - View Submission Requests for all groups​.
+    - Decline Submission requests​.
+    - View user information from custom source.
+    - _Note: for Submission Rejectors to be able to see all pending requests, they need to also have the Job Tenant Reader role_
+
 - Hyperlink Administrator
     - Users with this role can **add, update, and remove** custom urls from the Admin Center page.
 
