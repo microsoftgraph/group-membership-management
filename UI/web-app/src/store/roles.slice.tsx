@@ -14,6 +14,7 @@ export type Roles = {
   isJobTenantReader: boolean;
   isJobTenantWriter: boolean;
   isSubmissionReviewer: boolean;
+  isSubmissionRejector: boolean;
   isHyperlinkAdministrator: boolean;
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;
@@ -30,6 +31,7 @@ const initialState: Roles = {
   isJobTenantReader: false,
   isJobTenantWriter: false,
   isSubmissionReviewer: false,
+  isSubmissionRejector: false,
   isHyperlinkAdministrator: false,
   isCustomMembershipProviderAdministrator: false,
   isOperationsResetAdministrator: false,
@@ -48,6 +50,7 @@ export const rolesSlice = createSlice({
     builder.addCase(getAllRoles.fulfilled, (state, action) => {
         Object.assign(state, action.payload);
         state.isFetchingRoles = false;
+        console.log('Roles fetched successfully:', action.payload);
     });
     builder.addCase(getAllRoles.rejected, (state) => {
         state.isFetchingRoles = false;
@@ -62,6 +65,7 @@ export const selectIsJobOwnerDeleter = (state: RootState) => state.roles.isJobOw
 export const selectIsJobTenantReader = (state: RootState) => state.roles.isJobTenantReader;
 export const selectIsJobTenantWriter = (state: RootState) => state.roles.isJobTenantWriter;
 export const selectIsSubmissionReviewer = (state: RootState) => state.roles.isSubmissionReviewer;
+export const selectIsSubmissionRejector = (state: RootState) => state.roles.isSubmissionRejector;
 export const selectIsHyperlinkAdministrator = (state: RootState) => state.roles.isHyperlinkAdministrator;
 export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
 export const selectIsOperationsResetAdministrator = (state: RootState) => state.roles.isOperationsResetAdministrator;

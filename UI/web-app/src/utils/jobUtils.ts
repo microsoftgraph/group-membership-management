@@ -64,8 +64,8 @@ export const processJob = (job: Job): Job => {
 };
 
 // Get the display action required for a job based on user role
-export const getDisplayActionRequired = (job: Job, isSubmissionReviewer: boolean): string => {
-  if (job.status === SyncStatus.PendingConfiguration && !isSubmissionReviewer) {
+export const getDisplayActionRequired = (job: Job, canReviewJob: boolean): string => {
+  if (job.status === SyncStatus.PendingConfiguration && !canReviewJob) {
     return ActionRequired.PendingReview;
   }
   return job.actionRequired;

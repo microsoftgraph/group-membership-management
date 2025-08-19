@@ -80,7 +80,7 @@ import {
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
 import Papa from 'papaparse';
-import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 import { getDisplayActionRequired } from '../../utils/jobUtils';
 
@@ -125,6 +125,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const [csvErrorMessage, setCsvErrorMessage] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<IItem[]>([]);
   const jobsToDownloadLoading = useSelector(downloadJobsLoading);
@@ -467,7 +468,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         );
 
       case 'actionRequired':
-        const displayActionRequired = getDisplayActionRequired(item, isSubmissionReviewer);
+        const displayActionRequired = getDisplayActionRequired(item, isSubmissionReviewer || isSubmissionRejector);
         return (
           displayActionRequired ?
             (displayActionRequired === ActionRequired.PendingReview ?

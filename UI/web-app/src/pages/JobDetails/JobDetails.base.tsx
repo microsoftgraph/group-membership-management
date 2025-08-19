@@ -63,7 +63,7 @@ import {
 } from './JobDetails.types';
 import { useStrings } from '../../store/hooks';
 import { setPagingBarVisible } from '../../store/pagingBar.slice';
-import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
 import { PatchJobResponse, SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { Loader } from '../../components/Loader';
@@ -366,6 +366,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const { job, resolveReview, classNames } = props;
   const { jobId } = useParams<{ jobId: string }>();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+  const isSubmissionRejector = useSelector(selectIsSubmissionRejector);
   const patchError = useSelector(selectPatchJobDetailsError);
   const patchResponse = useSelector(selectPatchJobDetailsResponse);
   const [jobStatus, setJobStatus] = useState(job.status);
@@ -527,7 +528,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         </div>
         {(jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration) && (
           <Stack>
-            {jobStatus === SyncStatus.PendingConfiguration && isSubmissionReviewer ?
+            {jobStatus === SyncStatus.PendingConfiguration && (isSubmissionReviewer || isSubmissionRejector) ?
               <div className={classNames.membershipStatusPendingLabel}>
                 <Icon iconName='HourGlass' className={classNames.clockIcon} />
                 <Text>
@@ -541,7 +542,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
                   </Text>
                 </div>
             }
-            <Text>{isSubmissionReviewer ?
+            <Text>{(isSubmissionReviewer || isSubmissionRejector) ?
             <>
               {jobStatus === SyncStatus.PendingConfiguration
                 ? strings.JobDetails.labels.pendingConfigurationInstructions
@@ -554,9 +555,9 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
               }
             </>
               : strings.JobDetails.labels.pendingReviewDescription}</Text>
-            {isSubmissionReviewer && jobStatus === SyncStatus.PendingReview && (
+            {(isSubmissionReviewer || isSubmissionRejector) && jobStatus === SyncStatus.PendingReview && (
               <div className={classNames.membershipStatusActionButtons}>
-                <DefaultButton onClick={() => handleApproveSubmission(true)} text={strings.JobDetails.labels.approve} />
+                {isSubmissionReviewer && (<DefaultButton onClick={() => handleApproveSubmission(true)} text={strings.JobDetails.labels.approve} />)}
                 <PrimaryButton onClick={() => handleApproveSubmission(false)} text={strings.JobDetails.labels.reject} />
               </div>
             )}
@@ -574,7 +575,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       </div>
 
       <div className={classNames.requestor}>      
-      {isSubmissionReviewer && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedByObjectId && (
+      {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedByObjectId && (
         <div>
         <Stack.Item align="start">
           <InfoLabel
@@ -609,7 +610,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         </div>
         )}
 
-        {isSubmissionReviewer && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedOnBehalfOfObjectId &&
+        {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedOnBehalfOfObjectId &&
         (jobDetails.lastModifiedOnBehalfOfObjectId !== jobDetails.lastModifiedByObjectId) && (
         <div>
         <Stack.Item align="start">

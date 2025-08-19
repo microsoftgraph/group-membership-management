@@ -2,16 +2,19 @@
 // Licensed under the MIT license.
 
 export interface Roles {
-  isJobOwnerReader(): boolean;
-  isJobOwnerEnabler(): boolean;
-  isJobOwnerDeleter(): boolean;
-  isJobOwnerConfigurationEditor(): boolean;
-  isJobOwnerWriter(): boolean;
-  isJobTenantReader(): boolean;
-  isJobTenantWriter(): boolean;
-  isHyperlinkAdministrator(): boolean;
-  isCustomMembershipProviderAdministrator(): boolean;
-  isOperationsResetAdministrator(): boolean;
+  isJobOwnerReader: boolean;
+  isJobOwnerEnabler: boolean;
+  isJobOwnerDeleter: boolean;
+  isJobOwnerWriter: boolean;
+  isJobTenantReader: boolean; 
+  isJobTenantWriter: boolean;
+  isSubmissionReviewer: boolean;
+  isSubmissionRejector: boolean;
+  isHyperlinkAdministrator: boolean;
+  isCustomMembershipProviderAdministrator: boolean;
+  isOperationsResetAdministrator: boolean;
+  isGeneralSettingsAdministrator: boolean;
+  isFetchingRoles: boolean;
 }
 
 
