@@ -61,11 +61,16 @@ function Get-KeyVaultSecretWithFirewallRetry {
     while ($retryCount -lt $MaxRetries -and -not $secretValue) {
         try {
             $secretValue = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -AsPlainText -ErrorAction Stop
-            Write-Host "✅ Secret '$SecretName' retrieved successfully."
+
+            if(-not $secretValue) {
+                $retryCount++
+            } else {
+                Write-Host "✅ Secret '$SecretName' retrieved successfully."
+            }
         }
         catch {
             $errorMessage = $_.Exception.Message
-            Write-Error "❌ Error retrieving secret: $errorMessage"
+            Write-Warning "❌ Error retrieving secret: $errorMessage"
 
             if ($retryCount -eq 0) {
                 Add-KeyVaultIpFromError -VaultName $VaultName -ResourceGroup $ResourceGroup -ErrorMessage $errorMessage
@@ -77,6 +82,10 @@ function Get-KeyVaultSecretWithFirewallRetry {
 
             $retryCount++
         }
+    }
+
+    if(-not $secretValue) {
+        Write-Error "❌ Error retrieving secret: $SecretName"
     }
 
     return $secretValue

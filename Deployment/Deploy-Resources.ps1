@@ -1783,9 +1783,29 @@ function Deploy-Resources {
     if(!$IsInitialDeployment) {
 
         $jobTrigger = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup `
-                                        -Name "$computeResourceGroup-JobTrigger"       
+                                        -Name "$computeResourceGroup-JobTrigger"
 
         Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
+
+        . "$scriptsDirectory\Scripts\Reset-GMM.ps1" #  Import helper functions
+        . "$scriptsDirectory\Scripts\Start-FlexConsumptionMigration.ps1"
+
+        $connectionString = Get-KeyVaultSecretWithFirewallRetry `
+            -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+            -ResourceGroup $dataResourceGroup `
+            -SecretName "sqlDatabaseConnectionString"
+
+        $connectionStringADF = Get-KeyVaultSecretWithFirewallRetry `
+            -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+            -ResourceGroup $dataResourceGroup `
+            -SecretName "sqlServerBasicConnectionString"
+
+        Start-FlexConsumptionMigration `
+            -FunctionTemplatesPath "$TemplateFilesDirectory\functions_arm_templates" `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SyncJobsDBConnectionString $connectionString `
+            -ADFDBConnectionString $connectionStringADF
     }
 
     $response = Set-GMMResources `
