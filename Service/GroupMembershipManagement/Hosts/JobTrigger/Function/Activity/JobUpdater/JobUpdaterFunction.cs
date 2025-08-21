@@ -54,7 +54,6 @@ namespace Hosts.JobTrigger
                         RunId = request.SyncJob.RunId,
                         Message = "Starting job."
                     });
-
                     request.SyncJob.LastSuccessfulStartTime = now;
                 }
 
@@ -65,7 +64,6 @@ namespace Hosts.JobTrigger
                         RunId = request.SyncJob.RunId,
                         Message = "Restarting job stuck in InProgress."
                     });
-
                     request.SyncJob.LastRunTime = now;
                     request.SyncJob.LastSuccessfulStartTime = now;
                 }
@@ -85,25 +83,41 @@ namespace Hosts.JobTrigger
 
                 // Send message to SyncJobUpdater queue
                 var syncJobUpdaterQueue = _configuration["serviceBusSyncJobUpdaterQueue"];
-                await using var sender = _serviceBusClient.CreateSender(syncJobUpdaterQueue);
-
-                var messageBody = JsonSerializer.Serialize(queueMessage);
-                var serviceBusMessage = new Azure.Messaging.ServiceBus.ServiceBusMessage(messageBody)
+                if (string.IsNullOrWhiteSpace(syncJobUpdaterQueue))
                 {
-                    MessageId = Guid.NewGuid().ToString()
-                };
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = "Configuration value 'serviceBusSyncJobUpdaterQueue' is missing or empty.",
+                        RunId = request.SyncJob.RunId
+                    });
+                    throw new InvalidOperationException("Configuration value 'serviceBusSyncJobUpdaterQueue' is missing or empty.");
+                }
 
-                serviceBusMessage.ApplicationProperties.Add("MessageType", "JobStatusUpdate");
-                serviceBusMessage.ApplicationProperties.Add("RunId", queueMessage.RunId.ToString());
-                serviceBusMessage.ApplicationProperties.Add("JobId", queueMessage.JobId.ToString());
-
-                await sender.SendMessageAsync(serviceBusMessage);
-
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                var sender = _serviceBusClient.CreateSender(syncJobUpdaterQueue);
+                try
                 {
-                    Message = $"Dispatched job status update queue message {serviceBusMessage.MessageId} for job {queueMessage.JobId} with status {queueMessage.NewStatus}",
-                    RunId = request.SyncJob.RunId
-                }, VerbosityLevel.DEBUG);
+                    var messageBody = JsonSerializer.Serialize(queueMessage);
+                    var serviceBusMessage = new Azure.Messaging.ServiceBus.ServiceBusMessage(messageBody)
+                    {
+                        MessageId = Guid.NewGuid().ToString()
+                    };
+
+                    serviceBusMessage.ApplicationProperties.Add("MessageType", "JobStatusUpdate");
+                    serviceBusMessage.ApplicationProperties.Add("RunId", queueMessage.RunId.ToString());
+                    serviceBusMessage.ApplicationProperties.Add("JobId", queueMessage.JobId.ToString());
+
+                    await sender.SendMessageAsync(serviceBusMessage);
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Dispatched job status update queue message {serviceBusMessage.MessageId} for job {queueMessage.JobId} with status {queueMessage.NewStatus}",
+                        RunId = request.SyncJob.RunId
+                    }, VerbosityLevel.DEBUG);
+                }
+                finally
+                {
+                    await sender.DisposeAsync();
+                }
             }
             catch (Exception ex)
             {
