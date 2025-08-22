@@ -455,7 +455,11 @@ namespace WebApi
                 return new ServiceBusQueueRepository(sender);
             });
 
-            builder.Services.AddSingleton<OpenAIService>();
+            var openAIEndpoint = builder.Configuration["Settings:OpenAIEndpoint"];
+            if (!string.IsNullOrWhiteSpace(openAIEndpoint))
+            {
+                builder.Services.AddSingleton<IOpenAIService, OpenAIService>();
+            }
 
             builder.Services.AddSignalR().AddAzureSignalR(builder.Configuration["Settings:AzureSignalRConnectionString"]);
 
