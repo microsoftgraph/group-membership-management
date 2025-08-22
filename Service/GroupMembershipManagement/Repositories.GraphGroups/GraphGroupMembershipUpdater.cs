@@ -33,9 +33,6 @@ namespace Repositories.GraphGroups
         private static readonly string _notFoundResponseError = "One or more removed object references do not exist for the following modified properties: 'members'.";
         private static readonly string _alreadyExistsResponseError = "One or more added object references already exist for the following modified properties: 'members'.";
 
-        private static readonly Regex _userNotFound =
-            new Regex(@"Resource '(?<id>[({]?[a-fA-F0-9]{8}[-]?([a-fA-F0-9]{4}[-]?){3}[a-fA-F0-9]{12}[})]?)' does not exist", RegexOptions.IgnoreCase);
-
         private delegate HttpRequestMessage MakeBulkRequest(List<AzureADUser> batch);
 
         private ConcurrentBag<AzureADUser> _usersNotFound = new ConcurrentBag<AzureADUser>();
@@ -507,53 +504,54 @@ namespace Repositories.GraphGroups
                 }
                 else if (status == HttpStatusCode.NotFound && (content).Contains("does not exist or one of its queried reference-property objects are not present."))
                 {
-                    var match = _userNotFound.Match(content);
-                    var userId = default(string);
                     var requestStep = requests[kvp.Key];
-
-                    if (match.Success)
+                    
+                    // For individual requests (DELETE/POST), we can use the requestId directly
+                    // For batch PATCH requests, the requestId is a batch ID, not a user ID
+                    if (requestStep.Request.Method == HttpMethod.Delete || requestStep.Request.Method == HttpMethod.Post)
                     {
-                        userId = match.Groups["id"].Value;
-                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        // Use the requestId directly for individual requests to avoid parsing issues 
+                        // where Graph may return group IDs in error messages instead of user IDs
+                        var userId = requestStep.RequestId;
+
+                        if (requestStep.Request.Method == HttpMethod.Delete)
                         {
-                            Message = $"User ID is found",
-                            RunId = RunId
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Removing {userId} failed as this resource does not exists.",
+                                RunId = RunId
+                            });
+                        }
+                        else
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Adding {userId} failed as this resource does not exists.",
+                                RunId = RunId
+                            });
+                        }
+
+                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
+                        
+                        retryResponses.Add(new RetryResponse
+                        {
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.IndividualRetry,
+                            AzureObjectId = userId,
+                            HttpStatusCode = HttpStatusCode.NotFound
                         });
                     }
                     else
                     {
-                        userId = requestStep.RequestId;
-                    }
-
-                    if (requestStep.Request.Method == HttpMethod.Delete)
-                    {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        // For batch PATCH requests, we can't reliably determine the user ID from the response
+                        // Just mark for individual retry - the specific user will be identified during retry
+                        retryResponses.Add(new RetryResponse
                         {
-                            Message = $"Removing {userId} failed as this resource does not exists.",
-                            RunId = RunId
+                            RequestId = kvp.Key,
+                            ResponseCode = ResponseCode.IndividualRetry,
+                            HttpStatusCode = HttpStatusCode.NotFound
                         });
-
-                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
                     }
-                    else
-                    {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Adding {userId} failed as this resource does not exists.",
-                            RunId = RunId
-                        });
-
-                        _usersNotFound.Add(new AzureADUser { ObjectId = Guid.Parse(userId) });
-                    }
-
-                    retryResponses.Add(new RetryResponse
-                    {
-                        RequestId = kvp.Key,
-                        ResponseCode = ResponseCode.IndividualRetry,
-                        AzureObjectId = userId,
-                        HttpStatusCode = HttpStatusCode.NotFound
-                    });
-
                 }
                 else if (_isOkay.Contains(status)) { writesUsed.TrackValue(1); }
                 else if (status == HttpStatusCode.TooManyRequests)

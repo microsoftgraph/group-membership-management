@@ -122,7 +122,7 @@ namespace Services.Tests
                                         if (usersNotFoundIds.Contains(userId))
                                         {
                                             var id = step["id"].GetValue<string>();
-                                            var message = $"Resource '{id}' does not exist or one of its queried reference-property objects are not present.";
+                                            var message = $"Resource '{userId}' does not exist or one of its queried reference-property objects are not present.";
                                             individualResponsesForPOSTRequests.Add(GenerateNotFoundIndividualResponse(id, message));
                                         }
                                         else
