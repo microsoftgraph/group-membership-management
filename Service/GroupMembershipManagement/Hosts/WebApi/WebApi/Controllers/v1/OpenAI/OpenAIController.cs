@@ -234,7 +234,6 @@ Input: " + partsJson;
             return basePrompt;
         }
 
-
         private string BuildTitlePrompt(string filter)
         {
             var basePrompt = @"
