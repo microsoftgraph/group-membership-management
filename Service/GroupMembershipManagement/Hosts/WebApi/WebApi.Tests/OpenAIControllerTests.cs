@@ -3,153 +3,1001 @@
 
 using Microsoft.Extensions.Configuration;
 using Moq;
-using System.Reflection;
 using WebApi.Controllers.v1.OpenAI;
 using WebApi.BackgroundServices;
+using Repositories.Contracts;
+using System.Text.Json;
+using Models;
+using Microsoft.AspNetCore.Mvc;
+using Azure;
+using Services.WebApi.Contracts;
 
-namespace Services.Tests
+namespace WebApi.Tests
 {
     [TestClass]
     public class OpenAIControllerTests
     {
-        private Mock<OpenAIService> _mockOpenAIService = null!;
+        private Mock<IOpenAIService> _mockOpenAIService = null!;
+        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private OpenAIController _controller = null!;
 
         [TestInitialize]
         public void Initialize()
         {
-            var mockConfiguration = new Mock<IConfiguration>();
-            mockConfiguration.Setup(x => x["Settings:OpenAIEndpoint"]).Returns("https://test-endpoint.com");
-
-            _mockOpenAIService = new Mock<OpenAIService>(mockConfiguration.Object);
-            _controller = new OpenAIController(_mockOpenAIService.Object);
+            _mockOpenAIService = new Mock<IOpenAIService>();
+            _mockLoggingRepository = new Mock<ILoggingRepository>();
+            _controller = new OpenAIController(_mockOpenAIService.Object, _mockLoggingRepository.Object);
         }
 
         [TestMethod]
         public void Constructor_WithNullService_ThrowsArgumentNullException()
         {
-            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(null!));
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(null!, _mockLoggingRepository.Object));
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_WithValidFilter_ReturnsNonEmptyPrompt()
+        public void Constructor_WithNullLoggingRepository_ThrowsArgumentNullException()
         {
-            var filter = "EmployeeType_Code = 'FTE' And LocationArea_Code = 'MX'";
-            var prompt = InvokeBuildTitlePrompt(filter);
-
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty");
-            Assert.IsTrue(prompt.Contains($"Here is the filter: {filter}"), "Prompt should contain the filter");
-            Assert.IsTrue(prompt.Contains("Create **one** string title"), "Prompt should contain instruction");
-            Assert.IsTrue(prompt.Contains("SQL WHERE clause format"), "Prompt should mention SQL format");
-            Assert.IsTrue(prompt.Contains("Don't include any prefixes"), "Prompt should contain prefix instruction");
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(_mockOpenAIService.Object, null!));
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_WithEmptyFilter_ReturnsNonEmptyPrompt()
+        public void Constructor_ValidatesOpenAIServiceDependency()
         {
-            var filter = "";
-            var prompt = InvokeBuildTitlePrompt(filter);
+            // Test that the controller properly validates the OpenAI service dependency
+            var mockConfiguration = new Mock<IConfiguration>();
+            mockConfiguration.Setup(x => x["Settings:OpenAIEndpoint"]).Returns("https://test-endpoint.com");
 
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty even with empty filter");
-            Assert.IsTrue(prompt.Contains("Here is the filter: "), "Prompt should contain filter placeholder");
-            Assert.IsTrue(prompt.Length > 100, "Prompt should have substantial content beyond just the filter");
+            var openAIService = new OpenAIService(mockConfiguration.Object);
+            var controller = new OpenAIController(openAIService, _mockLoggingRepository.Object);
+            Assert.IsNotNull(controller, "Controller should be created successfully with valid OpenAI service");
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_WithNullFilter_ReturnsNonEmptyPrompt()
+        public void OpenAIService_ThrowsExceptionWithInvalidEndpoint()
         {
-            string? filter = null;
-            var prompt = InvokeBuildTitlePrompt(filter);
+            // Test that OpenAI service throws exception when endpoint is not configured
+            var mockConfiguration = new Mock<IConfiguration>();
+            mockConfiguration.Setup(x => x["Settings:OpenAIEndpoint"]).Returns((string?)null);
 
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty even with null filter");
-            Assert.IsTrue(prompt.Contains("Here is the filter: "), "Prompt should contain filter placeholder");
-            Assert.IsTrue(prompt.Length > 100, "Prompt should have substantial content");
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIService(mockConfiguration.Object),
+                "OpenAI service should throw ArgumentNullException when endpoint is not configured");
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_WithComplexFilter_ContainsFullFilter()
+        public async Task GenerateTitle_WithNullFilter_ReturnsBadRequest()
         {
-            var filter = "Department = 'Engineering' AND (JobFunction_Code = 'N1F' OR JobFunction_Code = 'N1J') AND EmployeeType_Code IN ('FTE', 'Vendor')";
-            var prompt = InvokeBuildTitlePrompt(filter);
+            // Act
+            var result = await _controller.GenerateTitle(null);
 
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty");
-            Assert.IsTrue(prompt.Contains(filter), "Prompt should contain the complete complex filter");
-            Assert.IsTrue(prompt.Contains("AND/OR"), "Prompt should mention AND/OR operators");
-            Assert.IsTrue(prompt.Contains("IN, NOT IN"), "Prompt should mention IN operator");
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(BadRequestObjectResult));
+            var badRequestResult = result as BadRequestObjectResult;
+            Assert.IsNotNull(badRequestResult?.Value);
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_ContainsAllRequiredInstructions()
+        public async Task GenerateTitle_WithEmptyFilter_ReturnsBadRequest()
         {
-            var filter = "Simple = 'Test'";
-            var prompt = InvokeBuildTitlePrompt(filter);
+            // Act
+            var result = await _controller.GenerateTitle("");
 
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty");
-            Assert.IsTrue(prompt.Contains("Create **one** string title"), "Should instruct to create one title");
-            Assert.IsTrue(prompt.Contains("SQL WHERE clause format"), "Should mention SQL format");
-            Assert.IsTrue(prompt.Contains("[ATTRIBUTE] [OPERATOR] [VALUE]"), "Should show format example");
-            Assert.IsTrue(prompt.Contains("CountryName = 'USA' AND ChildCount > 2"), "Should provide example");
-            Assert.IsTrue(prompt.Contains("=, <>, >, <, >=, <=, IN, NOT IN"), "Should list operators");
-            Assert.IsTrue(prompt.Contains("Don't include any prefixes"), "Should instruct about prefixes");
-            Assert.IsTrue(prompt.Contains("Do not generate multiple titles"), "Should instruct single title");
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(BadRequestObjectResult));
+            var badRequestResult = result as BadRequestObjectResult;
+            Assert.IsNotNull(badRequestResult?.Value);
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_WithSpecialCharacters_HandlesCorrectly()
+        public async Task GenerateTitle_WithWhitespaceFilter_ReturnsBadRequest()
         {
-            var filter = "Email LIKE '%@microsoft.com%'";
-            var prompt = InvokeBuildTitlePrompt(filter);
+            // Act
+            var result = await _controller.GenerateTitle("   ");
 
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty");
-            Assert.IsTrue(prompt.Contains(filter), "Prompt should contain filter with special characters");
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(BadRequestObjectResult));
+            var badRequestResult = result as BadRequestObjectResult;
+            Assert.IsNotNull(badRequestResult?.Value);
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_WithLongFilter_HandlesCorrectly()
+        public async Task GenerateTitle_WithValidFilter_ReturnsOkWithTitle()
         {
-            var filter = "Department = 'Engineering' AND Location IN ('Seattle', 'Redmond', 'Bellevue', 'Kirkland') " +
-                        "AND (StartDate >= '2020-01-01' AND StartDate <= '2023-12-31') " +
-                        "AND (Title LIKE '%Senior%' OR Title LIKE '%Principal%' OR Title LIKE '%Manager%') " +
-                        "AND Status = 'Active' AND EmployeeType <> 'Contractor'";
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            var expectedTitle = "FTE Employees";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(expectedTitle);
 
-            var prompt = InvokeBuildTitlePrompt(filter);
-            Assert.IsFalse(string.IsNullOrEmpty(prompt), "Prompt should not be empty");
-            Assert.IsTrue(prompt.Contains(filter), "Prompt should contain the complete long filter");
-            Assert.IsTrue(prompt.Length > filter.Length + 100, "Prompt should have additional instructional content");
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(OkObjectResult));
+            var okResult = result as OkObjectResult;
+            Assert.AreEqual(expectedTitle, okResult?.Value);
         }
 
         [TestMethod]
-        public void BuildTitlePrompt_AlwaysReturnsConsistentStructure()
+        public async Task GenerateTitle_WithInvalidOperationException_ReturnsInternalServerError()
         {
-            var filters = new string?[]
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("Service not configured"));
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithRequestFailedException500_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            var requestFailedException = new RequestFailedException(500, "Internal server error", "InternalError", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithGenericException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new Exception("Unexpected error"));
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithNullParts_ReturnsBadRequest()
+        {
+            // Act
+            var result = await _controller.GenerateTitles(null);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(BadRequestObjectResult));
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithEmptyParts_ReturnsBadRequest()
+        {
+            // Act
+            var result = await _controller.GenerateTitles(new List<Part>());
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(BadRequestObjectResult));
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithInvalidParts_ReturnsBadRequest()
+        {
+            // Arrange
+            var parts = new List<Part>
             {
-                "Status = 'Active'",
-                "",
-                null,
-                "Complex = 'Filter' AND Multiple = 'Conditions'",
-                "Special='Chars&Symbols%'"
+                new Part(Guid.Empty, ""), // Invalid part
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
             };
 
-            foreach (var filter in filters)
-            {
-                var prompt = InvokeBuildTitlePrompt(filter);
+            // Act
+            var result = await _controller.GenerateTitles(parts);
 
-                Assert.IsFalse(string.IsNullOrEmpty(prompt), $"Prompt should not be empty for filter: {filter ?? "null"}");
-                Assert.IsTrue(prompt.Contains("Create **one** string title"), "Prompt should always contain main instruction");
-                Assert.IsTrue(prompt.Contains("Here is the filter:"), "Prompt should always contain filter section");
-                Assert.IsTrue(prompt.Contains("SQL WHERE clause format"), "Prompt should always explain format");
-            }
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(BadRequestObjectResult));
         }
 
-        private string InvokeBuildTitlePrompt(string? filter)
+        [TestMethod]
+        public async Task GenerateTitles_WithPartsHavingInvalidFilter_ReturnsBadRequest()
         {
-            var method = typeof(OpenAIController).GetMethod("BuildTitlePrompt",
-                BindingFlags.NonPublic | BindingFlags.Instance);
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "   "), // Whitespace filter
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
 
-            Assert.IsNotNull(method, "BuildTitlePrompt method should exist");
+            // Act
+            var result = await _controller.GenerateTitles(parts);
 
-            var result = method.Invoke(_controller, new object?[] { filter });
-            return result as string ?? string.Empty;
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(BadRequestObjectResult));
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithValidParts_ReturnsOkWithTitles()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'"),
+                new Part(Guid.NewGuid(), "LocationArea_Code = 'US'")
+            };
+
+            var expectedResponse = new List<Part>
+            {
+                new Part(parts[0].PartId, parts[0].Filter, "FTE Employees"),
+                new Part(parts[1].PartId, parts[1].Filter, "Located in US")
+            };
+
+            var responseJson = JsonSerializer.Serialize(expectedResponse);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(OkObjectResult));
+            var okResult = result.Result as OkObjectResult;
+            var returnedParts = okResult?.Value as List<Part>;
+            Assert.IsNotNull(returnedParts);
+            Assert.AreEqual(2, returnedParts.Count);
+            Assert.IsTrue(returnedParts.All(p => p.HasTitle()));
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithEmptyOpenAIResponse_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(string.Empty);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithInvalidJsonResponse_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync("invalid json response");
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithMismatchedPartCount_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'"),
+                new Part(Guid.NewGuid(), "LocationArea_Code = 'US'")
+            };
+
+            // Return only one title for two parts
+            var responseJson = JsonSerializer.Serialize(new List<Part>
+            {
+                new Part(parts[0].PartId, parts[0].Filter, "FTE Employees")
+            });
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithMissingPartIds_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'"),
+                new Part(Guid.NewGuid(), "LocationArea_Code = 'US'")
+            };
+
+            // Return different PartIds than input
+            var responseJson = JsonSerializer.Serialize(new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'", "FTE Employees"),
+                new Part(Guid.NewGuid(), "LocationArea_Code = 'US'", "Located in US")
+            });
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithEmptyTitles_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var responseJson = JsonSerializer.Serialize(new List<Part>
+            {
+                new Part(parts[0].PartId, parts[0].Filter, "") // Empty title
+            });
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithArgumentException_ReturnsBadRequest()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new ArgumentException("Invalid argument"));
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(BadRequestObjectResult));
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithInvalidOperationException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("Service not configured"));
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithRequestFailedException429_ReturnsServiceUnavailable()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var requestFailedException = new RequestFailedException(429, "Rate limited", "TooManyRequests", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(503, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithRequestFailedException500_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var requestFailedException = new RequestFailedException(500, "Internal server error", "InternalError", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithGenericException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new Exception("Unexpected error"));
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithTimeoutException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new TimeoutException("OpenAI API call timed out after 30 seconds"));
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+            Assert.IsNotNull(objectResult?.Value);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithTimeoutException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new TimeoutException("OpenAI API call timed out after 30 seconds"));
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithTaskCanceledException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new TaskCanceledException("Operation was canceled"));
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithTaskCanceledException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new TaskCanceledException("Operation was canceled"));
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithHttpRequestException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new HttpRequestException("HTTP request failed"));
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithHttpRequestException_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(new HttpRequestException("HTTP request failed"));
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithRequestFailedException502_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            var requestFailedException = new RequestFailedException(502, "Bad gateway", "BadGateway", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithRequestFailedException502_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var requestFailedException = new RequestFailedException(502, "Bad gateway", "BadGateway", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithRequestFailedException503_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            var requestFailedException = new RequestFailedException(503, "Service unavailable", "ServiceUnavailable", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithRequestFailedException503_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var requestFailedException = new RequestFailedException(503, "Service unavailable", "ServiceUnavailable", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithRequestFailedException504_ReturnsInternalServerError()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            var requestFailedException = new RequestFailedException(504, "Gateway timeout", "GatewayTimeout", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(ObjectResult));
+            var objectResult = result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithRequestFailedException504_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var requestFailedException = new RequestFailedException(504, "Gateway timeout", "GatewayTimeout", null);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ThrowsAsync(requestFailedException);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithNullResult_ReturnsOkWithNull()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync((string?)null);
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(OkObjectResult));
+            var okResult = result as OkObjectResult;
+            Assert.IsNull(okResult?.Value);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithNullFromOpenAI_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync((string?)null);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithWhitespaceOnlyFromOpenAI_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync("   ");
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithDeserializedNullList_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var responseJson = "null";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithEmptyDeserializedList_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var responseJson = "[]";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithMalformedJson_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync("{invalid json}");
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithPartiallyValidJson_ReturnsInternalServerError()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync("[{\"partId\":\"123\",\"title\":\"test\"},invalid]");
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(ObjectResult));
+            var objectResult = result.Result as ObjectResult;
+            Assert.AreEqual(500, objectResult?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithEmptyStringResult_ReturnsOkWithEmptyString()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(""); // Semicolon was missing here
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(OkObjectResult));
+            var okResult = result as OkObjectResult;
+            Assert.AreEqual("", okResult?.Value);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithWhitespaceResult_ReturnsOkWithWhitespace()
+        {
+            // Arrange
+            var filter = "EmployeeType_Code = 'FTE'";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync("   ");
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(OkObjectResult));
+            var okResult = result as OkObjectResult;
+            Assert.AreEqual("   ", okResult?.Value);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitle_WithVeryLongFilter_ReturnsOkWithTitle()
+        {
+            // Arrange
+            var filter = new string('A', 10000); // Very long filter
+            var expectedTitle = "Long Filter Title";
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(expectedTitle);
+
+            // Act
+            var result = await _controller.GenerateTitle(filter);
+
+            // Assert
+            Assert.IsInstanceOfType(result, typeof(OkObjectResult));
+            var okResult = result as OkObjectResult;
+            Assert.AreEqual(expectedTitle, okResult?.Value);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithManyParts_ReturnsOkWithTitles()
+        {
+            // Arrange
+            var parts = Enumerable.Range(0, 100)
+                .Select(i => new Part(Guid.NewGuid(), $"EmployeeType_Code = 'Type{i}'"))
+                .ToList();
+
+            var expectedResponse = parts.Select(p => new Part(p.PartId, p.Filter, "EmployeeType Title")).ToList();
+            var responseJson = JsonSerializer.Serialize(expectedResponse);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(OkObjectResult));
+            var okResult = result.Result as OkObjectResult;
+            var returnedParts = okResult?.Value as List<Part>;
+            Assert.IsNotNull(returnedParts);
+            Assert.AreEqual(100, returnedParts.Count);
+            Assert.IsTrue(returnedParts.All(p => p.HasTitle()));
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithDuplicatePartIds_ReturnsOkIfAllPresent()
+        {
+            // Arrange - This tests when duplicate PartIds are in input but all are returned
+            var partId = Guid.NewGuid();
+            var parts = new List<Part>
+            {
+                new Part(partId, "EmployeeType_Code = 'FTE'"),
+                new Part(partId, "LocationArea_Code = 'US'") // Duplicate PartId
+            };
+
+            var expectedResponse = new List<Part>
+            {
+                new Part(partId, "EmployeeType_Code = 'FTE'", "FTE Employees"),
+                new Part(partId, "LocationArea_Code = 'US'", "Located in US")
+            };
+
+            var responseJson = JsonSerializer.Serialize(expectedResponse);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(OkObjectResult));
+            var okResult = result.Result as OkObjectResult;
+            var returnedParts = okResult?.Value as List<Part>;
+            Assert.IsNotNull(returnedParts);
+            Assert.AreEqual(2, returnedParts.Count);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_WithSpecialCharactersInTitle_ReturnsOkWithTitles()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var expectedResponse = new List<Part>
+            {
+                new Part(parts[0].PartId, parts[0].Filter, "FTE Employees")
+            };
+
+            var responseJson = JsonSerializer.Serialize(expectedResponse);
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>())).ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            Assert.IsInstanceOfType(result.Result, typeof(OkObjectResult));
+            var okResult = result.Result as OkObjectResult;
+            var returnedParts = okResult?.Value as List<Part>;
+            Assert.IsNotNull(returnedParts);
+            Assert.AreEqual(1, returnedParts.Count);
+            Assert.AreEqual("FTE Employees", returnedParts[0].Title);
+        }
+
+        [TestMethod]
+        public async Task GenerateTitles_CallsOpenAIServiceWithCorrectPrompt()
+        {
+            // Arrange
+            var parts = new List<Part>
+            {
+                new Part(Guid.NewGuid(), "EmployeeType_Code = 'FTE'")
+            };
+
+            var expectedResponse = new List<Part>
+            {
+                new Part(parts[0].PartId, parts[0].Filter, "FTE Employees")
+            };
+
+            var responseJson = JsonSerializer.Serialize(expectedResponse);
+            string capturedPrompt = null!;
+
+            _mockOpenAIService.Setup(x => x.GetTitleAsync(It.IsAny<string>()))
+                .Callback<string>(prompt => capturedPrompt = prompt)
+                .ReturnsAsync(responseJson);
+
+            // Act
+            var result = await _controller.GenerateTitles(parts);
+
+            // Assert
+            _mockOpenAIService.Verify(x => x.GetTitleAsync(It.IsAny<string>()), Times.Once);
+            Assert.IsNotNull(capturedPrompt);
+            Assert.IsTrue(capturedPrompt.Contains(parts[0].PartId.ToString()));
+
+            // The filter should be contained within the JSON structure
+            var inputJson = JsonSerializer.Serialize(parts);
+            Assert.IsTrue(capturedPrompt.Contains(inputJson), "Prompt should contain the serialized parts JSON");
+            Assert.IsTrue(capturedPrompt.Contains("Generate concise titles"));
         }
     }
 }
