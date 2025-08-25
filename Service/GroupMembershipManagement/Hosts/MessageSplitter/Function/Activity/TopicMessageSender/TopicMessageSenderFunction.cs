@@ -8,7 +8,6 @@ using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace Hosts.MessageSplitter
@@ -61,6 +60,7 @@ namespace Hosts.MessageSplitter
             var index = 0;
             var messages = new List<ServiceBusMessage>();
             var targetSubscription = $"{destinationType}_{request.LaneSize}_{request.InstanceToUse}".ToLowerInvariant();
+            var isLargeLane = string.Equals(request.LaneSize, "Large", StringComparison.OrdinalIgnoreCase);
 
             foreach (var membership in membershipRequests)
             {
@@ -77,6 +77,12 @@ namespace Hosts.MessageSplitter
                 };
 
                 message.ApplicationProperties.Add("Type", targetSubscription);
+
+                if (isLargeLane)
+                {
+                    message.SessionId = request.MembershipRequest.SyncJob.RunId.ToString();
+                }
+
                 messages.Add(message);
             }
 

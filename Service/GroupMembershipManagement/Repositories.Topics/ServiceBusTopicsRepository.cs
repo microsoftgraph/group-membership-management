@@ -71,6 +71,11 @@ namespace Repositories.ServiceBusTopics
                 MessageId = message.MessageId
             };
 
+            if (!string.IsNullOrEmpty(message.SessionId))
+            {
+                serviceBusmessage.SessionId = message.SessionId;
+            }
+
             if (message.ApplicationProperties != null)
             {
                 foreach (var property in message.ApplicationProperties)
@@ -93,6 +98,11 @@ namespace Repositories.ServiceBusTopics
                     Body = new BinaryData(message.Body),
                     MessageId = message.MessageId
                 };
+
+                if (!string.IsNullOrEmpty(message.SessionId))
+                {
+                    serviceBusmessage.SessionId = message.SessionId;
+                }
 
                 if (message.ApplicationProperties != null)
                 {

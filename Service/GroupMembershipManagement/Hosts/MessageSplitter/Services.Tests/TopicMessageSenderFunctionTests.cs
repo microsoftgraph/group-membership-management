@@ -99,5 +99,47 @@ namespace Services.Tests
             _serviceBusTopicsRepository.Verify(x => x.AddMessagesAsync(It.Is<List<ServiceBusMessage>>(m => m.All(x => x.MessageId.Contains("GroupMembership")))));
             _serviceBusTopicsRepository.Verify(x => x.AddMessagesAsync(It.Is<List<ServiceBusMessage>>(m => m.All(x => x.ApplicationProperties["Type"].Equals(type)))));
         }
+
+        [TestMethod]
+        public async Task TestSendMessageAsync_LargeLane_SetsSessionId()
+        {
+            var function = new TopicMessageSenderFunction(
+                                    _loggingRepository.Object,
+                                    _serviceBusTopicsRepository.Object,
+                                    _multilaneConfig,
+                                    _blobStorageRepository.Object);
+
+
+            var syncJobId = Guid.NewGuid();
+            var request = new TopicMessageSenderRequest
+            {
+                MembershipRequest = new Models.MembershipHttpRequest
+                {
+                    SyncJob = new SyncJob
+                    {
+                        Id = syncJobId,
+                        ThresholdPercentageForAdditions = 80,
+                        ThresholdPercentageForRemovals = 20,
+                        LastRunTime = DateTime.UtcNow.AddDays(-1),
+                        Requestor = "user@domail.com",
+                        RunId = Guid.NewGuid(),
+                        ThresholdViolations = 0,
+                        MembershipType = "GroupMembership",
+                        Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.Parse("00000000-0000-0000-0000-000000000000")}
+                    },
+                    GroupId = Guid.NewGuid(),
+                    FilePath = "test",
+                    MembersToBeAdded = membersToBeAdded,
+                    MembersToBeRemoved = 0,
+                    ProjectedMemberCount = 20
+                },
+                InstanceToUse = 1,
+                LaneSize = "Large"
+            };
+
+            await function.SendMessageAsync(request);
+
+            _serviceBusTopicsRepository.Verify(x => x.AddMessagesAsync(It.Is<List<ServiceBusMessage>>(m => m.All(msg => !string.IsNullOrEmpty(msg.SessionId) && msg.SessionId == syncJobId.ToString()))));
+        }
     }
 }

@@ -9,16 +9,8 @@
           "subscription": "Small"
         },
         {
-          "name": "m1",
-          "subscription": "Medium"
-        },
-        {
           "name": "l1",
           "subscription": "Large"
-        },
-        {
-          "name": "o1",
-          "subscription": "Onboarding"
         }
       ]
     }
