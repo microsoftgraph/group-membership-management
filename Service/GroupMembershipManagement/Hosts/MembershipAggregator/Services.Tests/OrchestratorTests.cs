@@ -27,8 +27,7 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
-        private const int SMALL = 20;
-        private const int MEDIUM = 60;
+    private const int SMALL = 400;
 
         private SyncJob _syncJob;
         private Group _group;
@@ -62,8 +61,7 @@ namespace Services.Tests
             _multilaneConfig = Options.Create(new MultiLaneConfig
             {
                 IsEnabled = false,
-                Small = SMALL,
-                Medium = MEDIUM
+                Small = SMALL
             });
 
             _serviceBusSender = new Mock<ServiceBusSender>();
@@ -291,18 +289,18 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task SendNewJobToMessageSplitterTopicAsync()
+    public async Task SendNewJobGoesToSmallOrLargeBasedOnCountAsync()
         {
             _syncJob.LastRunTime = System.Data.SqlTypes.SqlDateTime.MinValue.Value;
 
             _multilaneConfig = Options.Create(new MultiLaneConfig
             {
                 IsEnabled = true,
-                Small = SMALL,
-                Medium = MEDIUM
+                Small = SMALL
             });
 
-            _membershipSubOrchestratorResponse.MembersToBeAdded = 100000;
+            // When onboarding (no prior run), we still classify by size only.
+            _membershipSubOrchestratorResponse.MembersToBeAdded = SMALL; // boundary small
 
             var laneSize = string.Empty;
             _onSendingMessage = message =>
@@ -313,8 +311,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.AreEqual("Onboarding", laneSize);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Onboarding lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            Assert.AreEqual("Small", laneSize);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Small lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
         }
 
@@ -324,8 +322,7 @@ namespace Services.Tests
             _multilaneConfig = Options.Create(new MultiLaneConfig
             {
                 IsEnabled = true,
-                Small = SMALL,
-                Medium = MEDIUM
+                Small = SMALL
             });
 
             _membershipSubOrchestratorResponse.MembersToBeAdded = 20;
@@ -347,16 +344,16 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task SendMediumJobToMessageSplitterTopicAsync()
+    public async Task SendLargeJobAtSmallBoundaryToMessageSplitterTopicAsync()
         {
             _multilaneConfig = Options.Create(new MultiLaneConfig
             {
                 IsEnabled = true,
-                Small = SMALL,
-                Medium = MEDIUM
+                Small = SMALL
             });
 
-            _membershipSubOrchestratorResponse.MembersToBeAdded = 60;
+            // larger than Small threshold should be Large since only Small/Large are supported
+            _membershipSubOrchestratorResponse.MembersToBeAdded = SMALL + 1;
 
             _syncJob.LastRunTime = DateTime.UtcNow.AddDays(-1);
 
@@ -369,22 +366,21 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.AreEqual("Medium", laneSize);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Medium lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            Assert.AreEqual("Large", laneSize);
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Large lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
         }
 
         [TestMethod]
-        public async Task SendLargeJobToMessageSplitterTopicAsync()
+    public async Task SendLargeJobToMessageSplitterTopicAsync()
         {
             _multilaneConfig = Options.Create(new MultiLaneConfig
             {
                 IsEnabled = true,
-                Small = SMALL,
-                Medium = MEDIUM
+                Small = SMALL
             });
 
-            _membershipSubOrchestratorResponse.MembersToBeAdded = 61;
+            _membershipSubOrchestratorResponse.MembersToBeAdded = SMALL + 1;
 
             _syncJob.LastRunTime = DateTime.UtcNow.AddDays(-1);
 

@@ -17,9 +17,7 @@ namespace Services
         private readonly IServiceBusTopicsRepository _messageSplitterSender = null;
         private readonly MultiLaneConfig _multilaneConfig = null;
         private const string MESSAGE_SUBSCRIPTION_SMALL = "Small";
-        private const string MESSAGE_SUBSCRIPTION_MEDIUM = "Medium";
         private const string MESSAGE_SUBSCRIPTION_LARGE = "Large";
-        private const string MESSAGE_SUBSCRIPTION_ONBOARDING = "Onboarding";
         private const string LANE_SIZE_PROPERTY = "LaneSize";
 
         public TopicMessageSenderService(
@@ -64,18 +62,9 @@ namespace Services
 
         private async Task SendMessageToTopicAsync(Models.ServiceBus.ServiceBusMessage message, MembershipHttpRequest request)
         {
-            if (request.SyncJob.LastRunTime == System.Data.SqlTypes.SqlDateTime.MinValue)
-            {
-                // New jobs
-                message.ApplicationProperties.Add(LANE_SIZE_PROPERTY, MESSAGE_SUBSCRIPTION_ONBOARDING);
-            }
-            else if (request.MembersToBeUpdated <= _multilaneConfig.Small)
+            if (request.MembersToBeUpdated <= _multilaneConfig.Small)
             {
                 message.ApplicationProperties.Add(LANE_SIZE_PROPERTY, MESSAGE_SUBSCRIPTION_SMALL);
-            }
-            else if (request.MembersToBeUpdated <= _multilaneConfig.Medium)
-            {
-                message.ApplicationProperties.Add(LANE_SIZE_PROPERTY, MESSAGE_SUBSCRIPTION_MEDIUM);
             }
             else
             {
