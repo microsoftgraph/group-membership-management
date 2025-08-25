@@ -111,23 +111,13 @@ param availableMembershipUpdaters array = [
     lanes: [
       {
         name: 'small'
-        instances: 3
-        messageSize: 5
-      }
-      {
-        name: 'medium'
-        instances: 2
-        messageSize: 15
+        instances: 1
+        messageSize: 400
       }
       {
         name: 'large'
-        instances: 2
-        messageSize: 90
-      }
-      {
-        name: 'onboarding'
-        instances: 2
-        messageSize: 270
+        instances: 1
+        messageSize: 400
       }
     ]
   }
@@ -388,21 +378,12 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'MultiLane:Small'
-    value: 20
+    value: 400
     contentType: 'integer'
     tag: {
       tag1: 'MultiLane'
     }
     description: 'small: equal or less than value.'
-  }
-  {
-    key: 'MultiLane:Medium'
-    value: 60
-    contentType: 'integer'
-    tag: {
-      tag1: 'MultiLane'
-    }
-    description: 'medium: equal or less than value, large will be anything greater.'
   }
   {
     key: 'MultiLane:IsEnabled'
