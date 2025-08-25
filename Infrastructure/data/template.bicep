@@ -3,6 +3,7 @@ type topicSubscription = {
   subscriptionName: string
   ruleName: string
   ruleSqlExpression: string
+  sessionEnabled: bool?
 }
 
 @description('Enter an abbreviation for the solution.')

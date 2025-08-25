@@ -3,6 +3,7 @@ type topicSubscription = {
   subscriptionName: string
   ruleName: string
   ruleSqlExpression: string
+  sessionEnabled: bool?
 }
 
 @minLength(1)
@@ -16,8 +17,9 @@ param topicSubscriptions topicSubscription[]
 resource serviceBusNameSubscription 'Microsoft.ServiceBus/namespaces/topics/subscriptions@2017-04-01' = [for item in topicSubscriptions: {
   name: '${serviceBusName}/${item.topicName}/${item.subscriptionName}'
   properties: {
-    maxDeliveryCount: 5
+    maxDeliveryCount: 10
     lockDuration: 'PT5M'
+    requiresSession: item.?sessionEnabled  ?? false
   }
 }]
 
