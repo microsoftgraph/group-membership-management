@@ -111,6 +111,7 @@ namespace Services.Tests
 
 
             var syncJobId = Guid.NewGuid();
+            var runId = Guid.NewGuid();
             var request = new TopicMessageSenderRequest
             {
                 MembershipRequest = new Models.MembershipHttpRequest
@@ -122,7 +123,7 @@ namespace Services.Tests
                         ThresholdPercentageForRemovals = 20,
                         LastRunTime = DateTime.UtcNow.AddDays(-1),
                         Requestor = "user@domail.com",
-                        RunId = Guid.NewGuid(),
+                        RunId = runId,
                         ThresholdViolations = 0,
                         MembershipType = "GroupMembership",
                         Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.Parse("00000000-0000-0000-0000-000000000000")}
@@ -139,7 +140,7 @@ namespace Services.Tests
 
             await function.SendMessageAsync(request);
 
-            _serviceBusTopicsRepository.Verify(x => x.AddMessagesAsync(It.Is<List<ServiceBusMessage>>(m => m.All(msg => !string.IsNullOrEmpty(msg.SessionId) && msg.SessionId == syncJobId.ToString()))));
+            _serviceBusTopicsRepository.Verify(x => x.AddMessagesAsync(It.Is<List<ServiceBusMessage>>(m => m.All(msg => !string.IsNullOrEmpty(msg.SessionId) && msg.SessionId == runId.ToString()))));
         }
     }
 }
