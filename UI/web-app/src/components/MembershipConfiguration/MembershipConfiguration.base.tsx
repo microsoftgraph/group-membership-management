@@ -40,6 +40,7 @@ import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice'
 import { generateTitles } from '../../store/title.api';
 import { HRPart } from '../../models/HRPart';
 import { selectTitles } from '../../store/title.slice';
+import { selectIsAITitleEnabled } from '../../store/settings.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -64,6 +65,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
+  const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
   const generatedTitlesYet = useSelector(selectGeneratedTitlesYet);
   const titles = useSelector(selectTitles);
@@ -177,7 +179,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           }
         });
 
-        if (jobWithNoTitles && !generatedTitlesYet) {
+        if (isAITitleEnabled && jobWithNoTitles && !generatedTitlesYet) {
           const partsWithFilter = updatedSourceParts.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).filter !== undefined);
           const titleList: HRPart[] = partsWithFilter.map(item => ({
             partId: item.id,
