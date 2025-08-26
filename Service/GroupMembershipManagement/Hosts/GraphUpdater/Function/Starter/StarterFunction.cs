@@ -20,55 +20,140 @@ namespace Hosts.GraphUpdater
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ServiceBusReceiver _serviceBusReceiver = null;
         private readonly MembershipUpdaters _membershipUpdaters = null;
         private readonly MultiLaneConfig _multilaneConfig = null;
         private const string SUBSCRIPTION_PREFIX = "GraphUpdater";
-        private const string SMALL_LANE = "GraphUpdater_small_1";
+        private const string SMALL_SUBSCRIPTION_NAME = "GraphUpdater_small_1";
+        private const string SMALL_FUNCTION_NAME = $"{nameof(StarterFunction)}_small";
+        private const string LARGE_SUBSCRIPTION_NAME = "GraphUpdater_large_1";
+        private const string LARGE_FUNCTION_NAME = $"{nameof(StarterFunction)}_large";
 
         public StarterFunction(ILoggingRepository loggingRepository,
-            ServiceBusReceiver serviceBusReceiver,
             MembershipUpdaters membershipUpdaters,
             IOptions<MultiLaneConfig> multilaneConfig)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
             _membershipUpdaters = membershipUpdaters ?? throw new ArgumentNullException(nameof(membershipUpdaters));
             _multilaneConfig = multilaneConfig?.Value ?? throw new ArgumentNullException(nameof(multilaneConfig));
         }
 
-        [FunctionName($"{nameof(StarterFunction)}_Small")]
+        [FunctionName(SMALL_FUNCTION_NAME)]
         public async Task RunSmallLaneAsync(
-           [ServiceBusTrigger("membershipupdaters", SMALL_LANE, Connection = "gmmServiceBus")]
+           [ServiceBusTrigger("membershipupdaters", SMALL_SUBSCRIPTION_NAME, Connection = "gmmServiceBus")]
             ServiceBusReceivedMessage message,
            [DurableClient] IDurableOrchestrationClient client)
-        {            
+        {
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
             var dynamicProperties = groupMembership.SyncJob.ToDictionary();
-            dynamicProperties.Add("Instance", SMALL_LANE);
+            dynamicProperties.Add("Instance", SMALL_SUBSCRIPTION_NAME);
             _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"{nameof(StarterFunction)}_Small function started.",
+                Message = $"{SMALL_FUNCTION_NAME} function started.",
                 RunId = groupMembership.RunId,
             });
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Processing small message {message.MessageId} with {groupMembership.TotalMembersToAdd ?? 0} additions and {groupMembership.TotalMembersToRemove ?? 0} removals.",
+                Message = $"Processing message {message.MessageId} " +
+                          $"with {groupMembership.TotalMembersToAdd ?? 0} additions " +
+                          $"and {groupMembership.TotalMembersToRemove ?? 0} removals.",
                 RunId = groupMembership.RunId,
             });
 
-            await client.StartNewAsync(nameof(OrchestratorFunction), null, 
-                                        new OrchestratorRequest(groupMembership)
-                                        {
-                                            InstanceName = SMALL_LANE
-                                        });
+            var request = new OrchestratorMultiLaneRequest
+            {
+                GroupMembership = groupMembership,
+                SubscriptionName = SMALL_SUBSCRIPTION_NAME,
+                LaneSize = "small",
+                TopicName = _membershipUpdaters.CurrentTopicName,
+            };
+
+            await client.StartNewAsync(nameof(OrchestratorMultiLaneFunction), null, request);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"{nameof(StarterFunction)}_Small function completed.",
+                Message = $"{SMALL_FUNCTION_NAME} function completed.",
+                RunId = groupMembership.RunId,
+            });
+        }
+
+        [FunctionName(LARGE_FUNCTION_NAME)]
+        public async Task RunLargeLaneAsync(
+            [ServiceBusTrigger("membershipupdaters", LARGE_SUBSCRIPTION_NAME, Connection = "gmmServiceBus", IsSessionsEnabled = true)]
+             ServiceBusReceivedMessage message,
+            [DurableClient] IDurableOrchestrationClient client)
+        {
+            var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
+            var dynamicProperties = groupMembership.SyncJob.ToDictionary();
+            dynamicProperties.Add("Instance", LARGE_SUBSCRIPTION_NAME);
+            _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{LARGE_FUNCTION_NAME} function started.",
+                RunId = groupMembership.RunId,
+            });
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Processing message {message.MessageId} " +
+                          $"with {groupMembership.TotalMembersToAdd ?? 0} additions " +
+                          $"and {groupMembership.TotalMembersToRemove ?? 0} removals.",
+                RunId = groupMembership.RunId,
+            });
+
+            try
+            {
+                var instanceId = $"{groupMembership.RunId}_{message.SequenceNumber}";
+                var orchestratorStatus = await client.GetStatusAsync(instanceId);
+
+                if (orchestratorStatus == null)
+                {
+                    var request = new OrchestratorMultiLaneRequest
+                    {
+                        GroupMembership = groupMembership,
+                        SubscriptionName = LARGE_SUBSCRIPTION_NAME,
+                        LaneSize = "large",
+                        TopicName = _membershipUpdaters.CurrentTopicName,
+                    };
+
+                    await client.StartNewAsync(nameof(OrchestratorMultiLaneFunction), instanceId, request);
+                    await WaitForInstanceAsync(client, instanceId);
+
+                }
+                else if (orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Running
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Pending
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.ContinuedAsNew)
+                {
+                    await WaitForInstanceAsync(client, instanceId);
+                }
+                else if (orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Completed
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Terminated
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Canceled)
+
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Message {message.MessageId} ({message.SequenceNumber}) was already processed ended as {orchestratorStatus.RuntimeStatus}"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Error processing Service Bus message: {ex.Message}"
+                });
+
+                throw;
+            }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{LARGE_FUNCTION_NAME} function completed.",
                 RunId = groupMembership.RunId,
             });
         }
@@ -125,7 +210,6 @@ namespace Hosts.GraphUpdater
             return instances;
         }
 
-
         private async Task ProcessTimerAsync(IDurableOrchestrationClient client, string subscriptionName)
         {
             var additionalProperties = new Dictionary<string, string> { { "Instance", subscriptionName } };
@@ -165,6 +249,32 @@ namespace Hosts.GraphUpdater
                 Message = $"{nameof(StarterFunction)} function completed",
                 DynamicProperties = additionalProperties
             }, VerbosityLevel.DEBUG);
+        }
+
+        private async Task WaitForInstanceAsync(IDurableOrchestrationClient client, string instanceId)
+        {
+            var delay = TimeSpan.FromSeconds(1);
+            var maxDelay = TimeSpan.FromSeconds(30);
+
+            while (true)
+            {
+                await Task.Delay(delay);
+
+                var orchestratorStatus = await client.GetStatusAsync(instanceId);
+                if (orchestratorStatus == null)
+                {
+                    // Keep waiting
+                }
+                else if (orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
+                        && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
+                        && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed
+                        && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Canceled)
+                {
+                    return;
+                }
+
+                delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 1.5, maxDelay.TotalSeconds));
+            }
         }
     }
 }

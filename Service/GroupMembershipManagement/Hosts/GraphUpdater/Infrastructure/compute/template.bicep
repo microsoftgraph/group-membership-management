@@ -109,7 +109,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var triggerSchedule = instanceIdentifier == 'small' ? '*/10 * * * * *' : instanceIdentifier == 'large' ? '*/20 * * * * *' :  '*/30 * * * * *' 
+var triggerSchedule = instanceIdentifier == 'small' ? '*/10 * * * * *' : instanceIdentifier == 'large' ? '*/20 * * * * *' :  '*/30 * * * * *'
 var triggerDelay = 0
 
 var commonSettings = {
@@ -156,7 +156,9 @@ var appSettings = {
 }
 
 var activityFunctionSettings = {
-  'AzureWebJobs.StarterFunction.Disabled': 0
+  'AzureWebJobs.StarterFunction.Disabled': instanceIdentifier == '' ? 0 : 1
+  'AzureWebJobs.StarterFunction_small.Disabled': instanceIdentifier == 'small' ? 0 : 1
+  'AzureWebJobs.StarterFunction_large.Disabled': instanceIdentifier == 'large' ? 0 : 1
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.QueueMessageOrchestratorFunction.Disabled': 0
   'AzureWebJobs.CacheUserUpdaterSubOrchestratorFunction.Disabled': 0

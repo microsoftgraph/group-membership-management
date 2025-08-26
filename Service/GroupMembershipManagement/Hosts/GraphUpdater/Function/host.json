@@ -5,6 +5,15 @@
     "durableTask": {
       "extendedSessionsEnabled": true,
       "extendedSessionIdleTimeoutInSeconds": 30
+    },
+    "serviceBus": {
+      "maxConcurrentCalls": 3,
+      "prefetchCount": 1,
+      "maxAutoLockRenewalDuration": "00:05:00",
+      "autoCompleteMessages": true,
+      "maxMessageBatchSize": 1,
+      "maxConcurrentSessions": 3,
+      "sessionIdleTimeout": "00:00:30"
     }
   },
   "logging": {
