@@ -11,6 +11,24 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const backoff: number = 3000;
 const retries: number = 3;
 
+function extractColumnNames(filter: string) {
+  const regex = /\b([a-zA-Z0-9_]+)\s*(?:=|<>|>|<|>=|<=|\bIN\b|\bNOT\s+IN\b)\s*/gi;
+  let match;
+  const columns = new Set();
+  while ((match = regex.exec(filter)) !== null) { 
+    columns.add(match[1]); 
+  }
+  return Array.from(columns);
+}
+
+function createFallbackTitles(parts: HRPart[]): HRPart[] {
+  return parts.map(part => {
+    const columnNames = extractColumnNames(part.filter);
+    const uniqueFilterKeys = Array.from(new Set(columnNames)).join(', ');
+    return { ...part, title: uniqueFilterKeys ? `Users matching ${uniqueFilterKeys}` : part.filter };
+  });
+}
+
 export const getTitle = createAsyncThunk<
   string,
   string,
@@ -82,7 +100,7 @@ export const generateTitles = createAsyncThunk<
 
     if (!response.ok) {
       console.warn(`HTTP ${response.status}: ${response.statusText}. Using filters as titles.`);
-      return parts.map(part => ({ ...part, title: part.filter }));
+      return createFallbackTitles(parts);
     }
 
     const generatedParts: HRPart[] = await response.json();
@@ -90,6 +108,6 @@ export const generateTitles = createAsyncThunk<
   }
   catch (error: any) {
     console.warn(`Failed to generate titles: ${error.message}. Using filters as titles.`);
-    return parts.map(part => ({ ...part, title: part.filter }));
+    return createFallbackTitles(parts);
   }
 });

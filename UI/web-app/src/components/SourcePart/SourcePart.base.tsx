@@ -12,6 +12,8 @@ import {
   IProcessedStyleSet,
   TextField,
   IPersonaProps,
+  Spinner,
+  SpinnerSize,
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -34,6 +36,7 @@ import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { searchGroups } from '../../store/groups.api';
 import { fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
 import { GetOrgLeaderDetailsResponse } from '../../models/GetOrgLeaderDetailsResponse';
+import { selectIsGeneratingTitles } from '../../store/title.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -67,7 +70,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const [expanded, setExpanded] = useState(part.isExpanded);
   const hrSource = useSelector(selectSource);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
-  
+  const isGeneratingTitles = useSelector(selectIsGeneratingTitles);
+
   useEffect(() => {
     if (part.isNew) {
       dispatch(updateSourcePart({ ...part, isNew: false }));
@@ -276,6 +280,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
         {isAITitleEnabled && (
           <>
+            {!isEditButtonClicked && isGeneratingTitles && (part.title === "") && (
+              <Spinner size={SpinnerSize.small} label={strings.HROnboarding.generateTitle} />
+            )}
             {!isEditButtonClicked && (part.title || props.title) && (
               <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
             )}

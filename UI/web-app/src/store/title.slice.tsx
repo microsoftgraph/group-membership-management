@@ -45,6 +45,10 @@ const titleSlice = createSlice({
       state.isGeneratingTitles = false;
       state.titles = action.payload;
     });
+    builder.addCase(generateTitles.rejected, (state, action) => {
+      state.isGeneratingTitles = false;     
+      state.titles = action.meta.arg || [];
+    });
   }
 });
 
