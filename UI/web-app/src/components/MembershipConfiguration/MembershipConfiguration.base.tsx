@@ -34,9 +34,12 @@ import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
-import { selectSelectedJobDetails, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
+import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
+import { generateTitles } from '../../store/title.api';
+import { HRPart } from '../../models/HRPart';
+import { selectTitles } from '../../store/title.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -62,6 +65,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
   const isEditingExistingJob = useSelector(manageMembershipIsEditingExistingJob);
   const jobWithNoTitles = useSelector(selectSelectedJobWithNoTitles);
+  const generatedTitlesYet = useSelector(selectGeneratedTitlesYet);
+  const titles = useSelector(selectTitles);
 
   const getAllSourcePartsExpanded = () => {
     return sourceParts.every(part => part.isExpanded);
@@ -171,6 +176,19 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             isExpanded:  isEditingExistingJob ? originalPart?.isExpanded ?? true : false
           }
         });
+
+        if (jobWithNoTitles && !generatedTitlesYet) {
+          const partsWithFilter = updatedSourceParts.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).filter !== undefined);
+          const titleList: HRPart[] = partsWithFilter.map(item => ({
+            partId: item.id,
+            filter: (item.query.source as HRSourcePartSource).filter as string,
+            title: ""
+          }));
+
+          dispatch(generateTitles(titleList));
+          dispatch(setGeneratedTitlesYet(true));
+        }
+
         dispatch(setSourceParts(updatedSourceParts));
         dispatch(setAdvancedViewQuery(jobDetails.query));
         dispatch(setCompositeQuery(parsedQuery));
@@ -181,6 +199,31 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     // If editing, do NOT overwrite local state
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, jobDetails, isEditingExistingJob]);
+
+  useEffect(() => {
+    if (titles.length > 0 && generatedTitlesYet && jobWithNoTitles) {
+      const updatedSourceParts = sourceParts.map(part => {
+        const title = titles.find(t => t.partId === part.id);
+        return {
+          ...part,
+          title: title ? title.title : part.title
+        };
+      });
+      const partsWithTitles = updatedSourceParts.map(part => ({
+        partId: part.id,
+        name: part.title
+      }));
+
+      if (partsWithTitles.length > 0) {
+        dispatch(setTitles(partsWithTitles));
+      }
+
+
+      if (updatedSourceParts.length > 0) {
+        dispatch(setSourceParts(updatedSourceParts));
+      }
+    }
+  }, [dispatch, titles]);
 
   return (
     <div>

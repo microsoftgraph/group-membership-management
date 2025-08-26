@@ -11,6 +11,7 @@ import {
   IDropdownOption,
   IProcessedStyleSet,
   TextField,
+  IPersonaProps,
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -30,6 +31,9 @@ import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
+import { searchGroups } from '../../store/groups.api';
+import { fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
+import { GetOrgLeaderDetailsResponse } from '../../models/GetOrgLeaderDetailsResponse';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -125,6 +129,64 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
     setErrorMessage('');
   }, [query, expanded]);
 
+  useEffect(() => {
+    const handleGroupMembershipTitle = async () => {
+      try {
+        const results = await dispatch(searchGroups(part.query.source as string));
+        const searchResults = results.payload as IPersonaProps[];
+        const newTitle = "All Users in " + searchResults[0]?.text;
+        if (part.title !== newTitle) {
+          handleGroupMembershipSourceChange(part.query.source as string, newTitle);
+        }
+      } catch (error) {
+        console.error("Error fetching search destinations", error);
+      }
+    };
+
+    const handleHRTitle = async () => {
+      const hrSource = part.query.source as HRSourcePartSource;
+      try {
+        const results = await dispatch(fetchOrgLeaderDetailsUsingId({
+          employeeId: hrSource.manager?.id as number,
+          partId: partId as string
+        }));
+
+        const response = results.payload as GetOrgLeaderDetailsResponse;
+        const orgLeaderName = response.text;
+        let newTitle = `Everyone in ${orgLeaderName}'s org`;
+
+        const depth = hrSource.manager?.depth;
+        if (depth && depth > 0) {
+          const levels = (depth ?? 1) - 1;
+          if (levels === 1) {
+            newTitle = `${levels} level of direct reports of ${orgLeaderName}`;
+          } else if (levels > 1) {
+            newTitle = `${levels} levels of direct reports of ${orgLeaderName}`;
+          }
+        }
+
+        handleSourceChange(hrSource, partId, newTitle);
+      } catch (error) {
+        console.error("Error fetching org leader details", error);
+      }
+    };
+
+    // Handle GroupMembership title generation
+    if (part.query.type === SourcePartType.GroupMembership && part.title === '') {
+      handleGroupMembershipTitle();
+    }
+
+    // Handle HR title generation
+    const hrSource = part.query.source as HRSourcePartSource;
+    if (part.query.type === SourcePartType.HR &&
+        hrSource.filter === undefined &&
+        hrSource.manager?.id !== undefined &&
+        part.title === '') {
+      handleHRTitle();
+    }
+
+  }, [part.query]);
+
   const onEditButtonClick = (partId: string, partTitle: string) => {
     setIsEditButtonClicked(true);
   };
@@ -170,11 +232,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       exclusionary: !isInclusionary
     }
     const newPart: ISourcePart = {
-      id: partId,
+      ...part,
       title: title ?? "",
-      query: newQuery,
-      isExpanded: true,
-      isNew: false
+      query: newQuery
     };
     dispatch(updateSourcePart(newPart));
   };

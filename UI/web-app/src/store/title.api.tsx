@@ -5,6 +5,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { config } from '../authConfig';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
+import { HRPart } from '../models/HRPart';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const backoff: number = 3000;
@@ -52,3 +53,43 @@ export const getTitle = createAsyncThunk<
   return makeRequest(retries, backoff);
 });
 
+export const generateTitles = createAsyncThunk<
+  HRPart[],
+  HRPart[],
+  ThunkConfig
+>('titles/generate', async (parts, { extra }): Promise<HRPart[]> => {
+  const { authenticationService } = extra.services;
+
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers();
+  headers.append('Authorization', `Bearer ${token}`);
+  headers.append('Content-Type', 'application/json');
+
+  const options = {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(parts),
+  };
+
+  try {
+    const startTime = Date.now();
+    const response = await fetch(config.generateTitles, options);
+    const duration = Date.now() - startTime;
+
+    if (duration > 1000) {
+      console.log("MORE TIME");
+    }
+
+    if (!response.ok) {
+      console.warn(`HTTP ${response.status}: ${response.statusText}. Using filters as titles.`);
+      return parts.map(part => ({ ...part, title: part.filter }));
+    }
+
+    const generatedParts: HRPart[] = await response.json();
+    return generatedParts;
+  }
+  catch (error: any) {
+    console.warn(`Failed to generate titles: ${error.message}. Using filters as titles.`);
+    return parts.map(part => ({ ...part, title: part.filter }));
+  }
+});

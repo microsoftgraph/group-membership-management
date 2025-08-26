@@ -47,7 +47,10 @@ import {
   selectRemoveGMMError,
   selectRemoveGMMLoading,
   selectSelectedJobLoading,
-  selectSelectedJobChanges
+  selectSelectedJobChanges,
+  setGeneratedTitlesYet,
+  setJobId,
+  selectJobIdSet
 } from '../../store/jobs.slice';
 
 import { ContentContainer } from '../../components/ContentContainer/ContentContainer'
@@ -111,6 +114,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobLoading = useSelector(selectSelectedJobLoading);
   const removeGMMPending = useSelector(selectRemoveGMMLoading);
   const isJobWriter = useSelector(selectIsJobWriter);
+  const jobIdSet = useSelector(selectJobIdSet);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
   const showLoader: boolean = jobLoading || removeGMMPending;
@@ -191,7 +195,11 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     dispatch(setPagingBarVisible(false));
     if (jobId) {
       dispatch(clearSourceParts());
-      dispatch(fetchJobDetails({ syncJobId: jobId }));
+      if (jobIdSet === "" || (jobIdSet !== "" && jobIdSet !== jobId)) {
+        dispatch(fetchJobDetails({ syncJobId: jobId }));
+        dispatch(setJobId(jobId));
+        dispatch(setGeneratedTitlesYet(false));
+      }
     }
     if (groupId && channelId === undefined) {
       dispatch(getGroupDetails(groupId));

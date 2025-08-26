@@ -9,6 +9,7 @@ import type { RootState } from './store';
 import { type Job } from '../models/Job';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
 import { PatchJobResponse, RemoveGMMResponse, SyncJobChange } from '../models';
+import { Title } from '../models/Title';
 
 // Define a type for the slice state
 export interface JobsState {
@@ -38,6 +39,8 @@ export interface JobsState {
   selectedJobChangesLoading: boolean;
   selectedJobChangesError: string | undefined;
   selectedJobWithNoTitles: boolean;
+  generatedTitlesYet: boolean;
+  jobIdSet: string;
 }
 
 // Define the initial state using that type
@@ -66,7 +69,9 @@ const initialState: JobsState = {
   selectedJobChanges: undefined,
   selectedJobChangesLoading: false,
   selectedJobChangesError: undefined,
-  selectedJobWithNoTitles: false
+  selectedJobWithNoTitles: false,
+  generatedTitlesYet: false,
+  jobIdSet: ""
 };
 
 export const jobsSlice = createSlice({
@@ -97,6 +102,18 @@ export const jobsSlice = createSlice({
     setApproveJobsResponse: (state) => {
       state.totalNumberOfApprovedJobs = undefined;
       state.totalNumberOfJobs = undefined;
+    },
+    setGeneratedTitlesYet: (state, action: PayloadAction<boolean>) => {
+      state.generatedTitlesYet = action.payload;
+    },
+    setJobId: (state, action: PayloadAction<string>) => {
+      state.jobIdSet = action.payload;
+    },
+    setTitles: (state, action: PayloadAction<Title[]>) => {
+      if (state.selectedJob) {
+        state.selectedJob.titles = action.payload;
+        state.selectedJobWithNoTitles = false;
+      }
     }
   },
   extraReducers: (builder) => {
@@ -162,6 +179,7 @@ export const jobsSlice = createSlice({
       state.patchJobDetailsError = undefined;
     });
     builder.addCase(patchJobDetails.fulfilled, (state, action) => {
+      state.jobIdSet = "";
       state.patchJobDetailsResponse = action.payload;
     });
     builder.addCase(patchJobDetails.rejected, (state, action) => {
@@ -246,7 +264,7 @@ export const jobsSlice = createSlice({
 });
 
 
-export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload, updateJobOwnerFilterSuggestions, setApproveJobsLoading, setApproveJobsResponse } =
+export const { setJobs, setGetJobsError, setGetJobDetailsError, clearJob, clearJobsToDownload, updateJobOwnerFilterSuggestions, setApproveJobsLoading, setApproveJobsResponse, setTitles, setGeneratedTitlesYet, setJobId } =
   jobsSlice.actions;
 
 export const selectAllJobs = (state: RootState) => state.jobs.jobs;
@@ -293,4 +311,7 @@ export const selectNumberOfJobs = (state: RootState) => state.jobs.totalNumberOf
 export const selectApproveJobsError = (state: RootState) => state.jobs.approveJobsError;
 
 export const selectSelectedJobWithNoTitles = (state: RootState) => state.jobs.selectedJobWithNoTitles;
+export const selectGeneratedTitlesYet = (state: RootState) => state.jobs.generatedTitlesYet;
+export const selectJobIdSet = (state: RootState) => state.jobs.jobIdSet;
+
 export default jobsSlice.reducer;
