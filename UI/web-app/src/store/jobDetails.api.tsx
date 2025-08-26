@@ -103,13 +103,15 @@ export const patchJobDetails = createAsyncThunk<
   PatchJobRequest,
   ThunkConfig
 >('jobs/patchJobDetails', async (request, { extra }) => {
+  
+  const encodedBusinessJustification = encodeURIComponent(request.businessJustification);
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
   headers.append('Authorization', `Bearer ${token}`);
   headers.append('Content-Type', 'application/json-patch+json');
   headers.append('X-Change-Reason', request.changeReason);
-  headers.append('X-Business-Justification', request.businessJustification);
+  headers.append('X-Business-Justification', encodedBusinessJustification);
 
   const options = {
     method: 'PATCH',

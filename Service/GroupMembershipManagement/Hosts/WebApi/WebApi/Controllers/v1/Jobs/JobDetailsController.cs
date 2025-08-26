@@ -110,7 +110,7 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
+                var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
 
                 var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
 
@@ -162,7 +162,7 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
+                var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
 
                 var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification));
 
@@ -214,7 +214,7 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var businessJustification = Request.Headers["X-Business-Justification"].ToString();
+                var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
 
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
