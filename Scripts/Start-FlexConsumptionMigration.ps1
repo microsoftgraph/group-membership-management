@@ -19,7 +19,8 @@ it safely removes the existing resources and their SQL permissions, allowing the
 new resources with the correct SKU.
 
 .PARAMETER FunctionTemplatesPath
-Path to the functions ARM templates directory (e.g., "<path-to>\functions_arm_templates")
+Path to the functions ARM templates directory in the deployment package(e.g., "<path-to>\functions_arm_templates")
+If running it locally point to the local path where the functions are located (e.g., "<path-to>\Service\GroupMembershipManagement\Hosts")
 
 .PARAMETER SolutionAbbreviation
 Abbreviation used to denote the overall solution (e.g., "gmm")
@@ -550,7 +551,7 @@ function Start-FlexConsumptionMigration {
     if (-not $WhatIf -and -not $SkipFirewallCheck -and -not [string]::IsNullOrEmpty($SyncJobsDBConnectionString)) {
         Write-Host ""
         Write-Host "🔒 Checking SQL Server firewall access..." -ForegroundColor Cyan
-        Set-SqlServerFirewallRule -ResourceGroupName $dataResourceGroupName -ServerName $sqlServerName
+        Set-SqlServerFirewallRule -ResourceGroupName $dataResourceGroupName -SqlServerName $sqlServerName
     }
 
     try {
