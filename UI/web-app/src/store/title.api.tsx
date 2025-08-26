@@ -15,8 +15,8 @@ function extractColumnNames(filter: string) {
   const regex = /\b([a-zA-Z0-9_]+)\s*(?:=|<>|>|<|>=|<=|\bIN\b|\bNOT\s+IN\b)\s*/gi;
   let match;
   const columns = new Set();
-  while ((match = regex.exec(filter)) !== null) { 
-    columns.add(match[1]); 
+  while ((match = regex.exec(filter)) !== null) {
+    columns.add(match[1]);
   }
   return Array.from(columns);
 }
@@ -90,13 +90,7 @@ export const generateTitles = createAsyncThunk<
   };
 
   try {
-    const startTime = Date.now();
     const response = await fetch(config.generateTitles, options);
-    const duration = Date.now() - startTime;
-
-    if (duration > 1000) {
-      console.log("MORE TIME");
-    }
 
     if (!response.ok) {
       console.warn(`HTTP ${response.status}: ${response.statusText}. Using filters as titles.`);
