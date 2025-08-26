@@ -23,9 +23,7 @@ param tenantId string
 @allowed([
   ''
   'small'
-  'medium'
   'large'
-  'onboarding'
 ])
 param instanceIdentifier string = ''
 var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
@@ -111,8 +109,8 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var triggerSchedule = instanceIdentifier == 'small' ? '*/10 * * * * *' : instanceIdentifier == 'medium' ? '*/10 * * * * *' : instanceIdentifier == 'large' ? '*/20 * * * * *' : instanceIdentifier == 'onboarding' ? '0 * * * * *' :  '*/30 * * * * *' 
-var triggerDelay = instanceIdentifier == 'onboarding' ? 15 : 0
+var triggerSchedule = instanceIdentifier == 'small' ? '*/10 * * * * *' : instanceIdentifier == 'large' ? '*/20 * * * * *' :  '*/30 * * * * *' 
+var triggerDelay = 0
 
 var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
@@ -241,7 +239,6 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
   dependsOn: [
     servicePlanTemplate
     graphUAMI
-    existingLogAnalyticsWorkspace
   ]
 }
 

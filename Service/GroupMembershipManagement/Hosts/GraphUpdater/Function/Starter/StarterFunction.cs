@@ -7,9 +7,12 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Options;
 using Models;
+using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -21,6 +24,7 @@ namespace Hosts.GraphUpdater
         private readonly MembershipUpdaters _membershipUpdaters = null;
         private readonly MultiLaneConfig _multilaneConfig = null;
         private const string SUBSCRIPTION_PREFIX = "GraphUpdater";
+        private const string SMALL_LANE = "GraphUpdater_small_1";
 
         public StarterFunction(ILoggingRepository loggingRepository,
             ServiceBusReceiver serviceBusReceiver,
@@ -31,6 +35,42 @@ namespace Hosts.GraphUpdater
             _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
             _membershipUpdaters = membershipUpdaters ?? throw new ArgumentNullException(nameof(membershipUpdaters));
             _multilaneConfig = multilaneConfig?.Value ?? throw new ArgumentNullException(nameof(multilaneConfig));
+        }
+
+        [FunctionName($"{nameof(StarterFunction)}_Small")]
+        public async Task RunSmallLaneAsync(
+           [ServiceBusTrigger("membershipupdaters", SMALL_LANE, Connection = "gmmServiceBus")]
+            ServiceBusReceivedMessage message,
+           [DurableClient] IDurableOrchestrationClient client)
+        {            
+            var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
+            var dynamicProperties = groupMembership.SyncJob.ToDictionary();
+            dynamicProperties.Add("Instance", SMALL_LANE);
+            _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{nameof(StarterFunction)}_Small function started.",
+                RunId = groupMembership.RunId,
+            });
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Processing small message {message.MessageId} with {groupMembership.TotalMembersToAdd ?? 0} additions and {groupMembership.TotalMembersToRemove ?? 0} removals.",
+                RunId = groupMembership.RunId,
+            });
+
+            await client.StartNewAsync(nameof(OrchestratorFunction), null, 
+                                        new OrchestratorRequest(groupMembership)
+                                        {
+                                            InstanceName = SMALL_LANE
+                                        });
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"{nameof(StarterFunction)}_Small function completed.",
+                RunId = groupMembership.RunId,
+            });
         }
 
         [FunctionName(nameof(StarterFunction))]

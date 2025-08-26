@@ -12,7 +12,8 @@ namespace Services.Tests
     {
         public static MembershipUpdaters GetAvailableMembershipUpdaters(string updaters = null, string currentLaneSize = "Small")
         {
-            updaters = updaters ?? "[{\"name\":\"GroupMembership\",\"lanes\":[{\"name\":\"small\",\"instances\":3,\"messageSize\":20},{\"name\":\"medium\",\"instances\":2,\"messageSize\":60},{\"name\":\"large\",\"instances\":2,\"messageSize\":100},{\"name\":\"onboarding\",\"instances\":2,\"messageSize\":840}]}]";
+            // Two-lane model: small/large only; sizes aligned to 400
+            updaters = updaters ?? "[{\"name\":\"GroupMembership\",\"lanes\":[{\"name\":\"small\",\"instances\":1,\"messageSize\":400},{\"name\":\"large\",\"instances\":1,\"messageSize\":400}]}]";
             var availableMembershipUpdaters = JsonSerializer.Deserialize<List<MembershipUpdater>>(updaters);
 
             var instances = new Dictionary<string, Dictionary<string, Subscription>>(StringComparer.InvariantCultureIgnoreCase);

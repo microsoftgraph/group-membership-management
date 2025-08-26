@@ -17,9 +17,7 @@ param location string
 @allowed([
   ''
   'small'
-  'medium'
   'large'
-  'onboarding'
 ])
 param instanceIdentifier string = ''
 var instanceSuffix = empty(instanceIdentifier) ? '' : '${instanceIdentifier}'

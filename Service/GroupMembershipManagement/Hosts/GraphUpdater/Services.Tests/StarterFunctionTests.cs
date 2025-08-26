@@ -57,7 +57,6 @@ namespace Services.Tests
             {
                 IsEnabled = false,
                 Small = 20,
-                Medium = 60,
             });
 
             _membershipUpdaters = Helpers.GetAvailableMembershipUpdaters(currentLaneSize: _laneSize);
