@@ -265,9 +265,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
 var guinstanceIds = [
   ''
   'small'
-  'medium'
   'large'
-  'onboarding'
 ]
 
 module graphUpdaterDataResources '../Service/GroupMembershipManagement/Hosts/GraphUpdater/Infrastructure/data/template.bicep' = [for instance in guinstanceIds: {
@@ -480,9 +478,7 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
 // ----------------- MessageSplitter instances
 var instanceIds = [
   's1'
-  'm1'
   'l1'
-  'o1'
 ]
 
 module messageSplitterDataResources '../Service/GroupMembershipManagement/Hosts/MessageSplitter/Infrastructure/data/template.bicep' = [for instance in instanceIds: {
