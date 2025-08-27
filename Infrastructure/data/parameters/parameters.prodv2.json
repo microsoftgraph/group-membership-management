@@ -71,19 +71,6 @@
           "ruleSqlExpression": "Type = 'groupmembership_large_1'",
           "sessionEnabled": true
         },
-        {
-          "topicName": "membershipUpdaters",
-          "subscriptionName": "TeamsChannelUpdater_small_1",
-          "ruleName": "TeamsChannelUpdater_small_rule",
-          "ruleSqlExpression": "Type = 'teamschannelmembership_small_1'"
-        },
-        {
-          "topicName": "membershipUpdaters",
-          "subscriptionName": "TeamsChannelUpdater_large_1",
-          "ruleName": "TeamsChannelUpdater_large_rule",
-          "ruleSqlExpression": "Type = 'teamschannelmembership_large_1'",
-          "sessionEnabled": true
-        }
       ]
     },
     "notifierProviderId": {
