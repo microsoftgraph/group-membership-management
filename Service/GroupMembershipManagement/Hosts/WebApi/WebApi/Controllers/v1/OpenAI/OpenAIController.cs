@@ -217,31 +217,23 @@ namespace WebApi.Controllers.v1.OpenAI
 
         private string BuildTitlesPrompt(string partsJson)
         {
-            var basePrompt = @"Generate concise titles for these SQL filter parts. Return only valid JSON.
-
-Input format: {""partId"": ""GUID"", ""filter"": ""SQL WHERE clause""}
-Output format: [{""partId"": ""GUID"", ""title"": ""Short descriptive title""}]
+            var basePrompt = @"Generate short, clear titles for SQL filter parts. 
+The title should describe which users match the filter.  
 
 Rules:
-- Create one short title per part.
-- Summarize the key condition(s) in the filter.
-- Highlight what is unique to each part (ignore values common across all parts if the filter is too long).
-- If the filter has multiple conditions, summarize the overall logic in one sentence.
-- Output must be a valid JSON array of objects with this exact format: [ { ""partId"": ""GUID"", ""title"": ""STRING"" }, ... ].
-- The order of parts in the output must match the input order.
-- Use the exact same partId values from the input (including exact capitalization and formatting).
-- Ensure property names are exactly ""partId"" and ""title"" (lowercase).
-- Ensure the response is valid JSON without any markdown formatting, code blocks, or additional text.
-- Do not include any explanations, only return the JSON array.
+- Use fewer than 8 words.
+- Focus only on what makes each filter unique.
+- If filters share many conditions, highlight just the difference.
+- Output must be valid JSON: [{""partId"": ""GUID"", ""title"": ""STRING""}, ...].
+- Keep the same input order.
+- Use exact partId values from the input.
+- No explanations, no markdown, only JSON.
 
-Example:
-Input: [{""partId"":""123"",""filter"":""EmployeeType='FTE' AND City='Seattle'""}]
-Output: [{""partId"":""123"",""title"":""FTE Employees in Seattle""}]
-
-Process this input: " + partsJson;
+Input: " + partsJson;
 
             return basePrompt;
         }
+
 
         private string BuildTitlePrompt(string filter)
         {

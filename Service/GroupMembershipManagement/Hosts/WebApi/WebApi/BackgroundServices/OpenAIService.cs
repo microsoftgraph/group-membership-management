@@ -60,7 +60,7 @@ namespace WebApi.BackgroundServices
         {
             var requestOptions = new ChatCompletionOptions()
             {
-                MaxOutputTokenCount = 150,
+                MaxOutputTokenCount = 4096,
                 Temperature = 0.3f,
                 TopP = 0.8f,
                 FrequencyPenalty = 0.0f,
@@ -74,7 +74,7 @@ namespace WebApi.BackgroundServices
             };
 
             var startTime = DateTime.UtcNow;
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
 
             try
             {

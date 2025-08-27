@@ -997,7 +997,7 @@ namespace WebApi.Tests
             // The filter should be contained within the JSON structure
             var inputJson = JsonSerializer.Serialize(parts);
             Assert.IsTrue(capturedPrompt.Contains(inputJson), "Prompt should contain the serialized parts JSON");
-            Assert.IsTrue(capturedPrompt.Contains("Generate concise titles"));
+            Assert.IsTrue(capturedPrompt.Contains("Generate short, clear titles"));
         }
     }
 }
