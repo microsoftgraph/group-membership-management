@@ -52,7 +52,6 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
     const onPageSizeChanged = (event: React.FormEvent<HTMLDivElement>, item: IDropdownOption | undefined): void => {
         if (item) {
             dispatch(setPageSize(item.key.toString()));
-            dispatch(setPageNumber(pageNumber));
         }
     }
 

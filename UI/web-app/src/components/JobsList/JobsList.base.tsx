@@ -58,22 +58,14 @@ import {
   HourGlassIcon,
 } from '@fluentui/react-icons-mdl2';
 import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
-import { ActionRequired, PagingOptions, SyncStatus } from '../../models';
+import { ActionRequired, SyncStatus } from '../../models';
 import { useStrings } from '../../store/hooks';
 import {
-  selectPagingBarPageNumber,
-  selectPagingBarPageSize,
   selectPagingOptions,
   selectPagingBarSortKey,
   selectPagingBarIsSortedDescending,
   setSortKey,
   setIsSortedDescending,
-  selectPagingBarFilterStatus,
-  selectPagingBarFilterActionRequired,
-  selectPagingBarfilterDestinationId,
-  selectPagingBarfilterDestinationName,
-  selectPagingBarfilterDestinationType,
-  selectPagingBarfilterDestinationOwner,
   setPagingBarVisible,
   setCustomSortBy,
 } from '../../store/pagingBar.slice';
@@ -111,17 +103,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
 
-  const pageNumber: number = useSelector(selectPagingBarPageNumber);
-  const pageSize: string = useSelector(selectPagingBarPageSize);
-  const pagingOptions: PagingOptions = useSelector(selectPagingOptions);
+  const pagingOptions = useSelector(selectPagingOptions);
   const sortKey: string | undefined = useSelector(selectPagingBarSortKey);
   const isSortedDescending: boolean | undefined = useSelector(selectPagingBarIsSortedDescending);
-  const filterStatus: string | undefined = useSelector(selectPagingBarFilterStatus);
-  const filterActionRequired: string | undefined = useSelector(selectPagingBarFilterActionRequired);
-  const filterDestinationId: string | undefined = useSelector(selectPagingBarfilterDestinationId);
-  const filterDestinationName: string | undefined = useSelector(selectPagingBarfilterDestinationName);
-  const filterDestinationType: string | undefined = useSelector(selectPagingBarfilterDestinationType);
-  const filterDestinationOwner: string | undefined = useSelector(selectPagingBarfilterDestinationOwner);
+  
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
@@ -149,11 +134,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     selectionRef.current.setItems(items, true);
     selectionRef.current.setAllSelected(false);
     setSelectedItems([]);
-  };
-
-  const getJobsByPage = (): void => {
-    setIsShimmerEnabled(true);
-    dispatch(fetchJobs(pagingOptions));
   };
 
   useEffect(() => {
@@ -188,17 +168,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   useEffect(() => {
     dispatch(fetchJobs(pagingOptions));
-  }, [pageNumber,
-    pageSize,
-    sortKey,
-    isSortedDescending,
-    filterStatus,
-    filterActionRequired,
-    filterDestinationId,
-    filterDestinationName,
-    filterDestinationType,
-    filterDestinationOwner
-  ]);
+  }, [dispatch, pagingOptions]);
 
   const navigate = useNavigate();
 
@@ -593,9 +563,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   return (
     <div className={classNames.root}>
       <div className={classNames.jobsListFilter}>
-        <JobsListFilter
-          getJobsByPage={getJobsByPage}
-        />
+        <JobsListFilter />
       </div>
       <div className={classNames.jobsList}>
         <div>

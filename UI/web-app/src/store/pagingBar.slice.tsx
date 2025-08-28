@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createSelector } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import { SyncStatus } from '../models';
 import { fetchJobs } from './jobs.api';
@@ -21,25 +21,85 @@ export type PagingBarState = {
   filterDestinationType?: string;
   filterDestinationName?: string;
   filterDestinationOwner?: string;
+  filterDestinationOwnerPersona?: {
+    key: number;
+    text: string;
+    secondaryText: string;
+    id: string;
+  };
   customSortBy?: string;
 }
 
+// Helper functions for localStorage persistence
+const STORAGE_KEY = 'gmmJobListState';
+
+const loadPersistedState = (): Partial<PagingBarState> => {
+  try {
+    const savedState = localStorage.getItem(STORAGE_KEY);
+    if (savedState) {
+      const parsed = JSON.parse(savedState);
+      // Restore filter, sort, and pagination state
+      return {
+        pageSize: parsed.pageSize,
+        pageNumber: parsed.pageNumber,
+        sortKey: parsed.sortKey,
+        isSortedDescending: parsed.isSortedDescending,
+        filterStatus: parsed.filterStatus,
+        filterActionRequired: parsed.filterActionRequired,
+        filterDestinationId: parsed.filterDestinationId,
+        filterDestinationType: parsed.filterDestinationType,
+        filterDestinationName: parsed.filterDestinationName,
+        filterDestinationOwner: parsed.filterDestinationOwner,
+        filterDestinationOwnerPersona: parsed.filterDestinationOwnerPersona,
+        customSortBy: parsed.customSortBy,
+      };
+    }
+  } catch (error) {
+    console.warn('Failed to load persisted job list state:', error);
+  }
+  return {};
+};
+
+const saveStateToStorage = (state: PagingBarState) => {
+  try {
+    const stateToSave = {
+      pageSize: state.pageSize,
+      pageNumber: state.pageNumber,
+      sortKey: state.sortKey,
+      isSortedDescending: state.isSortedDescending,
+      filterStatus: state.filterStatus,
+      filterActionRequired: state.filterActionRequired,
+      filterDestinationId: state.filterDestinationId,
+      filterDestinationType: state.filterDestinationType,
+      filterDestinationName: state.filterDestinationName,
+      filterDestinationOwner: state.filterDestinationOwner,
+      filterDestinationOwnerPersona: state.filterDestinationOwnerPersona,
+      customSortBy: state.customSortBy,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+  } catch (error) {
+    console.warn('Failed to save job list state:', error);
+  }
+};
+
 // Define the initial state using that type
+const persistedState = loadPersistedState();
 const initialState: PagingBarState = {
   visible: true,
-  pageSize: '10',
-  pageNumber: 1,
+  pageSize: persistedState.pageSize || '10',
+  pageNumber: persistedState.pageNumber || 1,
   totalNumberOfPages: 0,
-  sortKey: undefined,
+  sortKey: persistedState.sortKey || undefined,
   filterString: undefined,
-  filterActionRequired: undefined,
-  isSortedDescending: false,
-  filterStatus: undefined,
-  filterDestinationId: undefined,
-  filterDestinationType: undefined,
-  filterDestinationName: undefined,
-  filterDestinationOwner: undefined,
-  customSortBy: undefined
+  filterActionRequired: persistedState.filterActionRequired || undefined,
+  isSortedDescending: persistedState.isSortedDescending || false,
+  filterStatus: persistedState.filterStatus || undefined,
+  filterDestinationId: persistedState.filterDestinationId || undefined,
+  filterDestinationType: persistedState.filterDestinationType || undefined,
+  filterDestinationName: persistedState.filterDestinationName || undefined,
+  filterDestinationOwner: persistedState.filterDestinationOwner || undefined,
+  filterDestinationOwnerPersona: persistedState.filterDestinationOwnerPersona || undefined,
+  customSortBy: persistedState.customSortBy || undefined
 };
 
 export const pagingBarSlice = createSlice({
@@ -51,55 +111,91 @@ export const pagingBarSlice = createSlice({
     },
     setPageSize: (state, action) => {
       state.pageSize = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setPageNumber: (state, action) => {
       state.pageNumber = action.payload;
+      saveStateToStorage(state);
     },
     setTotalNumberOfPages: (state, action) => {
       state.totalNumberOfPages = action.payload;
     },
     setSortKey: (state, action) => {
       state.sortKey = action.payload;
+      saveStateToStorage(state);
     },
     setIsSortedDescending: (state, action) => {
       state.isSortedDescending = action.payload;
+      saveStateToStorage(state);
     },
     setFilterString: (state, action) => {
       state.filterString = action.payload;
     },
     setFilterActionRequired: (state, action) => {
       state.filterActionRequired = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setFilterStatus: (state, action) => {
       state.filterStatus = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setFilterDestinationId: (state, action) => {
       state.filterDestinationId = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setFilterDestinationType: (state, action) => {
       state.filterDestinationType = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setFilterDestinationName: (state, action) => {
       state.filterDestinationName = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setFilterDestinationOwner: (state, action) => {
       state.filterDestinationOwner = action.payload;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
+    },
+    setFilterDestinationOwnerPersona: (state, action) => {
+      const persona = action.payload;
+      state.filterDestinationOwner = persona?.id || undefined;
+      state.filterDestinationOwnerPersona = persona || undefined;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     },
     setCustomSortBy: (state, action) => {
       state.customSortBy = action.payload;
+      saveStateToStorage(state);
     },
     resetFilters: (state) => {
       state.filterDestinationId = undefined;
       state.filterDestinationType = undefined;
       state.filterDestinationName = undefined;
       state.filterDestinationOwner = undefined;
+      state.filterDestinationOwnerPersona = undefined;
       state.filterActionRequired = undefined;
       state.filterStatus = undefined;
+      state.pageNumber = 1;
+      saveStateToStorage(state);
     }
   },
   extraReducers: (builder) => {
     builder.addCase(fetchJobs.fulfilled, (state, action) => {
-      state.totalNumberOfPages = action.payload.totalNumberOfPages;
+      const newTotalPages = action.payload.totalNumberOfPages;
+      
+      // Only reset page if current page is beyond the available pages (invalid page)
+      if (newTotalPages > 0 && state.pageNumber > newTotalPages) {
+        state.pageNumber = 1;
+        saveStateToStorage(state);
+      }
+      
+      state.totalNumberOfPages = newTotalPages;
     });
   }
 });
@@ -116,6 +212,7 @@ export const {
   setFilterDestinationType,
   setFilterDestinationName,
   setFilterDestinationOwner,
+  setFilterDestinationOwnerPersona,
   setFilterActionRequired,
   setFilterStatus,
   setCustomSortBy,
@@ -133,73 +230,82 @@ export const selectPagingBarfilterDestinationId = (state: RootState) => state.pa
 export const selectPagingBarfilterDestinationType = (state: RootState) => state.pagingBar.filterDestinationType;
 export const selectPagingBarfilterDestinationName = (state: RootState) => state.pagingBar.filterDestinationName;
 export const selectPagingBarfilterDestinationOwner = (state: RootState) => state.pagingBar.filterDestinationOwner;
+export const selectPagingBarfilterDestinationOwnerPersona = (state: RootState) => state.pagingBar.filterDestinationOwnerPersona;
 export const selectPagingBarFilterActionRequired = (state: RootState) => state.pagingBar.filterActionRequired;
 export const selectPagingBarFilterStatus = (state: RootState) => state.pagingBar.filterStatus;
+export const selectPagingBarCustomSortBy = (state: RootState) => state.pagingBar.customSortBy;
 
 
-export const selectPagingOptions = (state: RootState) => {
-  const { pageNumber, pageSize, 
-    sortKey, isSortedDescending, 
-    filterStatus, filterActionRequired,
-    filterDestinationId,
-    filterDestinationName,
-    filterDestinationType,
-    filterDestinationOwner,
-    customSortBy
-  } = state.pagingBar;
-  
-  let orderByString: string | undefined = undefined;
-  let filters: string[] = [];
-  if (sortKey !== undefined && sortKey !== 'targetGroupName') {
-    orderByString = sortKey + (isSortedDescending ? ' desc' : '');
-  }
-  if (filterDestinationId) {
-    filters.push("Group/GroupId eq " + filterDestinationId);
-  }
-  if (filterActionRequired && filterActionRequired !== 'All') {
-    filters.push("status eq '" + filterActionRequired + "'");
-  }
-  if (filterDestinationType && filterDestinationType !== 'All')
-  {
-    filters.push("contains(Destination, '" + filterDestinationType + "')");
-  }
-  if (filterDestinationName) {
-    let subConditions: string[] = [];
-  
-    subConditions.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
-    subConditions.push("contains(tolower(DestinationEmail/Email), tolower('" + filterDestinationName + "'))");
-  
-    if (isGuidValid(filterDestinationName)) {
-      subConditions.push("targetOfficeGroupId eq " + filterDestinationName);
-    }
-    const combinedSubFilter = "(" + subConditions.join(" or ") + ")";
-    filters.push(combinedSubFilter);
-  }
-  
-  if (filterDestinationOwner)
-  {
-    filters.push("DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")");
-  }
-  
-  if (filterStatus === 'Enabled') {
-    filters.push("(status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
-  }
-  else if (filterStatus === 'Disabled') {
-    filters.push("not (status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
-  }
-  let filterString: string | undefined = filters.length === 0 ? undefined : filters.join(' and ');
+export const selectPagingOptions = createSelector(
+  [
+    (state: RootState) => state.pagingBar.pageNumber,
+    (state: RootState) => state.pagingBar.pageSize,
+    (state: RootState) => state.pagingBar.sortKey,
+    (state: RootState) => state.pagingBar.isSortedDescending,
+    (state: RootState) => state.pagingBar.filterStatus,
+    (state: RootState) => state.pagingBar.filterActionRequired,
+    (state: RootState) => state.pagingBar.filterDestinationId,
+    (state: RootState) => state.pagingBar.filterDestinationName,
+    (state: RootState) => state.pagingBar.filterDestinationType,
+    (state: RootState) => state.pagingBar.filterDestinationOwner,
+    (state: RootState) => state.pagingBar.customSortBy,
+  ],
+  (pageNumber, pageSize, sortKey, isSortedDescending, filterStatus, filterActionRequired, 
+   filterDestinationId, filterDestinationName, filterDestinationType, filterDestinationOwner, customSortBy) => {
     
-  const itemsToSkip = (pageNumber - 1) * parseInt(pageSize);
-  return { 
-    pageSize: parseInt(pageSize),
-    itemsToSkip,
-    orderBy: orderByString,
-    filter: filterString,
-    sortKey,
-    isSortedDescending,
-    customSortBy: customSortBy !== 'targetGroupName' ? customSortBy : undefined
-  };
-};
+    let orderByString: string | undefined = undefined;
+    const filters: string[] = [];
+    if (sortKey !== undefined && sortKey !== 'targetGroupName') {
+      orderByString = sortKey + (isSortedDescending ? ' desc' : '');
+    }
+    if (filterDestinationId) {
+      filters.push("Group/GroupId eq " + filterDestinationId);
+    }
+    if (filterActionRequired && filterActionRequired !== 'All') {
+      filters.push("status eq '" + filterActionRequired + "'");
+    }
+    if (filterDestinationType && filterDestinationType !== 'All')
+    {
+      filters.push("contains(Destination, '" + filterDestinationType + "')");
+    }
+    if (filterDestinationName) {
+      const subConditions: string[] = [];
+    
+      subConditions.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
+      subConditions.push("contains(tolower(DestinationEmail/Email), tolower('" + filterDestinationName + "'))");
+    
+      if (isGuidValid(filterDestinationName)) {
+        subConditions.push("targetOfficeGroupId eq " + filterDestinationName);
+      }
+      const combinedSubFilter = "(" + subConditions.join(" or ") + ")";
+      filters.push(combinedSubFilter);
+    }
+    
+    if (filterDestinationOwner)
+    {
+      filters.push("DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")");
+    }
+    
+    if (filterStatus === 'Enabled') {
+      filters.push("(status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
+    }
+    else if (filterStatus === 'Disabled') {
+      filters.push("not (status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
+    }
+    const filterString: string | undefined = filters.length === 0 ? undefined : filters.join(' and ');
+      
+    const itemsToSkip = (pageNumber - 1) * parseInt(pageSize);
+    return { 
+      pageSize: parseInt(pageSize),
+      itemsToSkip,
+      orderBy: orderByString,
+      filter: filterString,
+      sortKey,
+      isSortedDescending,
+      customSortBy: customSortBy !== 'targetGroupName' ? customSortBy : undefined
+    };
+  }
+);
 
 export default pagingBarSlice.reducer;
 

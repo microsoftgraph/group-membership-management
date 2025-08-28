@@ -153,6 +153,10 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     navigate(`/ManageMembership/${jobId ?? job.syncJobId}`, { state: { currentStep: OnboardingSteps.MembershipConfiguration, jobId: job?.syncJobId } });
   };
 
+  const onBackToJobsList = (): void => {
+    navigate('/');
+  };
+
   const onRemoveGMMButtonClick = (): void => {
     setShowRemoveGMMDialog(true);
   };
@@ -212,7 +216,9 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   return (
     <Page>
-      <PageHeader />
+      <PageHeader
+        onBackToDashboardButtonClick={onBackToJobsList}
+      />
       {showLoader ? <Loader />
         : ( <>
           {/* Error Message */}
