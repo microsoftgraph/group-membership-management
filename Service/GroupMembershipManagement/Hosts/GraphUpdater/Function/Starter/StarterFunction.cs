@@ -261,18 +261,21 @@ namespace Hosts.GraphUpdater
                 await Task.Delay(delay);
 
                 var orchestratorStatus = await client.GetStatusAsync(instanceId);
-                if (orchestratorStatus == null)
+                if (orchestratorStatus != null)
                 {
-                    // Keep waiting
-                }
-                else if (orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
-                        && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
-                        && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed
-                        && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Canceled)
-                {
-                    return;
+                    // Only return when the orchestration has reached a terminal state.
+                    if (orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Completed
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Terminated
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Canceled)
+                    {
+                        return;
+                    }
+
+                    // Otherwise (Running/Pending/ContinuedAsNew), keep waiting.
                 }
 
+                // If status is null or non-terminal, continue waiting with backoff.
                 delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 1.5, maxDelay.TotalSeconds));
             }
         }
