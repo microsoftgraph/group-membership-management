@@ -43,31 +43,31 @@ function Set-PostDeploymentRoles {
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    . ($scriptsDirectory + '\PostDeployment\Set-StorageAccountContainerManagedIdentityRoles.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-StorageAccountContainerManagedIdentityRoles.ps1')
 
     Set-StorageAccountContainerManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                                     -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                                     -DataResourceGroupName $DataResourceGroupName `
                                                     -Verbose
 
-    . ($scriptsDirectory + '\PostDeployment\Set-AppConfigurationManagedIdentityRoles.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-AppConfigurationManagedIdentityRoles.ps1')
     Set-AppConfigurationManagedIdentityRoles    -SolutionAbbreviation $SolutionAbbreviation `
                                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                                 -DataResourceGroupName $DataResourceGroupName `
                                                 -Verbose
 
-    . ($scriptsDirectory + '\PostDeployment\Set-LogAnalyticsReaderRole.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-LogAnalyticsReaderRole.ps1')
     Set-LogAnalyticsReaderRole	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                 -DataResourceGroupName $DataResourceGroupName `
                                 -Verbose
 
-    . ($scriptsDirectory + '\PostDeployment\Set-ADFManagedIdentityRoles.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-ADFManagedIdentityRoles.ps1')
     Set-ADFManagedIdentityRoles	-SolutionAbbreviation $SolutionAbbreviation `
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                 -UserPrincipalNames $UserPrincipalNames
 
-    . ($scriptsDirectory + '\PostDeployment\Set-ServiceBusManagedIdentityRoles.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-ServiceBusManagedIdentityRoles.ps1')
     Set-ServiceBusManagedIdentityRoles -SolutionAbbreviation $SolutionAbbreviation `
                                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                        -DataResourceGroupName $DataResourceGroupName `
@@ -75,7 +75,7 @@ function Set-PostDeploymentRoles {
                                        -Verbose
 
     if ($SetUserAssignedManagedIdentityPermissions) {
-        . ($scriptsDirectory + '\PostDeployment\Set-UserManagedIdentityPermissions.ps1')
+        . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-UserManagedIdentityPermissions.ps1')
         Set-UserManagedIdentityPermissions	-SolutionAbbreviation $SolutionAbbreviation `
                                             -EnvironmentAbbreviation $EnvironmentAbbreviation `
                                             -InstallRequiredModules $InstallRequiredModules `
@@ -83,13 +83,13 @@ function Set-PostDeploymentRoles {
                                             -Verbose
     }
 
-    . ($scriptsDirectory + '\PostDeployment\Set-KeyVaultAccessRoles.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-KeyVaultAccessRoles.ps1')
     Set-KeyVaultAccessRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -Verbose
 
-    . ($scriptsDirectory + '\PostDeployment\Set-WebAPIAccessRoles.ps1')
+    . ($scriptsDirectory + '\PostDeploymentRoleAssignments\Set-WebAPIAccessRoles.ps1')
     Set-WebAPIAccessRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `

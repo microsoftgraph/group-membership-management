@@ -1893,7 +1893,7 @@ function Deploy-Resources {
         -SubscriptionId $SubscriptionId
 
     Set-PostDeploymentUpdates `
-        -ScriptsDirectory "$scriptsDirectory\scripts"
+        -ScriptsDirectory "$scriptsDirectory\scripts" `
         -ConnectionString $connectionString
 
     if(!$IsInitialDeployment -and $ResetGMMType -ne "Skip") {
