@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 
 # Global variable to control Azure cmdlet warning suppression
 # Set to $true to hide Azure PowerShell warnings, $false to show them
-$Global:SuppressAzureWarnings = $true
+$Global:SuppressAzureWarnings = $false
 
 if ($Global:SuppressAzureWarnings) {
     $WarningPreference = "SilentlyContinue"
@@ -63,6 +63,60 @@ function Get-WarningAction {
         return "SilentlyContinue"
     } else {
         return "Continue"
+    }
+}
+
+function Invoke-SqlNonQuery {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConnectionString,
+        [Parameter(Mandatory = $true)]
+        [string]$Query,
+        [int]$CommandTimeoutSeconds = 30
+    )
+    $connection = $null
+    $command = $null
+    $handler = $null
+    $messages = New-Object System.Collections.Generic.List[string]
+    try {
+        $connection = New-Object System.Data.SqlClient.SqlConnection $ConnectionString
+        # Capture PRINT and low-severity messages from SQL
+        $connection.FireInfoMessageEventOnUserErrors = $true
+        $handler = [System.Data.SqlClient.SqlInfoMessageEventHandler] {
+            param($sender, $eventArgs)
+            foreach ($err in $eventArgs.Errors) { $messages.Add($err.Message) }
+        }
+        $connection.add_InfoMessage($handler)
+
+        $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
+        $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($context.Account, $context.Environment, $context.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://database.windows.net").AccessToken
+        $connection.AccessToken = $sqlToken
+        $connection.Open()
+
+        $command = $connection.CreateCommand()
+        $command.CommandText = $Query
+        $command.CommandTimeout = $CommandTimeoutSeconds
+        [void]$command.ExecuteNonQuery()
+
+        if ($messages.Count -gt 0) {
+            foreach ($m in $messages) {
+                Write-Host "    ℹ️  SQL: $m" -ForegroundColor DarkGray
+            }
+        }
+    }
+    catch [System.Data.SqlClient.SqlException] {
+        # Provide rich SQL error details before bubbling up
+        $sqlEx = $_.Exception
+        foreach ($e in $sqlEx.Errors) {
+            Write-Warning ("    SQL {0}: {1} (State {2}, Line {3})" -f $e.Number, $e.Message, $e.State, $e.LineNumber)
+        }
+        throw
+    }
+    finally {
+        if ($connection -and $handler) { $connection.remove_InfoMessage($handler) }
+        if ($null -ne $command) { $command.Dispose() }
+        if ($null -ne $connection) { $connection.Dispose() }
     }
 }
 
@@ -333,8 +387,7 @@ function Set-SqlServerFirewallRule {
 
 function Remove-SqlDatabasePermissions {
     param(
-        [string]$ManagedIdentityName,
-        [string]$FunctionName,
+        [string]$IdentityName,
         [string]$SyncJobsDBConnectionString,
         [string]$ADFDBConnectionString,
         [string]$SolutionAbbreviation,
@@ -342,31 +395,31 @@ function Remove-SqlDatabasePermissions {
         [switch]$WhatIf
     )
     if ($WhatIf) {
-        Write-Host "    [WhatIf] Would drop SQL user from $SolutionAbbreviation-data-$EnvironmentAbbreviation DB: $ManagedIdentityName" -ForegroundColor Magenta
-        Write-Host "    [WhatIf] Would drop SQL user from $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB: $ManagedIdentityName" -ForegroundColor Magenta
+        Write-Host "    [WhatIf] Would drop SQL user from $SolutionAbbreviation-data-$EnvironmentAbbreviation DB: $IdentityName" -ForegroundColor Magenta
+        Write-Host "    [WhatIf] Would drop SQL user from $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB: $IdentityName" -ForegroundColor Magenta
         return
     }
 
     # Drop user from SyncJobsDB (all functions)
     if (-not [string]::IsNullOrEmpty($SyncJobsDBConnectionString)) {
         try {
-            Write-Host "    🗄️  Removing $SolutionAbbreviation-data-$EnvironmentAbbreviation DB permissions for: $ManagedIdentityName..." -ForegroundColor Yellow
+            Write-Host "    🗄️  Removing $SolutionAbbreviation-data-$EnvironmentAbbreviation DB permissions for: $IdentityName..." -ForegroundColor Yellow
             $dropUserQuery = @"
-            IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '$ManagedIdentityName')
+            IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '$IdentityName')
             BEGIN
-                DROP USER [$ManagedIdentityName]
-                PRINT 'Dropped user from $SolutionAbbreviation-data-$EnvironmentAbbreviation DB: $ManagedIdentityName'
+                DROP USER [$IdentityName]
+                PRINT 'Dropped user from $SolutionAbbreviation-data-$EnvironmentAbbreviation DB: $IdentityName'
             END
             ELSE
             BEGIN
-                PRINT 'User not found in $SolutionAbbreviation-data-$EnvironmentAbbreviation DB: $ManagedIdentityName'
+                PRINT 'User not found in $SolutionAbbreviation-data-$EnvironmentAbbreviation DB: $IdentityName'
             END
 "@
-            Invoke-SqlCmd -ConnectionString $SyncJobsDBConnectionString -Query $dropUserQuery -ErrorAction Stop
+            Invoke-SqlNonQuery -ConnectionString $SyncJobsDBConnectionString -Query $dropUserQuery
             Write-Host "    ✅ Successfully removed $SolutionAbbreviation-data-$EnvironmentAbbreviation DB permissions" -ForegroundColor Green
         }
         catch {
-            Write-Warning "Failed to remove $SolutionAbbreviation-data-$EnvironmentAbbreviation DB permissions for '$ManagedIdentityName': $($_.Exception.Message)"
+            Write-Warning "Failed to remove $SolutionAbbreviation-data-$EnvironmentAbbreviation DB permissions for '$IdentityName': $($_.Exception.Message)"
         }
     }
     else {
@@ -376,23 +429,23 @@ function Remove-SqlDatabasePermissions {
     # Drop user from ADFDB (all functions - some may not exist, that's OK)
     if (-not [string]::IsNullOrEmpty($ADFDBConnectionString)) {
         try {
-            Write-Host "    🗄️  Removing $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB permissions for: $ManagedIdentityName..." -ForegroundColor Yellow
+            Write-Host "    🗄️  Removing $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB permissions for: $IdentityName..." -ForegroundColor Yellow
             $dropUserQuery = @"
-            IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '$ManagedIdentityName')
+            IF EXISTS (SELECT * FROM sys.database_principals WHERE name = '$IdentityName')
             BEGIN
-                DROP USER [$ManagedIdentityName]
-                PRINT 'Dropped user from $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB: $ManagedIdentityName'
+                DROP USER [$IdentityName]
+                PRINT 'Dropped user from $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB: $IdentityName'
             END
             ELSE
             BEGIN
-                PRINT 'User not found in $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB: $ManagedIdentityName'
+                PRINT 'User not found in $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB: $IdentityName'
             END
 "@
-            Invoke-SqlCmd -ConnectionString $ADFDBConnectionString -Query $dropUserQuery -ErrorAction Stop
+            Invoke-SqlNonQuery -ConnectionString $ADFDBConnectionString -Query $dropUserQuery
             Write-Host "    ✅ Successfully removed $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB permissions" -ForegroundColor Green
         }
         catch {
-            Write-Warning "Failed to remove $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB permissions for '$ManagedIdentityName': $($_.Exception.Message)"
+            Write-Warning "Failed to remove $SolutionAbbreviation-data-$EnvironmentAbbreviation-adf DB permissions for '$IdentityName': $($_.Exception.Message)"
         }
     }
     else {
@@ -596,8 +649,7 @@ function Start-FlexConsumptionMigration {
                                             -ResourceGroupName $computeResourceGroupName `
                                             -WhatIf:$WhatIf
             # Remove SQL permissions
-            Remove-SqlDatabasePermissions -ManagedIdentityName $migration.ManagedIdentityName `
-                                         -FunctionName $migration.FunctionName `
+            Remove-SqlDatabasePermissions -IdentityName $migration.ManagedIdentityName `
                                          -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
                                          -ADFDBConnectionString $ADFDBConnectionString `
                                          -SolutionAbbreviation $SolutionAbbreviation `
