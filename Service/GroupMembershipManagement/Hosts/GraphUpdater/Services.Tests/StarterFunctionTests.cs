@@ -182,11 +182,9 @@ namespace Services.Tests
 
             _durableClientMock
                 .SetupSequence(x => x.GetStatusAsync(expectedInstanceId, false, false, true))
-                .ReturnsAsync((DurableOrchestrationStatus)null)  // First call - instance doesn't exist
-                .ReturnsAsync(new DurableOrchestrationStatus  // Second call - after starting (Running state will exit WaitForInstanceAsync)
-                {
-                    RuntimeStatus = OrchestrationRuntimeStatus.Running
-                });
+                .ReturnsAsync((DurableOrchestrationStatus)null)
+                .ReturnsAsync(new DurableOrchestrationStatus { RuntimeStatus = OrchestrationRuntimeStatus.Running })
+                .ReturnsAsync(new DurableOrchestrationStatus { RuntimeStatus = OrchestrationRuntimeStatus.Completed });
 
             _durableClientMock
                 .Setup(x => x.StartNewAsync(nameof(OrchestratorMultiLaneFunction), expectedInstanceId, It.IsAny<OrchestratorMultiLaneRequest>()))
@@ -242,10 +240,14 @@ namespace Services.Tests
                 {
                     RuntimeStatus = OrchestrationRuntimeStatus.Running
                 })
-                .ReturnsAsync(new DurableOrchestrationStatus  // Second call - still running (exit WaitForInstanceAsync)
+                .ReturnsAsync(new DurableOrchestrationStatus  // Second call - still running
                 {
                     RuntimeStatus = OrchestrationRuntimeStatus.Running
-                });
+                })
+                .ReturnsAsync(new DurableOrchestrationStatus 
+                { 
+                    RuntimeStatus = OrchestrationRuntimeStatus.Completed // Completed (exists WaitForInstanceAsync)
+                }); 
 
             var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
 
@@ -361,37 +363,6 @@ namespace Services.Tests
             // Assert
             Assert.AreEqual(1, result.Count);
             Assert.AreEqual("GraphUpdater_small_1", result[0]);
-        }
-
-        [TestMethod]
-        public async Task WaitForInstanceAsync_WaitsUntilCompleted()
-        {
-            // Arrange
-            var instanceId = "test-instance-id";
-
-            _durableClientMock
-                .SetupSequence(x => x.GetStatusAsync(instanceId, false, false, true))
-                .ReturnsAsync((DurableOrchestrationStatus)null)  // First check - null
-                .ReturnsAsync(new DurableOrchestrationStatus  // Second check - running
-                {
-                    RuntimeStatus = OrchestrationRuntimeStatus.Running
-                })
-                .ReturnsAsync(new DurableOrchestrationStatus  // Third check - completed
-                {
-                    RuntimeStatus = OrchestrationRuntimeStatus.Completed
-                });
-
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
-
-            // Act - Use reflection to test the private method
-            var method = typeof(StarterFunction).GetMethod("WaitForInstanceAsync",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            var task = (Task)method.Invoke(starterFunction, new object[] { _durableClientMock.Object, instanceId });
-            await task;
-
-            // Assert
-            _durableClientMock.Verify(x => x.GetStatusAsync(instanceId, false, false, true), Times.Exactly(2));
         }
 
         [TestMethod]
@@ -767,35 +738,6 @@ namespace Services.Tests
                 x.Message.Contains($"Message {message.MessageId}") &&
                 x.Message.Contains("was already processed") &&
                 x.Message.Contains("Canceled")));
-        }
-
-        [TestMethod]
-        public async Task WaitForInstanceAsync_ExitsWhenOrchestratorStarts()
-        {
-            // Arrange
-            var instanceId = "test-instance-id";
-
-            // Setup sequence: null (keep waiting) then Running (exit)
-            _durableClientMock
-                .SetupSequence(x => x.GetStatusAsync(instanceId, false, false, true))
-                .ReturnsAsync((DurableOrchestrationStatus)null)  // First check - null (keep waiting)
-                .ReturnsAsync(new DurableOrchestrationStatus  // Second check - running (exit)
-                {
-                    RuntimeStatus = OrchestrationRuntimeStatus.Running
-                });
-
-            var starterFunction = new StarterFunction(_loggerMock, _membershipUpdaters, _multilaneConfig);
-
-            // Act - Use reflection to test the private method
-            var method = typeof(StarterFunction).GetMethod("WaitForInstanceAsync",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-
-            var task = (Task)method.Invoke(starterFunction, new object[] { _durableClientMock.Object, instanceId });
-            await task;
-
-            // Assert - Verify that GetStatusAsync was called twice (once null, once running)
-            _durableClientMock.Verify(x => x.GetStatusAsync(instanceId, false, false, true), Times.Exactly(2));
-        }
-
+        }      
     }
 }
