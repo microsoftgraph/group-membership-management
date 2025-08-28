@@ -1720,6 +1720,11 @@ function Initialize-ScriptDependencies {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
+    if ($AssertUserPermissions -eq $true) {
+        . ($scriptsDirectory + '\scripts\Assert-MicrosoftGraphPermissions.ps1')
+        Assert-MicrosoftGraphPermissions
+    }
+
     Set-Subscription `
             -ScriptsDirectory "$scriptsDirectory\scripts" `
             -SubscriptionId $SubscriptionId
@@ -1728,10 +1733,7 @@ function Initialize-ScriptDependencies {
         . ($scriptsDirectory + '\scripts\Assert-RbacPermissionsForDeployment.ps1')
         Assert-RbacPermissionsForDeployment `
             -SolutionAbbreviation $SolutionAbbreviation `
-            -EnvironmentAbbreviation $EnvironmentAbbreviation 
-
-        . ($scriptsDirectory + '\scripts\Assert-MicrosoftGraphPermissions.ps1')
-        Assert-MicrosoftGraphPermissions
+            -EnvironmentAbbreviation $EnvironmentAbbreviation
     }
 }
 
