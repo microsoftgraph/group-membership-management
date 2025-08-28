@@ -78,6 +78,7 @@ export const strings: IStrings = {
     NOTIN: "NOT IN",
     notEqualTo: "<>",
     loadingText: "Cargando...",
+    generatingTitle: "Generando título...",
     generateTitle: "Generar título de IA",
     generatingTitleText: "Generando..."
   },

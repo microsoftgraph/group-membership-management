@@ -75,6 +75,7 @@ export type IStrings = {
     NOTIN: string;
     notEqualTo: string;
     loadingText: string;
+    generatingTitle: string;
     generateTitle: string;
     generatingTitleText: string;
   },

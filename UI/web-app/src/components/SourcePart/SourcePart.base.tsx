@@ -281,7 +281,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
         {isAITitleEnabled && (
           <>
             {!isEditButtonClicked && isGeneratingTitles && (part.title === "") && (
-              <Spinner size={SpinnerSize.small} label={strings.HROnboarding.generateTitle} />
+              <Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitle} />
             )}
             {!isEditButtonClicked && (part.title || props.title) && (
               <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
