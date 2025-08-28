@@ -138,9 +138,11 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       try {
         const results = await dispatch(searchGroups(part.query.source as string));
         const searchResults = results.payload as IPersonaProps[];
-        const newTitle = "All Users in " + searchResults[0]?.text;
-        if (part.title !== newTitle) {
-          handleGroupMembershipSourceChange(part.query.source as string, newTitle);
+        if (searchResults.length > 0) {
+          const newTitle = "All Users in " + searchResults[0].text;
+          if (part.title !== newTitle) {
+            handleGroupMembershipSourceChange(part.query.source as string, newTitle);
+          }
         }
       } catch (error) {
         console.error("Error fetching search destinations", error);

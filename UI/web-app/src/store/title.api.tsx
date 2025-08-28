@@ -23,8 +23,7 @@ function extractColumnNames(filter: string) {
 
 function createFallbackTitles(parts: HRPart[]): HRPart[] {
   return parts.map(part => {
-    const columnNames = extractColumnNames(part.filter);
-    const uniqueFilterKeys = Array.from(new Set(columnNames)).join(', ');
+    const uniqueFilterKeys = extractColumnNames(part.filter).join(', ');
     return { ...part, title: uniqueFilterKeys ? `Users matching ${uniqueFilterKeys}` : part.filter };
   });
 }
