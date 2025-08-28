@@ -107,7 +107,9 @@ function Set-ADFManagedIdentityRoles
 
     Write-Host "Grant ADF identity access to the storage account";
     # Define the Key Vault name and the secret name
-    $dataFactoryPrincipalId = $azureDataFactoryObject.Identity.PrincipalId
+    $azureUserReaderPrincipal = Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-AzureUserReader";
+    $dataFactoryPrincipal = Get-AzADServicePrincipal -DisplayName $azureDataFactoryName;
+    $servicePrincipalsToBeGrantedStorageRoles = @($dataFactoryPrincipal, $azureUserReaderPrincipal)
     $dataRGName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $secretNames = @("adfStorageAccountName", "sqlMembershipStorageAccountName")
@@ -122,19 +124,24 @@ function Set-ADFManagedIdentityRoles
         $adfStorageAccount = Get-AzStorageAccount -ResourceGroupName $dataRGName -Name $storageAccountName
         $storageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
 
-        foreach($role in $storageAccountRoles)
+        foreach ($servicePrincipal in $servicePrincipalsToBeGrantedStorageRoles)
         {
-            if ($null -eq (Get-AzRoleAssignment -ObjectId $dataFactoryPrincipalId -Scope $adfStorageAccount.Id -RoleDefinitionName $role)) {
-                $assignment = New-AzRoleAssignment -ObjectId $dataFactoryPrincipalId -Scope $adfStorageAccount.Id -RoleDefinitionName $role;
-                if ($assignment) {
-                    Write-Host "Added role assignment $role to $azureDataFactoryName with scope $storageAccountName.";
+            $servicePrincipalName = $servicePrincipal.DisplayName
+
+            foreach($role in $storageAccountRoles)
+            {
+                if ($null -eq (Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $adfStorageAccount.Id -RoleDefinitionName $role)) {
+                    $assignment = New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $adfStorageAccount.Id -RoleDefinitionName $role;
+                    if ($assignment) {
+                        Write-Host "Added role assignment $role to $servicePrincipalName with scope $storageAccountName.";
+                    }
+                    else {
+                        Write-Host "Failed to add role assignment $role to $servicePrincipalName with scope $storageAccountName. Please double check that you have permission to perform this operation";
+                    }
                 }
                 else {
-                    Write-Host "Failed to add role assignment $role to $azureDataFactoryName with scope $storageAccountName. Please double check that you have permission to perform this operation";
+                    Write-Host "$servicePrincipalName already has role $role with scope $storageAccountName.";
                 }
-            }
-            else {
-                Write-Host "$azureDataFactoryName already has role $role with scope $storageAccountName.";
             }
         }
     }
