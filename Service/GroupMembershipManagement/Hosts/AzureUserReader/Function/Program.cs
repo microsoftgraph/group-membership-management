@@ -26,7 +26,7 @@ namespace Hosts.AzureUserReader
                 .ConfigureAppConfiguration((context, config) =>
                 {
                     var settings = config.Build();
-                    var appConfigEndpoint = CommonServices.GetValueOrThrowBase("appConfigurationEndpoint");
+                    var appConfigEndpoint = CommonServices.GetValueOrThrowBase(settings, "appConfigurationEndpoint");
 
                     config.AddAzureAppConfiguration(options =>
                     {
@@ -46,7 +46,7 @@ namespace Hosts.AzureUserReader
                     services.AddGraphAPIClient();
 
                     services.AddSingleton<IStorageAccountSecret>(services =>
-                        new StorageAccountSecret(CommonServices.GetValueOrThrowBase("storageAccountName")));
+                        new StorageAccountSecret(CommonServices.GetValueOrThrowBase(configuration, "storageAccountName")));
 
                     services.AddScoped<IGraphUserRepository, GraphUserRepository>();
                     services.AddScoped<IBlobClientFactory, BlobClientFactory>();
