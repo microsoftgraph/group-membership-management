@@ -31,7 +31,6 @@ namespace Hosts.GraphUpdater
         private readonly IGMMResources _gmmResources = null;
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IDeltaCachingConfig _deltaCachingConfig = null;
-
         enum Metric
         {
             SyncComplete,
@@ -66,7 +65,11 @@ namespace Hosts.GraphUpdater
             var groupMembership = request.GroupMembership;
 
             var runId = groupMembership.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            
+            var dynamicProperties = groupMembership.SyncJob.ToDictionary();
+            dynamicProperties.Add("Instance", request.SubscriptionName);
+            dynamicProperties.Add("MessageIndex", groupMembership.MessageIndex.ToString());
+            _loggingRepository.UpsertSyncJobProperties(groupMembership.RunId, dynamicProperties);
+
             var groupId = await context.CallActivityAsync<Guid>(nameof(GetGroupFunction), groupMembership.SyncJob);
             if (groupId.Equals(Guid.Empty))
             {

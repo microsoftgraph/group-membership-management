@@ -75,6 +75,29 @@ namespace Repositories.Logging
             _logPropertiesSemaphore.Release();
         }
 
+        public void UpsertSyncJobProperties(Guid runId, Dictionary<string, string> properties)
+        {
+            _logPropertiesSemaphore.Wait();
+
+            try
+            {
+                if (SyncJobProperties.ContainsKey(runId))
+                {
+                    var bag = SyncJobProperties[runId].Properties ??= new Dictionary<string, string>();
+                    foreach (var kvp in properties)
+                        bag[kvp.Key] = kvp.Value;
+                }
+                else
+                {
+                    SyncJobProperties.Add(runId, new LogProperties { Properties = new Dictionary<string, string>(properties) });
+                }
+            }
+            finally
+            {
+                _logPropertiesSemaphore.Release();
+            }
+        }
+
         public void RemoveSyncJobProperties(Guid runId)
         {
             _logPropertiesSemaphore.Wait();

@@ -46,6 +46,7 @@ namespace Hosts.GraphUpdater
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
             var dynamicProperties = groupMembership.SyncJob.ToDictionary();
             dynamicProperties.Add("Instance", SMALL_SUBSCRIPTION_NAME);
+            dynamicProperties.Add("MessageIndex", groupMembership.MessageIndex.ToString());
             _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
@@ -88,6 +89,7 @@ namespace Hosts.GraphUpdater
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
             var dynamicProperties = groupMembership.SyncJob.ToDictionary();
             dynamicProperties.Add("Instance", LARGE_SUBSCRIPTION_NAME);
+            dynamicProperties.Add("MessageIndex", groupMembership.MessageIndex.ToString());
             _loggingRepository.SetSyncJobProperties(groupMembership.RunId, dynamicProperties);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
