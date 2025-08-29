@@ -38,5 +38,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public void UpsertSyncJobProperties(Guid key, Dictionary<string, string> properties)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
