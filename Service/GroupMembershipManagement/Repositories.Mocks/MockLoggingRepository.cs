@@ -61,7 +61,7 @@ namespace Repositories.Mocks
 
         public void UpsertSyncJobProperties(Guid key, Dictionary<string, string> properties)
         {
-            throw new NotImplementedException();
+            
         }
     }
 }
