@@ -74,6 +74,9 @@ export type IStrings = {
     IN: string;
     NOTIN: string;
     notEqualTo: string;
+    orgLeaderTitle: string;
+    orgLeaderSingleLevelTitle: string;
+    orgLeaderMultipleLevelsTitle: string;
     loadingText: string;
     generatingTitle: string;
     generateTitle: string;

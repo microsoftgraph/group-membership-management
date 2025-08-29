@@ -78,6 +78,9 @@ export const strings: IStrings = {
     NOTIN: "NOT IN",
     notEqualTo: "<>",
     loadingText: "Loading...",
+    orgLeaderTitle: "Everyone in {0}'s org",
+    orgLeaderSingleLevelTitle: "{0} level of direct reports of {1}",
+    orgLeaderMultipleLevelsTitle: "{0} levels of direct reports of {1}",
     generatingTitle: "Generating title...",
     generateTitle: "Generate AI title",
     generatingTitleText: "Generating..."

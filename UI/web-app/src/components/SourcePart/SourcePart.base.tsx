@@ -14,6 +14,7 @@ import {
   IPersonaProps,
   Spinner,
   SpinnerSize,
+  format,
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -159,15 +160,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
         const response = results.payload as GetOrgLeaderDetailsResponse;
         const orgLeaderName = response.text;
-        let newTitle = `Everyone in ${orgLeaderName}'s org`;
-
+        let newTitle = format(strings.HROnboarding.orgLeaderTitle, orgLeaderName);
         const depth = hrSource.manager?.depth;
         if (depth && depth > 0) {
           const levels = (depth ?? 1) - 1;
           if (levels === 1) {
-            newTitle = `${levels} level of direct reports of ${orgLeaderName}`;
+            newTitle = format(strings.HROnboarding.orgLeaderSingleLevelTitle, levels, orgLeaderName);
           } else if (levels > 1) {
-            newTitle = `${levels} levels of direct reports of ${orgLeaderName}`;
+            newTitle = format(strings.HROnboarding.orgLeaderMultipleLevelsTitle, levels, orgLeaderName);
           }
         }
 
