@@ -60,28 +60,6 @@ const loadPersistedState = (): Partial<PagingBarState> => {
   return {};
 };
 
-const saveStateToStorage = (state: PagingBarState) => {
-  try {
-    const stateToSave = {
-      pageSize: state.pageSize,
-      pageNumber: state.pageNumber,
-      sortKey: state.sortKey,
-      isSortedDescending: state.isSortedDescending,
-      filterStatus: state.filterStatus,
-      filterActionRequired: state.filterActionRequired,
-      filterDestinationId: state.filterDestinationId,
-      filterDestinationType: state.filterDestinationType,
-      filterDestinationName: state.filterDestinationName,
-      filterDestinationOwner: state.filterDestinationOwner,
-      filterDestinationOwnerPersona: state.filterDestinationOwnerPersona,
-      customSortBy: state.customSortBy,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
-  } catch (error) {
-    console.warn('Failed to save job list state:', error);
-  }
-};
-
 // Define the initial state using that type
 const persistedState = loadPersistedState();
 const initialState: PagingBarState = {
@@ -112,22 +90,18 @@ export const pagingBarSlice = createSlice({
     setPageSize: (state, action) => {
       state.pageSize = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setPageNumber: (state, action) => {
       state.pageNumber = action.payload;
-      saveStateToStorage(state);
     },
     setTotalNumberOfPages: (state, action) => {
       state.totalNumberOfPages = action.payload;
     },
     setSortKey: (state, action) => {
       state.sortKey = action.payload;
-      saveStateToStorage(state);
     },
     setIsSortedDescending: (state, action) => {
       state.isSortedDescending = action.payload;
-      saveStateToStorage(state);
     },
     setFilterString: (state, action) => {
       state.filterString = action.payload;
@@ -135,43 +109,35 @@ export const pagingBarSlice = createSlice({
     setFilterActionRequired: (state, action) => {
       state.filterActionRequired = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setFilterStatus: (state, action) => {
       state.filterStatus = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setFilterDestinationId: (state, action) => {
       state.filterDestinationId = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setFilterDestinationType: (state, action) => {
       state.filterDestinationType = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setFilterDestinationName: (state, action) => {
       state.filterDestinationName = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setFilterDestinationOwner: (state, action) => {
       state.filterDestinationOwner = action.payload;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setFilterDestinationOwnerPersona: (state, action) => {
       const persona = action.payload;
       state.filterDestinationOwner = persona?.id || undefined;
       state.filterDestinationOwnerPersona = persona || undefined;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     },
     setCustomSortBy: (state, action) => {
       state.customSortBy = action.payload;
-      saveStateToStorage(state);
     },
     resetFilters: (state) => {
       state.filterDestinationId = undefined;
@@ -182,7 +148,6 @@ export const pagingBarSlice = createSlice({
       state.filterActionRequired = undefined;
       state.filterStatus = undefined;
       state.pageNumber = 1;
-      saveStateToStorage(state);
     }
   },
   extraReducers: (builder) => {
@@ -192,7 +157,6 @@ export const pagingBarSlice = createSlice({
       // Only reset page if current page is beyond the available pages (invalid page)
       if (newTotalPages > 0 && state.pageNumber > newTotalPages) {
         state.pageNumber = 1;
-        saveStateToStorage(state);
       }
       
       state.totalNumberOfPages = newTotalPages;

@@ -180,7 +180,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
 
   const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
     setDestinationName(newValue || '');
-    dispatch(setFilterDestinationName(newValue as string));
+    dispatch(setFilterDestinationName(newValue || ''));
   };
 
   const handleStatusChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
@@ -202,8 +202,9 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     if (items !== undefined && items.length > 0) {
       setSelectedOwners(items);
       const persona = items[0];
+      const personaKey = typeof persona.key === 'number' ? persona.key : parseInt(persona.key as string, 10);
       dispatch(setFilterDestinationOwnerPersona({
-        key: persona.key as number,
+        key: personaKey,
         text: persona.text || '',
         secondaryText: persona.secondaryText || '',
         id: persona.id as string
