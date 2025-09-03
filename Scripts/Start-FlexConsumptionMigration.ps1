@@ -19,8 +19,10 @@ it safely removes the existing resources and their SQL permissions, allowing the
 new resources with the correct SKU.
 
 .PARAMETER FunctionTemplatesPath
-Path to the functions ARM templates directory in the deployment package(e.g., "<path-to>\functions_arm_templates")
-If running it locally point to the local path where the functions are located (e.g., "<path-to>\Service\GroupMembershipManagement\Hosts")
+Path to the functions ARM templates directory (e.g., "<path-to>\functions_arm_templates")
+
+.PARAMETER ComputeResourcesArmTemplatePath
+Path to the computeResources.json arm template leveraged by the deployment package (e.g., "<path-to>\computeResources.json")
 
 .PARAMETER SolutionAbbreviation
 Abbreviation used to denote the overall solution (e.g., "gmm")
@@ -55,6 +57,15 @@ Start-FlexConsumptionMigration -FunctionTemplatesPath "<path-to-functions_arm_te
 
 .EXAMPLE
 Start-FlexConsumptionMigration -FunctionTemplatesPath "<path-to-functions_arm_templates>" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $syncJobsConnectionString -ADFDBConnectionString $adfConnectionString
+
+.EXAMPLE
+Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>\computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -WhatIf
+
+.EXAMPLE
+Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>\computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $conn1 -ADFDBConnectionString $conn2 -SkipConfirmation
+
+.EXAMPLE
+Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>\computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $syncJobsConnectionString -ADFDBConnectionString $adfConnectionString
 #>
 
 function Get-WarningAction {
@@ -191,19 +202,109 @@ function Get-TierFromBicep {
     return if ($sku -eq "FC1") { "FlexConsumption" } else { "Dynamic" }
 }
 
+function Get-FunctionsFromComputeArmJson {
+    param(
+        [string]$ComputeResourcesArmTemplatePath
+    )
+
+    if (-not (Test-Path $ComputeResourcesArmTemplatePath)) {
+        throw "Compute resources ARM template path not found: $ComputeResourcesArmTemplatePath"
+    }
+
+    # Load the JSON ARM template
+    $template = Get-Content -Path $ComputeResourcesArmTemplatePath -Raw | ConvertFrom-Json
+
+    $functions = @()
+    $computeResourceTemplates = $template.resources | Where-Object { $_.name -like "*ComputeResourcesTemplate" }
+    $servicePlanTemplates = $computeResourceTemplates | ForEach-Object { $_.properties.template.resources | Where-Object { $_.name -like "servicePlanTemplate*" } }
+
+    foreach ($servicePlanTemplate in $servicePlanTemplates) {
+        $functionName = ($servicePlanTemplate.name -split "-")[-1]
+        $skuName = $servicePlanTemplate.properties.template.parameters.sku.defaultValue
+        $servicePlan = $servicePlanTemplate.properties.template.resources | Where-Object { $_.type -eq "Microsoft.Web/serverfarms" } | Select-Object -First 1
+        
+        $functions += [PSCustomObject]@{
+            FunctionName = $functionName
+            Sku  = $skuName
+            Tier = $servicePlan.sku.tier
+        }
+    }
+
+    return $functions
+}
+
+function Get-FunctionsFromBicep {
+    param(
+        [string]$FunctionTemplatesPath
+    )
+
+    if (-not (Test-Path $FunctionTemplatesPath)) {
+        throw "Function templates path not found: $FunctionTemplatesPath"
+    }
+
+    $functions = @()
+
+    $functionFolders = Get-ChildItem -Path "$FunctionTemplatesPath" -Directory
+
+    foreach ($folder in $functionFolders) {
+        $servicePlanPath = Join-Path $folder.FullName "Infrastructure\compute\servicePlan.bicep"
+        if (Test-Path $servicePlanPath) {
+            try {
+                $servicePlanContent = Get-Content $servicePlanPath -Raw
+                $desiredSku  = Get-SkuFromBicep  -BicepContent $servicePlanContent
+                $desiredTier = Get-TierFromBicep -BicepContent $servicePlanContent
+
+                Write-Host "  📋 $($folder.Name): SKU=$desiredSku, Tier=$desiredTier" -ForegroundColor Gray
+
+                # Create object and add to functions list
+                $functions += [PSCustomObject]@{
+                    FunctionName        = $folder.Name
+                    Sku                 = $desiredSku
+                    Tier                = $desiredTier
+                }
+            }
+            catch {
+                Write-Warning "Failed to parse bicep files for '$($folder.Name)': $($_.Exception.Message)"
+            }
+        }
+        else {
+            Write-Host "Skipping '$($folder.Name)': No servicePlan.bicep found"
+        }
+    }
+
+    return $functions
+}
+
 function Get-FunctionsRequiringMigration {
     param(
         [string]$FunctionTemplatesPath,
+        [string]$ComputeResourcesArmTemplatePath,
         [string]$ResourceGroupName,
         [string]$SolutionAbbreviation,
         [string]$EnvironmentAbbreviation
     )
-    if (-not (Test-Path $FunctionTemplatesPath)) {
-        throw "Function templates path not found: $FunctionTemplatesPath"
-    }
+    
     $functionsToMigrate = @()
-    $functionFolders = Get-ChildItem -Path "$FunctionTemplatesPath" -Directory
-    Write-Host "🔍 Analyzing $($functionFolders.Count) function templates..." -ForegroundColor Cyan
+
+    if (-not [string]::IsNullOrEmpty($FunctionTemplatesPath)) {
+        $desiredFunctions = Get-FunctionsFromBicep -FunctionTemplatesPath $FunctionTemplatesPath
+
+        if ($null -eq $desiredFunctions -or $desiredFunctions.Count -eq 0) {
+            Write-Host "No function definitions found in templates at '$FunctionTemplatesPath'" -ForegroundColor Yellow
+            return @()  # Return empty array - no migrations needed
+        }
+    }
+    elseif (-not [string]::IsNullOrEmpty($ComputeResourcesArmTemplatePath)) {
+        $desiredFunctions = Get-FunctionsFromComputeArmJson -ComputeResourcesArmTemplatePath $ComputeResourcesArmTemplatePath
+        write-Host "  📋 Detected $($desiredFunctions.Count) functions from computeResources.json" -ForegroundColor Gray
+
+        if ($null -eq $desiredFunctions -or $desiredFunctions.Count -eq 0) {
+            Write-Host "No function definitions found in template at '$ComputeResourcesArmTemplatePath'" -ForegroundColor Yellow
+            return @()  # Return empty array - no migrations needed
+        }
+    }
+    
+    Write-Host "🔍 Analyzing $($desiredFunctions.Count) functions from templates..." -ForegroundColor Cyan
 
     # Set warning action once
     $warningAction = Get-WarningAction
@@ -230,74 +331,58 @@ function Get-FunctionsRequiringMigration {
     }
 
     Write-Host "  📊 Found $($allFunctionApps.Count) function apps and $(if ($null -eq $allServicePlans) { 0 } else { $allServicePlans.Count }) service plans" -ForegroundColor Gray
-    foreach ($folder in $functionFolders) {
-        $servicePlanPath = Join-Path $folder.FullName "Infrastructure\compute\servicePlan.bicep"
-        if (Test-Path $servicePlanPath) {
+    foreach ($desiredFunction in $desiredFunctions) {
+        $desiredSku = $desiredFunction.Sku
+        $desiredTier = $desiredFunction.Tier
+        
+        $existingFunctions = $allFunctionApps | Where-Object {
+            $_.Name -like "*$($desiredFunction.FunctionName)*" -or $_.Name -like "*$($desiredFunction.FunctionName.ToLower())*"
+        }
+
+        foreach ($existingFunction in $existingFunctions) {
             try {
-                # Parse bicep files with robust patterns
-                $servicePlanContent = Get-Content $servicePlanPath -Raw
-                # Extract configuration with flexible pattern matching
-                $desiredSku = Get-SkuFromBicep -BicepContent $servicePlanContent
-                $desiredTier = Get-TierFromBicep -BicepContent $servicePlanContent
-                Write-Host "  📋 $($folder.Name): SKU=$desiredSku, Tier=$desiredTier" -ForegroundColor Gray
-                # Find existing functions using cached data
-                # Folder name is just the function name (e.g., "JobTrigger")
-                # Look for any deployed function app that contains this function name
-                $existingFunctions = $allFunctionApps | Where-Object {
-                    $_.Name -like "*$($folder.Name)*" -or $_.Name -like "*$($folder.Name.ToLower())*"
+                # Use cached service plan data
+                $servicePlanName = $existingFunction.ServerFarmId.Split('/')[-1]
+                $servicePlan = $servicePlanLookup[$servicePlanName]
+
+                if (-not $servicePlan) {
+                    Write-Warning "Service plan '$servicePlanName' not found for function '$($existingFunction.Name)'"
+                    continue
                 }
-                foreach ($func in $existingFunctions) {
-                    try {
-                        # Use cached service plan data
-                        $servicePlanName = $func.ServerFarmId.Split('/')[-1]
-                        $servicePlan = $servicePlanLookup[$servicePlanName]
 
-                        if (-not $servicePlan) {
-                            Write-Warning "Service plan '$servicePlanName' not found for function '$($func.Name)'"
-                            continue
-                        }
-
-                        $currentSku = $servicePlan.Sku.Name
-                        $currentTier = switch ($servicePlan.Sku.Tier) {
-                            "Dynamic" { "Dynamic" }
-                            "FlexConsumption" { "FlexConsumption" }
-                            default { "Dynamic" }
-                        }
-                        # Migration logic with exact matching
-                        $needsMigration = (
-                            ($currentSku -eq "Y1" -and $desiredSku -eq "FC1") -or
-                            ($currentTier -eq "Dynamic" -and $desiredTier -eq "FlexConsumption") -or
-                            ($currentSku -ne $desiredSku) -or
-                            ($currentTier -ne $desiredTier)
-                        )
-                        if ($needsMigration) {
-                            $functionsToMigrate += @{
-                                FunctionName = $func.Name
-                                FunctionType = $folder.Name
-                                ServicePlanName = $servicePlan.Name
-                                CurrentSku = $currentSku
-                                CurrentTier = $currentTier
-                                DesiredSku = $desiredSku
-                                DesiredTier = $desiredTier
-                                ManagedIdentityName = $func.Name
-                            }
-                            Write-Host "  ⚠️  $($func.Name): $currentSku/$currentTier → $desiredSku/$desiredTier" -ForegroundColor Yellow
-                        }
-                        else {
-                            Write-Host "  ✅ $($func.Name): Already matches desired configuration" -ForegroundColor Green
-                        }
+                $currentSku = $servicePlan.Sku.Name
+                $currentTier = switch ($servicePlan.Sku.Tier) {
+                    "Dynamic" { "Dynamic" }
+                    "FlexConsumption" { "FlexConsumption" }
+                    default { "Dynamic" }
+                }
+                # Migration logic with exact matching
+                $needsMigration = (
+                    ($currentSku -eq "Y1" -and $desiredSku -eq "FC1") -or
+                    ($currentTier -eq "Dynamic" -and $desiredTier -eq "FlexConsumption") -or
+                    ($currentSku -ne $desiredSku) -or
+                    ($currentTier -ne $desiredTier)
+                )
+                if ($needsMigration) {
+                    $functionsToMigrate += @{
+                        FunctionName = $existingFunction.Name
+                        FunctionType = $desiredFunction.FunctionName
+                        ServicePlanName = $servicePlan.Name
+                        CurrentSku = $currentSku
+                        CurrentTier = $currentTier
+                        DesiredSku = $desiredSku
+                        DesiredTier = $desiredTier
+                        ManagedIdentityName = $existingFunction.Name
                     }
-                    catch {
-                        Write-Warning "Failed to analyze function '$($func.Name)': $($_.Exception.Message)"
-                    }
+                    Write-Host "  ⚠️  $($existingFunction.Name): $currentSku/$currentTier → $desiredSku/$desiredTier" -ForegroundColor Yellow
+                }
+                else {
+                    Write-Host "  ✅ $($existingFunction.Name): Already matches desired configuration" -ForegroundColor Green
                 }
             }
             catch {
-                Write-Warning "Failed to parse bicep files for '$($folder.Name)': $($_.Exception.Message)"
+                Write-Warning "Failed to analyze function '$($existingFunction.Name)': $($_.Exception.Message)"
             }
-        }
-        else {
-            Write-Host "  ⏭️  $($folder.Name): No servicePlan.bicep found, skipping" -ForegroundColor DarkGray
         }
     }
     return $functionsToMigrate
@@ -479,11 +564,9 @@ function Test-FlexConsumptionMigrationNeeded {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
         [string]$FunctionTemplatesPath,
-        [Parameter(Mandatory = $true)]
+        [string]$ComputeResourcesArmTemplatePath,
         [string]$SolutionAbbreviation,
-        [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation
     )
     Write-Host "🔍 Checking if Flex Consumption migration is needed..." -ForegroundColor Cyan
@@ -505,7 +588,8 @@ function Test-FlexConsumptionMigrationNeeded {
         return @()
     }
     # Check for functions requiring migration
-    $migrationsNeeded = Get-FunctionsRequiringMigration -FunctionTemplatesPath $FunctionTemplatesPath -ResourceGroupName $computeResourceGroupName -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $migrationsNeeded = Get-FunctionsRequiringMigration -FunctionTemplatesPath $FunctionTemplatesPath -ComputeResourcesArmTemplatePath $ComputeResourcesArmTemplatePath -ResourceGroupName $computeResourceGroupName -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+
     if ($migrationsNeeded.Count -eq 0) {
         Write-Host "✅ No migration needed!" -ForegroundColor Green
         return @()
@@ -519,10 +603,17 @@ function Test-FlexConsumptionMigrationNeeded {
 }
 
 function Start-FlexConsumptionMigration {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName="RepositoryBicep")]
     param(
-        [Parameter(Mandatory = $true)]
+        # parameter set for leverating the bicep files in the repository
+        [Parameter(ParameterSetName="RepositoryBicep", Mandatory)]
         [string]$FunctionTemplatesPath,
+
+        # parameter set for leveraging the computeResources.json file in the deployment package
+        [Parameter(ParameterSetName="DeploymentPackageArmJson", Mandatory)]
+        [string]$ComputeResourcesArmTemplatePath,
+
+        # common parameters
         [Parameter(Mandatory = $true)]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
@@ -540,13 +631,14 @@ function Start-FlexConsumptionMigration {
         [Parameter(Mandatory = $false)]
         [switch]$SkipConfirmation
     )
+
     $startTime = Get-Date
     # Determine resource group name once
     $computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     # Get migration data (handles all checks internally)
     $migrationsNeeded = @()
     if (-not $SkipPreCheck) {
-        $migrationsNeeded = Test-FlexConsumptionMigrationNeeded -FunctionTemplatesPath $FunctionTemplatesPath -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+        $migrationsNeeded = Test-FlexConsumptionMigrationNeeded -FunctionTemplatesPath $FunctionTemplatesPath -ComputeResourcesArmTemplatePath $ComputeResourcesArmTemplatePath -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
         if ($migrationsNeeded.Count -eq 0) {
             Write-Host ""
             Write-Host "✅ Migration check complete - no action needed" -ForegroundColor Green
@@ -570,7 +662,7 @@ function Start-FlexConsumptionMigration {
             return
         }
         # Get migrations
-        $migrationsNeeded = Get-FunctionsRequiringMigration -FunctionTemplatesPath $FunctionTemplatesPath -ResourceGroupName $computeResourceGroupName -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+        $migrationsNeeded = Get-FunctionsRequiringMigration -FunctionTemplatesPath $FunctionTemplatesPath -ComputeResourcesArmTemplatePath $ComputeResourcesArmTemplatePath -ResourceGroupName $computeResourceGroupName -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
         if ($migrationsNeeded.Count -eq 0) {
             Write-Host "✅ No functions require migration!" -ForegroundColor Green
             return
