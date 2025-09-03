@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Identity.Client;
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Repositories.Contracts;
@@ -105,7 +106,22 @@ namespace Hosts.GraphUpdater
                                                                                 SyncJob = syncJob
                                                                             });
 
-                groupMembership = JsonSerializer.Deserialize<GroupMembership>(fileContent);
+                // Handle both compressed and uncompressed content
+                // Small groups (< 100K members) are stored as raw JSON
+                // Large groups (≥ 100K members) are stored as compressed JSON
+                string jsonContent;
+                try
+                {
+                    // First, try to decompress as Base-64 compressed content
+                    jsonContent = TextCompressor.Decompress(fileContent);
+                }
+                catch (FormatException)
+                {
+                    // If decompression fails, assume it's raw JSON content
+                    jsonContent = fileContent;
+                }
+
+                groupMembership = JsonSerializer.Deserialize<GroupMembership>(jsonContent);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest

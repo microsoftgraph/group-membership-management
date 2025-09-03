@@ -45,16 +45,46 @@ namespace Hosts.MembershipAggregator
             var runId = request.SyncJob.RunId ?? Guid.Empty;
             var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
             var state = await proxy.GetState();
-            var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
 
-            foreach (var part in state.CompletedParts)
+            var membershipExtractionRequest = new MembershipExtractionRequest
             {
-                var downloadRequest = new FileDownloaderRequest { FilePath = part, SyncJob = request.SyncJob };
-                downloadFileTasks.Add(context.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), downloadRequest));
+                CompletedParts = state.CompletedParts.ToList(),
+                DestinationPart = state.DestinationPart,
+                SyncJob = request.SyncJob
+            };
+
+            var membershipExtractionResponse = await context.CallActivityAsync<MembershipExtractionResponse>(
+                nameof(MembershipExtractionFunction), membershipExtractionRequest);
+
+            if (!membershipExtractionResponse.IsSuccessful)
+            {
+                await LogMessageAsync(context, $"Failed to extract membership information for TargetOfficeGroupId {request.GroupId}: {membershipExtractionResponse.ErrorMessage}", runId);
+                
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                                new JobStatusUpdaterRequest
+                                                {
+                                                    SyncJob = request.SyncJob,
+                                                    Status = SyncStatus.Error,
+                                                    IsDryRun = false,
+                                                    IncrementThresholdViolations = false,
+                                                    IsNoOpSync = false
+                                                });
+
+                await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest
+                {
+                    JobStatus = SyncStatus.Error,
+                    ResultStatus = ResultStatus.Failure,
+                    RunId = runId
+                });
+
+                return new MembershipSubOrchestratorResponse
+                {
+                    MembershipDeltaStatus = MembershipDeltaStatus.Error
+                };
             }
 
-            var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
-            var (SourceMembership, DestinationMembership) = ExtractMembershipInformationAsync(completedDownloadTasks, state.DestinationPart);
+            var SourceMembership = membershipExtractionResponse.SourceMembership;
+            var DestinationMembership = membershipExtractionResponse.DestinationMembership;
             DeltaCalculatorRequest deltaCalculatorRequest;
 
             if (SourceMembership == null || DestinationMembership == null)
@@ -379,35 +409,6 @@ namespace Hosts.MembershipAggregator
                     },
                     Verbosity = VerbosityLevel.INFO
                 });
-        }
-
-        private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
-                ExtractMembershipInformationAsync((string FilePath, string Content)[] allGroupMemberships, string destinationPath)
-        {
-            var sourceGroupsMemberships = allGroupMemberships
-                                            .Where(x => x.FilePath != destinationPath)
-                                            .Select(x => JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(x.Content)))
-                                            .ToList();
-
-            var sourceGroupMembership = sourceGroupsMemberships[0];
-            var toInclude = sourceGroupsMemberships.Where(g => !g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
-            var toExclude = sourceGroupsMemberships.Where(g => g.Exclusionary).SelectMany(x => x.SourceMembers).ToList();
-            var diff = toInclude.Except(toExclude).ToList();
-
-            var source = sourceGroupsMemberships.SelectMany(x => x.SourceMembers).ToList();
-            var listGrouped = source.GroupBy(u => u.ObjectId)
-                               .Select(u => new AzureADUser() { ObjectId = u.Key, SourceGroups = u.Select(y => y.SourceGroup).Distinct().ToList() })
-                               .ToList();
-
-            var objectIds = new HashSet<Guid>(diff.Select(u => u.ObjectId));
-            var sourceMembers = listGrouped.Where(u => objectIds.Contains(u.ObjectId)).ToList();
-
-            sourceGroupMembership.SourceMembers = sourceMembers;
-
-            var destinationMembershipFile = allGroupMemberships.First(x => x.FilePath == destinationPath);
-            var destinationGroupMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(destinationMembershipFile.Content));
-
-            return (sourceGroupMembership, destinationGroupMembership);
         }
 
         private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, Guid groupId, IDurableOrchestrationContext context)

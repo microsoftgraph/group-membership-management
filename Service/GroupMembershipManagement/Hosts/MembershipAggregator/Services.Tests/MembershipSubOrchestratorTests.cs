@@ -9,6 +9,7 @@ using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Graph.Models.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Models.ThresholdNotifications;
@@ -46,6 +47,7 @@ namespace Services.Tests
         private DeltaCalculatorService _deltaCalculatorService;
         private DeltaCalculatorResponse _deltaCalculatorResponse;
         private (string FilePath, string Content) _downloaderResponse;
+        private MembershipExtractionResponse _membershipExtractionResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
         private TelemetryClient _telemetryClient;
         private SyncJobGroup _groupInformation;
@@ -102,6 +104,7 @@ namespace Services.Tests
 
 
             _deltaCalculatorResponse = null;
+            _membershipExtractionResponse = null;
             _numberOfUsersForSourcePart = 10;
             _numberOfUsersForSourcePartOne = 10;
             _numberOfUsersForSourcePartTwo = 10;
@@ -195,7 +198,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonSerializer.Serialize(content)
+                                            Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -224,7 +227,7 @@ namespace Services.Tests
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = JsonSerializer.Serialize(content)
+                                Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                             };
                         })
                         .ReturnsAsync(() => _blobResult);
@@ -263,19 +266,19 @@ namespace Services.Tests
             _durableContext.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>()))
                             .Returns(() => _jobTrackerEntity);
 
-            _durableContext.Setup(x => x.CallActivityAsync<(string FilePath, string Content)>(It.Is<string>(x => x == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync<MembershipExtractionResponse>(It.Is<string>(x => x == nameof(MembershipExtractionFunction)), It.IsAny<MembershipExtractionRequest>()))
+                            .Returns<string, object>(async (name, request) =>
                             {
-                                _downloaderResponse = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
-                            })
-                            .ReturnsAsync(() => _downloaderResponse);
+                                _membershipExtractionResponse = await CallMembershipExtractionFunctionAsync(request as MembershipExtractionRequest);
+                                return _membershipExtractionResponse;
+                            });
 
             _durableContext.Setup(x => x.CallActivityAsync<DeltaCalculatorResponse>(It.Is<string>(x => x == nameof(DeltaCalculatorFunction)), It.IsAny<DeltaCalculatorRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+                            .Returns<string, object>(async (name, request) =>
                             {
                                 _deltaCalculatorResponse = await CallDeltaCalculatorFunctionAsync(request as DeltaCalculatorRequest);
-                            })
-                            .ReturnsAsync(() => _deltaCalculatorResponse);
+                                return _deltaCalculatorResponse;
+                            });
 
             _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileUploaderFunction)), It.IsAny<FileUploaderRequest>()))
                             .Callback<string, object>(async (name, request) =>
@@ -605,10 +608,8 @@ namespace Services.Tests
             _syncJob.ThresholdPercentageForRemovals = -1;
             _numberOfUsersForSourcePart = 50000;
 
-            var contextMock = new Mock<IDurableOrchestrationContext>();
-
-            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "SourceMembership", contextMock.Object), 100000);
-            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "DestinationMembership", contextMock.Object), 0);
+            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "SourceMembership", _durableContext.Object), 100000);
+            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "DestinationMembership", _durableContext.Object), 0);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
@@ -674,7 +675,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonSerializer.Serialize(content)
+                                            Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -719,7 +720,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonSerializer.Serialize(content)
+                                            Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -751,7 +752,7 @@ namespace Services.Tests
                                        _blobResult = new BlobResult
                                        {
                                            BlobStatus = BlobStatus.Found,
-                                           Content = JsonSerializer.Serialize(content)
+                                           Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                        };
                                    })
                                    .ReturnsAsync(() => _blobResult);
@@ -853,7 +854,7 @@ namespace Services.Tests
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = JsonSerializer.Serialize(content)
+                                Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                             };
                         })
                         .ReturnsAsync(() => _blobResult);
@@ -864,10 +865,36 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
         }
 
-        private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_WithFailedMembershipExtraction_ReturnsError()
         {
-            var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
-            return await function.DownloadFileAsync(request);
+            // Arrange - Setup specific failed extraction response 
+            // Reset any previous setup first
+            _membershipExtractionResponse = null;
+            
+            // Configure the mock to return a failed response specifically for this test
+            _durableContext.Setup(x => x.CallActivityAsync<MembershipExtractionResponse>(
+                It.Is<string>(s => s == nameof(MembershipExtractionFunction)), 
+                It.IsAny<MembershipExtractionRequest>()))
+                .ReturnsAsync(new MembershipExtractionResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = "Failed to extract membership data"
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient);
+
+            // Act
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            // Assert
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
+        }
+
+        private async Task<MembershipExtractionResponse> CallMembershipExtractionFunctionAsync(MembershipExtractionRequest request)
+        {
+            var function = new MembershipExtractionFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            return await function.ExtractMembershipAsync(request);
         }
 
         private async Task CallFileUploaderFunctionAsync(FileUploaderRequest request)
