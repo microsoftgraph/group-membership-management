@@ -11,7 +11,7 @@ function Set-PreDeploymentMigrations {
         [string]$ADFDBConnectionString
 	)
 
-	Write-Verbose "Set-PostDeploymentMigrations starting..."
+	Write-Verbose "Set-PreDeploymentMigrations starting..."
 
     $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
     $FunctionTemplatesPath = (Split-Path $ScriptsDirectory -Parent) + "\functions_arm_templates"
