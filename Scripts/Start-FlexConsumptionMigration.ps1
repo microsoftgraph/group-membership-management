@@ -413,7 +413,7 @@ function Remove-FunctionAppAndServicePlan {
     }
 }
 
-function Set-SqlServerFirewallRule {
+function Set-UpdateSqlServerFirewallRule {
     param(
         [string]$ResourceGroupName,
         [string]$SqlServerName
@@ -696,7 +696,7 @@ function Start-FlexConsumptionMigration {
     if (-not $WhatIf -and -not $SkipFirewallCheck -and -not [string]::IsNullOrEmpty($SyncJobsDBConnectionString)) {
         Write-Host ""
         Write-Host "🔒 Checking SQL Server firewall access..." -ForegroundColor Cyan
-        Set-SqlServerFirewallRule -ResourceGroupName $dataResourceGroupName -SqlServerName $sqlServerName
+        Set-UpdateSqlServerFirewallRule -ResourceGroupName $dataResourceGroupName -SqlServerName $sqlServerName
     }
 
     try {

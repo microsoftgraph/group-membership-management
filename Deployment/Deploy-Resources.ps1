@@ -842,19 +842,21 @@ function Set-SqlServerFirewallRule {
     )
 
     Write-Host "`nSetting SQL Server firewall rule"
+    $dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $sqlServerName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     $sqlIPRuleName = "DeploymentScript_Client_IP_Address-$ipAddress"
     $sqlIPRule = Get-AzSqlServerFirewallRule `
         -FirewallRuleName $sqlIPRuleName `
-        -ResourceGroupName $dataResourceGroup `
-        -ServerName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+        -ResourceGroupName $dataResourceGroupName `
+        -ServerName $sqlServerName `
         -ErrorAction SilentlyContinue
 
     if ($null -eq $sqlIPRule) {
         Write-Host "Adding firewall rule for SQL Server"
         New-AzSqlServerFirewallRule `
-            -ResourceGroupName $dataResourceGroup `
-            -ServerName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+            -ResourceGroupName $dataResourceGroupName `
+            -ServerName $sqlServerName `
             -FirewallRuleName $sqlIPRuleName `
             -StartIpAddress $ipAddress `
             -EndIpAddress $ipAddress
