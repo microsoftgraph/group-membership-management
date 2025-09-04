@@ -99,6 +99,30 @@ function Set-PostDeploymentUpdates {
         -ConnectionString $ConnectionString
 }
 
+function Set-PreDeploymentUpdates {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $false)]
+        [string]$SyncJobsDBConnectionString,
+        [Parameter(Mandatory = $false)]
+        [string]$ADFDBConnectionString
+    )
+
+    . ($ScriptsDirectory + '\PreDeploymentMigrations\Set-PreDeploymentMigrations.ps1')
+
+    Set-PreDeploymentMigrations `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
+        -ADFDBConnectionString $ADFDBConnectionString
+}
+
 function Set-Subscription {
     param (
         [Parameter(Mandatory = $false)]
@@ -1770,13 +1794,13 @@ function Deploy-Resources {
         [string]$ResetGMMType = "Skip"
     )
 
-    Initialize-ScriptDependencies `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -Location $Location `
-        -SubscriptionId $SubscriptionId `
-        -AssertUserPermissions $AssertUserPermissions
-         
+    # Initialize-ScriptDependencies `
+    #     -SolutionAbbreviation $SolutionAbbreviation `
+    #     -EnvironmentAbbreviation $EnvironmentAbbreviation `
+    #     -Location $Location `
+    #     -SubscriptionId $SubscriptionId `
+    #     -AssertUserPermissions $AssertUserPermissions
+
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -1793,7 +1817,6 @@ function Deploy-Resources {
         Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
 
         . "$scriptsDirectory\Scripts\Reset-GMM.ps1" #  Import helper functions
-        . "$scriptsDirectory\Scripts\Start-FlexConsumptionMigration.ps1"
 
         $connectionString = Get-KeyVaultSecretWithFirewallRetry `
             -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
@@ -1805,8 +1828,8 @@ function Deploy-Resources {
             -ResourceGroup $dataResourceGroup `
             -SecretName "sqlServerBasicConnectionString"
 
-        Start-FlexConsumptionMigration `
-            -FunctionTemplatesPath "$TemplateFilesDirectory\functions_arm_templates" `
+        Set-PreDeploymentUpdates `
+            -ScriptsDirectory "$scriptsDirectory\scripts" `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -SyncJobsDBConnectionString $connectionString `
