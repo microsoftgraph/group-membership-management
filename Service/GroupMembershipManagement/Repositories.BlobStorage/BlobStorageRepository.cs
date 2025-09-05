@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -22,7 +23,14 @@ namespace Repositories.BlobStorage
 
         public BlobStorageRepository(string containerUrl)
         {
-            _containerClient = new BlobContainerClient(new Uri(containerUrl), new DefaultAzureCredential(true));
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
             _containerClient.CreateIfNotExists();
         }
 

@@ -179,8 +179,14 @@ namespace Hosts.FunctionBase
 
                 if (string.IsNullOrWhiteSpace(serviceBusFQN))
                     throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
-
-                return new ServiceBusClient(serviceBusFQN, new DefaultAzureCredential());
+                
+                TokenCredential credential;
+#if DEBUG
+                credential = new DefaultAzureCredential();
+#else
+                credential = new ManagedIdentityCredential();
+#endif
+                return new ServiceBusClient(serviceBusFQN, credential);
             });
 
             var jsonSchemasPath = Path.Combine(rootPath, SCHEMA_DIRECTORY);
