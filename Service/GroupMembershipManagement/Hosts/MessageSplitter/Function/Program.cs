@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
@@ -31,7 +32,14 @@ namespace Hosts.MessageSplitter
 
                             config.AddAzureAppConfiguration(options =>
                             {
-                                options.Connect(new Uri(appConfigEndpoint), new DefaultAzureCredential())
+                                TokenCredential credential;
+#if DEBUG
+                                credential = new DefaultAzureCredential();
+#else
+                                credential = new ManagedIdentityCredential();
+#endif
+
+                                options.Connect(new Uri(appConfigEndpoint), credential)
                                     .UseFeatureFlags();
                             });
                         })
