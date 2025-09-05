@@ -82,8 +82,15 @@ namespace WebApi
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
             {
+                TokenCredential credential;
+#if DEBUG
+                credential = new DefaultAzureCredential();
+#else
+                credential = new ManagedIdentityCredential();
+#endif
+
                 var appConfigurationEndpoint = builder.Configuration.GetValue<string>("Settings:appConfigurationEndpoint");
-                options.Connect(new Uri(appConfigurationEndpoint), new DefaultAzureCredential())
+                options.Connect(new Uri(appConfigurationEndpoint), credential)
                     .Select("WebAPI:*")
                     .ConfigureRefresh(refreshOptions =>
                     {

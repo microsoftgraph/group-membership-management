@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Core;
 using Azure.Identity;
 using Azure.ResourceManager;
 using Azure.ResourceManager.AppService;
@@ -30,9 +31,16 @@ namespace Services.WebApi
         public ResourceManagerService(ResourceManagerServiceConfiguration serviceConfiguration,
                                       ILoggingRepository loggingRepository)
         {
-            var subscritpionResourceId = SubscriptionResource.CreateResourceIdentifier(serviceConfiguration.SubscriptionId);
-            _client = new ArmClient(new DefaultAzureCredential(), serviceConfiguration.SubscriptionId);
-            _subscription = _client.GetSubscriptionResource(subscritpionResourceId);
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            var subscriptionResourceId = SubscriptionResource.CreateResourceIdentifier(serviceConfiguration.SubscriptionId);
+            _client = new ArmClient(credential, serviceConfiguration.SubscriptionId);
+            _subscription = _client.GetSubscriptionResource(subscriptionResourceId);
             _dataResourceGroupName = serviceConfiguration.DataResourceGroup;
             _computeResourceGroupName = serviceConfiguration.ComputeResourceGroup;
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -208,7 +216,14 @@ namespace Services.WebApi
             foreach (var kvSecret in kvSecrets)
             {
                 var kvUri = "https://" + kvSecret.Key + ".vault.azure.net";
-                var client = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
+                TokenCredential credential;
+#if DEBUG
+                credential = new DefaultAzureCredential();
+#else
+                credential = new ManagedIdentityCredential();
+#endif
+
+                var client = new SecretClient(new Uri(kvUri), credential);
 
                 foreach (var secretName in kvSecret.Value)
                 {

@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using System;
-using System.Threading.Tasks;
+using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Extensions.Options;
@@ -11,6 +10,8 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using System;
+using System.Threading.Tasks;
 using WebApi.Models;
 
 namespace Services
@@ -39,7 +40,14 @@ namespace Services
             }
             
             var keyVaultUri = $"https://{keyVaultName}.vault.azure.net/";
-            return new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential());
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            return new SecretClient(new Uri(keyVaultUri), credential);
         }
 
         protected override async Task<GetSupportEmailResponse> ExecuteCoreAsync(GetSupportEmailRequest request)

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.AI.OpenAI;
+using Azure.Core;
 using Azure.Identity;
 using OpenAI.Chat;
 using System.Diagnostics.CodeAnalysis;
@@ -24,7 +25,14 @@ namespace WebApi.BackgroundServices
                 throw new ArgumentNullException(nameof(_endpoint), "OpenAI endpoint is not configured.");
             }
 
-            _openAIClient = new AzureOpenAIClient(new Uri(_endpoint), new DefaultAzureCredential());
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            _openAIClient = new AzureOpenAIClient(new Uri(_endpoint), credential);
             _chatClient = _openAIClient.GetChatClient(_deploymentName);
         }
 

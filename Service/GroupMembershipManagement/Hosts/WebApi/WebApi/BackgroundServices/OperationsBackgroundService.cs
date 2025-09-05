@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
@@ -44,8 +45,15 @@ namespace WebApi.BackgroundServices
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _services = services ?? throw new ArgumentNullException(nameof(services));
 
-            _serviceBusClient = new ServiceBusClient(operationsSettings.ServiceBusFQN, new DefaultAzureCredential());
-            _sbAdministrationClient = new ServiceBusAdministrationClient(_operationsSettings.ServiceBusFQN, new DefaultAzureCredential());
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            _serviceBusClient = new ServiceBusClient(operationsSettings.ServiceBusFQN, credential);
+            _sbAdministrationClient = new ServiceBusAdministrationClient(_operationsSettings.ServiceBusFQN, credential);
             _httpClient = new HttpClient();
         }
 
@@ -253,7 +261,14 @@ namespace WebApi.BackgroundServices
 
         private async Task DeleteInternalTablesAsync(string storageAccountName, string functionName)
         {
-            var tableServiceClient = new TableServiceClient(new Uri($"https://{storageAccountName}.table.core.windows.net"), new DefaultAzureCredential());
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            var tableServiceClient = new TableServiceClient(new Uri($"https://{storageAccountName}.table.core.windows.net"), credential);
             var tables = tableServiceClient.QueryAsync();
 
             await foreach (var table in tables)
@@ -283,7 +298,14 @@ namespace WebApi.BackgroundServices
 
         private async Task ClearInternalQueuesAsync(string storageAccountName, string functionName)
         {
-            var queueClient = new QueueServiceClient(new Uri($"https://{storageAccountName}.queue.core.windows.net"), new DefaultAzureCredential());
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+
+            var queueClient = new QueueServiceClient(new Uri($"https://{storageAccountName}.queue.core.windows.net"), credential);
             var queues = queueClient.GetQueuesAsync();
             await foreach (var queue in queues)
             {
