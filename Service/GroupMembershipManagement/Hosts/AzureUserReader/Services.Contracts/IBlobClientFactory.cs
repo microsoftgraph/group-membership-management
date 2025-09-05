@@ -9,7 +9,7 @@ namespace Services.Contracts
     public interface IBlobClientFactory
     {
         /// <summary>
-        /// Creates a BlobClient using a Uri and DefaultAzureCredential.
+        /// Creates a BlobClient using a Uri and TokenCredential.
         /// </summary>
         /// <param name="blobUri">
         ///    A System.Uri referencing the blob that includes the name of the account, the

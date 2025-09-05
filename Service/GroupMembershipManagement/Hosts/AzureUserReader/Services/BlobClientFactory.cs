@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Azure.Core;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Services.Contracts;
@@ -12,7 +13,7 @@ namespace Services
     {
 
         /// <summary>
-        /// Creates a BlobClient using a Uri and DefaultAzureCredential.
+        /// Creates a BlobClient using a Uri and TokenCredential.
         /// </summary>
         /// <param name="blobUri">
         ///    A System.Uri referencing the blob that includes the name of the account, the
@@ -22,7 +23,13 @@ namespace Services
         /// <returns></returns>
         public BlobClient GetBlobClient(Uri blobUri)
         {
-            return new BlobClient(blobUri, new DefaultAzureCredential());
+            TokenCredential credential;
+#if DEBUG
+            credential = new DefaultAzureCredential();
+#else
+            credential = new ManagedIdentityCredential();
+#endif
+            return new BlobClient(blobUri, credential);
         }
     }
 }
