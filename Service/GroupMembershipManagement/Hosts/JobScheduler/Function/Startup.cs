@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using Azure.Identity;
 using Azure.Monitor.Query;
 using System.Text.Json;
+using Azure.Core;
 
 [assembly: FunctionsStartup(typeof(Startup))]
 
@@ -46,9 +47,16 @@ namespace Hosts.JobScheduler
 
             builder.Services.AddScoped<IRuntimeRetrievalService>(services =>
             {
+                TokenCredential credential;
+#if DEBUG
+                credential = new DefaultAzureCredential();
+#else
+                credential = new ManagedIdentityCredential();
+#endif
+
                 var config = services.GetService<IJobSchedulerConfig>();
                 return config.GetRunTimeFromLogs
-                ? new LogsRuntimeRetrievalService(config, new LogsQueryClient(new DefaultAzureCredential()))
+                ? new LogsRuntimeRetrievalService(config, new LogsQueryClient(credential))
                 : new DefaultRuntimeRetrievalService(config.DefaultRuntimeSeconds);
             });
 
