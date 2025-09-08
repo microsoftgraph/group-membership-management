@@ -1794,12 +1794,12 @@ function Deploy-Resources {
         [string]$ResetGMMType = "Skip"
     )
 
-    # Initialize-ScriptDependencies `
-    #     -SolutionAbbreviation $SolutionAbbreviation `
-    #     -EnvironmentAbbreviation $EnvironmentAbbreviation `
-    #     -Location $Location `
-    #     -SubscriptionId $SubscriptionId `
-    #     -AssertUserPermissions $AssertUserPermissions
+    Initialize-ScriptDependencies `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -Location $Location `
+        -SubscriptionId $SubscriptionId `
+        -AssertUserPermissions $AssertUserPermissions
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
