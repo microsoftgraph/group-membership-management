@@ -358,6 +358,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         onClick={handleRowClick}
         style={{ cursor: 'pointer' }}
         role="button"
+        data-testid={`job-row-${item.syncJobId}`}
+        data-group-name={item.targetGroupName}
       >
         <DetailsRow {...props} />
       </div>

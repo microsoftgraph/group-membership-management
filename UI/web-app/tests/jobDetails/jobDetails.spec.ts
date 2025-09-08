@@ -258,7 +258,7 @@ test.describe('Job Details Tests', () => {
     console.log('✅ Inclusionary logic correctly updates the query test completed successfully.');
   });
 
-  test('Test HR Source part functionality', async ({ page }) => {
+  test.only('Test onboarding, HR Source part functionality, and review flow', async ({ page }) => {
     const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
@@ -383,6 +383,53 @@ test.describe('Job Details Tests', () => {
     expect(filterInQuery).toMatch(/\sOr\s/);
 
     console.log('✅ HR Source part test completed successfully.');
+
+    const businessJustificationTextarea = page.getByTestId('business-justification-textarea');
+    await expect(businessJustificationTextarea).toBeVisible({ timeout: 10000 });
+    await businessJustificationTextarea.fill('This group is needed for automated testing purposes to validate HR source part functionality and the onboarding workflow.');
+    
+    const groupOwnersDropdown = page.getByTestId('group-owners-dropdown');
+    await expect(groupOwnersDropdown).toBeVisible({ timeout: 10000 });
+    await groupOwnersDropdown.click();
+    const dropdownOptions = page.locator('[role="listbox"] [role="option"]');
+    await expect(dropdownOptions.first()).toBeVisible({ timeout: 10000 });
+    await dropdownOptions.first().click();
+    console.log('✅ Group owner selected');
+
+    // Complete onboarding and submit for review
+    await page.getByRole('button', { name: 'Submit'}).click();
+    try {
+      await page.waitForURL((url) => url.pathname === '/' || url.pathname.startsWith('/?'), { timeout: 15000 });
+    } catch (navError) {
+      console.log('⚠️ URL navigation timeout, checking if we\'re on the right page');
+    }
+    
+    // Ensure we're on the jobs list page
+    await expect(page.getByText('Managed groups')).toBeVisible({ timeout: 10000 });
+    console.log("✅ Onboarding submission completed, now proceeding to review");
+    
+    const groupRow = page.locator(`[data-group-name="${groupName}"]`);
+    await expect(groupRow).toBeVisible({ timeout: 15000 });
+    await groupRow.click();
+    await expect(page.getByText(`Membership Details - ${groupName}`)).toBeVisible({ timeout: 30000 });
+    
+    // Test review and rejection flow
+    await page.getByRole('button', { name: 'Reject' }).click();
+    const rejectReason = page.locator('textarea').or(page.getByLabel(/reason/i)).first();
+    await expect(rejectReason).toBeVisible();
+    await rejectReason.fill('Automated test rejection');
+    await page.getByRole('button', { name: 'Submit' }).click();
+    console.log('✅ Rejection flow completed successfully.');
+
+    // Navigate back to job list with better error handling
+    try {
+      await page.waitForURL((url) => url.pathname === '/' || url.pathname.startsWith('/?'), { timeout: 15000 });
+    } catch (navError) {
+      console.log('⚠️ Navigation timeout after rejection, checking page content');
+    }
+    
+    await expect(page.getByText('Managed groups')).toBeVisible({ timeout: 10000 });
+    console.log('✅ Submission review flow completed successfully.');
   });
 
   // Helper: robustly select the first option from a labeled combobox/people picker

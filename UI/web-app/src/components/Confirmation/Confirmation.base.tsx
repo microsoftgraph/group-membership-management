@@ -354,6 +354,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 value={businessJustification}
                 onChange={(_event, newValue) => onEditBusinessJustification(newValue ?? '')}
                 placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
+                data-testid="business-justification-textarea"
               />
             </div>
             {isJobTenantWriter && (
@@ -415,6 +416,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 }}
                 onRenderOption={onRenderOption}
                 required
+                data-testid="group-owners-dropdown"
               />
             </div>
           ))}

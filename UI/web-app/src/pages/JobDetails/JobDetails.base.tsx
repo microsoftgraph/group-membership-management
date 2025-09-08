@@ -125,6 +125,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
 
   const resolveReview = () => {
     setCanEditJob(isJobWriter);
+    navigate('/');
   };
 
   const onMessageBarDismiss = (): void => {
