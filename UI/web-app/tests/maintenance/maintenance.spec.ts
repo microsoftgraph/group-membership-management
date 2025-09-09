@@ -7,8 +7,11 @@ test.use({ storageState: 'tests/storageState.json' });
 
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
-test('Maintenance', async ({ page }) => {
-  test.setTimeout(10 * 60 * 1000); // Increased test timeout to 10 minute
+test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' }, async ({ page }) => {
+  test.setTimeout(10 * 60 * 1000); // Increased test timeout to 10 minutes
+  
+  console.log('🚨 WARNING: Starting maintenance reset - this will disable the API for other tests');
+  console.log('🚨 This test should run LAST to avoid interfering with other tests');
 
   const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
   await page.goto(url);
@@ -63,4 +66,7 @@ test('Maintenance', async ({ page }) => {
   await page.waitForTimeout(5000);
 
   await expect(page.getByText('Managed groups')).toBeVisible();
+  
+  console.log('✅ Maintenance reset completed - API should be restored');
+  console.log('🔄 All tests in this session should be complete');
 });

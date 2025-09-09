@@ -48,8 +48,18 @@ export default defineConfig({
     // Main tests that depend on setup
     {
       name: 'chromium',
-      testIgnore: '**/admin/**/*.spec.ts',
+      testIgnore: ['**/admin/**/*.spec.ts', '**/maintenance/**/*.spec.ts'],
       dependencies: ['setup'],
+      use: { 
+        storageState: useStorage ? 'tests/storageState.json' : undefined,
+        ...devices['Desktop Chrome'] 
+      },
+    },
+    // Maintenance project - runs maintenance tests last
+    {
+      name: 'maintenance',
+      testMatch: '**/maintenance/**/*.spec.ts',
+      dependencies: ['chromium'], // Runs after main tests complete
       use: { 
         storageState: useStorage ? 'tests/storageState.json' : undefined,
         ...devices['Desktop Chrome'] 
