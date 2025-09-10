@@ -76,7 +76,7 @@ const initialState: ManageMembershipState = {
         lastModifiedOnBehalfOfObjectId: '',
         startDate: new Date().toISOString(),
         period: 24,
-        query: {} as SyncJobQuery,
+        query: [] as SyncJobQuery,
         titles: [],
         thresholdPercentageForAdditions: 100,
         thresholdPercentageForRemovals: 20,
@@ -84,7 +84,7 @@ const initialState: ManageMembershipState = {
         businessJustification: '',
     },
     isAdvancedView: false,
-    compositeQuery: {} as SyncJobQuery,
+    compositeQuery: [] as SyncJobQuery,
     advancedViewQuery: '',
     sourceParts: [],
     isEditingExistingJob: false,
@@ -492,7 +492,12 @@ export const manageMembershipCompositeQuery = (state: RootState) => state.manage
 export const manageMembershipAdvancedViewQuery = (state: RootState) => state.manageMembership.advancedViewQuery;
 export const getSourcePartsFromState = (state: RootState) => state.manageMembership.sourceParts;
 export const areAllSourcePartsValid = (state: RootState): boolean => {
-    return state.manageMembership.sourceParts.every(isSourcePartValid);
+    const sourceParts = state.manageMembership.sourceParts;
+    // Return false if there are no source parts (empty array should not be considered valid)
+    if (sourceParts.length === 0) {
+        return false;
+    }
+    return sourceParts.every(isSourcePartValid);
 };
 
 // 4- Confirmation
@@ -504,15 +509,23 @@ export const manageMembershipGroupOwners = (state: RootState) => state.manageMem
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;
     const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;
-    const areAllSourcePartsValid = state.manageMembership.sourceParts.every(isSourcePartValid);
-    if (isAdvancedView && isAdvancedViewQueryValid) {
-        return true;
-    }
-    else if (!isAdvancedView && areAllSourcePartsValid) {
-        return true;
-    }
-    else {
-        return false;
+    const sourceParts = state.manageMembership.sourceParts;
+    const advancedViewQuery = state.manageMembership.advancedViewQuery;
+    
+    // Check if all source parts are valid (allow empty source parts for switching TO advanced view)
+    const areAllSourcePartsValid = sourceParts.every(isSourcePartValid);
+    
+    if (isAdvancedView) {
+        // When in advanced view, allow toggle back to regular view only if:
+        // 1. The query is valid, OR
+        // 2. The query is empty (so it can be safely converted to empty source parts)
+        const isQueryEmpty = !advancedViewQuery || advancedViewQuery.trim() === '' || 
+                            advancedViewQuery.trim() === '[]' || advancedViewQuery.trim() === '{}';
+        return isAdvancedViewQueryValid || isQueryEmpty;
+    } else {
+        // When in regular view, allow toggle to advanced view if:
+        // 1. All existing source parts are valid (including empty array case)
+        return areAllSourcePartsValid;
     }
 };
 

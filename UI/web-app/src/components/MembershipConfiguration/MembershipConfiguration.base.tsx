@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { ActionButton, classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -16,10 +16,8 @@ import {
   deleteSourcePart,
   getSourcePartsFromState,
   manageMembershipAdvancedViewQuery,
-  manageMembershipCompositeQuery,
   manageMembershipIsAdvancedView,
   manageMembershipIsToggleEnabled,
-  manageMembershipQuery,
   setAdvancedViewQuery,
   setCompositeQuery,
   setIsAdvancedView,
@@ -29,7 +27,7 @@ import {
   manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
 import { SourcePart } from '../SourcePart';
-import { useStrings } from '../../store/hooks';
+import { useStrings, useQueryValidation } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
 import { ISourcePart } from '../../models/ISourcePart';
 import { SourcePartType } from '../../models/SourcePartType';
@@ -53,14 +51,13 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   });
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
+  const { validateQuery } = useQueryValidation();
 
   const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const jobDetails = useSelector(selectSelectedJobDetails);
   const sourceParts = useSelector(getSourcePartsFromState);
 
-  const globalQuery = useSelector(manageMembershipQuery);
   const advancedViewQuery = useSelector(manageMembershipAdvancedViewQuery) ?? '';
-  const compositeQuery = useSelector(manageMembershipCompositeQuery) ?? globalQuery;
   const isToggleEnabled = useSelector(manageMembershipIsToggleEnabled);
   const isJobWriter = useSelector(selectIsJobWriter);
   const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
@@ -73,15 +70,15 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const generatedHRParts = useSelector(selectGeneratedHRParts);
   const generatedGroupParts = useSelector(selectGeneratedGroupParts);
 
-  const getAllSourcePartsExpanded = () => {
+  const getAllSourcePartsExpanded = useCallback(() => {
     return sourceParts.every(part => part.isExpanded);
-  }
+  }, [sourceParts]);
 
-  const [allSourcePartsExpanded, setAllSourcePartsExpanded] = useState(getAllSourcePartsExpanded);
+  const [allSourcePartsExpanded, setAllSourcePartsExpanded] = useState(() => getAllSourcePartsExpanded());
 
   useEffect(() => {
     setAllSourcePartsExpanded(getAllSourcePartsExpanded());
-  }, [sourceParts]);
+  }, [sourceParts, getAllSourcePartsExpanded]);
 
   const sourcePartQuery: HRSourcePartSource = {
     manager: {
@@ -114,41 +111,53 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     const newIsAdvancedView = !isAdvancedView;
 
     if (newIsAdvancedView) {
-      if (!(sourceParts.length === 0)) {
+      // Switching TO advanced view - convert source parts to JSON
+      if (sourceParts.length > 0) {
         const currentCompositeQuery = buildCompositeQuery(sourceParts);
-        dispatch(setAdvancedViewQuery(JSON.stringify(currentCompositeQuery)));
+        dispatch(setAdvancedViewQuery(JSON.stringify(currentCompositeQuery, null, 2)));
       }
     } else {
-      // When switching back to non-advanced view
-      if (compositeQuery) {
+      // Switching FROM advanced view back to regular view - parse the advanced query
+      if (advancedViewQuery && advancedViewQuery.trim() && 
+          advancedViewQuery.trim() !== '[]' && advancedViewQuery.trim() !== '{}') {
         try {
-          const updatedSourceParts: ISourcePart[] = compositeQuery.map((query, index) => {
-            const originalPart = sourceParts[index];
-            const newPart: ISourcePart = {
-              id: sourceParts && sourceParts[index] ? sourceParts[index].id : uuidv4(),
-              title: sourceParts && sourceParts[index] ? sourceParts[index].title : "",
-              query: {
-                type: SourcePartType.HR,
-                source: sourcePartQuery,
-                exclusionary: false
-              },
-              isNew: originalPart?.isNew ?? false,
-              isExpanded: originalPart?.isExpanded ?? false
+          const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
+          
+          // Validate that the parsed query is an array
+          if (!Array.isArray(parsedQuery)) {
+            console.error('Advanced view query is not an array, cannot convert to source parts');
+            return;
+          }
+          
+          // Convert parsed query back to source parts
+          const updatedSourceParts: ISourcePart[] = parsedQuery.map((queryPart) => {
+            return {
+              id: uuidv4(),
+              title: "",
+              query: queryPart,
+              isNew: false,
+              isExpanded: false
             };
-            return newPart;
           });
+          
+          // Clear existing source parts and add the new ones
           dispatch(clearSourceParts());
           updatedSourceParts.forEach(part => dispatch(addSourcePart(part)));
         } catch (error) {
-          console.error(`Error parsing advanced view query:`, error);
+          console.error(`Error parsing advanced view query when switching back to regular view:`, error);
+          // If parsing fails, don't switch views - this prevents the crash
+          return;
         }
+      } else {
+        // If advanced query is empty or just empty brackets, clear source parts
+        dispatch(clearSourceParts());
       }
     }
 
     dispatch(setIsAdvancedView(newIsAdvancedView));
   };
 
-  const handleAdvancedViewQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
+  const handleAdvancedViewQueryChange = (_event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, _newValue?: string) => {
     dispatch(setIsAdvancedQueryValid(false));
   };
 
@@ -163,7 +172,20 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   useEffect(() => {
     const compositeQuery = buildCompositeQuery(sourceParts);
     dispatch(setCompositeQuery(compositeQuery));
-  }, [dispatch, sourceParts]);
+    
+    // Validate the composite query to prevent empty submissions (only in non-advanced view)
+    if (!isAdvancedView) {
+      validateQuery(compositeQuery);
+    }
+  }, [dispatch, sourceParts, isAdvancedView, validateQuery]);
+
+  // Initialize validation state when component mounts or when switching views
+  useEffect(() => {
+    if (!isAdvancedView && sourceParts.length === 0) {
+      // Explicitly set validation to false when there are no source parts
+      dispatch(setIsAdvancedQueryValid(false));
+    }
+  }, [dispatch, isAdvancedView, sourceParts.length]);
   
   useEffect(() => {
     // Always re-initialize from DB when NOT editing
