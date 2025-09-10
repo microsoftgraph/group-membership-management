@@ -982,10 +982,10 @@ const getOptions = (
       )
     ) : -1;
 
-    if(groupIndex >= 0 && groups[groupIndex].items[index ?? 0]) {
+    if(groupIndex >= 0 && childIndex < 0 && groups[groupIndex].items[index ?? 0]) {
       groups[groupIndex].items[index ?? 0][property] = newValue;
     }
-    if(childIndex >= 0 && groups[groupIndex].children[childIndex].items[index ?? 0]) {
+    else if(childIndex >= 0 && groups[groupIndex].children[childIndex].items[index ?? 0]) {
       groups[groupIndex].children[childIndex].items[index ?? 0][property] = newValue;
     }
 
