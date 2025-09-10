@@ -854,10 +854,9 @@ const getOptions = (
     {
       setFilteredOptions({});
       setFilteredValueOptions({});
-      const childToRemove = children[indexToRemove];
       const updatedChildren = [...children];
-      const newFilter = props.source.filter?.replace(childToRemove.filter, '').trim();
-      
+      const remainingChildren = children.filter((_, index) => index !== indexToRemove);
+      const newFilter = remainingChildren.map(child => child.filter).join(' ').trim();
       const prevIndex = indexToRemove - 1;
       const isSecondLast = prevIndex === children.length - 2;
 
@@ -870,21 +869,20 @@ const getOptions = (
         }
         if (words.length > 0) {
           const result = findValueAndOr(words);
-          const indexAfterValue = 2 + result.value.split(' ').length;
+          const startIndex = (words.length > 2 && words[1] === "NOT" && words[2] === "IN") ? 3 : 2;
+          const indexAfterValue = startIndex + result.value.split(' ').length;
           words.splice(indexAfterValue);
-
           const newPrevfilter = words.join(' ');
           updatedChildren[prevIndex] = { ...prevChild, filter: newPrevfilter };
-        
-          const filterWithoutChild  = props.source.filter?.replace(childToRemove.filter, '').trim();
-          const cleanedFilter = filterWithoutChild ?.replace(/\s+$/, '').replace(prevChild.filter.replace(/\s+$/, ''), newPrevfilter.trim()).trim();
-
+          const cleanedFilter = updatedChildren.filter((_, index) => index !== indexToRemove)
+                                               .map(child => child.filter)
+                                               .join(' ')
+                                               .trim();
           setSource(prevSource => {
               const newSource = { ...prevSource, filter: cleanedFilter };
               onSourceChange(newSource, partId);
               return newSource;
-          });          
-
+          });
           setChildren(updatedChildren.filter((_, index) => index !== indexToRemove));
           return;
         }
