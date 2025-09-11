@@ -67,7 +67,7 @@ import { selectIsJobOwnerDeleter, selectIsJobOwnerEnabler, selectIsJobWriter, se
 import { PatchJobResponse, SyncJobChange, SyncStatus } from '../../models';
 import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { Loader } from '../../components/Loader';
-import { manageMembershipBusinessJustification, setIsEditingExistingJob } from '../../store/manageMembership.slice';
+import { clearSourceParts, manageMembershipBusinessJustification, setIsEditingExistingJob } from '../../store/manageMembership.slice';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { MembershipConfiguration } from '../../components/MembershipConfiguration';
@@ -190,6 +190,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
     if (jobId) {
+      dispatch(clearSourceParts());
       dispatch(fetchJobDetails({ syncJobId: jobId }));
     }
     if (groupId && channelId === undefined) {
