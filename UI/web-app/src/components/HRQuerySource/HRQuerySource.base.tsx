@@ -436,11 +436,14 @@ const getOptions = (
       let isParsingGroup = false;
       let numberOfOpenParenthesis = countOccurrences(props.source.filter, "(");
       var numberOfCloseParenthesis = countOccurrences(props.source.filter, ")");
-      var numberOfInClause = countOccurrences(props.source.filter, " IN ");
+      // Count both IN and NOT IN clauses properly, but exclude quoted values like 'IN'
+      const inOperatorRegex = /\s+(NOT\s+)?IN\s+\(/gi;
+      const matches = props.source.filter.match(inOperatorRegex) || [];
+      var numberOfInClause = matches.length;
 
       setSelectedKeys([]);
       const hasParentheses = props.source.filter.includes("(") || props.source.filter.includes(")");
-      const hasInClause = props.source.filter.includes(" IN ");
+      const hasInClause = numberOfInClause > 0;
       if (hasParentheses && hasInClause) {
         if (numberOfOpenParenthesis > numberOfInClause && numberOfCloseParenthesis > numberOfInClause) {
           isParsingGroup = true; // grouping, IN clause
