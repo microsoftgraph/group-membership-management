@@ -339,15 +339,19 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     return words;
   }
 
-function setItemsBasedOnGroups(groups: Group[]) {
+function getCurrentItemsFromGroups(groups: Group[]): IFilterPart[] {
   let items: IFilterPart[] = [];
   groups.forEach(group => {
       items.push(...group.items);
       group.children.forEach(child => {
         items.push(...child.items);
       });
-      setItemsBasedOnGroups(group.children);
   });
+  return items;
+}
+
+function setItemsBasedOnGroups(groups: Group[]) {
+  const items = getCurrentItemsFromGroups(groups);
   setItems(items);
 }
 
@@ -676,6 +680,8 @@ const getOptions = (
   };
 
   const addComponent = (groupIndex?: number, childIndex?: number) => {
+    setFilteredOptions({});
+    setFilteredValueOptions({});
     setFilterErrorMessage('');
     setSource(props.source);
 
@@ -753,9 +759,20 @@ const getOptions = (
     }
   };
 
-  const filterItems = (clonedNewGroups: Group[], childItems: IFilterPart[], groupIndex: number) => {
-    clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
+  const filterItems = (clonedNewGroups: Group[], childItems: IFilterPart[], groupIndex: number, indexToRemove?: number) => {
+    if (indexToRemove !== undefined) {
+      clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((_, index) => index !== indexToRemove);
+
+      // Remove trailing AND/OR from the last remaining item in the group
+      if (clonedNewGroups[groupIndex].items.length > 0) {
+        const lastItemIndex = clonedNewGroups[groupIndex].items.length - 1;
+        clonedNewGroups[groupIndex].items[lastItemIndex].andOr = "";
+      }
+    } else{
+      clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
       !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+    }
+
     if (clonedNewGroups[groupIndex].items.length === 0) {
       clonedNewGroups[groupIndex].andOr = "";
       //if last group, delete andOr from previous group / previous group's last child
@@ -775,9 +792,19 @@ const getOptions = (
     return clonedNewGroups;
   };
 
-  const filterChildren = (clonedNewGroups: Group[], childItems: IFilterPart[], groupIndex: number, childIndex: number) => {
+  const filterChildren = (clonedNewGroups: Group[], childItems: IFilterPart[], groupIndex: number, childIndex: number, indexToRemove?: number) => {
+    if (indexToRemove !== undefined) {
+      clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((_, index) => index !== indexToRemove);
+
+      // Remove trailing AND/OR from the last remaining item in the group
+      if (clonedNewGroups[groupIndex].children[childIndex].items.length > 0) {
+        const lastItemIndex = clonedNewGroups[groupIndex].children[childIndex].items.length - 1;
+        clonedNewGroups[groupIndex].children[childIndex].items[lastItemIndex].andOr = "";
+      }
+    } else{
     clonedNewGroups[groupIndex].children[childIndex].items = clonedNewGroups[groupIndex].children[childIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
       !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+    }
     if (clonedNewGroups[groupIndex].children[childIndex].items.length === 0) {
       clonedNewGroups[groupIndex].children[childIndex].andOr = "";
       if (groupIndex === groups.length-1 && childIndex === clonedNewGroups[groupIndex].children.length-1) {
@@ -794,7 +821,7 @@ const getOptions = (
     return clonedNewGroups;
   };
 
-  const removeComponent = (indexToRemove: number) => {
+  const removeComponent = (indexToRemove: number, gi?: number, ci?: number) => {
     if (indexToRemove === -1) return;
     if (groupingEnabled) {
       let a: number = -1;
@@ -810,7 +837,7 @@ const getOptions = (
       selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
       let clonedNewGroups: Group[] = JSON.parse(JSON.stringify(groups));
       const selectedItems = items.filter((item, index) => selectedIndices.includes(index));
-      const groupIndex = groups.findIndex(group =>
+      const groupIndex = gi ?? groups.findIndex(group =>
         group.children?.some(child =>
             child.items.some(item =>
                 JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
@@ -819,22 +846,19 @@ const getOptions = (
             JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
         )
       );
-      const childIndex = groupIndex !== -1 ? groups[groupIndex].children.findIndex(child =>
+      const childIndex = groupIndex !== -1 ? ci ??groups[groupIndex].children.findIndex(child =>
         child.items.some(item =>
             JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
         )
       ) : -1;
 
-      const ifGroupItem = groups.some(group => isGroupItem(group, items[selectedIndices[0]]));
-      const ifGroupChild = groups.some(group => isGroupChild(group, items[selectedIndices[0]]));
-
-      if (ifGroupItem && groups[groupIndex].items[indexToRemove ?? 0]) {
+      if (groupIndex >= 0 && childIndex < 0 && groups[groupIndex].items[indexToRemove ?? 0]) {
         if (groups[groupIndex].items.length === 1 && groups[groupIndex].children.length > 0) { return; }
-        clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndex);
+        clonedNewGroups = filterItems(clonedNewGroups, selectedItems, groupIndex, indexToRemove);
       }
 
-      if (ifGroupChild && groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]) {
-        clonedNewGroups = filterChildren(clonedNewGroups, selectedItems, groupIndex, childIndex);
+      else if (childIndex >= 0 && groups[groupIndex].children[childIndex].items[indexToRemove ?? 0]) {
+        clonedNewGroups = filterChildren(clonedNewGroups, selectedItems, groupIndex, childIndex, indexToRemove);
       }
 
       clonedNewGroups = clonedNewGroups.filter((group: { items: any[]; children: any[]; }) =>
@@ -1055,6 +1079,7 @@ const getOptions = (
         return newSource;
       });
     }
+    setFilteredOptions({});
   };
 
   const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
@@ -1169,6 +1194,7 @@ const getOptions = (
         });
       }
     }
+    setFilteredValueOptions({});
   };
 
   const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string, groupIndex?: number, childIndex?: number) => {
@@ -1389,6 +1415,8 @@ const getOptions = (
     const insertIndex = newIndex;
     if (insertIndex < 0 || insertIndex >= items.length || index === newIndex) { return; }
 
+    setFilteredOptions({});
+    setFilteredValueOptions({});
     setIsDragAndDropEnabled(true);
     newItems = newItems.filter((_, i) => i !== index);
     newItems.splice(insertIndex, 0, { ...items[index] });
@@ -1430,22 +1458,28 @@ const getOptions = (
         )
       ) : -1;
 
+      // Create a new groups array to ensure proper state updates
+      const newGroups = [...groups];
+
       if (groupIndex !== -1 && childIndex === -1) {
-        groups[groupIndex].items = newItems;
-        setGroups(groups);
-        getGroupLabels(groups);
-        setItemsBasedOnGroups(groups);
+        newGroups[groupIndex] = { ...newGroups[groupIndex], items: newItems };
+        setGroups(newGroups);
+        getGroupLabels(newGroups);
+        setItemsBasedOnGroups(newGroups);
       }
       else if (groupIndex !== -1 && childIndex !== -1) {
-        groups[groupIndex].children[childIndex].items = newItems;
-        setGroups(groups);
-        getGroupLabels(groups);
-        setItemsBasedOnGroups(groups);
+        const newChildren = [...newGroups[groupIndex].children];
+        newChildren[childIndex] = { ...newChildren[childIndex], items: newItems };
+        newGroups[groupIndex] = { ...newGroups[groupIndex], children: newChildren };
+        setGroups(newGroups);
+        getGroupLabels(newGroups);
+        setItemsBasedOnGroups(newGroups);
       }
     }
     else {
-      groups[0].items = newItems;
-      setGroups(groups);
+      const newGroups = [...groups];
+      newGroups[0] = { ...newGroups[0], items: newItems };
+      setGroups(newGroups);
       setChildren(newChildren);
       setItems(newItems);
     }
@@ -1656,7 +1690,7 @@ const getOptions = (
           (groupIndex === undefined && groupIndexForAttribute === -1 ? true : groupIndex === groupIndexForAttribute) &&
           (childIndex === undefined && childIndexForAttribute === -1 ? true : childIndex === childIndexForAttribute) &&
           (index === undefined && itemIndexForAttribute === -1 ? true : index === itemIndexForAttribute))
-        ? filteredOptions[index]
+        ? filteredOptions[index] || getOptions(attributes, currentAttributeKey)
         : getOptions(attributes, currentAttributeKey)
       : filteredOptions[index] || getOptions(attributes, currentAttributeKey);
 
@@ -1665,7 +1699,7 @@ const getOptions = (
           (groupIndex === undefined && groupIndexForAttributeValue === -1 ? true : groupIndex === groupIndexForAttributeValue) &&
           (childIndex === undefined && childIndexForAttributeValue === -1 ? true : childIndex === childIndexForAttributeValue) &&
           (index === undefined && itemIndexForAttributeValue === -1 ? true : index === itemIndexForAttributeValue))
-          ? filteredValueOptions[index]
+          ? filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
           : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
         : filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value));
 
@@ -1787,7 +1821,7 @@ const getOptions = (
               data-testid="hr-remove-button"
               className={`${classNames.removeButton} ${(!isJobWriter || !isEditable) ? classNames.removeButtonDisabled : ''}`}
               iconProps={{ iconName: "Blocked2" }}
-              onClick={() => removeComponent(index ?? -1)}
+              onClick={() => removeComponent(index ?? -1, groupIndex, childIndex)}
               disabled={!isJobWriter || !isEditable}>
               {strings.remove}
             </ActionButton>
@@ -1805,9 +1839,12 @@ const getOptions = (
     }
   };
 
-  const handleSelectionChanged = () => {
-    setSelectedIndices(selection.getSelectedIndices());
-  };
+  function handleSelectionChanged() {
+    const selectedItems = selection.getSelection() as IFilterPart[];
+    const selectedIndices = selection.getSelectedIndices();
+    setSelectedItems(selectedItems);
+    setSelectedIndices(selectedIndices);
+  }
 
   const [selection] = useState(() => new Selection({
     onSelectionChanged: handleSelectionChanged
@@ -1824,7 +1861,19 @@ const getOptions = (
   function onUnGroupClick() {
     let newGroups = [...groups];
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
-    const si = selectedIndices.includes(-1) ? selectedItems : items.filter((item, index) => selectedIndices.includes(index));
+    // Get the most current items from groups instead of relying on potentially stale items state
+    const currentItems = getCurrentItemsFromGroups(groups);
+
+    // Recalculate indices based on current items instead of using stale selectedIndices
+    const currentSelectedIndices = selectedItems.map(selectedItem => {
+      return currentItems.findIndex(item =>
+        item.attribute === selectedItem.attribute &&
+        item.equalityOperator === selectedItem.equalityOperator &&
+        item.value === selectedItem.value
+      );
+    }).filter(index => index !== -1);
+
+    const si = currentSelectedIndices.includes(-1) ? selectedItems : currentItems.filter((item, index) => currentSelectedIndices.includes(index));
     si.forEach((selectedItem, index) => {
       const ifGroupItem = groups.some(group => isGroupItem(group, selectedItem));
       const ifGroupChild = groups.some(group => isGroupChild(group, selectedItem));
@@ -1874,7 +1923,19 @@ const getOptions = (
     }
 
     else if (allSameGroupIndex && groupIndices[0] > 0 && childIndices[0] === -1) {
-      if (groups[groupIndices[0]] && groups[groupIndices[0]].children && groups[groupIndices[0]].children.length > 0) { return; }
+      // Check if there are children
+      const hasChildren = groups[groupIndices[0]] && groups[groupIndices[0]].children && groups[groupIndices[0]].children.length > 0;
+
+      if (hasChildren) {
+        // If there are children, check if there are other items besides selected ones
+        const hasOtherItems = groups[groupIndices[0]].items.length > si.length;
+        if (!hasOtherItems) {
+          // If there are no other items and there are children, don't ungroup
+          return;
+        }
+      }
+
+      // If there are no children, or if there are children and other items, ungroup
       clonedNewGroups[0].items = [...clonedNewGroups[0].items, ...childItems];
       clonedNewGroups = filterItems(clonedNewGroups, si, groupIndices[0]);
     }
@@ -1898,7 +1959,19 @@ const getOptions = (
   function onGroupClick() {
     let newGroups = [...groups];
     let indices: { selectedItemIndex: number, groupIndex: number; childIndex: number }[] = [];
-    const si = selectedIndices.includes(-1) ? selectedItems : items.filter((item, index) => selectedIndices.includes(index));
+    // Get the most current items from groups instead of relying on potentially stale items state
+    const currentItems = getCurrentItemsFromGroups(groups);
+
+    // Recalculate indices based on current items instead of using stale selectedIndices
+    const currentSelectedIndices = selectedItems.map(selectedItem => {
+      return currentItems.findIndex(item =>
+        item.attribute === selectedItem.attribute &&
+        item.equalityOperator === selectedItem.equalityOperator &&
+        item.value === selectedItem.value
+      );
+    }).filter(index => index !== -1);
+
+    const si = currentSelectedIndices.includes(-1) ? selectedItems : currentItems.filter((item, index) => currentSelectedIndices.includes(index));
     si.forEach((selectedItem, index) => {
       const groupIndex = groups.findIndex(group => isGroupItem(group, selectedItem));
       if (groupIndex >= 0) {
@@ -1913,6 +1986,12 @@ const getOptions = (
       }
     });
 
+
+    // Exit early if no items are eligible for grouping
+    if (indices.length === 0) {
+      return;
+    }
+
     const groupIndices = indices.map(({ groupIndex }) => groupIndex);
     const allSameGroupIndex = groupIndices.every((groupIndex, index, array) => groupIndex === array[0]);
 
@@ -1920,7 +1999,7 @@ const getOptions = (
     const childItems = si.map(selectedItem => ({ attribute: selectedItem.attribute, equalityOperator: selectedItem.equalityOperator, value: selectedItem.value, andOr: selectedItem.andOr }));
     const filterItems = (groupIndex: number) => {
       clonedNewGroups[groupIndex].items = clonedNewGroups[groupIndex].items.filter((item: { attribute: string; equalityOperator: string; value: string; andOr: string; }) =>
-        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value && item.andOr === childItem.andOr));
+        !childItems.some(childItem => item.attribute === childItem.attribute && item.equalityOperator === childItem.equalityOperator && item.value === childItem.value));
     };
 
     if (allSameGroupIndex && groupIndices[0] === 0) {
@@ -2080,8 +2159,10 @@ const getOptions = (
 
   function handleSelectionChange(selection: Selection) {
     const selectedItems = selection.getSelection() as any[];
+    // Use current items from groups to get accurate indices
+    const currentItems = getCurrentItemsFromGroups(groups);
     const selectedIndices = selectedItems.map(selectedItem => {
-      return items.findIndex(item =>
+      return currentItems.findIndex(item =>
         item.attribute === selectedItem.attribute &&
         item.equalityOperator === selectedItem.equalityOperator &&
         item.value === selectedItem.value &&
