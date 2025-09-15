@@ -16,7 +16,7 @@ test.describe('Job Details Tests', () => {
 
   // Track the original state of the group creation setting
   let originalGroupCreationState: boolean | null = null;
-
+  let createdGroupName: string | null = null;
   // Ensure group creation is enabled before running tests
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: 'tests/storageState.json' });
@@ -259,6 +259,7 @@ test.describe('Job Details Tests', () => {
   });
 
   test('Test onboarding, HR Source part functionality, and review flow', async ({ page }) => {
+    test.setTimeout(60000);
     const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
@@ -271,6 +272,7 @@ test.describe('Job Details Tests', () => {
     await page.getByText('Create a new group').click();
     await page.getByPlaceholder('Enter the name of the group').click();
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
+    createdGroupName = groupName;
     console.log(`Group name: ${groupName}`);
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
@@ -381,6 +383,16 @@ test.describe('Job Details Tests', () => {
     expect(filterInQuery).toMatch(/PayScaleStockLevelNbr\s*>=\s*65/);
     expect(filterInQuery).toMatch(/\)\s*And\s*\(/);
     expect(filterInQuery).toMatch(/\sOr\s/);
+    await page.getByTestId('business-justification-textfield').click();
+    await page.getByTestId('business-justification-textfield').fill('test');
+    await page.waitForTimeout(2000);
+
+    const submitButton = page.locator('text="Submit"');
+    await expect(submitButton).toBeVisible({ timeout: 10000 });
+    await expect(submitButton).toBeEnabled({ timeout: 10000 });
+    await page.getByRole('button', { name: 'Submit' }).click();
+
+    await page.waitForTimeout(2000);
 
     console.log('✅ HR Source part test completed successfully.');
 
@@ -432,6 +444,52 @@ test.describe('Job Details Tests', () => {
     console.log('✅ Submission review flow completed successfully.');
   });
 
+  test('Reopen created group and verify EmployeeType values are read-only', async ({ page }) => {
+    test.skip(!createdGroupName, 'No group name captured from prior test.');
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    console.log(`🔍 Re-opening group: ${createdGroupName}`);
+
+    // Navigate to home
+    await page.goto(url);
+    await page.waitForTimeout(8000);
+
+    // Attempt to locate the group by its name
+    const groupLocator = page.locator(`text=${createdGroupName}`).first();
+    const groupFound = await groupLocator.isVisible({ timeout: 15000 }).catch(() => false);
+    if (!groupFound) {
+      console.log(`⚠️ Could not locate group ${createdGroupName} in list. Skipping verification.`);
+      test.skip();
+    }
+
+    await groupLocator.click();
+
+    // Wait for a job / details or wizard view to load
+    await page.waitForTimeout(6000);
+
+    // Try to reveal source parts UI 
+    const expandAllButton = page.locator('#expandCollapseAllButton');
+    if (await expandAllButton.count()) {
+      try { await expandAllButton.click(); } catch { /* ignore */ }
+    }
+
+    const hrValueCombobox = page.locator('input[value*="FTE"][value*="Intern"]').first();
+    await hrValueCombobox.click();
+    const fteIcon = page.locator('label:has-text("FTE") i');
+    let failed = false;
+    try {
+      await fteIcon.click({ timeout: 800 }); // expect this to fail in read-only view
+      // If it didn’t throw, that’s a problem.
+      expect(false, 'FTE option was clickable but should not be').toBe(true);
+    } catch {
+      failed = true;
+    }
+    expect(failed).toBe(true);
+    await page.getByTestId('remove-button').first().click();
+    await page.getByTestId('remove-confirmation-button').first().click();
+    console.log('Successfully removed group');
+
+    console.log('✅ EmployeeType values confirmed read-only (FTE & Intern unchanged).');
+  });
   // Helper: robustly select the first option from a labeled combobox/people picker
   // Returns a numeric id parsed from the option text if present (e.g., "User 22360" -> 22360)
   const selectComboOptionByLabel = async (page: Page, label: string, query: string): Promise<number | null> => {

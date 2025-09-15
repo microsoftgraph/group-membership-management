@@ -316,6 +316,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       <div className={classNames.removeGMM}>
         {canDeleteJob &&
         <ActionButton
+          data-testid="remove-button"
           iconProps={{ iconName: 'Delete' }}
           title={strings.JobDetails.labels.removeGMM}
           ariaLabel={strings.JobDetails.labels.removeGMM}
@@ -337,6 +338,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       >
         <DialogFooter>
           <PrimaryButton
+            data-testid="remove-confirmation-button"
             onClick={onConfirmRemove}
             text={strings.JobDetails.labels.removeGMMConfirmation}
             styles={{ root: { padding: '16px' } }}
