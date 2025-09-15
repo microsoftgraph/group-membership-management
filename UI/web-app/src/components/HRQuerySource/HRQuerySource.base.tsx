@@ -1131,6 +1131,9 @@ const getOptions = (
   };
 
   const handleAttributeValueChange = (attribute: string, event: React.FormEvent<IComboBox>, existingValues?: string, item?: IComboBoxOption, index?: number, operator?: string, groupIndex?: number, childIndex?: number): void => {
+    if ((operator?.toString().toUpperCase() === "IN" || operator?.toString().toUpperCase() === "NOT IN") && (!isJobWriter || !isEditable)) {
+      return;
+    }
     let selectedValues = "";
     if (operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")) {
       let selected = item?.selected;

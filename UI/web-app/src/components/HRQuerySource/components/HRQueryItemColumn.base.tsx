@@ -192,7 +192,11 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
               <VirtualizedComboBox
                 data-testid="hr-value-virtualized-combobox"
                 selectedKey={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
-                options={attributeValueOptions}
+                options={
+                  (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable)
+                  ? attributeValueOptions.filter(option => getSelectedKeys(items[index].value).includes(String(option.key)))
+                    : attributeValueOptions
+                }
                 onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
                 onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex)}
                 onRenderOption={onRenderValueComboBoxOptions}
@@ -202,9 +206,19 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                 autoComplete="off"
                 useComboBoxAsMenuWidth={false}
                 dropdownMaxWidth={500}
-                disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-                title={strings.HROnboarding.attributeValue}
+                disabled={
+                isAttributeDisabled || 
+                (item.equalityOperator !== 'IN' && item.equalityOperator !== 'NOT IN' && (!isJobWriter || !isEditable))
+                }              title={strings.HROnboarding.attributeValue}
                 calloutProps={{styles: { calloutMain: { height: '300px', overflowY: 'auto' }}}}
+                styles={
+                  (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable) 
+                    ? {
+                        root: classNames.readOnlyComboBox,
+                        input: classNames.readOnlyComboBoxInput
+                      } 
+                    : undefined
+                }
               />
             );
           } else {
