@@ -258,7 +258,7 @@ test.describe('Job Details Tests', () => {
     console.log('✅ Inclusionary logic correctly updates the query test completed successfully.');
   });
 
-  test.only('Test onboarding, HR Source part functionality, and review flow', async ({ page }) => {
+  test('Test onboarding, HR Source part functionality, and review flow', async ({ page }) => {
     const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
     const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
 
