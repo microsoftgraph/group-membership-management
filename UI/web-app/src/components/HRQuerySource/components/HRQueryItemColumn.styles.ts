@@ -94,12 +94,12 @@ export const getStyles = (props: HRQueryItemColumnStyleProps): HRQueryItemColumn
       maxHeight: 300,
     },
     readOnlyComboBox: {
-      backgroundColor: '#f3f2f1',
+      backgroundColor: theme.palette.neutralLighter,
       cursor: 'pointer'
     },
     readOnlyComboBoxInput: {
-      backgroundColor: '#f3f2f1',
-      color: '#605e5c',
+      backgroundColor: theme.palette.neutralLighter,
+      color: theme.palette.neutralDark,
       cursor: 'pointer'
     },
   };

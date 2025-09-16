@@ -194,8 +194,11 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                 selectedKey={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
                 options={
                   (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable)
-                  ? attributeValueOptions.filter(option => getSelectedKeys(items[index].value).includes(String(option.key)))
-                    : attributeValueOptions
+                    ? (() => {
+                      const selectedKeys = getSelectedKeys(items[index].value);
+                      return attributeValueOptions.filter(option => selectedKeys.includes(String(option.key)));
+                    })()
+                  : attributeValueOptions
                 }
                 onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
                 onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex)}
