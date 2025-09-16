@@ -67,7 +67,7 @@ stages:
         Contents: |
           **/*.json
           **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/deployment'
+        TargetFolder: '$(build.artifactstagingdirectory)/Deployment'
 
     - task: CopyFiles@2
       displayName: 'Copy UI scripts'

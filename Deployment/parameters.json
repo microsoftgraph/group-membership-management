@@ -2,6 +2,27 @@
   "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "solutionAbbreviation": {
+      "value": "",
+      "metadata": {
+        "description": "The solution abbreviation.",
+        "required": true
+      }
+    },
+    "environmentAbbreviation": {
+      "value": "",
+      "metadata": {
+        "description": "The environment abbreviation.",
+        "required": true
+      }
+    },
+    "subscriptionId": {
+      "value": "",
+      "metadata": {
+        "description": "The Azure subscription ID where the resources will be deployed.",
+        "required": true
+      }
+    },
     "location": {
       "value": "",
       "metadata": {
@@ -164,7 +185,18 @@
       }
     },
     "pipeline": {
-      "value": "PopulateDestinationPipeline_demo"
+      "value": "PopulateDestinationPipeline_demo",
+      "metadata": {
+        "description": "The name of the ADF pipeline producing SqlMembership tables.",
+        "required": false
+      }
+    },
+    "isInitialDeployment": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether this is the initial deployment.",
+        "required": true
+      }
     },
     "setRBACPermissions": {
       "value": true,
@@ -215,6 +247,20 @@
         "required": false
       }
     },
+    "skipResourceProvidersCheck": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the resource providers check.",
+        "required": true
+      }
+    },
+    "startFunctions": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether to start Azure Functions after deployment.",
+        "required": true
+      }
+    },
     "createResourceGroups": {
       "value": true,
       "metadata": {
@@ -222,7 +268,29 @@
         "required": false
       }
     },
-    "OpenUIAfterDeployment": {
+     "assertUserPermissions": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether to assert user permissions before deployment.",
+        "required": true
+      }
+    },
+    "setUserAssignedManagedIdentityPermissions": {
+      "value": true,
+      "metadata": {
+        "description": "Flag to indicate whether to set user assigned managed identity permissions.",
+        "required": true
+      }
+    },
+    "resetGMMType": {
+      "value": "Skip",
+      "metadata": {
+        "description": "The type of reset to perform on GMM.",
+        "required": true,
+        "options": ["Credentials", "ServicePrincipal","Skip"]
+      }
+    },
+    "openUIAfterDeployment": {
       "value": true,
       "metadata": {
         "description": "Flag to open the UI after deployment.",
