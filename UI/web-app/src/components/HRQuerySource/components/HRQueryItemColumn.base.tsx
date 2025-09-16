@@ -231,6 +231,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
 
         return (
           <Dropdown
+            data-testid="hr-andor-dropdown"
             selectedKey={selectedKey}
             onChange={(event, option) => handleOrAndOperatorChange(event, option, index, groupIndex, childIndex)}
             options={orAndOperatorOptions}
