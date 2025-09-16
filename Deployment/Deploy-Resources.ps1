@@ -1604,22 +1604,6 @@ function Test-ScriptDependencies {
         Write-Host "✅ Running in a 64-bit PowerShell session." -ForegroundColor Green
     }
 
-    # MS Graph PowerShell modules
-    Write-Host "Checking Microsoft Graph PowerShell modules..."
-		
-    $requiredGraphModules = @(
-        "Microsoft.Graph.Authentication",
-        "Microsoft.Graph.Applications",
-        "Microsoft.Graph.Identity.DirectoryManagement",
-        "Microsoft.Graph.Users"
-    )
-
-    . ($scriptsDirectory + '\scripts\Install-ModuleIfNeeded.ps1')
-
-    foreach ($module in $requiredGraphModules) {
-        Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
-    }
-
     # Node.js
     if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
         Write-Error "❌ Node.js is not installed. Download it from https://nodejs.org/."
@@ -1711,6 +1695,38 @@ function Test-ScriptDependencies {
     Write-Host "🎉 All dependencies verified successfully!" -ForegroundColor Green
 }
 
+function Install-RequiredModules {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory
+    )
+
+    # Install Az modules
+    Write-Host "Installing/Importing required Az modules..."
+    . ($ScriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
+    Install-AzModuleIfNeeded | Out-Null
+    Write-Host "Completed installation/import of required Az modules." -ForegroundColor Green
+
+    # Install Microsoft Graph modules
+    Write-Host "Installing/Importing required Microsoft Graph PowerShell modules..."
+    . ($ScriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+		
+    $requiredGraphModules = @(
+        "Microsoft.Graph.Authentication",
+        "Microsoft.Graph.Applications",
+        "Microsoft.Graph.Identity.DirectoryManagement",
+        "Microsoft.Graph.Users"
+    )
+
+    . ($scriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+
+    foreach ($module in $requiredGraphModules) {
+        Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
+    }
+    Write-Host "Completed installation/import of required Microsoft Graph PowerShell modules." -ForegroundColor Green
+}
+
 function Initialize-ScriptDependencies {
     [CmdletBinding()]
     param (
@@ -1730,7 +1746,7 @@ function Initialize-ScriptDependencies {
 
     Test-ScriptDependencies
 
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
 
     if ($AssertUserPermissions -eq $true) {
         . ($ScriptsDirectory + '\Assert-MicrosoftGraphPermissions.ps1')
