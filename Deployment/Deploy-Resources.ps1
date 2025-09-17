@@ -885,6 +885,7 @@ function Set-SQLServerPermissions {
     # SQL Permissions
     Write-Host "`nGranting permissions to SQL database"
 
+    # Set the permissions for the user running the script.
     $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
     $sqlToken = [Microsoft.Azure.Commands.Common.Authentication.AzureSession]::Instance.AuthenticationFactory.Authenticate($context.Account, $context.Environment, $context.Tenant.Id.ToString(), $null, [Microsoft.Azure.Commands.Common.Authentication.ShowDialog]::Never, $null, "https://database.windows.net").AccessToken
     $connection = New-Object System.Data.SqlClient.SqlConnection
@@ -907,16 +908,21 @@ function Set-SQLServerPermissions {
     $connection.Close()
     $roleCommand.Dispose()
 
+    # Set the permissions for the function apps.
     $functionApps = Get-AzResource -ResourceGroupName $ComputeResourceGroup -ResourceType "Microsoft.Web/sites"
     $connection.Open()
 
     foreach ($functionApp in $functionApps) {
 
+        $isWebAPI = $functionApp.Name -match "-webapi"
+        $adminRoleClause = "ALTER ROLE db_ddladmin ADD MEMBER [$($functionApp.Name)]"
+        
         $functionSqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$($functionApp.Name)')
         BEGIN
             CREATE USER [$($functionApp.Name)] FROM EXTERNAL PROVIDER
             ALTER ROLE db_datareader ADD MEMBER [$($functionApp.Name)]
             ALTER ROLE db_datawriter ADD MEMBER [$($functionApp.Name)]
+            $($isWebAPI ? $adminRoleClause : '')
         END"
 
         Write-Host "Granting permissions to SQL database for $($functionApp.Name)"
