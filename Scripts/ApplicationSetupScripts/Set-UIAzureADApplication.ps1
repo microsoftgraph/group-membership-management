@@ -89,7 +89,7 @@ function Set-UIAzureADApplication {
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	. ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
 
 	$context = Get-AzContext
@@ -238,6 +238,9 @@ function Set-UIKeyVaultSecrets {
 		[string] $ErrorActionPreference = $Stop
 	)
 
+		$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+		. ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+
 		# These need to go into the key vault
 		$uiAppTenantId = $DevTenantId;
 		$uiAppClientId = $UIApplicationId
@@ -273,9 +276,11 @@ function Set-UIKeyVaultSecrets {
 			$uiAppIdSecret = Read-Host -AsSecureString -Prompt "Please take the UI application ID from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							 -Name $uiAppIdKeyVaultSecretName `
-							 -SecretValue $uiAppIdSecret
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+							-ResourceGroup $keyVault.VaultName `
+							-SecretName $uiAppIdKeyVaultSecretName `
+							-SecretValue $uiAppIdSecret
+
 		Write-Verbose "$uiAppIdKeyVaultSecretName added to vault for $uiAppDisplayName."
 
 		# Store Application secret in KeyVault
@@ -289,9 +294,11 @@ function Set-UIKeyVaultSecrets {
 			$uiPasswordCredentialValue = Read-Host -AsSecureString -Prompt "Please take the UI application client secret from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							 -Name $uiAppClientSecretName `
-							 -SecretValue $uiPasswordCredentialValue
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+							-ResourceGroup $keyVault.VaultName `
+							-SecretName $uiAppClientSecretName `
+							-SecretValue $uiPasswordCredentialValue
+
 		Write-Verbose "$uiAppClientSecretName added to vault for $uiAppDisplayName."
 
 		# Store tenantID in KeyVault
@@ -305,9 +312,10 @@ function Set-UIKeyVaultSecrets {
 			$uiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the UI tenant ID from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							 -Name $uiTenantSecretName `
-							 -SecretValue $uiTenantSecret
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+							-ResourceGroup $keyVault.VaultName `
+							-SecretName $uiTenantSecretName `
+							-SecretValue $uiTenantSecret
 
 		Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
 
@@ -325,8 +333,9 @@ function Set-UIKeyVaultSecrets {
 			$tenantDomainSecret = Read-Host -AsSecureString -Prompt "Please take the Tenant Domain from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $tenantDomainSecretName `
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+							-ResourceGroup $keyVault.VaultName `
+							-SecretName $tenantDomainSecretName `
 							-SecretValue $tenantDomainSecret
 
 		Write-Verbose "$tenantDomainSecretName added to vault for UI Group Links."
@@ -345,8 +354,9 @@ function Set-UIKeyVaultSecrets {
 			$sharepointDomainSecret = Read-Host -AsSecureString -Prompt "Please take the SharePoint Domain from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $sharepointDomainSecretName `
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+							-ResourceGroup $keyVault.VaultName `
+							-SecretName $sharepointDomainSecretName `
 							-SecretValue $sharepointDomainSecret
 
 		Write-Verbose "$sharepointDomainSecretName added to vault for UI Group Links."

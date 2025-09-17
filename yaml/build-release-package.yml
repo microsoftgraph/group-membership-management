@@ -69,49 +69,6 @@ stages:
           **/*.ps1
         TargetFolder: '$(build.artifactstagingdirectory)/Deployment'
 
-    - task: CopyFiles@2
-      displayName: 'Copy UI scripts'
-      inputs:
-        SourceFolder: 'UI/Scripts'
-        Contents: |
-          **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/scripts'
-        OverWrite: false
-
-    - task: CopyFiles@2
-      displayName: 'Copy WebAPI scripts'
-      inputs:
-        SourceFolder: 'Service/GroupMembershipManagement/Hosts/WebApi/Scripts'
-        Contents: |
-          **/*.ps1
-        TargetFolder: '$(build.artifactstagingdirectory)/scripts'
-        OverWrite: false
-
-    - task: DotNetCoreCLI@2
-      displayName: 'Install EF Core tools'
-      retryCountOnTaskFailure: 3
-      inputs:
-        command: custom
-        custom: 'tool'
-        arguments: 'update --global dotnet-ef --version 8.0.7'
-
-    - task: PowerShell@2
-      displayName: 'Create migrations bundle'
-      inputs:
-        targetType: inline
-        workingDirectory: 'Service/GroupMembershipManagement/Repositories.EntityFramework.Contexts'
-        script: |
-          dotnet ef migrations bundle --context GMMContext --output $(System.DefaultWorkingDirectory)/efbundle.exe
-          ls
-        pwsh: true
-
-    - task: CopyFiles@2
-      displayName: 'copy migrations bundle to function packages'
-      inputs:
-        SourceFolder: $(System.DefaultWorkingDirectory)
-        Contents: efbundle.exe
-        TargetFolder: '$(build.artifactstagingdirectory)/function_packages/'
-
     - task: PublishBuildArtifacts@1
       displayName: 'Publish web app artifacts'
       inputs:

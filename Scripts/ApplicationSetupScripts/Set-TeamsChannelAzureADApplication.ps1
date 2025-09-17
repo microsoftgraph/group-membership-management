@@ -90,7 +90,7 @@ function Set-TeamsChannelAzureADApplication {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+    . ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded
 
 	$context = Get-AzContext
@@ -234,6 +234,10 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 		[boolean] $SkipPrompts = $False
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+
 	# These need to go into the key vault
 	$teamsChannelAppTenantId = $TenantIdToCreateAppIn;
 	$teamsChannelAppClientId = $ApplicationClientId;
@@ -269,9 +273,11 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 		$teamsClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the teams channel application ID from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $teamsClientIdKeyVaultSecretName `
-						 -SecretValue $teamsClientIdSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $teamsClientIdKeyVaultSecretName `
+										-SecretValue $teamsClientIdSecret
+
 	Write-Verbose "$teamsClientIdKeyVaultSecretName added to vault for $teamsChannelAppDisplayName."
 
 	# Store Application secret in KeyVault
@@ -285,9 +291,11 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 		$teamsClientSecret = Read-Host -AsSecureString -Prompt "Please take the teams channel application client secret from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $teamsChannelAppClientSecretName `
-							-SecretValue $teamsClientSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $teamsChannelAppClientSecretName `
+										-SecretValue $teamsClientSecret
+
 	Write-Verbose "$teamsChannelAppClientSecretName added to vault for $teamsChannelAppDisplayName."
 
 	# Store tenantID in KeyVault
@@ -301,14 +309,16 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 		$teamsTenantSecret = Read-Host -AsSecureString -Prompt "Please take the teams channel application tenant id from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $teamsTenantSecretName `
-						 -SecretValue $teamsTenantSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $teamsTenantSecretName `
+										-SecretValue $teamsTenantSecret
+
     Write-Verbose "$teamsTenantSecretName added to vault for $teamsChannelAppDisplayName."
 
 	# Store certificate name in KeyVault
 	$teamsChannelAppCertificateName = "teamsChannelAppCertificateName"
-	$teamsChannelAppCertificate = Get-AzKeyVaultSecret -VaultName $keyVault.VaultName -Name $teamsChannelAppCertificateName
+	$teamsChannelAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.VaultName -SecretName $teamsChannelAppCertificateName -AsPlainText
     $setteamsChannelAppCertificate = $false
 
 	if(!$teamsChannelAppCertificate -and !$CertificateName){
@@ -327,9 +337,11 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 			$teamsChannelAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-								-Name $teamsChannelAppCertificateName `
-								-SecretValue $teamsChannelAppCertificateSecret
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+											-ResourceGroup $keyVault.VaultName `
+											-SecretName $teamsChannelAppCertificateName `
+											-SecretValue $teamsChannelAppCertificateSecret
+
 		Write-Verbose "$teamsChannelAppCertificateName added to vault for $teamsChannelAppDisplayName."
 	}
 

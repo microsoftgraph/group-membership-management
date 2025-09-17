@@ -13,7 +13,7 @@ The following PowerShell script will create a new application, `<solutionAbbrevi
 
 Note that this script will create an new application and authentication will be done using a client id and client secret pair. If you prefer to use a certificate you need to provide the name of your certificate which must be present on your prereqs keyvault.
 
-From your `PowerShell 7.x` command prompt navigate to the `Service\GroupMembershipManagement\Hosts\WebApi\Scripts\` folder of your `Public` repo and run these commands:
+From your `PowerShell 7.x` command prompt navigate to the `Scripts\ApplicationSetupScripts\` folder of your `Public` repo and run these commands:
 
     1.    . ./Set-WebApiAzureADApplication.ps1
     2.    Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `

@@ -29,7 +29,7 @@ function Set-AppRolesIfNeeded {
     Write-Verbose "Set-AppRolesIfNeeded starting..."
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+    . ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded
 
     $context = Get-AzContext

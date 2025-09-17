@@ -224,7 +224,7 @@ function Check-IfKeyVaultSecretExists {
         [string]$SecretName
     )
 
-    $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -ErrorAction SilentlyContinue
+    $secret = Get-KeyVaultSecretWithFirewallRetry -ResourceGroup $VaultName -VaultName $VaultName -SecretName $SecretName -AsPlainText -ErrorAction SilentlyContinue
     return $null -ne $secret
 }
 
@@ -643,7 +643,7 @@ function Set-DefaultSecretsIfMissing {
         if (-not $secretExists) {
             $secretValue = New-Object System.Security.SecureString
             "not-set".ToCharArray() | ForEach-Object { $secretValue.AppendChar($_) }
-            Set-AzKeyVaultSecret -VaultName $KeyVaultName -Name $secretName -SecretValue $secretValue
+            Set-KeyVaultSecretWithFirewallRetry -VaultName $KeyVaultName -ResourceGroup $KeyVaultName -SecretName $secretName -SecretValue $secretValue
         }
     }
 }
@@ -1177,7 +1177,7 @@ function Update-AppSettingsVersion {
             }
 
             $kvReference = Get-KeyVaultReference -KeyVaultReference $settings[$key]
-            $latestSecretVersion = Get-AzKeyVaultSecret -VaultName $kvReference.KeyVaultName -Name $kvReference.SecretName
+            $latestSecretVersion = Get-KeyVaultSecretWithFirewallRetry -ResourceGroup $kvReference.KeyVaultName -VaultName $kvReference.KeyVaultName -SecretName $kvReference.SecretName
 
             if ($latestSecretVersion.Version -ne $kvReference.Version) {
                 Write-Host "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
@@ -1203,7 +1203,7 @@ function Update-AppSettingsVersion {
             }
 
             $kvReference = Get-KeyVaultReference -KeyVaultReference $value
-            $latestSecretVersion = Get-AzKeyVaultSecret -VaultName $kvReference.KeyVaultName -Name $kvReference.SecretName
+            $latestSecretVersion = Get-KeyVaultSecretWithFirewallRetry -ResourceGroup $kvReference.KeyVaultName -VaultName $kvReference.KeyVaultName -SecretName $kvReference.SecretName
 
             if ($latestSecretVersion.Version -ne $kvReference.Version) {
                 Write-Host "Updating $($webApp.Name) -> $key to $($latestSecretVersion.Version)"
@@ -1285,7 +1285,7 @@ function Set-GMMAppRegistrations {
     )
 
     Write-Host "`nSetting GMM App Registrations"
-    . ($ScriptsDirectory + '\Set-UIAzureADApplication.ps1')
+    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-UIAzureADApplication.ps1')
 
     $currentContext = Get-AzContext
     $subscriptionName = $currentContext.Subscription.Name
@@ -1304,7 +1304,7 @@ function Set-GMMAppRegistrations {
         -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -Clean $false
 
-    . ($ScriptsDirectory + '\Set-WebApiAzureADApplication.ps1')
+    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-WebApiAzureADApplication.ps1')
     $apiInformation = Set-WebApiAzureADApplication `
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1316,7 +1316,7 @@ function Set-GMMAppRegistrations {
         -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -Clean $false
 
-    . ($ScriptsDirectory + '\Set-GraphCredentialsAzureADApplication.ps1')
+    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-GraphCredentialsAzureADApplication.ps1')
     $graphInformation = Set-GraphCredentialsAzureADApplication `
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1329,7 +1329,7 @@ function Set-GMMAppRegistrations {
         -CertificateName $GraphAppCertificateName `
         -Clean $false
 
-    . ($ScriptsDirectory + '\Set-TeamsChannelAzureADApplication.ps1')
+    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-TeamsChannelAzureADApplication.ps1')
     $teamsChannelInformation = Set-TeamsChannelAzureADApplication `
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1524,23 +1524,26 @@ function Set-PublishUICode {
 
 
     if ([string]::IsNullOrWhiteSpace($UIClientId)) {
-        $UIClientId = Get-AzKeyVaultSecret `
+        $UIClientId = Get-KeyVaultSecretWithFirewallRetry `
+                        -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
                         -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                        -Name "uiAppId" `
+                        -SecretName "uiAppId" `
                         -AsPlainText
     } 
 
     if ([string]::IsNullOrWhiteSpace($UITenantId)) {
-        $UITenantId = Get-AzKeyVaultSecret `
+        $UITenantId = Get-KeyVaultSecretWithFirewallRetry `
+                        -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
                         -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                        -Name "uiTenantId" `
+                        -SecretName "uiTenantId" `
                         -AsPlainText
     } 
 
     if ([string]::IsNullOrWhiteSpace($WebApiClientId)) {
-        $WebApiClientId = Get-AzKeyVaultSecret `
+        $WebApiClientId = Get-KeyVaultSecretWithFirewallRetry `
+                            -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
                             -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                            -Name "webApiClientId" `
+                            -SecretName "webApiClientId" `
                             -AsPlainText
     } 
     
@@ -1882,6 +1885,11 @@ function Deploy-Resources {
             -ADFDBConnectionString $connectionStringADF
     }
 
+
+    # Import reusable functions
+    . ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+
     $response = Set-GMMResources `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
@@ -1902,22 +1910,35 @@ function Deploy-Resources {
 
     # retrieve SQL connection strings
     # Basic connection string
-    $connectionString = Get-AzKeyVaultSecret `
-        -VaultName "$SolutionAbbreviation-data-$environmentAbbreviation" `
-        -Name "sqlDatabaseConnectionString" `
-        -AsPlainText
+    $connectionString = Get-KeyVaultSecretWithFirewallRetry `
+            -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+            -ResourceGroup $dataResourceGroup `
+            -SecretName "sqlDatabaseConnectionString" `
+            -AsPlainText
 
-    $connectionStringADF = Get-AzKeyVaultSecret `
-        -VaultName "$SolutionAbbreviation-data-$environmentAbbreviation" `
-        -Name "sqlServerBasicConnectionString" `
+    $connectionStringADF = Get-KeyVaultSecretWithFirewallRetry `
+        -VaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
+        -ResourceGroup $dataResourceGroup `
+        -SecretName "sqlServerBasicConnectionString" `
         -AsPlainText
 
     if ($false -eq $skipSqlServerPermissionSetup) {
-        Set-SQLServerPermissions `
-            -ConnectionString $connectionString `
-            -ConnectionStringADF $connectionStringADF `
-            -ComputeResourceGroup $computeResourceGroup `
-            -DataResourceGroup $dataResourceGroup
+        . ($scriptsDirectory + '\ReusableModules\Invoke-WithFirewallRetry.ps1')
+        . ($scriptsDirectory + '\ReusableModules\Add-SqlIpFromError.ps1')
+
+        # Set SQL permissions with firewall retry logic
+        Invoke-WithFirewallRetry -ResourceGroup $dataResourceGroup -MaxRetries 3 `
+            -Operation {
+                Set-SQLServerPermissions `
+                    -ConnectionString $connectionString `
+                    -ConnectionStringADF $connectionStringADF `
+                    -ComputeResourceGroup $computeResourceGroup `
+                    -DataResourceGroup $dataResourceGroup
+            } `
+            -OnFirewallError {
+                param($errorMessage) 
+                Add-SqlIpFromError -ErrorMessage $errorMessage -SolutionAbbreviation $solutionAbbreviation -EnvironmentAbbreviation $environmentAbbreviation
+            }
     }
 
     if ($true -eq $setRBACPermissions) {

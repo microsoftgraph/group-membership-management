@@ -81,7 +81,7 @@ function Set-GraphCredentialsAzureADApplication {
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+    . ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded
 
 	$context = Get-AzContext
@@ -226,6 +226,10 @@ function Set-GraphAppKeyVaultSecrets {
 		[boolean] $SkipPrompts = $False
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+
 	# These need to go into the key vault
 	$graphAppTenantId = $TenantIdToCreateAppIn;
 	$graphAppClientId = $ApplicationClientId;
@@ -261,9 +265,11 @@ function Set-GraphAppKeyVaultSecrets {
 		$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $graphClientIdKeyVaultSecretName `
-						 -SecretValue $graphClientIdSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $graphClientIdKeyVaultSecretName `
+										-SecretValue $graphClientIdSecret
+
 	Write-Verbose "$graphClientIdKeyVaultSecretName added to vault for $graphAppDisplayName."
 
 	# Store Application secret in KeyVault
@@ -277,9 +283,11 @@ function Set-GraphAppKeyVaultSecrets {
 		$graphClientSecret = Read-Host -AsSecureString -Prompt "Please take the graph application client secret from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							-Name $graphAppClientSecretName `
-							-SecretValue $graphClientSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $graphAppClientSecretName `
+										-SecretValue $graphClientSecret
+
 	Write-Verbose "$graphAppClientSecretName added to vault for $graphAppDisplayName."
 
 	# Store tenantID in KeyVault
@@ -293,14 +301,16 @@ function Set-GraphAppKeyVaultSecrets {
 		$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $graphTenantSecretName `
-						 -SecretValue $graphTenantSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $graphTenantSecretName `
+										-SecretValue $graphTenantSecret
+
     Write-Verbose "$graphTenantSecretName added to vault for $graphAppDisplayName."
 
 	# Store certificate name in KeyVault
 	$graphAppCertificateName = "graphAppCertificateName"
-	$graphAppCertificate = Get-AzKeyVaultSecret -VaultName $keyVault.VaultName -Name $graphAppCertificateName
+	$graphAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.VaultName -SecretName $graphAppCertificateName -AsPlainText
     $setGraphAppCertificate = $false
 
 	if(!$graphAppCertificate -and !$CertificateName){
@@ -319,9 +329,10 @@ function Set-GraphAppKeyVaultSecrets {
 			$graphAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-								-Name $graphAppCertificateName `
-								-SecretValue $graphAppCertificateSecret
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+											-ResourceGroup $keyVault.VaultName `
+											-SecretName $graphAppCertificateName `
+											-SecretValue $graphAppCertificateSecret
 		Write-Verbose "$graphAppCertificateName added to vault for $graphAppDisplayName."
 	}
 

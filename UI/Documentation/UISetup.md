@@ -8,7 +8,7 @@ The following PowerShell script will create a new application, `<solutionAbbrevi
 -   uiPasswordCredentialValue
 -   uiTenantId
 
-From your `PowerShell 7.x` command prompt navigate to the `UI\Scripts\` folder of your `Public` repo and run these commands:
+From your `PowerShell 7.x` command prompt navigate to the `Scripts\ApplicationSetupScripts\` folder of your `Public` repo and run these commands:
 
     1.    . ./Set-UIAzureADApplication.ps1
     2.    Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `

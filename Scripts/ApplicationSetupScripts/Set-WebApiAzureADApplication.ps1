@@ -79,7 +79,7 @@ function Set-WebApiAzureADApplication {
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-	. ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+	. ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
 	Install-AzModuleIfNeeded
 
 	$context = Get-AzContext
@@ -105,7 +105,7 @@ function Set-WebApiAzureADApplication {
 		Write-Host "Application $webApiAppDisplayName already exists. Skipping creation..."
 
 		# Update roles if needed
-		. ($scriptsDirectory + '\Scripts\Set-AppRolesIfNeeded.ps1')
+		. ($scriptsDirectory + '\ApplicationSetupScripts\Set-AppRolesIfNeeded.ps1')
 		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
 		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
@@ -233,7 +233,7 @@ function Set-WebApiAzureADApplication {
 	Start-Sleep -Seconds 30
 
 	# Update roles if needed
-	. ($scriptsDirectory + '\Scripts\Set-AppRolesIfNeeded.ps1')
+	. ($scriptsDirectory + '\ApplicationSetupScripts\Set-AppRolesIfNeeded.ps1')
 		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
 	if($SaveToKeyVault -eq $false) {
@@ -277,6 +277,10 @@ function Set-WebAPIKeyVaultSecrets {
 		[string] $ErrorActionPreference = $Stop
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+
 	# These need to go into the key vault
 	$webApiAppTenantId = $DevTenantId;
 	$webApiAppClientId = $WebApiApplicationId;
@@ -312,9 +316,11 @@ function Set-WebAPIKeyVaultSecrets {
 		$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $webApiClientIdKeyVaultSecretName `
-						 -SecretValue $webApiClientIdSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $webApiClientIdKeyVaultSecretName `
+										-SecretValue $webApiClientIdSecret
+
 	Write-Verbose "$webApiClientIdKeyVaultSecretName added to vault for $webApiAppDisplayName."
 
 	# Store Application secret in KeyVault
@@ -328,9 +334,11 @@ function Set-WebAPIKeyVaultSecrets {
 		$webApiClientSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application client secret from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $webApiAppClientSecretName `
-						 -SecretValue $webApiClientSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $webApiAppClientSecretName `
+										-SecretValue $webApiClientSecret
+
 	Write-Verbose "$webApiAppClientSecretName added to vault for $webApiAppDisplayName."
 
 	# Store tenantID in KeyVault
@@ -344,14 +352,16 @@ function Set-WebAPIKeyVaultSecrets {
 		$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
 	}
 
-	Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-						 -Name $webApiTenantSecretName `
-						 -SecretValue $webApiTenantSecret
+	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+										-ResourceGroup $keyVault.VaultName `
+										-SecretName $webApiTenantSecretName `
+										-SecretValue $webApiTenantSecret
+
 	Write-Verbose "$webApiTenantSecretName added to vault for $webApiAppDisplayName."
 
 	# Store certificate name in KeyVault
 	$webApiAppCertificateName = "webApiCertificateName"
-	$webApiAppCertificate = Get-AzKeyVaultSecret -VaultName $keyVault.VaultName -Name $webApiAppCertificateName
+	$webApiAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.VaultName -SecretName $webApiAppCertificateName -AsPlainText
 	$setWebApiCertificate = $false
 
 	if (!$webApiAppCertificate -and !$CertificateName) {
@@ -372,9 +382,11 @@ function Set-WebAPIKeyVaultSecrets {
 			$webApiAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
 		}
 
-		Set-AzKeyVaultSecret -VaultName $keyVault.VaultName `
-							 -Name $webApiAppCertificateName `
-							 -SecretValue $webApiAppCertificateSecret
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+											-ResourceGroup $keyVault.VaultName `
+											-SecretName $webApiAppCertificateName `
+											-SecretValue $webApiAppCertificateSecret
+
 		Write-Verbose "$webApiAppCertificateName added to vault for $webApiAppDisplayName."
 	}
 
