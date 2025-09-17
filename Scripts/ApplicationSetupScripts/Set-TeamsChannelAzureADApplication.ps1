@@ -152,6 +152,9 @@ function Set-TeamsChannelAzureADApplication {
 			| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
 
 		$requiredResourceAccess.ResourceAccess = $delegatedPermissions
+		$signInAudience = "AzureADMyOrg"
+		$enableAccessTokenIssuance = $true
+		$enableIdTokenIssuance = $true
 
 		#region Create Appplication
 		if($null -eq $teamsChannelApp)
@@ -160,7 +163,7 @@ function Set-TeamsChannelAzureADApplication {
 			$teamsChannelApp = New-AzADApplication	-DisplayName $teamsChannelAppDisplayName `
 											-ReplyUrls $replyUrls `
 											-RequiredResourceAccess $requiredResourceAccess `
-											-AvailableToOtherTenants $false `
+											-SignInAudience $signInAudience `
 											-IsFallbackPublicClient
 			
 			$updatedAPIPermissions = $true
@@ -168,8 +171,8 @@ function Set-TeamsChannelAzureADApplication {
 			New-AzADServicePrincipal -ApplicationId $teamsChannelApp.AppId
 
 			$webSettings = $teamsChannelApp.Web
-			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
 
 			Update-AzADApplication -ObjectId $teamsChannelApp.Id `
 								-IdentifierUris "api://$($teamsChannelApp.AppId)" `
@@ -177,19 +180,37 @@ function Set-TeamsChannelAzureADApplication {
 		}
 		else
 		{
-			Write-Verbose "Updating Azure AD app $teamsChannelAppDisplayName"
+			Write-Verbose "Azure AD app $teamsChannelAppDisplayName already exists."
+			Write-Verbose "Checking if app needs update..."
 
-			$webSettings = $teamsChannelApp.Web
-			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+			. ($scriptsDirectory + '\ApplicationSetupScripts\Test-AppNeedsUpdate.ps1')
+			if (Test-AppNeedsUpdate -AppObject $teamsChannelApp `
+								-ExpectedRequiredResourceAccess $requiredResourceAccess `
+								-ExpectedSignInAudience $signInAudience `
+								-ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
+								-ExpectedEnableIdTokenIssuance $enableIdTokenIssuance) {
 
-			Update-AzADApplication	-ObjectId $($teamsChannelApp.Id) `
-									-DisplayName $teamsChannelAppDisplayName `
-									-RequiredResourceAccess $requiredResourceAccess `
-									-AvailableToOtherTenants $false `
-									-Web $webSettings
-			
-			$updatedAPIPermissions = $true
+				Write-Verbose "App $teamsChannelAppDisplayName needs update."
+
+				Write-Verbose "Updating Azure AD app $teamsChannelAppDisplayName"
+
+				$webSettings = $teamsChannelApp.Web
+				$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+				$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
+
+				Update-AzADApplication	-ObjectId $($teamsChannelApp.Id) `
+										-DisplayName $teamsChannelAppDisplayName `
+										-RequiredResourceAccess $requiredResourceAccess `
+										-SignInAudience $signInAudience `
+										-Web $webSettings
+
+				$updatedAPIPermissions = $true
+
+				Write-Verbose "Finished updating Azure AD app $teamsChannelAppDisplayName"
+			}
+			else {
+				Write-Verbose "No update needed for app $teamsChannelAppDisplayName."
+			}
 		}
 	}
 

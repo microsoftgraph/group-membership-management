@@ -145,6 +145,9 @@ function Set-GraphCredentialsAzureADApplication {
 		| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
 
 	$requiredResourceAccess.ResourceAccess = $appPermissions + $delegatedPermissions
+	$signInAudience = "AzureADMyOrg"
+	$enableAccessTokenIssuance = $true
+	$enableIdTokenIssuance = $true
 
 	#region Create Appplication
 	if($null -eq $graphApp)
@@ -153,7 +156,7 @@ function Set-GraphCredentialsAzureADApplication {
 		$graphApp = New-AzADApplication	-DisplayName $graphAppDisplayName `
                                         -ReplyUrls $replyUrls `
                                         -RequiredResourceAccess $requiredResourceAccess `
-										-AvailableToOtherTenants $false `
+										-SignInAudience $signInAudience `
 										-IsFallbackPublicClient
 		
 		$updatedAPIPermissions = $true
@@ -161,8 +164,8 @@ function Set-GraphCredentialsAzureADApplication {
         New-AzADServicePrincipal -ApplicationId $graphApp.AppId
 
 		$webSettings = $graphApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
 
 		Update-AzADApplication -ObjectId $graphApp.Id `
 		                       -IdentifierUris "api://$($graphApp.AppId)" `
@@ -170,19 +173,37 @@ function Set-GraphCredentialsAzureADApplication {
 	}
 	else
 	{
-		Write-Verbose "Updating Azure AD app $graphAppDisplayName"
+		Write-Verbose "Azure AD app $graphAppDisplayName already exists."
+		Write-Verbose "Checking if app needs update..."
 
-		$webSettings = $graphApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+		. ($scriptsDirectory + '\ApplicationSetupScripts\Test-AppNeedsUpdate.ps1')
+		if (Test-AppNeedsUpdate -AppObject $graphApp `
+							  -ExpectedRequiredResourceAccess $requiredResourceAccess `
+							  -ExpectedSignInAudience $signInAudience `
+							  -ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
+							  -ExpectedEnableIdTokenIssuance $enableIdTokenIssuance) {
 
-		Update-AzADApplication	-ObjectId $($graphApp.Id) `
-                                -DisplayName $graphAppDisplayName `
-                                -RequiredResourceAccess $requiredResourceAccess `
-								-AvailableToOtherTenants $false `
-								-Web $webSettings
+			Write-Verbose "App $graphAppDisplayName needs update."
 
-		$updatedAPIPermissions = $true
+			Write-Verbose "Updating Azure AD app $graphAppDisplayName"
+
+			$webSettings = $graphApp.Web
+			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
+
+			Update-AzADApplication	-ObjectId $($graphApp.Id) `
+									-DisplayName $graphAppDisplayName `
+									-RequiredResourceAccess $requiredResourceAccess `
+									-SignInAudience $signInAudience `
+									-Web $webSettings
+
+			$updatedAPIPermissions = $true
+
+			Write-Verbose "Finished updating Azure AD app $graphAppDisplayName"
+		}
+		else {
+			Write-Verbose "No update needed for app $graphAppDisplayName."
+		}
     }
 
 	if($SaveToKeyVault -eq $false)
@@ -338,3 +359,4 @@ function Set-GraphAppKeyVaultSecrets {
 
 	Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
 }
+

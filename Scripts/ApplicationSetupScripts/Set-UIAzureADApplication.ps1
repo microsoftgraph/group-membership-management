@@ -147,6 +147,9 @@ function Set-UIAzureADApplication {
 			}
 		)
 	}
+	$signInAudience = "AzureADMyOrg"
+	$enableAccessTokenIssuance = $true
+	$enableIdTokenIssuance = $true
 
 	if ($null -eq $uiApp) {
 		Write-Verbose "Creating Azure AD app $uiAppDisplayName"
@@ -162,7 +165,7 @@ function Set-UIAzureADApplication {
 		$replyUrls = @("http://localhost:3000", $url)
 
 		$uiApp = New-AzADApplication	-DisplayName $uiAppDisplayName `
-										-AvailableToOtherTenants $false `
+										-SignInAudience $signInAudience `
 										-SPARedirectUri $replyUrls `
 										-RequiredResourceAccess $requiredResourceAccess
 		
@@ -171,28 +174,49 @@ function Set-UIAzureADApplication {
 		New-AzADServicePrincipal -ApplicationId $uiApp.AppId
 
 		$webSettings = $uiApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
 
 		Update-AzADApplication  -ObjectId $uiApp.Id `
 								-IdentifierUris "api://$($uiApp.AppId)" `
 								-DisplayName $uiAppDisplayName `
 								-Web $webSettings `
+								-SignInAudience $signInAudience `
 								-AvailableToOtherTenants $false
 	}
 	else {
-		$webSettings = $uiApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
 
-		Write-Verbose "Updating Azure AD app $uiAppDisplayName"
-		Update-AzADApplication	-ObjectId $($uiApp.Id) `
-								-DisplayName $uiAppDisplayName `
-								-Web $webSettings `
-								-RequiredResourceAccess $requiredResourceAccess `
-								-AvailableToOtherTenants $false
-		
-		$updatedAPIPermissions = $true
+		Write-Verbose "Azure AD app $uiAppDisplayName already exists."
+		Write-Verbose "Checking if app needs update..."
+
+		. ($scriptsDirectory + '\ApplicationSetupScripts\Test-AppNeedsUpdate.ps1')
+		if (Test-AppNeedsUpdate -AppObject $uiApp `
+							-ExpectedRequiredResourceAccess $requiredResourceAccess `
+							-ExpectedSignInAudience $signInAudience `
+							-ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
+							-ExpectedEnableIdTokenIssuance $enableIdTokenIssuance) {
+
+			Write-Verbose "App $uiAppDisplayName needs update."
+
+			Write-Verbose "Updating Azure AD app $uiAppDisplayName"
+
+			$webSettings = $uiApp.Web
+			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
+
+			Update-AzADApplication	-ObjectId $($uiApp.Id) `
+									-DisplayName $uiAppDisplayName `
+									-RequiredResourceAccess $requiredResourceAccess `
+									-SignInAudience $signInAudience `
+									-Web $webSettings
+
+			$updatedAPIPermissions = $true
+
+			Write-Verbose "Finished updating Azure AD app $uiAppDisplayName"
+		}
+		else {
+			Write-Verbose "No update needed for app $uiAppDisplayName."
+		}
 	}
 
 	Start-Sleep -Seconds 30

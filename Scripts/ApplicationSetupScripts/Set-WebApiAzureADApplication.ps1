@@ -138,6 +138,9 @@ function Set-WebApiAzureADApplication {
 				}
 			)
 		}
+	$signInAudience = "AzureADMyOrg"
+	$enableAccessTokenIssuance = $true
+	$enableIdTokenIssuance = $true
 
 	if ($null -eq $webApiApp) {
 		Write-Verbose "Creating Azure AD app $webApiAppDisplayName"
@@ -146,10 +149,11 @@ function Set-WebApiAzureADApplication {
 		# Add this url -> "https://localhost:7224/swagger/oauth2-redirect.html" if you want to test the WebAPI locally.
 		$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
 
-		$webApiApp = New-AzADApplication	-DisplayName $webApiAppDisplayName `
-			-AvailableToOtherTenants $false `
-			-ReplyUrls $replyUrls `
-			-RequiredResourceAccess $requiredResourceAccess
+		$webApiApp = New-AzADApplication	`
+				-DisplayName $webApiAppDisplayName `
+				-SignInAudience $signInAudience `
+				-ReplyUrls $replyUrls `
+				-RequiredResourceAccess $requiredResourceAccess
 
 		$updatedAPIPermissions = $true
 		
@@ -174,14 +178,14 @@ function Set-WebApiAzureADApplication {
 		Start-Sleep -Seconds 30
 
 		$webSettings = $webApiApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
 
 		Update-AzADApplication  -ObjectId $webApiApp.Id `
 								-IdentifierUris "api://$($webApiApp.AppId)" `
 								-DisplayName $webApiAppDisplayName `
 								-Web $webSettings `
-								-AvailableToOtherTenants $false
+								-SignInAudience $signInAudience
 
 		Start-Sleep -Seconds 30
 
@@ -197,10 +201,10 @@ function Set-WebApiAzureADApplication {
 		}
 	}
 	else {
-		$webApiApp.Web.ImplicitGrantSetting.EnableAccessTokenIssuance = $true
-		$webApiApp.Web.ImplicitGrantSetting.EnableIdTokenIssuance = $true
+		
+		Write-Verbose "Azure AD app $webApiAppDisplayName already exists."
+		Write-Verbose "Checking if app needs update..."
 
-		# Add upn to list of claims if it doesn't exist (required by WebApi)
 		$optionalClaim = $webApiApp.OptionalClaim;
 		$hasUpnClaim = $false;
 
@@ -210,24 +214,45 @@ function Set-WebApiAzureADApplication {
 			}
 		}
 
-		if (!$hasUpnClaim) {
-			$optionalClaim.AccessToken += @{
-				Name                 = "upn"
-				Source               = $null
-				Essential            = $false
-				AdditionalProperties = @()
-			}
-		}
+		. ($scriptsDirectory + '\ApplicationSetupScripts\Test-AppNeedsUpdate.ps1')
+		$needsUpdate = Test-AppNeedsUpdate -AppObject $webApiApp `
+							-ExpectedRequiredResourceAccess $requiredResourceAccess `
+							-ExpectedSignInAudience $signInAudience `
+							-ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
+							-ExpectedEnableIdTokenIssuance $enableIdTokenIssuance
 
-		Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
-		Update-AzADApplication	-ObjectId $($webApiApp.Id) `
+		if (!$hasUpnClaim -or $needsUpdate) {
+
+			Write-Verbose "App $webApiAppDisplayName needs update."
+			Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
+
+			if (!$hasUpnClaim) {
+				$optionalClaim.AccessToken += @{
+					Name                 = "upn"
+					Source               = $null
+					Essential            = $false
+					AdditionalProperties = @()
+				}
+			}
+
+			$webSettings = $webApiApp.Web
+			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
+			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
+
+			Update-AzADApplication	-ObjectId $($webApiApp.Id) `
 								-DisplayName $webApiAppDisplayName `
 								-OptionalClaim $optionalClaim `
 								-Web $webSettings `
 								-RequiredResourceAccess $requiredResourceAccess `
-								-AvailableToOtherTenants $false
+								-SignInAudience $signInAudience
 
-		$updatedAPIPermissions = $true
+			$updatedAPIPermissions = $true
+
+			Write-Verbose "Finished updating Azure AD app $webApiAppDisplayName"
+		}
+		else {
+			Write-Verbose "No update needed for app $webApiAppDisplayName."
+		}
 	}
 
 	Start-Sleep -Seconds 30

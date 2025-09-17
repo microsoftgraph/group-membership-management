@@ -1342,21 +1342,24 @@ function Set-GMMAppRegistrations {
 
     foreach ($appInfo in $appInformationObjects) {
         if ($appInfo.UpdatedApiPermissions) {
-            $appsThatNeedAdminConsent += $appInfo.ApplicationName
+            $appsThatNeedAdminConsent += @{
+                ApplicationId   = $appInfo.ApplicationId;
+                ApplicationName = $appInfo.ApplicationName
+            }
         }
     }
 
     #return the response
     return @{
-        UIApplicationId            = $uiInformation.ApplicationId;
-        UITenantId                 = $uiInformation.TenantId;
-        APIApplicationId           = $apiInformation.ApplicationId;
-        APITenantId                = $apiInformation.TenantId;
-        GraphApplicationId         = $graphInformation.ApplicationId;
-        GraphTenantId              = $graphInformation.TenantId;
-        TeamsChannelApplicationId  = $teamsChannelInformation.ApplicationId;
-        TeamsChannelTenantId       = $teamsChannelInformation.TenantId;
-        AppsThatNeedAdminConsent = $appsThatNeedAdminConsent;
+        UIApplicationId             = $uiInformation.ApplicationId;
+        UITenantId                  = $uiInformation.TenantId;
+        APIApplicationId            = $apiInformation.ApplicationId;
+        APITenantId                 = $apiInformation.TenantId;
+        GraphApplicationId          = $graphInformation.ApplicationId;
+        GraphTenantId               = $graphInformation.TenantId;
+        TeamsChannelApplicationId   = $teamsChannelInformation.ApplicationId;
+        TeamsChannelTenantId        = $teamsChannelInformation.TenantId;
+        AppsThatNeedAdminConsent    = $appsThatNeedAdminConsent;
     }
 }
 
@@ -1821,7 +1824,6 @@ function Deploy-Resources {
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $createAppRegistrations         = Get-Default -Value $ParameterHashtable['createAppRegistrations'].value  -Default $true
-    $openUIAfterDeployment          = Get-Default -Value $ParameterHashtable['openUIAfterDeployment'].value -Default $true
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
     $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
     $sharepointDomain               = Get-DefaultString -Value $ParameterHashtable['sharepointDomain'].value               -Default 'not-set'
@@ -1991,24 +1993,28 @@ function Deploy-Resources {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
 
+    Write-Host "`nDeployment complete!" -ForegroundColor Green
+
     if ($response.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
-        Write-Host "`n======================" -ForegroundColor Yellow
-        Write-Host "The following applications require admin consent:" -ForegroundColor Yellow
-        Write-Host "======================" -ForegroundColor Yellow
+        Write-Host "`n==========================================================" -ForegroundColor Yellow
+        Write-Host "The following applications might require admin consent:" -ForegroundColor Yellow
+        Write-Host "==========================================================" -ForegroundColor Yellow
+
         foreach ($app in $response.AppRegistrations.AppsThatNeedAdminConsent) {
-            Write-Host $app
+            $consentUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/$($app.ApplicationId)"
+            Write-Host ("`n{0} - {1}" -f $app.ApplicationName, $consentUrl) -ForegroundColor Cyan
         }
-        Write-Host "`nPlease visit the Azure portal to grant admin consent for these applications." -ForegroundColor Yellow
+
+        Write-Host "`nPlease use the provided URLs to open the Azure portal and grant admin consent for these applications." -ForegroundColor Yellow
     }
 
-    Start-Sleep -Seconds 10
+    Write-Host "`n`n==========================================================" -ForegroundColor Yellow
+    Write-Host "Access the GMM UI here:" -ForegroundColor Yellow
+    Write-Host "==========================================================" -ForegroundColor Yellow
 
-    # open the web app
-    if ($openUIAfterDeployment -eq $true) {
-        $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
-        if ($null -ne $staticWebApp) {
-            Write-Host "`nOpening UI in browser, url: https://$($staticWebApp.DefaultHostname)"
-            Start-Process "https://$($staticWebApp.DefaultHostname)"
-        }
+
+    $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
+    if ($null -ne $staticWebApp) {
+        Write-Host "`nhttps://$($staticWebApp.DefaultHostname)`n" -ForegroundColor Cyan
     }
 }

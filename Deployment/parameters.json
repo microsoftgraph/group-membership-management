@@ -283,13 +283,6 @@
         "options": ["Credentials", "ServicePrincipal","Skip"]
       }
     },
-    "openUIAfterDeployment": {
-      "value": true,
-      "metadata": {
-        "description": "Flag to open the UI after deployment.",
-        "required": false
-      }
-    },
     "aiLocation": {
       "value": "westus3",
       "metadata": {
