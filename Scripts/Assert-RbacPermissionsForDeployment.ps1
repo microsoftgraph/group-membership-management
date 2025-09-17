@@ -136,11 +136,11 @@ function Assert-RbacPermissionsForDeployment {
     $allAssignments = Get-AzRoleAssignment -ObjectId $objectId | Where-Object {
         $_.Scope -like "$scopePrefix*"
     }
-    Write-Host "Done!" -ForegroundColor Green
+    Write-Host "Completed retrieval of role assignments!" -ForegroundColor Green
 
     if (-not $allAssignments) {
         Write-Warning "No role assignments found for user $($currentUser.UserPrincipalName) under $scopePrefix."
-        exit 1
+        throw
     }
     
     Write-Host "Found $($allAssignments.Count) role assignments." -ForegroundColor Green
@@ -248,7 +248,7 @@ function Assert-RbacPermissionsForDeployment {
         }
 
         Write-Warning "`n⚠️ If this is the initial deployment, please ensure the user has all necessary permissions at the subscription scope."
-        exit 1
+        throw
     }
 }
 

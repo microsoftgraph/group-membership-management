@@ -48,7 +48,7 @@ function Assert-MicrosoftGraphPermissions {
         Write-Host "✅ Connected to Microsoft Graph as $($context.Account)" -ForegroundColor Green
     } catch {
         Write-Error "Failed to get Microsoft Graph context. Check that all required MSGraph modules are properly installed and rerun this script from a new PowerShell session."
-        exit 1
+        throw
     }
 
     $tokenScopes = $context.Scopes
@@ -62,7 +62,7 @@ function Assert-MicrosoftGraphPermissions {
         Write-Host "`n🔐 These permissions require admin consent. Please contact a Global Administrator to grant them using this powershell command:" -ForegroundColor Yellow
         Write-Host "`n    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All Directory.ReadWrite.All"" -ForegroundColor Cyan
         Write-Host "`nAfter consent is granted, re-run this script" -ForegroundColor Yellow
-        exit 1
+        throw
     }
 
     Write-Host "`nChecking required directory roles..." -ForegroundColor Cyan
@@ -86,6 +86,6 @@ function Assert-MicrosoftGraphPermissions {
         Write-Warning "`n❌ User does not have any of the required directory roles: $($RequiredRoles -join ', ')"
         Write-Host "`nAsk a Global Administrator to assign one of these roles using:" -ForegroundColor Yellow
         Write-Host "    Azure Portal → Azure AD → Roles and administrators → <Role> → Add assignments" -ForegroundColor Cyan
-        exit 1
+        throw
     }
 }
