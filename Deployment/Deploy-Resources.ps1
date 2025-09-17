@@ -1002,26 +1002,6 @@ function Set-RBACPermissions {
 
 }
 
-function Set-DBMigrations {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$ConnectionString,
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptsDirectory
-    )
-
-    # Run Migrations
-    # Create bundle
-    # PS - https://learn.microsoft.com/en-us/ef/core/cli/powershell#common-parameters
-    # dotnet - https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/applying?tabs=dotnet-core-cli
-    # dotnet ef migrations bundle --context GMMContext
-
-    Write-Host "`nApplying database migrations"
-    Write-Host "Interactively sign in to Azure AD to apply database migrations"
-
-    . ("$ScriptsDirectory\efbundle.exe") --connection "$ConnectionString;Authentication=Active Directory Interactive;"
-}
-
 function Set-FunctionAppCode {
     param (
         [Parameter(Mandatory = $true)]
@@ -1677,7 +1657,6 @@ function Test-ScriptDependencies {
         "webapp_package\web-app"  = "$scriptsDirectory\webapp_package\web-app"
         "Scripts"                 = "$scriptsDirectory\Scripts"
         "Scripts\PostDeploymentRoleAssignments"  = "$scriptsDirectory\Scripts\PostDeploymentRoleAssignments"
-        "efbundle.exe"            = "$scriptsDirectory\function_packages\efbundle.exe"
     }
 
     foreach ($item in $requiredPaths.GetEnumerator()) {
@@ -1836,7 +1815,6 @@ function Deploy-Resources {
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $createAppRegistrations         = Get-Default -Value $ParameterHashtable['createAppRegistrations'].value  -Default $true
-    $applyDBMigrations              = Get-Default -Value $ParameterHashtable['applyDBMigrations'].value       -Default $true
     $openUIAfterDeployment          = Get-Default -Value $ParameterHashtable['openUIAfterDeployment'].value -Default $true
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
     $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
@@ -1947,12 +1925,6 @@ function Deploy-Resources {
         -EnvironmentAbbreviation $environmentAbbreviation `
         -ScriptsDirectory "$deploymentPackageDirectory\Scripts\PostDeploymentRoleAssignments" `
         -SetUserAssignedManagedIdentityPermissions $setUserAssignedManagedIdentityPermissions
-    }
-
-    if ($true -eq $applyDBMigrations) {
-        Set-DBMigrations `
-            -ConnectionString $connectionString `
-            -ScriptsDirectory "$deploymentPackageDirectory\function_packages"
     }
 
     Set-FunctionAppCode `

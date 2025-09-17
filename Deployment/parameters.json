@@ -219,13 +219,6 @@
         "required": false
       }
     },
-    "applyDBMigrations": {
-      "value": true,
-      "metadata": {
-        "description": "Flag to apply database migrations.",
-        "required": false
-      }
-    },
     "skipAppRegistrationSetupIfAppExists": {
       "value": false,
       "metadata": {
