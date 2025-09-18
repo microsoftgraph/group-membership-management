@@ -33,19 +33,15 @@ Optional.
 If you are using a user-assigned managed identity, set this flag to true to assign the necessary permissions to the managed identity.
 
 .EXAMPLE
-Before running this script, make sure you are logged in to Azure and have the necessary permissions to deploy resources.
-Connect-AzAccount -TenantId "<tenant-id>"
-Set-AzContext -SubscriptionId "<subscription-id>"
-az login --tenant "<tenant-id>"
-az account set --subscription "<subscription-id>"
 
-Deploy-Resources    -SolutionAbbreviation "<solution-abbreviation>" `
-                    -EnvironmentAbbreviation "<environment-abbreviation>" `
-                    -Location "<location>" `
-                    -TemplateFilesDirectory "<template-file-path>" `
-                    -ParameterFilePath "<parameter-file-path>" `
-                    -SubscriptionId "<subscription-id>" `
-                    -Verbose
+Default: 
+
+Deploy-Resources
+
+If you want to specify a different parameter file name, use the following syntax:
+
+Deploy-Resources -parameterFileName "<FILE_NAME>"
+
 #>
 
 $maxRetries = 3
