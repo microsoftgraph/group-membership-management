@@ -127,8 +127,7 @@ function Set-Subscription {
         [string]$ScriptsDirectory
     )
 
-    . ($ScriptsDirectory + '\Add-AzAccountIfNeeded.ps1')
-    Add-AzAccountIfNeeded | Out-Null
+    Connect-AzAccount
 
     if (-not $SubscriptionId) {
         Write-Host "`nCurrent subscription:`n"
@@ -139,9 +138,24 @@ function Set-Subscription {
     }
 
     if ($SubscriptionId) {
-        Set-AzContext -SubscriptionId $SubscriptionId
-        $currentSubscription = (Get-AzContext).Subscription
-        Write-Host "`nSelected subscription: $($currentSubscription.Name) -  $($currentSubscription.Id)"
+        try {
+            Set-AzContext -SubscriptionId $SubscriptionId -ErrorAction Stop
+            $currentSubscription = (Get-AzContext).Subscription
+            Write-Host "`n✅ Selected subscription: $($currentSubscription.Name) - $($currentSubscription.Id)"
+        }
+        catch {
+            Write-Host "`n❌ Failed to set subscription context." -ForegroundColor Red
+            Write-Host "   SubscriptionId: $SubscriptionId"
+            Write-Host "   TenantId:       $((Get-AzContext).Tenant.Id)"
+            Write-Host "   Account:        $((Get-AzContext).Account)"
+            Write-Host "   Error:          $($_.Exception.Message)" -ForegroundColor Yellow
+
+            If ($_.Exception.Message -match "Please provide a valid tenant or a valid subscription.") {
+                Write-Host "`nThis issue is sometimes caused by the user account not having any RBAC permissions on the subscription.`n" -ForegroundColor Yellow
+            }
+
+            throw
+        }
     }
 
     return $SubscriptionId;
@@ -1736,6 +1750,15 @@ function Initialize-ScriptDependencies {
     Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
 
     if ($AssertUserPermissions -eq $true) {
+        # Connect to Microsoft Graph with required scopes
+        $requiredScopes = @(
+            "AppRoleAssignment.ReadWrite.All",
+            "Directory.ReadWrite.All"
+        )
+
+        Disconnect-MgGraph -ErrorAction SilentlyContinue
+        Connect-MgGraph -Scopes $requiredScopes
+
         . ($ScriptsDirectory + '\Assert-MicrosoftGraphPermissions.ps1')
         Assert-MicrosoftGraphPermissions
     }
