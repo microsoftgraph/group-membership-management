@@ -99,6 +99,12 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             borderColor: theme.palette.neutralQuaternary,
             background: theme.palette.white,
             minWidth: 200
+        },
+        shimmer: {
+            marginLeft: '8px',
+            display: 'inline-block',
+            width: '200px',
+            height: '20px'
         }
     };
 };

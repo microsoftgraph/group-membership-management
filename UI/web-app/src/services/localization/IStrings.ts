@@ -79,7 +79,6 @@ export type IStrings = {
     orgLeaderMultipleLevelsTitle: string;
     withSummarizedCriteria: string;
     loadingText: string;
-    generatingTitle: string;
     generateTitle: string;
     generatingTitleText: string;
   },

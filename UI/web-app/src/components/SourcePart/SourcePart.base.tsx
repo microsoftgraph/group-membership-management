@@ -12,8 +12,7 @@ import {
   IProcessedStyleSet,
   TextField,
   IPersonaProps,
-  Spinner,
-  SpinnerSize
+  Shimmer
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -244,7 +243,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
         {isAITitleEnabled && (
           <>
             {!isEditButtonClicked && isGeneratingTitles && (part.title === "") && (
-              <Spinner size={SpinnerSize.small} label={strings.HROnboarding.generatingTitle} />
+              <Shimmer className={classNames.shimmer} />
             )}
             {!isEditButtonClicked && (part.title || props.title) && (
               <div className={classNames.generatedTitle}>: {part.title || props.title}</div>

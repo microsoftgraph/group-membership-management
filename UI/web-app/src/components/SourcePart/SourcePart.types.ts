@@ -22,6 +22,7 @@ export type SourcePartStyles = {
   deleteButton: IStyle;
   error: IStyle;
   dropdownTitle: IStyle;
+  shimmer: IStyle;
 };
 
 export type SourcePartStyleProps = {
