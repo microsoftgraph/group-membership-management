@@ -1059,16 +1059,18 @@ const getOptions = (
         words = segments[index].trim().split(' ');
 
       }
-      if (words.length > 0) {
-        words[0] = item.key.toString();
-        const parsed = findValueAndOr(words);
-        const isNotIn = words[1] === "NOT" && words[2] === "IN";
-        const valueStartIndex = isNotIn ? 3 : 2;
-        if (parsed.value) {
-                     const valueWordCount = parsed.value.split(' ').length;
-         words.splice(valueStartIndex, valueWordCount);         
+        if (words.length > 0) {
+          words[0] = item.key.toString();
+          const parsed = findValueAndOr(words);
+          const isNotIn = words.length > 2 && words[1] === "NOT" && words[2] === "IN";
+          const valueStartIndex = isNotIn ? 3 : 2;
+          if (parsed.value && words.length > valueStartIndex) {
+            const valueWordCount = parsed.value.split(' ').length;
+            if (words.length >= valueStartIndex + valueWordCount) {
+              words.splice(valueStartIndex, valueWordCount);
+            }
+          }
         }
-      }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
       setSource(prevSource => {
