@@ -381,7 +381,7 @@ function Start-ResourceDeployment {
         Write-Host "Invoking deployment via REST API..."
         $initialResponse = Invoke-RestMethod -Uri $uri -Method Put -Headers $headers -Body $body
 
-        $maxAttempts = 50
+        $maxAttempts = 100
         $delaySeconds = 15
         $attempt = 0
         $provisioningState = $initialResponse.properties.provisioningState
