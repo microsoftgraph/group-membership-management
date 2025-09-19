@@ -41,7 +41,7 @@ import { fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles } from '../../s
 import { HRPart } from '../../models/HRPart';
 import { selectGeneratedHRParts, selectTitles } from '../../store/title.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
-import { combineHRTitleWithAICriteria } from '../../utils/titleGenerator';
+import { useTitleProcessing } from '../../hooks/useTitleProcessing';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -188,26 +188,23 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
           const partsWithNoFilter = updatedSourceParts.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).filter === undefined);
           const partsWithManagerAndNoFilter = partsWithNoFilter.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).manager?.id !== undefined);
 
-          if (partsWithManagerAndFilter.length > 0) {
-            partsWithManagerAndFilter.forEach(part => {
-              dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({ part, strings }));
-            });
+          const allPartsWithManager = [...partsWithManagerAndFilter, ...partsWithManagerAndNoFilter];
+          allPartsWithManager.forEach(part => {
+            dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({ part, strings }));
+          });
+
+          if (partsWithFilter.length > 0) {
+            const titleList: HRPart[] = partsWithFilter.map(item => ({
+              partId: item.id,
+              filter: (item.query.source as HRSourcePartSource).filter as string,
+              title: ""
+            }));
+            dispatch(generateTitles(titleList));
           }
 
-          if (partsWithManagerAndNoFilter.length > 0) {
-            partsWithManagerAndNoFilter.forEach(part => {
-              dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({ part, strings }));
-            });
+          if (allPartsWithManager.length > 0 || partsWithFilter.length > 0) {
+            dispatch(setGeneratedTitlesYet(true));
           }
-
-          const titleList: HRPart[] = partsWithFilter.map(item => ({
-            partId: item.id,
-            filter: (item.query.source as HRSourcePartSource).filter as string,
-            title: ""
-          }));
-
-          dispatch(generateTitles(titleList));
-          dispatch(setGeneratedTitlesYet(true));
         }
 
         dispatch(setSourceParts(updatedSourceParts));
@@ -221,38 +218,15 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, jobDetails, isEditingExistingJob]);
 
-  useEffect(() => {
-    if (titles.length > 0 && generatedTitlesYet && jobWithNoTitles) {
-      const updatedSourceParts = sourceParts.map(part => {
-        const title = titles.find(t => t.partId === part.id);
-        const isHRWithManager = part.query.type === SourcePartType.HR &&
-                               (part.query.source as HRSourcePartSource).manager?.id !== undefined;
-        const generatedHRPart = generatedHRParts.find(hrPart => hrPart.id === part.id);
-
-        return {
-          ...part,
-          title: combineHRTitleWithAICriteria(
-            generatedHRPart?.title || "",
-            title?.title,
-            isHRWithManager,
-            strings.HROnboarding.withSummarizedCriteria
-          )
-        };
-      });
-      const partsWithTitles = updatedSourceParts.map(part => ({
-        partId: part.id,
-        name: part.title
-      }));
-
-      if (partsWithTitles.length > 0) {
-        dispatch(setTitles(partsWithTitles));
-      }
-
-      if (updatedSourceParts.length > 0) {
-        dispatch(setSourceParts(updatedSourceParts));
-      }
-    }
-  }, [dispatch, titles]);
+  // Handle title processing and combination logic
+  useTitleProcessing({
+    generatedTitlesYet,
+    jobWithNoTitles,
+    sourceParts,
+    titles,
+    generatedHRParts,
+    withSummarizedCriteriaString: strings.HROnboarding.withSummarizedCriteria,
+  });
 
   return (
     <div>

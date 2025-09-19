@@ -30,7 +30,14 @@ const initialState: TitleState = {
 const titleSlice = createSlice({
   name: 'title',
   initialState,
-  reducers: { },
+  reducers: {
+    clearTitles: (state) => {
+      state.titles = [];
+    },
+    clearGeneratedHRParts: (state) => {
+      state.generatedHRParts = [];
+    }
+  },
   extraReducers: (builder) => {
     builder.addCase(getTitle.pending, (state) => {
       state.isGeneratingTitle = true;
@@ -72,6 +79,8 @@ const titleSlice = createSlice({
     });
   }
 });
+
+export const { clearTitles, clearGeneratedHRParts } = titleSlice.actions;
 
 export const selectIsGeneratingTitle = (state: RootState) => state.title.isGeneratingTitle;
 export const selectTitle = (state: RootState) => state.title.title;

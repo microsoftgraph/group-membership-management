@@ -80,6 +80,7 @@ import { getProfilePhotoUsingId } from '../../store/profile.api';
 import { selectLastModifiedOnBehalfOfUserProfile, selectLastModifiedUserProfile } from '../../store/profile.slice';
 import { DestinationType } from '../../models/DestinationType';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
+import { clearGeneratedHRParts, clearTitles } from '../../store/title.slice';
 
 const getClassNames = classNamesFunction<
   IJobDetailsStyleProps,
@@ -204,6 +205,8 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
         dispatch(fetchJobDetails({ syncJobId: jobId }));
         dispatch(setJobId(jobId));
         dispatch(setGeneratedTitlesYet(false));
+        dispatch(clearTitles());
+        dispatch(clearGeneratedHRParts());
       }
     }
     if (groupId && channelId === undefined) {
