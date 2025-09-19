@@ -117,7 +117,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
     const hasMultiple = multi && selectedKeys.length > 1;
     const menuOpen = isOpen;                   
     const userTyping = isFocused && searchText.length > 0;
-const readOnly = !isJobWriter || !isEditable;
+    const readOnly = !isJobWriter || !isEditable;
 
     switch (column?.key) {
       case 'upDown':
