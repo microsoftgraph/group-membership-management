@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActionButton,
   ComboBox,
@@ -13,6 +13,7 @@ import {
   VirtualizedComboBox,
   classNamesFunction,
   type IProcessedStyleSet,
+  type IComboBox,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { useStrings } from '../../../store/hooks';
@@ -78,6 +79,11 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
   });
 
   const strings = useStrings();
+  const [isFocused, setIsFocused] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const valueCbRef = React.useRef<IComboBox | null>(null);
+  const [shouldReopen, setShouldReopen] = useState(false); // reopen only for search-driven picks
 
   if (typeof index !== 'undefined' && items[index]) {
     const currentAttributeKey = items[index].attribute;
@@ -104,6 +110,14 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
         ? filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
         : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
       : filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value));
+    
+    const isMulti = (op?: string) => op === 'IN' || op === 'NOT IN';
+    const multi = isMulti(item.equalityOperator);
+    const selectedKeys = getSelectedKeys(items[index].value);
+    const hasMultiple = multi && selectedKeys.length > 1;
+    const menuOpen = isOpen;                   
+    const userTyping = isFocused && searchText.length > 0;
+const readOnly = !isJobWriter || !isEditable;
 
     switch (column?.key) {
       case 'upDown':
@@ -191,7 +205,21 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
             return (
               <VirtualizedComboBox
                 data-testid="hr-value-virtualized-combobox"
+                componentRef={valueCbRef}
                 selectedKey={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? getSelectedKeys(items[index].value) : items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+                text={
+                  multi
+                    ? (
+                        readOnly
+                          // read-only: never clear to '', always show summary when multiple
+                          ? (hasMultiple ? 'Multiple items selected' : undefined)
+                          // editable: your existing behavior
+                          : (hasMultiple && !(userTyping || isOpen)
+                              ? 'Multiple items selected'
+                              : (isFocused ? searchText : undefined))
+                      )
+                    : undefined
+                }
                 options={
                   (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable)
                     ? (() => {
@@ -200,19 +228,60 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                     })()
                   : attributeValueOptions
                 }
-                onInputValueChange={(text) => onAttributeValueChange(text, index, currentAttributeKey, groupIndex, childIndex)}
-                onChange={(event, option) => handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex)}
+                onInputValueChange={(t) => {
+                  if (readOnly) return; 
+                  setSearchText(t ?? '');
+                  onAttributeValueChange(t, index, currentAttributeKey, groupIndex, childIndex);
+                }}
+                onFocus={() => {
+                  setIsFocused(true);
+                  if (!readOnly && multi) setSearchText('');  // <-- don’t clear in read-only
+                }}onBlur={() => {
+                  setIsFocused(false);
+                  if (!readOnly && multi) setSearchText('');  // <-- keep text intact in read-only
+                }}
+                onChange={(event, option) => {
+                  if (readOnly) return;
+                  handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex);
+                  if (isMulti(item.equalityOperator)) setSearchText('');
+                  setShouldReopen(isOpen && userTyping); // reopen only if the pick was search-driven
+                }}         
                 onRenderOption={onRenderValueComboBoxOptions}
                 onRenderList={onRenderValueComboBoxList}
-                allowFreeInput={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? false : true}
+                allowFreeInput={!readOnly}
                 multiSelect={(item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') ? true : false}
                 autoComplete="off"
                 useComboBoxAsMenuWidth={false}
                 dropdownMaxWidth={500}
-                disabled={
-                isAttributeDisabled || 
-                (item.equalityOperator !== 'IN' && item.equalityOperator !== 'NOT IN' && (!isJobWriter || !isEditable))
-                }              title={strings.HROnboarding.attributeValue}
+                onMenuOpen={() => {
+                  setIsOpen(true);
+                  setIsFocused(true);
+                  if (!readOnly && multi) setSearchText('');  // <-- don’t clear in read-only
+                }}
+                onMenuDismissed={() => {
+                  const reopen = shouldReopen;
+                  setIsOpen(false);
+                  if (reopen) {
+                    requestAnimationFrame(() => valueCbRef.current?.focus(true));
+                    setShouldReopen(false);
+                  } else {
+                    setIsFocused(false);
+                    if (!readOnly) setSearchText(''); 
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (!readOnly) return;
+                  const k = e.key;
+                  if (k.length === 1 || k === 'Backspace' || k === 'Delete') {
+                    e.preventDefault();
+                  }
+                }}
+                disabled={(() => {
+                  const selectedKeys = getSelectedKeys(items[index].value);
+                  return isAttributeDisabled || 
+                    (item.equalityOperator !== 'IN' && item.equalityOperator !== 'NOT IN' || selectedKeys.length === 1) && (!isJobWriter || !isEditable)
+                })()}              
+                title={strings.HROnboarding.attributeValue}
                 calloutProps={{styles: { calloutMain: { height: '300px', overflowY: 'auto' }}}}
                 styles={
                   (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable) 

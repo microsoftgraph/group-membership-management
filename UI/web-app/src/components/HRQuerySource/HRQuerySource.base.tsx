@@ -1013,13 +1013,14 @@ const getOptions = (
 
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (item) {
+      setSelectedKeys([]);
       const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === item.key) || (!hasMapping && name === item.key)));
       if (attributeMappings && attributeMappings[item.key] === undefined) {
         dispatch(fetchAttributeMappings({attribute: item.key as string, type: selectedAttribute?.type, hasMapping: selectedAttribute?.hasMapping }));
       }
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
-          return { ...it, attribute: item.text };
+          return { ...it, attribute: item.text, value: '' };
         }
         return it;
       });
@@ -1032,6 +1033,7 @@ const getOptions = (
         newValue: item.key.toString()
       };
       updateGroupItem(updateParams, index, groupIndex, childIndex);
+      updateGroupItem({ property: "value", newValue: "" }, index, groupIndex, childIndex);
       return;
     }
 
@@ -1058,7 +1060,14 @@ const getOptions = (
 
       }
       if (words.length > 0) {
-          words[0] = item.key.toString();
+        words[0] = item.key.toString();
+        const parsed = findValueAndOr(words);
+        const isNotIn = words[1] === "NOT" && words[2] === "IN";
+        const valueStartIndex = isNotIn ? 3 : 2;
+        if (parsed.value) {
+                     const valueWordCount = parsed.value.split(' ').length;
+         words.splice(valueStartIndex, valueWordCount);         
+        }
       }
       segments[index] = words.join(' ');
       const updatedFilter = segments.join('');
@@ -1070,6 +1079,7 @@ const getOptions = (
       });
     }
     setFilteredOptions({});
+    setFilteredValueOptions({});
   };
 
   const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
