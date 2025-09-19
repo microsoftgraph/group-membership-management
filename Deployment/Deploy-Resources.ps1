@@ -1813,6 +1813,28 @@ function Assert-RequiredParameters {
     Write-Host "All required parameters are provided." -ForegroundColor Green
 }
 
+function Start-EFMigrationViaWebAPI {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation
+    )
+
+    # Call the WebAPI to perform EF migrations. The WebAPI performs EF migrations on startup. Calling any endpoint will trigger the startup process if the app is not already running.
+    # The endpoint will always return an error code, so we catch the error and ignore it.
+    Try{
+        Write-Host "`nInvoking WebAPI to perform EF migrations..."
+        Invoke-WebRequest -Uri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/" | Out-Null
+    }
+    Catch{
+        # Ignore the error
+    }
+    Finally {
+       Write-Host "WebAPI invocation completed." -ForegroundColor Green
+    }
+}
+
 
 function Deploy-Resources {
     [CmdletBinding()]
@@ -1986,6 +2008,11 @@ function Deploy-Resources {
         -TenantDomain $tenantDomain `
         -SharepointDomain $sharepointDomain `
         -SubscriptionId $subscriptionId
+    
+    # Call the WebAPI to perform EF migrations.
+    Start-EFMigrationViaWebAPI `
+        -SolutionAbbreviation $solutionAbbreviation `
+        -EnvironmentAbbreviation $environmentAbbreviation
 
     Set-PostDeploymentUpdates `
         -ScriptsDirectory $scriptsDirectory `
