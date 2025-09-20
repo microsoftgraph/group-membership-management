@@ -8,8 +8,10 @@ import { TokenType } from '../services/auth';
 import { HRPart } from '../models/HRPart';
 import { HRSourcePartSource, ISourcePart } from '../models';
 import { fetchOrgLeaderDetailsUsingId } from './orgLeaderDetails.api';
-import { generateHRTitle } from '../utils/titleGenerator';
+import { generateGroupTitle, generateHRTitle } from '../utils/titleGenerator';
 import { GetOrgLeaderDetailsResponse } from '../models/GetOrgLeaderDetailsResponse';
+import { searchGroups } from './groups.api';
+import { IPersonaProps } from '@fluentui/react';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const backoff: number = 3000;
@@ -139,6 +141,40 @@ export const fetchOrgLeaderDetailsAndGenerateHRTitle = createAsyncThunk<
     return updatedPart;
   } catch (error) {
     console.error("Error fetching org leader details", error);
+    return part;
+  }
+});
+
+export const fetchGroupDetailsAndGenerateTitle = createAsyncThunk<
+  ISourcePart,
+  { part: ISourcePart; strings: any },
+  ThunkConfig
+>('title/fetchGroupDetailsAndGenerateTitle', async ({ part, strings }, { dispatch }): Promise<ISourcePart> => {
+  const groupSource = part.query.source as string;
+
+  try {
+    const results = await dispatch(searchGroups(groupSource));
+    const searchResults = results.payload as IPersonaProps[];
+
+    let groupName: string | undefined;
+    if (searchResults.length > 0) {
+      groupName = searchResults[0].text;
+    }
+
+    // Use the utility function to generate the title
+    const newTitle = generateGroupTitle(
+      groupName,
+      groupSource,
+      {
+        allUsersInGroup: strings.ManageMembership.labels.allUsersInGroup,
+        allUsersInFallback: strings.ManageMembership.labels.allUsersInFallback
+      }
+    );
+
+    const updatedPart = { ...part, title: newTitle };
+    return updatedPart;
+  } catch (error) {
+    console.error("Error fetching group details", error);
     return part;
   }
 });

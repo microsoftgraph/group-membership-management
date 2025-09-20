@@ -490,6 +490,8 @@ export type IStrings = {
       requestedOnBehalfOfDescription: string;
       expandAll: string;
       collapseAll: string;
+      allUsersInGroup: string;
+      allUsersInFallback: string;
     },
     CreateGroup: {
       createNewGroup: string;

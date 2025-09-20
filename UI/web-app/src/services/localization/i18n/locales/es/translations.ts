@@ -497,6 +497,8 @@ export const strings: IStrings = {
       requestedOnBehalfOfDescription: 'Este es el propietario del destino a nombre de quien se está realizando la solicitud de administración de la membresía.',
       expandAll: 'Expandir todo',
       collapseAll: 'Contraer todo',
+      allUsersInGroup: 'Todos los usuarios en {0}',
+      allUsersInFallback: 'Todos los usuarios en el grupo',
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',

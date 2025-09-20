@@ -208,3 +208,41 @@ export const combineHRTitleWithAICriteria = (
   // Otherwise, keep existing title unchanged
   return existingTitle;
 };
+
+export interface GroupTitleTemplates {
+  allUsersInGroup?: string;
+  allUsersInFallback?: string;
+}
+
+/**
+ * Generates a human-readable title for group membership queries
+ * @param groupName - The name of the group (from search results)
+ * @param fallbackSource - The source ID to use if group name is not available
+ * @param templates - Optional localized templates for title formatting
+ * @returns A formatted title string for group membership
+ */
+export const generateGroupTitle = (
+  groupName: string | undefined,
+  fallbackSource?: string,
+  templates?: GroupTitleTemplates
+): string => {
+  const defaultTemplates = {
+    allUsersInGroup: 'All Users in {0}',
+    allUsersInFallback: 'All Users in Group'
+  };
+
+  const finalTemplates = { ...defaultTemplates, ...templates };
+
+  // If we have a group name, use it in the standard format
+  if (groupName && groupName.trim()) {
+    return finalTemplates.allUsersInGroup.replace('{0}', groupName);
+  }
+
+  // If no group name but we have a source, use it as fallback with same template
+  if (fallbackSource && fallbackSource.trim()) {
+    return finalTemplates.allUsersInGroup.replace('{0}', fallbackSource);
+  }
+
+  // Default fallback
+  return finalTemplates.allUsersInFallback;
+};

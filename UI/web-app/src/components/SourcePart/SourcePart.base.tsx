@@ -32,8 +32,7 @@ import { selectSource } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
-import { searchGroups } from '../../store/groups.api';
-import { selectIsGeneratingTitles } from '../../store/title.slice';
+import { selectIsGeneratingHRTitle, selectIsGeneratingTitles, selectIsGeneratingGroupTitle } from '../../store/title.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -68,6 +67,8 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const hrSource = useSelector(selectSource);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
   const isGeneratingTitles = useSelector(selectIsGeneratingTitles);
+  const isGeneratingHRTitle = useSelector(selectIsGeneratingHRTitle);
+  const isGeneratingGroupTitle = useSelector(selectIsGeneratingGroupTitle);
 
   useEffect(() => {
     if (part.isNew) {
@@ -129,29 +130,6 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   useEffect(() => {
     setErrorMessage('');
   }, [query, expanded]);
-
-  useEffect(() => {
-    const handleGroupMembershipTitle = async () => {
-      try {
-        const results = await dispatch(searchGroups(part.query.source as string));
-        const searchResults = results.payload as IPersonaProps[];
-        if (searchResults.length > 0) {
-          const newTitle = "All Users in " + searchResults[0].text;
-          if (part.title !== newTitle) {
-            handleGroupMembershipSourceChange(part.query.source as string, newTitle);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching search destinations", error);
-      }
-    };
-
-    // Handle GroupMembership title generation
-    if (part.query.type === SourcePartType.GroupMembership && part.title === '') {
-      handleGroupMembershipTitle();
-    }
-
-  }, [part.query]);
 
   const onEditButtonClick = (partId: string, partTitle: string) => {
     setIsEditButtonClicked(true);
@@ -242,7 +220,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
         {isAITitleEnabled && (
           <>
-            {!isEditButtonClicked && isGeneratingTitles && (part.title === "") && (
+            {!isEditButtonClicked && (isGeneratingTitles || isGeneratingHRTitle || isGeneratingGroupTitle) && (part.title === "") && (
               <Shimmer className={classNames.shimmer} />
             )}
             {!isEditButtonClicked && (part.title || props.title) && (

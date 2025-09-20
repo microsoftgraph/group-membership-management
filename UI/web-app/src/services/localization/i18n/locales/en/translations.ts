@@ -495,6 +495,8 @@ export const strings: IStrings = {
       requestedOnBehalfOfDescription: 'This is the group owner of the destination on whose behalf you are requesting this job.',
       expandAll: 'Expand all',
       collapseAll: 'Collapse all',
+      allUsersInGroup: 'All Users in {0}',
+      allUsersInFallback: 'All Users in Group',
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',

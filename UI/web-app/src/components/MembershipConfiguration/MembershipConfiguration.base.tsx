@@ -37,9 +37,9 @@ import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.sl
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
-import { fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles } from '../../store/title.api';
+import { fetchGroupDetailsAndGenerateTitle, fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles } from '../../store/title.api';
 import { HRPart } from '../../models/HRPart';
-import { selectGeneratedHRParts, selectTitles } from '../../store/title.slice';
+import { selectGeneratedGroupParts, selectGeneratedHRParts, selectTitles } from '../../store/title.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { useTitleProcessing } from '../../hooks/useTitleProcessing';
 
@@ -71,6 +71,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const generatedTitlesYet = useSelector(selectGeneratedTitlesYet);
   const titles = useSelector(selectTitles);
   const generatedHRParts = useSelector(selectGeneratedHRParts);
+  const generatedGroupParts = useSelector(selectGeneratedGroupParts);
 
   const getAllSourcePartsExpanded = () => {
     return sourceParts.every(part => part.isExpanded);
@@ -189,6 +190,12 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         }
 
         if (isAITitleEnabled && jobWithNoTitles && !generatedTitlesYet) {
+
+          const groupMembershipParts = updatedSourceParts.filter((part) => part.query.type === SourcePartType.GroupMembership);
+          groupMembershipParts.forEach(part => {
+            dispatch(fetchGroupDetailsAndGenerateTitle({ part, strings }));
+          });
+
           const partsWithFilter = updatedSourceParts.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).filter !== undefined);
           const partsWithManagerAndFilter = partsWithFilter.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).manager?.id !== undefined);
 
@@ -209,7 +216,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             dispatch(generateTitles(titleList));
           }
 
-          if (allPartsWithManager.length > 0 || partsWithFilter.length > 0) {
+          if (allPartsWithManager.length > 0 || partsWithFilter.length > 0 || groupMembershipParts.length > 0) {
             dispatch(setGeneratedTitlesYet(true));
           }
         }
@@ -232,6 +239,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     sourceParts,
     titles,
     generatedHRParts,
+    generatedGroupParts,
     withSummarizedCriteriaString: strings.HROnboarding.withSummarizedCriteria,
   });
 
