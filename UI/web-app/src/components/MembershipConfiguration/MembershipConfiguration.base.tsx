@@ -171,8 +171,9 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         const parsedQuery: SyncJobQuery = JSON.parse(jobDetails.query);
         const updatedSourceParts = parsedQuery.map((query, index) => {
           const originalPart = sourceParts[index];
+          const partId = jobWithNoTitles && jobDetails.titles.length === 0 ? uuidv4() : jobDetails.titles[index].partId;
           return {
-            id: jobWithNoTitles ? uuidv4() : jobDetails.titles[index].partId,
+            id: partId,
             title: jobWithNoTitles ? "" : jobDetails.titles[index].name,
             query: query,
             isValid: true,
@@ -180,6 +181,12 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             isExpanded:  isEditingExistingJob ? originalPart?.isExpanded ?? true : false
           }
         });
+
+        // Initialize titles array with the same part IDs when jobWithNoTitles is true
+        if (isAITitleEnabled && jobWithNoTitles && !generatedTitlesYet) {
+          const initialTitles = updatedSourceParts.map(part => ({ partId: part.id, name: '' }));
+          dispatch(setTitles(initialTitles));
+        }
 
         if (isAITitleEnabled && jobWithNoTitles && !generatedTitlesYet) {
           const partsWithFilter = updatedSourceParts.filter((part) => part.query.type === SourcePartType.HR && (part.query.source as HRSourcePartSource).filter !== undefined);

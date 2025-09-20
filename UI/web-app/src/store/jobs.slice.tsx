@@ -112,7 +112,8 @@ export const jobsSlice = createSlice({
     setTitles: (state, action: PayloadAction<Title[]>) => {
       if (state.selectedJob) {
         state.selectedJob.titles = action.payload;
-        state.selectedJobWithNoTitles = false;
+        const hasActualTitles = action.payload.some(title => title.name && title.name.trim() !== '');
+        state.selectedJobWithNoTitles = !hasActualTitles;
       }
     }
   },
