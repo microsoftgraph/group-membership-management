@@ -2,9 +2,10 @@
 // Licensed under the MIT license.
 
 import { createSlice } from '@reduxjs/toolkit';
-import { generateTitles, getTitle } from './title.api';
+import { fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles, getTitle } from './title.api';
 import { RootState } from './store';
 import { HRPart } from '../models/HRPart';
+import { ISourcePart } from '../models';
 
 export interface TitleState {
   isGeneratingTitle: boolean;
@@ -12,6 +13,8 @@ export interface TitleState {
   error: string | undefined;
   isGeneratingTitles: boolean;
   titles: HRPart[];
+  isGeneratingHRTitle: boolean;
+  generatedHRParts: ISourcePart[];
 };
 
 const initialState: TitleState = {
@@ -19,7 +22,9 @@ const initialState: TitleState = {
   title: '',
   error: undefined,
   isGeneratingTitles: false,
-  titles: []
+  titles: [],
+  isGeneratingHRTitle: false,
+  generatedHRParts: []
 };
 
 const titleSlice = createSlice({
@@ -49,6 +54,22 @@ const titleSlice = createSlice({
       state.isGeneratingTitles = false;     
       state.titles = action.meta.arg || [];
     });
+    builder.addCase(fetchOrgLeaderDetailsAndGenerateHRTitle.pending, (state) => {
+      state.isGeneratingHRTitle = true;
+    });
+    builder.addCase(fetchOrgLeaderDetailsAndGenerateHRTitle.fulfilled, (state, action) => {
+      state.isGeneratingHRTitle = false;
+      const existingIndex = state.generatedHRParts.findIndex(p => p.id === action.payload.id);
+      if (existingIndex >= 0) {
+        state.generatedHRParts[existingIndex] = action.payload;
+      } else {
+        state.generatedHRParts.push(action.payload);
+      }
+    });
+    builder.addCase(fetchOrgLeaderDetailsAndGenerateHRTitle.rejected, (state, action) => {
+      state.isGeneratingHRTitle = false;
+      state.error = action.error.message;
+    });
   }
 });
 
@@ -57,5 +78,7 @@ export const selectTitle = (state: RootState) => state.title.title;
 export const selectTitleError = (state: RootState) => state.title.error;
 export const selectIsGeneratingTitles = (state: RootState) => state.title.isGeneratingTitles;
 export const selectTitles = (state: RootState) => state.title.titles;
+export const selectIsGeneratingHRTitle = (state: RootState) => state.title.isGeneratingHRTitle;
+export const selectGeneratedHRParts = (state: RootState) => state.title.generatedHRParts;
 
 export default titleSlice.reducer;

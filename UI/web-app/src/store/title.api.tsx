@@ -6,6 +6,10 @@ import { config } from '../authConfig';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
 import { HRPart } from '../models/HRPart';
+import { HRSourcePartSource, ISourcePart } from '../models';
+import { fetchOrgLeaderDetailsUsingId } from './orgLeaderDetails.api';
+import { generateHRTitle } from '../utils/titleGenerator';
+import { GetOrgLeaderDetailsResponse } from '../models/GetOrgLeaderDetailsResponse';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const backoff: number = 3000;
@@ -102,5 +106,39 @@ export const generateTitles = createAsyncThunk<
   catch (error: any) {
     console.warn(`Failed to generate titles: ${error.message}. Using filters as titles.`);
     return createFallbackTitles(parts);
+  }
+});
+
+export const fetchOrgLeaderDetailsAndGenerateHRTitle = createAsyncThunk<
+  ISourcePart,
+  { part: ISourcePart; strings: any },
+  ThunkConfig
+>('title/fetchOrgLeaderDetailsAndGenerateHRTitle', async ({ part, strings }, { dispatch }): Promise<ISourcePart> => {
+  const hrSource = part.query.source as HRSourcePartSource;
+
+  try {
+    const results = await dispatch(fetchOrgLeaderDetailsUsingId({
+      employeeId: hrSource.manager?.id as number,
+      partId: part.id as string
+    }));
+
+    const response = results.payload as GetOrgLeaderDetailsResponse;
+    const orgLeaderName = response.text;
+
+    // Use the utility function to generate the title
+    const newTitle = generateHRTitle({
+      orgLeaderName,
+      depth: hrSource.manager?.depth
+    }, {
+      orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
+      orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
+      orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle
+    });
+
+    const updatedPart = { ...part, title: newTitle };
+    return updatedPart;
+  } catch (error) {
+    console.error("Error fetching org leader details", error);
+    return part;
   }
 });

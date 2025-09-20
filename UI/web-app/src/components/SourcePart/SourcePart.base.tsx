@@ -13,8 +13,7 @@ import {
   TextField,
   IPersonaProps,
   Spinner,
-  SpinnerSize,
-  format,
+  SpinnerSize
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -35,8 +34,6 @@ import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { searchGroups } from '../../store/groups.api';
-import { fetchOrgLeaderDetailsUsingId } from '../../store/orgLeaderDetails.api';
-import { GetOrgLeaderDetailsResponse } from '../../models/GetOrgLeaderDetailsResponse';
 import { selectIsGeneratingTitles } from '../../store/title.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
@@ -150,45 +147,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
       }
     };
 
-    const handleHRTitle = async () => {
-      const hrSource = part.query.source as HRSourcePartSource;
-      try {
-        const results = await dispatch(fetchOrgLeaderDetailsUsingId({
-          employeeId: hrSource.manager?.id as number,
-          partId: partId as string
-        }));
-
-        const response = results.payload as GetOrgLeaderDetailsResponse;
-        const orgLeaderName = response.text;
-        let newTitle = format(strings.HROnboarding.orgLeaderTitle, orgLeaderName);
-        const depth = hrSource.manager?.depth;
-        if (depth && depth > 0) {
-          const levels = (depth ?? 1) - 1;
-          if (levels === 1) {
-            newTitle = format(strings.HROnboarding.orgLeaderSingleLevelTitle, levels, orgLeaderName);
-          } else if (levels > 1) {
-            newTitle = format(strings.HROnboarding.orgLeaderMultipleLevelsTitle, levels, orgLeaderName);
-          }
-        }
-
-        handleSourceChange(hrSource, partId, newTitle);
-      } catch (error) {
-        console.error("Error fetching org leader details", error);
-      }
-    };
-
     // Handle GroupMembership title generation
     if (part.query.type === SourcePartType.GroupMembership && part.title === '') {
       handleGroupMembershipTitle();
-    }
-
-    // Handle HR title generation
-    const hrSource = part.query.source as HRSourcePartSource;
-    if (part.query.type === SourcePartType.HR &&
-        hrSource.filter === undefined &&
-        hrSource.manager?.id !== undefined &&
-        part.title === '') {
-      handleHRTitle();
     }
 
   }, [part.query]);

@@ -81,6 +81,7 @@ export const strings: IStrings = {
     orgLeaderTitle: "Todos en el org de {0}",
     orgLeaderSingleLevelTitle: "{0} nivel de informes directos de {1}",
     orgLeaderMultipleLevelsTitle: "{0} niveles de informes directos de {1}",
+    withSummarizedCriteria: "con los siguientes criterios resumidos:",
     generatingTitle: "Generando título...",
     generateTitle: "Generar título de IA",
     generatingTitleText: "Generando..."

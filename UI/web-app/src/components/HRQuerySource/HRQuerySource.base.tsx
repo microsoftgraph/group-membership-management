@@ -28,6 +28,7 @@ import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../mod
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
+import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth } from '../../utils/titleGenerator';
 import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError, selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
@@ -566,6 +567,7 @@ const getOptions = (
     }
     onEnableEdit(true);
     onSourceChange(props.source, partId, newTitle);
+    setLocalTitle(newTitle);
   };
 
   const getPickerSuggestions = async (
@@ -593,7 +595,17 @@ const getOptions = (
           id: items[0].key as number
         }
       };
-      const newTitle = `Everyone in ${items[0].text}'s org`;
+      const currentTitle = localTitle || props.title || "";
+      const newTitle = updateHRTitleWithNewLeader(
+        currentTitle,
+        items[0].text as string,
+        {
+          orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
+          orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
+          orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle,
+          withSummarizedCriteria: strings.HROnboarding.withSummarizedCriteria
+        }
+      );
       setLocalTitle(newTitle);
       onSourceChange(newSource, partId, newTitle);
       dispatch(fetchOrgLeaderDetails({
@@ -611,51 +623,25 @@ const getOptions = (
 
     const depth = parseInt(option.key as string);
     const currentTitle = localTitle || props.title || "";
-    let newTitle = currentTitle;
-
-    let orgLeaderName = "";
-    const orgLeaderNameMatch = currentTitle.match(/Everyone in (.*)'s org/);
-
-    if (orgLeaderNameMatch && orgLeaderNameMatch[1]) {
-      orgLeaderName = orgLeaderNameMatch[1];
-    }
-
-    if (!orgLeaderName && !orgLeaderNameMatch) {
-      const orgLeaderNameMatch2 = currentTitle.match(/\d+ (level(s?)|level) of direct reports of (.*)/);
-      if (orgLeaderNameMatch2 && orgLeaderNameMatch2[3]) {
-        orgLeaderName = orgLeaderNameMatch2[3].trim();
+    
+    // Use the utility function to update depth while preserving leader name and criteria
+    const newDepth = depth === 0 ? undefined : depth;
+    const newTitle = updateHRTitleWithNewDepth(
+      currentTitle,
+      newDepth,
+      {
+        orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
+        orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
+        orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle
       }
-    }
-
-    if(depth === 0) {
-      newTitle = `Everyone in ${orgLeaderName}'s org`;
-      setSource(prevSource => {
-        const newSource = {
-          ...prevSource,
-          manager: {
-            ...prevSource.manager,
-            depth: undefined
-          }
-        };
-        onSourceChange(newSource, partId, newTitle);
-        return newSource;
-      });
-      return;
-    }
-
-    const levels = depth - 1;
-    if (levels === 1) {
-      newTitle = `${levels} level of direct reports of ${orgLeaderName}`;
-    } else if (levels > 1) {
-      newTitle = `${levels} levels of direct reports of ${orgLeaderName}`;
-    }
+    );
 
     setSource(prevSource => {
       const newSource = {
         ...prevSource,
         manager: {
           ...prevSource.manager,
-          depth
+          depth: newDepth
         }
       };
       onSourceChange(newSource, partId, newTitle);
@@ -908,7 +894,7 @@ const getOptions = (
                                                .trim();
           setSource(prevSource => {
               const newSource = { ...prevSource, filter: cleanedFilter };
-              onSourceChange(newSource, partId);
+              onSourceChange(newSource, partId, props.title);
               return newSource;
           });
           setChildren(updatedChildren.filter((_, index) => index !== indexToRemove));
