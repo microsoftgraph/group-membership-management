@@ -295,7 +295,7 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $teamsClientIdKeyVaultSecretName `
 										-SecretValue $teamsClientIdSecret
 
@@ -313,7 +313,7 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $teamsChannelAppClientSecretName `
 										-SecretValue $teamsClientSecret
 
@@ -331,7 +331,7 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $teamsTenantSecretName `
 										-SecretValue $teamsTenantSecret
 
@@ -339,7 +339,7 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 
 	# Store certificate name in KeyVault
 	$teamsChannelAppCertificateName = "teamsChannelAppCertificateName"
-	$teamsChannelAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.VaultName -SecretName $teamsChannelAppCertificateName -AsPlainText
+	$teamsChannelAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.ResourceGroupName -SecretName $teamsChannelAppCertificateName -AsPlainText
     $setteamsChannelAppCertificate = $false
 
 	if(!$teamsChannelAppCertificate -and !$CertificateName){
@@ -359,7 +359,7 @@ function Set-TeamsChannelAppKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-											-ResourceGroup $keyVault.VaultName `
+											-ResourceGroup $keyVault.ResourceGroupName `
 											-SecretName $teamsChannelAppCertificateName `
 											-SecretValue $teamsChannelAppCertificateSecret
 

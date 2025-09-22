@@ -342,7 +342,7 @@ function Set-WebAPIKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $webApiClientIdKeyVaultSecretName `
 										-SecretValue $webApiClientIdSecret
 
@@ -360,7 +360,7 @@ function Set-WebAPIKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $webApiAppClientSecretName `
 										-SecretValue $webApiClientSecret
 
@@ -378,7 +378,7 @@ function Set-WebAPIKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $webApiTenantSecretName `
 										-SecretValue $webApiTenantSecret
 
@@ -386,7 +386,7 @@ function Set-WebAPIKeyVaultSecrets {
 
 	# Store certificate name in KeyVault
 	$webApiAppCertificateName = "webApiCertificateName"
-	$webApiAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.VaultName -SecretName $webApiAppCertificateName -AsPlainText
+	$webApiAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.ResourceGroupName -SecretName $webApiAppCertificateName -AsPlainText
 	$setWebApiCertificate = $false
 
 	if (!$webApiAppCertificate -and !$CertificateName) {
@@ -408,7 +408,7 @@ function Set-WebAPIKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-											-ResourceGroup $keyVault.VaultName `
+											-ResourceGroup $keyVault.ResourceGroupName `
 											-SecretName $webApiAppCertificateName `
 											-SecretValue $webApiAppCertificateSecret
 

@@ -287,7 +287,7 @@ function Set-GraphAppKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $graphClientIdKeyVaultSecretName `
 										-SecretValue $graphClientIdSecret
 
@@ -305,7 +305,7 @@ function Set-GraphAppKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $graphAppClientSecretName `
 										-SecretValue $graphClientSecret
 
@@ -323,7 +323,7 @@ function Set-GraphAppKeyVaultSecrets {
 	}
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.VaultName `
+										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $graphTenantSecretName `
 										-SecretValue $graphTenantSecret
 
@@ -331,7 +331,7 @@ function Set-GraphAppKeyVaultSecrets {
 
 	# Store certificate name in KeyVault
 	$graphAppCertificateName = "graphAppCertificateName"
-	$graphAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.VaultName -SecretName $graphAppCertificateName -AsPlainText
+	$graphAppCertificate = Get-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName -ResourceGroup $keyVault.ResourceGroupName -SecretName $graphAppCertificateName -AsPlainText
     $setGraphAppCertificate = $false
 
 	if(!$graphAppCertificate -and !$CertificateName){
@@ -351,7 +351,7 @@ function Set-GraphAppKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-											-ResourceGroup $keyVault.VaultName `
+											-ResourceGroup $keyVault.ResourceGroupName `
 											-SecretName $graphAppCertificateName `
 											-SecretValue $graphAppCertificateSecret
 		Write-Verbose "$graphAppCertificateName added to vault for $graphAppDisplayName."

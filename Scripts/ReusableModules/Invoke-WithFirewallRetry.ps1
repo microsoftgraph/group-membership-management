@@ -15,7 +15,7 @@ function Invoke-WithFirewallRetry {
     $retryCount = 0
     $result = $null
 
-    while ($retryCount -lt $MaxRetries -and -not $result) {
+    while ($retryCount -lt $MaxRetries -and $result -eq $null) {
         try {
             $result = & $Operation
         }

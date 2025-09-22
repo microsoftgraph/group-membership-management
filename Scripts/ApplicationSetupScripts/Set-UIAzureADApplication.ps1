@@ -301,7 +301,7 @@ function Set-UIKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.VaultName `
+							-ResourceGroup $keyVault.ResourceGroupName `
 							-SecretName $uiAppIdKeyVaultSecretName `
 							-SecretValue $uiAppIdSecret
 
@@ -319,7 +319,7 @@ function Set-UIKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.VaultName `
+							-ResourceGroup $keyVault.ResourceGroupName `
 							-SecretName $uiAppClientSecretName `
 							-SecretValue $uiPasswordCredentialValue
 
@@ -337,7 +337,7 @@ function Set-UIKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.VaultName `
+							-ResourceGroup $keyVault.ResourceGroupName `
 							-SecretName $uiTenantSecretName `
 							-SecretValue $uiTenantSecret
 
@@ -358,7 +358,7 @@ function Set-UIKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.VaultName `
+							-ResourceGroup $keyVault.ResourceGroupName `
 							-SecretName $tenantDomainSecretName `
 							-SecretValue $tenantDomainSecret
 
@@ -379,7 +379,7 @@ function Set-UIKeyVaultSecrets {
 		}
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.VaultName `
+							-ResourceGroup $keyVault.ResourceGroupName `
 							-SecretName $sharepointDomainSecretName `
 							-SecretValue $sharepointDomainSecret
 

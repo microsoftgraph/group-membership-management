@@ -1720,7 +1720,7 @@ function Install-RequiredModules {
         "Microsoft.Graph.Users"
     )
 
-    . ($scriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+    . ($ScriptsDirectory + '\Install-ModuleIfNeeded.ps1')
 
     foreach ($module in $requiredGraphModules) {
         Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
@@ -2025,11 +2025,11 @@ function Deploy-Resources {
         . ($scriptsDirectory + '\Reset-GMM.ps1')
 
         if($resetGMMType -eq "Credentials") {
-            Reset-GMM-WithCredentials `
+            Reset-GMMWithCredentials `
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
         } elseif ($resetGMMType -eq "ServicePrincipal") {
-            Reset-GMM-WithServicePrincipal `
+            Reset-GMMWithServicePrincipal `
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
         }
