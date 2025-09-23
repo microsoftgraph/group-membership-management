@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 using Models;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
@@ -20,5 +19,7 @@ namespace Repositories.Contracts
         public Task CommitFileAsync(string path, List<string> blockIds);
         public Task<List<AzureADUser>> ReadBlobsAsync(string path);
         public Task DeleteBlobsAsync(string path);
+        public Task<BlobResult> FindLatestFileAsync(string prefix);
+        public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, System.Func<string, T> parseFunction);
     }
 }

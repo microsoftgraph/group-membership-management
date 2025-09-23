@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Polly;
@@ -229,7 +230,7 @@ namespace Hosts.GroupMembershipObtainer
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
-            
+
             return new GroupMembershipFileResult
             {
                 FilePath = fileName,
@@ -252,9 +253,11 @@ namespace Hosts.GroupMembershipObtainer
         public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult)
         {
             var blobResult = await _blobStorageRepository.DownloadFileAsync(fileResult.FilePath);
-            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
-            var fileName = $"/cache/{id}_{timeStamp}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, blobResult.Content);
+            var fileName = CacheFileNaming.BuildCacheFileName(id, DateTime.UtcNow);
+            var membership = JsonSerializer.Deserialize<GroupMembership>(blobResult.Content);
+            var ids = membership.SourceMembers.Select(u => u.ObjectId);
+            var content = string.Join(Environment.NewLine, ids);
+            await _blobStorageRepository.UploadFileAsync(fileName, content);
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = runId,

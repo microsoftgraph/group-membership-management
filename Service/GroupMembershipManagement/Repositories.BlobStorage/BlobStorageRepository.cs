@@ -198,5 +198,43 @@ namespace Repositories.BlobStorage
             var blockBlobClient = _containerClient.GetBlockBlobClient(path);
             var response = await blockBlobClient.CommitBlockListAsync(blockIds);
         }
+
+        public async Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, Func<string, T> parseFunc)
+        {
+            var result = new HashSet<T>();
+            var blobClient = _containerClient.GetBlobClient(path);
+            var blobExists = await blobClient.ExistsAsync();
+            if (!blobExists)
+                return result;
+
+            var stream = await blobClient.OpenReadAsync();
+            using (var reader = new StreamReader(stream))
+            {
+                string line;
+                while ((line = await reader.ReadLineAsync()) != null)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    var value = parseFunc(line);
+                    result.Add(value);
+                }
+            }
+            return result;
+        }
+
+        public async Task<BlobResult> FindLatestFileAsync(string prefix)
+        {
+            var latest = _containerClient.GetBlobs(prefix: prefix).OrderByDescending(m => m.Properties.LastModified).FirstOrDefault();
+            if (latest == null) return new BlobResult { BlobStatus = BlobStatus.NotFound };
+            var name = latest.Name;
+            var result = new BlobResult
+            {
+                Path = name,
+                BlobStatus = BlobStatus.Found,
+            };
+
+            return await Task.FromResult(result);
+        }
     }
 }

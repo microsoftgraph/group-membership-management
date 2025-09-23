@@ -44,6 +44,7 @@ namespace Tests.Services
         private bool _groupExists;
         private int _groupCount;
         private BlobResult _blobResult;
+        private BlobResult _cacheBlobResult;
         private BlobResult _extraUserBlobResult;
         private string _usersReaderNextPageUrl;
         private string _deltaUrl;
@@ -112,6 +113,12 @@ namespace Tests.Services
                 Content = JsonSerializer.Serialize(content)
             };
 
+            _cacheBlobResult = new BlobResult
+            {
+                BlobStatus = BlobStatus.Found,
+                Path = "cache/file-name.txt",
+            };
+
             var extraUserContent = new GroupMembership
             {
                 SyncJobId = Guid.Empty,
@@ -149,6 +156,9 @@ namespace Tests.Services
                 SyncJob = syncJob
             };
 
+            _blobStorageRepository.Setup(x => x.ReadValuesFromBlobAsync<Guid>(It.IsAny<string>(), It.IsAny<Func<string, Guid>>()))
+                                  .ReturnsAsync(() => content.SourceMembers.Select(x => x.ObjectId).ToHashSet() );
+
             _membershipCalculator = new SGMembershipCalculator(
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
@@ -175,12 +185,6 @@ namespace Tests.Services
                                             _groupExists = await CallGroupValidatorFunctionAsync(request as GroupValidatorRequest);
                                         })
                                         .ReturnsAsync(() => _groupExists);
-
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<DeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
-                                       .Callback<TaskName, object, TaskOptions>(async (name, request, input) =>
-                                       {
-                                           await CallDeltaUsersSenderFunctionAsync(request as DeltaUsersSenderRequest);
-                                       });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<FileDeleterRequest>(), It.IsAny<TaskOptions>()))
                                       .Callback<TaskName, object, TaskOptions>(async (name, request, input) =>
@@ -262,6 +266,10 @@ namespace Tests.Services
                                             await CallProcessCachedAndDeltaUsersFunctionAsync(request as ProcessCachedAndDeltaUsersRequest);
                                         })
                                         .ReturnsAsync(() => _processCachedAndDeltaUsersResponse);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction), It.IsAny<BlobCheckerRequest>(), It.IsAny<TaskOptions>()))
+                                        .ReturnsAsync(() => _cacheBlobResult);
+
 
             _graphGroupRepository.Setup(x => x.GroupExists(It.IsAny<Guid>())).ReturnsAsync(() => _groupExists);
             _graphGroupRepository.Setup(x => x.GetGroupsCountAsync(It.IsAny<Guid>())).ReturnsAsync(() => _groupCount);
@@ -360,6 +368,7 @@ namespace Tests.Services
 
                                      return (users, users, null, _deltaUrl);
                                  });
+            
         }
 
         [TestMethod]
@@ -1079,12 +1088,6 @@ namespace Tests.Services
         {
             var function = new GroupValidatorFunction(_loggingRepository.Object, _membershipCalculator, _emailSenderRecipient.Object);
             return await function.ValidateGroupAsync(request);
-        }
-
-        private async Task CallDeltaUsersSenderFunctionAsync(DeltaUsersSenderRequest request)
-        {
-            var function = new DeltaUsersSenderFunction(_loggingRepository.Object, _membershipCalculator);
-            await function.SendUsersAsync(request);
         }
 
         private async Task<string> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)

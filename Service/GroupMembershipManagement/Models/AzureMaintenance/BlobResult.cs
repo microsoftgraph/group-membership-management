@@ -8,5 +8,6 @@ namespace Models
     {
         public string Content { get; set; }
         public DateTimeOffset? LastModified { get; set; }
+        public string Path { get; set; }
     }
 }

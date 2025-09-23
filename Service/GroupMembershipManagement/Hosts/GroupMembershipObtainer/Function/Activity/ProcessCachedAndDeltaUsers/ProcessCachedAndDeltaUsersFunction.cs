@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Models;
+using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
@@ -34,11 +35,9 @@ namespace Hosts.GroupMembershipObtainer
             {
                 var membershipFilePath = string.Empty;
 
-                // Get the cache
-                var blobResult = await _blobStorageRepository.DownloadCacheFileAsync(request.CacheFilePath);
-                var cacheFileContent = blobResult.Content;
-                var membership = JsonSerializer.Deserialize<GroupMembership>(cacheFileContent);
-                var cachedUsers = membership?.SourceMembers.Distinct().ToList();
+                // Get the cached users
+                var parser = new Func<string, Guid>(s => Guid.Parse(s));
+                HashSet<Guid> cachedUsers = await _blobStorageRepository.ReadValuesFromBlobAsync(request.CacheFilePath, parser);
 
                 await _log.LogMessageAsync(new LogMessage
                 {
@@ -77,14 +76,14 @@ namespace Hosts.GroupMembershipObtainer
                 if (deltaUsersToAdd.Count > 0 || deltaUsersToRemove.Count > 0)
                 {
 
-                    foreach (var user in deltaUsersToAdd)
+                    foreach (var user in deltaUsersToAdd.Select(x => x.ObjectId))
                     {
                         if (!cachedUsers.Contains(user))
                         {
                             cachedUsers.Add(user);
                         }
                     }
-                    foreach (var user in deltaUsersToRemove)
+                    foreach (var user in deltaUsersToRemove.Select(x => x.ObjectId))
                     {
                         if (cachedUsers.Contains(user))
                         {
@@ -107,33 +106,24 @@ namespace Hosts.GroupMembershipObtainer
                         Message = $"After delta link updates, number of users from group {request.SourceGroupId} {request.CountOfUsersFromAADGroup} and cache {cachedUsers.Count} are equal. Uploading membership, cache, and delta link files."
                     }, VerbosityLevel.DEBUG);
 
-
-                    var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+                    var utcNow = DateTime.UtcNow;
+                    var timeStamp = utcNow.ToString("MMddyyyy-HHmm");
 
                     // Upload membership file
                     membershipFilePath = $"{request.TargetGroupId}/{timeStamp}_{request.RunId}_GroupMembership_{request.CurrentPart}.json";
-
-                    var groupMembership = new GroupMembership
-                    {
-                        SourceMembers = cachedUsers ?? new List<AzureADUser>(),
-                        Destination = new AzureADGroup { ObjectId = request.TargetGroupId },
-                        RunId = request.RunId,
-                        Exclusionary = request.Exclusionary,
-                        SyncJobId = request.SyncJob.Id,
-                        MembershipObtainerDryRunEnabled = request.SyncJob.IsDryRunEnabled,
-                        Query = request.SyncJob.Query
-                    };
-                    
-                    await _blobStorageRepository.UploadFileAsync(membershipFilePath, JsonSerializer.Serialize(groupMembership));
-
+                    await UploadMembershipFileAsync(cachedUsers, request, membershipFilePath);
 
                     // Upload the updated cache
-                    var cacheFile = $"/cache/{request.SourceGroupId}_{timeStamp}.json";
-                    await _blobStorageRepository.UploadFileAsync(cacheFile, JsonSerializer.Serialize(groupMembership));
+                    var fileName = CacheFileNaming.BuildCacheFileName(request.SourceGroupId, utcNow);
+                    await _blobStorageRepository.UploadFileAsync(fileName, string.Join(Environment.NewLine, cachedUsers));
 
                     // Update delta link and upload
                     var deltaLinkFile = $"/cache/delta_{request.SourceGroupId}_{timeStamp}.json";
                     await _blobStorageRepository.UploadFileAsync(deltaLinkFile, request.DeltaUrl);
+
+                    // Delete blobs for adds and removes
+                    await _blobStorageRepository.DeleteFileAsync(prefixAdds);
+                    await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
 
                     await _log.LogMessageAsync(new LogMessage
                     {
@@ -141,7 +131,7 @@ namespace Hosts.GroupMembershipObtainer
                         Message = $"After delta link call, successfully uploaded {cachedUsers.Count} users + delta link {request.DeltaUrl} to cache for group {request.SourceGroupId}."
                     });
 
-                    // Delete blobs for adds and removes 
+                    // Delete blobs for adds and removes
                     await _blobStorageRepository.DeleteFileAsync(prefixAdds);
                     await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
                 }
@@ -175,6 +165,23 @@ namespace Hosts.GroupMembershipObtainer
                     CacheCount = 0
                 };
             }
+        }
+
+        private async Task UploadMembershipFileAsync(HashSet<Guid> cachedUsers, ProcessCachedAndDeltaUsersRequest request, string membershipFilePath)
+        {
+            var sourceMembers = cachedUsers.Select(u => new AzureADUser { ObjectId = u }).ToList();
+            var groupMembership = new GroupMembership
+            {
+                SourceMembers = sourceMembers ?? new List<AzureADUser>(),
+                Destination = new AzureADGroup { ObjectId = request.TargetGroupId },
+                RunId = request.RunId,
+                Exclusionary = request.Exclusionary,
+                SyncJobId = request.SyncJob.Id,
+                MembershipObtainerDryRunEnabled = request.SyncJob.IsDryRunEnabled,
+                Query = request.SyncJob.Query
+            };
+
+            await _blobStorageRepository.UploadFileAsync(membershipFilePath, JsonSerializer.Serialize(groupMembership));
         }
     }
 }

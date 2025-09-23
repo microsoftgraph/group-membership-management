@@ -97,11 +97,16 @@ namespace Hosts.GroupMembershipObtainer
                         var deltaFileContent = TextCompressor.Decompress(compressedDeltaFileContent);
 
                         // check if cache file exists in cache folder
-                        var cacheFilePath = $"cache/{request.SourceGroup.ObjectId}";
-                        var compressedCacheFileContent = await GetFileDownloaderFunction(context, cacheFilePath, request.SyncJob, true);
-                        var cacheFileContent = TextCompressor.Decompress(compressedCacheFileContent);
+                        var cacheFilePath = CacheFileNaming.BuildCacheFileNamePrefix(request.SourceGroup.ObjectId);
+                        var cacheFileResult = await context.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction),
+                                                                                           new BlobCheckerRequest
+                                                                                           {
+                                                                                               RunId = request.RunId,
+                                                                                               Prefix = cacheFilePath
+                                                                                           });
+                        var fullCacheFilePath = cacheFileResult.Path;
 
-                      if (string.IsNullOrEmpty(deltaFileContent) || string.IsNullOrEmpty(cacheFileContent))
+                        if (string.IsNullOrEmpty(deltaFileContent) || cacheFileResult.BlobStatus == BlobStatus.NotFound)
                         {
                             try
                             {
@@ -135,7 +140,7 @@ namespace Hosts.GroupMembershipObtainer
                             try
                             {
                                 if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run delta query using delta link for group {request.SourceGroup.ObjectId}" });
-                                
+
                                 var shouldClearCache = false;
                                 var deltaLink = await GetInitialDeltaLinkUsers(context, deltaFileContent, request);
                                 var countOfUsersFromAADGroup = await GetUsersCountFunction(context, request.SourceGroup.ObjectId, request.RunId);
@@ -143,7 +148,7 @@ namespace Hosts.GroupMembershipObtainer
                                 var response = await ProcessCachedAndDeltaUsers(context, new ProcessCachedAndDeltaUsersRequest
                                 {
                                     RunId = request.RunId,
-                                    CacheFilePath = cacheFilePath,
+                                    CacheFilePath = fullCacheFilePath,
                                     SourceGroupId = request.SourceGroup.ObjectId,
                                     TargetGroupId = request.GroupId,
                                     CountOfUsersFromAADGroup = countOfUsersFromAADGroup,
@@ -157,7 +162,7 @@ namespace Hosts.GroupMembershipObtainer
                                 {
                                     TrackCachedUsersEvent(request.RunId, response.CacheCount, request.SourceGroup.ObjectId);
                                 }
-                                
+
                                 if (!response.CacheMatchesGroupCount)
                                 {
                                     if(!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"{request.SourceGroup.ObjectId} has {countOfUsersFromAADGroup} users but cache {response.CacheCount} users. Running delta query..." });
@@ -277,22 +282,6 @@ namespace Hosts.GroupMembershipObtainer
                                                 RunId = runId,
                                                 GroupId = groupId
                                             });
-        }
-
-        public async Task GetDeltaUsersSenderFunction(TaskOrchestrationContext context, GroupMembershipRequest request, List<AzureADUser> allUsers, string deltaUrl)
-        {
-            var compressedUsers = TextCompressor.Compress(JsonSerializer.Serialize(allUsers));
-
-
-            await context.CallActivityAsync(nameof(DeltaUsersSenderFunction),
-                                                    new DeltaUsersSenderRequest
-                                                    {
-                                                        RunId = request.RunId,
-                                                        SyncJob = request.SyncJob,
-                                                        ObjectId = request.SourceGroup.ObjectId,
-                                                        CompressedUsers = compressedUsers,
-                                                        DeltaLink = deltaUrl
-                                                    });
         }
 
         public async Task<ProcessCachedAndDeltaUsersResponse> ProcessCachedAndDeltaUsers(TaskOrchestrationContext context, ProcessCachedAndDeltaUsersRequest request)
