@@ -169,10 +169,16 @@ namespace Repositories.BlobStorage
         public async Task UploadFileAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             var blobClient = _containerClient.GetBlobClient(path);
-            await blobClient.UploadAsync(BinaryData.FromString(content), overwrite: true);
 
-            if (metadata != null && metadata.Count > 0)
-                blobClient.SetMetadata(metadata);
+            if (metadata == null || metadata.Count == 0)
+            {
+                await blobClient.UploadAsync(BinaryData.FromString(content), overwrite: true);
+            }
+            else
+            {
+                var options = new BlobUploadOptions { Metadata = metadata };
+                await blobClient.UploadAsync(BinaryData.FromString(content), options);
+            }
         }
 
         public async Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)

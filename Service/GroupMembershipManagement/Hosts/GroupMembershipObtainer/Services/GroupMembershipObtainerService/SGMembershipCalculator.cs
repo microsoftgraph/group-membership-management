@@ -254,11 +254,16 @@ namespace Hosts.GroupMembershipObtainer
             var ids = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(fileResult.FilePath);
             var fileName = CacheFileNaming.BuildCacheFileName(id, DateTime.UtcNow);
             var content = string.Join(Environment.NewLine, ids);
-            await _blobStorageRepository.UploadFileAsync(fileName, content);
+            var metadata = new Dictionary<string, string>
+            {
+                { "RunId", runId.ToString() },
+                { "NumberOfUsers", ids.Count.ToString() }
+            };
+            await _blobStorageRepository.UploadFileAsync(fileName, content, metadata);
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"After initial delta call, successfully uploaded {fileResult.MemberCount} users to cache for group {id}."
+                Message = $"After initial delta call, successfully uploaded {ids.Count} users to cache for group {id}."
 
             }, VerbosityLevel.DEBUG);
         }

@@ -24,7 +24,8 @@ namespace Hosts.GroupMembershipObtainer
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheConverterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             // Reuse the UploadCacheAsync method to convert the cache file to parquet format
-            await _calculator.UploadCacheAsync(request.ObjectId, request.FilePath);
+            var gmfResult = new GroupMembershipFileResult { FilePath = request.FilePath };
+            await _calculator.UploadCacheAsync(request.ObjectId, request.RunId, gmfResult);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheConverterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }

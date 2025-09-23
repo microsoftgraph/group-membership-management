@@ -115,15 +115,16 @@ namespace Hosts.GroupMembershipObtainer
 
                     // Upload the updated cache
                     var fileName = CacheFileNaming.BuildCacheFileName(request.SourceGroupId, utcNow);
-                    await _blobStorageRepository.UploadFileAsync(fileName, string.Join(Environment.NewLine, cachedUsers));
+                    var metadata = new Dictionary<string, string>
+                    {
+                        { "RunId", request.RunId.ToString() },
+                        { "NumberOfUsers", cachedUsers.Count.ToString() }
+                    };
+                    await _blobStorageRepository.UploadFileAsync(fileName, string.Join(Environment.NewLine, cachedUsers), metadata);
 
                     // Update delta link and upload
                     var deltaLinkFile = $"/cache/delta_{request.SourceGroupId}_{timeStamp}.json";
                     await _blobStorageRepository.UploadFileAsync(deltaLinkFile, request.DeltaUrl);
-
-                    // Delete blobs for adds and removes
-                    await _blobStorageRepository.DeleteFileAsync(prefixAdds);
-                    await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
 
                     await _log.LogMessageAsync(new LogMessage
                     {

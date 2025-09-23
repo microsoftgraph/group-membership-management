@@ -74,7 +74,12 @@ namespace Hosts.GraphUpdater
         private async Task UploadCacheFileAsync(CacheUpdaterRequest request, List<AzureADUser> newUsers)
         {
             var fileName = CacheFileNaming.BuildCacheFileName(request.GroupId, request.Timestamp);
-            await _blobStorageRepository.UploadFileAsync(fileName, string.Join(Environment.NewLine, newUsers.Select(x => x.ObjectId)));
+            var metadata = new Dictionary<string, string>
+            {
+                { "RunId", request.RunId.ToString() },
+                { "NumberOfUsers", newUsers.Count.ToString() }
+            };
+            await _blobStorageRepository.UploadFileAsync(fileName, string.Join(Environment.NewLine, newUsers.Select(x => x.ObjectId)), metadata);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = request.RunId,
