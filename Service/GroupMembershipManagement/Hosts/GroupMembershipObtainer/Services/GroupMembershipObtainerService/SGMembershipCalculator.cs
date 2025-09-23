@@ -82,9 +82,9 @@ namespace Hosts.GroupMembershipObtainer
             return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
         }
 
-        public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(string deltaLink, int numberOfPages)
+        public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetFirstDeltaLinkUsersPageAsync(deltaLink, numberOfPages);
+            var result = await _graphGroupRepository.GetFirstDeltaLinkUsersPageAsync(objectId, deltaLink, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,
@@ -94,9 +94,9 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaLinkUsersPageAsync(string nextPageUrl, int numberOfPages)
+        public async Task<DeltaGroupInformation> GetNextDeltaLinkUsersPageAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetNextDeltaLinkUsersPagesAsync(nextPageUrl, numberOfPages);
+            var result = await _graphGroupRepository.GetNextDeltaLinkUsersPagesAsync(objectId, nextPageUrl, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.usersToAdd,
@@ -128,9 +128,9 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task<DeltaGroupInformation> GetNextDeltaUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        public async Task<DeltaGroupInformation> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
-            var result = await _graphGroupRepository.GetNextDeltaUsersPagesAsync(nextPageUrl, numberOfPages);
+            var result = await _graphGroupRepository.GetNextDeltaUsersPagesAsync(objectId, nextPageUrl, numberOfPages);
             return new DeltaGroupInformation
             {
                 UsersToAdd = result.users,
@@ -151,9 +151,9 @@ namespace Hosts.GroupMembershipObtainer
             };
         }
 
-        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(string nextPageUrl)
+        public async Task<GroupInformation> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
         {
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
+            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(objectId, nextPageUrl);
             return new GroupInformation
             {
                 Users = result.users,
@@ -199,7 +199,7 @@ namespace Hosts.GroupMembershipObtainer
             return fileName;
         }
 
-        public async Task<string> SendTransitiveAndDeltaMembershipAsync(SyncJob syncJob, int currentPart, bool exclusionary)
+        public async Task<GroupMembershipFileResult> SendTransitiveAndDeltaMembershipAsync(SyncJob syncJob, Guid objectId, int currentPart, bool exclusionary)
         {
             var runId = syncJob.RunId.GetValueOrDefault();
             var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
@@ -211,7 +211,7 @@ namespace Hosts.GroupMembershipObtainer
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"Read {sourceMembers.Count} users from Part {currentPart} to be synced into the destination group {targetOfficeGroupId}."
+                Message = $"Read {sourceMembers.Count} users from group {objectId} to be synced into the destination group {targetOfficeGroupId}."
 
             }, VerbosityLevel.DEBUG);
 
@@ -229,24 +229,39 @@ namespace Hosts.GroupMembershipObtainer
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
-            return fileName;
+            
+            return new GroupMembershipFileResult
+            {
+                FilePath = fileName,
+                MemberCount = sourceMembers.Count
+            };
         }
 
-        public async Task UploadDeltaLinkAsync(Guid id, string deltaLink)
+        public async Task UploadDeltaLinkAsync(Guid id, string deltaLink, Guid runId)
         {
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"After initial delta call, successfully uploaded deltaLink {deltaLink} to cache for group {id}."
+            }, VerbosityLevel.DEBUG);
         }
 
-        public async Task UploadCacheAsync(Guid id, string filePath)
+        public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult)
         {
-            var blobResult = await _blobStorageRepository.DownloadFileAsync(filePath);
+            var blobResult = await _blobStorageRepository.DownloadFileAsync(fileResult.FilePath);
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/cache/{id}_{timeStamp}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, blobResult.Content);
-        }
+            await _log.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"After initial delta call, successfully uploaded {fileResult.MemberCount} users to cache for group {id}."
 
+            }, VerbosityLevel.DEBUG);
+        }
         public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id, List<AzureADUser> users, string deltaLink)
         {
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");

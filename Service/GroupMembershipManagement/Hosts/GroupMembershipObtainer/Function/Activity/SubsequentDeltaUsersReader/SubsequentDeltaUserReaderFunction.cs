@@ -28,7 +28,7 @@ namespace Hosts.GroupMembershipObtainer
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUserReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 			_calculator.RunId = request.RunId;
-            var response = await _calculator.GetNextDeltaUsersPagesAsync(request.NextPageUrl, request.PageCount);
+            var response = await _calculator.GetNextDeltaUsersPagesAsync(request.ObjectId, request.NextPageUrl, request.PageCount);
 
             if (request.ObjectId != request.TargetGroupId)
             {

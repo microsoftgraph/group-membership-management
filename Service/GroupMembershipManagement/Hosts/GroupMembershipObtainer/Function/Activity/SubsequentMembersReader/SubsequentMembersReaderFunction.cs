@@ -28,7 +28,7 @@ namespace Hosts.GroupMembershipObtainer
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentMembersReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
             _calculator.RunId = request.RunId;
-            var response = await _calculator.GetNextTransitiveMembersPageAsync(request.NextPageUrl);
+            var response = await _calculator.GetNextTransitiveMembersPageAsync(request.GroupId, request.NextPageUrl);
 
             if (request.GroupId != request.TargetGroupId)
             {

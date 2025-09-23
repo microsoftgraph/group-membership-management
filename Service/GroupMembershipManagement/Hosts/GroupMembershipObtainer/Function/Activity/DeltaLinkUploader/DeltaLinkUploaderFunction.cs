@@ -23,7 +23,7 @@ namespace Hosts.GroupMembershipObtainer
         public async Task SendDeltaLinkAsync([ActivityTrigger] DeltaLinkUploaderRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaLinkUploaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);                       
-            await _calculator.UploadDeltaLinkAsync(request.ObjectId, request.DeltaLink);           
+            await _calculator.UploadDeltaLinkAsync(request.ObjectId, request.DeltaLink, request.RunId);           
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaLinkUploaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }

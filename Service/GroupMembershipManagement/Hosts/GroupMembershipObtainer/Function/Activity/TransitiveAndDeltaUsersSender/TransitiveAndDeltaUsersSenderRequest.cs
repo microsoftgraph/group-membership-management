@@ -8,6 +8,7 @@ namespace Hosts.GroupMembershipObtainer
     public class TransitiveAndDeltaUsersSenderRequest
     {
         public SyncJob SyncJob { get; set; }
+        public Guid ObjectId { get; set; }
         public Guid GroupId { get; set; }
         public Guid RunId { get; set; }
         public int CurrentPart { get; set; }

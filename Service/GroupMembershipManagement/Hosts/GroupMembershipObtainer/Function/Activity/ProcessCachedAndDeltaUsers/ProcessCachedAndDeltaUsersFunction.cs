@@ -40,12 +40,18 @@ namespace Hosts.GroupMembershipObtainer
                 var membership = JsonSerializer.Deserialize<GroupMembership>(cacheFileContent);
                 var cachedUsers = membership?.SourceMembers.Distinct().ToList();
 
+                await _log.LogMessageAsync(new LogMessage
+                {
+                    RunId = request.RunId,
+                    Message = $"Before delta link updates, cache for group {request.SourceGroupId} has {cachedUsers.Count} users."
+                }, VerbosityLevel.DEBUG);
+
                 // Get the delta users to add and remove from blob storage
-                string prefixAdds = $"{request.TargetGroupId}/userUploads/deltaLink/adds/{request.RunId}_GroupMembership";
+                string prefixAdds = $"{request.TargetGroupId}/userUploads/deltaLink/adds/{request.RunId}_GroupMembership_{request.CurrentPart}";
                 var blobResultAdds = await _blobStorageRepository.ReadBlobsAsync(prefixAdds);
                 var deltaUsersToAdd = blobResultAdds;
 
-                string prefixRemoves = $"{request.TargetGroupId}/userUploads/deltaLink/removes/{request.RunId}_GroupMembership";
+                string prefixRemoves = $"{request.TargetGroupId}/userUploads/deltaLink/removes/{request.RunId}_GroupMembership_{request.CurrentPart}";
                 var blobResultRemoves = await _blobStorageRepository.ReadBlobsAsync(prefixRemoves);
                 var deltaUsersToRemove = blobResultRemoves;
 
@@ -88,7 +94,7 @@ namespace Hosts.GroupMembershipObtainer
                     await _log.LogMessageAsync(new LogMessage
                     {
                         RunId = request.RunId,
-                        Message = $"Group {request.SourceGroupId}. Added {deltaUsersToAdd.Count} delta users, and removed {deltaUsersToRemove.Count} delta users. Total users in cache {cachedUsers.Count}."
+                        Message = $"After delta link call for group {request.SourceGroupId} - Added {deltaUsersToAdd.Count} delta users, Removed {deltaUsersToRemove.Count} delta users. Total users in cache {cachedUsers.Count}."
                     }, VerbosityLevel.DEBUG);
                 }
 
@@ -98,7 +104,7 @@ namespace Hosts.GroupMembershipObtainer
                     await _log.LogMessageAsync(new LogMessage
                     {
                         RunId = request.RunId,
-                        Message = $"Cache for group {request.SourceGroupId} has {cachedUsers.Count} users and group has {request.CountOfUsersFromAADGroup} users. Updating membership, cache, and delta link."
+                        Message = $"After delta link updates, number of users from group {request.SourceGroupId} {request.CountOfUsersFromAADGroup} and cache {cachedUsers.Count} are equal. Uploading membership, cache, and delta link files."
                     }, VerbosityLevel.DEBUG);
 
 
@@ -129,6 +135,12 @@ namespace Hosts.GroupMembershipObtainer
                     var deltaLinkFile = $"/cache/delta_{request.SourceGroupId}_{timeStamp}.json";
                     await _blobStorageRepository.UploadFileAsync(deltaLinkFile, request.DeltaUrl);
 
+                    await _log.LogMessageAsync(new LogMessage
+                    {
+                        RunId = request.RunId,
+                        Message = $"After delta link call, successfully uploaded {cachedUsers.Count} users + delta link {request.DeltaUrl} to cache for group {request.SourceGroupId}."
+                    });
+
                     // Delete blobs for adds and removes 
                     await _blobStorageRepository.DeleteFileAsync(prefixAdds);
                     await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
@@ -138,7 +150,7 @@ namespace Hosts.GroupMembershipObtainer
                     await _log.LogMessageAsync(new LogMessage
                     {
                         RunId = request.RunId,
-                        Message = $"Group {request.SourceGroupId}. Cache mismatch: cached={cachedUsers.Count}, actual={request.CountOfUsersFromAADGroup}. Running initial delta call."
+                        Message = $"After delta link updates for group {request.SourceGroupId}. Cache mismatch: cached={cachedUsers.Count}, actual={request.CountOfUsersFromAADGroup}. Running initial delta call."
                     });
                 }
                 return new ProcessCachedAndDeltaUsersResponse

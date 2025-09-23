@@ -29,7 +29,7 @@ namespace Hosts.GroupMembershipObtainer
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaLinkUserReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
             _calculator.RunId = request.RunId;
-            var response = await _calculator.GetNextDeltaLinkUsersPageAsync(request.NextPageUrl, request.PageCount);
+            var response = await _calculator.GetNextDeltaLinkUsersPageAsync(request.GroupId, request.NextPageUrl, request.PageCount);
 
             if (request.GroupId != request.TargetGroupId)
             {

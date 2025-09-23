@@ -47,6 +47,7 @@ namespace Tests.Services
         private TelemetryClient _telemetryClient;
         SchemaProvider _schemaProvider;
         private bool _isValid = true;
+        private GroupMembershipFileResult _membershipFileResult;
 
         [TestInitialize]
         public void Setup()
@@ -171,12 +172,12 @@ namespace Tests.Services
                 return users;
             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupMembershipFileResult>(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
                                 .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                 {
-                                    _filePath = await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
+                                    _membershipFileResult = await CallTransitiveAndDeltaUsersSenderFunctionAsync(request as TransitiveAndDeltaUsersSenderRequest);
                                 })
-                                .ReturnsAsync(() => _filePath);
+                                .ReturnsAsync(() => new GroupMembershipFileResult { FilePath = _filePath, MemberCount = _usersToReturn });
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
                                 .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -711,7 +712,7 @@ namespace Tests.Services
             return await function.SendUsersAsync(request);
         }
 
-        private async Task<string> CallTransitiveAndDeltaUsersSenderFunctionAsync(TransitiveAndDeltaUsersSenderRequest request)
+        private async Task<GroupMembershipFileResult> CallTransitiveAndDeltaUsersSenderFunctionAsync(TransitiveAndDeltaUsersSenderRequest request)
         {
             var function = new TransitiveAndDeltaUsersSenderFunction(_loggingRepository.Object, _blobStorageRepository.Object, _membershipCalculator);
             return await function.SendUsersAsync(request);

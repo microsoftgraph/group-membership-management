@@ -41,7 +41,7 @@ namespace Repositories.GraphGroups
                     : await GetGroupUsersNextPageAsync(nextLink);
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
-                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, groupId, QueryType.Delta, runId);
 
                 var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
@@ -60,7 +60,7 @@ namespace Repositories.GraphGroups
             return (allUsers, nextLink, deltaLink);
         }
 
-        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(string nextPageUrl, Guid? runId, int numberOfPages)
+        public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid groupId, string nextPageUrl, Guid? runId, int numberOfPages)
         {
             var allUsers = new List<AzureADUser>();
 
@@ -72,7 +72,7 @@ namespace Repositories.GraphGroups
                 var deltaResponse = await GetGroupUsersNextPageAsync(nextLink);
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(deltaResponse.Headers, QueryType.Delta, runId);
-                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaResponse.Headers, groupId, QueryType.Delta, runId);
 
                 var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
@@ -88,7 +88,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetFirstDeltaLinkUsersPageAsync(string deltaLink, Guid? runId, int numberOfPages)
+            GetFirstDeltaLinkUsersPageAsync(Guid groupId, string deltaLink, Guid? runId, int numberOfPages)
         {
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
@@ -100,7 +100,7 @@ namespace Repositories.GraphGroups
                 var deltaLinkResponse = await GetGroupUsersNextPageAsync(nextLink);
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(deltaLinkResponse.Headers, QueryType.DeltaLink, runId);
-                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, groupId, QueryType.DeltaLink, runId);
 
                 var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
 
@@ -120,7 +120,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)>
-            GetNextDeltaLinkUsersPagesAsync(string nextPageUrl, Guid? runId, int numberOfPages)
+            GetNextDeltaLinkUsersPagesAsync(Guid groupId, string nextPageUrl, Guid? runId, int numberOfPages)
         {
             var usersToAdd = new List<AzureADUser>();
             var usersToRemove = new List<AzureADUser>();
@@ -133,7 +133,7 @@ namespace Repositories.GraphGroups
                 var deltaLinkResponse = await GetGroupUsersNextPageAsync(nextLink);
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(deltaLinkResponse.Headers, QueryType.DeltaLink, runId);
-                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, runId);
+                await _graphGroupMetricTracker.TrackRequestAsync(deltaLinkResponse.Headers, groupId, QueryType.DeltaLink, runId);
 
                 var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
 

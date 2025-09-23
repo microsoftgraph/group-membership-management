@@ -21,14 +21,14 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         [Function(nameof(TransitiveAndDeltaUsersSenderFunction))]
-        public async Task<string> SendUsersAsync([ActivityTrigger] TransitiveAndDeltaUsersSenderRequest request)
+        public async Task<GroupMembershipFileResult> SendUsersAsync([ActivityTrigger] TransitiveAndDeltaUsersSenderRequest request)
         {
-            string filePath = null;
+            GroupMembershipFileResult membershipFileResult = null;
 
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(TransitiveAndDeltaUsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            filePath = await _calculator.SendTransitiveAndDeltaMembershipAsync(request.SyncJob, request.CurrentPart, request.Exclusionary);
+            membershipFileResult = await _calculator.SendTransitiveAndDeltaMembershipAsync(request.SyncJob, request.ObjectId, request.CurrentPart, request.Exclusionary);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(TransitiveAndDeltaUsersSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return filePath;
+            return membershipFileResult;
         }
     }
 }

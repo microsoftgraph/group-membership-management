@@ -327,16 +327,16 @@ namespace Hosts.GroupMembershipObtainer
         /// <returns>Membership file path</returns>
         public async Task<string> ProcessGroupMembershipChangesAsync(TaskOrchestrationContext context, GroupMembershipRequest request, string deltaLink = null)
         {
-            var membershipFilePath = await context.CallActivityAsync<string>(nameof(TransitiveAndDeltaUsersSenderFunction), new TransitiveAndDeltaUsersSenderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart, Exclusionary = request.Exclusionary });
+            var membershipFileResult = await context.CallActivityAsync<GroupMembershipFileResult>(nameof(TransitiveAndDeltaUsersSenderFunction), new TransitiveAndDeltaUsersSenderRequest { SyncJob = request.SyncJob, ObjectId = request.SourceGroup.ObjectId, GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart, Exclusionary = request.Exclusionary });
             await context.CallActivityAsync<string>(nameof(DeleteBlobFunction), new DeleteBlobRequest { GroupId = request.GroupId, RunId = request.RunId, CurrentPart = request.CurrentPart });
 
             if (!string.IsNullOrEmpty(deltaLink))
             {
-                await context.CallActivityAsync(nameof(CacheUploaderFunction), new CacheUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, FilePath = membershipFilePath });
+                await context.CallActivityAsync(nameof(CacheUploaderFunction), new CacheUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, MembershipFileResult = membershipFileResult });
                 await context.CallActivityAsync(nameof(DeltaLinkUploaderFunction), new DeltaLinkUploaderRequest { RunId = request.RunId, ObjectId = request.SourceGroup.ObjectId, DeltaLink = deltaLink });
             }
 
-            return membershipFilePath;
+            return membershipFileResult.FilePath;
         }
 
         public async Task<string> GetInitialDeltaUsers(

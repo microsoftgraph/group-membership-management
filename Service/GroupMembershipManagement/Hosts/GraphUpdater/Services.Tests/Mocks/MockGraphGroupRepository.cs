@@ -56,7 +56,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(string nextPageUrl)
+        public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
         {
             throw new NotImplementedException();
         }
@@ -113,14 +113,6 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
         public Task<(List<AzureADUser> users, string nextPageUrl)> GetWorkSpacesPageAsync(string url, int top, int skip)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(string deltaLink)
-        {
-            throw new NotImplementedException();
-        }
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPageAsync(string nextPageUrl)
         {
             throw new NotImplementedException();
         }
@@ -187,12 +179,12 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(string deltaLink, int numberOfPages)
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
         {
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        public Task<(List<AzureADUser> usersToAdd, List<AzureADUser> usersToRemove, string nextPageUrl, string deltaUrl)> GetNextDeltaLinkUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
             throw new NotImplementedException();
         }
@@ -202,7 +194,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(string nextPageUrl, int numberOfPages)
+        public Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetNextDeltaUsersPagesAsync(Guid objectId, string nextPageUrl, int numberOfPages)
         {
             throw new NotImplementedException();
         }

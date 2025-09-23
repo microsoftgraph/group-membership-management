@@ -71,7 +71,7 @@ namespace Repositories.GraphGroups
             _telemetryClient.TrackEvent("ResourceUnitsUsedByType", ruuByTypeEvent);
         }
 
-        public async Task TrackRequestAsync(IDictionary<string, IEnumerable<string>> headers, Guid? runId)
+        public async Task TrackRequestAsync(IDictionary<string, IEnumerable<string>> headers, Guid groupId, QueryType queryType, Guid? runId)
         {
             string requestId = "";
             string clientRequestId = "";
@@ -93,7 +93,7 @@ namespace Repositories.GraphGroups
             await _loggingRepository.LogMessageAsync(
                 new LogMessage
                 {
-                    Message = $"Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}",
+                    Message = $"Group Id - {groupId}, QueryType - {queryType.ToString()}, Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}",
                     RunId = runId
                 });
         }

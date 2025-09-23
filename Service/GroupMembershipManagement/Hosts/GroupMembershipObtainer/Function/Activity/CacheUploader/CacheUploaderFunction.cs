@@ -23,7 +23,7 @@ namespace Hosts.GroupMembershipObtainer
         public async Task SendUsersAsync([ActivityTrigger] CacheUploaderRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUploaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            await _calculator.UploadCacheAsync(request.ObjectId, request.FilePath);
+            await _calculator.UploadCacheAsync(request.ObjectId, request.RunId, request.MembershipFileResult);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUploaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }

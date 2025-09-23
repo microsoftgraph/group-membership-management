@@ -9,6 +9,6 @@ namespace Hosts.GroupMembershipObtainer
     {
         public Guid RunId { get; set; }
         public Guid ObjectId { get; set; }
-        public string FilePath { get; set; }
+        public GroupMembershipFileResult MembershipFileResult { get; set; }
     }
 }
