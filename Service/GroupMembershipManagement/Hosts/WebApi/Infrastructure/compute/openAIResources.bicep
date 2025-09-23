@@ -10,6 +10,17 @@ param solutionAbbreviation string = 'gmm'
 @description('Environment abbreviation.')
 param environmentAbbreviation string
 
+@description('Allowed IP addresses for the OpenAI resource (comma-separated).')
+param allowedIpAddresses string = ''
+
+var ipAddressArray = empty(allowedIpAddresses) ? [] : split(allowedIpAddresses, ',')
+var trimmedIpArray = [for ip in ipAddressArray: trim(ip)]
+var uniqueIpArray = filter(trimmedIpArray, (ip, index) => indexOf(trimmedIpArray, ip) == index && !empty(ip))
+
+var ipRules = [for ip in uniqueIpArray: {
+  value: ip
+}]
+
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-06-01' existing = {
   name: '${solutionAbbreviation}-data-${environmentAbbreviation}'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
@@ -29,12 +40,12 @@ resource openAI 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' = {
     apiProperties: {}
     customSubDomainName: toLower(openAIResourceName)
     networkAcls: {
-      defaultAction: 'Allow'
+      defaultAction: 'Deny'
       virtualNetworkRules: []
-      ipRules: []
+      ipRules: ipRules
     }
     allowProjectManagement: false
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: empty(allowedIpAddresses) ? 'Disabled' : 'Enabled'  // Disabled when no IPs, Enabled with restrictions when IPs provided
     disableLocalAuth: true
     restrictOutboundNetworkAccess: true
   }

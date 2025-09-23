@@ -355,6 +355,7 @@ module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) 
     openAIResourceName: openAIResourceName
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
+    allowedIpAddresses: featureFlags.enableOpenAI ? '${appService.outputs.outboundIpAddresses},${appService.outputs.possibleOutboundIpAddresses}' : ''
   }
 }
 module servicePlanTemplate 'servicePlan.bicep' = {
@@ -385,7 +386,6 @@ module appService 'appService.bicep' = {
     setRBACPermissions: setRBACPermissions 
   }
   dependsOn: [
-    appInsights
     servicePlanTemplate
     graphUAMI
   ]

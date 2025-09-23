@@ -105,3 +105,5 @@ resource websiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
 
 
 output principalId string = websiteTemplate.identity.principalId
+output outboundIpAddresses string = websiteTemplate.properties.outboundIpAddresses
+output possibleOutboundIpAddresses string = websiteTemplate.properties.possibleOutboundIpAddresses
