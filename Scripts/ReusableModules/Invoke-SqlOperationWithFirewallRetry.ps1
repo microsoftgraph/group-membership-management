@@ -35,3 +35,26 @@ function Add-SqlIpFromError {
         Write-Warning "⚠️ No IP address found in the error message."
     }
 }
+
+function Invoke-SqlOperationWithFirewallRetry {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Operation,
+        [Parameter(Mandatory = $false)]
+        [int]$MaxRetries = 3
+    )
+    
+    $directory = $PSScriptRoot
+    . ($directory + '\Invoke-WithFirewallRetry.ps1')
+
+    Invoke-WithFirewallRetry -ResourceGroup $dataResourceGroup -MaxRetries $MaxRetries `
+            -Operation $Operation `
+            -OnFirewallError {
+                param($errorMessage) 
+                Add-SqlIpFromError -ErrorMessage $errorMessage -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+            }
+}

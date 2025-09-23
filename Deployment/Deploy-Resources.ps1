@@ -883,17 +883,20 @@ function Set-SqlServerFirewallRule {
 function Set-SQLServerPermissions {
     param (
         [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
         [string]$ConnectionString,
         [Parameter(Mandatory = $true)]
-        [string]$ConnectionStringADF,
-        [Parameter(Mandatory = $true)]
-        [string]$ComputeResourceGroup,
-        [Parameter(Mandatory = $true)]
-        [string]$DataResourceGroup
+        [string]$ConnectionStringADF
     )
 
     # SQL Permissions
     Write-Host "`nGranting permissions to SQL database"
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 
     # Set the permissions for the user running the script.
     $context = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile.DefaultContext
@@ -909,19 +912,26 @@ function Set-SQLServerPermissions {
             ALTER ROLE db_datawriter ADD MEMBER [$($context.Account.Id)]
             ALTER ROLE db_ddladmin ADD MEMBER [$($context.Account.Id)]
         END"
-
-    Write-Host "Granting permissions to SQL database for $($context.Account.Id)"
+    
     $roleCommand = $connection.CreateCommand()
     $roleCommand.CommandText = $sqlScript
-    $connection.Open()
-    [void]$roleCommand.ExecuteNonQuery()
-    $connection.Close()
+
+    Write-Host "Granting permissions to SQL database for $($context.Account.Id)"
+    Invoke-SqlOperationWithFirewallRetry `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -Operation { 
+            $connection.Open()
+            [void]$roleCommand.ExecuteNonQuery() 
+            $connection.Close()
+        }
+
     $roleCommand.Dispose()
+    Write-Host "Permissions granted to SQL database for $($context.Account.Id)" -ForegroundColor Green
 
     # Set the permissions for the function apps.
-    $functionApps = Get-AzResource -ResourceGroupName $ComputeResourceGroup -ResourceType "Microsoft.Web/sites"
-    $connection.Open()
-
+    $functionApps = Get-AzResource -ResourceGroupName $computeResourceGroup -ResourceType "Microsoft.Web/sites"
+    
     foreach ($functionApp in $functionApps) {
 
         $isWebAPI = $functionApp.Name -match "-webapi"
@@ -939,15 +949,24 @@ function Set-SQLServerPermissions {
 
         $roleCommand = $connection.CreateCommand()
         $roleCommand.CommandText = $functionSqlScript
-        [void]$roleCommand.ExecuteNonQuery()
-        $roleCommand.Dispose()
-    }
 
-    $connection.Close()
+        Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation { 
+                $connection.Open()
+                [void]$roleCommand.ExecuteNonQuery() 
+                $connection.Close()
+            }
+
+        $roleCommand.Dispose()
+
+        Write-Host "Permissions granted to SQL database for $($functionApp.Name)" -ForegroundColor Green
+    }
 
     # ADF Permissions
     $dataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
-    $dataFactory = Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue
+    $dataFactory = Get-AzDataFactoryV2 -ResourceGroupName $dataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue
     $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" }
 
     if ($null -ne $dataFactory) {
@@ -955,8 +974,7 @@ function Set-SQLServerPermissions {
         $connectionADF = New-Object System.Data.SqlClient.SqlConnection
         $connectionADF.ConnectionString = $ConnectionStringADF
         $connectionADF.AccessToken = $sqlToken
-        $connectionADF.Open()
-
+        
         $dataFactorySqlScript = "IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = N'$dataFactoryName')
         BEGIN
             CREATE USER [$dataFactoryName] FROM EXTERNAL PROVIDER
@@ -969,8 +987,19 @@ function Set-SQLServerPermissions {
 
         $roleCommandADF = $connectionADF.CreateCommand()
         $roleCommandADF.CommandText = $dataFactorySqlScript
-        [void]$roleCommandADF.ExecuteNonQuery()
+
+        Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation { 
+                $connectionADF.Open()
+                [void]$roleCommandADF.ExecuteNonQuery()
+                $connectionADF.Close()
+            }
+
         $roleCommandADF.Dispose()
+
+        Write-Host "Permissions granted to SQL database for $dataFactoryName" -ForegroundColor Green
 
         foreach ($functionApp in $functionAppsADF) {
 
@@ -981,15 +1010,24 @@ function Set-SQLServerPermissions {
                 ALTER ROLE db_datawriter ADD MEMBER [$($functionApp.Name)]
             END"
 
-            Write-Host "Granting permissions to SQL database for $($functionApp.Name)"
+            Write-Host "Granting permissions to ADF database for $($functionApp.Name)"
 
             $roleCommandADF = $connectionADF.CreateCommand()
             $roleCommandADF.CommandText = $functionSqlScript
-            [void]$roleCommandADF.ExecuteNonQuery()
-            $roleCommandADF.Dispose()
-        }
 
-        $connectionADF.Close()
+            Invoke-SqlOperationWithFirewallRetry `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -Operation { 
+                    $connectionADF.Open()
+                    [void]$roleCommandADF.ExecuteNonQuery()
+                    $connectionADF.Close()
+                }
+
+            $roleCommandADF.Dispose()
+
+            Write-Host "Permissions granted to ADF database for $($functionApp.Name)" -ForegroundColor Green
+        }
     }
 }
 
@@ -1916,6 +1954,7 @@ function Deploy-Resources {
     # Import reusable functions
     . ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
     . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '\ReusableModules\Invoke-SqlOperationWithFirewallRetry.ps1')
 
     $response = Set-GMMResources `
         -SolutionAbbreviation $solutionAbbreviation `
@@ -1950,22 +1989,11 @@ function Deploy-Resources {
         -AsPlainText
 
     if ($false -eq $skipSqlServerPermissionSetup) {
-        . ($scriptsDirectory + '\ReusableModules\Invoke-WithFirewallRetry.ps1')
-        . ($scriptsDirectory + '\ReusableModules\Add-SqlIpFromError.ps1')
-
-        # Set SQL permissions with firewall retry logic
-        Invoke-WithFirewallRetry -ResourceGroup $dataResourceGroup -MaxRetries 3 `
-            -Operation {
-                Set-SQLServerPermissions `
-                    -ConnectionString $connectionString `
-                    -ConnectionStringADF $connectionStringADF `
-                    -ComputeResourceGroup $computeResourceGroup `
-                    -DataResourceGroup $dataResourceGroup
-            } `
-            -OnFirewallError {
-                param($errorMessage) 
-                Add-SqlIpFromError -ErrorMessage $errorMessage -SolutionAbbreviation $solutionAbbreviation -EnvironmentAbbreviation $environmentAbbreviation
-            }
+        Set-SQLServerPermissions `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -ConnectionString $connectionString `
+            -ConnectionStringADF $connectionStringADF
     }
 
     if ($true -eq $setRBACPermissions) {
