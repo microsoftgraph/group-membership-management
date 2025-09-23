@@ -75,7 +75,8 @@ namespace Services.Tests
                 },
                 Query = "[{ \"type\": \"GroupMembership\", \"sources\": [\"da144736-962b-4879-a304-acd9f5221e78\"]}]",
                 Status = "InProgress",
-                Period = 6
+                Period = 6,
+                RunId = Guid.NewGuid()
             };
 
             var users = new List<AzureADUser>();
@@ -97,6 +98,8 @@ namespace Services.Tests
 
             _durableOrchestrationContext.Setup(x => x.GetInput<CacheUserUpdaterRequest>()).Returns(() => _cacheUserUpdaterRequest);
             _blobStorageRepository.Setup(x => x.DownloadCacheFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
+            _blobStorageRepository.Setup(x => x.ReadValuesFromBlobAsync<AzureADUser>(It.IsAny<string>(), It.IsAny<Func<string, AzureADUser>>()))
+                                  .ReturnsAsync(() => content.SourceMembers.ToHashSet());
         }
 
         [TestMethod]
@@ -122,6 +125,15 @@ namespace Services.Tests
                                 await CallLoggerFunctionAsync(request as LoggerRequest);
                             });
 
+            var cacheBlobResult = new BlobResult
+            {
+                BlobStatus = BlobStatus.Found,
+                Path = "cache/file-name.txt",
+            };
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction), It.IsAny<BlobCheckerRequest>()))
+                            .ReturnsAsync(() => cacheBlobResult);
+
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
             var subOrchestratorFunction = new CacheUserUpdaterSubOrchestratorFunction(_loggingRepository.Object, telemetryClient);
             await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
@@ -132,7 +144,7 @@ namespace Services.Tests
                                     It.IsAny<string>()
                                 ), Times.Once);
 
-            _blobStorageRepository.Verify(x => x.DownloadCacheFileAsync(It.IsAny<string>()), Times.Exactly(1));
+            _blobStorageRepository.Verify(x => x.ReadValuesFromBlobAsync(It.IsAny<string>(), It.IsAny<Func<string, AzureADUser>>()), Times.Exactly(1));
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Exactly(1));
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function completed"),

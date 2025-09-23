@@ -4,10 +4,12 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Models;
+using Models.Helpers;
 using Repositories.Contracts;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+
 
 namespace Hosts.GraphUpdater
 {
@@ -41,22 +43,22 @@ namespace Hosts.GraphUpdater
                     return;
                 }
 
-                var filePath = $"cache/{request.GroupId}";
-                var fileContent = await context.CallActivityAsync<string>(nameof(FileDownloaderFunction), new FileDownloaderRequest
+                var filePrefixPath = CacheFileNaming.BuildCacheFileNamePrefix(request.GroupId);
+                var cacheChecker = await context.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction), new BlobCheckerRequest
                 {
-                    FilePath = filePath,
-                    SyncJob = request.SyncJob
+                    Prefix = filePrefixPath,
+                    RunId = request.SyncJob.RunId.Value
                 });
 
-                if (!string.IsNullOrEmpty(fileContent))
+                if (cacheChecker.BlobStatus == BlobStatus.Found)
                 {
                     await context.CallActivityAsync(nameof(CacheUpdaterFunction), new CacheUpdaterRequest
                     {
-                        FileContent = fileContent,
+                        CacheFilePath = cacheChecker.Path,
                         RunId = request.SyncJob.RunId,
                         UserIds = request.UserIds,
                         GroupId = request.GroupId,
-                        Timestamp = request.SyncJob.LastSuccessfulStartTime.ToString("MMddyyyy-HHmmss")
+                        Timestamp = request.SyncJob.LastSuccessfulStartTime
                     });
                 }
 

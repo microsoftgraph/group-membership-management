@@ -10,8 +10,8 @@ namespace Hosts.GraphUpdater
     {
         public Guid GroupId { get; set; }
         public List<AzureADUser> UserIds { get; set; }
-        public string FileContent { get; set; }
         public Guid? RunId { get; set; }
-        public string Timestamp { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string CacheFilePath { get; set; }
     }
 }

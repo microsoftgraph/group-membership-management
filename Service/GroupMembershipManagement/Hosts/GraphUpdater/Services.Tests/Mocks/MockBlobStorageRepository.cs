@@ -76,5 +76,15 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<BlobResult> FindLatestFileAsync(string prefix)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, Func<string, T> parseFunction)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
