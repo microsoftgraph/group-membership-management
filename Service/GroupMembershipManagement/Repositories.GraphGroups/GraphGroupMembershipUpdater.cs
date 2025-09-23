@@ -130,7 +130,7 @@ namespace Repositories.GraphGroups
                 var toSend = new List<ChunkOfUsers>();
                 while (queue.TryDequeue(out var step))
                 {
-                    var isUnderMaxLimit = toSend.Sum(x => x.ToSend.Count) + step.ToSend.Count < maxNumberOfRequests;
+                    var isUnderMaxLimit = toSend.Sum(x => x.ToSend.Count) + step.ToSend.Count <= maxNumberOfRequests;
 
                     if (isUnderMaxLimit && toSend.Count < GraphBatchLimit)
                         toSend.Add(step);
@@ -406,8 +406,7 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });
-
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sending requests {string.Join(",", tosend.BatchRequestSteps.Keys)}.", RunId = RunId });              
                 var response = await _graphServiceClient.Batch.PostAsync(tosend);
                 var responseStatusCodes = await response.GetResponsesStatusCodesAsync();
                 var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await response.GetResponseByIdAsync(x.Key))));
