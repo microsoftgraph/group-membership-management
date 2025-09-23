@@ -21,64 +21,6 @@ namespace Services.Tests
     public class GraphUpdaterServiceTests
     {
         [TestMethod]
-        public async Task GetFirstMembersPageTest()
-        {
-            var mockLogs = new MockLoggingRepository();
-            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var mockGraphGroup = new Mock<IGraphGroupRepository>();
-            var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
-            var mockSyncJobs = new MockDatabaseSyncJobRepository();
-            var mockGroups = new MockDatabaseGroupsRepository();
-            var mockNotificationType = new MockNotificationTypesRepository();
-            var mockJobNotification = new MockJobNotificationRepository();
-            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
-            var samplePageResponse = GetPageSampleResponse(100, true);
-            var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>())).ReturnsAsync(samplePageResponse);
-            mockGraphGroup.SetupAllProperties();
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object);
-            var groupId = Guid.NewGuid();
-            var runId = Guid.NewGuid();
-            graphUpdaterService.RunId = runId;
-            var response = await graphUpdaterService.GetFirstMembersPageAsync(groupId, runId);
-
-            Assert.IsNotNull(response.NextPageUrl);
-            Assert.AreEqual(userCount, response.Members.Count);
-            Assert.AreNotEqual(Guid.Empty, mockGraphGroup.Object.RunId);
-            Assert.AreEqual(graphUpdaterService.RunId, mockGraphGroup.Object.RunId);
-
-        }
-
-        [TestMethod]
-        public async Task GetNextMembersPageTest()
-        {
-            var mockLogs = new MockLoggingRepository();
-            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var mockGraphGroup = new Mock<IGraphGroupRepository>();
-            var mockMail = new MockMailRepository();
-            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
-            var mockSyncJobs = new MockDatabaseSyncJobRepository();
-            var mockGroups = new MockDatabaseGroupsRepository();
-            var mockNotificationType = new MockNotificationTypesRepository();
-			var mockJobNotification = new MockJobNotificationRepository();
-			var samplePageResponse = GetPageSampleResponse(100, true);
-            var userCount = 100;
-            mockGraphGroup.Setup(x => x.GetNextTransitiveMembersPageAsync(It.IsAny<string>())).ReturnsAsync(samplePageResponse);
-
-            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
-
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object);
-            var groupId = Guid.NewGuid();
-            var runId = Guid.NewGuid();
-            var nextPageUrl = samplePageResponse.nextPageUrl;
-
-            var response = await graphUpdaterService.GetNextMembersPageAsync(nextPageUrl, runId);
-            Assert.IsNotNull(response.NextPageUrl);
-            Assert.AreEqual(userCount, response.Members.Count);
-        }
-
-        [TestMethod]
         public async Task GroupExistsTest()
         {
             var mockLogs = new MockLoggingRepository();

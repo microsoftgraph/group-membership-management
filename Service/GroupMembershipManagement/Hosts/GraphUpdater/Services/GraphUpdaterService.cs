@@ -66,31 +66,6 @@ namespace Services
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
         }
 
-        public async Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId)
-        {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {groupId}." });
-            _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(groupId);
-            return new UsersPageResponse
-            {
-                NextPageUrl = result.nextPageUrl,
-                Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects
-            };
-        }
-
-        public async Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId)
-        {
-            _graphGroupRepository.RunId = runId;
-            var result = await _graphGroupRepository.GetNextTransitiveMembersPageAsync(nextPageUrl);
-            return new UsersPageResponse
-            {
-                NextPageUrl = result.nextPageUrl,
-                Members = result.users,
-                NonUserGraphObjects = result.nonUserGraphObjects
-            };
-        }
-
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
         {
             return await _graphGroupRepository.GroupExists(groupId);

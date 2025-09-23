@@ -12,8 +12,6 @@ namespace Services.Contracts
     public interface IGraphUpdaterService
 	{
 		public Guid RunId { get; set; }
-		public Task<UsersPageResponse> GetFirstMembersPageAsync(Guid groupId, Guid runId);
-		public Task<UsersPageResponse> GetNextMembersPageAsync(string nextPageUrl, Guid runId);
 		public Task<bool> GroupExistsAsync(Guid groupId, Guid runId);
 		public Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
 		public Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
