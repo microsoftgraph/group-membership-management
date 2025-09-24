@@ -83,7 +83,8 @@ export const strings: IStrings = {
     orgLeaderMultipleLevelsTitle: "{0} levels of direct reports of {1}",
     withSummarizedCriteria: "with the following summarized criteria:",
     generateTitle: "Generate AI title",
-    generatingTitleText: "Generating..."
+    generatingTitleText: "Generating...",
+    multipleItemsSelected: "Multiple items selected"
   },
   Components: {
     AppHeader: {

@@ -212,10 +212,10 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                     ? (
                         readOnly
                           // read-only: never clear to '', always show summary when multiple
-                          ? (hasMultiple ? 'Multiple items selected' : undefined)
+                          ? (hasMultiple ? strings.HROnboarding.multipleItemsSelected : undefined)
                           // editable: your existing behavior
                           : (hasMultiple && !(userTyping || isOpen)
-                              ? 'Multiple items selected'
+                              ? strings.HROnboarding.multipleItemsSelected
                               : (isFocused ? searchText : undefined))
                       )
                     : undefined

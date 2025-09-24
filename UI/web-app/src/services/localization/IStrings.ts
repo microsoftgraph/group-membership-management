@@ -81,6 +81,7 @@ export type IStrings = {
     loadingText: string;
     generateTitle: string;
     generatingTitleText: string;
+    multipleItemsSelected: string;
   },
   Components: {
     AppHeader: {
