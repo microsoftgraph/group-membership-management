@@ -17,7 +17,7 @@ namespace Tests.Services
         [TestInitialize]
         public void Initialize()
         {
-            _mockBlobStorageRepository = new MockBlobStorageRepository();                        
+            _mockBlobStorageRepository = new MockBlobStorageRepository();
         }
 
         [TestMethod]
@@ -54,6 +54,25 @@ namespace Tests.Services
             Assert.IsNull(_mockBlobStorageRepository.Blobs.FirstOrDefault(x => x.Name == latestBlob.Name));
             Assert.AreEqual(0, _mockBlobStorageRepository.Blobs.Count(x => x.Name.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase)));
             Assert.AreEqual(otherBlobs, _mockBlobStorageRepository.Blobs.Count(x => !x.Name.StartsWith(prefix, StringComparison.CurrentCultureIgnoreCase)));
+        }
+
+        [TestMethod]
+        public void ExtractGroupMembershipSourceMembers()
+        {
+            var groupMembership = new Models.ServiceBus.GroupMembership();
+
+            groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = Guid.Empty });
+            groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = Guid.Empty });
+
+            for (int i = 0; i < 300000; i++)
+            {
+                groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = Guid.NewGuid() });
+            }
+
+            var json = System.Text.Json.JsonSerializer.Serialize(groupMembership);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+            var guids = Repositories.BlobStorage.GroupMembershipSourceMembersStreamingExtractor.Extract(memoryStream);
+            groupMembership.SourceMembers.ForEach(x => Assert.IsTrue(guids.Contains(x.ObjectId)));
         }
     }
 }

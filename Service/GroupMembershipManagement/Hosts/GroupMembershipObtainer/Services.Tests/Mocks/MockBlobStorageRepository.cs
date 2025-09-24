@@ -107,6 +107,11 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockBlobContainerClient : BlobContainerClient

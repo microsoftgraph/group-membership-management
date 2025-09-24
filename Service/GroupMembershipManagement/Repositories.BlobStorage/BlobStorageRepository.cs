@@ -84,7 +84,7 @@ namespace Repositories.BlobStorage
                 .ToArray();
 
             var adUsers = await Task.WhenAll(blobDeserializationTasks);
-            return adUsers.SelectMany(userList => userList).ToList();
+            return adUsers.SelectMany(userList => userList).Distinct().ToList();
         }
 
         public async Task DeleteBlobsAsync(string path)
@@ -235,6 +235,18 @@ namespace Repositories.BlobStorage
             };
 
             return await Task.FromResult(result);
+        }
+
+        public async Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path)
+        {
+            var blobClient = _containerClient.GetBlobClient(path);
+            var exists = await blobClient.ExistsAsync();
+            if (!exists)
+                throw new FileNotFoundException(path);
+
+            using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(false));
+            var ids = GroupMembershipSourceMembersStreamingExtractor.Extract(stream);
+            return ids;
         }
     }
 }

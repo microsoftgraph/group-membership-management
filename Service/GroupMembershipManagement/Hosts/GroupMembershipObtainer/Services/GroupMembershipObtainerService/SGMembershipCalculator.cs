@@ -207,8 +207,7 @@ namespace Hosts.GroupMembershipObtainer
 
             // get all blobs
             string prefix = $"{targetOfficeGroupId}/userUploads/{runId}_GroupMembership_{currentPart}";
-            var blobResult = await _blobStorageRepository.ReadBlobsAsync(prefix);
-            var sourceMembers = blobResult.Distinct().ToList();
+            var sourceMembers = await _blobStorageRepository.ReadBlobsAsync(prefix);
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
@@ -252,10 +251,8 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult)
         {
-            var blobResult = await _blobStorageRepository.DownloadFileAsync(fileResult.FilePath);
+            var ids = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(fileResult.FilePath);
             var fileName = CacheFileNaming.BuildCacheFileName(id, DateTime.UtcNow);
-            var membership = JsonSerializer.Deserialize<GroupMembership>(blobResult.Content);
-            var ids = membership.SourceMembers.Select(u => u.ObjectId);
             var content = string.Join(Environment.NewLine, ids);
             await _blobStorageRepository.UploadFileAsync(fileName, content);
             await _log.LogMessageAsync(new LogMessage

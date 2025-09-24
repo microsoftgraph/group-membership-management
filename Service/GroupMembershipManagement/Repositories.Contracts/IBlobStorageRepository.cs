@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -21,5 +22,12 @@ namespace Repositories.Contracts
         public Task DeleteBlobsAsync(string path);
         public Task<BlobResult> FindLatestFileAsync(string prefix);
         public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, System.Func<string, T> parseFunction);
+
+        /// <summary>
+        /// Extract distinct SourceMembers[].ObjectId GUIDs from a GroupMembership JSON blob at the given path.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        public Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path);
     }
 }
