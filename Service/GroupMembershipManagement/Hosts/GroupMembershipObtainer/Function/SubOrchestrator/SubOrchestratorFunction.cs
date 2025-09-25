@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.WebJobs;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Azure;
 using Microsoft.Graph;
 using Models;
 using Models.Helpers;
@@ -104,6 +105,27 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                RunId = request.RunId,
                                                                                                Prefix = cacheFilePath
                                                                                            });
+
+                        // Convert cache from GroupMembership to TXT format if needed
+                        if (cacheFileResult.BlobStatus == BlobStatus.Found
+                            && cacheFileResult.Path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            await context.CallActivityAsync(nameof(CacheConverterFunction),
+                            new CacheConverterRequest
+                            {
+                                RunId = request.RunId,
+                                ObjectId = request.SourceGroup.ObjectId,
+                                FilePath = cacheFileResult.Path
+                            });
+
+                            cacheFileResult = await context.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction),
+                                                                        new BlobCheckerRequest
+                                                                        {
+                                                                            RunId = request.RunId,
+                                                                            Prefix = cacheFilePath
+                                                                        });
+                        }
+
                         var fullCacheFilePath = cacheFileResult.Path;
 
                         if (string.IsNullOrEmpty(deltaFileContent) || cacheFileResult.BlobStatus == BlobStatus.NotFound)
