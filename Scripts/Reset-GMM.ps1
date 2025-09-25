@@ -229,7 +229,9 @@ function Reset-GMM {
         2 = 'Resetting'
         3 = 'Stopping'
         4 = 'Starting'
-        5 = 'Error'
+        5 = 'Rescheduled'
+        6 = 'Rescheduling'
+        7 = 'Error'
     }
 
     $api_url = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/api/v1/operations/Reset"
@@ -258,7 +260,8 @@ function Reset-GMM {
             }
             else {
                 $delay = $baseDelay * [Math]::Pow(2, $attempt - 1)
-                Write-Host "HTTP call attempt $attempt failed. Retrying in $delay seconds..."
+                Write-Host "HTTP call attempt $attempt failed. Error: $($_.Exception.Message)"
+                Write-Host "Retrying in $delay seconds..."
                 Start-Sleep -Seconds $delay
             }
         }
@@ -268,16 +271,23 @@ function Reset-GMM {
     $response = Invoke-RestMethod -Uri $api_url -Headers $headers -Method GET
     [int]$statusCode = [int]$response.status
     $startTime = Get-Date
+    $waitTimeSeconds = 30
 
     while ($response.status -ne 0) {
         $statusCode = [int]$response.status
-        Write-Output "Current service status: $($serviceStatuses[$statusCode]), checking again in 60 seconds..."
-        Start-Sleep -Seconds 60
+
+        if ($response.status -eq 7) {
+            Write-Error "❌ Restart operation failed. GMM is in Error state. Please check Log Analytics for details."
+            throw
+        }
+
+        Write-Host "Current service status: $($serviceStatuses[$statusCode]), checking again in $waitTimeSeconds seconds..."
+        Start-Sleep -Seconds $waitTimeSeconds
         $api_url = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/api/v1/operations/servicestatus"
         $response = Invoke-RestMethod -Uri $api_url -Headers $headers -Method GET
 
         if ((Get-Date) - $startTime -gt (New-TimeSpan -Minutes 10)) {
-            Write-Host "Wait for 10 minutes to reset GMM, proceeding to next step."
+            Write-Warning "The reset operation did not complete within the expected time frame of 10 minutes. Skipping further status checks. Check Log Analytics for more details."
             break
         }
     }
@@ -285,7 +295,7 @@ function Reset-GMM {
     $statusCode = [int]$response.status
 
     if ($response.status -eq 0) {
-        Write-Output "Current service status: $($serviceStatuses[$statusCode])"
+        Write-Host "Current service status: $($serviceStatuses[$statusCode])"
     }
 
     return $serviceStatuses[$statusCode];
@@ -368,15 +378,7 @@ function Set-AppRoleToServicePrincipal {
         [string]$AppRoleId
     )
 
-    $scriptsDirectory = $PSScriptRoot
-
     Write-Host "Setting app role to service principal with ID: $PrincipalId"
-
-    . (Join-Path $scriptsDirectory 'Install-MSGraphIfNeeded.ps1')
-	Install-MSGraphIfNeeded
-
-    # Connect to Microsoft Graph
-    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
 
     try {
         # Retrieve existing app role assignments for the service principal
@@ -423,11 +425,15 @@ function Set-WebAPIAsResetAdministrator {
 
     Write-Host "Setting WebAPI as Reset Administrator"
 
-    . (Join-Path $scriptsDirectory 'Install-MSGraphIfNeeded.ps1')
-	Install-MSGraphIfNeeded
-
+    if ($global:SkipModuleInstall -ne $true) {
+        . (Join-Path $scriptsDirectory 'Install-MSGraphIfNeeded.ps1')
+	    Install-MSGraphIfNeeded
+    }
+    
     # Connect to Microsoft Graph
-    Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
+    if ($global:SkipMSGraphLogin -ne $true) {
+        Connect-MgGraph -Scopes "AppRoleAssignment.ReadWrite.All"
+    }
 
     try {
         # Define the target role value

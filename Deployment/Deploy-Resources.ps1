@@ -1881,6 +1881,9 @@ function Deploy-Resources {
         [string]$ParameterFileName = "parameters.json"
     )
 
+    $global:SkipModuleInstall = $true
+    $global:SkipMSGraphLogin = $true
+
     $deploymentPackageDirectory = Split-Path $PSScriptRoot -Parent
     $templateFilesDirectory = $deploymentPackageDirectory + "\Deployment"
     $scriptsDirectory = $deploymentPackageDirectory + "\scripts"
@@ -1924,11 +1927,13 @@ function Deploy-Resources {
     }
 
     if(!$isInitialDeployment) {
-
+        
         $jobTrigger = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup `
                                         -Name "$computeResourceGroup-JobTrigger"
 
+        Write-Host "`nStopping JobTrigger function app to prevent interference with deployment..."
         Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
+        Write-Host "JobTrigger function app stopped." -ForegroundColor Green
 
         . "$deploymentPackageDirectory\Scripts\Reset-GMM.ps1" #  Import helper functions
 
@@ -2051,6 +2056,10 @@ function Deploy-Resources {
         Stop-FunctionApps -ResourceGroupName $computeResourceGroup
 
         . ($scriptsDirectory + '\Reset-GMM.ps1')
+
+        Set-WebAPIAsResetAdministrator `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation
 
         if($resetGMMType -eq "Credentials") {
             Reset-GMMWithCredentials `
