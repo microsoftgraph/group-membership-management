@@ -86,5 +86,10 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
