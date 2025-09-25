@@ -127,8 +127,6 @@ function Set-Subscription {
         [string]$ScriptsDirectory
     )
 
-    Connect-AzAccount
-
     if (-not $SubscriptionId) {
         Write-Host "`nCurrent subscription:`n"
         $currentSubscription = (Get-AzContext).Subscription
@@ -1779,6 +1777,8 @@ function Initialize-ScriptDependencies {
         [string]$SubscriptionId,
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $true)]
+        [bool]$UseDeviceAuthentication,
         [Parameter(Mandatory = $false)]
         [bool]$AssertUserPermissions = $true
     )
@@ -1787,18 +1787,28 @@ function Initialize-ScriptDependencies {
 
     Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
 
-    if ($AssertUserPermissions -eq $true) {
-        # Connect to Microsoft Graph with required scopes
-        $requiredScopes = @(
-            "AppRoleAssignment.ReadWrite.All",
-            "Directory.ReadWrite.All"
-        )
+    # Connect to Microsoft Graph with required scopes
+    $requiredScopes = @(
+        "AppRoleAssignment.ReadWrite.All",
+        "Directory.ReadWrite.All"
+    )
 
-        Disconnect-MgGraph -ErrorAction SilentlyContinue
-        Connect-MgGraph -Scopes $requiredScopes
+    Write-Host "Disconnecting any existing Microsoft Graph sessions..."
+    Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
 
-        . ($ScriptsDirectory + '\Assert-MicrosoftGraphPermissions.ps1')
-        Assert-MicrosoftGraphPermissions
+    # Connect to Microsoft Graph and Azure
+    if ($UseDeviceAuthentication -eq $true) {
+        Write-Host "Connecting to Microsoft Graph using device code authentication..."
+        Connect-MgGraph -Scopes $requiredScopes -NoWelcome -UseDeviceCode
+
+        Write-Host "Connecting to Azure using device code authentication..."
+        Connect-AzAccount -UseDeviceAuthentication
+    }
+    else {
+        Write-Host "Connecting to Microsoft Graph using interactive authentication..."
+        Connect-MgGraph -Scopes $requiredScopes -NoWelcome
+        Write-Host "Connecting to Azure using interactive authentication..."
+        Connect-AzAccount
     }
 
     Set-Subscription `
@@ -1806,6 +1816,9 @@ function Initialize-ScriptDependencies {
             -SubscriptionId $SubscriptionId
 
     if ($AssertUserPermissions -eq $true) {
+        . ($ScriptsDirectory + '\Assert-MicrosoftGraphPermissions.ps1')
+        Assert-MicrosoftGraphPermissions
+
         . ($ScriptsDirectory + '\Assert-RbacPermissionsForDeployment.ps1')
         Assert-RbacPermissionsForDeployment `
             -SolutionAbbreviation $SolutionAbbreviation `
@@ -1903,6 +1916,7 @@ function Deploy-Resources {
     $setUserAssignedManagedIdentityPermissions      = $parameterHashtable.setUserAssignedManagedIdentityPermissions.value
     $isInitialDeployment                            = $parameterHashtable.isInitialDeployment.value
     $resetGMMType                                   = $parameterHashtable.resetGMMType.value
+    $useDeviceAuthentication                        = $parameterHashtable.useDeviceAuthentication.value
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $createAppRegistrations         = Get-Default -Value $ParameterHashtable['createAppRegistrations'].value  -Default $true
@@ -1920,6 +1934,7 @@ function Deploy-Resources {
         -Location $location `
         -SubscriptionId $subscriptionId `
         -ScriptsDirectory $scriptsDirectory `
+        -UseDeviceAuthentication $useDeviceAuthentication `
         -AssertUserPermissions $assertUserPermissions
 
     if (!$skipResourceProvidersCheck) {

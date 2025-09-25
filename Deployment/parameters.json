@@ -198,6 +198,13 @@
         "required": true
       }
     },
+    "useDeviceAuthentication": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to indicate whether to use device authentication.",
+        "required": true
+      }
+    },
     "setRBACPermissions": {
       "value": true,
       "metadata": {
