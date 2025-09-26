@@ -52,7 +52,17 @@ namespace WebApi.BackgroundServices
             credential = new ManagedIdentityCredential();
 #endif
 
-            _serviceBusClient = new ServiceBusClient(operationsSettings.ServiceBusFQN, credential);
+            _serviceBusClient = new ServiceBusClient(
+                                        operationsSettings.ServiceBusFQN,
+                                        credential,
+                                        new ServiceBusClientOptions
+                                        {
+                                            RetryOptions = new ServiceBusRetryOptions
+                                            {
+                                                TryTimeout = TimeSpan.FromSeconds(30),
+                                            }
+                                        });
+
             _sbAdministrationClient = new ServiceBusAdministrationClient(_operationsSettings.ServiceBusFQN, credential);
             _httpClient = new HttpClient();
         }
@@ -152,6 +162,71 @@ namespace WebApi.BackgroundServices
             }
         }
 
+        private async Task<long> DrainReceiverAsync(
+            ServiceBusReceiver receiver,
+            Func<CancellationToken, Task<long>>? remainingMessageCountProvider,
+            string entityName,
+            int batchSize,
+            int consecutiveEmptyThreshold,
+            TimeSpan maxWaitTime,
+            CancellationToken cancellationToken)
+        {
+            long totalReceived = 0;
+            int emptyStreak = 0;
+            int iteration = 0;
+
+            while (true)
+            {
+                iteration++;
+                var messages = await receiver.ReceiveMessagesAsync(batchSize, maxWaitTime, cancellationToken);
+                if (messages.Count == 0)
+                {
+                    emptyStreak++;
+
+                    if (remainingMessageCountProvider != null)
+                    {
+                        var remaining = await remainingMessageCountProvider(cancellationToken);
+                        if (remaining == 0 && emptyStreak >= consecutiveEmptyThreshold)
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained after {iteration} iterations. Total received: {totalReceived}" });
+                            break;
+                        }
+
+                        if (remaining > 0 && emptyStreak == 1)
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} runtime indicates {remaining} messages remain after an empty batch; continuing..." });
+                        }
+                    }
+                    else if (emptyStreak >= consecutiveEmptyThreshold)
+                    {
+                        // No runtime provider; trust consecutive empties
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained (no runtime verification) after {iteration} iterations. Total received: {totalReceived}" });
+                        break;
+                    }
+                }
+                else
+                {
+                    totalReceived += messages.Count;
+                    emptyStreak = 0;
+
+                    if (iteration % 10 == 0)
+                    {
+                        if (remainingMessageCountProvider != null)
+                        {
+                            var remaining = await remainingMessageCountProvider(cancellationToken);
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} progress: received {messages.Count} (total {totalReceived}). Remaining (approx): {remaining}" });
+                        }
+                        else
+                        {
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} progress: received {messages.Count} (total {totalReceived})." });
+                        }
+                    }
+                }
+            }
+
+            return totalReceived;
+        }
+
         private async Task ClearQueueAsync(string queueName, CancellationToken cancellationToken)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage
@@ -161,14 +236,22 @@ namespace WebApi.BackgroundServices
 
             var receiver = _serviceBusClient.CreateReceiver(queueName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
 
-            while (true)
+            // Provide runtime properties for stronger assurance
+            Func<CancellationToken, Task<long>> remainingProvider = async ct =>
             {
-                var messages = await receiver.ReceiveMessagesAsync(100, TimeSpan.FromSeconds(10), cancellationToken);
-                if (messages.Count == 0)
-                {
-                    break;
-                }
-            }
+                var runtime = await _sbAdministrationClient.GetQueueRuntimePropertiesAsync(queueName, ct);
+                return runtime.Value.ActiveMessageCount + runtime.Value.ScheduledMessageCount;
+            };
+
+            await DrainReceiverAsync(
+                receiver,
+                remainingProvider,
+                entityName: $"Queue {queueName}",
+                batchSize: 100,
+                consecutiveEmptyThreshold: 3,
+                maxWaitTime: TimeSpan.FromSeconds(10),
+                cancellationToken: cancellationToken);
+
             await receiver.CloseAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -185,19 +268,100 @@ namespace WebApi.BackgroundServices
 
             var receiver = _serviceBusClient.CreateReceiver(topicName, subscriptionName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
 
-            while (true)
+            // Use subscription runtime properties for verification (Scheduled count not exposed for subscriptions)
+            Func<CancellationToken, Task<long>> remainingProvider = async ct =>
             {
-                var messages = await receiver.ReceiveMessagesAsync(100, TimeSpan.FromSeconds(10), cancellationToken);
-                if (messages == null || messages.Count == 0)
-                {
-                    break;
-                }
-            }
+                var runtime = await _sbAdministrationClient.GetSubscriptionRuntimePropertiesAsync(topicName, subscriptionName, ct);
+                // Active messages are what we can drain here.
+                return runtime.Value.ActiveMessageCount;
+            };
+
+            await DrainReceiverAsync(
+                receiver,
+                remainingProvider,
+                entityName: $"Topic {topicName}/Subscription {subscriptionName}",
+                batchSize: 100,
+                consecutiveEmptyThreshold: 2, // can be smaller for topics
+                maxWaitTime: TimeSpan.FromSeconds(10),
+                cancellationToken: cancellationToken);
 
             await receiver.CloseAsync();
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Clearing topic {topicName} subscription {subscriptionName} completed"
+            });
+        }
+
+        private async Task ClearSessionEnabledTopicAsync(string topicName, string subscriptionName, CancellationToken cancellationToken)
+        {
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Clearing (session-enabled) topic {topicName} subscription {subscriptionName}"
+            });
+
+            int sessionsCleared = 0;
+            while (true)
+            {
+                ServiceBusSessionReceiver? sessionReceiver = null;
+                try
+                {
+                    sessionReceiver = await _serviceBusClient.AcceptNextSessionAsync(
+                        topicName,
+                        subscriptionName,
+                        new ServiceBusSessionReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete },
+                        cancellationToken);
+                }
+                catch (ServiceBusException sbEx) when (sbEx.Reason == ServiceBusFailureReason.ServiceTimeout)
+                {
+                    break; // no more sessions
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to accept next session for {topicName}/{subscriptionName}.\n{ex}" });
+                    break;
+                }
+
+                if (sessionReceiver == null)
+                {
+                    break;
+                }
+
+                sessionsCleared++;
+                var sessionEntityName = $"Topic {topicName}/Subscription {subscriptionName}/Session {sessionReceiver.SessionId}";
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Clearing session {sessionReceiver.SessionId} for {topicName}/{subscriptionName}" });
+
+                try
+                {
+                    // No runtime per-session, rely on consecutive empties only
+                    await DrainReceiverAsync(
+                        sessionReceiver,
+                        remainingMessageCountProvider: null,
+                        entityName: sessionEntityName,
+                        batchSize: 100,
+                        consecutiveEmptyThreshold: 2,
+                        maxWaitTime: TimeSpan.FromSeconds(10),
+                        cancellationToken: cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error while clearing session {sessionReceiver.SessionId} for {topicName}/{subscriptionName}.\n{ex}" });
+                }
+                finally
+                {
+                    try { await sessionReceiver.CloseAsync(cancellationToken); } catch { }
+                }
+            }
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Clearing (session-enabled) topic {topicName} subscription {subscriptionName} completed. Sessions processed: {sessionsCleared}"
             });
         }
 
@@ -216,27 +380,14 @@ namespace WebApi.BackgroundServices
                 var subscriptions = _sbAdministrationClient.GetSubscriptionsAsync(topic.Name);
                 await foreach (var subscription in subscriptions)
                 {
-                    clearTopicTasks.Add(ClearTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken));
+                    if (subscription.RequiresSession)
+                        clearTopicTasks.Add(ClearSessionEnabledTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken));
+                    else
+                        clearTopicTasks.Add(ClearTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken));
                 }
             }
 
             await Task.WhenAll(clearTopicTasks);
-        }
-
-        private async Task<(string topicName, List<string> subscriptions)> GetSubscriptionsAsync(string topicName)
-        {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Getting subscriptions for topic {topicName}"
-            });
-
-            var subscriptionNames = new List<string>();
-            await foreach (var subscription in _sbAdministrationClient.GetSubscriptionsAsync(topicName))
-            {
-                subscriptionNames.Add(subscription.SubscriptionName);
-            }
-
-            return (topicName, subscriptionNames);
         }
 
         private async Task ClearInternalTablesAndQueuesAsync(CancellationToken cancellationToken)
@@ -246,7 +397,6 @@ namespace WebApi.BackgroundServices
                 Message = "Clearing function's internal tables and queues..."
             });
 
-            // FunctionName, StorageAccountName
             var storageAccounts = await _resourceManagerService.GetWebSitesStorageAccountsAsync(cancellationToken);
             foreach (var storageAccount in storageAccounts)
             {
