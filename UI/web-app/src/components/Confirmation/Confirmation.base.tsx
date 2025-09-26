@@ -345,7 +345,6 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               </div>
               <Separator />
               <TextField
-                data-testid="business-justification-textfield"
                 multiline
                 resizable={true}
                 autoAdjustHeight
