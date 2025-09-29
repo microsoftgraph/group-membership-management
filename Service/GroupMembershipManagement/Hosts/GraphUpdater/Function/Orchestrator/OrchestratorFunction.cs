@@ -1,7 +1,5 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure.Messaging.EventGrid.SystemEvents;
-using GraphUpdater.Activity.JobTracker;
 using GraphUpdater.Entities;
 using GraphUpdater.Helpers;
 using Microsoft.ApplicationInsights;
@@ -230,15 +228,8 @@ namespace Hosts.GraphUpdater
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, SyncJob = syncJob });
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                CreateJobStatusUpdaterRequest(
-                                                                    groupMembership.SyncJobId,
-                                                                    SyncStatus.Idle,
-                                                                    0,
-                                                                    groupMembership.RunId,
-                                                                    membersAddedResponse.SuccessCount,
-                                                                    membersRemovedResponse.SuccessCount,
-                                                                    context.CurrentUtcDateTime));
-
+                                    CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
+                                                                    SyncStatus.Idle, 0, groupMembership.RunId));
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, RunId = syncJob.RunId });
                 if (!context.IsReplaying)
                 {
@@ -397,20 +388,6 @@ namespace Hosts.GraphUpdater
                 JobId = jobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations
-            };
-        }
-
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId, int? usersAdded = null, int? usersRemoved = null, DateTime? endTime = null)
-        {
-            return new JobStatusUpdaterRequest
-            {
-                RunId = runId,
-                JobId = jobId,
-                Status = syncStatus,
-                ThresholdViolations = thresholdViolations,
-                UsersAddedCount = usersAdded,
-                UsersRemovedCount = usersRemoved,
-                JobEndTime = endTime
             };
         }
 

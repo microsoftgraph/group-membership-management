@@ -11,10 +11,5 @@ namespace Hosts.GraphUpdater
         public Guid JobId { get; set; }
         public SyncStatus Status { get; set; }
         public int ThresholdViolations { get; set; }
-        public int? UsersAddedCount { get; set; }
-        public int? UsersRemovedCount { get; set; }
-        public DateTime? JobStartTime { get; set; }
-        public DateTime? JobEndTime { get; set; }
-
     }
 }
