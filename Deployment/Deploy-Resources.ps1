@@ -1048,9 +1048,7 @@ function Set-RBACPermissions {
     Set-PostDeploymentRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
-        -InstallRequiredModules $false `
-        -ConnectToMsGraph $false 
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
 
 }
 
@@ -1762,6 +1760,11 @@ function Install-RequiredModules {
         Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
     }
     Write-Host "Completed installation/import of required Microsoft Graph PowerShell modules." -ForegroundColor Green
+
+    # Install MSIdentityTools module to get Azure IP ranges
+    Write-Host "Installing MSIdentityTools..."
+    Install-ModuleIfNeeded -Name MSIdentityTools -Version "2.0.52" -Verbose
+    Write-Host "Completed installation/import of MSIdentityTools Module." -ForegroundColor Green
 }
 
 function Initialize-ScriptDependencies {
@@ -1779,13 +1782,20 @@ function Initialize-ScriptDependencies {
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
         [bool]$UseDeviceAuthentication,
+        [Parameter(Mandatory = $true)]
+        [bool]$SkipModuleInstallation,
         [Parameter(Mandatory = $false)]
         [bool]$AssertUserPermissions = $true
     )
 
     Test-ScriptDependencies
 
-    Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
+    if ($SkipModuleInstallation -eq $true) {
+        Write-Host "Skipping module installation as per configuration." -ForegroundColor Yellow
+    } else {
+        Write-Host "Installing required PowerShell modules..."
+        Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
+    }
 
     # Connect to Microsoft Graph with required scopes
     $requiredScopes = @(
@@ -1917,6 +1927,7 @@ function Deploy-Resources {
     $isInitialDeployment                            = $parameterHashtable.isInitialDeployment.value
     $resetGMMType                                   = $parameterHashtable.resetGMMType.value
     $useDeviceAuthentication                        = $parameterHashtable.useDeviceAuthentication.value
+    $skipModuleInstallation                         = $parameterHashtable.skipModuleInstallation.value
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $createAppRegistrations         = Get-Default -Value $ParameterHashtable['createAppRegistrations'].value  -Default $true
@@ -1935,6 +1946,7 @@ function Deploy-Resources {
         -SubscriptionId $subscriptionId `
         -ScriptsDirectory $scriptsDirectory `
         -UseDeviceAuthentication $useDeviceAuthentication `
+        -SkipModuleInstallation $skipModuleInstallation `
         -AssertUserPermissions $assertUserPermissions
 
     if (!$skipResourceProvidersCheck) {

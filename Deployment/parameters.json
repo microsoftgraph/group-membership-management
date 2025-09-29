@@ -205,6 +205,13 @@
         "required": true
       }
     },
+    "skipModuleInstallation": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to indicate whether to skip the installation of required PowerShell modules. Only set to true if running from docker container.",
+        "required": true
+      }
+    },
     "setRBACPermissions": {
       "value": true,
       "metadata": {

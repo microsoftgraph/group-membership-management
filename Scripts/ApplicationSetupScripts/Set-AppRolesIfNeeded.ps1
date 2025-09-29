@@ -28,9 +28,11 @@ function Set-AppRolesIfNeeded {
     )
     Write-Verbose "Set-AppRolesIfNeeded starting..."
 
-    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-    . ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
-    Install-AzModuleIfNeeded
+    if ($global:SkipModuleInstall -ne $true) {
+        $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+		. ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
+    	Install-AzModuleIfNeeded
+	}
 
     $context = Get-AzContext
 	$currentTenantId = $context.Tenant.Id
