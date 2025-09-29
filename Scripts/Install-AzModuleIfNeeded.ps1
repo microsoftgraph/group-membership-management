@@ -17,5 +17,5 @@ function Install-AzModuleIfNeeded {
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
         . ($scriptsDirectory + '\Scripts\Install-ModuleIfNeeded.ps1')
-        Install-ModuleIfNeeded -Name Az -Version "11.6.0" -Verbose
+        Install-ModuleIfNeeded -Name Az -Version "13.0.0" -Verbose
 }
