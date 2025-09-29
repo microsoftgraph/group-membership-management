@@ -105,7 +105,8 @@ namespace WebApi
                     .Select("NumberOfThresholdViolationsFollowUps")
                     .Select("NumberOfThresholdViolationsToDisableJob")
                     .Select("PendingConfiguration:*")
-                    .Select("TeamsChannel:*");
+                    .Select("TeamsChannel:*")
+                    .Select("AzureMaintenance:*");
             });
 
             // Add services to the container.
