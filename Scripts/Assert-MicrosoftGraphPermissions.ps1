@@ -37,19 +37,12 @@ function Assert-MicrosoftGraphPermissions {
         )
     )
 
-    try {
-        Write-Host "Checking Microsoft Graph connection..." -ForegroundColor Cyan
-        $context = Get-MgContext
-        if (-not $context -or -not $context.Scopes) {
-            Write-Host "`nNot connected to Microsoft Graph. Connecting now..." -ForegroundColor Yellow
-            Connect-MgGraph -Scopes $RequiredScopes
-            $context = Get-MgContext
-        }
-        Write-Host "✅ Connected to Microsoft Graph as $($context.Account)" -ForegroundColor Green
-    } catch {
-        Write-Error "Failed to get Microsoft Graph context. Check that all required MSGraph modules are properly installed and rerun this script from a new PowerShell session."
-        throw
+    Write-Host "Checking Microsoft Graph connection..." -ForegroundColor Cyan
+    $context = Get-MgContext
+    if (-not $context -or -not $context.Scopes) {
+        throw "❌ Not connected to Microsoft Graph. Please run `Connect-MgGraph -Scopes $($RequiredScopes -join ', ')` to sign in."
     }
+    Write-Host "✅ Connected to Microsoft Graph as $($context.Account)" -ForegroundColor Green
 
     $tokenScopes = $context.Scopes
     $missingScopes = $RequiredScopes | Where-Object { $_ -notin $tokenScopes }
