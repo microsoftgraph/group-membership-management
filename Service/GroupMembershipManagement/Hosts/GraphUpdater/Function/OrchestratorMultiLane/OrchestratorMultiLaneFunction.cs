@@ -91,7 +91,7 @@ namespace Hosts.GraphUpdater
                                                            RunId = runId
                                                        });
 
-                if (syncJob.Status != SyncStatus.InProgress.ToString())
+                if (syncJob.Status != SyncStatus.InProgress.ToString() && syncJob.Status != SyncStatus.StuckInProgress.ToString())
                 {
                     await context.CallActivityAsync(nameof(LoggerFunction),
                                                     new LoggerRequest { Message = $"Sync job status is {syncJob.Status}. Skipping additional messages if any.", SyncJob = syncJob });
