@@ -82,8 +82,9 @@ namespace WebApi.BackgroundServices
                         if (operationDetails.Operation == Operations.Reset)
                         {
                             await _resourceManagerService.StopWebSitesAsync(operationDetails.RequestorId, cancellationToken);
-                            await ClearInternalTablesAndQueuesAsync(cancellationToken);
-                            await ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
+                            var internalTQs = ClearInternalTablesAndQueuesAsync(cancellationToken);
+                            var maQueue = ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
+                            await Task.WhenAll(internalTQs, maQueue);
                             await ClearAllTopicsAsync(cancellationToken);
                             await ResetJobsInProgressAsync();
                             await SetStatusAsync(ServiceStatuses.Stopped, operationDetails.RequestorId);
@@ -99,8 +100,9 @@ namespace WebApi.BackgroundServices
                         else if (operationDetails.Operation == Operations.Stop)
                         {
                             await _resourceManagerService.StopWebSitesAsync(operationDetails.RequestorId, cancellationToken);
-                            await ClearInternalTablesAndQueuesAsync(cancellationToken);
-                            await ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
+                            var internalTQs = ClearInternalTablesAndQueuesAsync(cancellationToken);
+                            var maQueue = ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
+                            await Task.WhenAll(internalTQs, maQueue);
                             await ClearAllTopicsAsync(cancellationToken);
                             await SetStatusAsync(ServiceStatuses.Stopped, operationDetails.RequestorId);
                             await _loggingRepository
@@ -171,35 +173,92 @@ namespace WebApi.BackgroundServices
             TimeSpan maxWaitTime,
             CancellationToken cancellationToken)
         {
+            // Dynamic + Stall logic implementation
+            // Capture initial remaining (if provider supplied) to scale iteration cap.
+            long? startRemaining = null;
+            if (remainingMessageCountProvider != null)
+            {
+                try { startRemaining = await remainingMessageCountProvider(cancellationToken); } catch { /* ignore */ }
+            }
+
+            int expectedIterations = startRemaining.HasValue
+                                        ? (int)Math.Ceiling(startRemaining.Value / (double)batchSize)
+                                        : 200; // Fallback when we can't read remaining (no provider, e.g., per-session drain).
+                                               // 200 => maxIterations 800 supports ~80K messages at batchSize 100;
+            const int OvershootFactor = 3;      // Allow multiple passes worth of iterations.
+            const int IterationBuffer = 200;    // Flat buffer to tolerate tail partial batches.
+            int maxIterations = expectedIterations * OvershootFactor + IterationBuffer;
+
+            const int StagnantEmptyLimit = 50;  // Number of consecutive empty polls with unchanged remaining before declaring stall.
+            int stagnantEmptyIterations = 0;
             long totalReceived = 0;
+            long lastTotalReceived = 0;
+            long? lastRemaining = startRemaining;
             int emptyStreak = 0;
             int iteration = 0;
+
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drain starting (startRemaining={startRemaining?.ToString() ?? "?"}, expectedIterations={expectedIterations}, maxIterations={maxIterations})." });
 
             while (true)
             {
                 iteration++;
-                var messages = await receiver.ReceiveMessagesAsync(batchSize, maxWaitTime, cancellationToken);
+                IReadOnlyList<ServiceBusReceivedMessage> messages;
+                try
+                {
+                    messages = await receiver.ReceiveMessagesAsync(batchSize, maxWaitTime, cancellationToken);
+                }
+                catch (ServiceBusException sbEx) when (sbEx.IsTransient)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} transient receive error ({sbEx.Reason}); retrying (iteration {iteration})." });
+                    continue;
+                }
+
                 if (messages.Count == 0)
                 {
                     emptyStreak++;
 
                     if (remainingMessageCountProvider != null)
                     {
-                        var remaining = await remainingMessageCountProvider(cancellationToken);
-                        if (remaining == 0 && emptyStreak >= consecutiveEmptyThreshold)
-                        {
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained after {iteration} iterations. Total received: {totalReceived}" });
-                            break;
-                        }
+                        long remaining;
+                        try { remaining = await remainingMessageCountProvider(cancellationToken); }
+                        catch { remaining = -1; }
 
-                        if (remaining > 0 && emptyStreak == 1)
+                        if (remaining >= 0)
                         {
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} runtime indicates {remaining} messages remain after an empty batch; continuing..." });
+                            if (remaining == 0 && emptyStreak >= consecutiveEmptyThreshold)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained after {iteration} iterations. Total received: {totalReceived}" });
+                                break;
+                            }
+
+                            if (remaining > 0 && emptyStreak == 1)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} runtime indicates {remaining} messages remain after an empty batch; continuing..." });
+                            }
+
+                            // Stagnation detection: remaining not changing while empties accumulate
+                            if (lastRemaining.HasValue && remaining == lastRemaining && totalReceived == lastTotalReceived)
+                                stagnantEmptyIterations++;
+                            else
+                                stagnantEmptyIterations = 0;
+
+                            lastRemaining = remaining;
+
+                            if (stagnantEmptyIterations >= StagnantEmptyLimit)
+                            {
+                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"WARNING: {entityName} stopping due to stagnation (remaining still {remaining}) after {stagnantEmptyIterations} stagnant empty polls. Total received: {totalReceived}" });
+                                break;
+                            }
+                        }
+                        else if (emptyStreak >= consecutiveEmptyThreshold)
+                        {
+                            // Can't read runtime; trust empties
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained (runtime unavailable) after {iteration} iterations. Total received: {totalReceived}" });
+                            break;
                         }
                     }
                     else if (emptyStreak >= consecutiveEmptyThreshold)
                     {
-                        // No runtime provider; trust consecutive empties
                         await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained (no runtime verification) after {iteration} iterations. Total received: {totalReceived}" });
                         break;
                     }
@@ -208,13 +267,16 @@ namespace WebApi.BackgroundServices
                 {
                     totalReceived += messages.Count;
                     emptyStreak = 0;
+                    stagnantEmptyIterations = 0; // progress resets stagnation
 
                     if (iteration % 10 == 0)
                     {
                         if (remainingMessageCountProvider != null)
                         {
-                            var remaining = await remainingMessageCountProvider(cancellationToken);
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} progress: received {messages.Count} (total {totalReceived}). Remaining (approx): {remaining}" });
+                            long remaining;
+                            try { remaining = await remainingMessageCountProvider(cancellationToken); }
+                            catch { remaining = -1; }
+                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} progress: received {messages.Count} (total {totalReceived}). Remaining (approx): {(remaining >= 0 ? remaining.ToString() : "?")}" });
                         }
                         else
                         {
@@ -222,8 +284,18 @@ namespace WebApi.BackgroundServices
                         }
                     }
                 }
+
+                lastTotalReceived = totalReceived;
+
+                // Dynamic iteration cap safeguard
+                if (iteration >= maxIterations)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"WARNING: {entityName} reached dynamic iteration cap {iteration}/{maxIterations}. Total received: {totalReceived}. Remaining(est)={lastRemaining?.ToString() ?? "?"}" });
+                    break;
+                }
             }
 
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"PURGE-SUMMARY entity=\"{entityName}\" totalRemoved={totalReceived} iterations={iteration}" });
             return totalReceived;
         }
 
@@ -240,7 +312,7 @@ namespace WebApi.BackgroundServices
             Func<CancellationToken, Task<long>> remainingProvider = async ct =>
             {
                 var runtime = await _sbAdministrationClient.GetQueueRuntimePropertiesAsync(queueName, ct);
-                return runtime.Value.ActiveMessageCount + runtime.Value.ScheduledMessageCount;
+                return runtime.Value.ActiveMessageCount;
             };
 
             await DrainReceiverAsync(
@@ -374,21 +446,34 @@ namespace WebApi.BackgroundServices
 
             var topics = _sbAdministrationClient.GetTopicsAsync();
             var clearTopicTasks = new List<Task>();
+            var maxDegreeOfParallelism = 3;
+            using var sem = new SemaphoreSlim(maxDegreeOfParallelism);
 
             await foreach (var topic in topics)
             {
                 var subscriptions = _sbAdministrationClient.GetSubscriptionsAsync(topic.Name);
                 await foreach (var subscription in subscriptions)
                 {
-                    if (subscription.RequiresSession)
-                        clearTopicTasks.Add(ClearSessionEnabledTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken));
-                    else
-                        clearTopicTasks.Add(ClearTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken));
+                    clearTopicTasks.Add(RunLimitedAsync(
+                        sem,
+                        cancellationToken,
+                        subscription.RequiresSession
+                            ? () => ClearSessionEnabledTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken)
+                            : () => ClearTopicAsync(topic.Name, subscription.SubscriptionName, cancellationToken)
+                    ));
                 }
             }
 
             await Task.WhenAll(clearTopicTasks);
         }
+
+        private Task RunLimitedAsync(SemaphoreSlim sem, CancellationToken ct, Func<Task> work) =>
+        Task.Run(async () =>
+        {
+            await sem.WaitAsync(ct);
+            try { await work(); }
+            finally { sem.Release(); }
+        }, ct);
 
         private async Task ClearInternalTablesAndQueuesAsync(CancellationToken cancellationToken)
         {
