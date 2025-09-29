@@ -8,7 +8,9 @@ function Set-PreDeploymentMigrations {
         [Parameter(Mandatory = $false)]
         [string]$SyncJobsDBConnectionString,
         [Parameter(Mandatory = $false)]
-        [string]$ADFDBConnectionString
+        [string]$ADFDBConnectionString,
+        [Parameter(Mandatory = $false)]
+        [string]$ComputeResourcesArmTemplatePath
 	)
 
 	Write-Verbose "Set-PreDeploymentMigrations starting..."
@@ -24,13 +26,24 @@ function Set-PreDeploymentMigrations {
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -SkipConfirmation
 
-    Start-FlexConsumptionMigration `
-        -FunctionTemplatesPath $FunctionTemplatesPath `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
-        -ADFDBConnectionString $ADFDBConnectionString `
-        -SkipConfirmation
+    if ([string]::IsNullOrEmpty($ComputeResourcesArmTemplatePath)) {
+        Start-FlexConsumptionMigration `
+            -FunctionTemplatesPath $FunctionTemplatesPath `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
+            -ADFDBConnectionString $ADFDBConnectionString `
+            -SkipConfirmation
+    } else {
+        Start-FlexConsumptionMigration `
+            -ComputeResourcesArmTemplatePath $ComputeResourcesArmTemplatePath `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
+            -ADFDBConnectionString $ADFDBConnectionString `
+            -SkipConfirmation
+    }
+
 
 	Write-Verbose "Set-PreDeploymentMigrations completed."
 }
