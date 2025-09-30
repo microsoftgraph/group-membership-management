@@ -10,15 +10,23 @@ import {
 } from '../models';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { SourcePartType } from '../models/SourcePartType';
+import { hasTrailingAndOrOperator, removeTrailingAndOrOperator } from './filterValidationHelpers';
 
 export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T): T {
     if (IsHRSourcePartQuery(sourcePart)) {
         let trimmedSource = sourcePart;
+        
+        // Clean the filter by removing trailing AND/OR operators if present
+        let cleanedFilter = sourcePart.source.filter || undefined;
+        if (cleanedFilter && hasTrailingAndOrOperator(cleanedFilter)) {
+            cleanedFilter = removeTrailingAndOrOperator(cleanedFilter);
+        }
+        
         if (trimmedSource.source.manager === undefined || (trimmedSource.source.manager && trimmedSource.source.manager.id === undefined)) {
             trimmedSource = {
                 ...sourcePart,
                 source: {
-                    filter: sourcePart.source.filter || undefined
+                    filter: cleanedFilter
                 },
             };
         }
@@ -30,7 +38,7 @@ export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T)
                         id: sourcePart.source?.manager?.id ?? undefined,
                         depth: typeof sourcePart.source?.manager?.depth === 'number' && sourcePart.source.manager.depth > 0 ? sourcePart.source.manager.depth : sourcePart.source?.manager?.depth,
                       },
-                    filter: sourcePart.source.filter || undefined
+                    filter: cleanedFilter
                 },
             };
         }
