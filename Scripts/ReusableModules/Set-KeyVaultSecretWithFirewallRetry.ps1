@@ -23,16 +23,16 @@ function Set-KeyVaultSecretWithFirewallRetry {
     Invoke-WithFirewallRetry -ResourceGroup $ResourceGroup -MaxRetries $MaxRetries `
         -Operation {
             # Normalize to SecureString
-            $secureSecret =
-                if ($SecretValue -is [System.Security.SecureString]) {
-                    $SecretValue
-                }
-                elseif ($SecretValue -is [string]) {
-                    ConvertTo-SecureString $SecretValue -AsPlainText -Force
-                }
-                else {
-                    throw "SecretValue must be a [string] or [SecureString]. Got: $($SecretValue.GetType().FullName)"
-                }
+            if ($SecretValue -is [System.Security.SecureString]) {
+                $secureSecret = $SecretValue
+            }
+            elseif ($SecretValue -is [string]) {
+                $secureSecret = New-Object System.Security.SecureString
+                $SecretValue.ToString().ToCharArray() | ForEach-Object { $secureSecret.AppendChar($_) }
+            }
+            else {
+                throw "SecretValue must be a [string] or [SecureString]. Got: $($SecretValue.GetType().FullName)"
+            }
 
             Set-AzKeyVaultSecret `
                 -VaultName $VaultName `
