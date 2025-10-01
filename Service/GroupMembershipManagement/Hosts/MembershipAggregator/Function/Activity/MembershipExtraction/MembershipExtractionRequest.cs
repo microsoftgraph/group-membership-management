@@ -7,7 +7,7 @@ namespace Hosts.MembershipAggregator
 {
     public class MembershipExtractionRequest
     {
-        public List<string> CompletedParts { get; set; }
+        public List<string> CompletedParts { get; set; } = new List<string>();
         public string DestinationPart { get; set; }
         public SyncJob SyncJob { get; set; }
     }

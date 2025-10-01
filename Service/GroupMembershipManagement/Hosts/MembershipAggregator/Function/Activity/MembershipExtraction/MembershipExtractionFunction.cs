@@ -138,6 +138,10 @@ namespace Hosts.MembershipAggregator
                     }
 
                     var groupMembership = JsonSerializer.Deserialize<GroupMembership>(jsonContent);
+                    if (groupMembership == null)
+                    {
+                        throw new InvalidOperationException($"Deserialization of GroupMembership from file '{membership.FilePath}' returned null");
+                    }
                     sourceGroupsMemberships.Add(groupMembership);
                 }
                 catch (FormatException ex)
@@ -216,6 +220,10 @@ namespace Hosts.MembershipAggregator
                 }
 
                 destinationGroupMembership = JsonSerializer.Deserialize<GroupMembership>(jsonContent);
+                if (destinationGroupMembership == null)
+                {
+                    throw new InvalidOperationException($"Deserialization of destination GroupMembership from file '{destinationPath}' returned null");
+                }
             }
             catch (FormatException ex)
             {
