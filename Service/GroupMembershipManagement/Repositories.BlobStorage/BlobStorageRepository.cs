@@ -23,12 +23,7 @@ namespace Repositories.BlobStorage
 
         public BlobStorageRepository(string containerUrl)
         {
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _containerClient = new BlobContainerClient(new Uri(containerUrl), credential);
             _containerClient.CreateIfNotExists();

@@ -1,6 +1,7 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet",
     "maintenanceTriggerSchedule": "0 0 0 * * *",

@@ -2,8 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
-    <AssemblyName>Hosts.AzureMaintenance</AssemblyName>
-    <RootNamespace>Hosts.AzureMaintenance</RootNamespace>
+    <AssemblyName>Hosts.JobScheduler</AssemblyName>
+    <RootNamespace>Hosts.JobScheduler</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.DurableTask" />

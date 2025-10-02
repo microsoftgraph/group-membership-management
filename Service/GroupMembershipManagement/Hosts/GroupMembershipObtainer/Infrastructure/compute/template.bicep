@@ -83,6 +83,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
 }
 
 var appSettings = {
+  AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GroupMembershipObtainer'
   AzureFunctionsWebHost__hostid: 'GroupMembershipObtainer'

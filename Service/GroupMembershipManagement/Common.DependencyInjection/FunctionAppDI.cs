@@ -60,12 +60,7 @@ namespace Common.DependencyInjection
 
         private static X509Certificate2 GetCertificate(string certificateName, string keyVaultName)
         {
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             var keyVaultBaseUrl = new Uri($"https://{keyVaultName}.vault.azure.net/");
             var secretClient = new SecretClient(keyVaultBaseUrl, credential);

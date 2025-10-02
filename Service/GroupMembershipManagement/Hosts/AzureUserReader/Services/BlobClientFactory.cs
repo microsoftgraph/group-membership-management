@@ -23,12 +23,8 @@ namespace Services
         /// <returns></returns>
         public BlobClient GetBlobClient(Uri blobUri)
         {
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+
             return new BlobClient(blobUri, credential);
         }
     }

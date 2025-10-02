@@ -47,12 +47,7 @@ namespace Hosts.JobScheduler
 
             builder.Services.AddScoped<IRuntimeRetrievalService>(services =>
             {
-                TokenCredential credential;
-#if DEBUG
-                credential = new DefaultAzureCredential();
-#else
-                credential = new ManagedIdentityCredential();
-#endif
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
                 var config = services.GetService<IJobSchedulerConfig>();
                 return config.GetRunTimeFromLogs

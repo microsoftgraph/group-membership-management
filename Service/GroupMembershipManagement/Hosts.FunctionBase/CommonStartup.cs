@@ -47,12 +47,7 @@ namespace Hosts.FunctionBase
         {
             builder.ConfigurationBuilder.AddAzureAppConfiguration(options =>
             {
-                TokenCredential credential;
-#if DEBUG
-                credential = new DefaultAzureCredential();
-#else
-                credential = new ManagedIdentityCredential();
-#endif
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
                 options.Connect(new Uri(GetValueOrThrow("appConfigurationEndpoint")), credential)
                        .UseFeatureFlags();
             });
@@ -199,13 +194,7 @@ namespace Hosts.FunctionBase
                 if (string.IsNullOrWhiteSpace(serviceBusFQN))
                     throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
 
-                TokenCredential credential;
-#if DEBUG
-                credential = new DefaultAzureCredential();
-#else
-                credential = new ManagedIdentityCredential();
-#endif
-
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
                 return new ServiceBusClient(serviceBusFQN, credential);
             });
 

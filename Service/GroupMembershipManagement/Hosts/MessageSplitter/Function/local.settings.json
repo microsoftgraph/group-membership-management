@@ -1,6 +1,7 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "appConfigurationEndpoint": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "",

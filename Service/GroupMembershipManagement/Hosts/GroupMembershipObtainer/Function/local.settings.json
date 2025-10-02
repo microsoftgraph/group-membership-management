@@ -1,6 +1,7 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "graphCredentials:KeyVaultName": "",

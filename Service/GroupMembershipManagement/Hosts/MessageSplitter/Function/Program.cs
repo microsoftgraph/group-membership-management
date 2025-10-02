@@ -32,12 +32,7 @@ namespace Hosts.MessageSplitter
 
                             config.AddAzureAppConfiguration(options =>
                             {
-                                TokenCredential credential;
-#if DEBUG
-                                credential = new DefaultAzureCredential();
-#else
-                                credential = new ManagedIdentityCredential();
-#endif
+                                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
                                 options.Connect(new Uri(appConfigEndpoint), credential)
                                     .UseFeatureFlags();
