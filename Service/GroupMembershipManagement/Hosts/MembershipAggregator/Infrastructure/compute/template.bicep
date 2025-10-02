@@ -125,6 +125,7 @@ var commonSettings = {
 }
 
 var appSettings = {
+  AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregator'
   AzureFunctionsWebHost__hostid: 'MembershipAggregator'

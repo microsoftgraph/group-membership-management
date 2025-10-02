@@ -1,8 +1,12 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "FUNCTIONS_INPROC_NET8_ENABLED": "1",
     "graphCredentials:UserAssignedManagedIdentityClientId": "",
     "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING": "",
     "gmmServiceBus__fullyQualifiedNamespace": "",

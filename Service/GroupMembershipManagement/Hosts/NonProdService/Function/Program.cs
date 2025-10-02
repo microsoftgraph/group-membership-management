@@ -33,7 +33,9 @@ namespace Hosts.NonProdService
 
                     config.AddAzureAppConfiguration(options =>
                     {
-                        options.Connect(new Uri(appConfigEndpoint), new DefaultAzureCredential())
+                        DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+
+                        options.Connect(new Uri(appConfigEndpoint), credential)
                             .UseFeatureFlags();
                     });
                 })

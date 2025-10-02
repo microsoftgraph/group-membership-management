@@ -1,8 +1,10 @@
 {
   "IsEncrypted": false,
   "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "graphCredentials:ClientId": "",
