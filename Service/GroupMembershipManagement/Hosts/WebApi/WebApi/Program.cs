@@ -84,12 +84,7 @@ namespace WebApi
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
             {
-                TokenCredential credential;
-#if DEBUG
-                credential = new DefaultAzureCredential();
-#else
-                credential = new ManagedIdentityCredential();
-#endif
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
                 var appConfigurationEndpoint = builder.Configuration.GetValue<string>("Settings:appConfigurationEndpoint");
                 options.Connect(new Uri(appConfigurationEndpoint), credential)
@@ -434,7 +429,8 @@ namespace WebApi
                 if (string.IsNullOrWhiteSpace(serviceBusFQN))
                     throw new ArgumentNullException($"Could not start because of missing configuration option: servicebus fully qualified namespace.");
 
-                return new ServiceBusClient(serviceBusFQN, new DefaultAzureCredential());
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+                return new ServiceBusClient(serviceBusFQN, credential);
             });
 
             builder.Services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>

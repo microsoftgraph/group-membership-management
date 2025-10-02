@@ -30,12 +30,7 @@ namespace Repositories.DataFactory
             _subscriptionId = dataFactorySecrets.SubscriptionId;
             _resourceGroup = dataFactorySecrets.ResourceGroup;
 
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _client = new ArmClient(credential);
             _dataFactoryResourceId = DataFactoryResource.CreateResourceIdentifier(_subscriptionId, _resourceGroup, _dataFactory);

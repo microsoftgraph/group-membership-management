@@ -29,12 +29,7 @@ namespace WebApi.BackgroundServices
                 throw new ArgumentNullException(nameof(_endpoint), "OpenAI endpoint is not configured.");
             }
 
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _openAIClient = new AzureOpenAIClient(new Uri(_endpoint), credential);
             _chatClient = _openAIClient.GetChatClient(_deploymentName);

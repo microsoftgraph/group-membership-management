@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using Polly;
 using System.Diagnostics;
 using Azure.Identity;
+using Azure.Core;
 
 namespace Services.Tests
 {
@@ -22,8 +23,27 @@ namespace Services.Tests
         [TestInitialize]
         public void Initialize()
         {
+            // Use EnvironmentCredential for CI/CD environments where managed identity isn't available
+            Environment.SetEnvironmentVariable("AZURE_TOKEN_CREDENTIALS", "EnvironmentCredential");
+            
+            // Set dummy service principal credentials for testing
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_ID", "00000000-0000-0000-0000-000000000000");
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", "dummy-secret-for-testing");
+            Environment.SetEnvironmentVariable("AZURE_TENANT_ID", "00000000-0000-0000-000000000000");
+
             _mockConfiguration = new Mock<IConfiguration>();
             _mockConfiguration.Setup(x => x["Settings:OpenAIEndpoint"]).Returns(TestEndpoint);
+        }
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            // Clean up environment variables after each test
+            Environment.SetEnvironmentVariable("AZURE_TOKEN_CREDENTIALS", null);
+            Environment.SetEnvironmentVariable("AZURE_TOKEN_CREDENTIALS", null);
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_ID", null);
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", null);
+            Environment.SetEnvironmentVariable("AZURE_TENANT_ID", null);
         }
 
         #region Service Configuration Tests
@@ -147,9 +167,12 @@ namespace Services.Tests
                                             ex is SocketException ||
                                             ex is AggregateException ||
                                             ex is CredentialUnavailableException ||
+                                            ex is AuthenticationFailedException ||
                                             ex.InnerException is SocketException ||
                                             ex.Message.Contains("No such host is known") ||
-                                            ex.Message.Contains("Retry failed");
+                                            ex.Message.Contains("Retry failed") ||
+                                            ex.Message.Contains("Authentication unavailable") ||
+                                            ex.Message.Contains("Identity not found");
 
                 Assert.IsTrue(isExpectedExceptionType,
                     $"Expected a network-related or retry exception, but got: {ex.GetType().Name} - {ex.Message}");
@@ -187,8 +210,11 @@ namespace Services.Tests
                                             ex is SocketException ||
                                             ex is AggregateException ||
                                             ex is CredentialUnavailableException ||
+                                            ex is AuthenticationFailedException ||
                                             ex.Message.Contains("No such host is known") ||
-                                            ex.Message.Contains("Retry failed");
+                                            ex.Message.Contains("Retry failed") ||
+                                            ex.Message.Contains("Authentication unavailable") ||
+                                            ex.Message.Contains("Identity not found");
 
                 Assert.IsTrue(isExpectedExceptionType,
                     $"Expected a validation or network-related exception, but got: {ex.GetType().Name} - {ex.Message}");
@@ -215,8 +241,11 @@ namespace Services.Tests
                                             ex is SocketException ||
                                             ex is AggregateException ||
                                             ex is CredentialUnavailableException ||
+                                            ex is AuthenticationFailedException ||
                                             ex.Message.Contains("No such host is known") ||
-                                            ex.Message.Contains("Retry failed");
+                                            ex.Message.Contains("Retry failed") ||
+                                            ex.Message.Contains("Authentication unavailable") ||
+                                            ex.Message.Contains("Identity not found");
 
                 Assert.IsTrue(isExpectedExceptionType,
                     $"Expected a validation or network-related exception, but got: {ex.GetType().Name} - {ex.Message}");

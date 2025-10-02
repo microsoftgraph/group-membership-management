@@ -121,6 +121,10 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
 
 var appSettings = [
   {
+    name: 'AZURE_TOKEN_CREDENTIALS'
+    value:'ManagedIdentityCredential'
+  }
+  {
     name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
     value:'@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   }

@@ -40,13 +40,8 @@ namespace Services
             }
             
             var keyVaultUri = $"https://{keyVaultName}.vault.azure.net/";
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
 
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
             return new SecretClient(new Uri(keyVaultUri), credential);
         }
 

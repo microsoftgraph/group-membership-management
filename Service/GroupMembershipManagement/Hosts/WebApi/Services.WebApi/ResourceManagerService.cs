@@ -31,12 +31,7 @@ namespace Services.WebApi
         public ResourceManagerService(ResourceManagerServiceConfiguration serviceConfiguration,
                                       ILoggingRepository loggingRepository)
         {
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             var subscriptionResourceId = SubscriptionResource.CreateResourceIdentifier(serviceConfiguration.SubscriptionId);
             _client = new ArmClient(credential, serviceConfiguration.SubscriptionId);
@@ -216,13 +211,8 @@ namespace Services.WebApi
             foreach (var kvSecret in kvSecrets)
             {
                 var kvUri = "https://" + kvSecret.Key + ".vault.azure.net";
-                TokenCredential credential;
-#if DEBUG
-                credential = new DefaultAzureCredential();
-#else
-                credential = new ManagedIdentityCredential();
-#endif
 
+                DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
                 var client = new SecretClient(new Uri(kvUri), credential);
 
                 foreach (var secretName in kvSecret.Value)

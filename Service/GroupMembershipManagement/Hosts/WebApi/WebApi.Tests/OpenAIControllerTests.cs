@@ -24,9 +24,27 @@ namespace WebApi.Tests
         [TestInitialize]
         public void Initialize()
         {
+            Environment.SetEnvironmentVariable("AZURE_TOKEN_CREDENTIALS", "EnvironmentCredential");
+
+            // Set dummy service principal credentials for testing
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_ID", "00000000-0000-0000-0000-000000000000");
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", "dummy-secret-for-testing");
+            Environment.SetEnvironmentVariable("AZURE_TENANT_ID", "00000000-0000-0000-000000000000");
+
             _mockOpenAIService = new Mock<IOpenAIService>();
             _mockLoggingRepository = new Mock<ILoggingRepository>();
             _controller = new OpenAIController(_mockOpenAIService.Object, _mockLoggingRepository.Object);
+        }
+
+        [TestCleanup]
+        public void Cleanup()
+        {
+            // Clean up environment variables after each test
+            Environment.SetEnvironmentVariable("AZURE_TOKEN_CREDENTIALS", null);
+            Environment.SetEnvironmentVariable("AZURE_TOKEN_CREDENTIALS", null);
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_ID", null);
+            Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", null);
+            Environment.SetEnvironmentVariable("AZURE_TENANT_ID", null);
         }
 
         [TestMethod]

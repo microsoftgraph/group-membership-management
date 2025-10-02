@@ -45,12 +45,7 @@ namespace WebApi.BackgroundServices
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _services = services ?? throw new ArgumentNullException(nameof(services));
 
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             _serviceBusClient = new ServiceBusClient(
                                         operationsSettings.ServiceBusFQN,
@@ -496,12 +491,7 @@ namespace WebApi.BackgroundServices
 
         private async Task DeleteInternalTablesAsync(string storageAccountName, string functionName)
         {
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             var tableServiceClient = new TableServiceClient(new Uri($"https://{storageAccountName}.table.core.windows.net"), credential);
             var tables = tableServiceClient.QueryAsync();
@@ -533,12 +523,7 @@ namespace WebApi.BackgroundServices
 
         private async Task ClearInternalQueuesAsync(string storageAccountName, string functionName)
         {
-            TokenCredential credential;
-#if DEBUG
-            credential = new DefaultAzureCredential();
-#else
-            credential = new ManagedIdentityCredential();
-#endif
+            DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
             var queueClient = new QueueServiceClient(new Uri($"https://{storageAccountName}.queue.core.windows.net"), credential);
             var queues = queueClient.GetQueuesAsync();
