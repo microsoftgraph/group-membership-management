@@ -124,10 +124,16 @@ namespace WebApi.Tests
 
             // Assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
-              _mockNotificationService.Verify(
-                x => x.SendSubmissionRejectedNotificationAsync(_testSyncJob, _testSubmission),
+            
+            // Verify notification service was called with the NEW SyncJobChange containing the rejection feedback
+            _mockNotificationService.Verify(
+                x => x.SendSubmissionRejectedNotificationAsync(
+                    _testSyncJob, 
+                    It.Is<SyncJobChange>(sjc => 
+                        sjc.BusinessJustification == "Rejected for testing" &&
+                        sjc.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())),
                 Times.Once,
-                "Notification service should be called when submission is rejected");
+                "Notification service should be called with the new SyncJobChange containing rejection feedback");
         }
 
         [TestMethod]
@@ -187,9 +193,13 @@ namespace WebApi.Tests
             await Assert.ThrowsExceptionAsync<InvalidOperationException>(
                 () => _patchJobHandler.ExecuteAsync(request));
 
-            // Verify that the notification was attempted
+            // Verify that the notification was attempted with the NEW SyncJobChange containing rejection feedback
             _mockNotificationService.Verify(
-                x => x.SendSubmissionRejectedNotificationAsync(_testSyncJob, _testSubmission),
+                x => x.SendSubmissionRejectedNotificationAsync(
+                    _testSyncJob, 
+                    It.Is<SyncJobChange>(sjc => 
+                        sjc.BusinessJustification == "Rejected for testing" &&
+                        sjc.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())),
                 Times.Once);
         }
     }
