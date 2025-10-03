@@ -14,9 +14,11 @@ function Set-SqlMigrationsIfNeeded {
 	if (-not $ScriptsDirectory) {
 		$ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 	}
-
-	. (Join-Path $ScriptsDirectory 'Add-AzAccountIfNeeded.ps1')
-	Add-AzAccountIfNeeded
+	
+	if ($global:SkipAzLogin -ne $true) {
+		. (Join-Path $ScriptsDirectory 'Add-AzAccountIfNeeded.ps1')
+		Add-AzAccountIfNeeded
+	}
 
 	Set-AzContext -SubscriptionName $SubscriptionName
 

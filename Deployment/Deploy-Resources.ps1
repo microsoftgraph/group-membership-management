@@ -1906,6 +1906,7 @@ function Deploy-Resources {
 
     $global:SkipModuleInstall = $true
     $global:SkipMSGraphLogin = $true
+    $global:SkipAzLogin = $true
 
     $deploymentPackageDirectory = Split-Path $PSScriptRoot -Parent
     $templateFilesDirectory = $deploymentPackageDirectory + "\Deployment"
