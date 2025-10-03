@@ -292,19 +292,22 @@ function Get-BearerToken {
     )
 
     $token = (Get-AzAccessToken -ResourceUrl $Resource).Token
+
     if ($token -is [System.Security.SecureString]) {
-        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
+        $ptr = [Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($token)
         try {
-            $plainToken = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+            return [Runtime.InteropServices.Marshal]::PtrToStringUni($ptr)
         }
         finally {
-            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+            [Runtime.InteropServices.Marshal]::ZeroFreeGlobalAllocUnicode($ptr)
         }
     }
-    else {
-        $plainToken = $token
+    elseif ($token -is [string]) {
+        return $token
     }
-    return $plainToken
+    else {
+        throw "Unexpected token type: $($token.GetType().FullName)"
+    }
 }
 
 function Start-ResourceDeployment {
