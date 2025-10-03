@@ -1910,7 +1910,7 @@ function Deploy-Resources {
 
     $deploymentPackageDirectory = Split-Path $PSScriptRoot -Parent
     $templateFilesDirectory = $deploymentPackageDirectory + "/Deployment"
-    $scriptsDirectory = $deploymentPackageDirectory + "/scripts"
+    $scriptsDirectory = $deploymentPackageDirectory + "/Scripts"
 
     $parameterFilePath = $deploymentPackageDirectory + "/Deployment/$ParameterFileName"
     $parameterHashtable= (Get-TemplateAsHashtable -TemplateFilePath $parameterFilePath).parameters
@@ -1963,7 +1963,7 @@ function Deploy-Resources {
         Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
         Write-Host "JobTrigger function app stopped." -ForegroundColor Green
 
-        . "$deploymentPackageDirectory/Scripts/Reset-GMM.ps1" #  Import helper functions
+        . "$scriptsDirectory/Reset-GMM.ps1" #  Import helper functions
 
         $connectionString = Get-KeyVaultSecretWithFirewallRetry `
             -VaultName "$SolutionAbbreviation-data-$environmentAbbreviation" `
@@ -2033,7 +2033,7 @@ function Deploy-Resources {
         Set-RBACPermissions `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
-        -ScriptsDirectory "$deploymentPackageDirectory/Scripts/PostDeploymentRoleAssignments" `
+        -ScriptsDirectory "$scriptsDirectory/PostDeploymentRoleAssignments" `
         -SetUserAssignedManagedIdentityPermissions $setUserAssignedManagedIdentityPermissions
     }
 
