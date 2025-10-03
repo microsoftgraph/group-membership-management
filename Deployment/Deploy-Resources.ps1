@@ -73,8 +73,9 @@ function Retry-Operation {
                 throw
             }
 
-            Write-Warning "'$OperationName' failed, retrying... ($retryCount/$maxRetries)"
-            Start-Sleep -Seconds (5 * $retryCount)
+            $retryWaitSeconds = 20 * $retryCount
+            Write-Warning "'$OperationName' failed, retrying again in $retryWaitSeconds seconds... Retry attempt ($retryCount/$maxRetries)"
+            Start-Sleep -Seconds $retryWaitSeconds
         }
     } while ($true)
 }
