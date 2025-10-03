@@ -16,7 +16,7 @@ function Add-AzAccountIfNeeded {
     #Requires -Version 5
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
     
-    . ($scriptsDirectory + '\Scripts\Install-AzModuleIfNeeded.ps1')
+    . ($scriptsDirectory + '/Scripts/Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded | Out-Null
     
     $context = Get-AzContext

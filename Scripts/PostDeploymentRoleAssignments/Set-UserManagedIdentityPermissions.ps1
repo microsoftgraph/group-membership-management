@@ -37,7 +37,7 @@ function Set-UserManagedIdentityPermissions {
 			"Microsoft.Graph.Applications"
     	)
 
-		. ($scriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+		. ($scriptsDirectory + '/Install-ModuleIfNeeded.ps1')
 
 		foreach ($module in $requiredGraphModules) {
 			Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose

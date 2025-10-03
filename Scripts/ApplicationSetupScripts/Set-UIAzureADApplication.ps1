@@ -90,7 +90,7 @@ function Set-UIAzureADApplication {
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
 	if ($global:SkipModuleInstall -ne $true) {
-		. ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
+		. ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
     	Install-AzModuleIfNeeded
 	}
 
@@ -191,7 +191,7 @@ function Set-UIAzureADApplication {
 		Write-Verbose "Azure AD app $uiAppDisplayName already exists."
 		Write-Verbose "Checking if app needs update..."
 
-		. ($scriptsDirectory + '\ApplicationSetupScripts\Test-AppNeedsUpdate.ps1')
+		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppNeedsUpdate.ps1')
 		if (Test-AppNeedsUpdate -AppObject $uiApp `
 							-ExpectedRequiredResourceAccess $requiredResourceAccess `
 							-ExpectedSignInAudience $signInAudience `
@@ -265,7 +265,7 @@ function Set-UIKeyVaultSecrets {
 	)
 
 		$scriptsDirectory = Split-Path $PSScriptRoot -Parent
-		. ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+		. ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
 		# These need to go into the key vault
 		$uiAppTenantId = $DevTenantId;

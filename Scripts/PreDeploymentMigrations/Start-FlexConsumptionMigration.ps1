@@ -19,10 +19,10 @@ it safely removes the existing resources and their SQL permissions, allowing the
 new resources with the correct SKU.
 
 .PARAMETER FunctionTemplatesPath
-Path to the functions ARM templates directory (e.g., "<path-to>\functions_arm_templates")
+Path to the functions ARM templates directory (e.g., "<path-to>/functions_arm_templates")
 
 .PARAMETER ComputeResourcesArmTemplatePath
-Path to the computeResources.json arm template leveraged by the deployment package (e.g., "<path-to>\computeResources.json")
+Path to the computeResources.json arm template leveraged by the deployment package (e.g., "<path-to>/computeResources.json")
 
 .PARAMETER SolutionAbbreviation
 Abbreviation used to denote the overall solution (e.g., "gmm")
@@ -59,13 +59,13 @@ Start-FlexConsumptionMigration -FunctionTemplatesPath "<path-to-functions_arm_te
 Start-FlexConsumptionMigration -FunctionTemplatesPath "<path-to-functions_arm_templates>" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $syncJobsConnectionString -ADFDBConnectionString $adfConnectionString
 
 .EXAMPLE
-Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>\computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -WhatIf
+Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>/computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -WhatIf
 
 .EXAMPLE
-Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>\computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $conn1 -ADFDBConnectionString $conn2 -SkipConfirmation
+Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>/computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $conn1 -ADFDBConnectionString $conn2 -SkipConfirmation
 
 .EXAMPLE
-Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>\computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $syncJobsConnectionString -ADFDBConnectionString $adfConnectionString
+Start-FlexConsumptionMigration -ComputeResourcesArmTemplatePath "<path-to>/computeResources.json" -SolutionAbbreviation "gmm" -EnvironmentAbbreviation "dev" -SyncJobsDBConnectionString $syncJobsConnectionString -ADFDBConnectionString $adfConnectionString
 #>
 
 function Get-WarningAction {
@@ -247,7 +247,7 @@ function Get-FunctionsFromBicep {
     $functionFolders = Get-ChildItem -Path "$FunctionTemplatesPath" -Directory
 
     foreach ($folder in $functionFolders) {
-        $servicePlanPath = Join-Path $folder.FullName "Infrastructure\compute\servicePlan.bicep"
+        $servicePlanPath = Join-Path $folder.FullName "Infrastructure/compute/servicePlan.bicep"
         if (Test-Path $servicePlanPath) {
             try {
                 $servicePlanContent = Get-Content $servicePlanPath -Raw

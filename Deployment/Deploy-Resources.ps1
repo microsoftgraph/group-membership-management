@@ -88,7 +88,7 @@ function Set-PostDeploymentUpdates {
         [string]$ConnectionString
     )
 
-    . ($ScriptsDirectory + '\PostDeploymentMigrations\Set-PostDeploymentMigrations.ps1')
+    . ($ScriptsDirectory + '/PostDeploymentMigrations/Set-PostDeploymentMigrations.ps1')
     $currentContext = Get-AzContext
     Set-PostDeploymentMigrations `
         -SubscriptionName $currentContext.Subscription.Name `
@@ -110,7 +110,7 @@ function Set-PreDeploymentUpdates {
         [string]$ADFDBConnectionString
     )
 
-    . ($ScriptsDirectory + '\PreDeploymentMigrations\Set-PreDeploymentMigrations.ps1')
+    . ($ScriptsDirectory + '/PreDeploymentMigrations/Set-PreDeploymentMigrations.ps1')
 
     Set-PreDeploymentMigrations `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -458,7 +458,7 @@ function Set-ResourceGroups {
     )
     
     Write-Host "`nCreating resource groups:"
-    $templateFilePath = "$ResourceGroupTemplateDirectoryPath\resourceGroups.json"
+    $templateFilePath = "$ResourceGroupTemplateDirectoryPath/resourceGroups.json"
     Retry-Operation `
         -Operation ${function:Start-ResourceDeployment} `
         -OperationName "Create Resource Groups" `
@@ -492,7 +492,7 @@ function Set-PrereqResources {
 
     Write-Host "`nCreating prereqs resources"
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $templateFilePath = "$PrereqsTemplateDirectoryPath\prereqResources.json"
+    $templateFilePath = "$PrereqsTemplateDirectoryPath/prereqResources.json"
     Retry-Operation `
         -Operation ${function:Start-ResourceDeployment} `
         -OperationName "Create prereqs resources" `
@@ -534,7 +534,7 @@ function Set-DataResources {
     
     Write-Host "`nCreating data resources"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $templateFilePath = "$DataTemplateDirectoryPath\dataResources.json"
+    $templateFilePath = "$DataTemplateDirectoryPath/dataResources.json"
     Retry-Operation `
         -Operation ${function:Start-ResourceDeployment} `
         -OperationName "Create data resources" `
@@ -585,7 +585,7 @@ function Set-ComputeResources {
 
     Write-Host "`nCreating compute resources"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    $templateFilePath = "$ComputeTemplateDirectoryPath\computeResources.json"
+    $templateFilePath = "$ComputeTemplateDirectoryPath/computeResources.json"
     Retry-Operation `
         -Operation ${function:Start-ResourceDeployment} `
         -OperationName "Create compute resources" `
@@ -625,7 +625,7 @@ function Set-ADFResources {
 
     # Deploy ADF resources
     Write-Host "`nCreating ADF resources"
-    $templateFilePath = "$ADFTemplateDirectoryPath\adfHRResources.json"
+    $templateFilePath = "$ADFTemplateDirectoryPath/adfHRResources.json"
     Retry-Operation `
         -Operation ${function:Start-ResourceDeployment} `
         -OperationName "Create ADF resources" `
@@ -1044,7 +1044,7 @@ function Set-RBACPermissions {
     # grant permissions to resources
     Write-Host "`nGranting permissions to resources"
 
-    . ($ScriptsDirectory + '\Set-PostDeploymentRoles.ps1')
+    . ($ScriptsDirectory + '/Set-PostDeploymentRoles.ps1')
     Set-PostDeploymentRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
@@ -1071,7 +1071,7 @@ function Set-FunctionAppCode {
         Write-Host "Publishing code for function app $($functionApp.Name)"
 
         $functionName = $functionApp.Name.Split("-")[3]
-        $packageFile = "$FunctionsPackagesDirectory\$functionName.zip"
+        $packageFile = "$FunctionsPackagesDirectory/$functionName.zip"
 
         if (-not (Test-Path $packageFile)) {
             Write-Host "Package file not found: $packageFile"
@@ -1093,7 +1093,7 @@ function Set-FunctionAppCode {
     $webApiName = $webApi.Name.Split("-")[3]
 
     $publishWebAPICodeOperation = {
-        Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $webApi.Name -ArchivePath "$WebApiPackagesDirectory\$webApiName.zip" -Force
+        Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $webApi.Name -ArchivePath "$WebApiPackagesDirectory/$webApiName.zip" -Force
     }
 
     Retry-Operation `
@@ -1116,8 +1116,8 @@ function Set-KeyVaultFirewallRules {
     Write-Host "Enabling firewall rules for key vaults"
 
     # Get IP rules from script
-    . ($ScriptsDirectory + '\Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
-    $newIpRules = Get-Content "$ScriptsDirectory\ipRules.txt"
+    . ($ScriptsDirectory + '/Get-FirewallIPRules.ps1') -FolderPathToSaveIpRules $ScriptsDirectory -Regions $Region
+    $newIpRules = Get-Content "$ScriptsDirectory/ipRules.txt"
     $newIpRules += $ipAddresses
 
     foreach ($resourceGroup in $ResourceGroups) {
@@ -1315,7 +1315,7 @@ function Set-GMMAppRegistrations {
     )
 
     Write-Host "`nSetting GMM App Registrations"
-    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-UIAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-UIAzureADApplication.ps1')
 
     $currentContext = Get-AzContext
     $subscriptionName = $currentContext.Subscription.Name
@@ -1334,7 +1334,7 @@ function Set-GMMAppRegistrations {
         -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -Clean $false
 
-    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-WebApiAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1')
     $apiInformation = Set-WebApiAzureADApplication `
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1346,7 +1346,7 @@ function Set-GMMAppRegistrations {
         -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
         -Clean $false
 
-    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-GraphCredentialsAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1')
     $graphInformation = Set-GraphCredentialsAzureADApplication `
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1359,7 +1359,7 @@ function Set-GMMAppRegistrations {
         -CertificateName $GraphAppCertificateName `
         -Clean $false
 
-    . ($ScriptsDirectory + '\ApplicationSetupScripts\Set-TeamsChannelAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1')
     $teamsChannelInformation = Set-TeamsChannelAzureADApplication `
         -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -1583,7 +1583,7 @@ function Set-PublishUICode {
     $appInsights = Get-AzApplicationInsights -ResourceGroupName $DataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $appInsightsConnectionString = $appInsights.ConnectionString
 
-    $buildVersionFilePath = "$WebAppDirectory\buildVersion.txt"
+    $buildVersionFilePath = "$WebAppDirectory/buildVersion.txt"
     if (Test-Path -Path $buildVersionFilePath) {
         $buildVersion = Get-Content -Path $buildVersionFilePath
         Write-Host "Build version: $buildVersion"
@@ -1602,7 +1602,7 @@ function Set-PublishUICode {
     $envContent += "REACT_APP_VERSION_NUMBER=$buildVersion`n"
     $envContent += "DISABLE_ESLINT_PLUGIN=true`n"
 
-    Set-Content -Path "$WebAppDirectory\.env" -Value $envContent -Force
+    Set-Content -Path "$WebAppDirectory/.env" -Value $envContent -Force
     $currentLocation = Get-Location
 
     Set-Location -Path $WebAppDirectory
@@ -1705,11 +1705,11 @@ function Test-ScriptDependencies {
 
     # Required paths and files
     $requiredPaths = @{
-        "function_packages"        = "$scriptsDirectory\function_packages"
-        "webapi_package"          = "$scriptsDirectory\webapi_package"
-        "webapp_package\web-app"  = "$scriptsDirectory\webapp_package\web-app"
-        "Scripts"                 = "$scriptsDirectory\Scripts"
-        "Scripts\PostDeploymentRoleAssignments"  = "$scriptsDirectory\Scripts\PostDeploymentRoleAssignments"
+        "function_packages"        = "$scriptsDirectory/function_packages"
+        "webapi_package"          = "$scriptsDirectory/webapi_package"
+        "webapp_package/web-app"  = "$scriptsDirectory/webapp_package/web-app"
+        "Scripts"                 = "$scriptsDirectory/Scripts"
+        "Scripts/PostDeploymentRoleAssignments"  = "$scriptsDirectory/Scripts/PostDeploymentRoleAssignments"
     }
 
     foreach ($item in $requiredPaths.GetEnumerator()) {
@@ -1739,13 +1739,13 @@ function Install-RequiredModules {
 
     # Install Az modules
     Write-Host "Installing/Importing required Az modules..."
-    . ($ScriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
+    . ($ScriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded | Out-Null
     Write-Host "Completed installation/import of required Az modules." -ForegroundColor Green
 
     # Install Microsoft Graph modules
     Write-Host "Installing/Importing required Microsoft Graph PowerShell modules..."
-    . ($ScriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+    . ($ScriptsDirectory + '/Install-ModuleIfNeeded.ps1')
 		
     $requiredGraphModules = @(
         "Microsoft.Graph.Authentication",
@@ -1754,7 +1754,7 @@ function Install-RequiredModules {
         "Microsoft.Graph.Users"
     )
 
-    . ($ScriptsDirectory + '\Install-ModuleIfNeeded.ps1')
+    . ($ScriptsDirectory + '/Install-ModuleIfNeeded.ps1')
 
     foreach ($module in $requiredGraphModules) {
         Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
@@ -1826,10 +1826,10 @@ function Initialize-ScriptDependencies {
             -SubscriptionId $SubscriptionId
 
     if ($AssertUserPermissions -eq $true) {
-        . ($ScriptsDirectory + '\Assert-MicrosoftGraphPermissions.ps1')
+        . ($ScriptsDirectory + '/Assert-MicrosoftGraphPermissions.ps1')
         Assert-MicrosoftGraphPermissions
 
-        . ($ScriptsDirectory + '\Assert-RbacPermissionsForDeployment.ps1')
+        . ($ScriptsDirectory + '/Assert-RbacPermissionsForDeployment.ps1')
         Assert-RbacPermissionsForDeployment `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation
@@ -1909,10 +1909,10 @@ function Deploy-Resources {
     $global:SkipAzLogin = $true
 
     $deploymentPackageDirectory = Split-Path $PSScriptRoot -Parent
-    $templateFilesDirectory = $deploymentPackageDirectory + "\Deployment"
-    $scriptsDirectory = $deploymentPackageDirectory + "\scripts"
+    $templateFilesDirectory = $deploymentPackageDirectory + "/Deployment"
+    $scriptsDirectory = $deploymentPackageDirectory + "/scripts"
 
-    $parameterFilePath = $deploymentPackageDirectory + "\Deployment\$ParameterFileName"
+    $parameterFilePath = $deploymentPackageDirectory + "/Deployment/$ParameterFileName"
     $parameterHashtable= (Get-TemplateAsHashtable -TemplateFilePath $parameterFilePath).parameters
 
     Assert-RequiredParameters -ParameterHashtable $parameterHashtable
@@ -1963,7 +1963,7 @@ function Deploy-Resources {
         Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
         Write-Host "JobTrigger function app stopped." -ForegroundColor Green
 
-        . "$deploymentPackageDirectory\Scripts\Reset-GMM.ps1" #  Import helper functions
+        . "$deploymentPackageDirectory/Scripts/Reset-GMM.ps1" #  Import helper functions
 
         $connectionString = Get-KeyVaultSecretWithFirewallRetry `
             -VaultName "$SolutionAbbreviation-data-$environmentAbbreviation" `
@@ -1985,9 +1985,9 @@ function Deploy-Resources {
 
 
     # Import reusable functions
-    . ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
-    . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
-    . ($scriptsDirectory + '\ReusableModules\Invoke-SqlOperationWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '/ReusableModules/Invoke-SqlOperationWithFirewallRetry.ps1')
 
     $response = Set-GMMResources `
         -SolutionAbbreviation $solutionAbbreviation `
@@ -2033,14 +2033,14 @@ function Deploy-Resources {
         Set-RBACPermissions `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
-        -ScriptsDirectory "$deploymentPackageDirectory\Scripts\PostDeploymentRoleAssignments" `
+        -ScriptsDirectory "$deploymentPackageDirectory/Scripts/PostDeploymentRoleAssignments" `
         -SetUserAssignedManagedIdentityPermissions $setUserAssignedManagedIdentityPermissions
     }
 
     Set-FunctionAppCode `
         -ComputeResourceGroup $computeResourceGroup `
-        -FunctionsPackagesDirectory "$deploymentPackageDirectory\function_packages" `
-        -WebApiPackagesDirectory "$deploymentPackageDirectory\webapi_package"
+        -FunctionsPackagesDirectory "$deploymentPackageDirectory/function_packages" `
+        -WebApiPackagesDirectory "$deploymentPackageDirectory/webapi_package"
 
     # Configure web apps
     if ($true -eq $createAppRegistrations) {
@@ -2064,7 +2064,7 @@ function Deploy-Resources {
         -EnvironmentAbbreviation $environmentAbbreviation `
         -DataResourceGroup $dataResourceGroup `
         -ComputeResourceGroup $computeResourceGroup `
-        -WebAppDirectory "$deploymentPackageDirectory\webapp_package\web-app" `
+        -WebAppDirectory "$deploymentPackageDirectory/webapp_package/web-app" `
         -MainTenantId $context.Tenant.Id `
         -TenantDomain $tenantDomain `
         -SharepointDomain $sharepointDomain `
@@ -2083,7 +2083,7 @@ function Deploy-Resources {
         Write-Host "`nStopping function apps in resource group $computeResourceGroup"
         Stop-FunctionApps -ResourceGroupName $computeResourceGroup
 
-        . ($scriptsDirectory + '\Reset-GMM.ps1')
+        . ($scriptsDirectory + '/Reset-GMM.ps1')
 
         Set-WebAPIAsResetAdministrator `
             -SolutionAbbreviation $solutionAbbreviation `

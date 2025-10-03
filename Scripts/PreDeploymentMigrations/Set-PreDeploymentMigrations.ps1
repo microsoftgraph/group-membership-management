@@ -17,8 +17,8 @@ function Set-PreDeploymentMigrations {
 
     $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-	. ($ScriptsDirectory + '\PreDeploymentMigrations\Remove-MultiLaneResources.ps1')
-    . ($ScriptsDirectory + '\PreDeploymentMigrations\Start-FlexConsumptionMigration.ps1')
+	. ($ScriptsDirectory + '/PreDeploymentMigrations/Remove-MultiLaneResources.ps1')
+    . ($ScriptsDirectory + '/PreDeploymentMigrations/Start-FlexConsumptionMigration.ps1')
 
     Remove-MultiLaneResources `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -26,7 +26,7 @@ function Set-PreDeploymentMigrations {
         -SkipConfirmation
 
     if ([string]::IsNullOrEmpty($ComputeResourcesArmTemplatePath)) {
-        $FunctionTemplatesPath = (Split-Path $ScriptsDirectory -Parent) + "\functions_arm_templates"
+        $FunctionTemplatesPath = (Split-Path $ScriptsDirectory -Parent) + "/functions_arm_templates"
         Start-FlexConsumptionMigration `
             -FunctionTemplatesPath $FunctionTemplatesPath `
             -SolutionAbbreviation $SolutionAbbreviation `

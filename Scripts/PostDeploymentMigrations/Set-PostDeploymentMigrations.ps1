@@ -12,7 +12,7 @@ function Set-PostDeploymentMigrations {
     $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 
     # Perform any necessary Sql migrations
-	. ($ScriptsDirectory + '\PostDeploymentMigrations\Set-SqlMigrationsIfNeeded.ps1')
+	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-SqlMigrationsIfNeeded.ps1')
 	Set-SqlMigrationsIfNeeded -SubscriptionName $SubscriptionName -ConnectionString $ConnectionString
 
 	Write-Verbose "Set-PostDeploymentMigrations completed."

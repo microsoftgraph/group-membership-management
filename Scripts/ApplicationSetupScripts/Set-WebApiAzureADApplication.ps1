@@ -80,7 +80,7 @@ function Set-WebApiAzureADApplication {
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
 	if ($global:SkipModuleInstall -ne $true) {
-		. ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
+		. ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
     	Install-AzModuleIfNeeded
 	}
 
@@ -107,7 +107,7 @@ function Set-WebApiAzureADApplication {
 		Write-Host "Application $webApiAppDisplayName already exists. Skipping creation..."
 
 		# Update roles if needed
-		. ($scriptsDirectory + '\ApplicationSetupScripts\Set-AppRolesIfNeeded.ps1')
+		. ($scriptsDirectory + '/ApplicationSetupScripts/Set-AppRolesIfNeeded.ps1')
 		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
 		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
@@ -216,7 +216,7 @@ function Set-WebApiAzureADApplication {
 			}
 		}
 
-		. ($scriptsDirectory + '\ApplicationSetupScripts\Test-AppNeedsUpdate.ps1')
+		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppNeedsUpdate.ps1')
 		$needsUpdate = Test-AppNeedsUpdate -AppObject $webApiApp `
 							-ExpectedRequiredResourceAccess $requiredResourceAccess `
 							-ExpectedSignInAudience $signInAudience `
@@ -260,7 +260,7 @@ function Set-WebApiAzureADApplication {
 	Start-Sleep -Seconds 30
 
 	# Update roles if needed
-	. ($scriptsDirectory + '\ApplicationSetupScripts\Set-AppRolesIfNeeded.ps1')
+	. ($scriptsDirectory + '/ApplicationSetupScripts/Set-AppRolesIfNeeded.ps1')
 		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
 
 	if($SaveToKeyVault -eq $false) {
@@ -305,8 +305,8 @@ function Set-WebAPIKeyVaultSecrets {
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
-	. ($scriptsDirectory + '\ReusableModules\Get-KeyVaultSecretWithFirewallRetry.ps1')
-    . ($scriptsDirectory + '\ReusableModules\Set-KeyVaultSecretWithFirewallRetry.ps1')
+	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
+    . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
 	# These need to go into the key vault
 	$webApiAppTenantId = $DevTenantId;

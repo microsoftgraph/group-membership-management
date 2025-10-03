@@ -22,11 +22,11 @@ function Set-SqlMigrationsIfNeeded {
 
 	Set-AzContext -SubscriptionName $SubscriptionName
 
-	. ($ScriptsDirectory + '\PostDeploymentMigrations\Set-UpdateSourceQuery.ps1')
+	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-UpdateSourceQuery.ps1')
 	Set-UpdateSourceQuery -ConnectionString $ConnectionString `
 		-Verbose
 
-	. ($ScriptsDirectory + '\PostDeploymentMigrations\Set-UpdateDestination.ps1')
+	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-UpdateDestination.ps1')
 	Set-UpdateDestination -ConnectionString $ConnectionString `
 		-Verbose
 

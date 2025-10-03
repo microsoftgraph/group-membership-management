@@ -16,8 +16,8 @@ function Get-KeyVaultSecretWithFirewallRetry {
     )
 
     $directory = $PSScriptRoot
-    . ($directory + '\Invoke-WithFirewallRetry.ps1')
-    . ($directory + '\Add-KeyVaultIpFromError.ps1')
+    . ($directory + '/Invoke-WithFirewallRetry.ps1')
+    . ($directory + '/Add-KeyVaultIpFromError.ps1')
 
     Invoke-WithFirewallRetry -ResourceGroup $ResourceGroup -MaxRetries $MaxRetries `
         -Operation {
