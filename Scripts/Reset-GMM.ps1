@@ -17,7 +17,7 @@ function Get-KeyVaultSecretWithFirewallRetry {
         [string]$SecretName,
 
         [ValidateRange(1, 10)]
-        [int]$MaxRetries = 2
+        [int]$MaxRetries = 6
     )
 
     function Add-KeyVaultIpFromError {

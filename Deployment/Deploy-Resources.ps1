@@ -44,7 +44,7 @@ Deploy-Resources -parameterFileName "<FILE_NAME>"
 
 #>
 
-$maxRetries = 3
+$maxRetries = 6
 
 function Retry-Operation {
     param(
