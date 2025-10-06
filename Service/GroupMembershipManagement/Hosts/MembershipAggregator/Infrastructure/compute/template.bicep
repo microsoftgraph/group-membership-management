@@ -127,6 +127,7 @@ var commonSettings = {
 var appSettings = {
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
+  AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MembershipAggregator'
   AzureFunctionsWebHost__hostid: 'MembershipAggregator'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'

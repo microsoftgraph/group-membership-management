@@ -103,6 +103,7 @@ var commonSettings = {
 var appSettings = {
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
+  AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMO'
   AzureFunctionsWebHost__hostid: 'TeamsChannelMO'
   'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
