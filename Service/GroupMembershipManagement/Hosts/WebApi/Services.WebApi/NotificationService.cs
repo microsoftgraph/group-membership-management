@@ -34,10 +34,23 @@ namespace Services.WebApi
         {
             var businessJustification = submission.BusinessJustification ?? "No reason provided";
 
-            var groupName = await _graphGroupRepository.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
-            if (string.IsNullOrEmpty(groupName))
+            string groupName;
+            try
             {
-                groupName = "<Group name could not be retrieved>"; 
+                groupName = await _graphGroupRepository.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
+                if (string.IsNullOrEmpty(groupName))
+                {
+                    groupName = "<Group name could not be retrieved>";
+                }
+            }
+            catch (Exception ex)
+            {
+                groupName = "<Group name could not be retrieved>";
+                await _loggingRepository.LogMessageAsync(new Models.LogMessage
+                {
+                    RunId = syncJob.RunId,
+                    Message = $"Failed to retrieve group name for Group ID {syncJob.TargetOfficeGroupId}. Error: {ex.Message}"
+                });
             }
 
             var additionalContentParameters = new string[]
