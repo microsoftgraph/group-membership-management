@@ -227,7 +227,8 @@ namespace Services.Tests
             _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _httpContextAccessor.Object);
+                                                 _httpContextAccessor.Object,
+                                                 _syncJobChangeRepository.Object);
 
             _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
@@ -331,7 +332,8 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _syncJobChangeRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler,_postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -385,7 +387,8 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _syncJobChangeRepository.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -431,7 +434,8 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _syncJobChangeRepository.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -494,7 +498,8 @@ namespace Services.Tests
                                      _loggingRepository.Object,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _syncJobChangeRepository.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -789,6 +794,60 @@ namespace Services.Tests
 
             Assert.IsNotNull(statusCodeResult);
             Assert.AreEqual((int)HttpStatusCode.InternalServerError, statusCodeResult.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GetJobs_LastModifiedTime_UsesAnyChangeReason()
+        {
+            // Arrange - override the large initialized dataset with a single controlled job
+            var job = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.Idle.ToString(),
+                Period = 6,
+                LastRunTime = DateTime.UtcNow.AddHours(-5),
+                LastSuccessfulRunTime = DateTime.UtcNow.AddHours(-6),
+                StartDate = DateTime.UtcNow.AddDays(-2),
+                ScheduledDate = DateTime.UtcNow.AddHours(-1),
+                MembershipType = MembershipTypes.GroupMembership.ToString(),
+                StatusDetails = new Status { Id = Guid.NewGuid(), Name = SyncStatus.Idle.ToString(), SortPriority = 1000 },
+                Group = new Group { SyncJobId = Guid.NewGuid(), GroupId = Guid.NewGuid() }
+            };
+
+            var singleList = new List<SyncJob> { job };
+            _databaseSyncJobsRepository.Setup(x => x.GetSyncJobs(It.IsAny<bool>()))
+                                       .Returns(singleList.AsQueryable());
+
+            var latestChangeTime = DateTime.UtcNow.AddMinutes(-17).AddSeconds(-DateTime.UtcNow.Second); // normalize seconds
+            _syncJobChangeRepository.Setup(x => x.GetLastSyncJobRecordBySyncJobIdAsync(job.Id))
+                                     .ReturnsAsync(new SyncJobChange
+                                     {
+                                         Id = Guid.NewGuid(),
+                                         SyncJobId = job.Id,
+                                         ChangeTime = latestChangeTime,
+                                         ChangeReason = SyncJobChangeReason.SubmissionApproved.ToString()
+                                     });
+
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                                 .ReturnsAsync(new List<AzureADGroup>{ new AzureADGroup { ObjectId = job.Group.GroupId, Name = "LastModTestGroup" } });
+
+            var userContext = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
+
+            var response = await _jobsController.GetJobsAsync(_odataQueryOptions);
+            var ok = response.Result as OkObjectResult;
+            Assert.IsNotNull(ok, "Expected OkObjectResult");
+            var paged = ok!.Value as PagedResponseDTO;
+            Assert.IsNotNull(paged, "Expected paged response");
+            var first = paged!.Items.Single();
+
+            Assert.AreEqual(latestChangeTime, first.LastModifiedTime, "LastModifiedTime should reflect most recent ANY change (SubmissionApproved)");
+            _syncJobChangeRepository.Verify(x => x.GetLastSyncJobRecordBySyncJobIdAsync(job.Id), Times.AtLeastOnce);
         }
 
         private async IAsyncEnumerable<T> ToAsyncEnumerable<T>(IEnumerable<T> input)

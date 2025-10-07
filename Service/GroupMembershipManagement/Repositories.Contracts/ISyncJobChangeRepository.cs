@@ -35,6 +35,15 @@ namespace Repositories.Contracts
         /// Retrieves the last sync job change by its sync job id.
         /// </summary>
         Task<SyncJobChange> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId);
+        
+        /// <summary>
+        /// Retrieves the most recent sync job change record (ANY reason) by its sync job id.
+        /// This differs from <see cref="GetLastSyncJobChangeBySyncJobIdAsync"/> which limits reasons
+        /// to onboarding / update / submission rejected today. Use this when you need the true
+        /// last change regardless of reason (e.g. to show an accurate "Last Modified" timestamp
+        /// that includes SubmissionApproved, StatusUpdate, IgnoreThresholdOnce, GroupSettings, etc.).
+        /// </summary>
+        Task<SyncJobChange> GetLastSyncJobRecordBySyncJobIdAsync(Guid syncJobId);
         Task<SyncJobChange> GetLastSyncJobChangeWithOnboardingOrUpdateBySyncJobIdAsync(Guid syncJobId);
         Task<SyncJobChange> GetRecentGroupSettingsBySyncJobIdAsync(Guid syncJobId);
     }

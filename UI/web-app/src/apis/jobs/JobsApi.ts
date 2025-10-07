@@ -68,7 +68,8 @@ export class JobsApi extends ApiBase implements IJobsApi {
           $top: pagingOptions.pageSize,
           $orderBy: pagingOptions.orderBy ? capitalizeFirstLetter(pagingOptions.orderBy) : undefined,
           $filter: pagingOptions.filter,
-          customSortBy: pagingOptions.customSortBy 
+          customSortBy: pagingOptions.customSortBy,
+          isSortedDescending: pagingOptions.isSortedDescending
         }
       : {};
 
@@ -95,6 +96,7 @@ export class JobsApi extends ApiBase implements IJobsApi {
       period: entity.period,
       arrow: entity.arrow,
       estimatedNextRunTime: entity.estimatedNextRunTime,
+      lastModifiedTime: entity.lastModifiedTime,
       thresholdPercentageForAdditions: entity.thresholdPercentageForAdditions,
       thresholdPercentageForRemovals: entity.thresholdPercentageForRemovals,
       endpoints: entity.endpoints,

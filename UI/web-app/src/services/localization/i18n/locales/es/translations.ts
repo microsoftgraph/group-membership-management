@@ -318,6 +318,7 @@ export const strings: IStrings = {
         email: 'Correo electrónico',
         lastRun: 'Última sincronización',
         nextRun: 'Próxima sincronización',
+        lastModified: 'Última modificación',
         status: 'Status',
         actionRequired: 'Acción requerida',
       },

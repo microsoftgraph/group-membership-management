@@ -44,9 +44,9 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
         [HttpGet()]
-        public async Task<ActionResult<PagedResponse<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions, [FromQuery] string? customSortBy = null)
+        public async Task<ActionResult<PagedResponse<SyncJob>>> GetJobsAsync(ODataQueryOptions<SyncJobModel> queryOptions, [FromQuery] string? customSortBy = null, [FromQuery] bool? isSortedDescending = null)
         {
-            var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions, CustomSortBy = customSortBy });
+            var response = await _getJobsRequestHandler.ExecuteAsync(new GetJobsRequest { QueryOptions = queryOptions, CustomSortBy = customSortBy, IsSortedDescending = isSortedDescending });
             
             var pageSize = queryOptions?.Top?.Value ?? DEFAULT_PAGE_SIZE;
             var totalItems = response.TotalItems;

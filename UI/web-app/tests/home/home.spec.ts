@@ -52,3 +52,17 @@ test('Row click navigates to JobDetails if targetGroupName is null and status is
   await expect(page).toHaveURL(/\/JobDetails\/\w+/);
   console.log('✅ Row click navigates to JobDetails as expected');
 });
+
+test.only('Last Modified column is visible in the jobs list', async ({ page }) => {
+  const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+  await page.goto(url);
+  await page.waitForTimeout(5000);
+
+  const lastModifiedHeader = page.getByRole('columnheader', { name: /last modified/i });
+  await expect(lastModifiedHeader).toBeVisible();
+
+  const sortIcon = lastModifiedHeader.locator('i[data-icon-name="Sort"]');
+  await expect(sortIcon).toBeVisible();
+
+  console.log('✅ Last Modified column is visible and sortable in the jobs list');
+});

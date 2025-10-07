@@ -7,4 +7,5 @@ export type PagingOptions = {
   filter?: string;
   orderBy?: string;
   customSortBy?: string;
+  isSortedDescending?: boolean;
 }

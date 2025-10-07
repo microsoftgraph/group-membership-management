@@ -7,4 +7,5 @@ export type ODataQueryOptions = {
   $filter?: string;
   $orderBy?: string;
   customSortBy?: string;
+  isSortedDescending?: boolean;
 };

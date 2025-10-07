@@ -112,6 +112,17 @@ namespace Repositories.EntityFramework
             return entity == null ? null : MapEntityToModel(entity);
         }
 
+        public async Task<SyncJobChange?> GetLastSyncJobRecordBySyncJobIdAsync(Guid syncJobId)
+        {
+            // Return the absolute most recent record for this job regardless of change reason
+            var entity = await _readContext.SyncJobChanges
+                                           .Where(s => s.SyncJobId == syncJobId)
+                                           .OrderByDescending(s => s.ChangeTime)
+                                           .FirstOrDefaultAsync();
+
+            return entity == null ? null : MapEntityToModel(entity);
+        }
+
         public async Task<SyncJobChange?> GetLastSyncJobChangeWithOnboardingOrUpdateBySyncJobIdAsync(Guid syncJobId)
         {
             var entity = await _readContext.SyncJobChanges

@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { approveJobs, downloadJobs, fetchJobs } from '../../store/jobs.api';
-import {
+import { 
   selectAllJobs,
   selectGetJobsError,
   setGetJobsError,
@@ -25,7 +25,8 @@ import {
   selectNumberOfJobs,
   selectApproveJobsError,
   setApproveJobsResponse,
-  setApproveJobsLoading
+  setApproveJobsLoading,
+  selectJobsLoading
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
@@ -102,6 +103,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   const dispatch = useDispatch<AppDispatch>();
   const jobs = useSelector(selectAllJobs);
+  const jobsLoading = useSelector(selectJobsLoading);
 
   const pagingOptions = useSelector(selectPagingOptions);
   const sortKey: string | undefined = useSelector(selectPagingBarSortKey);
@@ -166,9 +168,18 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     clearSelection();
   }, [dispatch, jobsToDownload]);
 
+  // Fetch jobs whenever paging/filter/sort options change. Enable shimmer if a fetch is starting.
   useEffect(() => {
+    setIsShimmerEnabled(true);
     dispatch(fetchJobs(pagingOptions));
   }, [dispatch, pagingOptions]);
+
+  // Disable shimmer once loading completes (either success or empty results)
+  useEffect(() => {
+    if (!jobsLoading) {
+      setIsShimmerEnabled(false);
+    }
+  }, [jobsLoading]);
 
   const navigate = useNavigate();
 
@@ -199,7 +210,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'targetGroupName',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.name,
       fieldName: 'targetGroupName',
-      minWidth: 250,
+      minWidth: 220,
       isMultiline: false,
       isResizable: true,
       isSorted: sortKey === 'targetGroupName',
@@ -210,7 +221,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'email',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.email, 
       fieldName: 'email',
-      minWidth: 250,
+      minWidth: 220,
       isMultiline: false,
       isResizable: true,
       isSorted: sortKey === 'email',
@@ -240,6 +251,18 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
       columnActionsMode: 0,
+    },
+    {
+      key: 'lastModifiedTime',
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.lastModified,
+      fieldName: 'lastModifiedTime',
+      minWidth: 160,
+      maxWidth: 180,
+      isMultiline: true,
+      isResizable: true,
+      isSorted: sortKey === 'lastModifiedTime',
+      isSortedDescending,
+      showSortIconWhenUnsorted: true,
     },
     {
       key: 'enabledOrNot',
@@ -296,8 +319,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       dispatch(setSortKey(column.key));
       dispatch(setIsSortedDescending(isSortedDescending));
 
-      if (column.key === 'targetGroupName') {
+      if (column.key === 'targetGroupName' || column.key === 'lastModifiedTime') {
         dispatch(setCustomSortBy(column.key));
+        // Enable shimmer when custom sorting starts
+        setIsShimmerEnabled(true);
       }
     }
   }
@@ -415,9 +440,9 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
     switch (column?.key) {
       case 'lastSuccessfulRunTime':
-      case 'estimatedNextRunTime':
-        const spaceIndex = fieldContent.indexOf(' ');
-        const isEmpty = fieldContent === '';
+      case 'estimatedNextRunTime': {
+        const isEmpty = !fieldContent || fieldContent === '';
+        const spaceIndex = isEmpty ? -1 : fieldContent.indexOf(' ');
         const lastOrNextRunDate = isEmpty
           ? '-'
           : fieldContent.substring(0, spaceIndex);
@@ -431,6 +456,25 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div>{hoursAgoOrHoursLeft}</div>
           </div>
         );
+      }
+
+      case 'lastModifiedTime': {
+        const isEmpty = !fieldContent || fieldContent === '';
+        if (isEmpty) {
+          return <div>-</div>;
+        }
+
+        try {
+          // Ensure the datetime is treated as UTC by appending 'Z' if not present
+          const utcDate = fieldContent.endsWith('Z') ? fieldContent : `${fieldContent}Z`;
+          const date = new Date(utcDate);
+          const localDateTime = date.toLocaleString();
+          
+          return <div>{localDateTime}</div>;
+        } catch {
+          return <div>{fieldContent}</div>;
+        }
+      }
 
       case 'enabledOrNot':
         return (
@@ -439,7 +483,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           </div>
         );
 
-      case 'actionRequired':
+      case 'actionRequired': {
         const displayActionRequired = getDisplayActionRequired(item, isSubmissionReviewer || isSubmissionRejector);
         return (
           displayActionRequired ?
@@ -461,6 +505,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             )
             : <></>
         );
+      }
 
       case 'arrow':
         return fieldContent ? (

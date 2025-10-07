@@ -38,12 +38,8 @@ const loadPersistedState = (): Partial<PagingBarState> => {
     const savedState = localStorage.getItem(STORAGE_KEY);
     if (savedState) {
       const parsed = JSON.parse(savedState);
-      // Restore filter, sort, and pagination state
+      // Only restore filter state, not sorting or pagination
       return {
-        pageSize: parsed.pageSize,
-        pageNumber: parsed.pageNumber,
-        sortKey: parsed.sortKey,
-        isSortedDescending: parsed.isSortedDescending,
         filterStatus: parsed.filterStatus,
         filterActionRequired: parsed.filterActionRequired,
         filterDestinationId: parsed.filterDestinationId,
@@ -51,7 +47,6 @@ const loadPersistedState = (): Partial<PagingBarState> => {
         filterDestinationName: parsed.filterDestinationName,
         filterDestinationOwner: parsed.filterDestinationOwner,
         filterDestinationOwnerPersona: parsed.filterDestinationOwnerPersona,
-        customSortBy: parsed.customSortBy,
       };
     }
   } catch (error) {
@@ -219,7 +214,7 @@ export const selectPagingOptions = createSelector(
     
     let orderByString: string | undefined = undefined;
     const filters: string[] = [];
-    if (sortKey !== undefined && sortKey !== 'targetGroupName') {
+    if (sortKey !== undefined && sortKey !== 'targetGroupName' && sortKey !== 'lastModifiedTime') {
       orderByString = sortKey + (isSortedDescending ? ' desc' : '');
     }
     if (filterDestinationId) {
@@ -266,7 +261,7 @@ export const selectPagingOptions = createSelector(
       filter: filterString,
       sortKey,
       isSortedDescending,
-      customSortBy: customSortBy !== 'targetGroupName' ? customSortBy : undefined
+      customSortBy: (customSortBy === 'targetGroupName' || customSortBy === 'lastModifiedTime') ? customSortBy : undefined
     };
   }
 );

@@ -31,5 +31,6 @@ namespace WebApi.Models.DTOs
 
         public DateTime LastSuccessfulRunTime { get; set; }
         public DateTime EstimatedNextRunTime { get; set; }
+        public DateTime? LastModifiedTime { get; set; }
     }
 }

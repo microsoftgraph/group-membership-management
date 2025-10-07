@@ -5,12 +5,8 @@ import { Middleware } from '@reduxjs/toolkit';
 import type { RootState } from './store';
 import type { PagingBarState } from './pagingBar.slice';
 
-// Actions that should trigger localStorage persistence
+// Actions that should trigger localStorage persistence (only filter actions)
 const PERSISTABLE_ACTIONS = [
-  'pagingBar/setPageSize',
-  'pagingBar/setPageNumber',
-  'pagingBar/setSortKey',
-  'pagingBar/setIsSortedDescending',
   'pagingBar/setFilterActionRequired',
   'pagingBar/setFilterStatus',
   'pagingBar/setFilterDestinationId',
@@ -18,20 +14,15 @@ const PERSISTABLE_ACTIONS = [
   'pagingBar/setFilterDestinationName',
   'pagingBar/setFilterDestinationOwner',
   'pagingBar/setFilterDestinationOwnerPersona',
-  'pagingBar/setCustomSortBy',
   'pagingBar/resetFilters',
-  'jobs/fetchJobs/fulfilled', // For page reset on invalid page
 ];
 
 const STORAGE_KEY = 'gmmJobListState';
 
 const saveStateToStorage = (pagingBarState: PagingBarState) => {
   try {
+    // Only save filter state, not sorting or pagination
     const stateToSave = {
-      pageSize: pagingBarState.pageSize,
-      pageNumber: pagingBarState.pageNumber,
-      sortKey: pagingBarState.sortKey,
-      isSortedDescending: pagingBarState.isSortedDescending,
       filterStatus: pagingBarState.filterStatus,
       filterActionRequired: pagingBarState.filterActionRequired,
       filterDestinationId: pagingBarState.filterDestinationId,
@@ -39,7 +30,6 @@ const saveStateToStorage = (pagingBarState: PagingBarState) => {
       filterDestinationName: pagingBarState.filterDestinationName,
       filterDestinationOwner: pagingBarState.filterDestinationOwner,
       filterDestinationOwnerPersona: pagingBarState.filterDestinationOwnerPersona,
-      customSortBy: pagingBarState.customSortBy,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
   } catch (error) {

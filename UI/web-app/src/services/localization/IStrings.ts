@@ -310,6 +310,7 @@ export type IStrings = {
         type: string;
         lastRun: string;
         nextRun: string;
+        lastModified: string;
         status: string;
         actionRequired: string;
         email: string;

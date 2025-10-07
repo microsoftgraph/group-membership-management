@@ -3,6 +3,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OData.Query;
 using Models;
+using Models.SyncJobChange;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -17,15 +18,18 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly ISyncJobChangeRepository _syncJobChangeRepository;
 
         public GetJobsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IGraphGroupRepository graphGroupRepository,
-                              IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
+                              IHttpContextAccessor httpContextAccessor,
+                              ISyncJobChangeRepository syncJobChangeRepository) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
         }
 
         protected override async Task<GetJobsResponse> ExecuteCoreAsync(GetJobsRequest request)
@@ -45,7 +49,10 @@ namespace Services
 
             var jobsQuery = GetSyncJobsQuery();
 
-            if (request.QueryOptions?.OrderBy?.OrderByClause == null)
+            // Check if we need custom sorting (targetGroupName or lastModifiedTime)
+            var needsCustomSorting = request.CustomSortBy == "targetGroupName" || request.CustomSortBy == "lastModifiedTime";
+
+            if (!needsCustomSorting && request.QueryOptions?.OrderBy?.OrderByClause == null)
             {
                 jobsQuery = jobsQuery
                             .OrderBy(x => x.StatusDetails.SortPriority)
@@ -54,32 +61,143 @@ namespace Services
                 odataSettings.EnsureStableOrdering = false;
             }
 
-            if (request.QueryOptions != null)
+            List<SyncJob> jobs;
+            
+            if (needsCustomSorting)
             {
-                jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery, odataSettings);
+                // For custom sorting, get ALL jobs first without applying OData pagination
+                var baseQuery = GetSyncJobsQuery();
+                
+                // Apply only filters, NOT Skip/Top/OrderBy
+                if (request.QueryOptions?.Filter != null)
+                {
+                    var filterOnlyQuery = (IQueryable<SyncJob>)request.QueryOptions.Filter.ApplyTo(baseQuery, new ODataQuerySettings());
+                    jobs = filterOnlyQuery.ToList();
+                }
+                else
+                {
+                    jobs = baseQuery.ToList();
+                }
 
-                var countQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(
-                       GetSyncJobsQuery(),
-                       AllowedQueryOptions.Skip | AllowedQueryOptions.Top);
-                numberOfJobs = countQuery.Count();
-
-                if (request.QueryOptions.Top?.Value > 0 && request.QueryOptions.Skip?.Value >= 0)
+                // Update numberOfJobs to reflect the filtered count
+                numberOfJobs = jobs.Count;
+                
+                // Calculate pagination info based on filtered results
+                if (request.QueryOptions?.Top?.Value > 0 && request.QueryOptions?.Skip?.Value >= 0)
                 {
                     response.TotalNumberOfPages = (int)Math.Ceiling((double)numberOfJobs / request.QueryOptions.Top.Value);
                     response.CurrentPage = request.QueryOptions.Skip.Value / request.QueryOptions.Top.Value + 1;
                 }
-                
                 response.TotalItems = numberOfJobs;
             }
+            else
+            {
+                // Original logic for non-custom sorting
+                if (request.QueryOptions != null)
+                {
+                    // First get the total count before applying Skip/Top
+                    var countQuery = GetSyncJobsQuery();
+                    if (request.QueryOptions.Filter != null)
+                    {
+                        countQuery = (IQueryable<SyncJob>)request.QueryOptions.Filter.ApplyTo(countQuery, new ODataQuerySettings());
+                    }
+                    numberOfJobs = countQuery.Count();
 
-            var jobs = jobsQuery.ToList();
+                    // Then apply all operations including Skip/Top for the actual data
+                    jobsQuery = (IQueryable<SyncJob>)request.QueryOptions.ApplyTo(jobsQuery, odataSettings);
+
+                    if (request.QueryOptions.Top?.Value > 0 && request.QueryOptions.Skip?.Value >= 0)
+                    {
+                        response.TotalNumberOfPages = (int)Math.Ceiling((double)numberOfJobs / request.QueryOptions.Top.Value);
+                        response.CurrentPage = request.QueryOptions.Skip.Value / request.QueryOptions.Top.Value + 1;
+                    }
+                    
+                    response.TotalItems = numberOfJobs;
+                }
+                else
+                {
+                    // No query options, so count all jobs
+                    numberOfJobs = GetSyncJobsQuery().Count();
+                    response.TotalItems = numberOfJobs;
+                    response.TotalNumberOfPages = 1;
+                    response.CurrentPage = 1;
+                }
+
+                jobs = jobsQuery.ToList();
+            }
+
             var targetGroups = (await _graphGroupRepository.GetGroupsAsync(jobs.Select(x => x.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() ? x.Channel.GroupId : x.Group.GroupId).ToList()))
                                .ToDictionary(x => x.ObjectId);
 
+            // Handle custom sorting
+            var allLastModifiedTimes = new Dictionary<Guid, DateTime?>(); // Store for reuse
+            
             if (request.CustomSortBy == "targetGroupName")
             {
                 var jobsWithNames = jobs.Select(job => new { Job = job, TargetGroupName = targetGroups.ContainsKey(job.Group.GroupId) ? targetGroups[job.Group.GroupId].Name : null }).ToList();
-                jobs = jobsWithNames.OrderBy(job => job.TargetGroupName).Select(job => job.Job).ToList();
+                jobs = request.IsSortedDescending == true 
+                    ? jobsWithNames.OrderByDescending(job => job.TargetGroupName).Select(job => job.Job).ToList()
+                    : jobsWithNames.OrderBy(job => job.TargetGroupName).Select(job => job.Job).ToList();
+            }
+            else if (request.CustomSortBy == "lastModifiedTime")
+            {
+                // For lastModifiedTime sorting, we need to get all jobs, fetch their last modified times,
+                // sort them, and then apply pagination. This is expensive but necessary for accurate sorting.
+                foreach (var job in jobs)
+                {
+                    try
+                    {
+                        var lastChange = await _syncJobChangeRepository.GetLastSyncJobRecordBySyncJobIdAsync(job.Id);
+                        allLastModifiedTimes[job.Id] = lastChange?.ChangeTime;
+                    }
+                    catch
+                    {
+                        allLastModifiedTimes[job.Id] = null;
+                    }
+                }
+
+                var jobsWithLastModified = jobs.Select(job => new { Job = job, LastModifiedTime = allLastModifiedTimes[job.Id] }).ToList();
+                jobs = request.IsSortedDescending == true
+                    ? jobsWithLastModified.OrderByDescending(job => job.LastModifiedTime ?? DateTime.MinValue).Select(job => job.Job).ToList()
+                    : jobsWithLastModified.OrderBy(job => job.LastModifiedTime ?? DateTime.MinValue).Select(job => job.Job).ToList();
+            }
+
+            // Apply pagination for custom sorted results
+            if (needsCustomSorting && request.QueryOptions?.Top?.Value > 0 && request.QueryOptions?.Skip?.Value >= 0)
+            {
+                jobs = jobs.Skip(request.QueryOptions.Skip.Value).Take(request.QueryOptions.Top.Value).ToList();
+            }
+
+            // Get last modified times for the final jobs that will be displayed
+            var lastModifiedTimes = new Dictionary<Guid, DateTime?>();
+            
+            if (request.CustomSortBy == "lastModifiedTime")
+            {
+                // If we're sorting by lastModifiedTime, reuse the data we already fetched
+                // We just need to filter it to the jobs that are being displayed after pagination
+                foreach (var job in jobs)
+                {
+                    lastModifiedTimes[job.Id] = allLastModifiedTimes.ContainsKey(job.Id) 
+                        ? allLastModifiedTimes[job.Id] 
+                        : null;
+                }
+            }
+            else
+            {
+                // For non-lastModifiedTime sorting, fetch last modified times only for displayed jobs
+                // This is much more efficient as we only fetch for the current page
+                foreach (var job in jobs)
+                {
+                    try
+                    {
+                        var lastChange = await _syncJobChangeRepository.GetLastSyncJobRecordBySyncJobIdAsync(job.Id);
+                        lastModifiedTimes[job.Id] = lastChange?.ChangeTime;
+                    }
+                    catch
+                    {
+                        lastModifiedTimes[job.Id] = null;
+                    }
+                }
             }
 
             foreach (var job in jobs)
@@ -116,7 +234,8 @@ namespace Services
                 {
                     TargetGroupName = targetGroups.ContainsKey(groupId) ? targetGroups[groupId].Name : null,
                     TargetGroupEmail = targetGroups.ContainsKey(groupId)? targetGroups[groupId].Email : null,
-                    TargetDestinationType = type
+                    TargetDestinationType = type,
+                    LastModifiedTime = lastModifiedTimes.ContainsKey(job.Id) ? lastModifiedTimes[job.Id] : null
                 };
 
                 response.Model.Add(dto);

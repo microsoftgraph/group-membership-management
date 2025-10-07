@@ -316,6 +316,7 @@ export const strings: IStrings = {
         email: 'Email',
         lastRun: 'Last Run',
         nextRun: 'Next Run',
+        lastModified: 'Last Modified',
         status: 'Status',
         actionRequired: 'Action Required',
       },
