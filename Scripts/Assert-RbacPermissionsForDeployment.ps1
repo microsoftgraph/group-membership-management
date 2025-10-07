@@ -144,11 +144,18 @@ function Assert-RbacPermissionsForDeployment {
     }
     
     Write-Host "Found $($allAssignments.Count) role assignments." -ForegroundColor Green
+
+    foreach ($assignment in $allAssignments) {
+        if ($assignment.RoleDefinitionName -eq "Owner" -and $assignment.Scope -eq $scopePrefix) {
+            Write-Host "✅ User has 'Owner' role at scope: $($assignment.Scope). All permissions are granted." -ForegroundColor Green
+            return
+        }
+    }
     
     # Count total permissions to check for progress calculation
     $totalPermissionsCount = 0
     foreach ($scopeKey in $ScopedPermissions.Keys) {
-        $scope = $ScopedPermissions[$scopeKey]
+        $scope = $ScopedPermissions[$scopeKey]  
         $totalPermissionsCount += ($scope.Actions.Count + $scope.DataActions.Count)
     }
     
