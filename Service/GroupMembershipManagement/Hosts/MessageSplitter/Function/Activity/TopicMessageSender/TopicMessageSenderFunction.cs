@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Models;
+using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using System.Text.Json;
@@ -139,7 +140,19 @@ namespace Hosts.MessageSplitter
         private async Task<GroupMembership[]> SplitGroupMembershipAsync(TopicMessageSenderRequest request)
         {
             var blobContent = await DownloadFileAsync(request.MembershipRequest);
-            var groupMembership = System.Text.Json.JsonSerializer.Deserialize<GroupMembership>(blobContent);
+            string jsonContent;
+
+            try
+            {
+                // First, try to decompress
+                jsonContent = TextCompressor.Decompress(blobContent);
+            }
+            catch (Exception e) when (e is FormatException || e is InvalidDataException || e is IOException)
+            {
+                jsonContent = blobContent;
+            }
+
+            var groupMembership = System.Text.Json.JsonSerializer.Deserialize<GroupMembership>(jsonContent);
             var groupMembershipChunks = groupMembership.Split(request.MessageSize);
             return groupMembershipChunks;
         }
