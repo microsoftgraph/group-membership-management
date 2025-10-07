@@ -261,10 +261,9 @@ namespace Services
         }
         private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
         {
-            var allNonDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == false && x.Status != SyncStatus.InProgress.ToString());
-            var allDryRunSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.DryRunTimeStamp) > TimeSpan.FromHours(x.Period)) && x.IsDryRunEnabled == true && x.Status != SyncStatus.InProgress.ToString());
+            var allDueToRunJobs = jobs.Where(x => !x.IsDryRunEnabled && x.Status != SyncStatus.InProgress.ToString());
             var inProgressSyncJobs = jobs.Where(x => ((DateTime.UtcNow - x.LastSuccessfulStartTime) > TimeSpan.FromHours(x.Period)) && x.Status == SyncStatus.InProgress.ToString());
-            return allNonDryRunSyncJobs.Concat(allDryRunSyncJobs).Concat(inProgressSyncJobs);
+            return allDueToRunJobs.Concat(inProgressSyncJobs);
         }
         private bool HasJobTriggerThresholdExceeded(int syncJobsCount, int totalSyncJobsCount)
         {
