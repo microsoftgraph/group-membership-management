@@ -25,5 +25,6 @@ namespace Services.Entities
         public string SyncJobTimeElapsedSeconds { get; set; } = "N/A";
         public string Type { get; set; } = "N/A";
         public string SourceTypesCounts { get; set; } = "N/A";
+        public string Identifier { get; set; } = "N/A";
     }
 }

@@ -45,6 +45,7 @@ namespace Hosts.MembershipAggregator
                 settings.NumberOfThresholdViolationsToDisableJob = GetIntSetting(configuration, "NumberOfThresholdViolationsToDisableJob", 10);
             });
 
+            builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<MultiLaneConfig>>().Value);
             builder.Services.AddGraphAPIClient()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphAPIService, GraphAPIService>((services) =>

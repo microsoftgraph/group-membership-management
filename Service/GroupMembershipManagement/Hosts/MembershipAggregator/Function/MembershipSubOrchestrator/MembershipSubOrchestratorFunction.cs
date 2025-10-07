@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using DIConcreteTypes;
 using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Helpers;
 using Microsoft.ApplicationInsights;
@@ -30,12 +31,14 @@ namespace Hosts.MembershipAggregator
         private readonly IThresholdConfig _thresholdConfig = null;
         private readonly IGraphAPIService _graphAPIService = null;
         private readonly TelemetryClient _telemetryClient = null;
+        private readonly MultiLaneConfig _multilaneConfig = null;
 
-        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig, IGraphAPIService graphAPIService, TelemetryClient telemetryClient)
+        public MembershipSubOrchestratorFunction(IThresholdConfig thresholdConfig, IGraphAPIService graphAPIService, TelemetryClient telemetryClient, MultiLaneConfig multilaneConfig)
         {
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _multilaneConfig = multilaneConfig ?? throw new ArgumentNullException(nameof(multilaneConfig));
         }
 
         [FunctionName(nameof(MembershipSubOrchestratorFunction))]
@@ -342,6 +345,13 @@ namespace Hosts.MembershipAggregator
 
                 var sourceTypeCounts = JsonParser.GetQueryTypes(request.SyncJob.Query);
                 var channelId = await context.CallActivityAsync<string>(nameof(GetChannelFunction), request.SyncJob);
+                string identifier = null;
+                if (_multilaneConfig.IsEnabled && request.SyncJob.MembershipType == MembershipTypes.GroupMembership.ToString())
+                {
+                    var membersToBeUpdated = deltaResponse.MembersToAddCount + deltaResponse.MembersToRemoveCount;
+                    identifier = membersToBeUpdated <= _multilaneConfig.Small ? "small" : "large";
+                }
+
                 var syncCompleteEvent = new SyncCompleteCustomEvent
                 {
                     Type = request.SyncJob.MembershipType,
@@ -358,7 +368,8 @@ namespace Hosts.MembershipAggregator
                     MembersRemoved = "0",
                     MembersToAddNotFound = "0",
                     MembersToRemoveNotFound = "0",
-                    IsInitialSync = $"{request.SyncJob.LastRunTime == SqlDateTime.MinValue.Value}"
+                    IsInitialSync = $"{request.SyncJob.LastRunTime == SqlDateTime.MinValue.Value}",
+                    Identifier = identifier
                 };
 
                 var dbSyncJob = await context.CallActivityAsync<SyncJob>(nameof(JobReaderFunction),
