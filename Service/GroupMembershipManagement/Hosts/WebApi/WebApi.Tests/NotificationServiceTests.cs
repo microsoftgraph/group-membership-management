@@ -18,6 +18,7 @@ namespace WebApi.Tests
     {
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
+        private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private NotificationService _notificationService = null!;
         private SyncJob _testSyncJob = null!;
         private SyncJobChange _testSubmission = null!;
@@ -27,10 +28,12 @@ namespace WebApi.Tests
         {
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _mockLoggingRepository = new Mock<ILoggingRepository>();
-            
+            _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
+
             _notificationService = new NotificationService(
                 _mockServiceBusQueueRepository.Object,
-                _mockLoggingRepository.Object);
+                _mockLoggingRepository.Object,
+                _mockGraphGroupRepository.Object);
 
             _testSyncJob = new SyncJob
             {
@@ -189,7 +192,7 @@ namespace WebApi.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(
-                () => new NotificationService(null!, _mockLoggingRepository.Object));
+                () => new NotificationService(null!, _mockLoggingRepository.Object, _mockGraphGroupRepository.Object));
         }
 
         [TestMethod]
@@ -197,7 +200,7 @@ namespace WebApi.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(
-                () => new NotificationService(_mockServiceBusQueueRepository.Object, null!));
+                () => new NotificationService(_mockServiceBusQueueRepository.Object, null!, _mockGraphGroupRepository.Object));
         }
 
     }

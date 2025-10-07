@@ -16,13 +16,16 @@ namespace Services.WebApi
     {
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly IGraphGroupRepository _graphGroupRepository;
 
         public NotificationService(
             [FromKeyedServices("Notifications")] IServiceBusQueueRepository serviceBusQueueRepository,
-            ILoggingRepository loggingRepository)
+            ILoggingRepository loggingRepository,
+            IGraphGroupRepository graphGroupRepository)
         {
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         public async Task SendSubmissionRejectedNotificationAsync(
@@ -31,10 +34,16 @@ namespace Services.WebApi
         {
             var businessJustification = submission.BusinessJustification ?? "No reason provided";
 
+            var groupName = await _graphGroupRepository.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
+            if (string.IsNullOrEmpty(groupName))
+            {
+                groupName = "<Group name could not be retrieved>"; 
+            }
+
             var additionalContentParameters = new string[]
             {
                 syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
-                string.Empty,                             // {1} - Group Name (will be populated by TryAssignGroupNameAsync)
+                groupName,                               // {1} - Group Name
                 businessJustification                     // {2} - Rejection Reason
             };
 
