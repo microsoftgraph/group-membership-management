@@ -21,7 +21,6 @@ import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttribu
 import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
 import { Disclaimer } from '../components/Disclaimer';
 import { jsxFormat } from '../utils/stringUtils';
-import { InfoWord } from '../components/InfoWord';
 import { fetchServiceStatus } from '../store/operations.api';
 import { selectOperationError } from '../store/operations.slice';
 import { Maintenance } from '../pages/Maintenance/Maintenance';
@@ -99,43 +98,9 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
                     { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
                     { id: 'autoSubscribeSettings', 
                       label: jsxFormat(
-                      strings.Disclaimer.autoSubscribeSettings,
-                      <InfoWord
-                        label={strings.Disclaimer.autoSubscribeNewMembersLabel}
-                        description={
-                          <>
-                            {strings.Disclaimer.autoSubscribeNewMembersDescription}{' '}
-                            <a
-                              href={strings.Disclaimer.autoSubscribeNewMembersDescriptionLinkUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ textDecoration: 'underline' }}
-                            >
-                              {strings.Disclaimer.autoSubscribeNewMembersDescriptionLinkText}
-                            </a>
-                            .
-                          </>
-                        }
-                      />,
-                      <InfoWord
-                        label={strings.Disclaimer.subscribeMembersToCalendarEventsLabel}
-                        description={
-                          <>
-                            {strings.Disclaimer.subscribeMembersToCalendarEventsDescription}{' '}
-                            <a
-                              href={strings.Disclaimer.subscribeMembersToCalendarEventsDescriptionLinkUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ textDecoration: 'underline' }}
-                            >
-                              {strings.Disclaimer.subscribeMembersToCalendarEventsDescriptionLinkText}
-                            </a>
-                            .
-                          </>
-                        }
-                      />,
-                      <strong>{strings.true}</strong>,
-                      <strong>{strings.Disclaimer.autoSubscribeSettingsBoldNote}</strong>
+                        strings.Disclaimer.autoSubscribeSettings,
+                        <strong>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</strong>,
+                        <strong><a href="https://myaccount.microsoft.com/groups" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{strings.Disclaimer.myGroupsUI}</a></strong>
                       )
                     },
                     { id: 'authorizedSenders', label: jsxFormat(strings.Disclaimer.authorizedSenders,<strong>{strings.Disclaimer.authorizedSendersBoldNote}</strong>) },

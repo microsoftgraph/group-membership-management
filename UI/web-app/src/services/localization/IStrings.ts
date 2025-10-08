@@ -493,6 +493,7 @@ export type IStrings = {
       collapseAll: string;
       allUsersInGroup: string;
       allUsersInFallback: string;
+      autoFollowGroupConversationsReminder: string;
     },
     CreateGroup: {
       createNewGroup: string;
@@ -543,18 +544,11 @@ export type IStrings = {
     membershipRulesBoldNote: string;
     outlookWelcomeMessage: string;
     autoSubscribeSettings: string;
-    autoSubscribeSettingsBoldNote: string;
-    autoSubscribeNewMembersLabel: string;
-    autoSubscribeNewMembersDescription: string;
-    autoSubscribeNewMembersDescriptionLinkText: string;
-    autoSubscribeNewMembersDescriptionLinkUrl: string;
-    subscribeMembersToCalendarEventsLabel: string;
-    subscribeMembersToCalendarEventsDescription: string;
-    subscribeMembersToCalendarEventsDescriptionLinkText: string;
-    subscribeMembersToCalendarEventsDescriptionLinkUrl: string;
     authorizedSenders: string;
     authorizedSendersBoldNote: string;
     teamsVivaNotifications: string;
     flatList: string;
+      membersAutoFollowGroupConversationsOption: string;
+      myGroupsUI: string;
   };
 };
