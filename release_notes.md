@@ -1,5 +1,42 @@
 # Release Notes:
 
+## Release 10/08/2025
+
+Multi‑lane Decommission & Session Enablement
+Removed the Medium and Onboarding processing lanes (code, infra templates, UI tiles, unused subscriptions) and introduced/expanded session‑enabled handling for the remaining lanes. Added cleanup + pre‑deployment migration scaffolding and a script to retire obsolete lane resources. Result: simpler routing model, reduced config surface, readiness for session-ordered large workloads.
+
+Messaging, Caching, Batching, Concurrency
+Enhanced membership processing throughput by refining batch size limits, surfacing and tuning concurrent write settings, extracting source member IDs earlier, and improving cache file evolution (conversion + metadata). Added safeguards (dispose sender, missing setting checks). Net effect: more controlled write pressure on Graph + safer cache transitions.
+
+Deployment / Infrastructure & Platform Migration
+Added PreDeploymentMigrations support, Flex consumption migration scripts, function plan adjustments, bicep/template updates (including session-enabled subs), and isolated worker model adoption for specific functions (e.g., NonProdService, AzureUserReader). Outcome: cleaner deployment pipeline, forward compatibility with Flex, reduced infra drift.
+
+Data / Schema & Persistence Evolution
+Introduced SyncJobHistory plus CreatedAt/UpdatedAt auditing fields, and ensured update paths populate history and sync context. This raises observability and auditability for sync lifecycles and supports future analytic/reporting scenarios.
+
+Reliability / Resilience
+Strengthened retry logic (general + session-enabled subscription flows), fixed batch sizing edge cases, added defensive checks around settings and sender disposal, and resolved merge/consistency issues. Goal: lower transient failure impact and cleaner degradation behavior.
+
+Logging / Observability
+Refined logging logic, adjusted wait behaviors, filtered noisy dashboard messages, and synchronized unit tests with new log semantics. Result: leaner signal and easier issue triage.
+
+Flex Consumption & Performance Tuning
+Added targeted scripts plus configuration knobs (concurrent write and batch controls) to safely migrate and optimize workloads under Flex—positioning for higher memory headroom and elastic scaling.
+
+- Rejecting a pending review submission sends out an email with provided feedback.
+- Filters in the Jobs List UI are preserved
+- After reviewing a submission, the reviewer is redirected back to the Jobs List
+- Auto approval of onboarding jobs that contain only group membership source parts (configurable, default is disabled)
+- Auto approval of onboarding jobs where query contains only one sql membership source part and the requestor is the org leader (configurable, default is disabled)
+- Changed the wording of the include/exclude source part to be more explicit. Removed the include leader option.
+- Added a Submission Rejector role which only has permissions to reject jobs, not approve
+- Added AI title for source parts (can enable/disable the feature via UI)
+- Enabled reordering of the last item in the attribute list
+- Addressed Out Of Memory Exceptions in SqlMembershipObtainer
+- Removed trailing And/Or from the final query
+- Deployment script bug fixes and improvements
+- Enabled support for linux containers for the deployment script
+
 ## Release 7/28/2025
 - Enabled bulk approval via UI.
 - Added Maintenance Page to the UI.
@@ -98,4 +135,4 @@
 - Added the Operations tab in the Admin Center along with the Operations Setting Admin role.
 - Updated to .NET 8.0.
 - Updated nuget packages.
-- Removed the databse rename step from the database migration script. 
+- Removed the databse rename step from the database migration script.
