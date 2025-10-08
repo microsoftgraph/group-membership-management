@@ -31,6 +31,9 @@ function Set-ADFManagedIdentityRoles
 		[array] $UserPrincipalNames
 	)
 
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
+
 	$functionApps = @("SqlMembershipObtainer")
     $appServices = @("webapi")
     $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
@@ -116,7 +119,8 @@ function Set-ADFManagedIdentityRoles
 
     foreach($secret in $secretNames)
     {
-        $storageAccountName = Get-AzKeyVaultSecret -VaultName $dataKeyVaultName -Name $secret -AsPlainText
+        $storageAccountName = Get-KeyVaultSecretWithFirewallRetry -VaultName $dataKeyVaultName -ResourceGroup $dataRGName -SecretName $secret -AsPlainText
+
         if ($null -eq $storageAccountName) {
             continue;
         }
