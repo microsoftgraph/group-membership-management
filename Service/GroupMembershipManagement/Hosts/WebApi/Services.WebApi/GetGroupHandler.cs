@@ -72,7 +72,11 @@ namespace Services
             DateTime estimatedNextRunTime;
             if (!jobStartsInFuture && !jobScheduledForFuture)
             {
-                estimatedNextRunTime = job.LastRunTime.AddHours(job.Period);
+                // Round current time up to next 5-minute boundary for estimated run time
+                var now = DateTime.UtcNow;
+                var minutesToAdd = 5 - (now.Minute % 5);
+                estimatedNextRunTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute, 0)
+                    .AddMinutes(minutesToAdd);
             }
             else if (jobStartsInFuture)
             {
