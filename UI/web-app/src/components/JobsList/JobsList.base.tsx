@@ -408,7 +408,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         onClick: onContextualItemClicked
       },
     ],
-    directionalHintFixed: true
+    directionalHintFixed: true,
+    alignTargetEdge: true
   };
 
   if (isTenantJobWriter) {

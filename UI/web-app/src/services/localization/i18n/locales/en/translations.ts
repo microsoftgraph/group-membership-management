@@ -4,7 +4,6 @@
 import { IStrings } from '../../../IStrings';
 
 export const strings: IStrings = {
-  emptyList: 'There are no GMM managed groups',
   loading: 'Loading',
   refresh: 'Refresh',
   continue: 'Continue',
@@ -303,7 +302,7 @@ export const strings: IStrings = {
     notFound: 'Membership syncs for group with object Id {0} are now disabled because the group no longer exists.',
   },
   JobsList: {
-    listOfMemberships: 'Managed groups',
+    listOfMemberships: 'Managed memberships',
     ShimmeredDetailsList: {
       toggleSelection: 'Toggle selection',
       toggleAllSelection: 'Toggle selection for all items',
@@ -389,10 +388,10 @@ export const strings: IStrings = {
       filterButtonText: 'Filter',
       clearButtonTooltip: 'Clear Filters',
     },
-    NoResults: 'No memberships found.',
+    NoResults: 'You are currently not an owner of any GMM managed memberships. Click Add to onboard.',
   },
   ManageMembership: {
-    manageMembershipButton: 'Manage Membership',
+    manageMembershipButton: 'Add',
     addSyncButton: 'Add Sync',
     bulkAddSyncsButton: 'Bulk Add Syncs',
     bulkApproveSyncsButton: 'Bulk Approve Syncs',

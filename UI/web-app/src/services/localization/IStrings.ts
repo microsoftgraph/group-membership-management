@@ -2,7 +2,6 @@
 // Licensed under the MIT license.
 
 export type IStrings = {
-  emptyList: string;
   loading: string;
   refresh: string;
   continue: string;

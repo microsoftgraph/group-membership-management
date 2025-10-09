@@ -82,7 +82,13 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       marginBottom: '10px'
     },
     manageMembershipButton: {
-        marginLeft: '20px'
+        // Ensure dropdown button displays properly when right-aligned
+        display: 'inline-block',
+        // Align dropdown menu with right edge of button
+        '& .ms-ContextualMenu': {
+            right: 0,
+            left: 'auto'
+        }
     },
     successStatus: {
       color: theme.palette.green,

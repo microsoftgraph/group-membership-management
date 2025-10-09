@@ -4,7 +4,6 @@
 import { IStrings } from '../../../IStrings';
 
 export const strings: IStrings = {
-  emptyList: 'No hay grupos administrados por GMM',
   loading: 'Cargando',
   refresh: 'Actualizar',
   continue: 'Continuar',
@@ -305,7 +304,7 @@ export const strings: IStrings = {
     editButton: 'Editar',
   },
   JobsList: {
-    listOfMemberships: 'Grupos administrados',
+    listOfMemberships: 'Membresías administradas',
     ShimmeredDetailsList: {
       toggleSelection: 'Alternar selección',
       toggleAllSelection: 'Alternar selecciones para todo',
@@ -391,10 +390,10 @@ export const strings: IStrings = {
       filterButtonText: 'Filtrar',
       clearButtonTooltip: 'Eliminar filtros',
     },
-    NoResults: 'No se encontro ninguna membresía',
+    NoResults: 'Actualmente no eres propietario de ninguna membresía administrada por GMM. Haz clic en Agregar para incorporar.',
   },
   ManageMembership: {
-    manageMembershipButton: 'Administrar membresía',
+    manageMembershipButton: 'Agregar',
     addSyncButton: 'Agregar sincronización',
     bulkAddSyncsButton: 'Agregar sincronizaciones',
     bulkApproveSyncsButton: 'Bulk Approve Syncs',

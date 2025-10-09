@@ -181,7 +181,7 @@ test.describe('Admin Tests', () => {
       console.log('⚠️ Home page taking longer to load, continuing...');
     }
 
-    await page.getByRole('button', { name: 'Manage Membership' }).click();
+    await page.getByRole('button', { name: 'Add' }).click();
     await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
 
     await expect(page.getByText('Create a new group')).toBeVisible({ timeout: 10000 });

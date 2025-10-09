@@ -29,7 +29,7 @@ test('Bulk Approve menu item is visible for submission reviewers', async ({ page
   await page.goto(url);
   await page.waitForTimeout(5000);
 
-  await page.getByRole('button', { name: /Manage Membership/i }).click();
+  await page.getByRole('button', { name: /Add/i }).click();
 
   const bulkApproveItem = page.getByRole('menuitem', { name: /Bulk Approve/i });
   await expect(bulkApproveItem).toBeVisible();

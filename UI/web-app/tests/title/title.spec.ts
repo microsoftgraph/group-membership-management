@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
 test('Test Title Pattern Recognition', { tag: '@title' }, async ({ page }) => {
   test.setTimeout(8 * 60 * 1000);
 
-  await page.getByRole('button', { name: /Manage Membership/i }).click();
+  await page.getByRole('button', { name: /Add/i }).click();
   await page.waitForTimeout(3000);
 
   try {
