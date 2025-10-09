@@ -40,6 +40,9 @@ const titleSlice = createSlice({
     },
     clearGeneratedHRParts: (state) => {
       state.generatedHRParts = [];
+    },
+    clearGeneratedGroupParts: (state) => {
+      state.generatedGroupParts = [];
     }
   },
   extraReducers: (builder) => {
@@ -100,7 +103,7 @@ const titleSlice = createSlice({
   }
 });
 
-export const { clearTitles, clearGeneratedHRParts } = titleSlice.actions;
+export const { clearTitles, clearGeneratedHRParts, clearGeneratedGroupParts } = titleSlice.actions;
 
 export const selectIsGeneratingTitle = (state: RootState) => state.title.isGeneratingTitle;
 export const selectTitle = (state: RootState) => state.title.title;
