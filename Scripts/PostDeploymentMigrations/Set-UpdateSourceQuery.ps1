@@ -1,6 +1,10 @@
 function Set-UpdateSourceQuery {
     [CmdletBinding()]
 	param(
+        [Parameter(Mandatory=$True)]
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory=$True)]
+		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
 		[string] $ConnectionString
     )
@@ -16,44 +20,81 @@ function Set-UpdateSourceQuery {
     $connection = New-Object System.Data.SqlClient.SqlConnection
     $connection.ConnectionString = $ConnectionString
     $connection.AccessToken = $sqlToken
-    $connection.Open()
-    
-    # Check if the table exists
-    $checkTableQuery = "SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$tableSchema' AND TABLE_NAME = '$tableName') THEN 1 ELSE 0 END AS TableExists;"
+
+    $tableExists = Invoke-SqlOperationWithFirewallRetry `
+                    -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                    -SolutionAbbreviation $SolutionAbbreviation `
+                    -Operation { 
+                        $connection.Open()
+        
+                        # Check if the table exists
+                        $checkTableQuery = "SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$tableSchema' AND TABLE_NAME = '$tableName') THEN 1 ELSE 0 END AS TableExists;"
 
 
-    $checkCommand = $connection.CreateCommand()
-    $checkCommand.CommandText = $checkTableQuery
-    $tableExists = $checkCommand.ExecuteScalar()
+                        $checkCommand = $connection.CreateCommand()
+                        $checkCommand.CommandText = $checkTableQuery
+                        $tableExistsResult = $checkCommand.ExecuteScalar()
+
+                        # Close the connection
+                        $checkCommand.Dispose()
+                        $connection.Close()
+
+                        return $tableExistsResult
+                    }
 
     if ($tableExists -eq 1) {
         Write-Output "The table '$tableSchema.$tableName' exists."
 
         # Replace SecurityGroup with GroupMembership
-        $updateQuery = "UPDATE SyncJobs SET Query = REPLACE(Query, 'SecurityGroup', 'GroupMembership') WHERE Query LIKE '%SecurityGroup%'"
-        $updateCommand = $connection.CreateCommand()
-        $updateCommand.CommandText = $updateQuery
-        $updateCommand.ExecuteNonQuery()
+        Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation { 
+                $connection.Open()
+                $updateQuery = "UPDATE SyncJobs SET Query = REPLACE(Query, 'SecurityGroup', 'GroupMembership') WHERE Query LIKE '%SecurityGroup%'"
+                $updateCommand = $connection.CreateCommand()
+                $updateCommand.CommandText = $updateQuery
+                $updateCommand.ExecuteNonQuery()
+                $updateCommand.Dispose()
+                $connection.Close()
+            }
 
          # Replace != with <>
-        $updateQuery = "UPDATE SyncJobs SET Query = REPLACE(Query, '!=', '<>') WHERE Query LIKE '%!=%'"
-        $updateCommand = $connection.CreateCommand()
-        $updateCommand.CommandText = $updateQuery
-        $updateCommand.ExecuteNonQuery()
+        Invoke-SqlOperationWithFirewallRetry `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -Operation { 
+                $connection.Open()
+                $updateQuery = "UPDATE SyncJobs SET Query = REPLACE(Query, '!=', '<>') WHERE Query LIKE '%!=%'"
+                $updateCommand = $connection.CreateCommand()
+                $updateCommand.CommandText = $updateQuery
+                $updateCommand.ExecuteNonQuery()
+                $updateCommand.Dispose()
+                $connection.Close()
+            }
 
         # Retrieve data from the SQL table
-        $query = "SELECT * FROM SyncJobs"
-        $command = $connection.CreateCommand()
-        $command.CommandText = $query
+        $dataTable = Invoke-SqlOperationWithFirewallRetry `
+                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                        -SolutionAbbreviation $SolutionAbbreviation `
+                        -Operation { 
+                            $connection.Open()
+                            # Retrieve data from the SQL table
+                            $query = "SELECT * FROM SyncJobs"
+                            $command = $connection.CreateCommand()
+                            $command.CommandText = $query
 
-        # Create a DataTable to store the results
-        $dataTable = New-Object System.Data.DataTable
-        $dataAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
-        [void]$dataAdapter.Fill($dataTable)
+                            # Create a DataTable to store the results
+                            $dataTableResult = New-Object System.Data.DataTable
+                            $dataAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
+                            [void]$dataAdapter.Fill($dataTableResult)
 
-        # Close the DataReader and the connection
-        $command.Dispose()
-        $connection.Close()
+                            # Close the DataReader and the connection
+                            $command.Dispose()
+                            $connection.Close()
+
+                            return $dataTableResult
+                        }
 
         $type = @("SqlMembership", "GroupMembership")
 
@@ -168,10 +209,14 @@ function Set-UpdateSourceQuery {
                     $updateCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("@Query", [Data.SqlDbType]::NVarChar, -1))).Value = $newQuery
                     $updateCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("@Id", [Data.SqlDbType]::UniqueIdentifier))).Value = [System.Guid]::Parse($row["Id"])
 
-
-                    $connection.Open()
-                    [void]$updateCommand.ExecuteNonQuery()
-                    $connection.Close()
+                    Invoke-SqlOperationWithFirewallRetry `
+                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                        -SolutionAbbreviation $SolutionAbbreviation `
+                        -Operation { 
+                            $connection.Open()
+                            [void]$updateCommand.ExecuteNonQuery()
+                            $connection.Close()
+                        }
 
                     if ($fromUnknownFormatFlag) {
                         $queriesUpdatedFromUnknownFormat += 1
@@ -198,10 +243,6 @@ function Set-UpdateSourceQuery {
     } else {
         Write-Output "The table '$tableSchema.$tableName' does not exist. Skipping the Query update."
     }
-    
-    # Close the connection
-    $checkCommand.Dispose()
-    $connection.Close()
     
     Write-Host "Finish Set-UpdateSourceQuery"
 }

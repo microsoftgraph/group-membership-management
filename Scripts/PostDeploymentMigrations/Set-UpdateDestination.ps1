@@ -17,6 +17,10 @@ function Set-UpdateDestination {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $True)]
+        [string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory = $True)]
+        [string] $SolutionAbbreviation,
+        [Parameter(Mandatory = $True)]
         [string] $ConnectionString
     )
 
@@ -31,36 +35,51 @@ function Set-UpdateDestination {
     $connection = New-Object System.Data.SqlClient.SqlConnection
     $connection.ConnectionString = $ConnectionString
     $connection.AccessToken = $sqlToken
-    $connection.Open()
-    
-    # Check if the table exists
-    $checkTableQuery = "SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$tableSchema' AND TABLE_NAME = '$tableName') THEN 1 ELSE 0 END AS TableExists;"
 
-    $command = $connection.CreateCommand()
-    $command.CommandText = $checkTableQuery
-    $tableExists = $command.ExecuteScalar()
+    $tableExists = Invoke-SqlOperationWithFirewallRetry `
+                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                        -SolutionAbbreviation $SolutionAbbreviation `
+                        -Operation { 
+                            $connection.Open()
+                    
+                            # Check if the table exists
+                            $checkTableQuery = "SELECT CASE WHEN EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '$tableSchema' AND TABLE_NAME = '$tableName') THEN 1 ELSE 0 END AS TableExists;"
 
-    # Dispose the command and close the connection
-    $command.Dispose()
-    $connection.Close()
+                            $command = $connection.CreateCommand()
+                            $command.CommandText = $checkTableQuery
+                            $tableExistsResult = $command.ExecuteScalar()
+
+                            # Dispose the command and close the connection
+                            $command.Dispose()
+                            $connection.Close()
+
+                            return $tableExistsResult
+                        }
 
     if ($tableExists -eq 1) {
         Write-Output "The table '$tableSchema.$tableName' exists."
 
-        # Retrieve data from the table
-        $query = "SELECT * FROM $tableName"
-        $connection.Open()
-        $command = $connection.CreateCommand()
-        $command.CommandText = $query
+        $dataTable = Invoke-SqlOperationWithFirewallRetry `
+                        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                        -SolutionAbbreviation $SolutionAbbreviation `
+                        -Operation { 
+                            # Retrieve data from the table
+                            $query = "SELECT * FROM $tableName"
+                            $connection.Open()
+                            $command = $connection.CreateCommand()
+                            $command.CommandText = $query
 
-        # Create a DataTable to store the results
-        $dataTable = New-Object System.Data.DataTable
-        $dataAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
-        [void]$dataAdapter.Fill($dataTable)
+                            # Create a DataTable to store the results
+                            $dataTableResult = New-Object System.Data.DataTable
+                            $dataAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
+                            [void]$dataAdapter.Fill($dataTableResult)
 
-        # Dispose of the command
-        $command.Dispose()
-        $connection.Close()
+                            # Dispose of the command
+                            $command.Dispose()
+                            $connection.Close()
+
+                            return $dataTableResult
+                        }
 
         # Loop through the DataTable and update the "Destination" column
         foreach ($row in $dataTable.Rows) {
@@ -78,9 +97,14 @@ function Set-UpdateDestination {
             $updateCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("@Destination", [Data.SqlDbType]::NVarChar, -1))).Value = $destination
             $updateCommand.Parameters.Add((New-Object Data.SqlClient.SqlParameter("@Id", [Data.SqlDbType]::UniqueIdentifier))).Value = [System.Guid]::Parse($id)
 
-            $connection.Open()
-            [void]$updateCommand.ExecuteNonQuery()
-            $connection.Close()
+            Invoke-SqlOperationWithFirewallRetry `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -Operation { 
+                    $connection.Open()
+                    [void]$updateCommand.ExecuteNonQuery()
+                    $connection.Close()
+                }
         }
 
     } else {

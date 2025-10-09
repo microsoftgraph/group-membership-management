@@ -2,6 +2,10 @@ function Set-SqlMigrationsIfNeeded {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory = $True)]
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory = $True)]
+		[string] $SolutionAbbreviation,
+		[Parameter(Mandatory = $True)]
 		[string] $SubscriptionName,
 		[Parameter(Mandatory = $True)]
 		[string] $ConnectionString,
@@ -24,10 +28,14 @@ function Set-SqlMigrationsIfNeeded {
 
 	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-UpdateSourceQuery.ps1')
 	Set-UpdateSourceQuery -ConnectionString $ConnectionString `
+		-EnvironmentAbbreviation $EnvironmentAbbreviation `
+		-SolutionAbbreviation $SolutionAbbreviation `
 		-Verbose
 
 	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-UpdateDestination.ps1')
 	Set-UpdateDestination -ConnectionString $ConnectionString `
+		-EnvironmentAbbreviation $EnvironmentAbbreviation `
+		-SolutionAbbreviation $SolutionAbbreviation `
 		-Verbose
 
 	Write-Verbose "Set-SqlMigrationsIfNeeded completed."

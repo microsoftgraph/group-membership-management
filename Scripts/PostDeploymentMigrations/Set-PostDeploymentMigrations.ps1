@@ -2,6 +2,10 @@ function Set-PostDeploymentMigrations {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory = $True)]
+		[string] $EnvironmentAbbreviation,
+		[Parameter(Mandatory = $True)]
+		[string] $SolutionAbbreviation,
+		[Parameter(Mandatory = $True)]
 		[string] $SubscriptionName,
 		[Parameter(Mandatory = $True)]
 		[string] $ConnectionString
@@ -13,7 +17,7 @@ function Set-PostDeploymentMigrations {
 
     # Perform any necessary Sql migrations
 	. ($ScriptsDirectory + '/PostDeploymentMigrations/Set-SqlMigrationsIfNeeded.ps1')
-	Set-SqlMigrationsIfNeeded -SubscriptionName $SubscriptionName -ConnectionString $ConnectionString
+	Set-SqlMigrationsIfNeeded -EnvironmentAbbreviation $EnvironmentAbbreviation -SolutionAbbreviation $SolutionAbbreviation -SubscriptionName $SubscriptionName -ConnectionString $ConnectionString
 
 	Write-Verbose "Set-PostDeploymentMigrations completed."
 }

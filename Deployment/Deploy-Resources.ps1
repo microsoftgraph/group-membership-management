@@ -84,6 +84,10 @@ function Set-PostDeploymentUpdates {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $true)]
         [string]$ConnectionString
@@ -92,6 +96,8 @@ function Set-PostDeploymentUpdates {
     . ($ScriptsDirectory + '/PostDeploymentMigrations/Set-PostDeploymentMigrations.ps1')
     $currentContext = Get-AzContext
     Set-PostDeploymentMigrations `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SolutionAbbreviation $SolutionAbbreviation `
         -SubscriptionName $currentContext.Subscription.Name `
         -ConnectionString $ConnectionString
 }
@@ -2080,6 +2086,8 @@ function Deploy-Resources {
         -EnvironmentAbbreviation $environmentAbbreviation
 
     Set-PostDeploymentUpdates `
+        -EnvironmentAbbreviation $environmentAbbreviation `
+        -SolutionAbbreviation $solutionAbbreviation `
         -ScriptsDirectory $scriptsDirectory `
         -ConnectionString $connectionString
 
