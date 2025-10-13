@@ -293,7 +293,7 @@ const manageMembershipSlice = createSlice({
 
         deleteSourcePart: (state, action: PayloadAction<string>) => {
             state.sourceParts = state.sourceParts.filter(part => part.id !== action.payload);
-            state.newJob.titles = state.newJob.titles.filter(title => title.partId !== action.payload);
+            state.newJob.titles = state.newJob.titles?.filter(title => title.partId !== action.payload);
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;
         },

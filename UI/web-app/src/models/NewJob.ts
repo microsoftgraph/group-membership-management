@@ -10,7 +10,7 @@ export type NewJob = {
     startDate: string;
     period: number;
     query: SyncJobQuery;
-    titles: Title[];
+    titles?: Title[];
     thresholdPercentageForAdditions: number;
     thresholdPercentageForRemovals: number;
     status: string;

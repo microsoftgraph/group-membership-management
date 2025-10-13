@@ -205,16 +205,23 @@ namespace Services.WebApi
                 if (result != null) return result;
             }
 
-            if (isAITitleEnabled && !string.IsNullOrEmpty(titles))
+            if (isAITitleEnabled && request.PatchDocument.Operations.Any(op => op.path == "/Titles"))
             {
-                var titlesArray = JsonSerializer.Deserialize<List<Title>>(titles);
-                if (titlesArray != null && titlesArray.Any())
+                if (!string.IsNullOrEmpty(titles))
                 {
-                    foreach (var title in titlesArray)
+                    var titlesArray = JsonSerializer.Deserialize<List<Title>>(titles);
+                    if (titlesArray != null && titlesArray.Any())
                     {
-                        title.SyncJobId = request.SyncJobId;
+                        foreach (var title in titlesArray)
+                        {
+                            title.SyncJobId = request.SyncJobId;
+                        }
+                        await _titlesRepository.UpdateTitlesAsync(titlesArray, request.SyncJobId);
                     }
-                    await _titlesRepository.UpdateTitlesAsync(titlesArray, request.SyncJobId);
+                }
+                else
+                {
+                    await _titlesRepository.DeleteTitlesAsync(request.SyncJobId);
                 }
             }
 

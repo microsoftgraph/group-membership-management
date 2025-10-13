@@ -11,7 +11,7 @@ namespace WebApi.Models.DTOs
         public string Status { get; set; }
         public int Period { get; set; }
         public string Query { get; set; }
-        public NewTitle[] Titles { get; set; }
+        public NewTitle[]? Titles { get; set; }
         public string Requestor { get; set; }
         public string LastModifiedOnBehalfOfDisplayName { get; set; }
         public string LastModifiedOnBehalfOfObjectId { get; set; }

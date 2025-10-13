@@ -80,5 +80,12 @@ namespace Repositories.EntityFramework
 
             await _writeContext.SaveChangesAsync();
         }
+
+        public async Task DeleteTitlesAsync(Guid syncJobId)
+        {
+            await _writeContext.Titles
+                .Where(t => t.SyncJobId == syncJobId)
+                .ExecuteDeleteAsync();
+        }
     }
 }

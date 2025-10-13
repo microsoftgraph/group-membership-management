@@ -313,19 +313,21 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   const handleSaveButtonClick = async () => {
+    const allHaveTitles = sourceParts.every(
+      part => part.title && part.title.trim() !== ""
+    );
     if (jobId !== undefined) {
       const patchOperation = [];
-        if (!jobWithNoTitles) {
-          patchOperation.push({
-          op: "replace",
-          path: "/Titles",
-          value: sourceParts.map(part => ({
-            partId: part.id,
-            name: part.title
-          })).filter(part => part.name !== '')
-        });
-      }
-
+      patchOperation.push({
+        op: "replace",
+        path: "/Titles",
+        value: allHaveTitles
+          ? sourceParts.map(part => ({
+              partId: part.id,
+              name: part.title
+            }))
+          : ""
+      });
       patchOperation.push(
         {
           op: "replace",
@@ -401,15 +403,17 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         startDate: startDate,
         period: period,
         query: finalQuery,
-        titles: sourceParts.map(part => ({
-          partId: part.id, 
-          name: part.title
-        })),
         thresholdPercentageForAdditions: thresholdPercentageForAdditions,
         thresholdPercentageForRemovals: thresholdPercentageForRemovals,
         status: 'Idle',
         businessJustification: businessJustification,
         groupSettings: groupSettings,
+        ...(allHaveTitles && {
+          titles: sourceParts.map(part => ({
+            partId: part.id,
+            name: part.title
+          }))
+        })
       };
 
       setIsPostingJob(true);

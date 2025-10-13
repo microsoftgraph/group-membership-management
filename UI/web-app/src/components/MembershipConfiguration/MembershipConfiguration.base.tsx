@@ -172,14 +172,14 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         const parsedQuery: SyncJobQuery = JSON.parse(jobDetails.query);
         const updatedSourceParts = parsedQuery.map((query, index) => {
           const originalPart = sourceParts[index];
-          const partId = jobWithNoTitles && jobDetails.titles.length === 0 ? uuidv4() : jobDetails.titles[index].partId;
+          const partId = jobWithNoTitles && jobDetails.titles.length === 0 ? uuidv4() : (jobDetails.titles[index]?.partId ?? uuidv4());
           return {
             id: partId,
-            title: jobWithNoTitles ? "" : jobDetails.titles[index].name,
+            title: jobWithNoTitles ? "" : (jobDetails.titles[index]?.name ?? ""),
             query: query,
             isValid: true,
             isNew: originalPart?.isNew ?? false,
-            isExpanded:  isEditingExistingJob ? originalPart?.isExpanded ?? true : false
+            isExpanded: originalPart?.isExpanded ?? false
           }
         });
 
