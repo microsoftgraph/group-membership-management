@@ -18,7 +18,7 @@ import { useStrings, useQueryValidation } from "../../store/hooks";
 import { AppDispatch } from '../../store';
 import {
   manageMembershipAdvancedViewQuery,
-  setAdvancedViewQuery,
+  applyAdvancedViewQuery,
 } from '../../store/manageMembership.slice';
 import { removeUnusedProperties } from '../../utils/sourcePartUtils';
 import { selectIsJobWriter } from '../../store/roles.slice';
@@ -66,12 +66,24 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
 
   const dispatch = useDispatch<AppDispatch>();
   const [validationMessage, setValidationMessage] = useState<React.ReactNode | null>(null);
-  const [localQuery, setLocalQuery] = useState<string>(query === '' ? defaultAdvancedViewQuery : query);
+  const [localQuery, setLocalQuery] = useState<string>(() => {
+    // Initialize with prop query if provided, otherwise use default placeholder
+    const propQuery = query?.trim();
+    return propQuery || defaultAdvancedViewQuery;
+  });
   const advancedViewQueryFromStore = useSelector(manageMembershipAdvancedViewQuery);
   const isJobWriter = useSelector(selectIsJobWriter);
 
   useEffect(() => {
-    setLocalQuery(advancedViewQueryFromStore || defaultAdvancedViewQuery);
+    // Only update from store if we have meaningful content
+    // This prevents overwriting the placeholder with empty strings
+    if (advancedViewQueryFromStore && advancedViewQueryFromStore.trim().length > 0) {
+      setLocalQuery(advancedViewQueryFromStore);
+    } else if (!advancedViewQueryFromStore) {
+      // If store is null/undefined (first time), use placeholder
+      setLocalQuery(defaultAdvancedViewQuery);
+    }
+    // If store is empty string '', keep current localQuery (don't overwrite)
   }, [advancedViewQueryFromStore, defaultAdvancedViewQuery]);
 
   const hasValidStructure = (item: unknown): boolean => {
@@ -101,21 +113,25 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         const modifiedQuery = JSON.stringify(modifiedArray);
         setLocalQuery(modifiedQuery);
       } catch (error) {
-        console.error('Error parsing query:', error);
+        // Don't log parsing errors during user typing - this is expected behavior
+        // Just preserve the user's input as-is when JSON is malformed
         setLocalQuery(query);
       }
     }
+    // Don't overwrite localQuery when query is empty - preserve placeholder or user's empty state
   }, [query]);
 
   const handleQueryChange = (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
     setLocalQuery(newValue || '');
+    // Don't update Redux store during typing - only update on explicit validation
+    // This prevents crashes when JSON is temporarily malformed during editing
     onQueryChange(event, newValue);
   };
 
   const onValidateQuery = async () => {
     try {
       const parsedQuery = JSON.parse(localQuery || '[]');
-      dispatch(setAdvancedViewQuery(localQuery || '[]'));
+      dispatch(applyAdvancedViewQuery(localQuery || '[]'));
       
       // Use the shared validation hook
       await validateQuery(parsedQuery, setValidationMessage);

@@ -206,21 +206,35 @@ const manageMembershipSlice = createSlice({
             }
             state.isAdvancedView = action.payload;
         },
-        setAdvancedViewQuery: (state, action: PayloadAction<string>) => {
-            if (!action.payload) return;
+        setAdvancedViewQueryRaw: (state, action: PayloadAction<string>) => {
+            state.advancedViewQuery = action.payload ?? '';
+        },
+        applyAdvancedViewQuery: (state, action: PayloadAction<string>) => {
+            if (action.payload == null) {
+                state.advancedViewQuery = '';
+                return;
+            }
             state.advancedViewQuery = action.payload;
-            const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
-            state.newJob.query = parsedQuery;
-            state.sourceParts = parsedQuery.map((query, index) => {
-                const originalPart = state.sourceParts[index];
-                return {
-                    id: state.sourceParts[index]?.id ?? uuidv4(),
-                    title: state.sourceParts[index]?.title ?? "",
-                    query: query,
-                    isNew: originalPart?.isNew ?? false,
-                    isExpanded: originalPart?.isExpanded ?? false
-                };
-            });
+            try {
+                const parsedQuery: SyncJobQuery = JSON.parse(action.payload);
+                if (!Array.isArray(parsedQuery)) {
+                    // Only arrays are valid top-level structures for SyncJobQuery. Ignore otherwise.
+                    return;
+                }
+                state.newJob.query = parsedQuery;
+                state.sourceParts = parsedQuery.map((query, index) => {
+                    const originalPart = state.sourceParts[index];
+                    return {
+                        id: originalPart?.id ?? uuidv4(),
+                        title: originalPart?.title ?? '',
+                        query,
+                        isNew: originalPart?.isNew ?? false,
+                        isExpanded: originalPart?.isExpanded ?? false
+                    };
+                });
+            } catch (error) {
+                console.debug('Ignored parse error in applyAdvancedViewQuery:', error);
+            }
         },
         setCompositeQuery: (state, action: PayloadAction<SyncJobQuery | undefined>) => {
             state.compositeQuery = action.payload;
@@ -430,7 +444,8 @@ export const {
     setNewJobStartDate,
     setNewJobThresholdPercentageForAdditions,
     setNewJobThresholdPercentageForRemovals,
-    setAdvancedViewQuery,
+    setAdvancedViewQueryRaw,
+    applyAdvancedViewQuery,
     setStartDateOption,
     setUseThresholdLimits,
     setShowIncreaseDropdown,
@@ -538,6 +553,16 @@ export const manageMembershipShowDecreaseDropdown = (state: RootState) => state.
 export default manageMembershipSlice.reducer;
 
 export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
-    const compositeQuery: SyncJobQuery = sourceParts.map(part => part.query ? removeUnusedProperties(part.query) : part.query);
+    const compositeQuery: SyncJobQuery = sourceParts.map(part => {
+        if (!part.query) return part.query;
+        try {
+            return removeUnusedProperties(part.query);
+        } catch (err) {
+            // Swallow unexpected trim errors; return raw query so user can continue editing.
+            // eslint-disable-next-line no-console
+            console.debug('buildCompositeQuery: error trimming source part, returning raw query.', err);
+            return part.query;
+        }
+    });
     return compositeQuery;
 }

@@ -53,7 +53,11 @@ export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T)
         // No properties to trim for PlaceMembershipSourcePart
         return sourcePart;
     } else {
-        throw new Error("Not a supported source type.");
+        // During live editing (advanced view) or transitional states a source part can be incomplete.
+        // Instead of throwing (which crashes the UI), return the original object unchanged.
+        // eslint-disable-next-line no-console
+        console.debug('removeUnusedProperties: unsupported or incomplete source part encountered, returning original.', sourcePart);
+        return sourcePart;
     }
 }
 

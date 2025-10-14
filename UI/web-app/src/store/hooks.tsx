@@ -115,9 +115,9 @@ export const useQueryValidation = () => {
         if (showValidationMessage) {
           const errorsFromAjv = validate.errors;
           const formattedErrors = errorsFromAjv?.map((error, index) => {
-            let message = error.message;
-            if (error.keyword === 'type') {
-              message = `Expected ${error.schema} but got type ${typeof error.data} at ${error.instancePath}..`;
+            let message = error.message || 'Validation error';
+            if (error.keyword === 'type' && error.params?.type) {
+              message = `Expected ${error.params.type} at ${error.instancePath || 'root'}`;
             }
             return <div key={index}>{message}</div>;
           });

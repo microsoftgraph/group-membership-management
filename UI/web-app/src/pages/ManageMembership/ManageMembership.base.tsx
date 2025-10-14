@@ -30,6 +30,7 @@ import {
   manageMembershipHasChanges,
   manageMembershipIsMissingAndOrOperator,
   manageMembershipisAdvancedQueryValid,
+  manageMembershipIsAdvancedView,
   manageMembershipSelectedDestination,
   setCurrentStep,
   setHasChanges,
@@ -163,6 +164,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
 
   const isMissingAndOrOperator = useSelector(manageMembershipIsMissingAndOrOperator);
   const isAdvancedQueryValid = useSelector(manageMembershipisAdvancedQueryValid);
+  const isAdvancedView = useSelector(manageMembershipIsAdvancedView);
   const allSourcePartsValid = useSelector(areAllSourcePartsValid);
   const startDate = useSelector(manageMembershipStartDate);
   const period = useSelector(manageMembershipPeriod);
@@ -186,11 +188,22 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const sourceParts = useSelector(getSourcePartsFromState);
 
   const finalQuery: SyncJobQuery = useMemo(() => {
-    if (!sourcePartsQuery || sourcePartsQuery.length === 0) {
-      return advancedViewQuery ? JSON.parse(advancedViewQuery) : {} as SyncJobQuery;
+    // If we have source parts (regular view derived query), prefer that.
+    if (sourcePartsQuery && sourcePartsQuery.length > 0) {
+      return sourcePartsQuery;
     }
-    return sourcePartsQuery;
-  }, [sourcePartsQuery, advancedViewQuery]);
+    // Otherwise attempt to parse advanced view text only if it's been validated as JSON.
+    if (advancedViewQuery && advancedViewQuery.trim().length > 0 && isAdvancedQueryValid) {
+      try {
+        const parsed = JSON.parse(advancedViewQuery);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        // Swallow parse errors – treat as empty until user fixes JSON.
+        return [];
+      }
+    }
+    return [];
+  }, [sourcePartsQuery, advancedViewQuery, isAdvancedQueryValid]);
   
   const handleDestinationTypeChange = (
     event: React.FormEvent<IComboBox>,
@@ -430,7 +443,11 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   };
 
-  const isStep3ConditionsMet = (isAdvancedQueryValid || allSourcePartsValid) && !isMissingAndOrOperator;
+  // In advanced view, we require the advanced query itself to be valid (ignore sourceParts validity).
+  // In regular view, either the composite source parts are all valid OR the advanced query (if present) is valid.
+  const isStep3ConditionsMet = (
+    isAdvancedView ? isAdvancedQueryValid : (isAdvancedQueryValid || allSourcePartsValid)
+  ) && !isMissingAndOrOperator;
   let isNextDisabled = false;
 
   if (currentStep === OnboardingSteps.SelectDestination && !isStep1ConditionsMet) {

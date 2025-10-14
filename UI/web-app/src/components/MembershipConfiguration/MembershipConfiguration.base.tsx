@@ -18,7 +18,8 @@ import {
   manageMembershipAdvancedViewQuery,
   manageMembershipIsAdvancedView,
   manageMembershipIsToggleEnabled,
-  setAdvancedViewQuery,
+  setAdvancedViewQueryRaw,
+  applyAdvancedViewQuery,
   setCompositeQuery,
   setIsAdvancedView,
   setIsAdvancedQueryValid,
@@ -114,7 +115,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       // Switching TO advanced view - convert source parts to JSON
       if (sourceParts.length > 0) {
         const currentCompositeQuery = buildCompositeQuery(sourceParts);
-        dispatch(setAdvancedViewQuery(JSON.stringify(currentCompositeQuery, null, 2)));
+        // Safe to apply immediately because we constructed valid JSON from existing source parts
+        dispatch(applyAdvancedViewQuery(JSON.stringify(currentCompositeQuery, null, 2)));
       }
     } else {
       // Switching FROM advanced view back to regular view - parse the advanced query
@@ -129,14 +131,22 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             return;
           }
           
-          // Convert parsed query back to source parts
-          const updatedSourceParts: ISourcePart[] = parsedQuery.map((queryPart) => {
+          // Convert parsed query back to source parts, preserving existing metadata where possible
+          const updatedSourceParts: ISourcePart[] = parsedQuery.map((queryPart, index) => {
+            // Try to find existing source part with matching query to preserve metadata
+            const existingPart = sourceParts.find(part => 
+              JSON.stringify(part.query) === JSON.stringify(queryPart)
+            );
+            
+            // If no exact match found, check if we can preserve by index (common case for reordering)
+            const fallbackPart = sourceParts[index];
+            
             return {
-              id: uuidv4(),
-              title: "",
+              id: existingPart?.id || fallbackPart?.id || uuidv4(),
+              title: existingPart?.title || fallbackPart?.title || "",
               query: queryPart,
-              isNew: false,
-              isExpanded: false
+              isNew: existingPart?.isNew || fallbackPart?.isNew || false,
+              isExpanded: existingPart?.isExpanded ?? fallbackPart?.isExpanded ?? true // Default to expanded for better UX
             };
           });
           
@@ -157,7 +167,11 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     dispatch(setIsAdvancedView(newIsAdvancedView));
   };
 
-  const handleAdvancedViewQueryChange = (_event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, _newValue?: string) => {
+  const handleAdvancedViewQueryChange = (_event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => {
+    // Always update the query state to preserve user input, even if it's invalid JSON
+    // Only set raw text while typing; parsing occurs on blur/explicit validation
+    dispatch(setAdvancedViewQueryRaw(newValue ?? ''));
+    // Mark as invalid since content changed - let validation happen on blur/explicit validation
     dispatch(setIsAdvancedQueryValid(false));
   };
 
@@ -173,9 +187,15 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
     const compositeQuery = buildCompositeQuery(sourceParts);
     dispatch(setCompositeQuery(compositeQuery));
     
-    // Validate the composite query to prevent empty submissions (only in non-advanced view)
-    if (!isAdvancedView) {
-      validateQuery(compositeQuery);
+    // Only validate the composite query in non-advanced view and when we have valid source parts
+    if (!isAdvancedView && sourceParts.length > 0) {
+      // Wrap in try-catch to prevent crashes during validation
+      try {
+        validateQuery(compositeQuery);
+      } catch (error) {
+        console.warn('Error during composite query validation:', error);
+        dispatch(setIsAdvancedQueryValid(false));
+      }
     }
   }, [dispatch, sourceParts, isAdvancedView, validateQuery]);
 
@@ -244,7 +264,8 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         }
 
         dispatch(setSourceParts(updatedSourceParts));
-        dispatch(setAdvancedViewQuery(jobDetails.query));
+        // Existing job query should already be valid JSON
+        dispatch(applyAdvancedViewQuery(jobDetails.query));
         dispatch(setCompositeQuery(parsedQuery));
       } catch (error) {
         console.error(`Error parsing job details query:`, error);
@@ -291,7 +312,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
             </ActionButton>
         </div>
         <div>
-          {sourceParts.map((part, index) => (
+          {sourceParts.map((part) => (
             <SourcePart
               key={part.id}
               partId={part.id}
