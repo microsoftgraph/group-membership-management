@@ -493,15 +493,15 @@ namespace WebApi
                             });
                     }
                 });
-            }
 
-            app.UseSwagger(c =>
-            {
-                c.PreSerializeFilters.Add((swagger, httpReq) =>
+                app.UseSwagger(c =>
                 {
-                    swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+                    c.PreSerializeFilters.Add((swagger, httpReq) =>
+                    {
+                        swagger.Servers = new List<OpenApiServer> { new OpenApiServer { Url = $"{httpReq.Scheme}://{httpReq.Host.Value}" } };
+                    });
                 });
-            });
+            }
 
             using (var scope = app.Services.CreateScope())
             {
