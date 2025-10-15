@@ -18,6 +18,8 @@ function Set-SqlMigrationsIfNeeded {
 	if (-not $ScriptsDirectory) {
 		$ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 	}
+
+	. ($ScriptsDirectory + '/ReusableModules/Invoke-SqlOperationWithFirewallRetry.ps1')
 	
 	if ($global:SkipAzLogin -ne $true) {
 		. (Join-Path $ScriptsDirectory 'Add-AzAccountIfNeeded.ps1')

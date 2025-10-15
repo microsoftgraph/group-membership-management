@@ -50,7 +50,9 @@ function Invoke-SqlOperationWithFirewallRetry {
     
     $directory = $PSScriptRoot
     . ($directory + '/Invoke-WithFirewallRetry.ps1')
-
+    
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    
     Invoke-WithFirewallRetry -ResourceGroup $dataResourceGroup -MaxRetries $MaxRetries `
             -Operation $Operation `
             -OnFirewallError {
