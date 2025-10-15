@@ -86,7 +86,7 @@ param featureFlags object = {
 }
 
 @description('CRON schedule for triggering this function app.')
-param timerTriggerSchedule string = '0 0 0 * * Sun'
+param timerTriggerSchedule string = '0 0 0 * * *'
 
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
