@@ -107,7 +107,7 @@ function Set-UpdateSourceQuery {
         $fromUnknownFormatFlag = $false
         $fromNewFormatFlag = $false
 
-        foreach ($row in $dataTable.Rows)
+        foreach ($row in $dataTable)
         {
             if (-not [string]::IsNullOrEmpty($row["Query"])) {
 

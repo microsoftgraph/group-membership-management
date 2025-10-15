@@ -82,7 +82,7 @@ function Set-UpdateDestination {
                         }
 
         # Loop through the DataTable and update the "Destination" column
-        foreach ($row in $dataTable.Rows) {
+        foreach ($row in $dataTable) {
             $id = $row["Id"]
             $destination = $row["Destination"]
             $targetOfficeId = $row["TargetOfficeGroupId"].ToString()
