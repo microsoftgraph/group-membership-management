@@ -57,14 +57,14 @@ function Set-UpdateDestination {
                         }
 
     if ($tableExists -eq 1) {
-        Write-Output "The table '$tableSchema.$tableName' exists."
-
+        Write-Host "The table '$tableSchema.$tableName' exists."
+        Write-Host "Finding all jobs that need their Destination column updated..."
         $dataTable = Invoke-SqlOperationWithFirewallRetry `
                         -EnvironmentAbbreviation $EnvironmentAbbreviation `
                         -SolutionAbbreviation $SolutionAbbreviation `
                         -Operation { 
                             # Retrieve data from the table
-                            $query = "SELECT * FROM $tableName"
+                            $query = "SELECT * FROM $tableName WHERE Destination IS NULL OR LTRIM(RTRIM(Destination)) = '' OR JSON_VALUE(JSON_QUERY(Destination, '$[0].value'), '$.objectId') != TargetOfficeGroupId;"
                             $connection.Open()
                             $command = $connection.CreateCommand()
                             $command.CommandText = $query
@@ -81,11 +81,15 @@ function Set-UpdateDestination {
                             return $dataTableResult
                         }
 
+        Write-Host "Found $($dataTable.Count) jobs that need their Destination column updated."
+
         # Loop through the DataTable and update the "Destination" column
         foreach ($row in $dataTable) {
             $id = $row["Id"]
             $destination = $row["Destination"]
             $targetOfficeId = $row["TargetOfficeGroupId"].ToString()
+
+            Write-Host "`nUpdating job with Id: $id, TargetOfficeGroupId: $targetOfficeId, current Destination: $destination"  
 
             # Apply the logic from the PowerShell code to update the "Destination" column
             $destination = @{"type" = "GroupMembership"; "value" = @{"objectId" = $targetOfficeId}} | ConvertTo-Json -Compress -AsArray
@@ -105,11 +109,13 @@ function Set-UpdateDestination {
                     [void]$updateCommand.ExecuteNonQuery()
                     $connection.Close()
                 }
+                
+                Write-Host "`nUpdated job with Id: $id, TargetOfficeGroupId: $targetOfficeId, new Destination: $destination"
         }
 
     } else {
-        Write-Output "The table '$tableSchema.$tableName' does not exist. Skipping the Destination column update."
+        Write-Host "The table '$tableSchema.$tableName' does not exist. Skipping the Destination column update."
     }
 
-    Write-Host "Finish Set-UpdateDestination"
+    Write-Host "`nFinish Set-UpdateDestination"
 }
