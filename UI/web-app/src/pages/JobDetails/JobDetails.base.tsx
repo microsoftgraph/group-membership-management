@@ -121,7 +121,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const showLoader: boolean = jobLoading || removeGMMPending;
 
   const [isJobHistoryPanelOpen, setIsJobHistoryPanelOpen] = useState(false);
-  
+
   const OpenInNewWindowIcon: IIconProps = { iconName: 'OpenInNewWindow' };
 
   const resolveReview = () => {
@@ -174,7 +174,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       }
       await dispatch(removeGMM({ syncJobId: jobId ?? job.syncJobId }));
       setShowRemoveGMMDialog(false);
-      
+
       let url;
       if (job?.targetDestinationType === DestinationType.GroupMembership) {
         url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
@@ -196,7 +196,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   useEffect(() => {
     setCanEditJob(isJobWriter && job?.status !== SyncStatus.PendingReview && job?.status !== SyncStatus.PendingConfiguration);
   }, [isJobWriter, job?.status]);
-  
+
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
     if (jobId) {
@@ -217,7 +217,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       dispatch(getChannelDetails({ groupId, channelId }));
     }
   }, [dispatch, jobId, groupId, channelId]);
-   
+
 
   return (
     <Page>
@@ -299,7 +299,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
                   : []
                 }
                 children={
-                  <MembershipConfiguration 
+                  <MembershipConfiguration
                     isEditable={false}
                   />}
               />
@@ -313,7 +313,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
             />
           )}
         </>
-      )}      
+      )}
       <div className={classNames.removeGMM}>
         {canDeleteJob &&
         <ActionButton
@@ -595,7 +595,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         )}
       </div>
 
-      <div className={classNames.requestor}>      
+      <div className={classNames.requestor}>
       {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedByObjectId && (
         <div>
         <Stack.Item align="start">
@@ -778,7 +778,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
               <Text className={classNames.itemData} block>
                 {job.targetChannelName ?? '-'}
               </Text>
-            </Stack.Item> 
+            </Stack.Item>
           }
           {job?.targetDestinationType === DestinationType.TeamsChannelMembership &&
             <Stack.Item align="start">
@@ -792,7 +792,7 @@ const MembershipDestination: React.FunctionComponent<IContentProps> = (
           }
         </Stack>
       </Stack.Item>
-        <EndpointsList 
+        <EndpointsList
           endpoints={job.endpoints}
           groupName={job.targetGroupName}
         />

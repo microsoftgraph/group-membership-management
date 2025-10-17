@@ -10,4 +10,4 @@ export type SqlMembershipAttribute = {
     description: string;
     enabled: boolean;
 };
-  
+

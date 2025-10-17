@@ -91,7 +91,7 @@ export const extractDepthFromTitle = (title: string): number | undefined => {
  * @returns The criteria part or empty string if not found
  */
 export const extractCriteriaFromTitle = (
-  title: string, 
+  title: string,
   criteriaSeparator: string = "with the following summarized criteria:"
 ): string => {
   const escapedSeparator = criteriaSeparator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -120,11 +120,11 @@ export const updateHRTitleWithNewLeader = (
   const currentDepth = extractDepthFromTitle(currentTitle);
   const criteriaSeparator = templates?.withSummarizedCriteria || "with the following summarized criteria:";
   const criteria = extractCriteriaFromTitle(currentTitle, criteriaSeparator);
-  
+
   // Generate new title with the same depth structure
-  let newTitle = generateHRTitle({ 
-    orgLeaderName: newOrgLeaderName, 
-    depth: currentDepth 
+  let newTitle = generateHRTitle({
+    orgLeaderName: newOrgLeaderName,
+    depth: currentDepth
   }, templates);
 
   // Append criteria if it exists
@@ -156,16 +156,16 @@ export const updateHRTitleWithNewDepth = (
   const currentLeaderName = extractOrgLeaderName(currentTitle);
   const criteriaSeparator = templates?.withSummarizedCriteria || "with the following summarized criteria:";
   const criteria = extractCriteriaFromTitle(currentTitle, criteriaSeparator);
-  
+
   if (!currentLeaderName) {
     // Can't update depth without knowing the leader name
     return currentTitle;
   }
 
   // Generate new title with updated depth
-  let newTitle = generateHRTitle({ 
-    orgLeaderName: currentLeaderName, 
-    depth: newDepth 
+  let newTitle = generateHRTitle({
+    orgLeaderName: currentLeaderName,
+    depth: newDepth
   }, templates);
 
   // Append criteria if it exists

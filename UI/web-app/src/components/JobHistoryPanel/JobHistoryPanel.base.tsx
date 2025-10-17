@@ -148,7 +148,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setIsModalOpen(false);
         setModalContent('');
     };
-    
+
     const parseNestedJson = (obj: any) => {
         for (const key in obj) {
             if (typeof obj[key] === 'string') {

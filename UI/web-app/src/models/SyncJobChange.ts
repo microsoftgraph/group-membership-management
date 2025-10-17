@@ -12,4 +12,4 @@ export interface SyncJobChange {
     changeDetails: string;
     businessJustification: string;
   };
-  
+

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Title } from "./Title";
+import { Title } from './Title';
 
 export type Job = {
   syncJobId: string;

@@ -27,7 +27,7 @@ import type {
 export const getClassNames = classNamesFunction<HRQueryItemColumnStyleProps, HRQueryItemColumnStyles>();
 
 export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnProps> = (props: HRQueryItemColumnProps) => {
-  const { 
+  const {
     className,
     styles,
     items,
@@ -110,12 +110,12 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
         ? filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
         : getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value))
       : filteredValueOptions[index] || getValueOptions(attributeMappings[currentAttributeKey]?.mappings, getSelectedKeys(items[index].value));
-    
+
     const isMulti = (op?: string) => op === 'IN' || op === 'NOT IN';
     const multi = isMulti(item.equalityOperator);
     const selectedKeys = getSelectedKeys(items[index].value);
     const hasMultiple = multi && selectedKeys.length > 1;
-    const menuOpen = isOpen;                   
+    const menuOpen = isOpen;
     const userTyping = isFocused && searchText.length > 0;
     const readOnly = !isJobWriter || !isEditable;
 
@@ -123,21 +123,21 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
       case 'upDown':
         return (
           <div className={classNames.upDown}>
-            <ActionButton 
-              data-testid="hr-up-button" 
-              iconProps={{ iconName: 'ChevronUp' }} 
-              title={strings.HROnboarding.up} 
-              disabled={!isJobWriter || !isEditable} 
-              onClick={() => onUpClick(index, items)} 
-              style={{ marginTop: '-15px', marginBottom: '-5px' }} 
+            <ActionButton
+              data-testid="hr-up-button"
+              iconProps={{ iconName: 'ChevronUp' }}
+              title={strings.HROnboarding.up}
+              disabled={!isJobWriter || !isEditable}
+              onClick={() => onUpClick(index, items)}
+              style={{ marginTop: '-15px', marginBottom: '-5px' }}
             />
-            <ActionButton 
-              data-testid="hr-down-button" 
-              iconProps={{ iconName: 'ChevronDown' }} 
-              title={strings.HROnboarding.down} 
-              disabled={!isJobWriter || !isEditable} 
-              onClick={() => onDownClick(index, items)} 
-              style={{ marginTop: '-5px', marginBottom: '-15px' }} 
+            <ActionButton
+              data-testid="hr-down-button"
+              iconProps={{ iconName: 'ChevronDown' }}
+              title={strings.HROnboarding.down}
+              disabled={!isJobWriter || !isEditable}
+              onClick={() => onDownClick(index, items)}
+              style={{ marginTop: '-5px', marginBottom: '-15px' }}
             />
           </div>
         );
@@ -229,7 +229,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                   : attributeValueOptions
                 }
                 onInputValueChange={(t) => {
-                  if (readOnly) return; 
+                  if (readOnly) return;
                   setSearchText(t ?? '');
                   onAttributeValueChange(t, index, currentAttributeKey, groupIndex, childIndex);
                 }}
@@ -245,7 +245,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                   handleAttributeValueChange(item.attribute, event, items[index].value, option, index, item.equalityOperator, groupIndex, childIndex);
                   if (isMulti(item.equalityOperator)) setSearchText('');
                   setShouldReopen(isOpen && userTyping); // reopen only if the pick was search-driven
-                }}         
+                }}
                 onRenderOption={onRenderValueComboBoxOptions}
                 onRenderList={onRenderValueComboBoxList}
                 allowFreeInput={!readOnly}
@@ -266,7 +266,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                     setShouldReopen(false);
                   } else {
                     setIsFocused(false);
-                    if (!readOnly) setSearchText(''); 
+                    if (!readOnly) setSearchText('');
                   }
                 }}
                 onKeyDown={(e) => {
@@ -278,17 +278,17 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                 }}
                 disabled={(() => {
                   const selectedKeys = getSelectedKeys(items[index].value);
-                  return isAttributeDisabled || 
+                  return isAttributeDisabled ||
                     (item.equalityOperator !== 'IN' && item.equalityOperator !== 'NOT IN' || selectedKeys.length === 1) && (!isJobWriter || !isEditable)
-                })()}              
+                })()}
                 title={strings.HROnboarding.attributeValue}
                 calloutProps={{styles: { calloutMain: { height: '300px', overflowY: 'auto' }}}}
                 styles={
-                  (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable) 
+                  (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable)
                     ? {
                         root: classNames.readOnlyComboBox,
                         input: classNames.readOnlyComboBoxInput
-                      } 
+                      }
                     : undefined
                 }
               />

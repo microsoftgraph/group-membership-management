@@ -120,27 +120,27 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       }
     } else {
       // Switching FROM advanced view back to regular view - parse the advanced query
-      if (advancedViewQuery && advancedViewQuery.trim() && 
+      if (advancedViewQuery && advancedViewQuery.trim() &&
           advancedViewQuery.trim() !== '[]' && advancedViewQuery.trim() !== '{}') {
         try {
           const parsedQuery: SyncJobQuery = JSON.parse(advancedViewQuery);
-          
+
           // Validate that the parsed query is an array
           if (!Array.isArray(parsedQuery)) {
             console.error('Advanced view query is not an array, cannot convert to source parts');
             return;
           }
-          
+
           // Convert parsed query back to source parts, preserving existing metadata where possible
           const updatedSourceParts: ISourcePart[] = parsedQuery.map((queryPart, index) => {
             // Try to find existing source part with matching query to preserve metadata
-            const existingPart = sourceParts.find(part => 
+            const existingPart = sourceParts.find(part =>
               JSON.stringify(part.query) === JSON.stringify(queryPart)
             );
-            
+
             // If no exact match found, check if we can preserve by index (common case for reordering)
             const fallbackPart = sourceParts[index];
-            
+
             return {
               id: existingPart?.id || fallbackPart?.id || uuidv4(),
               title: existingPart?.title || fallbackPart?.title || "",
@@ -149,7 +149,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               isExpanded: existingPart?.isExpanded ?? fallbackPart?.isExpanded ?? true // Default to expanded for better UX
             };
           });
-          
+
           // Clear existing source parts and add the new ones
           dispatch(clearSourceParts());
           updatedSourceParts.forEach(part => dispatch(addSourcePart(part)));
@@ -186,7 +186,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   useEffect(() => {
     const compositeQuery = buildCompositeQuery(sourceParts);
     dispatch(setCompositeQuery(compositeQuery));
-    
+
     // Only validate the composite query in non-advanced view and when we have valid source parts
     if (!isAdvancedView && sourceParts.length > 0) {
       // Wrap in try-catch to prevent crashes during validation
@@ -206,7 +206,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       dispatch(setIsAdvancedQueryValid(false));
     }
   }, [dispatch, isAdvancedView, sourceParts.length]);
-  
+
   useEffect(() => {
     // Always re-initialize from DB when NOT editing
     if (jobDetails?.query && !isEditingExistingJob) {

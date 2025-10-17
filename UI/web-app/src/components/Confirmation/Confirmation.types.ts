@@ -7,7 +7,7 @@ import {
     type ITheme,
   } from '@fluentui/react';
   import type React from 'react';
-  
+
   export interface IConfirmationStyles {
     root: IStyle;
     ConfirmationContainer: IStyle;
@@ -21,20 +21,20 @@ import {
     dropdownOptionContainer: IStyle;
     dropdownOptionEmail: IStyle;
   }
-  
+
   export interface IConfirmationStyleProps {
     className?: string;
     theme: ITheme;
   }
-  
+
   export interface IConfirmationProps
     extends React.AllHTMLAttributes<HTMLDivElement> {
-  
+
     /**
      * Optional className to apply to the root of the component.
      */
     className?: string;
-  
+
     /**
      * Call to provide customized styling that will layer on top of the variant rules.
      */
@@ -42,4 +42,4 @@ import {
     onEditButtonClick: (stepToEdit: number) => void;
     onEditBusinessJustification: (justification: string) => void;
   };
-  
+

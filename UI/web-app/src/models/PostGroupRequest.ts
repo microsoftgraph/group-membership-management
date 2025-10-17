@@ -5,4 +5,4 @@ export interface PostGroupRequest {
     groupName: string;
     groupAlias: string;
 };
-  
+

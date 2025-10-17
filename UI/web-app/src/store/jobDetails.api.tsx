@@ -103,7 +103,7 @@ export const patchJobDetails = createAsyncThunk<
   PatchJobRequest,
   ThunkConfig
 >('jobs/patchJobDetails', async (request, { extra }) => {
-  
+
   const encodedBusinessJustification = encodeURIComponent(request.businessJustification);
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);

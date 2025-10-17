@@ -1,5 +1,5 @@
-import { Group } from "../../models/Group";
-import { IFilterPart } from "../../models/IFilterPart";
+import { Group } from '../../models/Group';
+import { IFilterPart } from '../../models/IFilterPart';
 
 export function containsSqlExpression(filter: string): boolean {
   const sqlExpressions = [' BETWEEN ', ' LIKE ', ' NOT LIKE ', ' IS ', ' IS NOT '];
@@ -50,7 +50,7 @@ export function stringifyGroup(group: Group, isChild?: boolean, childIndex?: num
       result += ')';
       result += ` ${group.children[group.children.length-1].andOr} `;
     }
-    
+
     result = result.includes(" IN ") || result.includes(" NOT IN ") ? replaceBracketsWithParentheses(result) : result;
     return result;
 }

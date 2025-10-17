@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { Title } from "../../models/Title";
+import { Title } from '../../models/Title';
 
 export type JobEntity = {
   syncJobId: string;

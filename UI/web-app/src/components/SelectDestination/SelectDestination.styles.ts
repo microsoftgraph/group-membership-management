@@ -66,11 +66,11 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
       justifyContent: 'center',
       minHeight: 20
     },
-    comboBoxOptionContainer: { 
+    comboBoxOptionContainer: {
       paddingTop: 3,
       paddingBottom: 3,
     },
-    comboBoxOptionCodeText: { 
+    comboBoxOptionCodeText: {
       fontStyle: 'italic',
     },
     textField: {

@@ -169,8 +169,8 @@ const manageMembershipSlice = createSlice({
                 }
                 else{
                     const compositeQuery = buildCompositeQuery(state.sourceParts);
-                    const updatedSourceParts = state.sourceParts.map((part, index) => ({ 
-                        ...part, 
+                    const updatedSourceParts = state.sourceParts.map((part, index) => ({
+                        ...part,
                         query: compositeQuery[index],
                     }));
                     state.sourceParts = updatedSourceParts;
@@ -286,7 +286,7 @@ const manageMembershipSlice = createSlice({
             const compositeQuery = buildCompositeQuery(state.sourceParts);
             state.compositeQuery = compositeQuery;
             state.advancedViewQuery = JSON.stringify(compositeQuery);
-            
+
         },
         updateSourcePart: (state, action: PayloadAction<ISourcePart>) => {
             const index = state.sourceParts.findIndex(part => part.id === action.payload.id);
@@ -333,7 +333,7 @@ const manageMembershipSlice = createSlice({
             state.newJob.period = period || state.newJob.period;
             state.newJob.thresholdPercentageForAdditions = thresholdPercentageForAdditions || state.newJob.thresholdPercentageForAdditions;
             state.newJob.thresholdPercentageForRemovals = thresholdPercentageForRemovals || state.newJob.thresholdPercentageForRemovals;
-            
+
             // Set the selected destination for existing jobs to enable group owner fetching
             if (targetGroupId && targetGroupName) {
                 state.selectedDestination = {
@@ -526,15 +526,15 @@ export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedViewQueryValid = state.manageMembership.isAdvancedQueryValid;
     const sourceParts = state.manageMembership.sourceParts;
     const advancedViewQuery = state.manageMembership.advancedViewQuery;
-    
+
     // Check if all source parts are valid (allow empty source parts for switching TO advanced view)
     const areAllSourcePartsValid = sourceParts.every(isSourcePartValid);
-    
+
     if (isAdvancedView) {
         // When in advanced view, allow toggle back to regular view only if:
         // 1. The query is valid, OR
         // 2. The query is empty (so it can be safely converted to empty source parts)
-        const isQueryEmpty = !advancedViewQuery || advancedViewQuery.trim() === '' || 
+        const isQueryEmpty = !advancedViewQuery || advancedViewQuery.trim() === '' ||
                             advancedViewQuery.trim() === '[]' || advancedViewQuery.trim() === '{}';
         return isAdvancedViewQueryValid || isQueryEmpty;
     } else {

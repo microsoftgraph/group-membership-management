@@ -4,7 +4,7 @@
 import { IStrings } from './IStrings';
 
 export interface ILocalizationService {
-  
+
   /** Changes the language used for translations. */
   changeLanguage: (language: string) => void;
 

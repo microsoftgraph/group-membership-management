@@ -69,7 +69,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             || parseInt(newValue) <= 0
             || (totalNumberOfPages !== undefined && !isNaN(totalNumberOfPages) && parseInt(newValue) > totalNumberOfPages))
             return;
-        
+
         dispatch(setPageNumber(parseInt(newValue)));
     }
 

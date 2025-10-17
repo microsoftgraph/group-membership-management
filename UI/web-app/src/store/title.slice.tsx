@@ -65,7 +65,7 @@ const titleSlice = createSlice({
       state.titles = action.payload;
     });
     builder.addCase(generateTitles.rejected, (state, action) => {
-      state.isGeneratingTitles = false;     
+      state.isGeneratingTitles = false;
       state.titles = action.meta.arg || [];
     });
     builder.addCase(fetchOrgLeaderDetailsAndGenerateHRTitle.pending, (state) => {

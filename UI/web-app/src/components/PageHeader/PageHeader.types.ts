@@ -24,7 +24,7 @@ export interface IPageHeaderProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
   backButtonHidden?: boolean;
   onBackToDashboardButtonClick?: () => void;
-  
+
   /**
    * Optional className to apply to the root of the component.
    */

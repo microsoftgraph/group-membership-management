@@ -5,10 +5,10 @@ import {
     type IAdvancedQueryStyleProps,
     type IAdvancedQueryStyles,
   } from './AdvancedQuery.types';
-  
+
   export const getStyles = (props: IAdvancedQueryStyleProps): IAdvancedQueryStyles => {
     const { className, theme } = props;
-  
+
     return {
       root: [{
         fontWeight: 400,
@@ -51,4 +51,4 @@ import {
       },
     };
   };
-  
+

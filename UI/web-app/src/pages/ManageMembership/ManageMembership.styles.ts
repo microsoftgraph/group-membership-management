@@ -13,7 +13,7 @@ export const getStyles = (props: IManageMembershipStyleProps): IManageMembership
         root: [{
             padding: '9px 36px 0px 36px'
         }, className],
-        
+
         bottomContainer: {
             display: 'flex',
             justifyContent: 'space-between',

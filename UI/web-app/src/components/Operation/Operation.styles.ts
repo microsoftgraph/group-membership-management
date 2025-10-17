@@ -40,7 +40,7 @@ export const getStyles = (props: OperationStyleProps): OperationStyles => {
     },
     button: {
       margin: '10px 0',
-      width: '200px', 
+      width: '200px',
     },
     description: {
       fontSize: 14,

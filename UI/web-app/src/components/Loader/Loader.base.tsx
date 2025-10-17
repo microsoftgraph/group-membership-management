@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import * as React from "react";
-import { Spinner, SpinnerSize } from "@fluentui/react";
+import * as React from 'react';
+import { Spinner, SpinnerSize } from '@fluentui/react';
 import {
   IProcessedStyleSet,
   classNamesFunction,

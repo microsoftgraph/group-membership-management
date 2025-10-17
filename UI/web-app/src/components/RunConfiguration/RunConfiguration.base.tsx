@@ -15,7 +15,7 @@ import {
   IRunConfigurationStyleProps,
   IRunConfigurationStyles,
 } from './RunConfiguration.types';
-import { useStrings } from "../../store/hooks";
+import { useStrings } from '../../store/hooks';
 import { InfoLabel } from '../InfoLabel';
 import {
   manageMembershipPeriod,

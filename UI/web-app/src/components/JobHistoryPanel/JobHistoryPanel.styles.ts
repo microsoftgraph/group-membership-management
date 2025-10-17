@@ -11,7 +11,7 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
 
     return {
         root: [{}, className],
-        
+
         container: {
             padding: 20,
         },
@@ -19,6 +19,6 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             display: 'flex',
             justifyContent: 'flex-end',
         },
-        
+
     };
 };

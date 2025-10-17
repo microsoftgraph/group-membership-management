@@ -36,7 +36,7 @@ export const useTitleProcessing = ({
     if (generatedTitlesYet && jobWithNoTitles && sourceParts.length > 0) {
 
       const groupMembershipParts = sourceParts.filter((part) => part.query.type === SourcePartType.GroupMembership);
-  
+
       const partsWithManagerAndFilter = sourceParts.filter(part =>
         part.query.type === SourcePartType.HR &&
         (part.query.source as HRSourcePartSource).manager?.id !== undefined &&

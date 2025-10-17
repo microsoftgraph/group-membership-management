@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.import React from "react";
+// Licensed under the MIT license.import React from 'react';
 
 import { classNamesFunction, IButtonStyles, IconButton, IPersonaSharedProps, IProcessedStyleSet, IStyle, Persona, PersonaSize, useTheme } from '@fluentui/react';
 import { useNavigate } from 'react-router-dom';
@@ -116,7 +116,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
             checkboxes={[
               { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
               { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
-              { id: 'autoSubscribeSettings', 
+              { id: 'autoSubscribeSettings',
                 label: jsxFormat(
                   strings.Disclaimer.autoSubscribeSettings,
                   <strong>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</strong>,

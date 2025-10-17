@@ -5,10 +5,10 @@ import {
     type IRunConfigurationStyleProps,
     type IRunConfigurationStyles,
   } from './RunConfiguration.types';
-  
+
   export const getStyles = (props: IRunConfigurationStyleProps): IRunConfigurationStyles => {
     const { className, theme } = props;
-  
+
     return {
       root: [{
         fontWeight: 400,
@@ -99,4 +99,4 @@ import {
       },
     };
   };
-  
+

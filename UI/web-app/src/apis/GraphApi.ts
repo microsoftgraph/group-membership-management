@@ -22,7 +22,7 @@ export class GraphApi extends ApiBase implements IGraphApi {
     return URL.createObjectURL(response.data);
   }
 
-  
+
   public async getPeoplePickerSuggestions(input: string): Promise<PeoplePickerPersona[]> {
     if (!input?.trim()) return [];
     const response = await this.httpClient.get<GraphResponseEntity<UserEntity[]>>(`/users`, {
@@ -65,8 +65,8 @@ export class GraphApi extends ApiBase implements IGraphApi {
     });
   }
 
-  public async getUser(objectId: string): Promise<string> {   
-    const response = await this.httpClient.get<UserEntity>(`/users/${objectId}`, {});   
+  public async getUser(objectId: string): Promise<string> {
+    const response = await this.httpClient.get<UserEntity>(`/users/${objectId}`, {});
     return response.data.displayName;
   }
 

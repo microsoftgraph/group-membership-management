@@ -16,7 +16,7 @@ export type orgLeaderDetails = {
   text: string;
   partId: string;
   mapping: ObjectIdEmployeeIdMapping;
-  orgLeaderDataReturned: boolean | undefined; 
+  orgLeaderDataReturned: boolean | undefined;
 }
 
 // Define the initial state using that type

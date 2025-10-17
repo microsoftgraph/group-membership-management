@@ -87,10 +87,10 @@ export const DisclaimerBase: React.FC<IDisclaimerProps> = (props: IDisclaimerPro
                         />
                     ))}
                     <div className={classNames.buttonContainer}>
-                        <PrimaryButton 
+                        <PrimaryButton
                             id="disclaimerSubmitButton"
-                            text={strings.Disclaimer.submitButton} 
-                            disabled={!allChecked} 
+                            text={strings.Disclaimer.submitButton}
+                            disabled={!allChecked}
                             onClick={handleSubmit}
                         />
                     </div>

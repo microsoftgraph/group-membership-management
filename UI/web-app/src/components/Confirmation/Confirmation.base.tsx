@@ -25,8 +25,8 @@ import {
   IConfirmationStyleProps,
   IConfirmationStyles,
 } from './Confirmation.types';
-import { useStrings } from "../../store/hooks";
-import { PageSection } from "../PageSection";
+import { useStrings } from '../../store/hooks';
+import { PageSection } from '../PageSection';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   manageMembershipCompositeQuery,
@@ -64,8 +64,8 @@ const getClassNames = classNamesFunction<
 >();
 
 export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (props) => {
-  const { 
-    className, 
+  const {
+    className,
     styles,
     onEditButtonClick,
     onEditBusinessJustification
@@ -79,7 +79,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
       theme: useTheme(),
     }
   );
-  
+
   const dispatch = useDispatch<AppDispatch>();
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
@@ -163,8 +163,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.destination}
               </div>
-              <ActionButton 
-                iconProps={{ iconName: 'Edit' }} 
+              <ActionButton
+                iconProps={{ iconName: 'Edit' }}
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
                 onClick={() => onEditButtonClick(OnboardingSteps.SelectDestination)}>
                 {strings.edit}
@@ -205,7 +205,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                     <Text className={classNames.itemData} block>
                       {selectedDestination?.channelName ?? '-'}
                     </Text>
-                  </Stack.Item> 
+                  </Stack.Item>
                 }
                 {selectedDestination?.channelId &&
                   <Stack.Item align="start">
@@ -219,7 +219,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 }
               </Stack>
               {selectedDestination && selectedDestinationEndpoints &&
-                <EndpointsList 
+                <EndpointsList
                   endpoints={selectedDestinationEndpoints}
                   groupName={selectedDestination.name}
                 />
@@ -264,8 +264,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <div className={classNames.cardTitle}>
                 {strings.JobDetails.labels.configuration}
               </div>
-              <ActionButton 
-                iconProps={{ iconName: 'Edit' }} 
+              <ActionButton
+                iconProps={{ iconName: 'Edit' }}
                 styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
                 onClick={() => onEditButtonClick(OnboardingSteps.RunConfiguration)}>
                 {strings.edit}
@@ -313,8 +313,8 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 <div className={classNames.cardTitle}>
                 {strings.ManageMembership.labels.sourceParts}
                 </div>
-                <ActionButton 
-                  iconProps={{ iconName: 'Edit' }} 
+                <ActionButton
+                  iconProps={{ iconName: 'Edit' }}
                   styles={{ root: { fontSize: 12, height: 14 }, icon: { fontSize: 10 }}}
                   onClick={() => onEditButtonClick(OnboardingSteps.MembershipConfiguration)}>
                   {strings.edit}
@@ -336,7 +336,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 </Stack.Item>
               </Stack>
             </div>
-        
+
             <div>
               <div className={classNames.cardHeader}>
                 <div className={classNames.cardTitle}>
@@ -394,7 +394,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
           ) : (
             <div>
               <div className={classNames.cardHeader}>
-                <div className={classNames.cardTitle}>                  
+                <div className={classNames.cardTitle}>
                   <Label>{strings.ManageMembership.labels.requestedOnBehalfOf}</Label>
                 </div>
               </div>
@@ -405,14 +405,14 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 aria-label={strings.ManageMembership.labels.requestedOnBehalfOf}
                 placeholder={strings.ManageMembership.labels.requestedOnBehalfOfPlaceholder}
                 options={groupOwnerOptions}
-                selectedKey={lastModifiedOnBehalfOfDisplayName && groupOwners ? 
-                  groupOwners.find(owner => owner.displayName === lastModifiedOnBehalfOfDisplayName)?.objectId : 
+                selectedKey={lastModifiedOnBehalfOfDisplayName && groupOwners ?
+                  groupOwners.find(owner => owner.displayName === lastModifiedOnBehalfOfDisplayName)?.objectId :
                   undefined}
                 onChange={handleGroupOwnerChange}
                 disabled={!isJobWriter || groupOwnerOptions.length === 0}
-                styles={{ 
-                  dropdown: classNames.valuesDropdown, 
-                  title: classNames.dropdownTitle 
+                styles={{
+                  dropdown: classNames.valuesDropdown,
+                  title: classNames.dropdownTitle
                 }}
                 onRenderOption={onRenderOption}
                 required

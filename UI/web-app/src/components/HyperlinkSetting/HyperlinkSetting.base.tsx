@@ -31,7 +31,7 @@ export const HyperlinkSettingBase: React.FunctionComponent<HyperlinkSettingProps
       onValidation(true);
       return '';
     }
-    
+
     let isValid = false;
     try {
       // because Url.canParse doesn't exist

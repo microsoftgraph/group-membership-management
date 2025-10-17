@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SourcePartQuery } from "./SourcePartQuery";
-import { SourcePartType } from "./SourcePartType";
+import { SourcePartQuery } from './SourcePartQuery';
+import { SourcePartType } from './SourcePartType';
 
 export type HRSourcePart = {
     type: SourcePartType.HR;
@@ -14,7 +14,7 @@ export type HRSourcePart = {
     manager?: {
       id?: number;
       depth?: number;
-    };    
+    };
     filter?: string;
 };
 

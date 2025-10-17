@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { IChoiceGroupOption, IComboBoxOption, IDropdownOption } from "@fluentui/react";
-import { strings } from "../services/localization/i18n/locales/en/translations";
+import { IChoiceGroupOption, IComboBoxOption, IDropdownOption } from '@fluentui/react';
+import { strings } from '../services/localization/i18n/locales/en/translations';
 
 export const nullOptions: IComboBoxOption[] = [
     { key: 'NULL', text: 'NULL' },

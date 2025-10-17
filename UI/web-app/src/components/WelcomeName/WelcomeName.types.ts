@@ -20,7 +20,7 @@ export interface IWelcomeNameStyleProps {
 export interface IWelcomeNameProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
   backButtonHidden?: boolean;
-  
+
   /**
    * Optional className to apply to the root of the component.
    */

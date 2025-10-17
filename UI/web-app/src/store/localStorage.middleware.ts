@@ -39,12 +39,12 @@ const saveStateToStorage = (pagingBarState: PagingBarState) => {
 
 export const localStorageMiddleware: Middleware<Record<string, never>, RootState> = (store) => (next) => (action) => {
   const result = next(action);
-  
+
   // Check if this action should trigger persistence
   if (PERSISTABLE_ACTIONS.includes(action.type)) {
     const state = store.getState();
     saveStateToStorage(state.pagingBar);
   }
-  
+
   return result;
 };

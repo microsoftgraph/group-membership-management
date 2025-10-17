@@ -96,7 +96,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
                   checkboxes={[
                     { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
                     { id: 'outlookWelcomeMessage', label: strings.Disclaimer.outlookWelcomeMessage },
-                    { id: 'autoSubscribeSettings', 
+                    { id: 'autoSubscribeSettings',
                       label: jsxFormat(
                         strings.Disclaimer.autoSubscribeSettings,
                         <strong>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</strong>,

@@ -14,7 +14,7 @@ interface OperationsState {
 
 const initialState: OperationsState = {
   status: null,
-  displayStatus: null, 
+  displayStatus: null,
   isLoading: false,
   error: null,
   isOperationInProgress: false,
@@ -44,7 +44,7 @@ const operationsSlice = createSlice({
         if (state.status === ServiceStatuses.Stopped && state.displayStatus === ServiceStatuses.Resetting) {
           return;
         }
-        state.displayStatus = action.payload; 
+        state.displayStatus = action.payload;
         state.isOperationInProgress = false;
       })
       .addCase(fetchServiceStatus.rejected, (state) => {
@@ -86,7 +86,7 @@ export const { resetError } = operationsSlice.actions;
 export const { updateServiceStatus } = operationsSlice.actions;
 
 export const selectOperationStatus = (state: RootState) => state.operations.status;
-export const selectOperationDisplayStatus = (state: RootState) => state.operations.displayStatus; 
+export const selectOperationDisplayStatus = (state: RootState) => state.operations.displayStatus;
 export const selectOperationIsLoading = (state: RootState) => state.operations.isLoading;
 export const selectOperationError = (state: RootState) => state.operations.error;
 export const selectOperationInProgress = (state: RootState) => state.operations.isOperationInProgress;

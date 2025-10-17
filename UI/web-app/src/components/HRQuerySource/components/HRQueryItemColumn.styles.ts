@@ -83,14 +83,14 @@ export const getStyles = (props: HRQueryItemColumnStyleProps): HRQueryItemColumn
       wordWrap: 'break-word',
       overflowWrap: 'break-word',
     },
-    comboBoxOptionCodeText: { 
+    comboBoxOptionCodeText: {
       fontStyle: 'italic',
     },
-    comboBoxOptionContainer: { 
+    comboBoxOptionContainer: {
       paddingTop: 3,
       paddingBottom: 3,
     },
-    comboBoxOptionList: { 
+    comboBoxOptionList: {
       maxHeight: 300,
     },
     readOnlyComboBox: {

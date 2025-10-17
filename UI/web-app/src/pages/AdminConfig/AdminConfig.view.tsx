@@ -4,8 +4,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
-import { 
-  AdminConfigStyleProps, 
+import {
+  AdminConfigStyleProps,
   AdminConfigStyles,
   AdminConfigViewProps,
   CustomLabelCellProps,
@@ -26,8 +26,8 @@ const getClassNames = classNamesFunction<AdminConfigStyleProps, AdminConfigStyle
 
 export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (props: AdminConfigViewProps) => {
   // extract props
-  const { className, isSaving, onSave, handleGetValues, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles, 
-    isHyperlinkAdmin, 
+  const { className, isSaving, onSave, handleGetValues, settings, sqlMembershipSource, sqlMembershipSourceAttributes, strings, styles,
+    isHyperlinkAdmin,
     isCustomMembershipProviderAdmin,
     isOperationsResetAdministrator,
     isGeneralSettingsAdministrator } = props;
@@ -318,7 +318,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
   useEffect(() => {
     const newAttributeMap = attributes?.reduce((acc: { [key: string]: SqlMembershipAttribute }, currentItem: SqlMembershipAttribute) => {
       const { name } = currentItem;
-      acc[name] = { 
+      acc[name] = {
           ...currentItem,
           ...attributeMap?.[currentItem.name]
        };
@@ -395,7 +395,7 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
             classNames={classNames}
             values={attributeMap[item.name].values}
             strings={strings}
-            onDropdownClick={() => { 
+            onDropdownClick={() => {
               handleDropdownClick(attributeMap[item.name]);
             }}
           />
@@ -409,14 +409,14 @@ const CustomSourceSettings: React.FunctionComponent<CustomSourceSettingsProps> =
                 handleFieldChange(item.name, column.fieldName, newValue);
               }}
               multiline rows={3}
-              styles={{ fieldGroup: classNames.descriptionTextField }} 
+              styles={{ fieldGroup: classNames.descriptionTextField }}
             />
           );
         case 'enabled':
           return (
             <Toggle
               title={strings.CustomSourceSettings.labels.enabledToggleTitle}
-              checked={fieldContent !== undefined ? Boolean(fieldContent) : true} 
+              checked={fieldContent !== undefined ? Boolean(fieldContent) : true}
               onChange={(e, checked) => handleFieldChange(item.name, column.fieldName, checked)}
             />
           );

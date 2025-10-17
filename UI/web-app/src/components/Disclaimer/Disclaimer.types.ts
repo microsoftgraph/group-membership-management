@@ -34,7 +34,7 @@ export interface IDisclaimerStyleProps extends React.AllHTMLAttributes<HTMLDivEl
          * Optional className to apply to the root of the component.
          */
         className?: string;
-      
+
         /**
          * Call to provide customized styling that will layer on top of the variant rules.
          */

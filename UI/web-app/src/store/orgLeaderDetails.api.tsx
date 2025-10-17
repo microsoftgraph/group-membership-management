@@ -33,7 +33,7 @@ export const fetchOrgLeaderDetails = createAsyncThunk<
     const payload: GetOrgLeaderDetailsResponse = {
       employeeId: response["employeeId"],
       objectId: orgLeaderDetailsDetailsRequest.objectId,
-      text: orgLeaderDetailsDetailsRequest.text,        
+      text: orgLeaderDetailsDetailsRequest.text,
       maxDepth: response["maxDepth"],
       partId: orgLeaderDetailsDetailsRequest.partId
     };

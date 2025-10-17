@@ -13,10 +13,10 @@ export function hasTrailingAndOrOperator(filter: string): boolean {
 
   // Remove any trailing whitespace
   const trimmedFilter = filter.trim();
-  
+
   // Check if the filter ends with AND or OR (case insensitive)
   const trailingAndOrPattern = /\s+(and|or)\s*$/i;
-  
+
   return trailingAndOrPattern.test(trimmedFilter);
 }
 
@@ -33,6 +33,6 @@ export function removeTrailingAndOrOperator(filter: string): string {
   // Remove trailing AND, OR operators (case insensitive)
   // This pattern matches whitespace + (and|or) + optional whitespace at the end
   const trailingAndOrPattern = /\s+(and|or)\s*$/i;
-  
+
   return filter.replace(trailingAndOrPattern, '');
 };

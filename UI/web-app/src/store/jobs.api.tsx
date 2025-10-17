@@ -4,10 +4,10 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { type Job } from '../models/Job';
 import { ThunkConfig } from './store';
-import { 
-  NewJob, 
-  PostJobResponse, 
-  Page, 
+import {
+  NewJob,
+  PostJobResponse,
+  Page,
   PagingOptions,
   PeoplePickerPersona
 } from '../models';
@@ -87,7 +87,7 @@ export const postJob = createAsyncThunk<PostJobResponse, NewJob, ThunkConfig>(
         postResponse.errorCode = response.data?.detail;
         postResponse.newSyncJobId = response.data?.responseData;
       }
-      
+
       return postResponse;
     } catch (error) {
       throw new Error('Failed to post job!');

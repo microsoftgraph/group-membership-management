@@ -282,9 +282,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
               />
             </div>
             {isEditable &&
-              <DefaultButton 
-                  iconProps={{ iconName: 'Delete' }} 
-                  className={classNames.deleteButton} 
+              <DefaultButton
+                  iconProps={{ iconName: 'Delete' }}
+                  className={classNames.deleteButton}
                   onClick={handleDelete}
                   disabled={!isJobWriter || !isEditable}
                 >
@@ -317,7 +317,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           <div className={classNames.error}>
             {errorMessage}
           </div>
-          {part.query.type === SourcePartType.HR && 
+          {part.query.type === SourcePartType.HR &&
             isEditable &&
             (part.query.source.filter !== "" || part.query.source.manager?.id !== undefined) && (
           <div><ActionButton

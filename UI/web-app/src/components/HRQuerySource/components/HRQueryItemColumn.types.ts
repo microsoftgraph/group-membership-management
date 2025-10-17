@@ -3,10 +3,10 @@
 
 import { type IStyle, type IStyleFunctionOrObject, type ITheme } from '@fluentui/react';
 import type React from 'react';
-import { 
-  IColumn, 
-  IComboBox, 
-  IComboBoxOption, 
+import {
+  IColumn,
+  IComboBox,
+  IComboBoxOption,
   IDropdownOption,
   ISelectableDroppableTextProps,
   IRenderFunction
@@ -57,7 +57,7 @@ export type HRQueryItemColumnProps = React.AllHTMLAttributes<HTMLDivElement> & {
   column?: IColumn;
   groupIndex?: number;
   childIndex?: number;
-  
+
   // State dependencies
   attributes?: SqlMembershipAttribute[];
   attributeMappings: Record<string, { mappings: SqlMembershipAttributeMapping[]; type?: string }>;
@@ -75,7 +75,7 @@ export type HRQueryItemColumnProps = React.AllHTMLAttributes<HTMLDivElement> & {
   isJobWriter: boolean;
   isEditable?: boolean;
   displayEmail: string;
-  
+
   // Callbacks
   onUpClick: (index: number, items: IFilterPart[]) => void;
   onDownClick: (index: number, items: IFilterPart[]) => void;

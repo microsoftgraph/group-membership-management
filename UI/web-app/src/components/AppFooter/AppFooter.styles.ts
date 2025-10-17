@@ -5,10 +5,10 @@ import {
     type IAppFooterStyleProps,
     type IAppFooterStyles,
   } from './AppFooter.types';
-  
+
   export const getStyles = (props: IAppFooterStyleProps): IAppFooterStyles => {
     const { className, showPagingBar } = props;
-  
+
     return {
       root: [{
         height: '100px',
@@ -31,4 +31,4 @@ import {
       }
     };
   };
-  
+

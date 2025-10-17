@@ -6,7 +6,7 @@ export interface Roles {
   isJobOwnerEnabler: boolean;
   isJobOwnerDeleter: boolean;
   isJobOwnerWriter: boolean;
-  isJobTenantReader: boolean; 
+  isJobTenantReader: boolean;
   isJobTenantWriter: boolean;
   isSubmissionReviewer: boolean;
   isSubmissionRejector: boolean;

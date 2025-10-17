@@ -38,13 +38,13 @@ export const searchDestinations = createAsyncThunk<DestinationPickerPersona[], s
       );
 
       const payload: DestinationPickerPersona[] = response.map((destination: Destination, index: number) => ({
-        key: index, 
+        key: index,
         text: destination.name,
-        secondaryText: destination.email, 
+        secondaryText: destination.email,
         id: destination.id,
         endpoints: destination.endpoints,
       }));
-      
+
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch destination data!');
@@ -72,11 +72,11 @@ export const searchChannels = createAsyncThunk<DestinationPickerPersona[], Searc
       );
 
       const payload: DestinationPickerPersona[] = response.map((channel: Channel, index: number) => ({
-        key: index, 
+        key: index,
         id: channel.channelId,
         text: channel.name,
       }));
-      
+
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch channel data!');

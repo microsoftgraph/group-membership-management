@@ -45,7 +45,7 @@ export const rolesSlice = createSlice({
   reducers: { },
   extraReducers: (builder) => {
     builder.addCase(getAllRoles.pending, (state) => {
-        state.isFetchingRoles = true; 
+        state.isFetchingRoles = true;
     });
     builder.addCase(getAllRoles.fulfilled, (state, action) => {
         Object.assign(state, action.payload);
@@ -84,9 +84,9 @@ export const selectIsJobWriter = (state: RootState) => {
 };
 
 export const selectHasAdminCenterPermissions = (state: RootState) => {
-  return state.roles.isHyperlinkAdministrator || 
+  return state.roles.isHyperlinkAdministrator ||
           state.roles.isCustomMembershipProviderAdministrator ||
-          state.roles.isOperationsResetAdministrator || 
+          state.roles.isOperationsResetAdministrator ||
           state.roles.isGeneralSettingsAdministrator;
 };
 

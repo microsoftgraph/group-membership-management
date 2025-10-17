@@ -1,12 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { 
-    IsHRSourcePartQuery, 
-    IsGroupMembershipSourcePartQuery, 
-    IsGroupOwnershipSourcePartQuery, 
+import {
+    IsHRSourcePartQuery,
+    IsGroupMembershipSourcePartQuery,
+    IsGroupOwnershipSourcePartQuery,
     IsPlaceMembershipSourcePartQuery,
-    ISourcePart, 
+    ISourcePart,
 } from '../models';
 import { SourcePartQuery } from '../models/SourcePartQuery';
 import { SourcePartType } from '../models/SourcePartType';
@@ -15,13 +15,13 @@ import { hasTrailingAndOrOperator, removeTrailingAndOrOperator } from './filterV
 export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T): T {
     if (IsHRSourcePartQuery(sourcePart)) {
         let trimmedSource = sourcePart;
-        
+
         // Clean the filter by removing trailing AND/OR operators if present
         let cleanedFilter = sourcePart.source.filter || undefined;
         if (cleanedFilter && hasTrailingAndOrOperator(cleanedFilter)) {
             cleanedFilter = removeTrailingAndOrOperator(cleanedFilter);
         }
-        
+
         if (trimmedSource.source.manager === undefined || (trimmedSource.source.manager && trimmedSource.source.manager.id === undefined)) {
             trimmedSource = {
                 ...sourcePart,

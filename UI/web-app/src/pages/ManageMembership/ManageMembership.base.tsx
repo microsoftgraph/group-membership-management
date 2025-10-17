@@ -117,7 +117,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   const [isPostingJob, setIsPostingJob] = useState(false);
   const [isEditingJob, setIsEditingJob] = useState(false);
   const currentStep = useSelector(manageMembershipCurrentStep);
-  const [isStep1ConditionsMet, setIsStep1ConditionsMet] = useState(false);  
+  const [isStep1ConditionsMet, setIsStep1ConditionsMet] = useState(false);
   const hasChanges = useSelector(manageMembershipHasChanges);
   const selectedDestination = useSelector(manageMembershipSelectedDestination);
   const isGroupReadyForOnboarding = useSelector(manageMembershipIsGroupReadyForOnboarding);
@@ -134,7 +134,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       jobDetailsRef.current = undefined;
       dispatch(resetManageMembership());
     }
-    
+
     if (locationState?.currentStep) {
       dispatch(setCurrentStep(locationState.currentStep));
     }
@@ -150,7 +150,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(setJobDetailsForExistingJob(jobDetailsRef.current));
     }
   }, [dispatch, jobDetailsRef.current]);
-  
+
   useEffect(() => {
     setIsStep1ConditionsMet(!!selectedDestination && isGroupReadyForOnboarding === true);
   }, [selectedDestination, isGroupReadyForOnboarding]);
@@ -204,7 +204,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
     return [];
   }, [sourcePartsQuery, advancedViewQuery, isAdvancedQueryValid]);
-  
+
   const handleDestinationTypeChange = (
     event: React.FormEvent<IComboBox>,
     option?: IComboBoxOption

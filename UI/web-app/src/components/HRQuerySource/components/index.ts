@@ -3,8 +3,8 @@
 
 export { HRQueryItemColumn } from './HRQueryItemColumn';
 export { HRQueryItemColumnBase } from './HRQueryItemColumn.base';
-export type { 
+export type {
   HRQueryItemColumnProps,
   HRQueryItemColumnStyleProps,
-  HRQueryItemColumnStyles 
+  HRQueryItemColumnStyles
 } from './HRQueryItemColumn.types';

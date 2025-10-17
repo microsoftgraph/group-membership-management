@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { GroupSettings } from "./GroupSettings";
+import { GroupSettings } from './GroupSettings';
 
 export interface Destination {
   id?: string;

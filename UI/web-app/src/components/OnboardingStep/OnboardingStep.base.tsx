@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import * as React from "react";
+import * as React from 'react';
 import {
   IProcessedStyleSet,
   classNamesFunction,
@@ -12,11 +12,11 @@ import {
   IOnboardingStepStyleProps,
   IOnboardingStepStyles,
 } from './OnboardingStep.types';
-import { useStrings } from "../../store/hooks";
-import { PageSection } from "../PageSection";
-import { useSelector } from "react-redux";
-import { manageMembershipSelectedDestinationName, manageMembershipSelectedDestinationType } from "../../store/manageMembership.slice";
-import { destinationTypeLocalization } from "../../utils/destinationTypeUtils";
+import { useStrings } from '../../store/hooks';
+import { PageSection } from '../PageSection';
+import { useSelector } from 'react-redux';
+import { manageMembershipSelectedDestinationName, manageMembershipSelectedDestinationType } from '../../store/manageMembership.slice';
+import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
 
 const getClassNames = classNamesFunction<
   IOnboardingStepStyleProps,
@@ -26,7 +26,7 @@ const getClassNames = classNamesFunction<
 export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> = (props) => {
   const { className, styles, children, stepTitle, stepDescription } = props;
   const strings = useStrings();
-  
+
   const classNames: IProcessedStyleSet<IOnboardingStepStyles> = getClassNames(
     styles,
     {

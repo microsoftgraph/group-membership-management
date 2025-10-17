@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SourcePartQuery } from "./SourcePartQuery";
-import { SourcePartType } from "./SourcePartType";
+import { SourcePartQuery } from './SourcePartQuery';
+import { SourcePartType } from './SourcePartType';
 
 export type GroupMembershipSourcePart = {
     type: SourcePartType.GroupMembership;

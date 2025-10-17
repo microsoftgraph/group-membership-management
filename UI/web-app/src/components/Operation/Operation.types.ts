@@ -10,7 +10,7 @@ export type OperationStyles = {
   card: IStyle;
   title: IStyle;
   description: IStyle;
-  buttonContainer: IStyle; 
+  buttonContainer: IStyle;
   button: IStyle;
 };
 

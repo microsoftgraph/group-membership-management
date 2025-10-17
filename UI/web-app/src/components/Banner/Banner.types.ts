@@ -25,7 +25,7 @@ export interface IBannerStyleProps {
 
 export interface IBannerProps
   extends React.AllHTMLAttributes<HTMLDivElement> {
-  
+
   /**
    * Optional className to apply to the root of the component.
    */

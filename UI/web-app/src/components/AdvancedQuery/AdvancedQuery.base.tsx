@@ -14,7 +14,7 @@ import {
   IAdvancedQueryStyleProps,
   IAdvancedQueryStyles,
 } from './AdvancedQuery.types';
-import { useStrings, useQueryValidation } from "../../store/hooks";
+import { useStrings, useQueryValidation } from '../../store/hooks';
 import { AppDispatch } from '../../store';
 import {
   manageMembershipAdvancedViewQuery,
@@ -87,9 +87,9 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
   }, [advancedViewQueryFromStore, defaultAdvancedViewQuery]);
 
   const hasValidStructure = (item: unknown): boolean => {
-    return item !== null && 
-           typeof item === 'object' && 
-           'type' in item && 
+    return item !== null &&
+           typeof item === 'object' &&
+           'type' in item &&
            'source' in item;
   };
 
@@ -132,7 +132,7 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
     try {
       const parsedQuery = JSON.parse(localQuery || '[]');
       dispatch(applyAdvancedViewQuery(localQuery || '[]'));
-      
+
       // Use the shared validation hook
       await validateQuery(parsedQuery, setValidationMessage);
     } catch (error) {

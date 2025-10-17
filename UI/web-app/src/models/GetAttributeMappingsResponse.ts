@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { SqlMembershipAttributeMapping } from "./SqlMembershipAttributeMapping";
+import { SqlMembershipAttributeMapping } from './SqlMembershipAttributeMapping';
 
 export interface GetAttributeMappingsResponse {
     mappings: SqlMembershipAttributeMapping[];

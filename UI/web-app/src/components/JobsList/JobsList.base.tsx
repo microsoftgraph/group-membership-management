@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { approveJobs, downloadJobs, fetchJobs } from '../../store/jobs.api';
-import { 
+import {
   selectAllJobs,
   selectGetJobsError,
   setGetJobsError,
@@ -108,7 +108,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const pagingOptions = useSelector(selectPagingOptions);
   const sortKey: string | undefined = useSelector(selectPagingBarSortKey);
   const isSortedDescending: boolean | undefined = useSelector(selectPagingBarIsSortedDescending);
-  
+
   const isTenantJobWriter: boolean | undefined = useSelector(selectIsJobTenantWriter);
   const isJobWriter: boolean | undefined = useSelector(selectIsJobWriter);
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
@@ -219,7 +219,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     },
     {
       key: 'email',
-      name: strings.JobsList.ShimmeredDetailsList.columnNames.email, 
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.email,
       fieldName: 'email',
       minWidth: 220,
       isMultiline: false,
@@ -355,7 +355,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   const onRenderRow = (props?: IDetailsRowProps): JSX.Element => {
     if (!props) return <></>;
-  
+
     const { item } = props;
     const handleRowClick = (event: React.MouseEvent<HTMLDivElement, MouseEvent>): void => {
       const target = event.target as HTMLElement;
@@ -377,7 +377,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         navigate(`/JobDetails/${item.syncJobId}`);
       }
     };
-  
+
     return (
       <div
         onClick={handleRowClick}
@@ -470,7 +470,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           const utcDate = fieldContent.endsWith('Z') ? fieldContent : `${fieldContent}Z`;
           const date = new Date(utcDate);
           const localDateTime = date.toLocaleString();
-          
+
           return <div>{localDateTime}</div>;
         } catch {
           return <div>{fieldContent}</div>;

@@ -16,7 +16,7 @@ import {
   IAdvancedViewSourcePartStyleProps,
   IAdvancedViewSourcePartStyles,
 } from './AdvancedViewSourcePart.types';
-import { useStrings } from "../../store/hooks";
+import { useStrings } from '../../store/hooks';
 import GroupOwnershipSchema from '../../models/schemas/GroupOwnershipSchema.json';
 import PlaceMembershipSchema from '../../models/schemas/PlaceMembershipSchema.json';
 import { AppDispatch } from '../../store';

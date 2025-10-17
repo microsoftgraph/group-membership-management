@@ -5,4 +5,4 @@ export type SqlMembershipAttributeMapping = {
     description: string;
     code: string;
   };
-  
+

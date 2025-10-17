@@ -5,10 +5,10 @@ import {
     type IAdvancedViewSourcePartStyleProps,
     type IAdvancedViewSourcePartStyles,
   } from './AdvancedViewSourcePart.types';
-  
+
   export const getStyles = (props: IAdvancedViewSourcePartStyleProps): IAdvancedViewSourcePartStyles => {
     const { className, theme } = props;
-  
+
     return {
       root: [{
         fontWeight: 400,
@@ -51,4 +51,4 @@ import {
       },
     };
   };
-  
+

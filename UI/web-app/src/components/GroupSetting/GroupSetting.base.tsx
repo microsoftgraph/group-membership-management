@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { IProcessedStyleSet, classNamesFunction, useTheme } from '@fluentui/react';
-import { IGroupSettingProps, IGroupSettingStyleProps, IGroupSettingStyles } from "./GroupSetting.types";
+import { IGroupSettingProps, IGroupSettingStyleProps, IGroupSettingStyles } from './GroupSetting.types';
 import { AppDispatch } from '../../store';
 import { useDispatch, useSelector } from 'react-redux';
 import { useStrings } from '../../store/hooks';

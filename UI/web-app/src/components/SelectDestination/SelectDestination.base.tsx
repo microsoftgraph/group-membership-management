@@ -96,7 +96,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
     if(!destination.channelId || !destination.channelName) {
       return [];
-    } 
+    }
 
     return [
       {
@@ -110,7 +110,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
     if(!destination.id || !destination.name) {
       return [];
-    } 
+    }
 
     return [
       {

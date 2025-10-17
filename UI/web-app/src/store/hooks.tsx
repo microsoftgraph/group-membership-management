@@ -38,8 +38,8 @@ export const useQueryValidation = () => {
   const validateQuery = useCallback(async (queryToValidate: SyncJobQuery, showValidationMessage?: (message: React.ReactNode) => void): Promise<boolean> => {
     try {
       // Check for empty query (null, undefined, empty array, or empty object)
-      if (!queryToValidate || 
-          !Array.isArray(queryToValidate) || 
+      if (!queryToValidate ||
+          !Array.isArray(queryToValidate) ||
           queryToValidate.length === 0 ||
           (typeof queryToValidate === 'object' && Object.keys(queryToValidate).length === 0)) {
         if (showValidationMessage) {

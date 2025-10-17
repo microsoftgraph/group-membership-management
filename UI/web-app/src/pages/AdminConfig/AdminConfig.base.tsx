@@ -27,9 +27,9 @@ import { setPagingBarVisible } from '../../store/pagingBar.slice';
 import { selectSource, selectAttributes, selectIsSourceSaving, selectAreAttributesSaving, setSource, setAttributes } from '../../store/sqlMembershipSources.slice';
 import { SqlMembershipAttribute, SqlMembershipSource } from '../../models';
 import { fetchAttributeValues, patchDefaultSqlMembershipSourceAttributes, patchDefaultSqlMembershipSourceCustomLabel } from '../../store/sqlMembershipSources.api';
-import { 
-  selectIsCustomMembershipProviderAdministrator, 
-  selectIsHyperlinkAdministrator, 
+import {
+  selectIsCustomMembershipProviderAdministrator,
+  selectIsHyperlinkAdministrator,
   selectIsOperationsResetAdministrator,
   selectIsGeneralSettingsAdministrator,
   selectHasAdminCenterPermissions,
@@ -84,7 +84,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
-  useEffect(() => { 
+  useEffect(() => {
     setSettings(generateSettings())
   }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled]);
 
@@ -102,10 +102,10 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       [SettingKey.IsDisclaimerEnabled]: newSettings[SettingKey.IsDisclaimerEnabled] === 'true' ? 'true' : 'false',
       [SettingKey.IsAITitleEnabled]: newSettings[SettingKey.IsAITitleEnabled] === 'true' ? 'true' : 'false',
     };
-  
+
     if (JSON.stringify(formattedSettings) !== JSON.stringify(settings)) {
       setSettings(formattedSettings);
-  
+
       dispatch(
         patchSetting({
           settingKey: SettingKey.DashboardUrl,
@@ -165,22 +165,22 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         })
       );
     }
-  
+
     if (JSON.stringify(newSqlMembershipSource) !== JSON.stringify(sqlMembershipSource)) {
       dispatch(
         patchDefaultSqlMembershipSourceCustomLabel(newSqlMembershipSource?.customLabel ?? '')
       );
-  
+
       dispatch(
         setSource(newSqlMembershipSource)
       );
     }
-    
+
     if (JSON.stringify(newSqlMembershipAttributes) !== JSON.stringify(sqlMembershipSourceAttributes)) {
       dispatch(
         patchDefaultSqlMembershipSourceAttributes(newSqlMembershipAttributes ?? [])
       );
-  
+
       dispatch(
         setAttributes(newSqlMembershipAttributes)
       );

@@ -125,7 +125,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       } else {
         let items: IFilterPart[] = children.map((child, index) => {
           const parts = child.filter.trim().split(' ').filter(part => part !== '');
-          
+
           // Handle two-word operators like "NOT IN"
           let attribute, equalityOperator;
           if (parts.length > 2 && parts[1] === "NOT" && parts[2] === "IN") {
@@ -135,7 +135,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             attribute = parts[0];
             equalityOperator = parts[1];
           }
-          
+
           const result = findValueAndOr(parts);
           const filterPart: IFilterPart = {
             attribute,
@@ -197,7 +197,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     if (words.length > 2 && words[1] === "NOT" && words[2] === "IN") {
       startIndex = 3;
     }
-    
+
     let andOrStartIndex = -1;
     for (let i = startIndex; i < words.length; i++) {
       const part = words[i].toLowerCase();
@@ -207,7 +207,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         break;
       }
     }
-    
+
     if (andOrStartIndex > -1) {
       // AND/OR found, value is everything from startIndex to andOrStartIndex
       value = words.slice(startIndex, andOrStartIndex).join(' ');
@@ -215,7 +215,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       // No AND/OR found, value is everything from startIndex to end
       value = words.slice(startIndex).join(' ');
     }
-    
+
     return { andOr, value };
   }
 
@@ -228,7 +228,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     const prevOperator = words[1];
     const isPrevNotIn = prevOperator === "NOT" && words.length > 2 && words[2] === "IN";
     const isNewNotIn = newOperator === "NOT IN";
-    
+
     if (newOperator) {
       // Handle operator changes
       if (isNewNotIn) {
@@ -247,8 +247,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           }
           words.push(valueToAdd);
         }
-        if (result.andOr !== '') { 
-          words.push(result.andOr); 
+        if (result.andOr !== '') {
+          words.push(result.andOr);
         }
       } else {
         // Handle single-word operators
@@ -272,8 +272,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               words.push(cleanValue);
             }
           }
-          if (result.andOr !== '') { 
-            words.push(result.andOr); 
+          if (result.andOr !== '') {
+            words.push(result.andOr);
           }
         } else {
           // Normal single-word to single-word operator change
@@ -292,8 +292,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
               }
               words.push(cleanValue);
             }
-            if (result.andOr !== '') { 
-              words.push(result.andOr); 
+            if (result.andOr !== '') {
+              words.push(result.andOr);
             }
           } else if (newOperator === "IN" && prevOperator !== "IN") {
             // Switching TO "IN" from a non-IN operator
@@ -316,9 +316,9 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       // Handle value changes
       const isNotInOperator = isPrevNotIn;
       const valueStartIndex = isNotInOperator ? 3 : 2;
-      
+
       words.splice(valueStartIndex);
-      
+
       // Check if the newValue contains and/or at the end
       const andOrMatch = newValue.match(/^(.+?)\s+(and|or)$/i);
       if (andOrMatch) {
@@ -328,15 +328,15 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
       } else {
         // Just the value, preserve existing and/or if any
         words.push(newValue);
-        if (result.andOr !== '') { 
-          words.push(result.andOr); 
+        if (result.andOr !== '') {
+          words.push(result.andOr);
         }
       }
     } else if (newAndOr !== undefined) {
       // Handle adding/changing AND/OR operator only
       const isNotInOperator = isPrevNotIn;
       const valueStartIndex = isNotInOperator ? 3 : 2;
-      
+
       // Preserve the existing value and only change the AND/OR part
       if (result.value) {
         // We have a value, so preserve it and just update the AND/OR part
@@ -344,7 +344,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         const valueWords = result.value.split(' ');
         const endOfValueIndex = valueStartIndex + valueWords.length;
         words.splice(endOfValueIndex);
-        
+
         // Add the new AND/OR if provided
         if (newAndOr !== '') {
           words.push(newAndOr);
@@ -357,7 +357,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         }
       }
     }
-    
+
     return words;
   }
 
@@ -602,7 +602,7 @@ const getOptions = (
     const orgLeaderPattern = /^(Everyone in .+'s org|\d+\slevels? of direct reports of .+)( with the following summarized criteria: .+)?$/;
     if (source.filter) {
       const result = await dispatch(getTitle(source.filter));
-      generatedTitle = result.payload as string;        
+      generatedTitle = result.payload as string;
     }
     let newTitle = props.title;
     if (props.title && orgLeaderPattern.test(props.title)) {
@@ -672,7 +672,7 @@ const getOptions = (
 
     const depth = parseInt(option.key as string);
     const currentTitle = localTitle || props.title || "";
-    
+
     // Use the utility function to update depth while preserving leader name and criteria
     const newDepth = depth === 0 ? undefined : depth;
     const newTitle = updateHRTitleWithNewDepth(
@@ -1277,7 +1277,7 @@ const getOptions = (
         });
       }
     }
-    
+
     if (item) {
       const attributeType = attributeMappings[attribute]?.type;
       const selectedValue = operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")
@@ -1409,7 +1409,7 @@ const getOptions = (
   };
 
   const handleGroupOrAndOperatorChange = (event: React.FormEvent<HTMLDivElement>, parentIndex: number, childIndex: number, item?: IDropdownOption): void => {
-    if (item) {      
+    if (item) {
       if (parentIndex >= 0 && childIndex >= 0) {
         groups[parentIndex].children[childIndex].andOr = item.text;
       }
@@ -1564,7 +1564,7 @@ const getOptions = (
     setIsDragAndDropEnabled(true);
     newItems = newItems.filter((_, i) => i !== index);
     newItems.splice(insertIndex, 0, { ...items[index] });
-   
+
     let hasPlaceholder = false;
     newItems = newItems.map((item, itemIndex) => {
       const shouldHaveAndOr = itemIndex < newItems.length - 1;
@@ -1719,14 +1719,14 @@ const getOptions = (
     defaultRender
   ) => {
     if (!props || !defaultRender) return null;
-  
+
     const customProps: IDetailsHeaderProps = {
       ...props,
       onRenderColumnHeaderTooltip: (tooltipProps?: IDetailsColumnRenderTooltipProps) => {
         if (!tooltipProps) return null;
-  
+
         const { column } = tooltipProps;
-  
+
         if (column?.key === 'andOr') {
           return (
             <span className={classNames.detailsListColumnHeader} >
@@ -2125,9 +2125,9 @@ const getOptions = (
         selectionPreservedOnEmptyClick={true}
         layoutMode={DetailsListLayoutMode.justified}
       />
-      <ActionButton 
-        styles={{ root: classNames.addAttribute }} 
-        iconProps={{ iconName: "CirclePlus" }} 
+      <ActionButton
+        styles={{ root: classNames.addAttribute }}
+        iconProps={{ iconName: "CirclePlus" }}
         disabled={!isJobWriter || !isEditable}
         onClick={() => addComponent(groupIndex, childIndex)}>
         {strings.HROnboarding.addAttribute}
@@ -2254,7 +2254,7 @@ const getOptions = (
         </Stack.Item>
       </Stack>
        )}
-       
+
 
       <div className={classNames.error}>
         {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && partId === orgLeaderDetails.partId && orgErrorMessage}
@@ -2382,12 +2382,12 @@ const getOptions = (
             />
           )}
 
-          {(!groupingEnabled) && 
-          <ActionButton 
+          {(!groupingEnabled) &&
+          <ActionButton
             data-testid="hr-add-attribute-button"
-            styles={{ root: classNames.addAttribute }} 
-            disabled={!isJobWriter || !isEditable} 
-            iconProps={{ iconName: "CirclePlus" }} 
+            styles={{ root: classNames.addAttribute }}
+            disabled={!isJobWriter || !isEditable}
+            iconProps={{ iconName: "CirclePlus" }}
             onClick={() => addComponent()}>
             {strings.HROnboarding.addAttribute}
           </ActionButton>}

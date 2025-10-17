@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { GroupSettings } from "./GroupSettings";
-import { SyncJobQuery } from "./SyncJobQuery";
-import { Title } from "./Title";
+import { GroupSettings } from './GroupSettings';
+import { SyncJobQuery } from './SyncJobQuery';
+import { Title } from './Title';
 
 export type NewJob = {
     requestor: string;

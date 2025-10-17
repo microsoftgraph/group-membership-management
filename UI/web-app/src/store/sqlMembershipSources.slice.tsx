@@ -103,7 +103,7 @@ const sqlMembershipSourcesSlice = createSlice({
     builder.addCase(fetchAttributeValues.fulfilled, (state, action) => {
       state.areAttributeMappingsLoading = false;
       const { attribute, values} = action.payload;
-      state.attributes = state.attributes?.map(attr => 
+      state.attributes = state.attributes?.map(attr =>
         attr.name === attribute ? { ...attr, values: values } : attr
       );
     });

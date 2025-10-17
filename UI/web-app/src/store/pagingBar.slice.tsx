@@ -78,7 +78,7 @@ const initialState: PagingBarState = {
 export const pagingBarSlice = createSlice({
   name: 'pagingBar',
   initialState,
-  reducers: { 
+  reducers: {
     setPagingBarVisible: (state, action) => {
       state.visible = action.payload;
     },
@@ -148,23 +148,23 @@ export const pagingBarSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(fetchJobs.fulfilled, (state, action) => {
       const newTotalPages = action.payload.totalNumberOfPages;
-      
+
       // Only reset page if current page is beyond the available pages (invalid page)
       if (newTotalPages > 0 && state.pageNumber > newTotalPages) {
         state.pageNumber = 1;
       }
-      
+
       state.totalNumberOfPages = newTotalPages;
     });
   }
 });
 
-export const { 
-  setPagingBarVisible, 
-  setPageSize, 
-  setPageNumber, 
-  setTotalNumberOfPages, 
-  setSortKey, 
+export const {
+  setPagingBarVisible,
+  setPageSize,
+  setPageNumber,
+  setTotalNumberOfPages,
+  setSortKey,
   setIsSortedDescending,
   setFilterString,
   setFilterDestinationId,
@@ -209,9 +209,9 @@ export const selectPagingOptions = createSelector(
     (state: RootState) => state.pagingBar.filterDestinationOwner,
     (state: RootState) => state.pagingBar.customSortBy,
   ],
-  (pageNumber, pageSize, sortKey, isSortedDescending, filterStatus, filterActionRequired, 
+  (pageNumber, pageSize, sortKey, isSortedDescending, filterStatus, filterActionRequired,
    filterDestinationId, filterDestinationName, filterDestinationType, filterDestinationOwner, customSortBy) => {
-    
+
     let orderByString: string | undefined = undefined;
     const filters: string[] = [];
     if (sortKey !== undefined && sortKey !== 'targetGroupName' && sortKey !== 'lastModifiedTime') {
@@ -229,22 +229,22 @@ export const selectPagingOptions = createSelector(
     }
     if (filterDestinationName) {
       const subConditions: string[] = [];
-    
+
       subConditions.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
       subConditions.push("contains(tolower(DestinationEmail/Email), tolower('" + filterDestinationName + "'))");
-    
+
       if (isGuidValid(filterDestinationName)) {
         subConditions.push("targetOfficeGroupId eq " + filterDestinationName);
       }
       const combinedSubFilter = "(" + subConditions.join(" or ") + ")";
       filters.push(combinedSubFilter);
     }
-    
+
     if (filterDestinationOwner)
     {
       filters.push("DestinationOwners/any(o: o/ObjectId eq " + filterDestinationOwner + ")");
     }
-    
+
     if (filterStatus === 'Enabled') {
       filters.push("(status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
     }
@@ -252,9 +252,9 @@ export const selectPagingOptions = createSelector(
       filters.push("not (status eq '" + SyncStatus.Idle + "' or status eq '" + SyncStatus.InProgress + "')");
     }
     const filterString: string | undefined = filters.length === 0 ? undefined : filters.join(' and ');
-      
+
     const itemsToSkip = (pageNumber - 1) * parseInt(pageSize);
-    return { 
+    return {
       pageSize: parseInt(pageSize),
       itemsToSkip,
       orderBy: orderByString,

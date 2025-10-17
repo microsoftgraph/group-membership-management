@@ -120,14 +120,14 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
       fontFamily: 'Segoe UI',
       color: theme.semanticColors.errorText
     },
-    comboBoxOptionCodeText: { 
+    comboBoxOptionCodeText: {
       fontStyle: 'italic',
     },
-    comboBoxOptionContainer: { 
+    comboBoxOptionContainer: {
       paddingTop: 3,
       paddingBottom: 3,
     },
-    comboBoxOptionList: { 
+    comboBoxOptionList: {
       maxHeight: 300,
     },
     errorMessageStyles: {
@@ -143,7 +143,7 @@ export const getStyles = (props: HRQuerySourceStyleProps): HRQuerySourceStyles =
     generateTitleHeader: {
       display: 'flex',
       marginBottom: '10px'
-    },    
+    },
     generateTitleButton: {
       width: '150px',
       fontWeight: 'bold'

@@ -88,7 +88,7 @@ export const CreateGroupBase: React.FunctionComponent<ICreateGroupProps> = (prop
               onClick={handleCreateGroup}
               disabled={isCreateGroupLoading}
             >
-              {isCreateGroupLoading ? strings.ManageMembership.CreateGroup.creating : newGroupId ? strings.ManageMembership.CreateGroup.created : strings.ManageMembership.CreateGroup.createGroup} 
+              {isCreateGroupLoading ? strings.ManageMembership.CreateGroup.creating : newGroupId ? strings.ManageMembership.CreateGroup.created : strings.ManageMembership.CreateGroup.createGroup}
             </ActionButton>
             {errorMessage && <MessageBar messageBarType={MessageBarType.error}>{errorMessage}</MessageBar>}
           </Stack.Item>

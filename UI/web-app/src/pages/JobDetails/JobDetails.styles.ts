@@ -119,8 +119,8 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             fontSize: '20px',
             padding: '9px 36px 0px 36px',
             maxWidth: '600px',
-            width: '100%',         
-            margin: '0 auto',      
+            width: '100%',
+            margin: '0 auto',
             height: '20vh'
         }
     };
