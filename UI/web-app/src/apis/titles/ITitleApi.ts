@@ -5,4 +5,4 @@ import { AxiosResponse } from "axios";
 
 export interface ITitleApi {
   getTitle(prompt: string): Promise<AxiosResponse>;
-}
+};

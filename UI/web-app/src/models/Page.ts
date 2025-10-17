@@ -7,4 +7,4 @@ export type Page<T> = {
   currentPage?: number;
   pageSize?: number;
   totalItems?: number;
-}
+};

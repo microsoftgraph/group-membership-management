@@ -13,4 +13,4 @@ export class TitleApi extends ApiBase implements ITitleApi {
     this.ensureSuccessStatusCode(response);
     return response;
   }
-}
+};

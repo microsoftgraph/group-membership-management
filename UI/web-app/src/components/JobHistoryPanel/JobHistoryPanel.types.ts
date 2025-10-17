@@ -31,4 +31,4 @@ export interface IJobHistoryPanelProps extends React.AllHTMLAttributes<HTMLEleme
     isOpen: boolean;
     dismissPanel: () => void;
     jobId: string;
-}
+};

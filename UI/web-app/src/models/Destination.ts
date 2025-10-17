@@ -12,4 +12,4 @@ export interface Destination {
   endpoints?: string[] | undefined;
   email?: string;
   groupSettings?: GroupSettings | undefined;
-}
+};

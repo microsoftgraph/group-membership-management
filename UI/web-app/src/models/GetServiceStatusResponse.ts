@@ -7,5 +7,5 @@ export interface GetServiceStatusResponse {
     statusCode: number;
     errorCode: string | null;
     status: ServiceStatuses;
-  }
+  };
   

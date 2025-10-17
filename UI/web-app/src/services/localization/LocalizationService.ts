@@ -35,4 +35,4 @@ export class LocalizationService implements ILocalizationService {
   public getStrings(): IStrings {
     return this._i18n.getResourceBundle(this._i18n.language, 'translations');
   }
-}
+};

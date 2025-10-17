@@ -20,4 +20,4 @@ export interface Roles {
 
 export interface IRolesApi {
   getAllRoles(): Promise<Roles>;
-}
+};

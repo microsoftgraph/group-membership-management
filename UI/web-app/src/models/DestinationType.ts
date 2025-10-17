@@ -5,4 +5,4 @@ import { useStrings } from '../store/hooks';
 export enum DestinationType {
     GroupMembership = "GroupMembership",
     TeamsChannelMembership = "TeamsChannelMembership",
-}
+};

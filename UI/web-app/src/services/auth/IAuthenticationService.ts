@@ -8,4 +8,4 @@ export interface IAuthenticationService {
   loginAsync: () => Promise<void>;
   getActiveAccount(): User | undefined;
   getTokenAsync: (tokenType: TokenType) => Promise<string>;
-}
+};

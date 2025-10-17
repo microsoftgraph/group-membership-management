@@ -54,4 +54,4 @@ export class GMMApi implements IGMMApi {
   public get destinations(): IDestinationsApi {
     return this._destinationsApi;
   }
-}
+};

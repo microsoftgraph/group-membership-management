@@ -4,4 +4,4 @@
 export const enum TokenType {
   GMM = 'gmm',
   Graph = 'graph'
-}
+};

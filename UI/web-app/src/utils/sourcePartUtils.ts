@@ -87,4 +87,4 @@ export function isSourcePartValid(sourcePart: ISourcePart): boolean {
         default:
             return false;
     }
- }
+ };

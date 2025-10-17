@@ -4,4 +4,4 @@
 export interface GetChannelRequest {
   groupId: string;
   channelId: string;
-}
+};

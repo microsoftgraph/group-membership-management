@@ -5,4 +5,4 @@ export enum Operations {
     Reset,
     Stop,
     Start
-}
+};

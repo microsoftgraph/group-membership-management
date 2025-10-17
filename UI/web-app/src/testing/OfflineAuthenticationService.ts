@@ -21,4 +21,4 @@ export class OfflineAuthenticationService implements IAuthenticationService {
   public loginAsync = async () => await this.loginPromise;
   public getActiveAccount = () => this.user;
   public getTokenAsync = (tokenType: TokenType) => this.tokens[tokenType];
-}
+};

@@ -113,4 +113,4 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
             </div>
         </div >
     )
-}
+};

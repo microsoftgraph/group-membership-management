@@ -83,4 +83,4 @@ export class GraphApi extends ApiBase implements IGraphApi {
       }
     }
   }
-}
+};

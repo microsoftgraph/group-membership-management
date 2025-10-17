@@ -25,4 +25,4 @@ export interface ICreateGroupProps extends React.AllHTMLAttributes<HTMLDivElemen
    */
   styles?: IStyleFunctionOrObject<ICreateGroupStyleProps, ICreateGroupStyles>;
   onGroupCreated: (groupName: string, groupAlias: string) => void;
-}
+};

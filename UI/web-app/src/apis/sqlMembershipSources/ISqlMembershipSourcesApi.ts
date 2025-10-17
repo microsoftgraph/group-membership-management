@@ -12,4 +12,4 @@ export interface ISqlMembershipSourcesApi {
   patchDefaultSqlMembershipSourceCustomLabel(customLabel: string): Promise<void>;
   patchDefaultSqlMembershipSourceAttributes(attributes: SqlMembershipAttribute[]): Promise<void>;
   validateSqlFilters(filters: Map<number, string>): Promise<ValidateSqlFiltersResponse>;
-}
+};

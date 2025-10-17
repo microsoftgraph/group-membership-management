@@ -4,4 +4,4 @@
 export interface ISignalRService {
     startConnection: () => void;
     stopConnection: () => void;
-}
+};

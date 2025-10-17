@@ -6,4 +6,4 @@ export enum OnboardingSteps {
     RunConfiguration,
     MembershipConfiguration,
     Confirmation
-}
+};

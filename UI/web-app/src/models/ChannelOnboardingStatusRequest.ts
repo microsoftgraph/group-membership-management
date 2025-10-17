@@ -4,4 +4,4 @@
 export interface ChannelOnboardingStatusRequest {
   teamId: string
   channelId: string
-}
+};

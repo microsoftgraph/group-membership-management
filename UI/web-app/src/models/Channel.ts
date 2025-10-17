@@ -5,4 +5,4 @@ export interface Channel {
   teamid?: string;
   channelId?: string;
   name?: string;
-}
+};

@@ -10,4 +10,4 @@ export const enum ServiceStatuses {
     Rescheduled,
     Rescheduling,
     Error
-}
+};

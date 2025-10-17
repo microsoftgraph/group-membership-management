@@ -33,5 +33,5 @@ import {
      */
     styles?: IStyleFunctionOrObject<IAppFooterStyleProps, IAppFooterStyles>;
     showPagingBar?: boolean;
-  }
+  };
   

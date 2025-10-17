@@ -235,12 +235,12 @@ export function parseGroup(input: string, hasInClause: boolean): Group[] {
     }
   }
 
-  var allParts = findPartsOfString(input, subStrings);
-  var allPartsWithAndOr = appendAndOr(allParts);
+  const allParts = findPartsOfString(input, subStrings);
+  const allPartsWithAndOr = appendAndOr(allParts);
   let invalid = false;
 
   allPartsWithAndOr.forEach((currentSegment, i) => {
-    var result = parseSegment(currentSegment.currentSegment);
+    const result = parseSegment(currentSegment.currentSegment);
     if ((result.name === "invalid") || (result.children.length > 0 && result.children.some(childItem => childItem.name === "invalid"))) {
       invalid = true;
     }
@@ -276,8 +276,8 @@ function parseSegment(segment: string, groupOperator?: string): Group {
             remainingSegment += trimmedItem + " ";
           }
         });
-        var matchOperator  = remainingSegment.match(/^\s*(Or|And)|\s*(Or|And)\s*$/gi);
-        var operator = matchOperator ? matchOperator[0].trim() : null;
+        const matchOperator  = remainingSegment.match(/^\s*(Or|And)|\s*(Or|And)\s*$/gi);
+        const operator = matchOperator ? matchOperator[0].trim() : null;
         remainingSegment = remainingSegment.replace(/^\s*(Or|And)|\s*(Or|And)\s*$/gi, '').trim();
         if (remainingSegment) {
           return {
@@ -319,4 +319,4 @@ function parseSegment(segment: string, groupOperator?: string): Group {
     };
     return result;
   }
-}
+};

@@ -220,4 +220,4 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             </Modal>
         </Panel>
     )
-}
+};

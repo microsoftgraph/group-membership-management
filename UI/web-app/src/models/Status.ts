@@ -27,4 +27,4 @@ export enum ActionRequired {
   PendingReview = 'Pending Review',
   PendingConfiguration = 'Pending Configuration',
   SubmissionRejected = 'Submission Rejected',
-}
+};

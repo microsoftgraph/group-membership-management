@@ -4,4 +4,4 @@
 export interface BulkApproveRequest {
   jobIdsToApprove: string[];
   totalNumberOfJobs: number;
-}
+};

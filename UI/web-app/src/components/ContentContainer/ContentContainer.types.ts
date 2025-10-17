@@ -46,4 +46,4 @@ import {
     text: string;
     icon?: IIconProps;
     onClick: () => void;
-  }
+  };

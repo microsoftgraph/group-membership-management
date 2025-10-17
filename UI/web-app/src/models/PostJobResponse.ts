@@ -5,4 +5,4 @@ export interface PostJobResponse {
     statusCode: number;
     errorCode?: string;
     newSyncJobId?: string;
-}
+};

@@ -186,4 +186,4 @@ export const GroupSettingBase: React.FunctionComponent<IGroupSettingProps> = (pr
             </div>
         </>
     )
-}
+};

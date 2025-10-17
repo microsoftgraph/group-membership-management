@@ -17,4 +17,4 @@ export interface IGMMApi {
   destinations: IDestinationsApi;
   sqlMembershipSources: ISqlMembershipSourcesApi;
   operationsApi: IOperationsApi;
-}
+};

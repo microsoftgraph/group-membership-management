@@ -11,4 +11,4 @@ export interface GetOrgLeaderDetailsRequest {
 export interface GetOrgLeaderDetailsUsingIdRequest {
   employeeId: number;
   partId: string;
-}
+};

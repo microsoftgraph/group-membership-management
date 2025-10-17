@@ -39,4 +39,4 @@ export class SignalRStatusService implements ISignalRService {
             this._connection = null;
         }
     }
-}
+};

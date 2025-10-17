@@ -49,4 +49,4 @@ export interface ISelectDestinationProps
   onSearchChannelChange: (selectedDestinations: IPersonaProps[] | undefined) => void;
   selectedDestination?: Destination;
   onGroupCreated: (groupName: string, groupAlias: string) => void;
-}
+};

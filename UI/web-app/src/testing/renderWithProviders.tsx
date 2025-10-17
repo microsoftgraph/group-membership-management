@@ -33,4 +33,4 @@ export function renderWithProviders(
     return <Provider store={store}>{children}</Provider>;
   }
   return { store, ...render(ui, { wrapper: Wrapper, ...renderOptions }) };
-}
+};

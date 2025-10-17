@@ -6,4 +6,4 @@ export type AuthorizedSender = {
     displayName: string;
     mail: string;
     imageUrl?: string;
-}
+};

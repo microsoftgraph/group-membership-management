@@ -10,4 +10,4 @@ export interface IGraphApi {
   getProfilePhotoUrl(user: User): Promise<string>;
   getPeoplePickerSuggestions(input: string): Promise<PeoplePickerPersona[]>;
   getProfilePhotoUrlUsingUserId(userId: string): Promise<string>;
-}
+};

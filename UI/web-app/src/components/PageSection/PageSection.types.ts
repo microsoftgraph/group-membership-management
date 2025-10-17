@@ -30,4 +30,4 @@ export interface IPageSectionProps
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IPageSectionStyleProps, IPageSectionStyles>;
-}
+};

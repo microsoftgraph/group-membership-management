@@ -6,4 +6,4 @@ export interface PostGroupResponse {
     errorCode?: string;
     responseData?: string;
     groupId?: string;
-}
+};

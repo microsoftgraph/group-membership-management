@@ -35,4 +35,4 @@ export function removeTrailingAndOrOperator(filter: string): string {
   const trailingAndOrPattern = /\s+(and|or)\s*$/i;
   
   return filter.replace(trailingAndOrPattern, '');
-}
+};

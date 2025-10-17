@@ -12,4 +12,4 @@ export type GroupOwnershipSourcePart = {
 
 export const IsGroupOwnershipSourcePartQuery = (query: SourcePartQuery): query is GroupOwnershipSourcePart => {
     return query.type === SourcePartType.GroupOwnership;
-}
+};

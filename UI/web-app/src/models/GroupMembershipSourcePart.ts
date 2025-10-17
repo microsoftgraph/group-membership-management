@@ -12,4 +12,4 @@ export type GroupMembershipSourcePart = {
 
 export const IsGroupMembershipSourcePartQuery = (query: SourcePartQuery): query is GroupMembershipSourcePart => {
     return query.type === SourcePartType.GroupMembership;
-}
+};

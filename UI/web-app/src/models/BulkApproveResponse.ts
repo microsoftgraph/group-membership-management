@@ -4,4 +4,4 @@
 export interface BulkApproveResponse {
     totalNumberOfApprovedJobs: number;
     totalNumberOfJobs: number;
-}
+};

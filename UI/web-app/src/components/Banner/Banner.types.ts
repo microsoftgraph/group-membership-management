@@ -35,4 +35,4 @@ export interface IBannerProps
    * Call to provide customized styling that will layer on top of the variant rules.
    */
   styles?: IStyleFunctionOrObject<IBannerStyleProps, IBannerStyles>;
-}
+};

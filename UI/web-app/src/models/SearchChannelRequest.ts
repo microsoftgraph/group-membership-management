@@ -4,4 +4,4 @@
 export interface SearchChannelRequest {
   teamId: string
   query: string
-}
+};

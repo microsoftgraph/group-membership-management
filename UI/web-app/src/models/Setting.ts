@@ -6,4 +6,4 @@ import { SettingKey } from './SettingKey';
 export type Setting = {
     settingKey: SettingKey;
     settingValue: string;
-}
+};

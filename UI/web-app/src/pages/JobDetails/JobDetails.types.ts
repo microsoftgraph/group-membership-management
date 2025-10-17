@@ -61,4 +61,4 @@ export interface IStatusContentProps extends React.AllHTMLAttributes<HTMLDivElem
     job: Job,
     resolveReview: () => void,
     classNames: IProcessedStyleSet<IJobDetailsStyles>
-}
+};

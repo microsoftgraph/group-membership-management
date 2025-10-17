@@ -35,4 +35,4 @@ export function formatNextRunTime(estimatedNextRunTime: string, enabled: boolean
     } else {
         return [formattedDate, hoursLeft];
     }
-}
+};

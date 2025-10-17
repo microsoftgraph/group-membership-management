@@ -20,4 +20,4 @@ export type HRSourcePart = {
 
 export const IsHRSourcePartQuery = (query: SourcePartQuery): query is HRSourcePart => {
   return query.type === SourcePartType.HR;
-}
+};

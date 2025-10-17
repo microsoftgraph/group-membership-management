@@ -10,4 +10,4 @@ export class RolesApi extends ApiBase implements IRolesApi {
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
-}
+};

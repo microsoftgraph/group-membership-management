@@ -12,4 +12,4 @@ export type PlaceMembershipSourcePart = {
 
 export const IsPlaceMembershipSourcePartQuery = (query: SourcePartQuery): query is PlaceMembershipSourcePart => {
     return query.type === SourcePartType.PlaceMembership;
-}
+};

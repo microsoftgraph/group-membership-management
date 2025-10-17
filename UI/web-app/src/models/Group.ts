@@ -8,4 +8,4 @@ export interface Group {
   items: IFilterPart[];
   children: Group[];
   andOr: string;
-}
+};

@@ -4,4 +4,4 @@
 export interface ValidateSqlFiltersResponse {
     isValid: boolean;
     errors: Map<number, string>;
-}
+};

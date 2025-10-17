@@ -7,4 +7,4 @@ export type GroupSettings = {
     authorizedSenders?: AuthorizedSender[];
     hiddenFromExchangeClients?: boolean;
     welcomeMessageEnabled?: boolean;
-}
+};

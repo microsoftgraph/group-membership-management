@@ -565,4 +565,4 @@ export function buildCompositeQuery(sourceParts: ISourcePart[]): SyncJobQuery {
         }
     });
     return compositeQuery;
-}
+};

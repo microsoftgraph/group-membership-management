@@ -36,5 +36,5 @@ import {
     onQueryChange: (event: React.FormEvent<HTMLTextAreaElement | HTMLInputElement>, newValue?: string) => void;
     partId: number;
     isEditable?: boolean;
-  }
+  };
   

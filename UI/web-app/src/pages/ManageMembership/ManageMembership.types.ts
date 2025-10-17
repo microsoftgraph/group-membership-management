@@ -34,4 +34,4 @@ export interface IManageMembershipProps
      * Call to provide customized styling that will layer on top of the variant rules.
      */
     styles?: IStyleFunctionOrObject<IManageMembershipStyleProps, IManageMembershipStyles>;
-}
+};

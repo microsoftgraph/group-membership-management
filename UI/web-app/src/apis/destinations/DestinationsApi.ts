@@ -13,4 +13,4 @@ export class DestinationsApi extends ApiBase implements IDestinationsApi {
     this.ensureSuccessStatusCode(response);
     return response;
   }
-}
+};

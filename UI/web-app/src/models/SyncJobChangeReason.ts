@@ -9,4 +9,4 @@ export const enum SyncJobChangeReason {
     SubmissionApproved = 'SubmissionApproved',
     SubmissionRejected = 'SubmissionRejected',
     GroupSettings = 'GroupSettings'
-}
+};

@@ -39,4 +39,4 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
-}
+};

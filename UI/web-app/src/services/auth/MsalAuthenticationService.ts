@@ -97,4 +97,4 @@ export class MsalAuthenticationService implements IAuthenticationService {
 
     return tokenResponse.accessToken;
   }
-}
+};

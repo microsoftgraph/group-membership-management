@@ -6,4 +6,4 @@ export interface RemoveGMMResponse {
     statusCode: number;
     errorCode?: string;
     responseData?: string[];
-}
+};

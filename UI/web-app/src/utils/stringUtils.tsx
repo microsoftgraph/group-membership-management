@@ -15,5 +15,5 @@ export function jsxFormat(template: string, ...components: ReactNode[]): ReactNo
         })}
       </>
     );
-  }
+  };
   

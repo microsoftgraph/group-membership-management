@@ -136,7 +136,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             equalityOperator = parts[1];
           }
           
-          var result = findValueAndOr(parts);
+          const result = findValueAndOr(parts);
           const filterPart: IFilterPart = {
             attribute,
             equalityOperator,
@@ -486,11 +486,11 @@ const getOptions = (
       let isParsingFilter = false;
       let isParsingGroup = false;
       let numberOfOpenParenthesis = countOccurrences(props.source.filter, "(");
-      var numberOfCloseParenthesis = countOccurrences(props.source.filter, ")");
+      const numberOfCloseParenthesis = countOccurrences(props.source.filter, ")");
       // Count both IN and NOT IN clauses properly, but exclude quoted values like 'IN'
       const inOperatorRegex = /\s+(NOT\s+)?IN\s+\(/gi;
       const matches = props.source.filter.match(inOperatorRegex) || [];
-      var numberOfInClause = matches.length;
+      const numberOfInClause = matches.length;
 
       setSelectedKeys([]);
       const hasParentheses = props.source.filter.includes("(") || props.source.filter.includes(")");
@@ -784,7 +784,7 @@ const getOptions = (
     if (segments) {
       for (let i = 0; i < segments.length; i++) {
         const parts = segments[i].trim().split(' ');
-        var res = findValueAndOr(parts);
+        const res = findValueAndOr(parts);
         if (parts[0] === "" || parts[1] === "" || res.value === "" || res.andOr === "") {
             result = false;
             break;
@@ -1370,7 +1370,7 @@ const getOptions = (
     if (groupingEnabled && index != null) {
       return;
     }
-    var newValue = event.target.value.trim();
+    const newValue = event.target.value.trim();
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
     const selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), selectedAttribute?.type);

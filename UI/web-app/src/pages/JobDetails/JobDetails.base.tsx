@@ -134,7 +134,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   };
 
   const openInService = (): void => {
-    var url;
+    let url;
     if (job?.targetDestinationType === DestinationType.GroupMembership) {
       url = `https://ms.portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/${job?.targetGroupId}`;
     } else if (job?.targetDestinationType === DestinationType.TeamsChannelMembership) {
@@ -175,7 +175,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
       await dispatch(removeGMM({ syncJobId: jobId ?? job.syncJobId }));
       setShowRemoveGMMDialog(false);
       
-      var url;
+      let url;
       if (job?.targetDestinationType === DestinationType.GroupMembership) {
         url = `https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/${job?.targetGroupId}/menuId/`;
       } else if (job?.targetDestinationType === DestinationType.TeamsChannelMembership) {
@@ -951,4 +951,4 @@ const RunConfiguration: React.FunctionComponent<IContentProps> = (
       </Stack.Item>
     </Stack>
   )
-}
+};

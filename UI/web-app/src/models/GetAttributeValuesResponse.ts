@@ -4,4 +4,4 @@
 export interface GetAttributeValuesResponse {
     values: string[];
     attribute: string;
-}
+};

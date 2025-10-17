@@ -38,5 +38,5 @@ import {
     stepDescription: string;
     destinationType?: string;
     destinationName?: string;
-  }
+  };
   

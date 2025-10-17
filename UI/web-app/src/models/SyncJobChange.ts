@@ -11,5 +11,5 @@ export interface SyncJobChange {
     changeSource: string;
     changeDetails: string;
     businessJustification: string;
-  }
+  };
   
