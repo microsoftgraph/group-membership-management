@@ -5,4 +5,4 @@ import { ServiceStatuses, Operations } from '../../models';
 export interface IOperationsApi {
   fetchServiceStatus(): Promise<ServiceStatuses>;
   processOperation(operation: Operations): Promise<void>;
-}
+};

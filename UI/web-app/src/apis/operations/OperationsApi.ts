@@ -20,4 +20,4 @@ export class OperationsApi extends ApiBase implements IOperationsApi {
     const serviceStatus = response.data.status;
     return serviceStatus;
   }
-}
+};

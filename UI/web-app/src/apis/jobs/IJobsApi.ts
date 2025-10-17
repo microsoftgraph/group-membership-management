@@ -9,4 +9,4 @@ export interface IJobsApi {
   postNewJob(job: NewJob): Promise<AxiosResponse>;
   downloadJobs(jobIds: string[]): Promise<AxiosResponse>;
   approveJobs(jobIds: string[]): Promise<AxiosResponse>;
-}
+};

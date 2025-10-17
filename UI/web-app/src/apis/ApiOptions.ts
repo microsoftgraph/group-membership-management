@@ -4,4 +4,4 @@
 export type ApiOptions = {
   baseUrl: string;
   getTokenAsync: () => Promise<string>;
-}
+};

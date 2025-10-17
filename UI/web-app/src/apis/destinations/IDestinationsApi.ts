@@ -6,4 +6,4 @@ import { PostGroupRequest } from '../../models/PostGroupRequest';
 
 export interface IDestinationsApi {
   createGroup(groupName: PostGroupRequest): Promise<AxiosResponse>;
-}
+};

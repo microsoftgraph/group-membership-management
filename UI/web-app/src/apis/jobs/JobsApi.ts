@@ -103,4 +103,4 @@ export class JobsApi extends ApiBase implements IJobsApi {
       requestor: entity.requestor,
     };
   }
-}
+};
