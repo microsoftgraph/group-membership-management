@@ -43,5 +43,8 @@ namespace Services.Contracts
         public const string SubmissionRejectedEmailTitle = "SubmissionRejectedEmailTitle";
         public const string SubmissionRejectedEmailSubject = "SubmissionRejectedEmailSubject";
         public const string SubmissionRejectedEmailBody = "SubmissionRejectedEmailBody";
+        public const string JobPurgingWarningEmailTitle = "JobPurgingWarningEmailTitle";
+        public const string JobPurgingWarningEmailSubject = "JobPurgingWarningEmailSubject";
+        public const string JobPurgingWarningEmailBody = "JobPurgingWarningEmailBody";
     }
 }

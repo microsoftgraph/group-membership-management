@@ -54,7 +54,7 @@ namespace Hosts.AzureMaintenance
                     var processingTasks = new List<Task>();
                     foreach (var backUpJob in backUpJobs)
                     {
-                        var processTask = context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest
+                        var processTask = context.CallActivityAsync(nameof(PurgingEmailSenderFunction), new PurgingEmailSenderRequest
                         {
                             RunId = runId,
                             SyncJob = backUpJob,
@@ -63,6 +63,23 @@ namespace Hosts.AzureMaintenance
                         processingTasks.Add(processTask);
                     }
                     await Task.WhenAll(processingTasks);
+                }
+
+                var jobsApproachingDeletion = await context.CallActivityAsync<List<SyncJob>>(nameof(GetWarningJobs), null);
+                if (jobsApproachingDeletion != null && jobsApproachingDeletion.Count > 0)
+                {
+                    var warningEmailTasks = new List<Task>();
+                    foreach (var jobApproachingDeletion in jobsApproachingDeletion)
+                    {
+                        var warningTask = context.CallActivityAsync(nameof(WarningEmailSenderFunction), new WarningEmailSenderRequest
+                        {
+                            RunId = runId,
+                            SyncJob = jobApproachingDeletion,
+                            NotificationType = Models.Notifications.NotificationMessageType.JobPurgingWarningNotification
+                        });
+                        warningEmailTasks.Add(warningTask);
+                    }
+                    await Task.WhenAll(warningEmailTasks);
                 }
 
                 await context.CallActivityAsync<int>(nameof(RemoveBackUpsFunction), null);

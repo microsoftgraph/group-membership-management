@@ -128,13 +128,15 @@ var activityFunctionSettings = {
   'AzureWebJobs.StarterFunction.Disabled': 0
   'AzureWebJobs.OrchestratorFunction.Disabled': 0
   'AzureWebJobs.BackUpInactiveJobsFunction.Disabled': 0
-  'AzureWebJobs.EmailSenderFunction.Disabled': 0
   'AzureWebJobs.ExpireNotificationsFunction.Disabled': 0
   'AzureWebJobs.LoggerFunction.Disabled': 0
   'AzureWebJobs.ReadGroupNameFunction.Disabled': 0
   'AzureWebJobs.ReadSyncJobsFunction.Disabled': 0
   'AzureWebJobs.RemoveBackUpsFunction.Disabled': 0
   'AzureWebJobs.RemoveInactiveJobsFunction.Disabled': 0
+  'AzureWebJobs.JobPurgingWarningFunction.Disabled': 0
+  'AzureWebJobs.WarningEmailSenderFunction.Disabled': 0
+  'AzureWebJobs.PurgingEmailSenderFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {

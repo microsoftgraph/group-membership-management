@@ -66,9 +66,9 @@ namespace Services.Notifications
             int period = await _databaseSyncJobsRepository.GetPeriodBySyncJobIdAsync(notification.SyncJobId);
             double hoursUntilDisable = (violationsRemaining * period);
             string disableDate = DateTime.UtcNow.AddHours(hoursUntilDisable).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"); ;
-            string purgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+            string purgeDate = notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
             DateTime jobExpirationDate = notification.CardState == ThresholdNotificationCardState.DisabledCard ?
-                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion) : DateTime.MinValue;
+                    notification.LastUpdatedTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging) : DateTime.MinValue;
             var cardData = new ThresholdNotificationCardData
             {
                 GroupName = groupName,

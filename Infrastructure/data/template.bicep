@@ -304,6 +304,22 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'AzureMaintenance:NumberOfDaysBeforePurging'
+    value: 30
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
+    key: 'AzureMaintenance:NumberOfDaysBeforePurgingToSendWarning'
+    value: 7
+    contentType: 'int'
+    tag: {
+      tag1: 'AzureMaintenance'
+    }
+  }
+  {
     key: 'AzureMaintenance:NumberOfDaysBeforeDeletion'
     value: 35
     contentType: 'int'

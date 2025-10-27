@@ -14,5 +14,6 @@ namespace Models.Notifications
         InactiveSyncJobNotification = 9,
         GuestUserFailureNotification = 10,
         SubmissionRejectedNotification = 11,
+        JobPurgingWarningNotification = 12,
     }
 }

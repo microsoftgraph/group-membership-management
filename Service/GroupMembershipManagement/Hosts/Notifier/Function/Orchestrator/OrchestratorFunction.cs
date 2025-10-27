@@ -122,6 +122,13 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
+                case nameof(NotificationMessageType.JobPurgingWarningNotification):
+                    message.MessageTitle = NotificationConstants.JobPurgingWarningEmailTitle;
+                    message.SubjectTemplate = NotificationConstants.JobPurgingWarningEmailSubject;
+                    message.ContentTemplate = NotificationConstants.JobPurgingWarningEmailBody;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest

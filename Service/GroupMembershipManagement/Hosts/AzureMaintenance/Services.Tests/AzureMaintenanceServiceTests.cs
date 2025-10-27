@@ -24,7 +24,8 @@ namespace Services.Tests
         public async Task TestBackupInactiveJobs()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
             var purgedJobs = new List<PurgedSyncJob>();
 
             for (int i = 0; i < 2; i++)
@@ -67,6 +68,7 @@ namespace Services.Tests
                     SyncJobId = job.Id,
                     GroupId = Guid.NewGuid()
                 };
+                job.TargetOfficeGroupId = job.Group.GroupId;
                 jobs.Add(job);
             }
 
@@ -93,7 +95,7 @@ namespace Services.Tests
 
             var backedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
             Assert.AreEqual(backedUpJobs.Count, jobs.Count);
-            purgedSyncJobRepository.Verify(x => x.InsertPurgedSyncJobsAsync(It.IsAny<List<PurgedSyncJob>>()), Times.Once());
+            purgedSyncJobRepository.Verify(x => x.InsertPurgedSyncJobsAsync(It.IsAny<IEnumerable<PurgedSyncJob>>()), Times.Once());
 
             jobs = new List<SyncJob>();
             backedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
@@ -104,7 +106,8 @@ namespace Services.Tests
         public async Task TestRemoveBackups()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
 
             var tables = new List<PurgedSyncJob>();
 
@@ -159,7 +162,8 @@ namespace Services.Tests
         public async Task TestRemoveInactiveJobs()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
 
             var jobs = new List<SyncJob>();
 
@@ -183,6 +187,7 @@ namespace Services.Tests
                     SyncJobId = job.Id,
                     GroupId = Guid.NewGuid()
                 };
+                job.TargetOfficeGroupId = job.Group.GroupId;
 
                 jobs.Add(job);
             }
@@ -209,14 +214,15 @@ namespace Services.Tests
                                                 loggerMock.Object);
 
             await azureMaintenanceService.RemoveInactiveJobsAsync(j);
-            syncJobRepository.Verify(x => x.DeleteSyncJobsAsync(It.IsAny<List<SyncJob>>()), Times.Once());
+            syncJobRepository.Verify(x => x.DeleteSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>()), Times.Once());
         }
 
         [TestMethod]
         public async Task TestExpireNotifications()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
 
             var jobs = new List<SyncJob>();
 
@@ -241,6 +247,7 @@ namespace Services.Tests
                     SyncJobId = job.Id,
                     GroupId = Guid.NewGuid()
                 };
+                job.TargetOfficeGroupId = job.Group.GroupId;
 
                 jobs.Add(job);
             }
@@ -292,7 +299,8 @@ namespace Services.Tests
         public async Task TestGetGroupName()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
@@ -323,7 +331,8 @@ namespace Services.Tests
         public async Task TestGetSyncJobs()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
 
             var jobList = new List<SyncJob>();
             var job = new SyncJob
@@ -343,6 +352,7 @@ namespace Services.Tests
                 SyncJobId = job.Id,
                 GroupId = Guid.NewGuid()
             };
+            job.TargetOfficeGroupId = job.Group.GroupId;
             jobList.Add(job);
 
             var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
@@ -378,7 +388,8 @@ namespace Services.Tests
         public async Task TestSendEmail()
         {
             var loggerMock = new Mock<ILoggingRepository>();
-            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
 
             var job = new SyncJob
             {
@@ -397,6 +408,7 @@ namespace Services.Tests
                 SyncJobId = job.Id,
                 GroupId = Guid.NewGuid()
             };
+            job.TargetOfficeGroupId = job.Group.GroupId;
 
             var purgedJob = new PurgedSyncJob
             {
@@ -444,8 +456,124 @@ namespace Services.Tests
                                                 notificationQueueRepository.Object,
                                                 loggerMock.Object);
 
-            await azureMaintenanceService.SendEmailAsync(purgedJob, Models.Notifications.NotificationMessageType.InactiveSyncJobNotification);
+            await azureMaintenanceService.SendPurgingEmailAsync(purgedJob, Models.Notifications.NotificationMessageType.InactiveSyncJobNotification);
             notificationQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TestGetJobsApproachingPurging()
+        {
+            var loggerMock = new Mock<ILoggingRepository>();
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
+
+            var activeSyncJobs = new List<SyncJob>();
+
+            // Configure purging period to 30 days and warning period to 7 days
+            // This means warningCutOffDate = DateTime.UtcNow.Date.AddDays(7-30) = DateTime.UtcNow.Date.AddDays(-23)
+            var warningCutOffDate = DateTime.UtcNow.Date.AddDays(-23);
+
+            // Add job that should receive warning (last run exactly at warning threshold)
+            var jobNeedingWarning = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.CustomerPaused.ToString(),
+                LastRunTime = warningCutOffDate, // Exactly matches warning cutoff date
+                Requestor = "test@email.com",
+                MembershipType = "GroupMembership"
+            };
+            jobNeedingWarning.Group = new Group
+            {
+                SyncJobId = jobNeedingWarning.Id,
+                GroupId = Guid.NewGuid()
+            };
+            jobNeedingWarning.TargetOfficeGroupId = jobNeedingWarning.Group.GroupId;
+            activeSyncJobs.Add(jobNeedingWarning);
+
+            // Add job that already got warning (different date)
+            var jobAlreadyWarned = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.CustomerPaused.ToString(),
+                LastRunTime = warningCutOffDate.AddDays(-1), // One day before warning cutoff
+                Requestor = "test2@email.com",
+                MembershipType = "GroupMembership"
+            };
+            jobAlreadyWarned.Group = new Group
+            {
+                SyncJobId = jobAlreadyWarned.Id,
+                GroupId = Guid.NewGuid()
+            };
+            jobAlreadyWarned.TargetOfficeGroupId = jobAlreadyWarned.Group.GroupId;
+            activeSyncJobs.Add(jobAlreadyWarned);
+
+            // Add job that is too recent
+            var jobTooRecent = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.CustomerPaused.ToString(),
+                LastRunTime = DateTime.UtcNow.Date, // Today - too recent for warning
+                Requestor = "test3@email.com",
+                MembershipType = "GroupMembership"
+            };
+            jobTooRecent.Group = new Group
+            {
+                SyncJobId = jobTooRecent.Id,
+                GroupId = Guid.NewGuid()
+            };
+            jobTooRecent.TargetOfficeGroupId = jobTooRecent.Group.GroupId;
+            activeSyncJobs.Add(jobTooRecent);
+
+            // Add job from future date (should not match)
+            var jobFromFuture = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                Status = SyncStatus.CustomerPaused.ToString(),
+                LastRunTime = warningCutOffDate.AddDays(1), // One day after warning cutoff
+                Requestor = "test4@email.com",
+                MembershipType = "GroupMembership"
+            };
+            jobFromFuture.Group = new Group
+            {
+                SyncJobId = jobFromFuture.Id,
+                GroupId = Guid.NewGuid()
+            };
+            jobFromFuture.TargetOfficeGroupId = jobFromFuture.Group.GroupId;
+            activeSyncJobs.Add(jobFromFuture);
+
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
+            var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
+
+            // Configure the mock to return our test data
+            syncJobRepository.Setup(x => x.GetSyncJobsAsync(It.IsAny<bool>(), It.IsAny<SyncStatus[]>())).ReturnsAsync(activeSyncJobs);
+            
+            // Configure purging period to 30 days and warning period to 7 days
+            handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurging).Returns(30);
+            handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurgingToSendWarning).Returns(7);
+
+            var azureMaintenanceService = new AzureMaintenanceService(syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
+                                                purgedSyncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object,
+                                                notificationQueueRepository.Object,
+                                                loggerMock.Object);
+
+            var jobsApproachingPurging = await azureMaintenanceService.GetJobsApproachingPurgingAsync();
+
+            // Should return only the job that has LastRunTime exactly matching the warning cutoff date
+            Assert.AreEqual(1, jobsApproachingPurging.Count);
+            Assert.AreEqual(jobNeedingWarning.Id, jobsApproachingPurging[0].Id);
+            
+            syncJobRepository.Verify(x => x.GetSyncJobsAsync(It.IsAny<bool>(), It.IsAny<SyncStatus[]>()), Times.Once());
         }
 
         public IEnumerable<SyncJob> GetJobs(List<SyncJob> jobs)

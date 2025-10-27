@@ -1110,6 +1110,26 @@ You can click on the "Go to GMM UI" option below to check the status of other gr
   <data name="SyncPurgedForInactivityEmailSubject" xml:space="preserve">
     <value>[Final Notice] Sync Disabled for {1} due to Inactivity</value>
   </data>
+  <data name="JobPurgingWarningEmailTitle" xml:space="preserve">
+    <value>Sync Job Purging Warning</value>
+  </data>
+  <data name="JobPurgingWarningEmailSubject" xml:space="preserve">
+    <value>[Warning] Your sync job for {5} will be purged soon</value>
+  </data>
+  <data name="JobPurgingWarningEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as the owner of **{5}**.
+
+Your job has been in {0} status since {1}. It can only be in this status for {2} days. Your job will be purged by {3} if this issue is not resolved.
+
+Please take one of the following actions before {3} to prevent your job from being purged:
+- Enable the sync job if you want to resume membership management
+- Update the sync job configuration if changes are needed
+- Contact support if you need assistance
+
+If no action is taken, the job will be permanently removed from the system and you will need to re-submit it to restore membership management.
+
+You can click on the "Go to GMM UI" option below to manage your sync jobs.</value>
+  </data>
   <data name="DecreaseThresholdMessage" xml:space="preserve">
     <value>Decrease membership threshold {0}%. Detected threshold {1}%.</value>
   </data>

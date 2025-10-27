@@ -349,19 +349,24 @@ namespace WebApi
             builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.HandleInactiveJobsEnabled = GetBoolSetting(configuration, "AzureMaintenance:HandleInactiveJobsEnabled", false);
-                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 0);
+                settings.NumberOfDaysBeforePurging = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforePurging", 30);
+                settings.NumberOfDaysBeforePurgingToSendWarning = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforePurgingToSendWarning", 7);
+                settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 35);
+            });
+            builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
+            {
+                return new HandleInactiveJobsConfig(
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforePurging,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforePurgingToSendWarning,
+                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
             });
 
             builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
             });
-            builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
-            {
-                return new HandleInactiveJobsConfig(
-                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
-                    services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
-            });
+
             builder.Services.AddOptions<ThresholdConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
                 settings.MaximumNumberOfThresholdRecipients = GetIntSetting(configuration, "MaximumNumberOfThresholdRecipients", 10);

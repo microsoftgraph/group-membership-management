@@ -13,6 +13,8 @@ namespace Services.Contracts
         Task<int> RemoveBackupsAsync();
         Task ExpireNotificationsAsync(IEnumerable<SyncJob> jobs);
         Task<string> GetGroupNameAsync(Guid groupId);
-        Task SendEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType);
+        Task SendPurgingEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType);
+        Task SendWarningEmailAsync(SyncJob job, NotificationMessageType notificationType);
+        Task<List<SyncJob>> GetJobsApproachingPurgingAsync();
     }
 }

@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Graph.Models;
 using Models;
 using Models.AzureMaintenance;
 using Models.Notifications;
@@ -62,7 +63,7 @@ namespace Services
                 SyncStatus.SecurityGroupNotFound,
                 SyncStatus.ThresholdExceeded);
 
-            var jobsToBePurged = ApplyJobTriggerFilters(jobs).ToList();
+            var jobsToBePurged = ApplyPurgingFilters(jobs).ToList();
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -72,9 +73,9 @@ namespace Services
             return jobsToBePurged;
         }
 
-        private IEnumerable<SyncJob> ApplyJobTriggerFilters(IEnumerable<SyncJob> jobs)
+        private IEnumerable<SyncJob> ApplyPurgingFilters(IEnumerable<SyncJob> jobs)
         {
-            return jobs.Where(x => ((DateTime.UtcNow - x.LastRunTime) > TimeSpan.FromDays(30)));
+            return jobs.Where(x => x.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging) <= DateTime.UtcNow);
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
@@ -82,7 +83,7 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task SendEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType)
+        public async Task SendPurgingEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType)
         {
             var groupName = await GetGroupNameAsync(job.TargetOfficeGroupId);
             var additionalContentParams = new[]
@@ -97,21 +98,52 @@ namespace Services
                 { "SyncJob", job },
                 { "AdditionalContentParameters", additionalContentParams }
             };
+
+            await SendEmailAsync(messageContent, job.Id, job.RunId, notificationType);
+        }
+
+        public async Task SendWarningEmailAsync(SyncJob job, NotificationMessageType notificationType)
+        {
+            var groupName = await GetGroupNameAsync(job.TargetOfficeGroupId);
+            string[] additionalContentParams;
+
+            // Parameters for warning email: status, since date, allowed days, purge date
+            var purgeDate = job.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+            additionalContentParams = new[]
+            {
+                job.Status,
+                job.LastRunTime.ToString("MMMM dd, yyyy"),
+                _handleInactiveJobsConfig.NumberOfDaysBeforePurging.ToString(),
+                purgeDate.ToString("MMMM dd, yyyy"),
+                job.TargetOfficeGroupId.ToString(),
+                groupName
+            };
+            
+            var messageContent = new Dictionary<string, Object>
+            {
+                { "SyncJob", job },
+                { "AdditionalContentParameters", additionalContentParams }
+            };
+
+            await SendEmailAsync(messageContent, job.Id, job.RunId, notificationType);
+        }
+
+        private async Task SendEmailAsync(Dictionary<string, Object> messageContent, Guid jobId, Guid? runId, NotificationMessageType notificationType)
+        {
             var body = Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(messageContent));
             var message = new ServiceBusMessage
             {
-                MessageId = $"{job.Id}_{job.RunId}_{notificationType}",
+                MessageId = $"{jobId}_{runId}_{notificationType}",
                 Body = body
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _notificationsQueueRepository.SendMessageAsync(message);
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                RunId = job.RunId,
+                RunId = runId,
                 Message = $"Sent message {message.MessageId} to service bus notifications queue "
             });
         }
-
         private async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
         {
             if (syncJob.MembershipType == MembershipTypes.TeamsChannelMembership.ToString())
@@ -229,5 +261,29 @@ namespace Services
 				}
             }
 		}
+
+        public async Task<List<SyncJob>> GetJobsApproachingPurgingAsync()
+        {
+            var jobsEligibleForPurging = await _syncJobRepository.GetSyncJobsAsync(false,
+                SyncStatus.CustomerPaused,
+                SyncStatus.DestinationGroupNotFound,
+                SyncStatus.MembershipDataNotFound,
+                SyncStatus.NotOwnerOfDestinationGroup,
+                SyncStatus.SecurityGroupNotFound,
+                SyncStatus.ThresholdExceeded);
+            
+            var warningCutOffDate = DateTime.UtcNow.Date.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurgingToSendWarning - _handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+
+            var jobsNeedingWarning = jobsEligibleForPurging
+                .Where(job => job.LastRunTime.Date == warningCutOffDate)
+                .ToList();
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Jobs needing warning as of {warningCutOffDate}: {jobsNeedingWarning.Count}"
+            });
+            
+            return jobsNeedingWarning;
+        }
     }
 }
