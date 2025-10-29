@@ -1,0 +1,8 @@
+schemaVersion: 0.0.1
+isProduction: false
+accountableOwners:
+  service: 736d4473-1f73-4af2-9938-f01aaf225b3e
+routing:
+  defaultAreaPath:
+    org: microsoftit
+    path: OneITVSO\Seamless Teamwork\ST Solution\Group Membership Management
