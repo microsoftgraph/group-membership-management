@@ -679,6 +679,8 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         modalProps={{
           isBlocking: true
         }}
+        minWidth={600}
+        maxWidth={800}
       >
         {rejectionError && (
           <MessageBar
