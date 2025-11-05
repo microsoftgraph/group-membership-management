@@ -3,14 +3,13 @@
 
 using Azure.Messaging.ServiceBus;
 using Hosts.MembershipAggregator;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts;
 using System;
-using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -25,14 +24,14 @@ namespace Services.Tests
         private Group _group;
         private string _instanceId;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<IDurableOrchestrationClient> _durableClient;
+        private Mock<DurableTaskClient> _durableClient;
 
         [TestInitialize]
         public void SetupTest()
         {
             _instanceId = "1234567890";
             _loggingRepository = new Mock<ILoggingRepository>();
-            _durableClient = new Mock<IDurableOrchestrationClient>();
+            _durableClient = new Mock<DurableTaskClient>();
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -49,7 +48,7 @@ namespace Services.Tests
                 SyncJobId = _syncJob.Id
             };
             _durableClient
-                  .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<MembershipAggregatorHttpRequest>()))
+                  .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<CancellationToken>()))
                   .ReturnsAsync(_instanceId);
         }
 

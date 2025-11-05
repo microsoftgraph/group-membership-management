@@ -7,6 +7,8 @@ using MembershipAggregator.Activity.EmailSender;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Notifications;
@@ -59,7 +61,7 @@ namespace Services.Tests
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
         private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
-        private Mock<IDurableOrchestrationContext> _durableContext;
+        private Mock<TaskOrchestrationContext> _durableContext;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<ILocalizationRepository> _localizationRepository;
         private Mock<INotificationRepository> _notificationRepository;
@@ -74,7 +76,7 @@ namespace Services.Tests
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
-            _durableContext = new Mock<IDurableOrchestrationContext>();
+            _durableContext = new Mock<TaskOrchestrationContext>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _graphAPIService = new Mock<IGraphAPIService>();
             _notificationRepository = new Mock<INotificationRepository>();
@@ -148,7 +150,7 @@ namespace Services.Tests
             };
             _membershipSubOrchestratorRequest = new MembershipSubOrchestratorRequest
             {
-                EntityId = new EntityId(),
+                EntityId = new EntityInstanceId(),
                 SyncJob = _syncJob,
                 GroupId = targetGroupId
             };
@@ -258,7 +260,7 @@ namespace Services.Tests
             _graphAPIService.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
                             .ReturnsAsync(() => "GroupName");
 
-			_durableContext.Setup(x => x.CallActivityAsync<SyncJobGroup>(It.Is<string>(s => s == nameof(GroupNameReaderFunction)), It.IsAny<GroupNameReaderRequest>()))
+			_durableContext.Setup(x => x.CallActivityAsync<SyncJobGroup>(nameof(GroupNameReaderFunction), It.IsAny<GroupNameReaderRequest>(), It.IsAny<TaskOptions>()))
 			   .ReturnsAsync(_groupInformation);
 
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
@@ -281,36 +283,36 @@ namespace Services.Tests
                             })
                             .ReturnsAsync(() => _deltaCalculatorResponse);
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileUploaderFunction)), It.IsAny<FileUploaderRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(nameof(FileUploaderFunction), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object>(async (name, request) =>
                             {
                                 await CallFileUploaderFunctionAsync(request as FileUploaderRequest);
                             });
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(FileDeleterFunction)), It.IsAny<FileDeleterRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(nameof(FileDeleterFunction), It.IsAny<FileDeleterRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object>(async (name, request) =>
                             {
                                 await CallFileDeleterFunctionAsync(request as FileDeleterRequest);
                             });
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object>(async (name, request) =>
                             {
                                 await CallLoggerFunctionAsync(request as LoggerRequest);
                             });
 
-            _durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object>(async (name, request) =>
                             {
                                 await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                             });
-			_durableContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>()))
-				.Callback<string, object>(async (name, request) =>
-				{
-					await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
-				});
+			_durableContext.Setup(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
+				            .Callback<TaskName, object>(async (name, request) =>
+				            {
+					            await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
+				            });
 
-			_durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>())).ReturnsAsync(() => _syncJob);
+			_durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(() => _syncJob);
         }
 
         [TestMethod]
@@ -910,7 +912,7 @@ namespace Services.Tests
             return await function.CalculateDeltaAsync(request);
         }
 
-        private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, IDurableOrchestrationContext context)
+        private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, TaskOrchestrationContext context)
         {
             var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
             return $"/{groupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
