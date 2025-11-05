@@ -31,7 +31,7 @@ namespace Services.Tests
         {
             _instanceId = "1234567890";
             _loggingRepository = new Mock<ILoggingRepository>();
-            _durableClient = new Mock<DurableTaskClient>();
+            _durableClient = new Mock<DurableTaskClient>("test");
             _syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),

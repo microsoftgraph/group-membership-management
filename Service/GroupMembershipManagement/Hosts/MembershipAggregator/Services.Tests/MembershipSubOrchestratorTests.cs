@@ -67,6 +67,8 @@ namespace Services.Tests
         private Mock<INotificationRepository> _notificationRepository;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IServiceBusQueueRepository> _notificationsQueueRepository;
+        private Mock<TaskOrchestrationEntityFeature> _entityFeature;
+
         [TestInitialize]
         public void SetupTest()
         {
@@ -82,6 +84,8 @@ namespace Services.Tests
             _notificationRepository = new Mock<INotificationRepository>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _entityFeature = new Mock<TaskOrchestrationEntityFeature>();
+
             _multiLaneConfig = new MultiLaneConfig
             {
                 IsEnabled = true,
@@ -284,35 +288,44 @@ namespace Services.Tests
                             .ReturnsAsync(() => _deltaCalculatorResponse);
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(FileUploaderFunction), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object>(async (name, request) =>
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallFileUploaderFunctionAsync(request as FileUploaderRequest);
                             });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(FileDeleterFunction), It.IsAny<FileDeleterRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object>(async (name, request) =>
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallFileDeleterFunctionAsync(request as FileDeleterRequest);
                             });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object>(async (name, request) =>
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallLoggerFunctionAsync(request as LoggerRequest);
                             });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object>(async (name, request) =>
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                             });
 			_durableContext.Setup(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
-				            .Callback<TaskName, object>(async (name, request) =>
-				            {
+				            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                            {
 					            await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
 				            });
 
 			_durableContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(() => _syncJob);
+
+            _entityFeature.Setup(x => x.CallEntityAsync<JobState>(
+                       It.IsAny<EntityInstanceId>(),
+                       nameof(JobTrackerEntity.GetState),
+                       It.IsAny<object>(),
+                       It.IsAny<CallEntityOptions>()
+                      )).ReturnsAsync(() => _jobTrackerEntity.JobState);
+
+            _durableContext.Setup(x => x.Entities).Returns(() => _entityFeature.Object);
         }
 
         [TestMethod]

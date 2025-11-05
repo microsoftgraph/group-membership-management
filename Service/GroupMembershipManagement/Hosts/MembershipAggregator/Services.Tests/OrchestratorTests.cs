@@ -8,6 +8,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -36,9 +37,10 @@ namespace Services.Tests
         private MembershipAggregatorHttpRequest _membershipAggregatorHttpRequest;
         private MembershipSubOrchestratorResponse _membershipSubOrchestratorResponse;
         private TelemetryClient _telemetryClient;
+        private bool _hasSourceCompleted = true;
 
         private Mock<IConfiguration> _configuration;
-        private Mock<JobTrackerEntity> _jobTrackerEntity;
+        private JobTrackerEntity _jobTrackerEntity;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<TaskOrchestrationContext> _durableContext;
@@ -46,6 +48,7 @@ namespace Services.Tests
         private IOptions<MultiLaneConfig> _multilaneConfig;
         private ServiceBusTopicsRepository _messageSplitterSender;
         private Mock<ServiceBusSender> _serviceBusSender;
+        private Mock<TaskOrchestrationEntityFeature> _entityFeature;
 
         private Action<ServiceBusMessage> _onSendingMessage;
 
@@ -53,7 +56,8 @@ namespace Services.Tests
         public void SetupTest()
         {
             _configuration = new Mock<IConfiguration>();
-            _jobTrackerEntity = new Mock<JobTrackerEntity>();
+            _jobTrackerEntity = new JobTrackerEntity();
+            _entityFeature = new Mock<TaskOrchestrationEntityFeature>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableContext = new Mock<TaskOrchestrationContext>();
@@ -121,21 +125,21 @@ namespace Services.Tests
                             .ReturnsAsync(_group.GroupId);
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
-                    .Callback<TaskName, object>(async (name, request) =>
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
                     {
                         var telemetryRequest = request as TelemetryTrackerRequest;
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object>(async (name, request) =>
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
                             {
                                 var loggerRequest = request as LoggerRequest;
                                 await CallLoggerFunctionAsync(loggerRequest);
                             });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object>(async (name, request) =>
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
                             {
                                 var updateRequest = request as JobStatusUpdaterRequest;
                                 await CallJobStatusUpdaterFunctionAsync(updateRequest);
@@ -150,11 +154,33 @@ namespace Services.Tests
                             .ReturnsAsync(() => _membershipSubOrchestratorResponse);
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<MembershipHttpRequest>(), It.IsAny<TaskOptions>()))
-                           .Callback<TaskName, object>(async (name, request) =>
+                           .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
                            {
                                var membershipRequest = request as MembershipHttpRequest;
                                await CallTopicMessageSenderFunctionAsync(membershipRequest);
                            });
+
+            
+            _entityFeature.Setup(x => x.LockEntitiesAsync(It.IsAny<IEnumerable<EntityInstanceId>>())).ReturnsAsync(Mock.Of<IAsyncDisposable>());
+            _entityFeature.Setup(x => x.CallEntityAsync<bool>(
+                        It.IsAny<EntityInstanceId>(),
+                        nameof(JobTrackerEntity.IsComplete),
+                        It.IsAny<object>(),
+                        It.IsAny<CallEntityOptions>()
+                       )).ReturnsAsync(() => _hasSourceCompleted);
+
+            _entityFeature.Setup(x => x.CallEntityAsync(
+                        It.IsAny<EntityInstanceId>(),
+                        nameof(JobTrackerEntity.SetDestinationPart),
+                        It.IsAny<object>(),
+                        It.IsAny<CallEntityOptions>()
+                       ))
+                    .Callback<EntityInstanceId, string, object, CallEntityOptions>((entityId, operationName, input, options) => 
+                    {
+                        _jobTrackerEntity.SetDestinationPart(input as string);
+                    });
+
+            _durableContext.Setup(x => x.Entities).Returns(() => _entityFeature.Object);
         }
 
         [TestMethod]
@@ -175,7 +201,7 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
+            Assert.IsNull(_jobTrackerEntity.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
         }
@@ -183,6 +209,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestMissingPartAsync()
         {
+            _hasSourceCompleted = false;
             _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
             {
                 FilePath = "/file-path.json",
@@ -195,14 +222,14 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNull(_jobTrackerEntity.Object.JobState.DestinationPart);
+            Assert.IsNull(_jobTrackerEntity.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
         }
 
         [TestMethod]
         public async Task TestDestinationPartAsync()
-        {
+        {            
             _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
             {
                 FilePath = "/file-path.json",
@@ -215,8 +242,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNotNull(_jobTrackerEntity.Object.JobState.DestinationPart);
-            Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.Object.JobState.DestinationPart);
+            Assert.IsNotNull(_jobTrackerEntity.JobState.DestinationPart);
+            Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.JobState.DestinationPart);
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobRepository.Verify(x => x.UpdateSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus>()), Times.Never());
         }
