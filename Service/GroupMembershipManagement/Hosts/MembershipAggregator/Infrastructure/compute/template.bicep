@@ -23,27 +23,7 @@ param tenantId string
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'MembershipAggregator'),0,8)}'
 
 @description('Service plan sku')
-@allowed([
-  'D1'
-  'F1'
-  'B1'
-  'B2'
-  'B3'
-  'S1'
-  'S2'
-  'S3'
-  'P1'
-  'P2'
-  'P3'
-  'P1V2'
-  'P2V2'
-  'P3V2'
-  'I1'
-  'I2'
-  'I3'
-  'Y1'
-])
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -52,15 +32,13 @@ param location string
 param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @description('Function app kind.')
-@allowed([
-  'functionapp'
-  'linux'
-  'container'
-])
-param functionAppKind string = 'functionapp'
+param functionAppKind string = 'functionapp,linux'
 
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
+
+@description('Name of the resource group where the \'prereqs\' key vault is located.')
+param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -70,12 +48,6 @@ param dataKeyVaultResourceGroup string = '${solutionAbbreviation}-data-${environ
 
 @description('Provides the endpoint for the app configuration resource.')
 param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconfig-${environmentAbbreviation}.azconfig.io'
-
-@description('Name of the resource group where the \'prereqs\' key vault is located.')
-param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
-
-@description('Name of the resource group where the \'prereqs\' key vault is located.')
-param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
@@ -111,17 +83,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
-}
-
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-  FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
 
 var appSettings = {
@@ -137,14 +99,14 @@ var appSettings = {
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
   senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
@@ -153,24 +115,8 @@ var appSettings = {
   serviceBusMembershipUpdatersTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipUpdatersTopic, '2019-09-01').secretUriWithVersion})'
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   serviceBusMessageSplitterTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMessageSplitterTopic, '2019-09-01').secretUriWithVersion})'
-}
-
-var activityFunctionSettings = {
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.MembershipSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.DeltaCalculatorFunction.Disabled': 0
-  'AzureWebJobs.EmailSenderFunction.Disabled': 0
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
-  'AzureWebJobs.FileUploaderFunction.Disabled': 0
-  'AzureWebJobs.GroupNameReaderFunction.Disabled': 0
-  'AzureWebJobs.JobReaderFunction.Disabled': 0
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
-  'AzureWebJobs.TopicMessageSenderFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -192,6 +138,16 @@ module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-MembershipAggregator'
   params: {
     value: dataKeyVault.getSecret('membershipAggregatorStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-MembershipAggregator'
+  params: {
+    value: dataKeyVault.getSecret('membershipAggregatorAppPackageContainerProd')
   }
   dependsOn: [
     dataKeyVault
@@ -220,31 +176,22 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    tenantId: tenantId
-    secretSettings: commonSettings
+    appSettings: appSettings
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    instanceMemoryMB: 4096
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
-    existingLogAnalyticsWorkspace
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-MembershipAggregator/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, activityFunctionSettings)
-  dependsOn: [
-    functionAppTemplate_MembershipAggregator
   ]
 }
