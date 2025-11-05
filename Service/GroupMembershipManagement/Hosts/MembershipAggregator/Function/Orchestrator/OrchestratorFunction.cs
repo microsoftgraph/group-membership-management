@@ -1,19 +1,15 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Azure;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Primitives;
 using Models;
-using Newtonsoft.Json;
 using Repositories.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -29,8 +25,8 @@ namespace Hosts.MembershipAggregator
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<MembershipAggregatorHttpRequest>();
             var runId = request.SyncJob.RunId ?? Guid.Empty;
@@ -48,10 +44,8 @@ namespace Hosts.MembershipAggregator
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = runId });
                 return;
             }
-            var entityId = new EntityId(nameof(JobTrackerEntity), $"{request.SyncJob.Id}_{runId}");
-            var proxy = context.CreateEntityProxy<IJobTracker>(entityId);
+            var entityInstanceId = new EntityInstanceId(nameof(JobTrackerEntity), $"{request.SyncJob.Id}_{runId}");
             var hasSourceCompleted = false;
-            var errorOccurred = false;
 
             try
             {
@@ -65,14 +59,16 @@ namespace Hosts.MembershipAggregator
                         },
                         Verbosity = VerbosityLevel.DEBUG
                     });
-                using (await context.LockAsync(entityId))
+
+                await using (await context.Entities.LockEntitiesAsync(new List<EntityInstanceId> { entityInstanceId }))
                 {
-                    await proxy.SetTotalParts(request.PartsCount);
-                    await proxy.AddCompletedPart(request.FilePath);
-                    hasSourceCompleted = await proxy.IsComplete();
+                    await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.SetTotalParts), input: request.PartsCount);
+                    await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.AddCompletedPart), input: request.FilePath);
+                    hasSourceCompleted = await context.Entities.CallEntityAsync<bool>(entityInstanceId, nameof(JobTrackerEntity.IsComplete));
 
                     if (request.IsDestinationPart)
-                        await proxy.SetDestinationPart(request.FilePath);
+                        await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.SetDestinationPart), input: request.FilePath);
+
                 }
 
                 if (hasSourceCompleted)
@@ -93,7 +89,7 @@ namespace Hosts.MembershipAggregator
                                                                                 nameof(MembershipSubOrchestratorFunction),
                                                                                 new MembershipSubOrchestratorRequest
                                                                                 {
-                                                                                    EntityId = entityId,
+                                                                                    EntityId = entityInstanceId,
                                                                                     SyncJob = request.SyncJob,
                                                                                     GroupId = groupId
                                                                                 }
@@ -128,8 +124,6 @@ namespace Hosts.MembershipAggregator
             }
             catch (FileNotFoundException fe)
             {
-                errorOccurred = true;
-
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
@@ -152,8 +146,6 @@ namespace Hosts.MembershipAggregator
             }
             catch (Exception ex)
             {
-                errorOccurred = true;
-
                 await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest
                     {
@@ -175,12 +167,7 @@ namespace Hosts.MembershipAggregator
                 throw;
             }
             finally
-            {
-                if (hasSourceCompleted || errorOccurred)
-                {
-                    await proxy.Delete();
-                }
-
+            {               
                 _loggingRepository.RemoveSyncJobProperties(runId);
             }
         }
