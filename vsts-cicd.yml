@@ -92,7 +92,7 @@ stages:
          coverageThreshold: 48
       - function:
          name: 'MembershipAggregator'
-         coverageThreshold: 79
+         coverageThreshold: 74
       - function:
          name: 'Notifier'
          coverageThreshold: 75

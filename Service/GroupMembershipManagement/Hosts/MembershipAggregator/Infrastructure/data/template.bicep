@@ -27,7 +27,7 @@ module membershipAggregatorStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'membershipAggregatorStorageAccountProd'
-    appPackageContainerSettingName: 'groupMembershipObtainerAppPackageContainerProd'
+    appPackageContainerSettingName: 'membershipAggregatorAppPackageContainerProd'
     appPackageContainerName: 'app-package'
   }
 }
