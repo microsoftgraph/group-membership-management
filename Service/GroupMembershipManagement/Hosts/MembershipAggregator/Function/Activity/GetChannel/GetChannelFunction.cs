@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -22,7 +21,7 @@ namespace Hosts.MembershipAggregator
             _deltaCalculatorService = deltaCalculatorService ?? throw new ArgumentNullException(nameof(deltaCalculatorService));
         }
 
-        [FunctionName(nameof(GetChannelFunction))]
+        [Function(nameof(GetChannelFunction))]
         public async Task<string> GetChannelAsync([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetChannelFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

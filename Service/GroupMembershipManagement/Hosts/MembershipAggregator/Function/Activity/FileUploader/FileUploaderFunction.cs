@@ -1,9 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Models;
-using Models.Helpers;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -21,7 +19,7 @@ namespace Hosts.MembershipAggregator
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
-        [FunctionName(nameof(FileUploaderFunction))]
+        [Function(nameof(FileUploaderFunction))]
         public async Task UploadFileAsync([ActivityTrigger] FileUploaderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Uploading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

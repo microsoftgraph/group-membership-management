@@ -1,15 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using DIConcreteTypes;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
@@ -27,7 +22,7 @@ namespace Hosts.MembershipAggregator
             _topicMessageSenderRepository = topicMessageSenderRepository ?? throw new ArgumentNullException(nameof(topicMessageSenderRepository));
         }
 
-        [FunctionName(nameof(TopicMessageSenderFunction))]
+        [Function(nameof(TopicMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] MembershipHttpRequest request)
         {
 

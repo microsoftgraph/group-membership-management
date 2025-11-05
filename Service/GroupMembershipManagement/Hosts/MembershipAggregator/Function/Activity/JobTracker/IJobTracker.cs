@@ -11,6 +11,5 @@ namespace Hosts.MembershipAggregator
         Task<JobState> GetState();
         Task<bool> IsComplete();
         Task SetTotalParts(int totalParts);
-        Task Delete();
     }
 }

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -20,7 +19,7 @@ namespace Hosts.MembershipAggregator
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService)); ;
         }
 
-        [FunctionName(nameof(GroupNameReaderFunction))]
+        [Function(nameof(GroupNameReaderFunction))]
         public async Task<SyncJobGroup> GetGroupNameAsync([ActivityTrigger] GroupNameReaderRequest request)
         {
             var group = new SyncJobGroup();
