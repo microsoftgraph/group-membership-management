@@ -4,6 +4,7 @@
 using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
 using Hosts.MembershipAggregator;
+using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
@@ -251,7 +252,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestNotSuccessMembershipDeltaStatusAsync()
         {
-            _membershipSubOrchestratorResponse.MembershipDeltaStatus = Entities.MembershipDeltaStatus.Error;
+            _membershipSubOrchestratorResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
 
             var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);

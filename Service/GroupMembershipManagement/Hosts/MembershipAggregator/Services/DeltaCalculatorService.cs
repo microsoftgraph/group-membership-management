@@ -15,6 +15,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.ApplicationInsights;
 using System.Data.SqlTypes;
+using MembershipAggregator.Services.Entities;
 
 namespace Services
 {

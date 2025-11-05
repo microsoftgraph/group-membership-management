@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using MembershipAggregator.Services.Entities;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
 using Services.Contracts;
-using Services.Entities;
 using System;
 using System.Text.Json;
 using System.Threading.Tasks;

@@ -3,6 +3,7 @@
 using DIConcreteTypes;
 using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Helpers;
+using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
@@ -13,7 +14,6 @@ using Models.ServiceBus;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
@@ -22,6 +22,8 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Metric = MembershipAggregator.Services.Entities.Metric;
+using SyncCompleteCustomEvent = MembershipAggregator.Services.Entities.SyncCompleteCustomEvent;
 
 namespace Hosts.MembershipAggregator
 {
@@ -451,7 +453,7 @@ namespace Hosts.MembershipAggregator
         private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
         {
             var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
+            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
 
             syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
             syncCompleteEvent.Result = successStatus;
@@ -460,7 +462,7 @@ namespace Hosts.MembershipAggregator
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                 .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
 
-            _telemetryClient.TrackEvent(nameof(Services.Entities.Metric.SyncComplete), syncCompleteDict);
+            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
     }
 }

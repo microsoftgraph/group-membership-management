@@ -3,7 +3,7 @@
 using Models;
 using System.Collections.Generic;
 
-namespace Services.Entities
+namespace MembershipAggregator.Services.Entities
 {
     public class DeltaResponse
     {

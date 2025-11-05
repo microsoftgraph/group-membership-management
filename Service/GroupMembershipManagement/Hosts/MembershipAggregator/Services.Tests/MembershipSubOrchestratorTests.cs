@@ -4,6 +4,7 @@
 using DIConcreteTypes;
 using Hosts.MembershipAggregator;
 using MembershipAggregator.Activity.EmailSender;
+using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;

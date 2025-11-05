@@ -1,5 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using MembershipAggregator.Services.Entities;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
