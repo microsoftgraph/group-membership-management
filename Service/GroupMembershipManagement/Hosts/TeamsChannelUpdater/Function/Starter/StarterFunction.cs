@@ -31,9 +31,9 @@ namespace Hosts.TeamsChannelUpdater
             var instanceId = nameof(QueueMessageOrchestratorFunction);
             var orchestratorStatus = await starter.GetInstanceAsync(instanceId);
             var isRunning = orchestratorStatus != null
-                    && !orchestratorStatus.IsCompleted
-                    && !orchestratorStatus.IsTerminated
-                    && !orchestratorStatus.IsFailed;
+                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
+                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
+                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed;
 
             if (!isRunning)
             {
