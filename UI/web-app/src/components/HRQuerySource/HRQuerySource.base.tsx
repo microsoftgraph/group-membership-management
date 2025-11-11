@@ -29,7 +29,7 @@ import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
 import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth } from '../../utils/titleGenerator';
-import { equalityOperatorOptions, nullOptions, orAndOperatorOptions, yesNoOptions } from '../../models/Options';
+import { getEqualityOperatorOptions, nullOptions, getOrAndOperatorOptions, getYesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError, selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { InfoWord } from '../InfoWord';
@@ -52,6 +52,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
     theme: useTheme(),
   });
   const strings = useStrings();
+
+  // Get localized options
+  const equalityOperatorOptions = getEqualityOperatorOptions(strings);
+  const orAndOperatorOptions = getOrAndOperatorOptions(strings);
+  const yesNoOptions = getYesNoOptions(strings);
 
   const stackTokens: IStackTokens = {
     childrenGap: 30

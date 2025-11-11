@@ -18,7 +18,7 @@ import {
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { useStrings } from '../../../store/hooks';
-import { nullOptions, orAndOperatorOptions } from '../../../models/Options';
+import { nullOptions, getOrAndOperatorOptions } from '../../../models/Options';
 import type {
   HRQueryItemColumnProps,
   HRQueryItemColumnStyleProps,
@@ -81,6 +81,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
   });
 
   const strings = useStrings();
+  const orAndOperatorOptions = getOrAndOperatorOptions(strings);
   const [isFocused, setIsFocused] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
