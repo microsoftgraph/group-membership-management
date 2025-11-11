@@ -44,6 +44,14 @@ export type IStrings = {
     attributeInfo: string;
     equalityOperatorInfo: string;
     equalityOperatorInfoTitle: string;
+    equalToDescription: string;
+    lessThanDescription: string;
+    lessThanOrEqualDescription: string;
+    greaterThanDescription: string;
+    greaterThanOrEqualDescription: string;
+    notEqualToDescription: string;
+    inDescription: string;
+    notInDescription: string;
     inOperatorDescription: string;
     notInOperatorDescription: string;
     notEqualToOperatorDescription: string;

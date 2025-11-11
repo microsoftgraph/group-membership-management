@@ -9,6 +9,7 @@ import {
   Label,
   Spinner,
   SpinnerSize,
+  Text,
   TextField,
   VirtualizedComboBox,
   classNamesFunction,
@@ -84,6 +85,32 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
   const [searchText, setSearchText] = useState('');
   const valueCbRef = React.useRef<IComboBox | null>(null);
   const [shouldReopen, setShouldReopen] = useState(false); // reopen only for search-driven picks
+
+  const getOperatorDescription = (operator: string | undefined): string => {
+    if (!operator) return '';
+    
+    const operatorKey = operator.toUpperCase();
+    switch (operatorKey) {
+      case '=':
+        return strings.HROnboarding.equalToDescription;
+      case '<':
+        return strings.HROnboarding.lessThanDescription;
+      case '<=':
+        return strings.HROnboarding.lessThanOrEqualDescription;
+      case '>':
+        return strings.HROnboarding.greaterThanDescription;
+      case '>=':
+        return strings.HROnboarding.greaterThanOrEqualDescription;
+      case '<>':
+        return strings.HROnboarding.notEqualToDescription;
+      case 'IN':
+        return strings.HROnboarding.inDescription;
+      case 'NOT IN':
+        return strings.HROnboarding.notInDescription;
+      default:
+        return '';
+    }
+  };
 
   if (typeof index !== 'undefined' && items[index]) {
     const currentAttributeKey = items[index].attribute;
@@ -170,16 +197,24 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
           />
         );
       case 'equalityOperator':
+        const operatorDescription = getOperatorDescription(item.equalityOperator);
         return (
-          <Dropdown
-            data-testid="hr-equality-operator-dropdown"
-            selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
-            onChange={(event, option) => handleEqualityOperatorChange(event, option, index, groupIndex, childIndex)}
-            options={getValidOperatorsForType(attribute?.type)}
-            styles={{root: classNames.root, title: classNames.equalityOperator}}
-            disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-            title={strings.HROnboarding.equalityOperator}
-          />
+          <div>
+            <Dropdown
+              data-testid="hr-equality-operator-dropdown"
+              selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
+              onChange={(event, option) => handleEqualityOperatorChange(event, option, index, groupIndex, childIndex)}
+              options={getValidOperatorsForType(attribute?.type)}
+              styles={{root: classNames.root, title: classNames.equalityOperator}}
+              disabled={isAttributeDisabled || !isJobWriter || !isEditable}
+              title={strings.HROnboarding.equalityOperator}
+            />
+            {operatorDescription && (
+              <Text variant="tiny" styles={{ root: classNames.operatorDescription }}>
+                {operatorDescription}
+              </Text>
+            )}
+          </div>
         );
       case 'value':
         if (item.equalityOperator && item.equalityOperator.toString().toUpperCase() === 'IS') {

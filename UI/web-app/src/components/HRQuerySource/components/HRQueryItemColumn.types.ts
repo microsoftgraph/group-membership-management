@@ -32,6 +32,7 @@ export type HRQueryItemColumnStyles = {
   comboBoxOptionList: IStyle;
   readOnlyComboBox: IStyle;
   readOnlyComboBoxInput: IStyle;
+  operatorDescription: IStyle;
 };
 
 export type HRQueryItemColumnStyleProps = {
