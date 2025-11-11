@@ -52,6 +52,9 @@ param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconf
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool = false
 
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 2048
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var serviceBusFQN = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
@@ -195,7 +198,7 @@ module functionAppTemplate_TeamsChannelUpdater 'functionApp.bicep' = {
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
     appPackageContainerName: appPackageContainerNameReader.outputs.value
-    instanceMemoryMB: 2048
+    instanceMemoryMB: instanceMemoryMB
   }
   dependsOn: [
     servicePlanTemplate
