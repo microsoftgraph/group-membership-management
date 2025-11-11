@@ -4,6 +4,7 @@
 using Models;
 using Models.SyncJobChange;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -27,6 +28,7 @@ namespace Services.WebApi
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly INotificationService _notificationService;
+        private readonly IThresholdConfig _thresholdConfig;
 
         public PatchJobHandler(
             ILoggingRepository loggingRepository,
@@ -35,7 +37,8 @@ namespace Services.WebApi
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseTitlesRepository titlesRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
-            INotificationService notificationService)
+            INotificationService notificationService,
+            IThresholdConfig thresholdConfig)
             : base(loggingRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -45,6 +48,7 @@ namespace Services.WebApi
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _notificationService = notificationService ?? throw new ArgumentNullException(nameof(notificationService));
+            _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
         }
 
         protected override async Task<PatchJobResponse> ExecuteCoreAsync(PatchJobRequest request)
@@ -165,6 +169,12 @@ namespace Services.WebApi
                     response.StatusCode = HttpStatusCode.BadRequest;
                     response.ErrorCode = "ValidUpdateStatusIsRequired";
                     return response;
+                }
+
+                // Set ThresholdViolations to N-1 when submission is approved, so notification is sent on next threshold hit
+                if (newStatus == SyncStatus.Idle.ToString())
+                {
+                    syncJob.ThresholdViolations = _thresholdConfig.NumberOfThresholdViolationsToNotify - 1;
                 }
 
                 var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, newStatus);

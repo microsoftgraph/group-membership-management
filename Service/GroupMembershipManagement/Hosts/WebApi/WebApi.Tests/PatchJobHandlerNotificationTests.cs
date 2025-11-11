@@ -6,6 +6,7 @@ using Models;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.WebApi;
@@ -27,6 +28,7 @@ namespace WebApi.Tests
         private Mock<IDatabaseTitlesRepository> _mockTitle = null!;
         private Mock<IDatabaseSettingsRepository> _mockSettingsRepository = null!;
         private Mock<INotificationService> _mockNotificationService = null!;
+        private Mock<IThresholdConfig> _mockThresholdConfig = null!;
         private PatchJobHandler _patchJobHandler = null!;
         private SyncJob _testSyncJob = null!;
         private SyncJobChange _testSubmission = null!;
@@ -41,6 +43,10 @@ namespace WebApi.Tests
             _mockTitle = new Mock<IDatabaseTitlesRepository>();
             _mockSettingsRepository = new Mock<IDatabaseSettingsRepository>();
             _mockNotificationService = new Mock<INotificationService>();
+            _mockThresholdConfig = new Mock<IThresholdConfig>();
+
+            // Setup default threshold config
+            _mockThresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(3);
 
             _patchJobHandler = new PatchJobHandler(
                 _mockLoggingRepository.Object,
@@ -49,7 +55,8 @@ namespace WebApi.Tests
                 _mockSyncJobChangeRepository.Object,
                 _mockTitle.Object,
                 _mockSettingsRepository.Object,
-                _mockNotificationService.Object);
+                _mockNotificationService.Object,
+                _mockThresholdConfig.Object);
 
             var groupId = Guid.NewGuid();
             _testSyncJob = new SyncJob
@@ -211,6 +218,44 @@ namespace WebApi.Tests
                         sjc.BusinessJustification == "Rejected for testing" &&
                         sjc.ChangeReason == SyncJobChangeReason.SubmissionRejected.ToString())),
                 Times.Once);
+        }
+
+        [TestMethod]
+        public async Task ReviewSubmission_WhenApproved_SetsThresholdViolationsToNotifyMinusOne()
+        {
+            // Arrange
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, SyncStatus.Idle.ToString());
+
+            var request = new PatchJobRequest(
+                isAllowed: true,
+                userIdentity: Guid.NewGuid().ToString(),
+                syncJobId: _testSyncJob.Id,
+                patchDocument: patchDocument,
+                userDisplayName: "Reviewer",
+                changeReason: SyncJobChangeReason.SubmissionApproved.ToString(),
+                businessJustification: "Approved for testing",
+                canApproveJob: true
+            );
+
+            // Setup threshold config to return 5 for NumberOfThresholdViolationsToNotify
+            _mockThresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
+
+            // Act
+            var response = await _patchJobHandler.ExecuteAsync(request);
+
+            // Assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+            
+            // Verify that UpdateSyncJobsAsync was called with ThresholdViolations set to 4 (5 - 1)
+            _mockSyncJobRepository.Verify(
+                x => x.UpdateSyncJobsAsync(
+                    It.Is<IEnumerable<SyncJob>>(jobs => 
+                        jobs.Count() == 1 && 
+                        jobs.First().ThresholdViolations == 4),
+                    It.IsAny<SyncStatus?>()),
+                Times.Once,
+                "UpdateSyncJobsAsync should be called with ThresholdViolations set to N-1");
         }
     }
 }

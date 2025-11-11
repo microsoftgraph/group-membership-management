@@ -12,6 +12,7 @@ using Models.Entities;
 using Models.SyncJobChange;
 using Moq;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Repositories.EntityFramework;
 using Services.Messages.Responses;
 using Services.WebApi;
@@ -57,6 +58,7 @@ namespace Services.Tests
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private Mock<INotificationService> _notificationService = null!;
+        private Mock<IThresholdConfig> _thresholdConfig = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
@@ -73,6 +75,7 @@ namespace Services.Tests
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();
+            _thresholdConfig = new Mock<IThresholdConfig>();
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
@@ -84,6 +87,9 @@ namespace Services.Tests
 
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAITitleEnabled))
                                    .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "true" });
+
+            // Setup default threshold config
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(3);
 
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
 
@@ -214,7 +220,8 @@ namespace Services.Tests
                                                    _syncJobChangeRepository.Object,
                                                    _titlesRepository.Object,
                                                    _settingsRepository.Object,
-                                                    _notificationService.Object);
+                                                   _notificationService.Object,
+                                                   _thresholdConfig.Object);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object,
                                                     _graphGroupRepository.Object,
