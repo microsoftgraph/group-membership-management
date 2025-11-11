@@ -1706,6 +1706,30 @@ const getOptions = (
     );
   };
 
+  const onRenderOperatorOptions = (
+    props?: ISelectableOption,
+    defaultRender?: (props?: ISelectableOption) => JSX.Element | null
+  ): JSX.Element | null => {
+    const option = props as IExtendedComboBoxOption;
+    if (!option) return null;
+    return (
+      <div className={classNames.comboBoxOptionContainer}>
+        <div>
+          <Text>
+            {option.text || option.key}
+          </Text>
+        </div>
+        {option.description && (
+          <div>
+            <Text variant="tiny" styles={{ root: classNames.comboBoxOptionCodeText }}>
+              {strings.HROnboarding.descriptionLabel + option.description}
+            </Text>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const onRenderValueComboBoxList: IRenderFunction<ISelectableDroppableTextProps<IComboBox, IComboBox>> = (props, defaultRender) => {
     return (
       <div className = {classNames.comboBoxOptionList}>
@@ -1713,6 +1737,7 @@ const getOptions = (
       </div>
     );
   }
+
 
   const onRenderDetailsHeader: IRenderFunction<IDetailsHeaderProps> = (
     props,
@@ -1806,7 +1831,31 @@ const getOptions = (
     return <DetailsHeader {...customProps} />;
   };
 
-  function getValidOperatorsForType(dataType?: string): IDropdownOption[] {
+  const getOperatorDescription = (operator: string): string => {
+    const operatorKey = operator.toUpperCase();
+    switch (operatorKey) {
+      case '=':
+        return strings.HROnboarding.equalToDescription;
+      case '<':
+        return strings.HROnboarding.lessThanDescription;
+      case '<=':
+        return strings.HROnboarding.lessThanOrEqualDescription;
+      case '>':
+        return strings.HROnboarding.greaterThanDescription;
+      case '>=':
+        return strings.HROnboarding.greaterThanOrEqualDescription;
+      case '<>':
+        return strings.HROnboarding.notEqualToDescription;
+      case 'IN':
+        return strings.HROnboarding.inDescription;
+      case 'NOT IN':
+        return strings.HROnboarding.notInDescription;
+      default:
+        return '';
+    }
+  };
+
+  function getValidOperatorsForType(dataType?: string): IExtendedComboBoxOption[] {
     const validOperatorsMap: Record<string, string[]> = {
       bit: ['=', '<>'],
       datetime2: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
@@ -1817,7 +1866,12 @@ const getOptions = (
 
     const validKeys = dataType ? validOperatorsMap[dataType.toLowerCase()] : undefined;
     const keysToUse = validKeys ?? equalityOperatorOptions.map(option => option.key as string);
-    return equalityOperatorOptions.filter(option => keysToUse.includes(option.key as string));
+    return equalityOperatorOptions
+      .filter(option => keysToUse.includes(option.key as string))
+      .map(option => ({
+        ...option,
+        description: getOperatorDescription(option.key as string)
+      }));
   }
 
   const onRenderItemColumn = (items: IFilterPart[], item?: any, index?: number, column?: IColumn, groupIndex?: number, childIndex?: number): JSX.Element => {
@@ -1864,6 +1918,7 @@ const getOptions = (
         onRenderAttributeComboBoxOptions={onRenderAttributeComboBoxOptions}
         onRenderValueComboBoxOptions={onRenderValueComboBoxOptions}
         onRenderValueComboBoxList={onRenderValueComboBoxList}
+        onRenderOperatorOptions={onRenderOperatorOptions}
       />
     );
   };

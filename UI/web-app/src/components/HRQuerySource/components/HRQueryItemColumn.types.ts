@@ -97,4 +97,5 @@ export type HRQueryItemColumnProps = React.AllHTMLAttributes<HTMLDivElement> & {
   onRenderAttributeComboBoxOptions: (props?: IComboBoxOption, defaultRender?: (props?: IComboBoxOption) => JSX.Element | null) => JSX.Element | null;
   onRenderValueComboBoxOptions: (props?: IComboBoxOption, defaultRender?: (props?: IComboBoxOption) => JSX.Element | null) => JSX.Element | null;
   onRenderValueComboBoxList: IRenderFunction<ISelectableDroppableTextProps<IComboBox, IComboBox>>;
+  onRenderOperatorOptions: (props?: IDropdownOption, defaultRender?: (props?: IDropdownOption) => JSX.Element | null) => JSX.Element | null;
 };
