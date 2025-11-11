@@ -23,7 +23,7 @@ param tenantId string
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'TeamsChannelMembershipObtainer'),0,8)}'
 
 @description('Service plan sku')
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -36,11 +36,18 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param functionAppKind string = 'functionapp'
+param functionAppKind string = 'functionapp,linux'
 
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+@description('Maximum instance count.')
+param maxInstanceCount int = 40
+
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 2048
+
+@description('Storage account container name.')
+param appPackageContainerName string = 'app-package-tcmo-${environmentAbbreviation}'
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -87,17 +94,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
-}
-
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-  FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
 
 var appSettings = {
@@ -106,19 +103,19 @@ var appSettings = {
   AzureWebJobsStorage__credential: 'managedidentity'
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}TeamsChannelMO'
   AzureFunctionsWebHost__hostid: 'TeamsChannelMO'
-  'AzureFunctionsJobHost:extensions:durableTask:extendedSessionsEnabled': toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
+  AzureFunctionsJobHost__extensions__durableTask__extendedSessionsEnabled: toLower(environmentAbbreviation) == 'prodv2' ? 'True' : 'False'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   serviceBusMembershipAggregatorQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipAggregatorQueue, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
@@ -129,19 +126,7 @@ var appSettings = {
   membershipStorageAccountName: '@Microsoft.KeyVault(SecretUri=${reference(membershipStorageAccountName, '2019-09-01').secretUriWithVersion})'
   membershipContainerName: '@Microsoft.KeyVault(SecretUri=${reference(membershipContainerName, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var activityFunctionSettings = {
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.ChannelValidatorFunction.Disabled': 0
-  'AzureWebJobs.FileUploaderFunction.Disabled': 0
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.QueueMessageSender.Disabled': 0
-  'AzureWebJobs.TelemetryTracker.Disabled': 0
-  'AzureWebJobs.UserReaderFunction.Disabled': 0
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -191,7 +176,7 @@ module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = 
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: commonSettings
+    appSettings: appSettings
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
@@ -202,19 +187,13 @@ module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = 
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerName
+    maxInstanceCount: maxInstanceCount
+    instanceMemoryMB: instanceMemoryMB
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
     existingLogAnalyticsWorkspace
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-TeamsChannelMembershipObtainer/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, activityFunctionSettings)
-  dependsOn: [
-    functionAppTemplate_TeamsChannelMembershipObtainer
   ]
 }
