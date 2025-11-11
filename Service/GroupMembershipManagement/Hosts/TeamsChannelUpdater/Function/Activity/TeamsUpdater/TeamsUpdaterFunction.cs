@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 using Models;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -26,7 +26,7 @@ namespace Hosts.TeamsChannelUpdater
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(TeamsUpdaterFunction))]
+        [Function(nameof(TeamsUpdaterFunction))]
         public async Task<TeamsUpdaterResponse> RunAsync([ActivityTrigger] TeamsUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TeamsUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
@@ -66,3 +66,4 @@ namespace Hosts.TeamsChannelUpdater
         }
     }
 }
+

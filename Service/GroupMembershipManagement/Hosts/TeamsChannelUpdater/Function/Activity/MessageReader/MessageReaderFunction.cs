@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -23,7 +23,7 @@ namespace Hosts.TeamsChannelUpdater
             _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
-        [FunctionName(nameof(MessageReaderFunction))]
+        [Function(nameof(MessageReaderFunction))]
         public async Task<MembershipHttpRequest> GetSyncJobAsync([ActivityTrigger] object input)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageReaderFunction)} function started" }, VerbosityLevel.DEBUG);
@@ -42,3 +42,4 @@ namespace Hosts.TeamsChannelUpdater
         }
     }
 }
+

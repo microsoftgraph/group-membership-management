@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -21,27 +21,28 @@ namespace Hosts.TeamsChannelUpdater
             _serviceBusReceiver = serviceBusReceiver ?? throw new ArgumentNullException(nameof(serviceBusReceiver));
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
          [TimerTrigger("%triggerSchedule%")] TimerInfo myTimer,
-         [DurableClient] IDurableOrchestrationClient starter)
+         [DurableClient] DurableTaskClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
             var instanceId = nameof(QueueMessageOrchestratorFunction);
-            var orchestratorStatus = await starter.GetStatusAsync(instanceId);
+            var orchestratorStatus = await starter.GetInstanceAsync(instanceId);
             var isRunning = orchestratorStatus != null
-                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
-                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
-                    && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Failed;
+                    && !orchestratorStatus.IsCompleted
+                    && !orchestratorStatus.IsTerminated
+                    && !orchestratorStatus.IsFailed;
 
             if (!isRunning)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Calling {instanceId}" }, VerbosityLevel.INFO);
-                await starter.StartNewAsync(instanceId, instanceId, (object)null);
+                await starter.ScheduleNewOrchestrationInstanceAsync(instanceId, (object)null, new StartOrchestrationOptions { InstanceId = instanceId });
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
         }
     }
 }
+
