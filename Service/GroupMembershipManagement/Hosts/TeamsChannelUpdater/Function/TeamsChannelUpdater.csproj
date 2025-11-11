@@ -23,6 +23,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" />
+    <PackageReference Include="Microsoft.DurableTask.Abstractions" />
     <PackageReference Include="NJsonSchema" />
     <PackageReference Include="System.Text.Encodings.Web" />
   </ItemGroup>
