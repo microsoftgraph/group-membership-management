@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Models;
 using Repositories.Contracts;
