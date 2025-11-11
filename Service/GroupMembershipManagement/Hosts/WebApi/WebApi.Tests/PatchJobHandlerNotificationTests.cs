@@ -137,7 +137,7 @@ namespace WebApi.Tests
         }
 
         [TestMethod]
-        public async Task ReviewSubmission_WhenApproved_DoesNotCallNotificationService()
+        public async Task ReviewSubmission_WhenApproved_CallsNotificationService()
         {
             // Arrange
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
@@ -160,10 +160,20 @@ namespace WebApi.Tests
             // Assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             
+            // Verify notification service was called with the NEW SyncJobChange containing the approval feedback
+            _mockNotificationService.Verify(
+                x => x.SendSubmissionApprovedNotificationAsync(
+                    _testSyncJob, 
+                    It.Is<SyncJobChange>(sjc => 
+                        sjc.BusinessJustification == "Approved for testing" &&
+                        sjc.ChangeReason == SyncJobChangeReason.SubmissionApproved.ToString())),
+                Times.Once,
+                "Notification service should be called with the new SyncJobChange containing approval feedback");
+
             _mockNotificationService.Verify(
                 x => x.SendSubmissionRejectedNotificationAsync(It.IsAny<SyncJob>(), It.IsAny<SyncJobChange>()),
                 Times.Never,
-                "Notification service should not be called when submission is approved");
+                "Rejection notification service should not be called when submission is approved");
         }
 
         [TestMethod]

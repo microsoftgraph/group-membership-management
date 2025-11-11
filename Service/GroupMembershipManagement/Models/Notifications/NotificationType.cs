@@ -15,5 +15,6 @@ namespace Models.Notifications
         GuestUserFailureNotification = 10,
         SubmissionRejectedNotification = 11,
         JobPurgingWarningNotification = 12,
+        SubmissionApprovedNotification = 13,
     }
 }

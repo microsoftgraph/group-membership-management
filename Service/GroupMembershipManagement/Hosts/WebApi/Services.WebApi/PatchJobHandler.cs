@@ -174,6 +174,10 @@ namespace Services.WebApi
                 {
                     await _notificationService.SendSubmissionRejectedNotificationAsync(syncJob, syncJobChange);
                 }
+                else if (newStatus == SyncStatus.Idle.ToString())
+                {
+                    await _notificationService.SendSubmissionApprovedNotificationAsync(syncJob, syncJobChange);
+                }
             }
             // If the job is in the PendingReview status, it cannot be updated
             else if (syncJob.Status == SyncStatus.PendingReview.ToString())

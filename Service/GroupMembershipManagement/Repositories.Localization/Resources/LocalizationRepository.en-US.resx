@@ -1242,4 +1242,19 @@ If you believe this rejection was made in error or if you have questions about t
 
 You can access the GMM UI to review the current sync job configuration and submit a new request if needed.</value>
   </data>
+  <data name="SubmissionApprovedEmailTitle" xml:space="preserve">
+    <value>Submission Approved</value>
+  </data>
+  <data name="SubmissionApprovedEmailSubject" xml:space="preserve">
+    <value>Submission Approved for {1}</value>
+  </data>
+  <data name="SubmissionApprovedEmailBody" xml:space="preserve">
+    <value>You received this notification because you submitted a change request for **{1}**.
+
+Your submission to modify the sync job for group **{1}** with Id: {0} has been **approved**.
+
+Your sync job is now active and will run according to its configured schedule.
+
+You can access the GMM UI to view your sync job status and configuration.</value>
+  </data>
 </root>

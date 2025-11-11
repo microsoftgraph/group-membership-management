@@ -12,6 +12,10 @@ namespace Services.WebApi.Contracts
             SyncJob syncJob, 
             SyncJobChange submission);
 
+        Task SendSubmissionApprovedNotificationAsync(
+            SyncJob syncJob, 
+            SyncJobChange submission);
+
         Task SendNotificationAsync(
             SyncJob syncJob,
             NotificationMessageType notificationType,

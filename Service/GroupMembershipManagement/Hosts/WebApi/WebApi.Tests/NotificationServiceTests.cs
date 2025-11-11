@@ -203,5 +203,83 @@ namespace WebApi.Tests
                 () => new NotificationService(_mockServiceBusQueueRepository.Object, null!, _mockGraphGroupRepository.Object));
         }
 
+        [TestMethod]
+        public async Task SendSubmissionApprovedNotificationAsync_Success_SendsCorrectMessage()
+        {
+            // Arrange
+            var submission = new SyncJobChange
+            {
+                Id = Guid.NewGuid(),
+                SyncJobId = _testSyncJob.Id,
+                ChangedByObjectId = Guid.NewGuid(),
+                ChangedByDisplayName = "Test User",
+                ChangeReason = SyncJobChangeReason.SubmissionApproved.ToString(),
+                ChangeTime = DateTime.UtcNow,
+                ChangeSource = SyncJobChangeSource.WebApp
+            };
+
+            ServiceBusMessage capturedMessage = null!;
+            _mockServiceBusQueueRepository
+                .Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                .Callback<ServiceBusMessage>(msg => capturedMessage = msg)
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await _notificationService.SendSubmissionApprovedNotificationAsync(_testSyncJob, submission);
+
+            // Assert
+            _mockServiceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+            
+            Assert.IsNotNull(capturedMessage);
+            Assert.AreEqual($"{_testSyncJob.Id}_{_testSyncJob.RunId}_{NotificationMessageType.SubmissionApprovedNotification}", capturedMessage.MessageId);
+            Assert.IsTrue(capturedMessage.ApplicationProperties.ContainsKey("MessageType"));
+            Assert.AreEqual(NotificationMessageType.SubmissionApprovedNotification.ToString(), capturedMessage.ApplicationProperties["MessageType"]);
+
+            // Verify the message body contains the expected data
+            var messageBodyString = System.Text.Encoding.UTF8.GetString(capturedMessage.Body);
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, object>>(messageBodyString);
+            
+            Assert.IsNotNull(messageContent);
+            Assert.IsTrue(messageContent.ContainsKey("SyncJob"));
+            Assert.IsTrue(messageContent.ContainsKey("SubmitterObjectId"));
+            Assert.IsTrue(messageContent.ContainsKey("SubmitterDisplayName"));
+        }
+
+        [TestMethod]
+        public async Task SendSubmissionApprovedNotificationAsync_WithNullSubmitterData_HandlesGracefully()
+        {
+            // Arrange
+            var submissionWithNulls = new SyncJobChange
+            {
+                Id = Guid.NewGuid(),
+                SyncJobId = _testSyncJob.Id,
+                ChangedByObjectId = null,
+                ChangedByDisplayName = null,
+                ChangeReason = SyncJobChangeReason.SubmissionApproved.ToString(),
+                ChangeTime = DateTime.UtcNow,
+                ChangeSource = SyncJobChangeSource.WebApp
+            };
+
+            ServiceBusMessage capturedMessage = null!;
+            _mockServiceBusQueueRepository
+                .Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
+                .Callback<ServiceBusMessage>(msg => capturedMessage = msg)
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await _notificationService.SendSubmissionApprovedNotificationAsync(_testSyncJob, submissionWithNulls);
+
+            // Assert
+            _mockServiceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
+            
+            // Verify the message body contains empty strings for null values
+            var messageBodyString = System.Text.Encoding.UTF8.GetString(capturedMessage.Body);
+            var messageContent = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(messageBodyString);
+            
+            Assert.IsNotNull(messageContent);
+            Assert.AreEqual(string.Empty, messageContent["SubmitterObjectId"].GetString());
+            Assert.AreEqual(string.Empty, messageContent["SubmitterDisplayName"].GetString());
+        }
+
     }
 }
