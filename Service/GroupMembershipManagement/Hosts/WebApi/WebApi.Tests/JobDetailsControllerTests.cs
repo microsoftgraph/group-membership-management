@@ -840,6 +840,51 @@ namespace Services.Tests
 
         [TestMethod]
         [DataRow(Roles.SUBMISSION_REVIEWER)]
+        public async Task ApproveSubmissionSetsThresholdViolationsAsync(string role)
+        {
+            var userId = Guid.NewGuid().ToString();
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, role),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+            });
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync((List<Guid> objectIds) =>
+                {
+                    return new Dictionary<Guid, List<Guid>>
+                    {
+                        { Guid.NewGuid(), new List<Guid> { (Guid)_syncJobChange.ChangedByObjectId } }
+                    };
+                });
+            _jobEntity.Status = SyncStatus.PendingReview.ToString();
+            _jobEntity.ThresholdViolations = 0;
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim> {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())},
+                    SyncJobChangeReason.SubmissionApproved.ToString())
+            };
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, "Idle");
+
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var result = response as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), _jobEntity.Status);
+            Assert.AreEqual(2, _jobEntity.ThresholdViolations);
+            _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.SUBMISSION_REVIEWER)]
         [DataRow(Roles.SUBMISSION_REJECTOR)]
         public async Task RejectSubmissionAsync(string role)
         {
