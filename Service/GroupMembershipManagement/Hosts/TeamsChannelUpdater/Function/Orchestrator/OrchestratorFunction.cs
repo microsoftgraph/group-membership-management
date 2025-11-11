@@ -190,7 +190,6 @@ namespace Hosts.TeamsChannelUpdater
                         Verbosity = VerbosityLevel.DEBUG
                     });
 
-                return OrchestrationRuntimeStatus.Completed;
             }
 
             catch (Exception ex)
