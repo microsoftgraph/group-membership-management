@@ -6,7 +6,8 @@ using Models.Notifications;
 using Models.SyncJobChange;
 
 namespace Services.WebApi.Contracts
-{    public interface INotificationService
+{
+    public interface INotificationService
     {
         Task SendSubmissionRejectedNotificationAsync(
             SyncJob syncJob, 
@@ -15,6 +16,11 @@ namespace Services.WebApi.Contracts
         Task SendSubmissionApprovedNotificationAsync(
             SyncJob syncJob, 
             SyncJobChange submission);
+
+        Task SendReviewStatusChangeNotificationAsync(
+            SyncJob syncJob,
+            SyncJobChange submission,
+            NotificationMessageType notificationType);
 
         Task SendNotificationAsync(
             SyncJob syncJob,

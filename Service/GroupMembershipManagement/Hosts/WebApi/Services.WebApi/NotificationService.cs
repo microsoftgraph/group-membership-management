@@ -32,48 +32,20 @@ namespace Services.WebApi
             SyncJob syncJob,
             SyncJobChange submission)
         {
-            var businessJustification = submission.BusinessJustification ?? "No reason provided";
-
-            string groupName;
-            try
-            {
-                groupName = await _graphGroupRepository.GetGroupNameAsync(syncJob.TargetOfficeGroupId);
-                if (string.IsNullOrEmpty(groupName))
-                {
-                    groupName = "<Group name could not be retrieved>";
-                }
-            }
-            catch (Exception ex)
-            {
-                groupName = "<Group name could not be retrieved>";
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    RunId = syncJob.RunId,
-                    Message = $"Failed to retrieve group name for Group ID {syncJob.TargetOfficeGroupId}. Error: {ex.Message}"
-                });
-            }
-
-            var additionalContentParameters = new string[]
-            {
-                syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
-                groupName,                               // {1} - Group Name
-                businessJustification                     // {2} - Rejection Reason
-            };
-
-            var customProperties = new Dictionary<string, object>
-            {
-                { "AdditionalContentParameters", additionalContentParameters },
-                { "SubmitterObjectId", submission.ChangedByObjectId?.ToString() ?? string.Empty },
-                { "SubmitterDisplayName", submission.ChangedByDisplayName ?? string.Empty },
-                { "BusinessJustification", businessJustification }
-            };
-
-            await SendNotificationAsync(syncJob, NotificationMessageType.SubmissionRejectedNotification, customProperties);
+            await SendReviewStatusChangeNotificationAsync(syncJob, submission, NotificationMessageType.SubmissionRejectedNotification);
         }
 
         public async Task SendSubmissionApprovedNotificationAsync(
             SyncJob syncJob,
             SyncJobChange submission)
+        {
+            await SendReviewStatusChangeNotificationAsync(syncJob, submission, NotificationMessageType.SubmissionApprovedNotification);
+        }
+
+        public async Task SendReviewStatusChangeNotificationAsync(
+            SyncJob syncJob,
+            SyncJobChange submission,
+            NotificationMessageType notificationType)
         {
             string groupName;
             try
@@ -94,11 +66,21 @@ namespace Services.WebApi
                 });
             }
 
-            var additionalContentParameters = new string[]
-            {
-                syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
-                groupName                                // {1} - Group Name
-            };
+            var isRejection = notificationType == NotificationMessageType.SubmissionRejectedNotification;
+            var businessJustification = isRejection ? submission.BusinessJustification ?? "No reason provided" : null;
+
+            var additionalContentParameters = isRejection
+                ? new string[]
+                {
+                    syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
+                    groupName,                               // {1} - Group Name
+                    businessJustification!                   // {2} - Rejection Reason
+                }
+                : new string[]
+                {
+                    syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
+                    groupName                                // {1} - Group Name
+                };
 
             var customProperties = new Dictionary<string, object>
             {
@@ -107,7 +89,12 @@ namespace Services.WebApi
                 { "SubmitterDisplayName", submission.ChangedByDisplayName ?? string.Empty }
             };
 
-            await SendNotificationAsync(syncJob, NotificationMessageType.SubmissionApprovedNotification, customProperties);
+            if (isRejection)
+            {
+                customProperties.Add("BusinessJustification", businessJustification!);
+            }
+
+            await SendNotificationAsync(syncJob, notificationType, customProperties);
         }
 
         public async Task SendNotificationAsync(
