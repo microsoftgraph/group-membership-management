@@ -73,7 +73,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
                                               It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.GroupId}")), Times.Once());
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
+            _context.Verify(x => x.CallSubOrchestratorAsync(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
 
             _context.Verify(x => x.ContinueAsNew((object)null, false), Times.Once());
         }
@@ -92,13 +92,13 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
                                               It.Is<LoggerRequest>(r => r.Message.StartsWith("Processing message for group"))), Times.Never());
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Never());
+            _context.Verify(x => x.CallSubOrchestratorAsync(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Never());
         }
 
         [TestMethod]
         public async Task MainOrchestratorFailsAsync()
         {
-            _context.Setup(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()))
+            _context.Setup(x => x.CallSubOrchestratorAsync(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()))
                 .Throws(new Exception("Main orchestrator failed."));
 
             var orchestrator = new QueueMessageOrchestratorFunction(_loggerMock.Object);
@@ -110,7 +110,7 @@ namespace Services.Tests
             _context.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
                                               It.Is<LoggerRequest>(r => r.Message == $"Processing message for group {_request.GroupId}")), Times.Once());
 
-            _context.Verify(x => x.CallSubOrchestratorAsync<OrchestrationRuntimeStatus>(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
+            _context.Verify(x => x.CallSubOrchestratorAsync(nameof(OrchestratorFunction), It.IsAny<MembershipHttpRequest>()), Times.Once());
         }
 
         private async Task<MembershipHttpRequest> CallMessageReaderFunctionAsync()
