@@ -3,7 +3,7 @@
 using Hosts.TeamsChannelMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Entities;
@@ -18,8 +18,7 @@ namespace Services.Tests
     public class OrchestratorTests
     {
         private Mock<IDryRunValue> _dryRunValue;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
-        private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private TelemetryClient _telemetryClient;
         private Mock<ITeamsChannelService> _teamsChannelMembershipObtainerService = null!;
         private ChannelSyncInfo _syncInfo = null!;
@@ -31,8 +30,7 @@ namespace Services.Tests
 
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _loggingRepository = new Mock<ILoggingRepository>();
-            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _dryRunValue = new Mock<IDryRunValue>();
             _teamsChannelMembershipObtainerService = new Mock<ITeamsChannelService>();
 
@@ -155,7 +153,7 @@ namespace Services.Tests
                                             _dryRunValue.Object
             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("function finished")),
@@ -199,7 +197,7 @@ namespace Services.Tests
                                             _dryRunValue.Object
             );
 
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("Found invalid value for CurrentPart or TotalParts")),
@@ -225,7 +223,7 @@ namespace Services.Tests
                                     }));
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object, _dryRunValue.Object);
-            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                It.Is<LogMessage>(m => m.Message.Contains("Teams Channel Destination did not validate.")),
@@ -244,7 +242,7 @@ namespace Services.Tests
                                        .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object, _dryRunValue.Object);
-            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object, _executionContext.Object));
+            await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object));
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                It.Is<LogMessage>(m => m.Message.Contains("Caught unexpected exception:")),
