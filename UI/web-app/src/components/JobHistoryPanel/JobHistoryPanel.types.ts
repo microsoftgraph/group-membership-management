@@ -12,6 +12,16 @@ export interface IJobHistoryPanelStyles {
     root: IStyle;
     container: IStyle;
     header: IStyle;
+    dateTimeContainer: IStyle;
+    dateText: IStyle;
+    timeText: IStyle;
+    changeReasonContainer: IStyle;
+    changeTypeIndicator: IStyle;
+    changeTypeRejected: IStyle;
+    changeTypeApproved: IStyle;
+    changeTypeUpdate: IStyle;
+    changeTypeGroupSettings: IStyle;
+    changeTypeDefault: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

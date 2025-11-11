@@ -40,19 +40,68 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const { className, styles, isOpen, dismissPanel, jobId } = props;
     const strings = useStrings();
     const theme = useTheme();
+
+    const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
+
+    const getChangeTypeColorClass = (changeReason: string): string => {
+        switch (changeReason) {
+            case SyncJobChangeReason.SubmissionRejected:
+                return classNames.changeTypeRejected;
+            case SyncJobChangeReason.SubmissionApproved:
+            case SyncJobChangeReason.OnboardingAutoApproved:
+                return classNames.changeTypeApproved;
+            case SyncJobChangeReason.Onboarding:
+            case SyncJobChangeReason.Update:
+            case SyncJobChangeReason.StatusUpdate:
+                return classNames.changeTypeUpdate;
+            case SyncJobChangeReason.GroupSettings:
+                return classNames.changeTypeGroupSettings;
+            default:
+                return classNames.changeTypeDefault;
+        }
+    };
+
+    const getChangeReasonText = (changeReason: string): string => {
+        switch (changeReason) {
+            case SyncJobChangeReason.Onboarding:
+                return strings.JobDetails.Panel.onboardingRequest;
+            case SyncJobChangeReason.OnboardingAutoApproved:
+                return strings.JobDetails.Panel.onboardingAutoApproved;
+            case SyncJobChangeReason.StatusUpdate:
+                return strings.JobDetails.Panel.statusUpdate;
+            case SyncJobChangeReason.Update:
+                return strings.JobDetails.Panel.update;
+            case SyncJobChangeReason.SubmissionApproved:
+                return strings.JobDetails.Panel.submissionApproved;
+            case SyncJobChangeReason.SubmissionRejected:
+                return strings.JobDetails.Panel.submissionRejected;
+            case SyncJobChangeReason.GroupSettings:
+                return strings.JobDetails.Panel.groupSettings;
+            default:
+                return changeReason;
+        }
+    };
+
     const columns: IColumn[] = [
         {
             key: 'changeTime',
             name: strings.JobDetails.Panel.changeTimeColumnLabel,
             fieldName: 'changeTime',
-            minWidth: 120,
-            maxWidth: 200,
+            minWidth: 100,
+            maxWidth: 150,
             isResizable: true,
+            isMultiline: true,
             onRender: (item: SyncJobChange) => {
                 const utcDate = item.changeTime.endsWith('Z') ? item.changeTime : `${item.changeTime}Z`;
                 const utcDateObj = new Date(utcDate);
-                const localDate = utcDateObj.toLocaleString();
-                return <span>{localDate}</span>;
+                const localDate = utcDateObj.toLocaleDateString();
+                const localTime = utcDateObj.toLocaleTimeString();
+                return (
+                    <div className={classNames.dateTimeContainer}>
+                        <div className={classNames.dateText}>{localDate}</div>
+                        <div className={classNames.timeText}>{localTime}</div>
+                    </div>
+                );
             }
         },
         {
@@ -62,42 +111,35 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             minWidth: 120,
             maxWidth: 200,
             isResizable: true,
+            isMultiline: true,
         },
         {
             key: 'changeReason',
             name: strings.JobDetails.Panel.changeReasonColumnLabel,
             fieldName: 'changeReason',
-            minWidth: 120,
-            maxWidth: 200,
+            minWidth: 150,
+            maxWidth: 250,
             isResizable: true,
+            isMultiline: true,
             onRender: (item: SyncJobChange) => {
-                switch (item.changeReason) {
-                    case SyncJobChangeReason.Onboarding:
-                        return strings.JobDetails.Panel.onboardingRequest;
-                    case SyncJobChangeReason.OnboardingAutoApproved:
-                        return strings.JobDetails.Panel.onboardingAutoApproved;
-                    case SyncJobChangeReason.StatusUpdate:
-                        return strings.JobDetails.Panel.statusUpdate;
-                    case SyncJobChangeReason.Update:
-                        return strings.JobDetails.Panel.update;
-                    case SyncJobChangeReason.SubmissionApproved:
-                        return strings.JobDetails.Panel.submissionApproved;
-                    case SyncJobChangeReason.SubmissionRejected:
-                        return strings.JobDetails.Panel.submissionRejected;
-                    case SyncJobChangeReason.GroupSettings:
-                        return strings.JobDetails.Panel.groupSettings;
-                    default:
-                        return item.changeReason;
-                }
+                const colorClass = getChangeTypeColorClass(item.changeReason);
+                const text = getChangeReasonText(item.changeReason);
+                return (
+                    <div className={classNames.changeReasonContainer}>
+                        <span className={`${classNames.changeTypeIndicator} ${colorClass}`} />
+                        <span>{text}</span>
+                    </div>
+                );
             }
         },
         {
             key: 'businessJustification',
             name: strings.JobDetails.Panel.businessJustification,
             fieldName: 'businessJustification',
-            minWidth: 100,
-            maxWidth: 200,
+            minWidth: 150,
+            maxWidth: 300,
             isResizable: true,
+            isMultiline: true,
             onRender: (item: SyncJobChange) => {
                 return <span>{item.businessJustification}</span>;
             }
@@ -107,8 +149,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             name: strings.JobDetails.Panel.changeDetailsColumnLabel,
             fieldName: 'changeDetails',
             minWidth: 100,
-            maxWidth: 200,
+            maxWidth: 150,
             isResizable: true,
+            isMultiline: true,
             onRender: (item: SyncJobChange) => {
                 return <Link onClick={() => handleViewDetails(item.changeDetails)}>
                     {strings.JobDetails.Panel.viewDetails}
@@ -116,8 +159,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }
         }
     ];
-
-    const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
 
     const dispatch = useDispatch<AppDispatch>();
 
