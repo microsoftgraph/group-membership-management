@@ -66,6 +66,7 @@ namespace Services.Tests
         private PostOperationHandler _postResetRequestHandler = null!;
         private Mock<IServiceStatusRepository> _serviceStatusRepository = null!;
         private Mock<IOperationsTaskQueue> _backgroundTaskService = null!;
+        private Mock<IThresholdConfig> _thresholdConfig = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -81,9 +82,16 @@ namespace Services.Tests
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
             _pendingConfigurationConfig = new Mock<IPendingConfigurationConfig>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _thresholdConfig = new Mock<IThresholdConfig>();
 
             // Setup default pending configuration setting to false
             _pendingConfigurationConfig.Setup(x => x.PendingConfigurationIsEnabled).Returns(false);
+            
+            // Setup default threshold config
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(3);
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsFollowUps).Returns(3);
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToDisableJob).Returns(10);
+            _thresholdConfig.Setup(x => x.MaximumNumberOfThresholdRecipients).Returns(10);
 
             var builder = new ODataConventionModelBuilder();
             builder.EntitySet<SyncJob>("SyncJob");
@@ -233,7 +241,8 @@ namespace Services.Tests
 
             _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
-                                                 _syncJobChangeRepository.Object);
+                                                 _syncJobChangeRepository.Object,
+                                                 _thresholdConfig.Object);
 
             _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
@@ -762,7 +771,8 @@ namespace Services.Tests
 
             _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
                                                  _databaseSyncJobsRepository.Object,
-                                                 _syncJobChangeRepository.Object);
+                                                 _syncJobChangeRepository.Object,
+                                                 _thresholdConfig.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
@@ -777,14 +787,14 @@ namespace Services.Tests
             Assert.IsNotNull(okResult.Value);
             var res = okResult.Value as PatchJobsResponse;
             Assert.IsNotNull(res);
-            _databaseSyncJobsRepository.Verify(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>()), Times.Once);
+            _databaseSyncJobsRepository.Verify(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>(), 2), Times.Once);
             _syncJobChangeRepository.Verify(x => x.BulkSaveAsync(It.IsAny<IEnumerable<SyncJobChange>>()), Times.Once);
         }
 
         [TestMethod]
         public async Task BulkApproveExceptionTestAsync()
         {
-            _databaseSyncJobsRepository.Setup(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>()))
+            _databaseSyncJobsRepository.Setup(x => x.BulkApproveSyncJobsAsync(It.IsAny<List<string>>(), It.IsAny<int?>()))
                                         .ThrowsAsync(new Exception());
 
             var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
@@ -796,6 +806,61 @@ namespace Services.Tests
             Assert.IsNotNull(statusCodeResult);
             Assert.AreEqual((int)HttpStatusCode.InternalServerError, statusCodeResult.StatusCode);
         }
+
+        [TestMethod]
+        public async Task BulkApprove_SetsThresholdViolationsToNotifyMinusOne_WhenApprovingJobs()
+        {
+            // Arrange
+            var syncJobId = Guid.NewGuid();
+            var syncJobIds = new List<string> { syncJobId.ToString() };
+            
+            _syncJobIds = syncJobIds;
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "testuser@domain.com"),
+                new Claim(ClaimTypes.Upn, "testuser@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            };
+
+            _context = CreateHttpContext(claims);
+
+            var identity = new ClaimsIdentity(claims);
+            var user = new ClaimsPrincipal(identity);
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+
+            // Setup threshold config to return 5 for NumberOfThresholdViolationsToNotify
+            _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
+
+            _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
+                                                 _databaseSyncJobsRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _thresholdConfig.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            // Act
+            var response = await _jobsController.BulkApproveJobsAsync(_syncJobIds.ToArray());
+
+            // Assert
+            Assert.IsNotNull(response);
+            var okResult = response.Result as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            
+            // Verify that BulkApproveSyncJobsAsync was called with threshold violations = 4 (5 - 1)
+            _databaseSyncJobsRepository.Verify(x => x.BulkApproveSyncJobsAsync(
+                It.Is<List<string>>(ids => ids.Count == 1 && ids[0] == syncJobId.ToString()), 
+                4), 
+                Times.Once);
+            _syncJobChangeRepository.Verify(x => x.BulkSaveAsync(It.IsAny<IEnumerable<SyncJobChange>>()), Times.Once);
+        }
+
 
         [TestMethod]
         public async Task GetJobs_LastModifiedTime_UsesAnyChangeReason()

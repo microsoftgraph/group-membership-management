@@ -216,7 +216,7 @@ namespace Repositories.EntityFramework
             await _writeContext.SaveChangesAsync();
         }
 
-        public async Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds)
+        public async Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
         {
             var existingJobs = await _writeContext.SyncJobs
                 .Where(job => syncJobIds.Contains(job.Id.ToString()))
@@ -229,6 +229,10 @@ namespace Repositories.EntityFramework
                 if (job.Status == SyncStatus.PendingReview.ToString())
                 {
                     job.Status = SyncStatus.Idle.ToString();
+                    if (thresholdViolationsToSet.HasValue)
+                    {
+                        job.ThresholdViolations = thresholdViolationsToSet.Value;
+                    }
                     updatedToIdleCount++;
                 }
             }

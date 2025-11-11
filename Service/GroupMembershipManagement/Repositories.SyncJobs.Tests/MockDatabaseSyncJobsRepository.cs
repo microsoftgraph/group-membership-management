@@ -84,7 +84,7 @@ namespace Repositories.SyncJobs.Tests
             throw new NotImplementedException();
         }
 
-        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds)
+        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
         {
             throw new NotImplementedException();
         }

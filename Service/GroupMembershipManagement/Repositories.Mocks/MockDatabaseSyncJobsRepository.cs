@@ -91,7 +91,7 @@ namespace Repositories.Mocks
             throw new NotImplementedException();
         }
 
-        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds)
+        public Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null)
         {
             throw new NotImplementedException();
         }

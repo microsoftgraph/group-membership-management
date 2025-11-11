@@ -27,6 +27,6 @@ namespace Repositories.Contracts
         Task BatchUpdateSyncJobsAsync(List<SyncJob> jobs);
         Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId);
         Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId);
-        Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds);
+        Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null);
     }
 }
