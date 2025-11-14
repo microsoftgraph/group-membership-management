@@ -12,7 +12,7 @@ param (
     if ($global:SkipModuleInstall -ne $true) {
 		# Installing MSIdentityTools Module
         Write-Host "Installing MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
-        . ($scriptsDirectory + '/Scripts/Install-ModuleIfNeeded.ps1')
+        . ($scriptsDirectory + '/Install-ModuleIfNeeded.ps1')
         Install-ModuleIfNeeded -Name MSIdentityTools -Version "2.0.52" -Verbose
         Write-Host "Installed MSIdentityTools Module to fetch the Azure published IP ranges..." -ForegroundColor Yellow
 
