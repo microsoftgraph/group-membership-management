@@ -312,16 +312,13 @@ function Test-ServicePlanHasOtherApps {
     }
 }
 
-function Remove-FunctionAppAndServicePlan {
+function Remove-FunctionAppResources {
     param(
         [string]$FunctionName,
         [string]$ServicePlanName,
         [string]$StorageAccountName,
         [string]$ComputeResourceGroupName,
         [string]$DataResourceGroupName,
-        [string]$ServiceBusNamespace,
-        [string]$ServiceBusSubscription,
-        [array]$ServiceBusTopics = @(),
         [bool]$ServicePlanShared = $false,
         [switch]$WhatIf
     )
@@ -731,14 +728,11 @@ function Remove-MultiLaneResources {
             Write-Host ""
             Write-Host "  🔧 Processing: $($func.FunctionSuffix)" -ForegroundColor Cyan
             # Remove Azure resources
-            Remove-FunctionAppAndServicePlan -FunctionName $func.FunctionName `
+            Remove-FunctionAppResources -FunctionName $func.FunctionName `
                 -ServicePlanName $func.ServicePlanName `
                 -StorageAccountName $func.StorageAccountName `
                 -ComputeResourceGroupName $computeResourceGroupName `
                 -DataResourceGroupName $dataResourceGroupName `
-                -ServiceBusNamespace $serviceBusNamespace `
-                -ServiceBusSubscription $serviceBusSubscription `
-                -ServiceBusTopics $func.ServiceBusTopics `
                 -ServicePlanShared $func.ServicePlanShared `
                 -WhatIf:$WhatIf
         }
