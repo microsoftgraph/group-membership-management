@@ -15,6 +15,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
 using static Microsoft.Graph.Groups.Item.TransitiveMembers.TransitiveMembersRequestBuilder;
 using Group = Microsoft.Graph.Models.Group;
@@ -31,6 +32,7 @@ namespace Repositories.GraphGroups
 
         public async Task<List<AzureADUser>> GetUsersInGroupTransitivelyAsync(Guid groupId, Guid? runId)
         {
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var nonUserGraphObjects = new List<KeyValuePair<string, int>>();
             var transitiveMembers = new List<AzureADUser>();
 
@@ -72,6 +74,7 @@ namespace Repositories.GraphGroups
 
         public async Task<int> GetGroupsCountAsync(Guid groupId, Guid? runId)
         {
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var request = _graphServiceClient
                             .Groups[groupId.ToString()]
                             .TransitiveMembers
@@ -82,11 +85,20 @@ namespace Repositories.GraphGroups
                                 requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
                             });
 
-            return await GetGroupDirectoryObjectMembersCount(request, runId);
+            var count = await GetGroupDirectoryObjectMembersCount(request, runId);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"From group {groupId}, transitive group count {count}\n"
+            });
+
+            return count;
         }
 
         public async Task<int> GetUsersCountAsync(Guid groupId, Guid? runId)
         {
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var request = _graphServiceClient
                 .Groups[groupId.ToString()]
                 .TransitiveMembers
@@ -97,13 +109,22 @@ namespace Repositories.GraphGroups
                     requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
                 });
 
-            return await GetGroupDirectoryObjectMembersCount(request, runId);
+            var count = await GetGroupDirectoryObjectMembersCount(request, runId);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                RunId = runId,
+                Message = $"From group {groupId}, transitive user count {count}\n"
+            });
+
+            return count;
         }
 
         public async Task<(List<AzureADUser> users,
                    Dictionary<string, int> nonUserGraphObjects,
                    string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid groupId, Guid? runId)
         {
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             string nextLink = null;
@@ -111,8 +132,8 @@ namespace Repositories.GraphGroups
             for (int i = 0; i < 5; i++)
             {
                 var usersResponse = string.IsNullOrEmpty(nextLink)
-                    ? await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString())
-                    : await GetGroupTransitiveMembersNextPageAsync(nextLink);
+                    ? await GetGroupTransitiveMembersPageByIdAsync(groupId.ToString(), runId)
+                    : await GetGroupTransitiveMembersNextPageAsync(nextLink, groupId, runId);
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
                 await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, groupId, QueryType.Transitive, runId);
@@ -131,13 +152,14 @@ namespace Repositories.GraphGroups
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid groupId, string nextPageUrl, Guid? runId)
         {
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             var nextLink = nextPageUrl;
 
             for (int i = 0; i < 5 && !string.IsNullOrEmpty(nextLink); i++)
             {
-                var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextLink);
+                var usersResponse = await GetGroupTransitiveMembersNextPageAsync(nextLink, groupId, runId);
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(usersResponse.Headers, QueryType.Transitive, runId);
                 await _graphGroupMetricTracker.TrackRequestAsync(usersResponse.Headers, groupId, QueryType.Transitive, runId);
@@ -152,15 +174,16 @@ namespace Repositories.GraphGroups
         {
             try
             {
+                SetCustomActivityProperty("RunId", Convert.ToString(runId));
                 var members = new List<IAzureADObject>();
-                var membersResponse = await GetGroupMembersPageByIdAsync(groupId.ToString());
+                var membersResponse = await GetGroupMembersPageByIdAsync(groupId.ToString(), runId);
                 members.AddRange(ToEntities(membersResponse.Response.Value));
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(membersResponse.Headers, QueryType.Other, runId);
 
                 while (membersResponse.Response.OdataNextLink != null)
                 {
-                    membersResponse = await GetGroupMembersNextPageAsync(membersResponse.Response.OdataNextLink);
+                    membersResponse = await GetGroupMembersNextPageAsync(membersResponse.Response.OdataNextLink, groupId, runId);
                     members.AddRange(ToEntities(membersResponse.Response.Value));
                     await _graphGroupMetricTracker.TrackMetricsAsync(membersResponse.Headers, QueryType.Other, runId);
                 }
@@ -213,7 +236,7 @@ namespace Repositories.GraphGroups
             return int.Parse(responseContent);
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersPageByIdAsync(string groupId)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersPageByIdAsync(string groupId, Guid? runId)
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
@@ -246,10 +269,16 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Fetched first page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                RunId = runId
+            });
+
             return response;
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersNextPageAsync(string nextPageUrl)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupTransitiveMembersNextPageAsync(string nextPageUrl, Guid groupId, Guid? runId)
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
@@ -292,10 +321,16 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Fetched next page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                RunId = runId
+            });
+
             return response;
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersPageByIdAsync(string groupId)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersPageByIdAsync(string groupId, Guid? runId)
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
@@ -329,10 +364,16 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Fetched first page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                RunId = runId
+            });
+
             return response;
         }
 
-        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersNextPageAsync(string nextPageUrl)
+        private async Task<GraphObjectResponse<DirectoryObjectCollectionResponse>> GetGroupMembersNextPageAsync(string nextPageUrl, Guid groupId, Guid? runId)
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
@@ -375,6 +416,12 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Fetched next page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                RunId = runId
+            });
+
             return response;
         }
 
@@ -385,7 +432,9 @@ namespace Repositories.GraphGroups
                 RunId = runId,
                 Message = $"Checking on user existence to determine if it is a member of group {groupObjectId}."
             });
-            
+
+            SetCustomActivityProperty("RunId", Convert.ToString(runId));
+
             Guid userId;
 
             var identifierIsObjectId = Guid.TryParse(userIdentifier, out userId);
@@ -469,6 +518,7 @@ namespace Repositories.GraphGroups
         {
             try
             {
+                SetCustomActivityProperty("RunId", Convert.ToString(runId));
                 var nativeResponseHandler = new NativeResponseHandler();
                 var groupOwnersResponse = new DirectoryObjectCollectionResponse();
 
@@ -526,6 +576,16 @@ namespace Repositories.GraphGroups
                         break;
                 }
             }
+        }
+
+        private static void SetCustomActivityProperty(string propertyName, string value)
+        {
+            if(string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(value)) return;
+            var activity = Activity.Current;
+            if (activity == null) return;
+            if (activity.GetTagItem("RunId") == null)
+                activity.SetTag("RunId", value);
+            activity.AddBaggage("RunId", value);
         }
     }
 }

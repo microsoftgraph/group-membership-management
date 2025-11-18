@@ -8,6 +8,8 @@ using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
+using Microsoft.ApplicationInsights.DependencyCollector;
+using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -46,6 +48,20 @@ namespace Hosts.GroupMembershipObtainer
                     var functionName = "GroupMembershipObtainer";
                     var dryRunSettingName = "GroupMembershipObtainer:IsDryRunEnabled";
                     var rootPath = context.HostingEnvironment.ContentRootPath;
+
+                    // Enable automatic HttpClient dependency tracking (configurable)
+                    services.AddSingleton<ITelemetryModule>(sp =>
+                    {
+                        var cfg = sp.GetRequiredService<IConfiguration>();
+                        var enableHttpListener = CommonServices.GetBoolSettingBase(cfg, "GroupMembershipObtainer:EnableHttpHandlerDiagnosticListener", false);
+                        var module = new DependencyTrackingTelemetryModule();
+                        if (enableHttpListener)
+                        {
+                            module.IncludeDiagnosticSourceActivities.Add("HttpHandlerDiagnosticListener");
+                        }
+                        return module;
+                    });
+
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
                     services.AddOptions<DeltaCachingConfig>().Configure<IConfiguration>((settings, configuration) =>
                     {

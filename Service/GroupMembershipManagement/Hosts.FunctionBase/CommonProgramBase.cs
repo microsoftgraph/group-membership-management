@@ -163,15 +163,12 @@ namespace Hosts.FunctionBase
                 return new ThresholdNotificationConfig(creds.Value.IsThresholdNotificationEnabled);
             });
 
-            services.AddSingleton(sp =>
+            services.AddApplicationInsightsTelemetryWorkerService(options =>
             {
-                var telemetryConfiguration = new TelemetryConfiguration();
-                telemetryConfiguration.InstrumentationKey = GetValueOrThrowBase(configuration, "APPINSIGHTS_INSTRUMENTATIONKEY");
-                telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
-                var tc = new TelemetryClient(telemetryConfiguration);
-                tc.Context.Operation.Name = functionName;
-                return tc;
+                options.InstrumentationKey = GetValueOrThrowBase(configuration, "APPINSIGHTS_INSTRUMENTATIONKEY");
             });
+
+            services.AddSingleton<ITelemetryInitializer>(sp => new ConstantOperationNameInitializer(functionName));
 
             services.AddSingleton(services =>
             {

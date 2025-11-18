@@ -236,6 +236,22 @@ param appConfigurationKeyData array = [
     }
   }
   {
+    key: 'GroupMembershipObtainer:EnableHttpHandlerDiagnosticListener'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'GroupMembershipObtainer'
+    }
+  }
+  {
+    key: 'GroupMembershipObtainer:EnableTransitiveMembersLogging'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'GroupMembershipObtainer'
+    }
+  }
+  {
     key: 'MembershipAggregator:IsMembershipAggregatorDryRunEnabled'
     value: 'false'
     contentType: 'boolean'
