@@ -17,6 +17,7 @@ using Channel = Microsoft.Graph.Models.Channel;
 using Repositories.Contracts.InjectConfig;
 using Services.Messages.Responses;
 using Models.Entities;
+using Services.Messages.Requests;
 
 namespace Services.Tests
 {
@@ -613,6 +614,127 @@ namespace Services.Tests
             _graphGroupRepository.Setup(x => x.GetGroupOwnersAsync(groupId, It.IsAny<int>())).ThrowsAsync(new Exception("Graph error"));
 
             var response = await _destinationController.GetGroupOwnersAsync(groupId);
+            var result = response.Result as ObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(500, result?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GetGroupMembersSuccessAsync()
+        {
+            var groupId = Guid.NewGuid();
+            var expectedGroups = new List<AzureADGroup>
+            {
+                new AzureADGroup { ObjectId = Guid.NewGuid(), Name = "Group1" },
+                new AzureADGroup { ObjectId = Guid.NewGuid(), Name = "Group2" },
+                new AzureADGroup { ObjectId = Guid.NewGuid(), Name = "Group3" }
+            };
+
+            _graphGroupRepository.Setup(x => x.GetDirectGroupTypeMembersAsync(groupId)).ReturnsAsync(expectedGroups);
+
+            var mockHandler = new Mock<Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>>();
+            var handler = new GetGroupMembersHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
+                .Returns(handler);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.RequestServices = mockServiceProvider.Object;
+
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(httpContext)
+            };
+
+            var response = await _destinationController.GetGroupMembersAsync(groupId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(200, result?.StatusCode);
+            Assert.IsNotNull(result.Value);
+
+            var groupMembersResponse = result.Value as GetGroupMembersResponse;
+            Assert.IsNotNull(groupMembersResponse);
+            Assert.AreEqual(groupId, groupMembersResponse.GroupId);
+            Assert.AreEqual(expectedGroups.Count, groupMembersResponse.GroupMemberCount);
+            Assert.AreEqual(expectedGroups.Count, groupMembersResponse.Groups.Count);
+        }
+
+        [TestMethod]
+        public async Task GetGroupMembersWithEmptyGuidReturnsBadRequestAsync()
+        {
+            var handler = new GetGroupMembersHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
+                .Returns(handler);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.RequestServices = mockServiceProvider.Object;
+
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(httpContext)
+            };
+
+            var response = await _destinationController.GetGroupMembersAsync(Guid.Empty);
+            var result = response.Result as BadRequestObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(400, result?.StatusCode);
+        }
+
+        [TestMethod]
+        public async Task GetGroupMembersUnauthorizedReturnsForbidAsync()
+        {
+            var groupId = Guid.NewGuid();
+
+            var mockHandler = new Mock<Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>>();
+            mockHandler.Setup(x => x.ExecuteAsync(It.IsAny<Services.Messages.Requests.GetGroupMembersRequest>()))
+                .ThrowsAsync(new UnauthorizedAccessException());
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
+                .Returns(mockHandler.Object);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.RequestServices = mockServiceProvider.Object;
+
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(httpContext)
+            };
+
+            var response = await _destinationController.GetGroupMembersAsync(groupId);
+            var result = response.Result as ForbidResult;
+
+            Assert.IsNotNull(result);
+        }
+
+        [TestMethod]
+        public async Task GetGroupMembersThrowsExceptionAsync()
+        {
+            var groupId = Guid.NewGuid();
+
+            var mockHandler = new Mock<Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>>();
+            mockHandler.Setup(x => x.ExecuteAsync(It.IsAny<Services.Messages.Requests.GetGroupMembersRequest>()))
+                .ThrowsAsync(new Exception("Graph error"));
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
+                .Returns(mockHandler.Object);
+
+            var httpContext = new DefaultHttpContext();
+            httpContext.RequestServices = mockServiceProvider.Object;
+
+            _destinationController = new DestinationController(_searchGroupsHandler, _searchChannelsHandler, _getGroupEndpointsHandler, _getGroupOwnersHandler, _getGroupOnboardingStatusHandler, _getChannelOnboardingStatusHandler, _postGroupHandler)
+            {
+                ControllerContext = CreateControllerContext(httpContext)
+            };
+
+            var response = await _destinationController.GetGroupMembersAsync(groupId);
             var result = response.Result as ObjectResult;
 
             Assert.IsNotNull(result);
