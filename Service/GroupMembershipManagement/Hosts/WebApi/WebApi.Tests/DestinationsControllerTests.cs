@@ -633,7 +633,6 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.GetDirectGroupTypeMembersAsync(groupId)).ReturnsAsync(expectedGroups);
 
-            var mockHandler = new Mock<Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>>();
             var handler = new GetGroupMembersHandler(_loggingRepository.Object, _graphGroupRepository.Object);
 
             var mockServiceProvider = new Mock<IServiceProvider>();
