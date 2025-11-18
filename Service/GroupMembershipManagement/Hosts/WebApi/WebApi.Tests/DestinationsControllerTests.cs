@@ -18,6 +18,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.Messages.Responses;
 using Models.Entities;
 using Services.Messages.Requests;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace Services.Tests
 {
@@ -721,9 +722,21 @@ namespace Services.Tests
             mockHandler.Setup(x => x.ExecuteAsync(It.IsAny<Services.Messages.Requests.GetGroupMembersRequest>()))
                 .ThrowsAsync(new Exception("Graph error"));
 
+            var mockProblemDetailsFactory = new Mock<ProblemDetailsFactory>();
+            mockProblemDetailsFactory.Setup(x => x.CreateProblemDetails(
+                It.IsAny<HttpContext>(),
+                It.IsAny<int?>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+                .Returns(new ProblemDetails { Status = 500 });
+
             var mockServiceProvider = new Mock<IServiceProvider>();
             mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
                 .Returns(mockHandler.Object);
+            mockServiceProvider.Setup(x => x.GetService(typeof(ProblemDetailsFactory)))
+                .Returns(mockProblemDetailsFactory.Object);
 
             var httpContext = new DefaultHttpContext();
             httpContext.RequestServices = mockServiceProvider.Object;
