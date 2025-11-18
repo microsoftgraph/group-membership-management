@@ -287,7 +287,7 @@ namespace Repositories.GraphGroups
 
         public async Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId)
         {            
-            var children = await _graphGroupMembershipReader.GetChildrenOfGroup(groupObjectId, RunId);
+            var children = await _graphGroupMembershipReader.GetDirectGroupMembersAsync(groupObjectId, RunId);
             return children.OfType<AzureADGroup>().ToList();
         }
     }
