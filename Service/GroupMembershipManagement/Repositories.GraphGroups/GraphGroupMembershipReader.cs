@@ -198,6 +198,65 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<List<AzureADGroup>> GetDirectGroupMembersAsync(Guid groupId, Guid? runId)
+        {
+            var groups = new List<AzureADGroup>();
+            try
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading direct group-type members of group {groupId}." });
+
+                var response = await _graphServiceClient
+                                        .Groups[groupId.ToString()]
+                                        .Members
+                                        .GraphGroup
+                                        .GetAsync(requestConfig =>
+                                        {
+                                            requestConfig.QueryParameters.Top = MaxResultCount;
+                                            requestConfig.QueryParameters.Select = new[] { "id", "displayName" };
+                                        });
+
+                if (response?.Value != null)
+                {
+                    groups.AddRange(response.Value.Where(g => g.Id != null).Select(g => new AzureADGroup
+                    {
+                        ObjectId = Guid.Parse(g.Id),
+                        Name = g.DisplayName
+                    }));
+                }
+
+                // Page through results if needed
+                var nextLink = response?.OdataNextLink;
+                while (!string.IsNullOrEmpty(nextLink))
+                {
+                    var requestInfo = new RequestInformation
+                    {
+                        HttpMethod = Method.GET,
+                        UrlTemplate = nextLink,
+                    };
+
+                    var nextResponse = await _graphServiceClient.RequestAdapter.SendAsync(requestInfo, GroupCollectionResponse.CreateFromDiscriminatorValue);
+
+                    if (nextResponse?.Value != null)
+                    {
+                        groups.AddRange(nextResponse.Value.Where(g => g.Id != null).Select(g => new AzureADGroup
+                        {
+                            ObjectId = Guid.Parse(g.Id),
+                            Name = g.DisplayName
+                        }));
+                    }
+                    nextLink = nextResponse?.OdataNextLink;
+                }
+
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Retrieved {groups.Count} direct group-type members of {groupId}." });
+                return groups;
+            }
+            catch (ODataError ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = ex.GetBaseException().ToString() });
+                throw;
+            }
+        }
+
         private async Task<int> GetGroupDirectoryObjectMembersCount(RequestInformation request, Guid? runId)
         {
             var resourceUnitsUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.ResourceUnitsUsed));

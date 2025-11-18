@@ -55,5 +55,6 @@ namespace Repositories.Contracts
         Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query);
         Task<List<string>> GetAllGroupNamesAsync();
         Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId);
+        Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId);
     }
 }

@@ -7,6 +7,7 @@ using Models.Entities;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Repositories.GraphGroups
@@ -282,6 +283,12 @@ namespace Repositories.GraphGroups
         public async Task<Guid> GetObjectIdFromAppIdAsync(Guid appId, Guid? runId)
         {
             return await _graphUserReader.GetObjectIdFromServicePrincipalAsync(appId, runId);
+        }
+
+        public async Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId)
+        {            
+            var children = await _graphGroupMembershipReader.GetChildrenOfGroup(groupObjectId, RunId);
+            return children.OfType<AzureADGroup>().ToList();
         }
     }
 }

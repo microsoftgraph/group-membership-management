@@ -185,6 +185,30 @@ namespace WebApi.Controllers.v1.Destination
                 return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: $"An error occurred: {ex.Message}");
             }
         }
+
+        [Authorize()]
+        [HttpGet("groups/{groupId}/group-members")]
+        public async Task<ActionResult<GetGroupMembersResponse>> GetGroupMembersAsync(Guid groupId)
+        {
+            try
+            {
+                var handler = HttpContext.RequestServices.GetRequiredService<IRequestHandler<GetGroupMembersRequest, GetGroupMembersResponse>>();
+                var response = await handler.ExecuteAsync(new GetGroupMembersRequest { GroupId = groupId });
+                return Ok(response);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+            catch (Exception)
+            {
+                return Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError, detail: "An error occurred while retrieving group-type members");
+            }
+        }
     }
 }
 

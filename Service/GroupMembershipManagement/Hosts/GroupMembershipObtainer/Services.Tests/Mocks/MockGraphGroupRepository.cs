@@ -233,6 +233,11 @@ namespace Tests.FunctionApps.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     public class MockException : Exception { }
