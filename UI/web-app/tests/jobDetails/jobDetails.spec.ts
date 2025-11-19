@@ -407,7 +407,7 @@ test.describe('Job Details Tests', () => {
     }
     
     // Ensure we're on the jobs list page
-    await expect(page.getByText('Managed groups')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#manage-membership-button')).toBeVisible({ timeout: 10000 });
     console.log("✅ Onboarding submission completed, now proceeding to review");
     
     const groupRow = page.locator(`[data-group-name="${groupName}"]`);
@@ -449,7 +449,7 @@ test.describe('Job Details Tests', () => {
       console.log('⚠️ Navigation timeout after rejection, checking page content');
     }
     
-    await expect(page.getByText('Managed groups')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('#manage-membership-button')).toBeVisible({ timeout: 10000 });
     console.log('✅ Submission review flow completed successfully.');
   });
 

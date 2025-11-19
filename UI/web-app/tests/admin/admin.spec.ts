@@ -176,7 +176,7 @@ test.describe('Admin Tests', () => {
 
     // Wait for page to load with better error handling
     try {
-      await expect(page.getByText('Managed groups')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('#manage-membership-button')).toBeVisible({ timeout: 15000 });
     } catch (error) {
       console.log('⚠️ Home page taking longer to load, continuing...');
     }

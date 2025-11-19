@@ -17,7 +17,7 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
   await page.goto(url);
   await page.waitForTimeout(5000);
 
-  await expect(page.getByText('Managed groups')).toBeVisible();
+  await expect(page.locator('#manage-membership-button')).toBeVisible();
   await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('tab', { name: 'General General' }).click();
   await page.getByRole('tab', { name: 'Operations Operations' }).click();
@@ -65,7 +65,7 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
   await page.goto(url);
   await page.waitForTimeout(5000);
 
-  await expect(page.getByText('Managed groups')).toBeVisible();
+  await expect(page.locator('#manage-membership-button')).toBeVisible();
   
   console.log('✅ Maintenance reset completed - API should be restored');
   console.log('🔄 All tests in this session should be complete');

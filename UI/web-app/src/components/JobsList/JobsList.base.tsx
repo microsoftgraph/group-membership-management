@@ -707,6 +707,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               {isJobWriter &&
                 <div className={classNames.manageMembershipButton}>
                   <PrimaryButton
+                    id="manage-membership-button"
                     text={strings.ManageMembership.manageMembershipButton}
                     menuProps={menuProps}
                     persistMenu={true}
