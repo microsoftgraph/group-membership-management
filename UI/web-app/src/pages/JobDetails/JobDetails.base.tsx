@@ -264,6 +264,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           <div className={classNames.root}>
               <div className={classNames.historyButtonContainer}>
                 <ActionButton
+                  id="job-history-button"
                   iconProps={{ iconName: 'History' }}
                   text={strings.JobDetails.Panel.history}
                   onClick={() => setIsJobHistoryPanelOpen(true)}

@@ -126,7 +126,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 const text = getChangeReasonText(item.changeReason);
                 return (
                     <div className={classNames.changeReasonContainer}>
-                        <span className={`${classNames.changeTypeIndicator} ${colorClass}`} />
+                        <span aria-hidden="true" className={`${classNames.changeTypeIndicator} ${colorClass}`} />
                         <span>{text}</span>
                     </div>
                 );

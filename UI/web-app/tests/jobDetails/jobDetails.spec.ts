@@ -451,6 +451,21 @@ test.describe('Job Details Tests', () => {
     
     await expect(page.locator('#manage-membership-button')).toBeVisible({ timeout: 10000 });
     console.log('✅ Submission review flow completed successfully.');
+
+    // Open the job again to validate history panel (latest change should be present)
+    const reopenedGroupRow = page.locator(`[data-group-name="${groupName}"]`);
+    await expect(reopenedGroupRow).toBeVisible({ timeout: 15000 });
+    await reopenedGroupRow.click();
+    await expect(page.getByText(`Membership Details - ${groupName}`)).toBeVisible({ timeout: 30000 });
+
+    const historyButton = page.locator('#job-history-button');
+    if (await historyButton.count()) {
+      await historyButton.click();
+    }
+    
+    const historyRows = page.locator('.ms-Panel').locator('[role="row"]');
+    await expect(historyRows.first()).toBeVisible({ timeout: 10000 });
+    console.log('✅ Job History panel opened and rows detected.');
   });
 
   // Helper: robustly select the first option from a labeled combobox/people picker
