@@ -11,11 +11,11 @@ using Services.Entities;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using System.Diagnostics;
 using static Microsoft.Graph.Chats.Item.Members.MembersRequestBuilder;
 using static Microsoft.Graph.Groups.Item.TransitiveMembers.TransitiveMembersRequestBuilder;
 using Group = Microsoft.Graph.Models.Group;
@@ -32,7 +32,6 @@ namespace Repositories.GraphGroups
 
         public async Task<List<AzureADUser>> GetUsersInGroupTransitivelyAsync(Guid groupId, Guid? runId)
         {
-            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var nonUserGraphObjects = new List<KeyValuePair<string, int>>();
             var transitiveMembers = new List<AzureADUser>();
 
@@ -124,7 +123,6 @@ namespace Repositories.GraphGroups
                    Dictionary<string, int> nonUserGraphObjects,
                    string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid groupId, Guid? runId)
         {
-            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             string nextLink = null;
@@ -152,7 +150,6 @@ namespace Repositories.GraphGroups
                            Dictionary<string, int> nonUserGraphObjects,
                            string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid groupId, string nextPageUrl, Guid? runId)
         {
-            SetCustomActivityProperty("RunId", Convert.ToString(runId));
             var users = new List<AzureADUser>();
             var nonUserGraphObjects = new Dictionary<string, int>();
             var nextLink = nextPageUrl;
@@ -174,7 +171,6 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                SetCustomActivityProperty("RunId", Convert.ToString(runId));
                 var members = new List<IAzureADObject>();
                 var membersResponse = await GetGroupMembersPageByIdAsync(groupId.ToString(), runId);
                 members.AddRange(ToEntities(membersResponse.Response.Value));
@@ -240,9 +236,14 @@ namespace Repositories.GraphGroups
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+            string requestId = string.Empty;
+            string clientRequestId = Guid.NewGuid().ToString();
 
             await retryPolicy.ExecuteAsync(async () =>
             {
+                SetCustomActivityProperty("RunId", Convert.ToString(runId));
+                SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
+
                 var nativeResponseHandler = new NativeResponseHandler();
                 var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
@@ -256,6 +257,7 @@ namespace Repositories.GraphGroups
                        });
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                requestId = ExtractRequestId(nativeResponse);
 
                 if (nativeResponse.IsSuccessStatusCode)
                 {
@@ -271,7 +273,7 @@ namespace Repositories.GraphGroups
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Fetched first page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                Message = $"From first page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
                 RunId = runId
             });
 
@@ -282,9 +284,14 @@ namespace Repositories.GraphGroups
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+            string requestId = string.Empty;
+            string clientRequestId = Guid.NewGuid().ToString();
 
             await retryPolicy.ExecuteAsync(async () =>
             {
+                SetCustomActivityProperty("RunId", Convert.ToString(runId));
+                SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
+
                 var nativeResponseHandler = new NativeResponseHandler();
                 var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
@@ -308,6 +315,7 @@ namespace Repositories.GraphGroups
                                     DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                requestId = ExtractRequestId(nativeResponse);
 
                 if (nativeResponse.IsSuccessStatusCode)
                 {
@@ -323,7 +331,7 @@ namespace Repositories.GraphGroups
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Fetched next page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                Message = $"From subsequent page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
                 RunId = runId
             });
 
@@ -334,9 +342,14 @@ namespace Repositories.GraphGroups
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+            string requestId = string.Empty;
+            string clientRequestId = Guid.NewGuid().ToString();
 
             await retryPolicy.ExecuteAsync(async () =>
             {
+                SetCustomActivityProperty("RunId", Convert.ToString(runId));
+                SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
+
                 var nativeResponseHandler = new NativeResponseHandler();
                 var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
@@ -351,6 +364,7 @@ namespace Repositories.GraphGroups
                        });
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                requestId = ExtractRequestId(nativeResponse);
 
                 if (nativeResponse.IsSuccessStatusCode)
                 {
@@ -366,7 +380,7 @@ namespace Repositories.GraphGroups
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Fetched first page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                Message = $"From first page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
                 RunId = runId
             });
 
@@ -377,9 +391,14 @@ namespace Repositories.GraphGroups
         {
             var retryPolicy = GetRetryPolicy();
             var response = new GraphObjectResponse<DirectoryObjectCollectionResponse>();
+            string requestId = string.Empty;
+            string clientRequestId = Guid.NewGuid().ToString();
 
             await retryPolicy.ExecuteAsync(async () =>
             {
+                SetCustomActivityProperty("RunId", Convert.ToString(runId));
+                SetCustomActivityProperty("ClientRequestId", Convert.ToString(clientRequestId));
+
                 var nativeResponseHandler = new NativeResponseHandler();
                 var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
@@ -403,6 +422,7 @@ namespace Repositories.GraphGroups
                                     DirectoryObjectCollectionResponse.CreateFromDiscriminatorValue);
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+                requestId = ExtractRequestId(nativeResponse);
 
                 if (nativeResponse.IsSuccessStatusCode)
                 {
@@ -418,7 +438,7 @@ namespace Repositories.GraphGroups
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Fetched next page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1}.",
+                Message = $"From subsequent page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
                 RunId = runId
             });
 
@@ -518,7 +538,6 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                SetCustomActivityProperty("RunId", Convert.ToString(runId));
                 var nativeResponseHandler = new NativeResponseHandler();
                 var groupOwnersResponse = new DirectoryObjectCollectionResponse();
 
@@ -583,9 +602,20 @@ namespace Repositories.GraphGroups
             if(string.IsNullOrEmpty(propertyName) || string.IsNullOrEmpty(value)) return;
             var activity = Activity.Current;
             if (activity == null) return;
-            if (activity.GetTagItem("RunId") == null)
-                activity.SetTag("RunId", value);
-            activity.AddBaggage("RunId", value);
+            if (activity.GetTagItem(propertyName) == null)
+                activity.SetTag(propertyName, value);
+            activity.AddBaggage(propertyName, value);
+        }
+
+        private static string? ExtractRequestId(HttpResponseMessage httpResponse)
+        {
+            string requestId = null;
+            if (httpResponse.Headers.TryGetValues("request-id", out var requestIds))
+            {
+                requestId = requestIds.FirstOrDefault();
+            }
+
+            return requestId;
         }
     }
 }

@@ -10,7 +10,6 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mail;
 using System;
-using System.Net.Http;
 using System.Runtime.CompilerServices;
 
 namespace Common.DependencyInjection
@@ -19,25 +18,9 @@ namespace Common.DependencyInjection
     {
         public static IServiceCollection AddGraphAPIClient(this IServiceCollection services)
         {
-            services.AddTransient<TransitiveMembersLoggingHandler>();
-            services.AddHttpClient("GraphWithTransitiveLogging")
-                // Order is outermost first; factory appends SocketsHttpHandler automatically
-                .AddHttpMessageHandler<TransitiveMembersLoggingHandler>();
-
             services.AddSingleton((services) =>
             {
                 var tokenCredential = CreateGraphServiceClient(services);
-                var configuration = services.GetRequiredService<IConfiguration>();
-                var enableTransitiveLogging = configuration.GetValue<bool>("GroupMembershipObtainer:EnableTransitiveMembersLogging");
-
-                if (enableTransitiveLogging)
-                {
-                    var loggingRepo = services.GetService<ILoggingRepository>();
-                    var httpClientFactory = services.GetRequiredService<IHttpClientFactory>();
-                    var httpClient = httpClientFactory.CreateClient("GraphWithTransitiveLogging");
-                    return new GraphServiceClient(httpClient, tokenCredential);
-                }
-
                 return new GraphServiceClient(tokenCredential);
             });
 
