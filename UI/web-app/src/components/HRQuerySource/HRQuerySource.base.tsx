@@ -240,7 +240,12 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
         words.splice(1); // Remove everything after attribute
         words.push("NOT", "IN");
         if (result.value) {
-          words.push(result.value);
+          // Wrap value in parentheses if not already wrapped
+          let valueToAdd = result.value;
+          if (!(valueToAdd.startsWith('(') && valueToAdd.endsWith(')'))) {
+            valueToAdd = `(${valueToAdd})`;
+          }
+          words.push(valueToAdd);
         }
         if (result.andOr !== '') { 
           words.push(result.andOr); 
@@ -274,6 +279,7 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
           // Normal single-word to single-word operator change
           words[1] = newOperator;
           if (prevOperator === "IN" && newOperator !== "IN") {
+            // Switching FROM "IN" to a non-IN operator
             words.splice(2);
             if (result.value) {
               // For non-IN operators, remove parentheses from values if they exist
@@ -288,6 +294,20 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
             }
             if (result.andOr !== '') { 
               words.push(result.andOr); 
+            }
+          } else if (newOperator === "IN" && prevOperator !== "IN") {
+            // Switching TO "IN" from a non-IN operator
+            words.splice(2);
+            if (result.value) {
+              // Wrap value in parentheses if not already wrapped
+              let valueToAdd = result.value;
+              if (!(valueToAdd.startsWith('(') && valueToAdd.endsWith(')'))) {
+                valueToAdd = `(${valueToAdd})`;
+              }
+              words.push(valueToAdd);
+            }
+            if (result.andOr !== '') {
+              words.push(result.andOr);
             }
           }
         }
