@@ -8,8 +8,8 @@ namespace Hosts.JobScheduler
 {
     public class DistributeJobsRequest
     {
-        public List<DistributionSyncJob> JobsToDistribute;
-        public int StartTimeDelayMinutes;
-        public int DelayBetweenSyncsSeconds;
+        public List<DistributionSyncJob> JobsToDistribute { get; set; }
+        public int StartTimeDelayMinutes { get; set; }
+        public int DelayBetweenSyncsSeconds { get; set; }
     }
 }
