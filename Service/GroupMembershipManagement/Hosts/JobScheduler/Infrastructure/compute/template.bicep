@@ -115,22 +115,6 @@ module appPackageContainerNameReader 'keyVaultReader.bicep' = {
   ]
 }
 
-var activityFunctionSettings = {
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.PipelineInvocationStarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.StatusCallbackOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.UpdateJobsSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.BatchUpdateJobsFunction.Disabled': 0
-  'AzureWebJobs.CheckJobSchedulerStatusFunction.Disabled': 0
-  'AzureWebJobs.DistributeJobsFunction.Disabled': 0
-  'AzureWebJobs.GetJobsSegmentedFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.PostCallbackFunction.Disabled': 0
-  'AzureWebJobs.ResetJobsFunction.Disabled': 0
-}
-
 module existingLogAnalyticsWorkspace 'logAnalyticsWorkspace.bicep' = {
   name: 'existingLogAnalyticsWorkspace-js'
   scope: resourceGroup('${solutionAbbreviation}-data-${environmentAbbreviation}')
@@ -148,7 +132,7 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    appSettings: union(appSettings, activityFunctionSettings)
+    appSettings: appSettings
     userManagedIdentities: {}
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
     prereqsKeyVaultName: prereqsKeyVaultName
@@ -158,8 +142,7 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
     appPackageContainerName: appPackageContainerNameReader.outputs.value
-    maxInstanceCount: 40
-    instanceMemoryMB: 2048
+    instanceMemoryMB: 4096
     featureFlags: featureFlags
   }
   dependsOn: [
