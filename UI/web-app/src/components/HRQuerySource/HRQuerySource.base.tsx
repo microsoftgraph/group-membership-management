@@ -1086,11 +1086,41 @@ const getOptions = (
 
   const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (groupingEnabled && item && index != null) {
+      const currentItem = items[index];
+      const prevOperator = currentItem?.equalityOperator;
+      const newOperator = item.text;
+      const currentValue = currentItem?.value || '';
+      
+      const isNewIn = newOperator === "IN" || newOperator === "NOT IN";
+      const isPrevIn = prevOperator === "IN" || prevOperator === "NOT IN";
+      
+      let convertedValue = currentValue;
+      
+      if (isNewIn && !isPrevIn && currentValue) {
+        if (!(currentValue.startsWith('(') && currentValue.endsWith(')'))) {
+          convertedValue = `(${currentValue})`;
+        }
+      } else if (!isNewIn && isPrevIn && currentValue) {
+        if (currentValue.startsWith('(') && currentValue.endsWith(')')) {
+          let cleanValue = currentValue.slice(1, -1);
+          const firstValue = cleanValue.split(',')[0].trim();
+          convertedValue = firstValue;
+        }
+      }
+      
       const updateParams: UpdateParam = {
         property: "equalityOperator",
         newValue: item.text
       };
       updateGroupItem(updateParams, index, groupIndex, childIndex);
+      
+      if (convertedValue !== currentValue) {
+        const valueUpdateParams: UpdateParam = {
+          property: "value",
+          newValue: convertedValue
+        };
+        updateGroupItem(valueUpdateParams, index, groupIndex, childIndex);
+      }
       return;
     }
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
