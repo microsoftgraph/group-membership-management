@@ -27,6 +27,8 @@ module jobSchedulerStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'jobSchedulerStorageAccountProd'
+    appPackageContainerSettingName: 'jobSchedulerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
