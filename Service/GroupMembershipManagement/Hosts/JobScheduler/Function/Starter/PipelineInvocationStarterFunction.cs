@@ -1,18 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.DurableTask.Client;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Net.Http;
+using System.Net;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace Hosts.JobScheduler
@@ -28,35 +28,36 @@ namespace Hosts.JobScheduler
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(PipelineInvocationStarterFunction))]
-        public async Task<HttpResponseMessage> HttpStart(
-            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestMessage req,
-            [DurableClient] IDurableOrchestrationClient starter)
+        [Function(nameof(PipelineInvocationStarterFunction))]
+        public async Task<HttpResponseData> HttpStart(
+            [HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req,
+            [DurableClient] DurableTaskClient starter)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function started" }, VerbosityLevel.DEBUG);
 
-            var requestContent = await req.Content.ReadAsStringAsync();
+            var requestContent = await new StreamReader(req.Body).ReadToEndAsync();
             var requestBody = JsonSerializer.Deserialize<JsonElement>(requestContent);
             var delayForDeploymentInMinutes = requestBody.GetProperty("DelayForDeploymentInMinutes").GetInt32();
 
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction),
+            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction),
                 new OrchestratorRequest
                 {
                     StartTimeDelayMinutes = delayForDeploymentInMinutes
                 });
-            var response = starter.CreateCheckStatusResponse(req, instanceId);
-            var responseDict = JsonSerializer.Deserialize<Dictionary<string, string>>(await response.Content.ReadAsStringAsync());
-            var statusQueryGetUri = responseDict.GetValueOrDefault("statusQueryGetUri");
+            
+            var statusQueryGetUri = $"{req.Url.Scheme}://{req.Url.Authority}/runtime/webhooks/durabletask/instances/{instanceId}";
 
             if (req.Headers.Contains("PlanUrl"))
-                await starter.StartNewAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
+                await starter.ScheduleNewOrchestrationInstanceAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function completed" }, VerbosityLevel.DEBUG);
 
+            var response = req.CreateResponse(HttpStatusCode.Accepted);
+            await response.WriteAsJsonAsync(new { instanceId, statusQueryGetUri });
             return response;
         }
 
-        private StatusCallbackOrchestratorRequest GetCallbackRequest(HttpRequestMessage req, string statusUrl)
+        private StatusCallbackOrchestratorRequest GetCallbackRequest(HttpRequestData req, string statusUrl)
         {
             var url = req.Headers.GetValues("PlanUrl").FirstOrDefault("NULL");
             var projectId = req.Headers.GetValues("ProjectId").FirstOrDefault("NULL");

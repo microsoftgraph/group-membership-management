@@ -1,13 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using System;
 using System.Threading.Tasks;
 using Repositories.Contracts;
-using System.Threading;
-using Repositories.Contracts.InjectConfig;
 
 namespace Hosts.JobScheduler
 {
@@ -20,8 +18,8 @@ namespace Hosts.JobScheduler
         { 
         }
 
-        [FunctionName(nameof(StatusCallbackOrchestratorFunction))]
-        public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(StatusCallbackOrchestratorFunction))]
+        public async Task RunStatusCallbackOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             await context.CallActivityAsync(nameof(LoggerFunction),
                 new LoggerRequest
@@ -39,14 +37,14 @@ namespace Hosts.JobScheduler
             };
 
             
-            await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(INITIAL_DELAY_SECONDS), CancellationToken.None);
+            await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(INITIAL_DELAY_SECONDS));
 
             var jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);   
 
             while (!jobSchedulerCompleted)
             {
                 DateTime dueTime = context.CurrentUtcDateTime.AddMinutes(WAIT_TIME_BETWEEN_STATUSCHECK_MINUTES);
-                await context.CreateTimer(dueTime, CancellationToken.None);
+                await context.CreateTimer(dueTime);
 
                 jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);
             }

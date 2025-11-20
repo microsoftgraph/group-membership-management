@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -24,7 +23,7 @@ namespace Hosts.JobScheduler
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
-        [FunctionName(nameof(CheckJobSchedulerStatusFunction))]
+        [Function(nameof(CheckJobSchedulerStatusFunction))]
         public async Task<bool> CheckStatusAsync([ActivityTrigger] CheckJobSchedulerStatusRequest request)
         {
             var completed = false;
@@ -41,7 +40,7 @@ namespace Hosts.JobScheduler
             var status = responseDict.GetValueOrDefault("runtimeStatus").ToString();
 
 
-            completed = status == OrchestrationRuntimeStatus.Completed.ToString();
+            completed = status == "Completed";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CheckJobSchedulerStatusFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
 
