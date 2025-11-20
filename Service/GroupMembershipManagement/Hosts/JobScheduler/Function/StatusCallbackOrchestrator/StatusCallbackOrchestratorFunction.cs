@@ -6,6 +6,7 @@ using Microsoft.DurableTask;
 using System;
 using System.Threading.Tasks;
 using Repositories.Contracts;
+using System.Threading;
 
 namespace Hosts.JobScheduler
 {
@@ -14,8 +15,8 @@ namespace Hosts.JobScheduler
         private int INITIAL_DELAY_SECONDS = 20;
         private int WAIT_TIME_BETWEEN_STATUSCHECK_MINUTES = 1;
 
-        public StatusCallbackOrchestratorFunction() 
-        { 
+        public StatusCallbackOrchestratorFunction()
+        {
         }
 
         [Function(nameof(StatusCallbackOrchestratorFunction))]
@@ -36,15 +37,15 @@ namespace Hosts.JobScheduler
                 StatusUrl = statusUrl
             };
 
-            
-            await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(INITIAL_DELAY_SECONDS));
 
-            var jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);   
+            await context.CreateTimer(context.CurrentUtcDateTime.AddSeconds(INITIAL_DELAY_SECONDS), CancellationToken.None);
+
+            var jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);
 
             while (!jobSchedulerCompleted)
             {
                 DateTime dueTime = context.CurrentUtcDateTime.AddMinutes(WAIT_TIME_BETWEEN_STATUSCHECK_MINUTES);
-                await context.CreateTimer(dueTime);
+                await context.CreateTimer(dueTime, CancellationToken.None);
 
                 jobSchedulerCompleted = await context.CallActivityAsync<bool>(nameof(CheckJobSchedulerStatusFunction), statusRequest);
             }
