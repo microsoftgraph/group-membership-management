@@ -29,27 +29,7 @@ param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${e
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'JobScheduler'),0,8)}'
 
 @description('Service plan sku')
-@allowed([
-  'D1'
-  'F1'
-  'B1'
-  'B2'
-  'B3'
-  'S1'
-  'S2'
-  'S3'
-  'P1'
-  'P2'
-  'P3'
-  'P1V2'
-  'P2V2'
-  'P3V2'
-  'I1'
-  'I2'
-  'I3'
-  'Y1'
-])
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -58,15 +38,7 @@ param location string
 param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}'
 
 @description('Function app kind.')
-@allowed([
-  'functionapp'
-  'linux'
-  'container'
-])
-param functionAppKind string = 'functionapp'
-
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+param functionAppKind string = 'functionapp,linux'
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -100,7 +72,6 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
 
@@ -108,9 +79,8 @@ var commonSettings = {
   WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
   WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
   SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
+  FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
   FUNCTIONS_EXTENSION_VERSION: '~4'
-  FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
 
 var appSettings = {
@@ -137,6 +107,16 @@ module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-JobScheduler'
   params: {
     value: dataKeyVault.getSecret('jobSchedulerStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-JobScheduler'
+  params: {
+    value: dataKeyVault.getSecret('jobSchedulerAppPackageContainerProd')
   }
   dependsOn: [
     dataKeyVault
@@ -176,27 +156,22 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    dataKeyVaultName: dataKeyVaultName
-    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: commonSettings
+    appSettings: union(commonSettings, appSettings, activityFunctionSettings)
+    userManagedIdentities: {}
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
-    featureFlags: featureFlags
     prereqsKeyVaultName: prereqsKeyVaultName
     prereqsKeyVaultResourceGroup: prereqsKeyVaultResourceGroup
+    dataKeyVaultName: dataKeyVaultName
+    dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    maxInstanceCount: 40
+    instanceMemoryMB: 2048
+    featureFlags: featureFlags
   }
   dependsOn: [
     servicePlanTemplate
     existingLogAnalyticsWorkspace
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-03-01' = {
-  name: '${functionAppName}-JobScheduler/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, activityFunctionSettings)
-  dependsOn: [
-    functionAppTemplate_JobScheduler
   ]
 }
