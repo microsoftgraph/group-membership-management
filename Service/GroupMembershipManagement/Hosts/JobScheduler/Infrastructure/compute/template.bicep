@@ -75,14 +75,6 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-}
-
 var appSettings = {
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
@@ -156,7 +148,7 @@ module functionAppTemplate_JobScheduler 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    appSettings: union(commonSettings, appSettings, activityFunctionSettings)
+    appSettings: union(appSettings, activityFunctionSettings)
     userManagedIdentities: {}
     logAnalyticsWorkspaceId: existingLogAnalyticsWorkspace.outputs.workspaceId
     prereqsKeyVaultName: prereqsKeyVaultName
