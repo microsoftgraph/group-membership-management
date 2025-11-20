@@ -3,9 +3,8 @@
   "Values": {
     "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
-    "FUNCTIONS_EXTENSION_VERSION": "~4",
-    "FUNCTIONS_INPROC_NET8_ENABLED": "1",
+    "AzureWebJobsStorage__credential": "managedidentity",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "ConnectionStrings:JobsContext": "",
