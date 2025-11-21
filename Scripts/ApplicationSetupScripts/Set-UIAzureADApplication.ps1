@@ -1,4 +1,3 @@
-
 $ErrorActionPreference = "Stop"
 <#
 .SYNOPSIS
@@ -34,358 +33,471 @@ The application is going to be created in this tenant and its settings stored in
 If you are testing GMM using a dev tenant, but your Azure Resources exist in a Subscription tied to your organization's tenant, you will need to provide both of these tenant ids.
 If you are deploying everything in your organization's tenant, you do not need to provide this value.
 
-.PARAMETER CertificateName
-Certificate name
+
+.PARAMETER SaveToKeyVault
+When set to true, the application-related secrets will be saved to the key vault.
+Optional
+
+.PARAMETER SkipIfApplicationExists
+When set to true, the script will skip application creation if it already exists.
 Optional
 
 .PARAMETER Clean
 When re-running the script, this flag is used to indicate if we need to recreate the application or use the existing one.
 
+.PARAMETER CreateNewSecret
+When set to true, a new application secret will be created and stored. When false, secret creation is skipped.
+Optional
+
 .EXAMPLE
 # these are arbitrary guids and subscription names, you'll have to change them.
 Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
-							-SolutionAbbreviation "<solution-abbreviation>" `
-							-EnvironmentAbbreviation "<environment-abbreviation>" `
-							-TenantId "<tenant-id>" `
-							-DevTenantId "<dev-tenant-id>" `
-							-TenantDomain "<tenant-domain>" `
-							-SharepointDomain "<sharepoint-domain>" `
-							-SkipPrompts $true `
-							-Clean $false `
-							-Verbose
+                            -SolutionAbbreviation "<solution-abbreviation>" `
+                            -EnvironmentAbbreviation "<environment-abbreviation>" `
+                            -TenantId "<tenant-id>" `
+                            -DevTenantId "<dev-tenant-id>" `
+                            -TenantDomain "<tenant-domain>" `
+                            -SharepointDomain "<sharepoint-domain>" `
+                            -Clean $false `
+                            -Verbose
 #>
 
 function Set-UIAzureADApplication {
-	[CmdletBinding()]
-	param(
-		[Parameter(Mandatory = $True)]
-		[string] $SubscriptionName,
-		[Parameter(Mandatory = $True)]
-		[string] $SolutionAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[Guid] $TenantId,
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $True)]
+        [string] $SolutionAbbreviation,
+        [Parameter(Mandatory = $True)]
+        [string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory = $True)]
+        [Guid] $AppTenantId,
+        [Parameter(Mandatory = $False)]
+        [Guid] $KeyVaultTenantId,
 		[Parameter(Mandatory = $False)]
-		[System.Nullable[Guid]] $DevTenantId,
-		[Parameter(Mandatory = $False)]
-		[string] $CertificateName,
-		[Parameter(Mandatory = $False)]
-		[string] $TenantDomain,
-		[Parameter(Mandatory = $False)]
-		[string] $SharepointDomain,
-		[Parameter(Mandatory = $False)]
-		[boolean] $Clean = $False,
-		[Parameter(Mandatory = $False)]
-		[boolean] $SaveToKeyVault = $True,
-		[Parameter(Mandatory = $False)]
-		[boolean] $SkipPrompts = $False,
-		[Parameter(Mandatory = $False)]
-		[boolean] $SkipIfApplicationExists = $True,
-		[Parameter(Mandatory = $False)]
-		[string] $ErrorActionPreference = $Stop
-	)
-	Write-Verbose "Set-UIAzureADApplication starting..."
+        [string] $SubscriptionName,
+		[AllowNull()]
+        [Parameter(Mandatory = $False)]
+        [string] $TenantDomain,
+		[AllowNull()]
+        [Parameter(Mandatory = $False)]
+        [string] $SharepointDomain,
+        [Parameter(Mandatory = $False)]
+        [boolean] $Clean = $False,
+        [Parameter(Mandatory = $False)]
+        [boolean] $SaveToKeyVault = $True,
+        [Parameter(Mandatory = $False)]
+        [boolean] $SkipIfApplicationExists = $True,
+        [Parameter(Mandatory = $False)]
+        [boolean] $CreateNewSecret = $True,
+        [Parameter(Mandatory = $False)]
+        [string] $ErrorActionPreference = $Stop
+    )
+    Write-Host "Set-UIAzureADApplication starting..."
 
-	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
-
-	if ($global:SkipModuleInstall -ne $true) {
-		. ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
-    	Install-AzModuleIfNeeded
-	}
-
-	$context = Get-AzContext
-	$currentTenantId = $context.Tenant.Id
-
-	if($null -eq $DevTenantId) {
-		$DevTenantId = $TenantId
-		Write-Host "Please sign in to your tenant."
-	} else {
-		Write-Host "Please sign in to your dev tenant."
-	}
-
-	if($currentTenantId -ne $DevTenantId) {
-		Connect-AzAccount -Tenant $DevTenantId
-	}
-
-	#region Delete Application / Service Principal if they already exist
-	$uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
-	$uiApp = (Get-AzADApplication -DisplayName $uiAppDisplayName)
-	$updatedAPIPermissions = $false
-
-	if ($null -ne $uiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
-		Write-Host "Application $uiAppDisplayName already exists. Skipping creation..."
-		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
-	}
-
-	if ($Clean) {
-		$uiApp | ForEach-Object {
-
-			$displayName = $_.DisplayName;
-			$objectId = $_.Id;
-			try {
-				Remove-AzADApplication -ObjectId $objectId
-				Write-Host "Removed $displayName..." -ForegroundColor Green;
-				$uiApp = $null
-			}
-			catch {
-				Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
-			}
+    # Validate required parameters when SaveToKeyVault is enabled
+	if ($SaveToKeyVault -eq $true) {
+		if ([string]::IsNullOrWhiteSpace($SubscriptionName)) {
+			throw "SubscriptionName parameter is required when SaveToKeyVault is set to true."
 		}
-	}
-	#endregion
-
-	#region Create Appplication
-	$requiredResourceAccess = @{
-		ResourceAppId  = "00000003-0000-0000-c000-000000000000";
-		ResourceAccess = @(
-			@{
-				Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"; # User.Read
-				Type = "Scope"
-			},
-			@{
-				Id   = "b340eb25-3456-403f-be2f-af7a0d370277"; # User.ReadBasic.All
-				Type = "Scope"
-			}
-		)
-	}
-	$signInAudience = "AzureADMyOrg"
-	$enableAccessTokenIssuance = $true
-	$enableIdTokenIssuance = $true
-
-	if ($null -eq $uiApp) {
-		Write-Verbose "Creating Azure AD app $uiAppDisplayName"
-
-		if ($EnvironmentAbbreviation -eq "prodv2") {
-			$url = "https://$SolutionAbbreviation.microsoft.com"
-
-		}
-		else {
-			$url = "https://$EnvironmentAbbreviation.$SolutionAbbreviation.microsoft.com"
-		}
-
-		$replyUrls = @("http://localhost:3000", $url)
-
-		$uiApp = New-AzADApplication	-DisplayName $uiAppDisplayName `
-										-SignInAudience $signInAudience `
-										-SPARedirectUri $replyUrls `
-										-RequiredResourceAccess $requiredResourceAccess
-		
-		$updatedAPIPermissions = $true
-
-		New-AzADServicePrincipal -ApplicationId $uiApp.AppId
-
-		$webSettings = $uiApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
-
-		Update-AzADApplication  -ObjectId $uiApp.Id `
-								-IdentifierUris "api://$($uiApp.AppId)" `
-								-DisplayName $uiAppDisplayName `
-								-Web $webSettings `
-								-SignInAudience $signInAudience `
-								-AvailableToOtherTenants $false
-	}
-	else {
-
-		Write-Verbose "Azure AD app $uiAppDisplayName already exists."
-		Write-Verbose "Checking if app needs update..."
-
-		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppNeedsUpdate.ps1')
-		if (Test-AppNeedsUpdate -AppObject $uiApp `
-							-ExpectedRequiredResourceAccess $requiredResourceAccess `
-							-ExpectedSignInAudience $signInAudience `
-							-ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
-							-ExpectedEnableIdTokenIssuance $enableIdTokenIssuance) {
-
-			Write-Verbose "App $uiAppDisplayName needs update."
-
-			Write-Verbose "Updating Azure AD app $uiAppDisplayName"
-
-			$webSettings = $uiApp.Web
-			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
-			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
-
-			Update-AzADApplication	-ObjectId $($uiApp.Id) `
-									-DisplayName $uiAppDisplayName `
-									-RequiredResourceAccess $requiredResourceAccess `
-									-SignInAudience $signInAudience `
-									-Web $webSettings
-
-			$updatedAPIPermissions = $true
-
-			Write-Verbose "Finished updating Azure AD app $uiAppDisplayName"
-		}
-		else {
-			Write-Verbose "No update needed for app $uiAppDisplayName."
+		if ([string]::IsNullOrWhiteSpace($KeyVaultTenantId)) {
+			throw "KeyVaultTenantId parameter is required when SaveToKeyVault is set to true."
 		}
 	}
 
-	Start-Sleep -Seconds 30
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
-	if($SaveToKeyVault -eq $false) {
-		Write-Verbose "Set-UIAzureADApplication completed."
-		return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
+    if ($global:SkipModuleInstall -ne $true) {
+        . ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
+        Install-MSGraphIfNeeded
+
+        if ($SaveToKeyVault -eq $true) {
+            . ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
+            Install-AzModuleIfNeeded
+        }
+    }
+
+    if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
+        Connect-AzAccount -Tenant $KeyVaultTenantId
+		Set-AzContext -SubscriptionName $SubscriptionName
+    }
+
+    if ($global:SkipMsGraphLogin -ne $true) {
+        # Disconnect any existing session
+        Disconnect-MgGraph -ErrorAction SilentlyContinue 
+
+        $requiredScopes = @(
+            "Application.ReadWrite.All", 
+            "AppRoleAssignment.ReadWrite.All"
+        )
+        
+        # Connect to Microsoft Graph with required scopes for the target tenant
+        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        
+        Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
+    }
+
+    #region Delete Application / Service Principal if they already exist
+    $uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+    $uiApps = Get-MgApplication -Filter "displayName eq '$uiAppDisplayName'"
+    
+    # Validate that we don't have multiple applications with the same name
+    if($null -ne $uiApps -and $uiApps.Count -gt 1) {
+        Write-Error "Found $($uiApps.Count) applications with the name '$uiAppDisplayName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+        throw "Multiple applications found with the same display name: $uiAppDisplayName"
+    }
+    
+    # Convert to single application object if we have exactly one
+    $uiApp = if($null -ne $uiApps -and $uiApps.Count -eq 1) { $uiApps } else { $null }
+    $updatedAPIPermissions = $false
+
+    if ($null -ne $uiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
+        Write-Host "Application $uiAppDisplayName already exists. Skipping creation..."
+        return @{ ApplicationId = $uiApp.AppId; TenantId = $AppTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
+    }
+
+    if ($Clean -eq $true -and $null -ne $uiApp) {
+        $displayName = $uiApp.DisplayName;
+        $objectId = $uiApp.Id;
+        try {
+            Remove-MgApplication -ApplicationId $objectId
+            Write-Host "Removed $displayName..." -ForegroundColor Green;
+            $uiApp = $null
+        }
+        catch {
+            Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
+            throw
+        }
+    }
+    #endregion
+
+    #region Create Application
+    if ($null -eq $uiApp) {
+        Write-Host "Creating Azure AD app $uiAppDisplayName"
+
+        $appCreationParameters = New-UIValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation
+
+        # Create application body for Microsoft Graph
+        $uiApp = New-MgApplication -BodyParameter $appCreationParameters
+        $updatedAPIPermissions = $true
+        
+        New-MgServicePrincipal -AppId $uiApp.AppId
+
+        # Update with identifier URI
+        $updatedAppParameters = New-UIValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -AppId $uiApp.AppId
+
+        Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $updatedAppParameters
+        Write-Host "Created Azure AD app $uiAppDisplayName"
+    }
+    else {
+        Write-Host "Azure AD app $uiAppDisplayName already exists."
+        Write-Host "Checking if app needs update..."
+
+        $expectedAppConfig = New-UIValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -AppId $uiApp.AppId
+
+        . ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
+        $needsUpdate = -not (Test-AppMatchesConfiguration -AppObject $uiApp -ExpectedConfiguration $expectedAppConfig)
+		return
+        if ($needsUpdate) {
+            Write-Host "App $uiAppDisplayName needs update. Updating..."
+            Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $expectedAppConfig
+            $updatedAPIPermissions = $true
+            Write-Host "Finished updating Azure AD app $uiAppDisplayName"
+        }
+        else {
+            Write-Host "No update needed for app $uiAppDisplayName."
+        }
+    }
+
+    if ($updatedAPIPermissions -eq $true) {
+        Write-Host "Waiting 15 seconds for Azure AD replication..."
+        Start-Sleep -Seconds 15
+        Write-Host "Done waiting for Azure AD replication."
+    }
+
+	if ($SaveToKeyVault -eq $true) {
+		Set-UIKeyVaultSecrets `
+			-SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-AppTenantId $AppTenantId `
+			-UIApplicationId $uiApp.AppId `
+			-TenantDomain $TenantDomain `
+			-SharepointDomain $SharepointDomain `
+			-CreateNewSecret $CreateNewSecret
 	}
 
-	Set-UIKeyVaultSecrets -SubscriptionName $SubscriptionName `
-						  -SolutionAbbreviation $SolutionAbbreviation `
-						  -EnvironmentAbbreviation $EnvironmentAbbreviation `
-						  -TenantId $TenantId `
-						  -UIApplicationId $uiApp.AppId `
-						  -DevTenantId $DevTenantId `
-						  -CertificateName $CertificateName `
-						  -SkipPrompts $SkipPrompts
+    # Disconnect from Microsoft Graph before returning
+    if ($global:SkipMsGraphLogin -ne $true) {
+		Disconnect-MgGraph -ErrorAction SilentlyContinue
 
-	return @{ ApplicationId = $uiApp.AppId; TenantId = $DevTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
-	Write-Verbose "Set-UIAzureADApplication completed."
+		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
+	}
+
+    return @{ ApplicationId = $uiApp.AppId; TenantId = $AppTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
+    Write-Host "Set-UIAzureADApplication completed."
 }
 
 function Set-UIKeyVaultSecrets {
-	[CmdletBinding()]
-	param(
-		[Parameter(Mandatory = $True)]
-		[string] $SubscriptionName,
-		[Parameter(Mandatory = $True)]
-		[string] $SolutionAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $True)]
-		[Guid] $TenantId,
-		[Parameter(Mandatory = $True)]
-		[Guid] $UIApplicationId,
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $True)]
+        [string] $SolutionAbbreviation,
+        [Parameter(Mandatory = $True)]
+        [string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory = $True)]
+        [Guid] $AppTenantId,
+        [Parameter(Mandatory = $True)]
+        [Guid] $UIApplicationId,
+		[AllowNull()]
 		[Parameter(Mandatory = $False)]
-		[System.Nullable[Guid]] $DevTenantId,
+		[string] $TenantDomain = $null,
+		[AllowNull()]
 		[Parameter(Mandatory = $False)]
-		[string] $CertificateName,
+		[string] $SharepointDomain = $null,
+        [Parameter(Mandatory = $False)]
+        [boolean] $CreateNewSecret = $True,
+		[AllowNull()]
 		[Parameter(Mandatory = $False)]
-		[boolean] $SkipPrompts = $False,
-		[Parameter(Mandatory = $False)]
-		[string] $ErrorActionPreference = $Stop
-	)
+		[string] $AppSecret = $null,
+        [Parameter(Mandatory = $False)]
+        [string] $ErrorActionPreference = $Stop
+    )
 
-		$scriptsDirectory = Split-Path $PSScriptRoot -Parent
-		. ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
-		# These need to go into the key vault
-		$uiAppTenantId = $DevTenantId;
-		$uiAppClientId = $UIApplicationId
+    # These need to go into the key vault
+    $uiAppTenantId = $AppTenantId;
+    $uiAppClientId = $UIApplicationId
+    $uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
 
-		# Create new secret
-		$endDate = [System.DateTime]::Now.AddYears(1)
-		$uiAppClientSecret = Get-AzADApplication -ApplicationId $uiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
+    # Create new secret if requested
+    $uiAppClientSecret = $AppSecret
+    if ($CreateNewSecret -eq $true) {
+        $endDate = [System.DateTime]::Now.AddYears(1)
+        $passwordCredential = @{
+            displayName = "GMM Generated Secret"
+            startDateTime = [System.DateTime]::Now
+            endDateTime = $endDate
+        }
+        $appObjectId = (Get-MgApplication -Filter "appId eq '$uiAppClientId'").Id
+        $uiAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+        Write-Host "Created new application secret for app $uiAppClientId"
+    } else {
+        Write-Host "Skipping secret creation as CreateNewSecret is set to false"
+    }
 
-		Write-Host (Get-AzContext)
+    $keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $keyVault = Get-AzKeyVault -VaultName $keyVaultName
 
-		if ($TenantId -ne $DevTenantId) {
-			Write-Host "Please sign in to your primary tenant."
-			Connect-AzAccount -Tenant $TenantId
-		}
+    if ($null -eq $keyVault) {
+        throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
+    }
 
-		Set-AzContext -Subscription $SubscriptionName
+    # Store Application (client) ID in KeyVault
+    $uiAppIdKeyVaultSecretName = "uiAppId"
 
-		$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-		$keyVault = Get-AzKeyVault -VaultName $keyVaultName
+    Write-Host "UI application (client) ID is $uiAppClientId"
+	$uiAppIdSecret = New-Object System.Security.SecureString
+	$uiAppClientId.ToString().ToCharArray() | ForEach-Object { $uiAppIdSecret.AppendChar($_) }
 
-		if ($null -eq $keyVault) {
-			throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."
-		}
+    Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+                        -ResourceGroup $keyVault.ResourceGroupName `
+                        -SecretName $uiAppIdKeyVaultSecretName `
+                        -SecretValue $uiAppIdSecret
 
-		# Store Application (client) ID in KeyVault
-		$uiAppIdKeyVaultSecretName = "uiAppId"
+    Write-Host "$uiAppIdKeyVaultSecretName added to vault for $uiAppDisplayName."
 
-		Write-Verbose "UI application (client) ID is $uiAppClientId"
-		if($SkipPrompts) {
-			$uiAppIdSecret = New-Object System.Security.SecureString
-			$uiAppClientId.ToString().ToCharArray() | ForEach-Object { $uiAppIdSecret.AppendChar($_) }
-		} else {
-			$uiAppIdSecret = Read-Host -AsSecureString -Prompt "Please take the UI application ID from above and paste it here"
-		}
+    # Store Application secret in KeyVault (only if a new secret was created)
+    if (-not [string]::IsNullOrEmpty($uiAppClientSecret)) {
+        $uiAppClientSecretName = "uiPasswordCredentialValue"
 
-		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.ResourceGroupName `
-							-SecretName $uiAppIdKeyVaultSecretName `
-							-SecretValue $uiAppIdSecret
+        Write-Host "Storing UI application client secret in KeyVault"
+        $uiPasswordCredentialValue = New-Object System.Security.SecureString
+        $uiAppClientSecret.ToCharArray() | ForEach-Object { $uiPasswordCredentialValue.AppendChar($_) }
 
-		Write-Verbose "$uiAppIdKeyVaultSecretName added to vault for $uiAppDisplayName."
+        Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+                            -ResourceGroup $keyVault.ResourceGroupName `
+                            -SecretName $uiAppClientSecretName `
+                            -SecretValue $uiPasswordCredentialValue
 
-		# Store Application secret in KeyVault
-		$uiAppClientSecretName = "uiPasswordCredentialValue"
+        Write-Host "$uiAppClientSecretName added to vault for $uiAppDisplayName."
+    } else {
+        Write-Host "Skipping application secret storage as no new secret was created"
+    }
 
-		Write-Verbose "UI application client secret is $($uiAppClientSecret.SecretText)"
-		if($SkipPrompts){
-			$uiPasswordCredentialValue = New-Object System.Security.SecureString
-			$uiAppClientSecret.SecretText.ToCharArray() | ForEach-Object { $uiPasswordCredentialValue.AppendChar($_) }
-		} else {
-			$uiPasswordCredentialValue = Read-Host -AsSecureString -Prompt "Please take the UI application client secret from above and paste it here"
-		}
+    # Store tenantID in KeyVault
+    $uiTenantSecretName = "uiTenantId"
 
-		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.ResourceGroupName `
-							-SecretName $uiAppClientSecretName `
-							-SecretValue $uiPasswordCredentialValue
+    Write-Host "UI tenant ID is $uiAppTenantId"
+    $uiTenantSecret = New-Object System.Security.SecureString
+    $uiAppTenantId.ToString().ToCharArray() | ForEach-Object { $uiTenantSecret.AppendChar($_) }
 
-		Write-Verbose "$uiAppClientSecretName added to vault for $uiAppDisplayName."
+    Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+                        -ResourceGroup $keyVault.ResourceGroupName `
+                        -SecretName $uiTenantSecretName `
+                        -SecretValue $uiTenantSecret
 
-		# Store tenantID in KeyVault
-		$uiTenantSecretName = "uiTenantId"
+    Write-Host "$uiTenantSecretName added to vault for $uiAppDisplayName."
 
-		Write-Verbose "UI tenant ID is $uiAppTenantId"
-		if($SkipPrompts){
-			$uiTenantSecret = New-Object System.Security.SecureString
-			$uiAppTenantId.ToString().ToCharArray() | ForEach-Object { $uiTenantSecret.AppendChar($_) }
-		} else {
-			$uiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the UI tenant ID from above and paste it here"
-		}
+    # Store tenantDomain in KeyVault
+    if($null -eq $TenantDomain) {
+        $TenantDomain = "not-set"
+    }
+    $tenantDomainSecretName = "tenantDomain"
 
-		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.ResourceGroupName `
-							-SecretName $uiTenantSecretName `
-							-SecretValue $uiTenantSecret
+    Write-Host "Tenant Domain is $TenantDomain"
+    $tenantDomainSecret = New-Object System.Security.SecureString
+    $TenantDomain.ToString().ToCharArray() | ForEach-Object { $tenantDomainSecret.AppendChar($_) }
 
-		Write-Verbose "$uiTenantSecretName added to vault for $uiAppDisplayName."
+    Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+                        -ResourceGroup $keyVault.ResourceGroupName `
+                        -SecretName $tenantDomainSecretName `
+                        -SecretValue $tenantDomainSecret
 
-		# Store tenantDomain in KeyVault
-		if($null -eq $TenantDomain) {
-			$TenantDomain = "not-set"
-		}
-		$tenantDomainSecretName = "tenantDomain"
+    Write-Host "$tenantDomainSecretName added to vault for UI Group Links."
 
-		Write-Verbose "Tenant Domain is $TenantDomain"
-		if($SkipPrompts){
-			$tenantDomainSecret = New-Object System.Security.SecureString
-			$TenantDomain.ToString().ToCharArray() | ForEach-Object { $tenantDomainSecret.AppendChar($_) }
-		} else {
-			$tenantDomainSecret = Read-Host -AsSecureString -Prompt "Please take the Tenant Domain from above and paste it here"
-		}
+    # Store sharepointDomain in KeyVault
+    if($null -eq $SharepointDomain) {
+        $SharepointDomain = "not-set"
+    }
+    $sharepointDomainSecretName = "sharepointDomain"
 
-		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.ResourceGroupName `
-							-SecretName $tenantDomainSecretName `
-							-SecretValue $tenantDomainSecret
+    Write-Host "SharePoint Domain is $SharepointDomain"
+    $sharepointDomainSecret = New-Object System.Security.SecureString
+    $SharepointDomain.ToString().ToCharArray() | ForEach-Object { $sharepointDomainSecret.AppendChar($_) }
 
-		Write-Verbose "$tenantDomainSecretName added to vault for UI Group Links."
+    Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+                        -ResourceGroup $keyVault.ResourceGroupName `
+                        -SecretName $sharepointDomainSecretName `
+                        -SecretValue $sharepointDomainSecret
 
-		# Store sharepointDomain in KeyVault
-		if($null -eq $SharepointDomain) {
-			$SharepointDomain = "not-set"
-		}
-		$sharepointDomainSecretName = "sharepointDomain"
+    Write-Host "$sharepointDomainSecretName added to vault for UI Group Links."
 
-		Write-Verbose "SharePoint Domain is $SharepointDomain"
-		if($SkipPrompts){
-			$sharepointDomainSecret = New-Object System.Security.SecureString
-			$SharepointDomain.ToString().ToCharArray() | ForEach-Object { $sharepointDomainSecret.AppendChar($_) }
-		} else {
-			$sharepointDomainSecret = Read-Host -AsSecureString -Prompt "Please take the SharePoint Domain from above and paste it here"
-		}
+    Write-Host "Set-UIAzureADApplication completed."
+}
 
-		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-							-ResourceGroup $keyVault.ResourceGroupName `
-							-SecretName $sharepointDomainSecretName `
-							-SecretValue $sharepointDomainSecret
+function New-UIValidationConfiguration {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SolutionAbbreviation,
+        
+        [Parameter(Mandatory = $true)]
+        [string] $EnvironmentAbbreviation,
+        
+        [AllowNull()]
+        [Parameter(Mandatory = $false)]
+        [string] $AppId  # If provided, will be used for identifier URI
+    )
+    
+    $uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+    
+    $replyUrls = @("http://localhost:3000")
+    
+    $requiredResourceAccess = @{
+        ResourceAppId  = "00000003-0000-0000-c000-000000000000"
+        ResourceAccess = @(
+            @{
+                Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d" # User.Read
+                Type = "Scope"
+            },
+            @{
+                Id   = "b340eb25-3456-403f-be2f-af7a0d370277" # User.ReadBasic.All
+                Type = "Scope"
+            }
+        )
+    }
+    
+    $config = @{
+        displayName            = $uiAppDisplayName
+        signInAudience         = "AzureADMyOrg"
+        requiredResourceAccess = @($requiredResourceAccess)
+        isFallbackPublicClient = $false
+        spa                    = @{
+            redirectUris = $replyUrls
+        }
+        web                    = @{
+            implicitGrantSettings = @{
+                enableAccessTokenIssuance = $true
+                enableIdTokenIssuance     = $true
+            }
+        }
+    }
+    
+    # Add identifier URIs if AppId is provided
+    if (-not [string]::IsNullOrWhiteSpace($AppId)) {
+        $config.identifierUris = @("api://$AppId")
+    } else {
+        $config.identifierUris = @()  # Empty array for initial creation
+    }
+    
+    return $config
+}
 
-		Write-Verbose "$sharepointDomainSecretName added to vault for UI Group Links."
+function Test-UIApplication {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SolutionAbbreviation,
+        
+        [Parameter(Mandatory = $true)]
+        [string] $EnvironmentAbbreviation
+    )
+    
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
+    
+    $uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+    
+    Write-Host "`n=== Validating Application: $uiAppDisplayName ===" -ForegroundColor Cyan
+    
+    # Step 1: Check if application exists
+    Write-Host "`n[1/3] Checking if application exists..." -ForegroundColor Yellow
+    $uiApps = Get-MgApplication -Filter "displayName eq '$uiAppDisplayName'" -All
+    
+    if ($null -eq $uiApps -or $uiApps.Count -eq 0) {
+        $errorMessage = "Application '$uiAppDisplayName' does not exist. Please run the setup script to create it or follow manual setup steps in the documentation."
+        Write-Host "❌ $errorMessage" -ForegroundColor Red
+        return $false
+    }
+    
+    Write-Host "✅ Application exists." -ForegroundColor Green
+    
+    # Step 2: Validate uniqueness
+    Write-Host "`n[2/3] Validating uniqueness..." -ForegroundColor Yellow
+    if ($uiApps.Count -gt 1) {
+        $errorMessage = "Found $($uiApps.Count) applications with the name '$uiAppDisplayName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+        Write-Host "❌ $errorMessage" -ForegroundColor Red
+        return $false
+    }
+    
+    $uiApp = $uiApps
+    Write-Host "   Application ID: $($uiApp.AppId)" -ForegroundColor Gray
+    Write-Host "   Object ID: $($uiApp.Id)" -ForegroundColor Gray
+    
+    # Step 3: Validate configuration
+    Write-Host "`n[3/3] Validating configuration..." -ForegroundColor Yellow
+    $expectedAppConfig = New-UIValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppId $uiApp.AppId
+    
+    $configurationMatches = Test-AppMatchesConfiguration -AppObject $uiApp `
+        -ExpectedConfiguration $expectedAppConfig `
+        -ShowDetailedReport
+    
+    if ($configurationMatches) {
+        Write-Host "✅ Configuration matches expected values." -ForegroundColor Green
+    } else {
+        Write-Host "❌ Configuration does not match expected values. Please review the configuration settings and make updates as needed." -ForegroundColor Red
+        return $false
+    }
 
-		Write-Verbose "Set-UIAzureADApplication completed."
+    Write-Host "`n=== Application Validation Completed Successfully ===" -ForegroundColor Cyan
+    
+    return $true
 }

@@ -1,4 +1,3 @@
-
 $ErrorActionPreference = "Stop"
 <#
 .SYNOPSIS
@@ -26,12 +25,11 @@ Solution Abbreviation
 .PARAMETER EnvironmentAbbreviation
 Environment Abbreviation
 
-.PARAMETER TenantId
-Azure tenant id where keyvaults exists.
+.PARAMETER AppTenantId
+Azure tenant id where the application will be created.
 
-.PARAMETER DevTenantId
-If you are testing GMM using a dev tenant, but your Azure Resources exist in a Subscription tied to your organization's tenant, you will need to provide both of these tenant ids.
-If you are deploying everything in your organization's tenant, you do not need to provide this value.
+.PARAMETER KeyVaultTenantId
+Azure tenant id where keyvaults exists.
 
 .PARAMETER CertificateName
 Certificate name
@@ -40,28 +38,41 @@ Optional
 .PARAMETER Clean
 When re-running the script, this flag is used to indicate if we need to recreate the application or use the existing one.
 
+.PARAMETER SaveToKeyVault
+When set to true, the application-related secrets will be saved to the key vault.
+Optional
+
+.PARAMETER SkipIfApplicationExists
+When set to true, the script will skip application creation if it already exists.
+Optional
+
+.PARAMETER CreateNewSecret
+When set to true, a new application secret will be created and stored. When false, secret creation is skipped.
+Optional
+
 .EXAMPLE
 Set-WebApiAzureADApplication	-SubscriptionName "<subscription-name>" `
-								-SolutionAbbreviation "<solution-abbreviation>" `
-								-EnvironmentAbbreviation "<environment-abbreviation>" `
-								-TenantId "<tenant-id>" `
-								-Clean $false `
-								-Verbose
+                                -SolutionAbbreviation "<solution-abbreviation>" `
+                                -EnvironmentAbbreviation "<environment-abbreviation>" `
+                                -AppTenantId "<app-tenant-id>" `
+                                -KeyVaultTenantId "<keyvault-tenant-id>" `
+                                -Clean $false `
+                                -Verbose
 #>
 
 function Set-WebApiAzureADApplication {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory = $True)]
-		[string] $SubscriptionName,
-		[Parameter(Mandatory = $True)]
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $True)]
-		[Guid] $TenantId,
+		[Guid] $AppTenantId,
 		[Parameter(Mandatory = $False)]
-		[System.Nullable[Guid]] $DevTenantId,
+		[string] $KeyVaultTenantId,
+		[Parameter(Mandatory = $False)]
+		[string] $SubscriptionName,
 		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory = $False)]
@@ -69,38 +80,69 @@ function Set-WebApiAzureADApplication {
 		[Parameter(Mandatory = $False)]
 		[boolean] $SaveToKeyVault = $True,
 		[Parameter(Mandatory = $False)]
-		[boolean] $SkipPrompts = $False,
-		[Parameter(Mandatory = $False)]
 		[boolean] $SkipIfApplicationExists = $True,
+		[Parameter(Mandatory = $False)]
+		[boolean] $CreateNewSecret = $True,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
-	Write-Verbose "Set-WebApiAzureADApplication starting..."
+	Write-Host "Set-WebApiAzureADApplication starting..."
+
+	# Validate required parameters when SaveToKeyVault is enabled
+	if ($SaveToKeyVault -eq $true) {
+		if ([string]::IsNullOrWhiteSpace($SubscriptionName)) {
+			throw "SubscriptionName parameter is required when SaveToKeyVault is set to true."
+		}
+		if ([string]::IsNullOrWhiteSpace($KeyVaultTenantId)) {
+			throw "KeyVaultTenantId parameter is required when SaveToKeyVault is set to true."
+		}
+	}
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
 	if ($global:SkipModuleInstall -ne $true) {
-		. ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
-    	Install-AzModuleIfNeeded
+	    . ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
+	    Install-MSGraphIfNeeded
+
+	    if ($SaveToKeyVault -eq $true) {
+	        . ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
+	        Install-AzModuleIfNeeded
+	    }
 	}
 
-	$context = Get-AzContext
-	$currentTenantId = $context.Tenant.Id
-
-	if($null -eq $DevTenantId) {
-		$DevTenantId = $TenantId
-		Write-Host "Please sign in to your tenant."
-	} else {
-		Write-Host "Please sign in to your dev tenant."
+	if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
+	    Connect-AzAccount -Tenant $KeyVaultTenantId
+		Set-AzContext -SubscriptionName $SubscriptionName
 	}
 
-	if($currentTenantId -ne $DevTenantId) {
-		Connect-AzAccount -Tenant $DevTenantId
-	}
+	if ($global:SkipMsGraphLogin -ne $true) {
+        # Disconnect any existing session
+        Disconnect-MgGraph -ErrorAction SilentlyContinue 
+
+        $requiredScopes = @(
+            "Application.ReadWrite.All", 
+            "AppRoleAssignment.ReadWrite.All"
+        )
+        
+        # Connect to Microsoft Graph with required scopes for the target tenant
+        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        
+        Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
+    }
 
 	#region Delete Application / Service Principal if they already exist
 	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
-	$webApiApp = (Get-AzADApplication -DisplayName $webApiAppDisplayName)
+	$webApiApps = Get-MgApplication -Filter "displayName eq '$webApiAppDisplayName'"
+	
+    
+	# Validate that we don't have multiple applications with the same name
+	if ($null -ne $webApiApps -and $webApiApps.Count -gt 1) {
+		Write-Error "Found $($webApiApps.Count) applications with the name '$webApiAppDisplayName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+		throw "Multiple applications found with the same display name: $webApiAppDisplayName"
+	}
+    
+	# Convert to single application object if we have exactly one
+	$webApiApp = if ($null -ne $webApiApps -and $webApiApps.Count -eq 1) { $webApiApps } else { $null }
 	$updatedAPIPermissions = $false
 
 	if ($null -ne $webApiApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false) {
@@ -108,222 +150,182 @@ function Set-WebApiAzureADApplication {
 
 		# Update roles if needed
 		. ($scriptsDirectory + '/ApplicationSetupScripts/Set-AppRolesIfNeeded.ps1')
-		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
+		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $AppTenantId
 
-		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
+		return @{ ApplicationId = $webApiApp.AppId; TenantId = $AppTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 	}
 
-	if ($Clean) {
-		$webApiApp | ForEach-Object {
-
-			$displayName = $_.DisplayName;
-			$objectId = $_.Id;
-			try {
-				Remove-AzADApplication -ObjectId $objectId
-				Write-Host "Removed $displayName..." -ForegroundColor Green;
-				$webApiApp = $null
-			}
-			catch {
-				Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
-			}
+	if ($Clean -eq $true -and $null -ne $webApiApp) {
+		$displayName = $webApiApp.DisplayName;
+		$objectId = $webApiApp.Id;
+		try {
+			Remove-MgApplication -ApplicationId $objectId
+			Write-Host "Removed $displayName..." -ForegroundColor Green;
+			$webApiApp = $null
+		}
+		catch {
+			Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
+			throw
 		}
 	}
 	#endregion
 
-	#region Create Application
-	$requiredResourceAccess = @{
-			ResourceAppId  = "00000003-0000-0000-c000-000000000000";
-			ResourceAccess = @(
-				@{
-					Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d";
-					Type = "Scope"
-				}
-			)
-		}
-	$signInAudience = "AzureADMyOrg"
-	$enableAccessTokenIssuance = $true
-	$enableIdTokenIssuance = $true
+	# Pre-authorize UI app if it exists
+	$uiAppName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+	$uiApps = Get-MgApplication -Filter "displayName eq '$uiAppName'"
+	$uiApp = if ($null -ne $uiApps -and $uiApps.Count -eq 1) { $uiApps } else { $null }
 
+	# Alert users in the event of missing UI app
+	if ($null -eq $uiApp) {
+		Write-Warning "UI application '$uiAppName' not found in tenant $AppTenantId. Pre-authorization will be skipped. The UI will fail to call the WebAPI unless pre-authorization is configured later."
+	}
+
+	# Validate that we don't have multiple applications with the same name
+	if ($null -ne $uiApp -and $uiApp.Count -gt 1) {
+		Write-Error "Found $($uiApp.Count) applications with the name '$uiAppName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+		throw "Multiple applications found with the same display name: $uiAppName"
+	}
+
+	Write-Host "UI app for pre-authorization is $($uiApp.DisplayName) with AppId $($uiApp.AppId)"
+	
 	if ($null -eq $webApiApp) {
-		Write-Verbose "Creating Azure AD app $webApiAppDisplayName"
+		Write-Host "Creating Azure AD app $webApiAppDisplayName"
 
-		# These are the function apps that need to interact with swagger.
-		# Add this url -> "https://localhost:7224/swagger/oauth2-redirect.html" if you want to test the WebAPI locally.
-		$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
+		$appCreationParameters = New-WebApiValidationConfiguration 	-SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-UiAppId $uiApp.AppId
 
-		$webApiApp = New-AzADApplication	`
-				-DisplayName $webApiAppDisplayName `
-				-SignInAudience $signInAudience `
-				-ReplyUrls $replyUrls `
-				-RequiredResourceAccess $requiredResourceAccess
-
-		$updatedAPIPermissions = $true
+		# Create application body for Microsoft Graph
+		$webApiApp = New-MgApplication -BodyParameter $appCreationParameters
 		
-		New-AzADServicePrincipal -ApplicationId $webApiApp.AppId
+		$updatedAPIPermissions = $true
+        
+		New-MgServicePrincipal -AppId $webApiApp.AppId
 
-		$permissionScope = New-Object Microsoft.Azure.Powershell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPermissionScope
-		$permissionScope.Id = New-Guid
-		$permissionScope.AdminConsentDescription = "WebAPI user impersonation"
-		$permissionScope.AdminConsentDisplayName = "WebAPI user impersonation"
-		$permissionScope.IsEnabled = $true
-		$permissionScope.Type = "User"
-		$permissionScope.UserConsentDescription = "WebAPI user impersonation"
-		$permissionScope.UserConsentDisplayName = "WebAPI user impersonation"
-		$permissionScope.Value = "user_impersonation"
+		$permissionScopeId = ($webApiApp.Api.Oauth2PermissionScopes | Where-Object { $_.AdminConsentDisplayName -eq "WebAPI user impersonation" }).Id
 
-		$api = $webApiApp.Api
-		$api.Oauth2PermissionScope = $permissionScope
-		$api.RequestedAccessTokenVersion = 2
+		# Update with identifier URI
+		$updatedAppParameters = New-WebApiValidationConfiguration 	-SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-UiAppId $uiApp.AppId `
+			-AppId $webApiApp.AppId `
+			-PermissionScopeId $permissionScopeId
 
-		Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
-
-		Start-Sleep -Seconds 30
-
-		$webSettings = $webApiApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
-
-		Update-AzADApplication  -ObjectId $webApiApp.Id `
-								-IdentifierUris "api://$($webApiApp.AppId)" `
-								-DisplayName $webApiAppDisplayName `
-								-Web $webSettings `
-								-SignInAudience $signInAudience
-
-		Start-Sleep -Seconds 30
-
-		$uiApp = Get-AzADApplication -DisplayName "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
-		if($uiApp) {
-
-			 $preAuthApp = New-Object Microsoft.Azure.PowerShell.Cmdlets.Resources.MSGraph.Models.ApiV10.MicrosoftGraphPreAuthorizedApplication
-		     $preAuthApp.AppId = $uiApp.AppId
-			 $preAuthApp.DelegatedPermissionId = $permissionScope.Id
-			 $api.PreAuthorizedApplication = $preAuthApp
-
-			 Update-AzADApplication -ApplicationId $webApiApp.AppId -Api $api
-		}
+		Update-MgApplication -ApplicationId $webApiApp.Id -BodyParameter $updatedAppParameters
+		Write-Host "Created Azure AD app $webApiAppDisplayName"
 	}
 	else {
-		
-		Write-Verbose "Azure AD app $webApiAppDisplayName already exists."
-		Write-Verbose "Checking if app needs update..."
+		Write-Host "Azure AD app $webApiAppDisplayName already exists."
+		Write-Host "Checking if app needs update..."
 
-		$optionalClaim = $webApiApp.OptionalClaim;
-		$hasUpnClaim = $false;
-
-		foreach ($claim in $optionalClaim.AccessToken) {
-			if ("upn" -eq $claim.Name) {
-				$hasUpnClaim = $true;
+		$existingPermissionScopeId = $null
+		try {
+			if ($null -ne $webApiApp -and $null -ne $webApiApp.Api -and $null -ne $webApiApp.Api.Oauth2PermissionScopes) {
+				$existingPermissionScopeId = ($webApiApp.Api.Oauth2PermissionScopes | Where-Object { $_.AdminConsentDisplayName -eq "WebAPI user impersonation" }).Id
 			}
 		}
+		catch {
+			$existingPermissionScopeId = $null
+		}
 
-		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppNeedsUpdate.ps1')
-		$needsUpdate = Test-AppNeedsUpdate -AppObject $webApiApp `
-							-ExpectedRequiredResourceAccess $requiredResourceAccess `
-							-ExpectedSignInAudience $signInAudience `
-							-ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
-							-ExpectedEnableIdTokenIssuance $enableIdTokenIssuance
+		$expectedAppConfig = New-WebApiValidationConfiguration 	-SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-UiAppId $uiApp.AppId `
+			-AppId $webApiApp.AppId `
+			-PermissionScopeId $existingPermissionScopeId
 
-		if (!$hasUpnClaim -or $needsUpdate) {
+		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
+		$needsUpdate = -not (Test-AppMatchesConfiguration -AppObject $webApiApp -ExpectedConfiguration $expectedAppConfig)
 
-			Write-Verbose "App $webApiAppDisplayName needs update."
-			Write-Verbose "Updating Azure AD app $webApiAppDisplayName"
-
-			if (!$hasUpnClaim) {
-				$optionalClaim.AccessToken += @{
-					Name                 = "upn"
-					Source               = $null
-					Essential            = $false
-					AdditionalProperties = @()
-				}
-			}
-
-			$webSettings = $webApiApp.Web
-			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
-			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
-
-			Update-AzADApplication	-ObjectId $($webApiApp.Id) `
-								-DisplayName $webApiAppDisplayName `
-								-OptionalClaim $optionalClaim `
-								-Web $webSettings `
-								-RequiredResourceAccess $requiredResourceAccess `
-								-SignInAudience $signInAudience
-
+		if ($needsUpdate) {
+			Write-Host "App $webApiAppDisplayName needs update. Updating..."
+			Update-MgApplication -ApplicationId $webApiApp.Id -BodyParameter $expectedAppConfig
 			$updatedAPIPermissions = $true
-
-			Write-Verbose "Finished updating Azure AD app $webApiAppDisplayName"
+			Write-Host "Finished updating Azure AD app $webApiAppDisplayName"
 		}
 		else {
-			Write-Verbose "No update needed for app $webApiAppDisplayName."
+			Write-Host "No update needed for app $webApiAppDisplayName."
 		}
 	}
 
-	Start-Sleep -Seconds 30
+	if ($updatedAPIPermissions -eq $true) {
+		Write-Host "Waiting 15 seconds for Azure AD replication..."
+		Start-Sleep -Seconds 15
+		Write-Host "Done waiting for Azure AD replication."
+	}
 
 	# Update roles if needed
 	. ($scriptsDirectory + '/ApplicationSetupScripts/Set-AppRolesIfNeeded.ps1')
-		Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $DevTenantId
+	Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $AppTenantId
 
-	if($SaveToKeyVault -eq $false) {
-		Write-Verbose "Set-WebApiAzureADApplication completed."
-		return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
+	if ($SaveToKeyVault -eq $true) {
+		Set-WebAPIKeyVaultSecrets `
+			-SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-AppTenantId $AppTenantId `
+			-WebApiApplicationId $webApiApp.AppId `
+			-CertificateName $CertificateName `
+			-CreateNewSecret $CreateNewSecret
 	}
 
-	Set-WebAPIKeyVaultSecrets -SubscriptionName $SubscriptionName `
-							  -SolutionAbbreviation $SolutionAbbreviation `
-							  -EnvironmentAbbreviation $EnvironmentAbbreviation `
-							  -TenantId $TenantId `
-							  -WebApiApplicationId $webApiApp.AppId `
-							  -DevTenantId $DevTenantId `
-							  -CertificateName $CertificateName `
-							  -SkipPrompts $SkipPrompts
+	# Disconnect from Microsoft Graph before returning
+	if ($global:SkipMsGraphLogin -ne $true) {
+		Disconnect-MgGraph -ErrorAction SilentlyContinue
 
-	return @{ ApplicationId = $webApiApp.AppId; TenantId = $DevTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
-	Write-Verbose "Set-WebApiAzureADApplication completed."
+		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
+	}
+
+	return @{ ApplicationId = $webApiApp.AppId; TenantId = $AppTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
+	Write-Host "Set-WebApiAzureADApplication completed."
 }
 
 function Set-WebAPIKeyVaultSecrets {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory = $True)]
-		[string] $SubscriptionName,
-		[Parameter(Mandatory = $True)]
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory = $True)]
-		[Guid] $TenantId,
+		[Guid] $AppTenantId,
 		[Parameter(Mandatory = $True)]
 		[Guid] $WebApiApplicationId,
 		[Parameter(Mandatory = $False)]
-		[System.Nullable[Guid]] $DevTenantId,
-		[Parameter(Mandatory = $False)]
 		[string] $CertificateName,
 		[Parameter(Mandatory = $False)]
-		[boolean] $SkipPrompts = $False,
+		[boolean] $CreateNewSecret = $True,
+		[AllowNull()]
+		[Parameter(Mandatory = $False)]
+		[string] $AppSecret = $null,
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
 	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
-    . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
+	. ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
 	# These need to go into the key vault
-	$webApiAppTenantId = $DevTenantId;
+	$webApiAppTenantId = $AppTenantId;
 	$webApiAppClientId = $WebApiApplicationId;
+	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
 
-	# Create new secret
-	$endDate = [System.DateTime]::Now.AddYears(1)
-	$webApiAppClientSecret = Get-AzADApplication -ApplicationId $webApiAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
-
-	Write-Host (Get-AzContext)
-
-	if ($TenantId -ne $DevTenantId) {
-		Write-Host "Please sign in to your primary tenant."
-		Connect-AzAccount -Tenant $TenantId
+	# Create new secret if requested
+	$webApiAppClientSecret = $AppSecret
+	if ($CreateNewSecret -eq $true) {
+		$endDate = [System.DateTime]::Now.AddYears(1)
+		$passwordCredential = @{
+			displayName   = "GMM Generated Secret"
+			startDateTime = [System.DateTime]::Now
+			endDateTime   = $endDate
+		}
+		$appObjectId = (Get-MgApplication -Filter "appId eq '$webApiAppClientId'").Id
+		$webApiAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+		Write-Host "Created new application secret for app $webApiAppClientId"
 	}
-
-	Set-AzContext -Subscription $SubscriptionName
+	else {
+		Write-Host "Skipping secret creation as CreateNewSecret is set to false"
+	}
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
 	$keyVault = Get-AzKeyVault -VaultName $keyVaultName
@@ -335,56 +337,49 @@ function Set-WebAPIKeyVaultSecrets {
 	# Store Application (client) ID in KeyVault
 	$webApiClientIdKeyVaultSecretName = "webApiClientId"
 
-	Write-Verbose "WebApi application (client) ID is $webApiAppClientId"
-	if($SkipPrompts){
-		$webApiClientIdSecret = New-Object System.Security.SecureString
-		$webApiAppClientId.ToString().ToCharArray() | ForEach-Object { $webApiClientIdSecret.AppendChar($_) }
-	} else {
-		$webApiClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application ID from above and paste it here"
-	}
+	Write-Host "WebApi application (client) ID is $webApiAppClientId"
+	$webApiClientIdSecret = New-Object System.Security.SecureString
+	$webApiAppClientId.ToString().ToCharArray() | ForEach-Object { $webApiClientIdSecret.AppendChar($_) }
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.ResourceGroupName `
-										-SecretName $webApiClientIdKeyVaultSecretName `
-										-SecretValue $webApiClientIdSecret
+		-ResourceGroup $keyVault.ResourceGroupName `
+		-SecretName $webApiClientIdKeyVaultSecretName `
+		-SecretValue $webApiClientIdSecret
 
-	Write-Verbose "$webApiClientIdKeyVaultSecretName added to vault for $webApiAppDisplayName."
+	Write-Host "$webApiClientIdKeyVaultSecretName added to vault for $webApiAppDisplayName."
 
-	# Store Application secret in KeyVault
-	$webApiAppClientSecretName = "webApiClientSecret"
+	# Store Application secret in KeyVault (only if a new secret was created)
+	if (-not [string]::IsNullOrEmpty($webApiAppClientSecret)) {
+		$webApiAppClientSecretName = "webApiClientSecret"
 
-	Write-Verbose "WebApi application client secret is $($webApiAppClientSecret.SecretText)"
-	if($SkipPrompts){
+		Write-Host "Storing WebApi application client secret in KeyVault"
 		$webApiClientSecret = New-Object System.Security.SecureString
-		$webApiAppClientSecret.SecretText.ToCharArray() | ForEach-Object { $webApiClientSecret.AppendChar($_) }
-	} else {
-		$webApiClientSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi application client secret from above and paste it here"
+		$webApiAppClientSecret.ToCharArray() | ForEach-Object { $webApiClientSecret.AppendChar($_) }
+
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+			-ResourceGroup $keyVault.ResourceGroupName `
+			-SecretName $webApiAppClientSecretName `
+			-SecretValue $webApiClientSecret
+
+		Write-Host "$webApiAppClientSecretName added to vault for $webApiAppDisplayName."
 	}
-
-	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.ResourceGroupName `
-										-SecretName $webApiAppClientSecretName `
-										-SecretValue $webApiClientSecret
-
-	Write-Verbose "$webApiAppClientSecretName added to vault for $webApiAppDisplayName."
+	else {
+		Write-Host "Skipping application secret storage as no new secret was created"
+	}
 
 	# Store tenantID in KeyVault
 	$webApiTenantSecretName = "webApiTenantId"
 
-	Write-Verbose "WebApi tenant ID is $webApiAppTenantId"
-	if($SkipPrompts){
-		$webApiTenantSecret = New-Object System.Security.SecureString
-		$webApiAppTenantId.ToString().ToCharArray() | ForEach-Object { $webApiTenantSecret.AppendChar($_) }
-	} else {
-		$webApiTenantSecret = Read-Host -AsSecureString -Prompt "Please take the WebApi tenant ID from above and paste it here"
-	}
+	Write-Host "WebApi tenant ID is $webApiAppTenantId"
+	$webApiTenantSecret = New-Object System.Security.SecureString
+	$webApiAppTenantId.ToString().ToCharArray() | ForEach-Object { $webApiTenantSecret.AppendChar($_) }
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-										-ResourceGroup $keyVault.ResourceGroupName `
-										-SecretName $webApiTenantSecretName `
-										-SecretValue $webApiTenantSecret
+		-ResourceGroup $keyVault.ResourceGroupName `
+		-SecretName $webApiTenantSecretName `
+		-SecretValue $webApiTenantSecret
 
-	Write-Verbose "$webApiTenantSecretName added to vault for $webApiAppDisplayName."
+	Write-Host "$webApiTenantSecretName added to vault for $webApiAppDisplayName."
 
 	# Store certificate name in KeyVault
 	$webApiAppCertificateName = "webApiCertificateName"
@@ -395,27 +390,214 @@ function Set-WebAPIKeyVaultSecrets {
 		$CertificateName = "not-set"
 		$setWebApiCertificate = $true
 	}
- 	elseif ($CertificateName) {
+	elseif ($CertificateName) {
 		$setWebApiCertificate = $true
 	}
 
 	if ($setWebApiCertificate) {
 
-		Write-Verbose "Certificate name is $CertificateName"
-		if($SkipPrompts){
-			$webApiAppCertificateSecret = New-Object System.Security.SecureString
-			$CertificateName.ToCharArray() | ForEach-Object { $webApiAppCertificateSecret.AppendChar($_) }
-		} else {
-			$webApiAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
-		}
+		Write-Host "Certificate name is $CertificateName"
+		$webApiAppCertificateSecret = New-Object System.Security.SecureString
+		$CertificateName.ToCharArray() | ForEach-Object { $webApiAppCertificateSecret.AppendChar($_) }
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-											-ResourceGroup $keyVault.ResourceGroupName `
-											-SecretName $webApiAppCertificateName `
-											-SecretValue $webApiAppCertificateSecret
+			-ResourceGroup $keyVault.ResourceGroupName `
+			-SecretName $webApiAppCertificateName `
+			-SecretValue $webApiAppCertificateSecret
 
-		Write-Verbose "$webApiAppCertificateName added to vault for $webApiAppDisplayName."
+		Write-Host "$webApiAppCertificateName added to vault for $webApiAppDisplayName."
 	}
 
-	Write-Verbose "Set-WebApiAzureADApplication completed."
+	Write-Host "Set-WebApiAzureADApplication completed."
 }
+
+function New-WebApiValidationConfiguration {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory = $true)]
+		[string] $SolutionAbbreviation,
+        
+		[Parameter(Mandatory = $true)]
+		[string] $EnvironmentAbbreviation,
+        
+		[AllowNull()]
+		[Parameter(Mandatory = $false)]
+		[string] $AppId,  # If provided, will be used for identifier URI
+
+		[Parameter(Mandatory = $true)]
+		[AllowNull()]
+		[AllowEmptyString()]
+		[string] $UiAppId, 
+
+		[Parameter(Mandatory = $false)]
+		[AllowNull()]
+		[AllowEmptyString()]
+		[string] $PermissionScopeId = $null
+	)
+    
+	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
+	$replyUrls = @("https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net/swagger/oauth2-redirect.html")
+    
+	$requiredResourceAccess = @{
+		ResourceAppId  = "00000003-0000-0000-c000-000000000000"
+		ResourceAccess = @(
+			@{
+				Id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+				Type = "Scope"
+			}
+		)
+	}
+    
+	$permissionScope = @{
+		id                      = if (-not [string]::IsNullOrWhiteSpace($PermissionScopeId)) { $PermissionScopeId } else { [System.Guid]::NewGuid().ToString() }
+		adminConsentDescription = "WebAPI user impersonation"
+		adminConsentDisplayName = "WebAPI user impersonation"
+		isEnabled               = $true
+		type                    = "User"
+		userConsentDescription  = "WebAPI user impersonation"
+		userConsentDisplayName  = "WebAPI user impersonation"
+		value                   = "user_impersonation"
+	}
+
+	# Conditionally create pre-authorized applications array
+	$preAuthorizedApplications = @()
+	if (-not [string]::IsNullOrWhiteSpace($UiAppId)) {
+		$preAuthorizedApplications += @{
+			appId                  = $UiAppId
+			delegatedPermissionIds = @($permissionScope.id)
+		}
+	}
+    
+	$config = @{
+		displayName            = $webApiAppDisplayName
+		signInAudience         = "AzureADMyOrg"
+		requiredResourceAccess = @($requiredResourceAccess)
+		isFallbackPublicClient = $false
+		web                    = @{
+			redirectUris          = $replyUrls
+			implicitGrantSettings = @{
+				enableAccessTokenIssuance = $true
+				enableIdTokenIssuance     = $true
+			}
+		}
+		api                    = @{
+			oauth2PermissionScopes      = @($permissionScope)
+			requestedAccessTokenVersion = 2
+			preAuthorizedApplications   = $preAuthorizedApplications
+		}
+		optionalClaims         = @{
+			accessToken = @(
+				@{
+					name      = "upn"
+					source    = $null
+					essential = $false
+				}
+			)
+		}
+	}
+    
+	# Add identifier URIs if AppId is provided
+	if (-not [string]::IsNullOrWhiteSpace($AppId)) {
+		$config.identifierUris = @("api://$AppId")
+	}
+ else {
+		$config.identifierUris = @()  # Empty array for initial creation
+	}
+    
+	return $config
+}
+
+function Test-WebApiApplication {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SolutionAbbreviation,
+        
+        [Parameter(Mandatory = $true)]
+        [string] $EnvironmentAbbreviation
+    )
+    
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
+    
+    $webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
+    
+    Write-Host "`n=== Validating Application: $webApiAppDisplayName ===" -ForegroundColor Cyan
+
+	# Step 1: Check if UI application exists
+	Write-Host "`n[1/3] Checking if UI application exists..." -ForegroundColor Yellow
+	$uiAppName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
+	$uiApps = Get-MgApplication -Filter "displayName eq '$uiAppName'" -All
+	if ($null -eq $uiApps -or $uiApps.Count -eq 0) {
+		$errorMessage = "UI Application '$uiAppName' does not exist. Please run the setup script to create it or follow manual setup steps in the documentation."
+		Write-Host "❌ $errorMessage" -ForegroundColor Red
+		return $false
+	}
+	if ($uiApps.Count -gt 1) {
+		$errorMessage = "Found $($uiApps.Count) applications with the name '$uiAppName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+		Write-Host "❌ $errorMessage" -ForegroundColor Red
+		return $false
+	}
+	$uiApp = $uiApps
+	Write-Host "✅ UI Application exists." -ForegroundColor Green
+
+    # Step 1: Check if application exists
+    Write-Host "`n[1/3] Checking if application exists..." -ForegroundColor Yellow
+    $webApiApps = Get-MgApplication -Filter "displayName eq '$webApiAppDisplayName'" -All
+    
+    if ($null -eq $webApiApps -or $webApiApps.Count -eq 0) {
+        $errorMessage = "Application '$webApiAppDisplayName' does not exist. Please run the setup script to create it or follow manual setup steps in the documentation."
+        Write-Host "❌ $errorMessage" -ForegroundColor Red
+        return $false
+    }
+    
+    Write-Host "✅ Application exists." -ForegroundColor Green
+    
+    # Step 2: Validate uniqueness
+    Write-Host "`n[2/3] Validating uniqueness..." -ForegroundColor Yellow
+    if ($webApiApps.Count -gt 1) {
+        $errorMessage = "Found $($webApiApps.Count) applications with the name '$webApiAppDisplayName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+        Write-Host "❌ $errorMessage" -ForegroundColor Red
+        return $false
+    }
+    
+    $webApiApp = $webApiApps
+    Write-Host "   Application ID: $($webApiApp.AppId)" -ForegroundColor Gray
+    Write-Host "   Object ID: $($webApiApp.Id)" -ForegroundColor Gray
+
+
+    # Step 4: Validate configuration
+    Write-Host "`n[3/3] Validating configuration..." -ForegroundColor Yellow
+    
+    $existingPermissionScopeId = $null
+    try {
+        if ($null -ne $webApiApp -and $null -ne $webApiApp.Api -and $null -ne $webApiApp.Api.Oauth2PermissionScopes) {
+            $existingPermissionScopeId = ($webApiApp.Api.Oauth2PermissionScopes | Where-Object { $_.AdminConsentDisplayName -eq "WebAPI user impersonation" }).Id
+        }
+    }
+    catch {
+        $existingPermissionScopeId = $null
+    }
+    
+    $expectedAppConfig = New-WebApiValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -UiAppId $uiApp.AppId `
+        -AppId $webApiApp.AppId `
+        -PermissionScopeId $existingPermissionScopeId
+    
+    $configurationMatches = Test-AppMatchesConfiguration -AppObject $webApiApp `
+        -ExpectedConfiguration $expectedAppConfig `
+        -ShowDetailedReport
+    
+    if ($configurationMatches) {
+        Write-Host "✅ Configuration matches expected values." -ForegroundColor Green
+    } else {
+        Write-Host "❌ Configuration does not match expected values. Please review the configuration settings and make updates as needed." -ForegroundColor Red
+        return $false
+    }
+
+    Write-Host "`n=== Application Validation Completed Successfully ===" -ForegroundColor Cyan
+    
+    return $true
+}
+							

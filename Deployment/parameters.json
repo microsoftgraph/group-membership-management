@@ -156,10 +156,10 @@
         "required": false
       }
     },
-    "secondaryTenantId": {
+    "directoryTenantId": {
       "value": "",
       "metadata": {
-        "description": "The Azure AD secondary tenant id. Only requires if the Azure resources are hosted in a different tenant from the one where users reside.",
+        "description": "The tenant id of the directory targetted by GMM. Only required if the Azure resources are hosted in a different tenant from the one where users reside.",
         "required": false
       }
     },
@@ -226,10 +226,24 @@
         "required": false
       }
     },
-    "createAppRegistrations": {
-      "value": true,
+    "skipPrivilegedDirectoryActions": {
+      "value": false,
       "metadata": {
-        "description": "Flag to create and set up the App Registrations leveraged by GMM.",
+        "description": "If you are deploying to a different tenant or don't have the required permissions to create app registrations and assign API permissions, set this to true and create the app registrations manually following the instructions in the documentation.",
+        "required": false
+      }
+    },
+    "skipAppRegistrationSetup": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the creation and setup of the App Registrations leveraged by GMM.",
+        "required": false
+      }
+    },
+    "skipAppRegistrationSecretStorage": {
+      "value": false,
+      "metadata": {
+        "description": "Flag to skip the storage of App Registration secrets in the Key Vault.",
         "required": false
       }
     },
@@ -279,13 +293,6 @@
       "value": true,
       "metadata": {
         "description": "Flag to indicate whether to assert user permissions before deployment.",
-        "required": true
-      }
-    },
-    "setUserAssignedManagedIdentityPermissions": {
-      "value": true,
-      "metadata": {
-        "description": "Flag to indicate whether to set user assigned managed identity permissions.",
         "required": true
       }
     },

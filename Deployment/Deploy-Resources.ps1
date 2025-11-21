@@ -740,8 +740,6 @@ function Set-GMMResources {
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     $setRBACPermissions      = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
-    $createAppRegistrations  = Get-Default -Value $ParameterHashtable['createAppRegistrations'].value  -Default $true
-    $skipAppRegistrationSetupIfAppExists = Get-Default -Value $ParameterHashtable['skipAppRegistrationSetupIfAppExists'].value -Default $false
     $setRBACPermissionsBicep = Get-Default -Value $ParameterHashtable['setRBACPermissionsBicep'].value -Default $false
     $createResourceGroups = Get-Default -Value $ParameterHashtable['createResourceGroups'].value -Default $false
     $skipAzureDataFactoryDeployment = Get-Default -Value $ParameterHashtable['skipAzureDataFactoryDeployment'].value -Default $false
@@ -752,7 +750,7 @@ function Set-GMMResources {
     $teamsChannelAppCertificateName = Get-DefaultString -Value $ParameterHashtable['teamsChannelAppCertificateName'].value -Default 'not-set'
     $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
     $sharepointDomain               = Get-DefaultString -Value $ParameterHashtable['sharepointDomain'].value               -Default 'not-set'
-    $secondaryTenantId              = Get-DefaultString -Value $ParameterHashtable['secondaryTenantId'].value -Default $null
+    $directoryTenantId              = Get-DefaultString -Value $ParameterHashtable['directoryTenantId'].value -Default $ParameterHashtable.tenantId.value
 
     $hostIpAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
     $ipAddressesToWhiteList = $ipRangesToWhiteList + @($hostIpAddress)
@@ -786,22 +784,25 @@ function Set-GMMResources {
         -ScriptsDirectory $ScriptsDirectory `
         -Region $Location
 
-    # creating app registrations
-    if ($createAppRegistrations -eq $true) {
-        Write-Host "`nCreating app registrations"
-        $appRegistrations = `
-            Set-GMMAppRegistrations `
+    # Store the app registration secrets
+    if ($ParameterHashtable.skipAppRegistrationSecretStorage.value -ne $true) {
+        $isClientSecretAuth = if ($ParameterHashtable.authenticationType.value -eq "ClientSecret") { $true } else { $false }
+        Save-GMMAppRegistrationSecrets `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -ScriptsDirectory $ScriptsDirectory `
-            -SecondaryTenantId $secondaryTenantId `
+            -AppTenantId $directoryTenantId `
             -GraphAppCertificateName $graphAppCertificateName `
             -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
             -TenantDomain $tenantDomain `
             -SharepointDomain $sharepointDomain `
-            -SkipAppRegistrationSetupIfAppExists $skipAppRegistrationSetupIfAppExists
-    
+            -SkipPrivilegedDirectoryActions $ParameterHashtable.skipPrivilegedDirectoryActions.value `
+            -IsClientSecretAuth $isClientSecretAuth
+            
         Start-Sleep -Seconds 10
+    }
+    else {
+        Write-Host "`nSkipping app registration secret storage as per configuration [skipAppRegistrationSecretStorage = $($parameterHashtable.skipAppRegistrationSecretStorage.value)]." -ForegroundColor Yellow
     }
    
     # deploy data resources
@@ -846,14 +847,10 @@ function Set-GMMResources {
         Start-Sleep -Seconds 10
     }
     else {
-        Write-Host "`nSkipping Azure Data Factory deployment as per configuration."
+        Write-Host "`nSkipping Azure Data Factory deployment as per configuration [skipAzureDataFactoryDeployment = $skipAzureDataFactoryDeployment]."
     }
 
     Write-Host "`nResources deployed"
-
-    return @{
-        AppRegistrations = $appRegistrations
-    }
 }
 
 function Set-SqlServerFirewallRule {
@@ -1046,9 +1043,13 @@ function Set-RBACPermissions {
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
+        [string]$TenantId,
+        [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $false)]
-        [bool] $SetUserAssignedManagedIdentityPermissions = $false
+        [bool] $SetUserAssignedManagedIdentityPermissions = $false,
+        [Parameter(Mandatory = $false)]
+        [boolean] $SkipPrivilegedDirectoryActions = $false
     )
 
     # grant permissions to resources
@@ -1058,7 +1059,9 @@ function Set-RBACPermissions {
     Set-PostDeploymentRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions
+        -TenantId $TenantId `
+        -SetUserAssignedManagedIdentityPermissions $SetUserAssignedManagedIdentityPermissions `
+        -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions
 
 }
 
@@ -1299,7 +1302,7 @@ function  Get-KeyVaultReference {
     }
 }
 
-function Set-GMMAppRegistrations {
+function Set-GMMAppRegistrationsProgrammatically {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -1309,80 +1312,47 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $false)]
-        [System.Nullable[Guid]]$SecondaryTenantId,
-        [Parameter(Mandatory = $False)]
-        [boolean] $SkipIfApplicationExists = $True,
-        [Parameter(Mandatory = $False)]
-        [string] $GraphAppCertificateName,
-        [Parameter(Mandatory = $False)]
-        [string] $TeamsChannelAppCertificateName,
-        [Parameter(Mandatory = $False)]
-        [string] $TenantDomain,
-        [Parameter(Mandatory = $False)]
-        [boolean] $SkipAppRegistrationSetupIfAppExists = $false,
-        [Parameter(Mandatory = $False)]
-        [string] $SharepointDomain
+        [string]$DirectoryTenantId
     )
 
-    Write-Host "`nSetting GMM App Registrations"
+    Write-Host "`n📝 Creating app registrations programmatically...`n" -ForegroundColor Cyan
+
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-UIAzureADApplication.ps1')
-
-    $currentContext = Get-AzContext
-    $subscriptionName = $currentContext.Subscription.Name
-    $mainTenantId = $currentContext.Tenant.Id
-
     $uiInformation = Set-UIAzureADApplication `
-        -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -TenantId $mainTenantId `
-        -DevTenantId $SecondaryTenantId `
-        -TenantDomain $TenantDomain `
-        -SharepointDomain $SharepointDomain `
-        -SaveToKeyVault $true `
-        -SkipPrompts $true `
-        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
+        -AppTenantId $DirectoryTenantId `
+        -SaveToKeyVault $false `
+        -SkipIfApplicationExists $false `
         -Clean $false
 
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1')
     $apiInformation = Set-WebApiAzureADApplication `
-        -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -TenantId $mainTenantId `
-        -DevTenantId $SecondaryTenantId `
-        -SaveToKeyVault $true `
-        -SkipPrompts $true `
-        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
+        -AppTenantId $DirectoryTenantId `
+        -SaveToKeyVault $false `
+        -SkipIfApplicationExists $false `
         -Clean $false
 
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1')
     $graphInformation = Set-GraphCredentialsAzureADApplication `
-        -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -TenantIdToCreateAppIn (Get-Default -Value $SecondaryTenantId -Default $mainTenantId) `
-        -TenantIdWithKeyVault $mainTenantId `
-        -SaveToKeyVault $true `
-        -SkipPrompts $true `
-        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
-        -CertificateName $GraphAppCertificateName `
+        -AppTenantId $DirectoryTenantId `
+        -SaveToKeyVault $false `
+        -SkipIfApplicationExists $false `
         -Clean $false
 
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1')
     $teamsChannelInformation = Set-TeamsChannelAzureADApplication `
-        -SubscriptionName $subscriptionName `
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -TenantIdToCreateAppIn (Get-Default -Value $SecondaryTenantId -Default $mainTenantId) `
-        -TenantIdWithKeyVault $mainTenantId `
-        -SaveToKeyVault $true `
-        -SkipPrompts $true `
-        -SkipIfApplicationExists $SkipAppRegistrationSetupIfAppExists `
-        -CertificateName $TeamsChannelAppCertificateName `
+        -AppTenantId $DirectoryTenantId `
+        -SaveToKeyVault $false `
+        -SkipIfApplicationExists $false `
         -Clean $false
 
-    $null = Set-AzContext -Tenant $mainTenantId -Subscription $subscriptionName
 
     # determine which apps need admin consent
     $appInformationObjects = @(
@@ -1405,40 +1375,537 @@ function Set-GMMAppRegistrations {
 
     #return the response
     return @{
-        UIApplicationId             = $uiInformation.ApplicationId;
-        UITenantId                  = $uiInformation.TenantId;
-        APIApplicationId            = $apiInformation.ApplicationId;
-        APITenantId                 = $apiInformation.TenantId;
-        GraphApplicationId          = $graphInformation.ApplicationId;
-        GraphTenantId               = $graphInformation.TenantId;
-        TeamsChannelApplicationId   = $teamsChannelInformation.ApplicationId;
-        TeamsChannelTenantId        = $teamsChannelInformation.TenantId;
-        AppsThatNeedAdminConsent    = $appsThatNeedAdminConsent;
+        UIAppId = $uiInformation.ApplicationId
+        WebApiAppId = $apiInformation.ApplicationId
+        GraphAppId = $graphInformation.ApplicationId
+        TeamsChannelAppId = $teamsChannelInformation.ApplicationId
+        AppsThatNeedAdminConsent = $appsThatNeedAdminConsent
     }
+}
+
+function Save-GMMAppRegistrationSecrets {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$AppTenantId,
+        [Parameter(Mandatory = $true)]
+        [boolean]$IsClientSecretAuth,
+        [Parameter(Mandatory = $false)]
+        [boolean]$SkipPrivilegedDirectoryActions,
+        [Parameter(Mandatory = $False)]
+        [string] $GraphAppCertificateName,
+        [Parameter(Mandatory = $False)]
+        [string] $TeamsChannelAppCertificateName,
+        [Parameter(Mandatory = $false)]
+        [string]$TenantDomain,
+        [Parameter(Mandatory = $false)]
+        [string]$SharepointDomain
+    )
+
+    Write-Host "`n🔐 Saving App Registration Secrets to Key Vault" -ForegroundColor Cyan
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+
+    $applicationSetupScriptsDirectory = Join-Path $ScriptsDirectory "ApplicationSetupScripts"
+
+    # Retrieve Application IDs
+    Write-Host "`n📋 Retrieving App Registration IDs..." -ForegroundColor Yellow
+    
+    $uiAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'").AppId
+    if (-not $uiAppId) {
+        Write-Error "UI Application '$SolutionAbbreviation-ui-$EnvironmentAbbreviation' not found"
+        return
+    }
+    Write-Host "  ✓ UI App ID: $uiAppId" -ForegroundColor Gray
+
+    $webApiAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'").AppId
+    if (-not $webApiAppId) {
+        Write-Error "WebAPI Application '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation' not found"
+        return
+    }
+    Write-Host "  ✓ WebAPI App ID: $webApiAppId" -ForegroundColor Gray
+
+    $graphAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'").AppId
+    if (-not $graphAppId) {
+        Write-Error "Graph Application '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation' not found"
+        return
+    }
+    Write-Host "  ✓ Graph App ID: $graphAppId" -ForegroundColor Gray
+
+    $teamsChannelAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'").AppId
+    if (-not $teamsChannelAppId) {
+        Write-Error "Teams Channel Application '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation' not found"
+        return
+    }
+    Write-Host "  ✓ Teams Channel App ID: $teamsChannelAppId" -ForegroundColor Gray
+
+    $createNewSecrets = $false
+    $askForSecretInput = $false
+    if ($IsClientSecretAuth -eq $true) {
+       if ($SkipPrivilegedDirectoryActions -eq $true) {
+            # Ask user if they want to input secrets now
+            Write-Host "`n🔐 Application Secret Configuration" -ForegroundColor Cyan
+            Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "You are using Client Secret authentication and the 'SkipPrivilegedDirectoryActions' flag is enabled. The deployment script needs the" -ForegroundColor White
+            Write-Host "client secrets for each application to store them securely in Key Vault." -ForegroundColor White
+            Write-Host ""
+            Write-Host "Would you like to input the application secrets now?" -ForegroundColor Yellow
+            Write-Host "  (Choose 'No' if you have already saved the secrets in a previous deployment)" -ForegroundColor Gray
+            Write-Host ""
+            
+            $response = Read-Host "Input application secrets now? (Y/N)"
+            
+            if ($response -notmatch '^[Yy]') {
+                Write-Host "`n⏭️  Skipping application secret input." -ForegroundColor Yellow
+                Write-Host "   If you need to update secrets later, you can run this deployment again" -ForegroundColor Gray
+                Write-Host "   or manually update them in the Key Vault.`n" -ForegroundColor Gray
+                return
+            }
+            
+            $askForSecretInput = $true
+        }
+        else {
+            $createNewSecrets = $true
+        }
+    }
+
+    # If user needs to provide secrets manually
+    $manualSecrets = @{}
+    if ($askForSecretInput -eq $true) {
+        Write-Host "`n⚠️  MANUAL SECRET INPUT REQUIRED" -ForegroundColor Yellow
+        Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+        Write-Host "`nPlease provide the client secrets that you created manually for each app registration.`n" -ForegroundColor White
+        
+        Write-Host "📋 Please enter the client secrets for the following applications:" -ForegroundColor Cyan
+        Write-Host "   (These secrets will be securely stored in Key Vault)`n" -ForegroundColor Gray
+        
+        Write-Host "1️⃣  UI Application ($SolutionAbbreviation-ui-$EnvironmentAbbreviation)" -ForegroundColor Green
+        do {
+            $appSecret = Read-Host "   Enter UI App Client Secret"
+             
+            if ([string]::IsNullOrWhiteSpace($appSecret)) {
+                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($appSecret))
+
+        $manualSecrets['UISecret'] = $appSecret
+
+        Write-Host "`n2️⃣  WebAPI Application ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)" -ForegroundColor Green
+        do {
+            $appSecret = Read-Host "   Enter WebAPI App Client Secret"
+            if ([string]::IsNullOrWhiteSpace($appSecret)) {
+                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($appSecret))
+
+        $manualSecrets['WebApiSecret'] = $appSecret
+
+        Write-Host "`n3️⃣  Graph Application ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)" -ForegroundColor Green
+        do {
+            $appSecret = Read-Host "   Enter Graph App Client Secret"
+            if ([string]::IsNullOrWhiteSpace($appSecret)) {
+                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($appSecret))
+
+        $manualSecrets['GraphSecret'] = $appSecret
+
+        Write-Host "`n4️⃣  Teams Channel Application ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)" -ForegroundColor Green
+        do {
+            $appSecret = Read-Host "   Enter Teams Channel App Client Secret" 
+
+            if ([string]::IsNullOrWhiteSpace($appSecret)) {
+                Write-Host "   ❌ Secret cannot be empty or contain only whitespace. Please try again." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($appSecret))
+
+        $manualSecrets['TeamsChannelSecret'] = $appSecret
+
+        Write-Host "`n✅ All secrets collected. Proceeding to save them to Key Vault...`n" -ForegroundColor Green
+        Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Yellow
+    }
+
+    # UI Application Secrets
+    Write-Host "`n📝 Saving UI Application secrets..." -ForegroundColor Yellow
+
+    # UI Application Secrets
+    Write-Host "`n📝 Saving UI Application secrets..." -ForegroundColor Yellow
+    $uiScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-UIAzureADApplication.ps1"
+    . $uiScriptPath
+
+    $uiSecret = if ($askForSecretInput -eq $true) {$manualSecrets['UISecret']} else {"not-set"}
+    Set-UIKeyVaultSecrets `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppTenantId $AppTenantId `
+        -UIApplicationId $uiAppId `
+        -CreateNewSecret $createNewSecrets `
+        -TenantDomain $TenantDomain `
+        -SharepointDomain $SharepointDomain `
+        -AppSecret $uiSecret
+
+    Write-Host "✅ UI Application secrets saved" -ForegroundColor Green
+
+    # WebAPI Application Secrets
+    Write-Host "`n📝 Saving WebAPI Application secrets..." -ForegroundColor Yellow
+    $webApiScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-WebApiAzureADApplication.ps1"
+    . $webApiScriptPath
+
+    $webApiSecret = if ($askForSecretInput -eq $true) {$manualSecrets['WebApiSecret']} else {"not-set"}
+    Set-WebAPIKeyVaultSecrets -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppTenantId $AppTenantId `
+        -WebApiApplicationId $webApiAppId `
+        -CreateNewSecret $createNewSecrets `
+        -AppSecret $webApiSecret
+
+    Write-Host "✅ WebAPI Application secrets saved" -ForegroundColor Green
+
+    # Graph Application Secrets
+    Write-Host "`n📝 Saving Graph Application secrets..." -ForegroundColor Yellow
+    $graphScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-GraphCredentialsAzureADApplication.ps1"
+    . $graphScriptPath
+
+    $graphSecret = if ($askForSecretInput -eq $true) {$manualSecrets['GraphSecret']} else {"not-set"}
+    Set-GraphAppKeyVaultSecrets `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppTenantId $AppTenantId `
+        -ApplicationClientId $graphAppId `
+        -CreateNewSecret $createNewSecrets `
+        -CertificateName $GraphAppCertificateName `
+        -AppSecret $graphSecret
+
+    Write-Host "✅ Graph Application secrets saved" -ForegroundColor Green
+
+    # Teams Channel Application Secrets
+    Write-Host "`n📝 Saving Teams Channel Application secrets..." -ForegroundColor Yellow
+
+    $teamsScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-TeamsChannelAzureADApplication.ps1"
+    . $teamsScriptPath
+
+    $teamsChannelSecret = if ($askForSecretInput -eq $true) {$manualSecrets['TeamsChannelSecret']} else {"not-set"}
+    Set-TeamsChannelAppKeyVaultSecrets `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppTenantId $AppTenantId `
+        -ApplicationClientId $teamsChannelAppId `
+        -CreateNewSecret $createNewSecrets `
+        -CertificateName $TeamsChannelAppCertificateName `
+        -AppSecret $teamsChannelSecret
+
+    Write-Host "✅ Teams Channel Application secrets saved" -ForegroundColor Green
+
+    Write-Host "`n✅ All app registration secrets have been saved to Key Vault" -ForegroundColor Green
+    Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+}
+
+function Set-GMMAppRegistrationsManually {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $true)]
+        [boolean]$IsClientSecretAuth,
+        [Parameter(Mandatory = $false)]
+        [string]$DirectoryTenantId
+    )
+
+    Write-Host "`n⚠️  MANUAL APP REGISTRATION SETUP REQUIRED" -ForegroundColor Yellow
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "`nYou have chosen to skip privileged directory actions. This means you need to" -ForegroundColor White
+    Write-Host "manually create the app registrations or run the setup scripts in a separate" -ForegroundColor White
+    Write-Host "PowerShell session with appropriate permissions.`n" -ForegroundColor White
+
+    Write-Host "📋 Required App Registrations:" -ForegroundColor Cyan
+    Write-Host "   1. UI Application          ($SolutionAbbreviation-ui-$EnvironmentAbbreviation)" -ForegroundColor White
+    Write-Host "   2. WebAPI Application      ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)" -ForegroundColor White
+    Write-Host "   3. Graph Application       ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)" -ForegroundColor White
+    Write-Host "   4. Teams Channel App       ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)" -ForegroundColor White
+
+    Write-Host "`n📖 Manual Setup Documentation:" -ForegroundColor Cyan
+    Write-Host "   Please refer to the following documentation for manual setup steps:" -ForegroundColor White
+    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/UI-Application-Creation-Instructions.md" -ForegroundColor Gray
+    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/WebAPI-Application-Creation-Instructions.md" -ForegroundColor Gray
+    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/GraphCredentials-Application-Creation-Instructions.md" -ForegroundColor Gray
+    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/TeamsChannel-Application-Creation-Instructions.md" -ForegroundColor Gray
+
+    Write-Host "`n🔧 PowerShell Script Signatures:" -ForegroundColor Cyan
+    Write-Host "   If you prefer to run the setup scripts, use these commands in a separate" -ForegroundColor White
+    Write-Host "   PowerShell session with Global Administrator or Application Administrator permissions:`n" -ForegroundColor White
+
+    Write-Host "   ⚠️  IMPORTANT: Install Required Modules First!" -ForegroundColor Yellow
+    Write-Host "   Before running any of the setup scripts below, you must first install the required" -ForegroundColor White
+    Write-Host "   PowerShell modules. Run these commands in your PowerShell session:`n" -ForegroundColor White
+
+    Write-Host "   # Install Required Modules" -ForegroundColor Magenta
+    Write-Host "   . `"$ScriptsDirectory/Install-AzModuleIfNeeded.ps1`"" -ForegroundColor Gray
+    Write-Host "   Install-AzModuleIfNeeded" -ForegroundColor Gray
+    Write-Host "" -ForegroundColor Gray
+    Write-Host "   . `"$ScriptsDirectory/Install-ModuleIfNeeded.ps1`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Authentication`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Applications`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Identity.DirectoryManagement`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Users`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "" -ForegroundColor Gray
+    Write-Host "   `$global:SkipModuleInstall = `$true`n" -ForegroundColor Gray
+
+    Write-Host "   Once the modules are installed, proceed with the app registration scripts:`n" -ForegroundColor White
+
+    Write-Host "   # 1. UI Application" -ForegroundColor Green
+    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-UIAzureADApplication.ps1`"" -ForegroundColor Gray
+    Write-Host "   Set-UIAzureADApplication ``" -ForegroundColor Gray
+    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
+    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
+    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
+    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+
+    Write-Host "   # 2. WebAPI Application" -ForegroundColor Green
+    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1`"" -ForegroundColor Gray
+    Write-Host "   Set-WebApiAzureADApplication ``" -ForegroundColor Gray
+    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
+    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
+    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
+    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+
+    Write-Host "   # 3. Graph Application" -ForegroundColor Green
+    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1`"" -ForegroundColor Gray
+    Write-Host "   Set-GraphCredentialsAzureADApplication ``" -ForegroundColor Gray
+    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
+    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
+    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
+    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+
+    Write-Host "   # 4. Teams Channel Application" -ForegroundColor Green
+    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1`"" -ForegroundColor Gray
+    Write-Host "   Set-TeamsChannelAzureADApplication ``" -ForegroundColor Gray
+    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
+    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
+    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
+    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+
+    if ($IsClientSecretAuth -eq $true) {
+        Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+        Write-Host "🔐 Creating Application Secrets (Client Secret Authentication)" -ForegroundColor Yellow
+        Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "You need to manually create a client secret for each application registration." -ForegroundColor White
+        Write-Host ""
+        Write-Host "⚠️  IMPORTANT: Save the secret values immediately after creation!" -ForegroundColor Yellow
+        Write-Host "   You will be prompted to input these secrets later in this deployment." -ForegroundColor Yellow
+        Write-Host "   Secret values cannot be retrieved after you navigate away from the creation screen." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "📖 Documentation Location:" -ForegroundColor Cyan
+        Write-Host "   $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "Each application folder contains detailed instructions on creating client secrets." -ForegroundColor White
+        Write-Host ""
+    }
+
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "`n⏸️  Once you have completed the app registrations setup, press ENTER to continue..." -ForegroundColor Cyan
+    Write-Host "   (The script will validate all app registrations before proceeding)`n" -ForegroundColor Gray
+    
+    $null = Read-Host
+
+    Write-Host "`n🔍 Validating App Registrations..." -ForegroundColor Cyan
+    Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+
+    # Source the validation scripts
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-UIAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1')
+
+    # Validate each application
+    $uiValid = Test-UIApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $webApiValid = Test-WebApiApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $graphValid = Test-GraphCredentialsApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $teamsChannelValid = Test-TeamsChannelApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+
+    Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "📊 Validation Summary:" -ForegroundColor Cyan
+    Write-Host "   UI Application:           $(if ($uiValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($uiValid) { 'Green' } else { 'Red' })
+    Write-Host "   WebAPI Application:       $(if ($webApiValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($webApiValid) { 'Green' } else { 'Red' })
+    Write-Host "   Graph Application:        $(if ($graphValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($graphValid) { 'Green' } else { 'Red' })
+    Write-Host "   Teams Channel Application: $(if ($teamsChannelValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($teamsChannelValid) { 'Green' } else { 'Red' })
+    Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
+
+    if (-not ($uiValid -and $webApiValid -and $graphValid -and $teamsChannelValid)) {
+        Write-Host "❌ One or more applications failed validation. Please review the errors above and fix the issues." -ForegroundColor Red
+        Write-Host "   You can re-run the validation by calling the Test-*Application functions individually.`n" -ForegroundColor Yellow
+        throw "App registration validation failed. Please fix the issues and try again."
+    }
+
+    Write-Host "✅ All app registrations validated successfully!`n" -ForegroundColor Green
+
+    # Retrieve application details to check for admin consent requirements
+    $uiApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'"
+    $webApiApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'"
+    $graphApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'"
+    $teamsChannelApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'"
+
+    # Check which apps need admin consent based on their required resource access
+    $appsThatNeedAdminConsent = @()
+
+    $apps = @(
+        $uiApp,
+        $webApiApp,
+        $graphApp,
+        $teamsChannelApp
+    )
+
+    foreach ($app in $apps) {
+        if ($null -eq $app) {
+            throw "Application '$($app.DisplayName)' not found after validation. Please ensure it was created correctly."
+        }
+
+        $appsThatNeedAdminConsent += @{
+            ApplicationId   = $app.AppId;
+            ApplicationName = $app.DisplayName
+        }
+    }
+
+    return @{
+        UIAppId = $uiApp.AppId
+        WebApiAppId = $webApiApp.AppId
+        GraphAppId = $graphApp.AppId
+        TeamsChannelAppId = $teamsChannelApp.AppId
+        AppsThatNeedAdminConsent = $appsThatNeedAdminConsent
+    }   
+}
+function Set-GMMAppRegistrations {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptsDirectory,
+        [Parameter(Mandatory = $true)]
+        [boolean] $IsClientSecretAuth,
+        [Parameter(Mandatory = $false)]
+        [string]$DirectoryTenantId,
+        [Parameter(Mandatory = $true)]
+        [boolean] $SkipPrivilegedDirectoryActions
+    )
+
+    Write-Host "`n╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+    Write-Host "║          Creating GMM App Registrations                                    ║" -ForegroundColor Cyan
+    Write-Host "╚════════════════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+
+    $appCreationResult = $null
+    if ($SkipPrivilegedDirectoryActions -eq $true) {
+        # Manual flow - prompt user to create app registrations
+        $appCreationResult = Set-GMMAppRegistrationsManually `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -ScriptsDirectory $ScriptsDirectory `
+            -IsClientSecretAuth $IsClientSecretAuth `
+            -DirectoryTenantId $DirectoryTenantId
+    }
+    else {
+        # Normal flow - create app registrations programmatically
+        $appCreationResult = Set-GMMAppRegistrationsProgrammatically `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -ScriptsDirectory $ScriptsDirectory `
+            -DirectoryTenantId $DirectoryTenantId
+    }
+
+    Write-Host "✅ App registrations created successfully!`n" -ForegroundColor Green
+    return $appCreationResult
+}
+
+function Show-ManualRedirectURIInstructions {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$UIAppRegistrationId,
+        [Parameter(Mandatory = $true)]
+        [string[]]$RedirectUris
+    )
+
+    # Construct the direct link to the app registration's Authentication blade
+    $portalLink = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/Authentication/appId/$UIAppRegistrationId/isMSAApp~/false"
+
+    Write-Host "`n⚠️  MANUAL REDIRECT URI UPDATE REQUIRED" -ForegroundColor Yellow
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "`nThe following redirect URIs need to be added to the UI application:" -ForegroundColor White
+    Write-Host "Application: $SolutionAbbreviation-ui-$EnvironmentAbbreviation" -ForegroundColor Cyan
+    Write-Host "Application (client) ID: $UIAppRegistrationId`n" -ForegroundColor Cyan
+    
+    Write-Host "🔗 Direct link to app registration:" -ForegroundColor Cyan
+    Write-Host "   $portalLink`n" -ForegroundColor White
+    
+    Write-Host "📋 Redirect URIs to add:" -ForegroundColor Cyan
+    foreach ($uri in $RedirectUris) {
+        Write-Host "   • $uri" -ForegroundColor White
+    }
+    
+    Write-Host "`n📖 Manual Steps:" -ForegroundColor Cyan
+    Write-Host "   1. Click the direct link above or go to: https://portal.azure.com" -ForegroundColor White
+    Write-Host "   2. If using the portal link directly:" -ForegroundColor White
+    Write-Host "      - Navigate to Microsoft Entra ID > App registrations" -ForegroundColor White
+    Write-Host "      - Find and select: $SolutionAbbreviation-ui-$EnvironmentAbbreviation" -ForegroundColor White
+    Write-Host "      - Go to 'Authentication' in the left menu" -ForegroundColor White
+    Write-Host "   3. Under 'Single-page application', click 'Add URI'" -ForegroundColor White
+    Write-Host "   4. Add each of the redirect URIs listed above" -ForegroundColor White
+    Write-Host "   5. Click 'Save' at the top of the page`n" -ForegroundColor White
+    
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "⏸️  Press ENTER once you have added the redirect URIs..." -ForegroundColor Cyan
+    $null = Read-Host
 }
 
 function Set-ConfigureWebApps {
     param (
         [Parameter(Mandatory = $true)]
-        [string]$WebApiName,
+        [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
-        [string]$UIWebAppName,
+        [string]$EnvironmentAbbreviation,
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$UIAppRegistrationId,
-        [Parameter(Mandatory = $False)]
-        [System.Nullable[Guid]]$DevTenantId,
         [Parameter(Mandatory = $true)]
-        [string]$ComputeResourceGroup
+        [boolean]$SkipPrivilegedDirectoryActions        
     )
 
-    $currentContext = Get-AzContext
-    $mainTenantId = $currentContext.Tenant.Id
+    Write-Host "`n🔧 Configuring Web Apps and App Registrations for CORS..." -ForegroundColor Cyan
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $webApiName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+    $uiWebAppName = "$SolutionAbbreviation-ui"
 
     # Set CORS for web apps
     $allowedOrigins = @()
 
     try {
-        $customDomain = Get-AzStaticWebAppCustomDomain -Name $UIWebAppName -ResourceGroupName $ComputeResourceGroup
+        $customDomain = Get-AzStaticWebAppCustomDomain -Name $uiWebAppName -ResourceGroupName $computeResourceGroup
         if (-not [string]::IsNullOrEmpty($customDomain)) {
             $allowedOrigins += "https://$($customDomain.DomainName)"
         }
@@ -1447,21 +1914,23 @@ function Set-ConfigureWebApps {
         Write-Output "No custom domain associated with this web app."
     }
 
-    $staticWebApp = Get-AzStaticWebApp -Name $UIWebAppName -ResourceGroupName $ComputeResourceGroup
+    $staticWebApp = Get-AzStaticWebApp -Name $uiWebAppName -ResourceGroupName $computeResourceGroup
     $allowedOrigins += "https://$($staticWebApp.DefaultHostname)"
 
     # Set CORS for SignalR service
     try {
         Update-AzSignalR `
-            -ResourceGroupName $ComputeResourceGroup `
-            -Name "$ComputeResourceGroup-signalr" `
+            -ResourceGroupName $computeResourceGroup `
+            -Name "$computeResourceGroup-signalr" `
             -AllowedOrigin $allowedOrigins
+
+        Write-Host "✅ SignalR service CORS settings updated successfully" -ForegroundColor Green
     }
     catch {
         Write-Output "Unable to update SignalR service CORS settings."
     }
 
-    $webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $WebApiName
+    $webApi = Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiName
     $currentCORs = $webApi.SiteConfig.Cors.AllowedOrigins
     $newCORs = @()
 
@@ -1483,9 +1952,9 @@ function Set-ConfigureWebApps {
         }
 
         $apiResourceParams = @{
-            ResourceName      = $WebApiName
+            ResourceName      = $webApiName
             ResourceType      = "Microsoft.Web/sites"
-            ResourceGroupName = $ComputeResourceGroup
+            ResourceGroupName = $computeResourceGroup
         }
 
         $webApiResource = Get-AzResource @apiResourceParams
@@ -1494,16 +1963,31 @@ function Set-ConfigureWebApps {
         }
 
         $webApiResource | Set-AzResource -Force
+
+        Write-Host "✅ WebAPI CORS settings updated successfully" -ForegroundColor Green
+    }
+    else {
+        Write-Host "No new CORS origins to add to WebAPI" -ForegroundColor Gray
     }
 
-    # Set UI Redirect URIs
-	if(-not [string]::IsNullOrWhiteSpace($DevTenantId) -and $mainTenantId -ne $DevTenantId) {
-        Write-Host "Please sign in to your dev tenant."
-		Connect-AzAccount -Tenant $DevTenantId
-	}
+    # Retrieve UI App Registration ID from Key Vault if not provided
+    if ([string]::IsNullOrWhiteSpace($UIAppRegistrationId)) {
+        Write-Host "UI App Registration ID not provided. Retrieving from Key Vault..." -ForegroundColor Yellow
+        $UIAppRegistrationId = Get-KeyVaultSecretWithFirewallRetry `
+            -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+            -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+            -SecretName "uiAppId" `
+            -AsPlainText
+        
+        if ([string]::IsNullOrWhiteSpace($UIAppRegistrationId)) {
+            Write-Error "Unable to retrieve UI App Registration ID from Key Vault"
+            return
+        }
+        Write-Host "  ✓ Retrieved UI App ID: $UIAppRegistrationId" -ForegroundColor Gray
+    }
 
-    $uiApp = Get-AzADApplication -ApplicationId $UIAppRegistrationId
-    $currentRedirectUris = Get-Default -Value $uiApp.Spa.RedirectUri -Default @()
+    $uiApp = Get-MgApplication -Filter "appId eq '$UIAppRegistrationId'"
+    $currentRedirectUris = Get-Default -Value $uiApp.Spa.RedirectUris -Default @()
     $newRedirectUris = @()
 
     foreach ($origin in $allowedOrigins) {
@@ -1518,41 +2002,40 @@ function Set-ConfigureWebApps {
             $newRedirectUris += $_
         }
 
-        Update-AzADApplication `
-            -ObjectId $uiApp.Id `
-            -SPARedirectUri $newRedirectUris
+        if ($SkipPrivilegedDirectoryActions -eq $true) {
+            # Manual mode - provide instructions
+            Show-ManualRedirectURIInstructions `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -UIAppRegistrationId $UIAppRegistrationId `
+                -RedirectUris $newRedirectUris
+        }
+        else {
+            # Automated mode - update via Microsoft Graph
+            Write-Host "Updating UI application redirect URIs..." -ForegroundColor Yellow
+            Update-MgApplication `
+                -ApplicationId $uiApp.Id `
+                -Spa @{ RedirectUris = $newRedirectUris }
+            Write-Host "✅ Redirect URIs updated successfully" -ForegroundColor Green
+        }
     }
-
-    if(-not [string]::IsNullOrWhiteSpace($DevTenantId) -and $mainTenantId -ne $DevTenantId) {
-        Write-Host "Please sign in to your main tenant."
-		Connect-AzAccount -Tenant $mainTenantId
-	}
 }
-
 function Set-PublishUICode {
     param (
-        [Parameter(Mandatory = $false)]
-        [AllowNull()]
-        [AllowEmptyString()]
-        [string]$UIClientId,
-        [Parameter(Mandatory = $false)]
-        [AllowNull()]
-        [AllowEmptyString()]
-        [string]$UITenantId,
-        [Parameter(Mandatory = $false)]
-        [AllowNull()]
-        [AllowEmptyString()]
-        [string]$WebApiClientId,
         [Parameter(Mandatory = $true)]
-        [string]$WebApiBaseUri,
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$UIAppClientId,
+        [Parameter(Mandatory = $true)]
+        [string]$DirectoryTenantId,
+        [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$WebApiAppClientId,
         [Parameter(Mandatory = $true)]
         [string]$SolutionAbbreviation,
         [Parameter(Mandatory = $true)]
         [string]$EnvironmentAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$DataResourceGroup,
-        [Parameter(Mandatory = $true)]
-        [string]$ComputeResourceGroup,
         [Parameter(Mandatory = $true)]
         [string]$WebAppDirectory,
         [Parameter(Mandatory = $true)]
@@ -1565,32 +2048,31 @@ function Set-PublishUICode {
         [string]$SubscriptionId
     )
 
+    Write-Host "Publishing UI code to Azure Static Web App..." -ForegroundColor Yellow
 
-    if ([string]::IsNullOrWhiteSpace($UIClientId)) {
-        $UIClientId = Get-KeyVaultSecretWithFirewallRetry `
-                        -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                        -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $webApiBaseUri = "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net"
+
+    if ([string]::IsNullOrWhiteSpace($UIAppClientId)) {
+        $UIAppClientId = Get-KeyVaultSecretWithFirewallRetry `
+                        -ResourceGroup $prereqsResourceGroup `
+                        -VaultName $prereqsKeyVaultName `
                         -SecretName "uiAppId" `
                         -AsPlainText
-    } 
+    }
 
-    if ([string]::IsNullOrWhiteSpace($UITenantId)) {
-        $UITenantId = Get-KeyVaultSecretWithFirewallRetry `
-                        -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                        -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                        -SecretName "uiTenantId" `
-                        -AsPlainText
-    } 
-
-    if ([string]::IsNullOrWhiteSpace($WebApiClientId)) {
-        $WebApiClientId = Get-KeyVaultSecretWithFirewallRetry `
-                            -ResourceGroup "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
-                            -VaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
+    if ([string]::IsNullOrWhiteSpace($WebApiAppClientId)) {
+        $WebApiAppClientId = Get-KeyVaultSecretWithFirewallRetry `
+                            -ResourceGroup $prereqsResourceGroup `
+                            -VaultName $prereqsKeyVaultName `
                             -SecretName "webApiClientId" `
                             -AsPlainText
     } 
     
-    $appInsights = Get-AzApplicationInsights -ResourceGroupName $DataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $appInsights = Get-AzApplicationInsights -ResourceGroupName $dataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $appInsightsConnectionString = $appInsights.ConnectionString
 
     $buildVersionFilePath = "$WebAppDirectory/buildVersion.txt"
@@ -1599,10 +2081,10 @@ function Set-PublishUICode {
         Write-Host "Build version: $buildVersion"
     }
 
-    $envContent = "REACT_APP_AAD_UI_APP_CLIENT_ID=$UIClientId`n"
-    $envContent += "REACT_APP_AAD_APP_TENANT_ID=$UITenantId`n"
-    $envContent += "REACT_APP_AAD_API_APP_CLIENT_ID=$WebApiClientId`n"
-    $envContent += "REACT_APP_AAD_APP_SERVICE_BASE_URI=$WebApiBaseUri`n"
+    $envContent = "REACT_APP_AAD_UI_APP_CLIENT_ID=$UIAppClientId`n"
+    $envContent += "REACT_APP_AAD_APP_TENANT_ID=$DirectoryTenantId`n"
+    $envContent += "REACT_APP_AAD_API_APP_CLIENT_ID=$WebApiAppClientId`n"
+    $envContent += "REACT_APP_AAD_APP_SERVICE_BASE_URI=$webApiBaseUri`n"
     $envContent += "REACT_APP_APPINSIGHTS_CONNECTIONSTRING=$appInsightsConnectionString`n"
     $envContent += "REACT_APP_ENVIRONMENT_ABBREVIATION=$EnvironmentAbbreviation`n"
     $envContent += "REACT_APP_SHAREPOINTDOMAIN=$SharepointDomain`n"
@@ -1619,13 +2101,15 @@ function Set-PublishUICode {
 
     # Get the web app deployment token
     $webAppName = "$SolutionAbbreviation-ui"
-    $webAppSecrets = (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $ComputeResourceGroup).Property | ConvertFrom-Json
+    $webAppSecrets = (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $computeResourceGroup).Property | ConvertFrom-Json
     $webAppDeploymentToken = $webAppSecrets.apiKey
 
     swa build
-    swa deploy "build" --env "Production" -n $webAppName -R $ComputeResourceGroup --deployment-token $webAppDeploymentToken
+    swa deploy "build" --env "Production" -n $webAppName -R $computeResourceGroup --deployment-token $webAppDeploymentToken
 
     Set-Location -Path $currentLocation
+
+    Write-Host "✅ UI code published successfully!" -ForegroundColor Green
 }
 
 function Test-ScriptDependencies {
@@ -1794,6 +2278,8 @@ function Initialize-ScriptDependencies {
         [bool]$UseDeviceAuthentication,
         [Parameter(Mandatory = $true)]
         [bool]$SkipModuleInstallation,
+        [Parameter(Mandatory = $true)]
+        [bool]$SkipPrivilegedDirectoryActions,
         [Parameter(Mandatory = $false)]
         [bool]$AssertUserPermissions = $true
     )
@@ -1801,17 +2287,26 @@ function Initialize-ScriptDependencies {
     Test-ScriptDependencies
 
     if ($SkipModuleInstallation -eq $true) {
-        Write-Host "Skipping module installation as per configuration." -ForegroundColor Yellow
+        Write-Host "Skipping module installation as per configuration [SkipModuleInstallation = $($SkipModuleInstallation)]." -ForegroundColor Yellow
     } else {
         Write-Host "Installing required PowerShell modules..."
         Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
     }
 
     # Connect to Microsoft Graph with required scopes
-    $requiredScopes = @(
-        "AppRoleAssignment.ReadWrite.All",
-        "Directory.ReadWrite.All"
-    )
+    $requiredScopes = @()
+
+    if ($SkipPrivilegedDirectoryActions -eq $true) {
+        $requiredScopes = @(
+            "Application.Read.All"
+        )
+    }
+    else {
+        $requiredScopes = @(
+            "AppRoleAssignment.ReadWrite.All",
+            "Directory.ReadWrite.All"
+        )
+    }
 
     Write-Host "Disconnecting any existing Microsoft Graph sessions..."
     Disconnect-MgGraph -ErrorAction SilentlyContinue | Out-Null
@@ -1836,8 +2331,10 @@ function Initialize-ScriptDependencies {
             -SubscriptionId $SubscriptionId
 
     if ($AssertUserPermissions -eq $true) {
-        . ($ScriptsDirectory + '/Assert-MicrosoftGraphPermissions.ps1')
-        Assert-MicrosoftGraphPermissions
+        if (-not $SkipPrivilegedDirectoryActions) {
+            . ($ScriptsDirectory + '/Assert-MicrosoftGraphPermissions.ps1')
+            Assert-MicrosoftGraphPermissions
+        }
 
         . ($ScriptsDirectory + '/Assert-RbacPermissionsForDeployment.ps1')
         Assert-RbacPermissionsForDeployment `
@@ -1934,18 +2431,17 @@ function Deploy-Resources {
     $skipResourceProvidersCheck                     = $parameterHashtable.skipResourceProvidersCheck.value
     $startFunctions                                 = $parameterHashtable.startFunctions.value
     $assertUserPermissions                          = $parameterHashtable.assertUserPermissions.value
-    $setUserAssignedManagedIdentityPermissions      = $parameterHashtable.setUserAssignedManagedIdentityPermissions.value
     $isInitialDeployment                            = $parameterHashtable.isInitialDeployment.value
     $resetGMMType                                   = $parameterHashtable.resetGMMType.value
     $useDeviceAuthentication                        = $parameterHashtable.useDeviceAuthentication.value
     $skipModuleInstallation                         = $parameterHashtable.skipModuleInstallation.value
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
-    $createAppRegistrations         = Get-Default -Value $ParameterHashtable['createAppRegistrations'].value  -Default $true
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
+    $skipPrivilegedDirectoryActions   = Get-Default -Value $ParameterHashtable['skipPrivilegedDirectoryActions'].value -Default $false
     $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
     $sharepointDomain               = Get-DefaultString -Value $ParameterHashtable['sharepointDomain'].value               -Default 'not-set'
-    $secondaryTenantId              = Get-DefaultString -Value $ParameterHashtable['secondaryTenantId'].value -Default $null
+    $directoryTenantId              = Get-DefaultString -Value $ParameterHashtable['directoryTenantId'].value -Default $parameterHashtable.tenantId.value
 
     $computeResourceGroup = "$SolutionAbbreviation-compute-$environmentAbbreviation"
     $dataResourceGroup = "$SolutionAbbreviation-data-$environmentAbbreviation"
@@ -1958,10 +2454,25 @@ function Deploy-Resources {
         -ScriptsDirectory $scriptsDirectory `
         -UseDeviceAuthentication $useDeviceAuthentication `
         -SkipModuleInstallation $skipModuleInstallation `
+        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
         -AssertUserPermissions $assertUserPermissions
 
     if (!$skipResourceProvidersCheck) {
         Set-ResourceProviders
+    }
+
+    if ($parameterHashtable.skipAppRegistrationSetup.value -ne $true) {
+        $isClientSecretAuth = if ($ParameterHashtable.authenticationType.value -eq "ClientSecret") { $true } else { $false }
+        $appRegistrationSetupResult = Set-GMMAppRegistrations `
+                                        -SolutionAbbreviation $solutionAbbreviation `
+                                        -EnvironmentAbbreviation $environmentAbbreviation `
+                                        -ScriptsDirectory $scriptsDirectory `
+                                        -IsClientSecretAuth $isClientSecretAuth `
+                                        -DirectoryTenantId $directoryTenantId `
+                                        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
+    }
+    else {
+        Write-Host "`nSkipping App Registration setup as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]." -ForegroundColor Yellow
     }
 
     if(!$isInitialDeployment) {
@@ -1999,7 +2510,7 @@ function Deploy-Resources {
     . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
     . ($scriptsDirectory + '/ReusableModules/Invoke-SqlOperationWithFirewallRetry.ps1')
 
-    $response = Set-GMMResources `
+    Set-GMMResources `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
         -SubscriptionId $subscriptionId `
@@ -2040,11 +2551,14 @@ function Deploy-Resources {
     }
 
     if ($true -eq $setRBACPermissions) {
+        $isUserAssignedManagedIdentityAuth = if ($ParameterHashtable.authenticationType.value -eq "UserAssignedManagedIdentity") { $true } else { $false }
         Set-RBACPermissions `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
+        -TenantId $parameterHashtable.tenantId.value `
         -ScriptsDirectory "$scriptsDirectory/PostDeploymentRoleAssignments" `
-        -SetUserAssignedManagedIdentityPermissions $setUserAssignedManagedIdentityPermissions
+        -SetUserAssignedManagedIdentityPermissions $isUserAssignedManagedIdentityAuth `
+        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
     }
 
     Set-FunctionAppCode `
@@ -2053,29 +2567,29 @@ function Deploy-Resources {
         -WebApiPackagesDirectory "$deploymentPackageDirectory/webapi_package"
 
     # Configure web apps
-    if ($true -eq $createAppRegistrations) {
+    if ($parameterHashtable.skipAppRegistrationSetup.value -ne $true) {
         Set-ConfigureWebApps `
-            -WebApiName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" `
-            -UIWebAppName "$SolutionAbbreviation-ui" `
-            -DevTenantId $secondaryTenantId `
-            -UIAppRegistrationId $response.AppRegistrations.UIApplicationId `
-            -ComputeResourceGroup $computeResourceGroup
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -UIAppRegistrationId $appRegistrationSetupResult.UIAppId `
+            -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
+    }
+    else {
+        Write-Host "`nSkipping Web App configuration as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]." -ForegroundColor Yellow
     }
 
-    $context = Get-AzContext
+    $uiAppClientId = if ($appRegistrationSetupResult -ne $null) { $appRegistrationSetupResult.UIAppId } else { $null }
+    $webApiAppClientId = if ($appRegistrationSetupResult -ne $null) { $appRegistrationSetupResult.WebApiAppId } else { $null }
 
     # Publish UI code
     Set-PublishUICode `
-        -UIClientId $response.AppRegistrations.UIApplicationId `
-        -UITenantId $response.AppRegistrations.UITenantId `
-        -WebApiClientId $response.AppRegistrations.APIApplicationId `
-        -WebApiBaseUri "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi.azurewebsites.net" `
+        -UIAppClientId $uiAppClientId `
+        -DirectoryTenantId $directoryTenantId `
+        -WebApiAppClientId $webApiAppClientId `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
-        -DataResourceGroup $dataResourceGroup `
-        -ComputeResourceGroup $computeResourceGroup `
         -WebAppDirectory "$deploymentPackageDirectory/webapp_package/web-app" `
-        -MainTenantId $context.Tenant.Id `
+        -MainTenantId $parameterHashtable.tenantId.value `
         -TenantDomain $tenantDomain `
         -SharepointDomain $sharepointDomain `
         -SubscriptionId $subscriptionId
@@ -2097,9 +2611,16 @@ function Deploy-Resources {
 
         . ($scriptsDirectory + '/Reset-GMM.ps1')
 
-        Set-WebAPIAsResetAdministrator `
-            -SolutionAbbreviation $solutionAbbreviation `
-            -EnvironmentAbbreviation $environmentAbbreviation
+        if ($parameterHashtable.skipPrivilegedDirectoryActions.value -eq $true) {
+            Show-WebAPIResetAdministratorInstructions `
+                -SolutionAbbreviation $solutionAbbreviation `
+                -EnvironmentAbbreviation $environmentAbbreviation
+        }
+        else {
+             Set-WebAPIAsResetAdministrator `
+                -SolutionAbbreviation $solutionAbbreviation `
+                -EnvironmentAbbreviation $environmentAbbreviation
+        }
 
         if($resetGMMType -eq "Credentials") {
             Reset-GMMWithCredentials `
@@ -2118,12 +2639,12 @@ function Deploy-Resources {
 
     Write-Host "`nDeployment complete!" -ForegroundColor Green
 
-    if ($response.AppRegistrations.AppsThatNeedAdminConsent.Count -gt 0) {
+    if ($parameterHashtable.skipAppRegistrationSetup -ne $true -and $appRegistrationSetupResult -ne $null -and $appRegistrationSetupResult.AppsThatNeedAdminConsent.Count -gt 0) {
         Write-Host "`n==========================================================" -ForegroundColor Yellow
         Write-Host "The following applications might require admin consent:" -ForegroundColor Yellow
         Write-Host "==========================================================" -ForegroundColor Yellow
 
-        foreach ($app in $response.AppRegistrations.AppsThatNeedAdminConsent) {
+        foreach ($app in $appRegistrationSetupResult.AppsThatNeedAdminConsent) {
             $consentUrl = "https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/~/CallAnAPI/appId/$($app.ApplicationId)"
             Write-Host ("`n{0} - {1}" -f $app.ApplicationName, $consentUrl) -ForegroundColor Cyan
         }

@@ -28,6 +28,8 @@ function Set-PostDeploymentRoles {
         [string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
+        [Parameter(Mandatory=$True)]
+        [string] $TenantId,
         [Parameter(Mandatory = $False)]
 		[array] $UserPrincipalNames,
         [Parameter(Mandatory = $False)]
@@ -35,7 +37,9 @@ function Set-PostDeploymentRoles {
         [Parameter(Mandatory = $False)]
 		[string] $ComputeResourceGroupName = $null,
         [Parameter(Mandatory = $False)]
-		[bool] $SetUserAssignedManagedIdentityPermissions = $false
+		[bool] $SetUserAssignedManagedIdentityPermissions = $false,
+        [Parameter(Mandatory = $False)]
+		[boolean] $SkipPrivilegedDirectoryActions = $false
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -70,13 +74,6 @@ function Set-PostDeploymentRoles {
                                        -ComputeResourceGroupName $ComputeResourceGroupName `
                                        -Verbose
 
-    if ($SetUserAssignedManagedIdentityPermissions) {
-        . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-UserManagedIdentityPermissions.ps1')
-        Set-UserManagedIdentityPermissions	-SolutionAbbreviation $SolutionAbbreviation `
-                                            -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                                            -Verbose
-    }
-
     . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-KeyVaultAccessRoles.ps1')
     Set-KeyVaultAccessRoles `
         -SolutionAbbreviation $SolutionAbbreviation `
@@ -90,4 +87,13 @@ function Set-PostDeploymentRoles {
         -ComputeResourceGroupName $ComputeResourceGroupName `
         -DataResourceGroupName $DataResourceGroupName `
         -Verbose
+    
+    if ($SetUserAssignedManagedIdentityPermissions) {
+        . ($scriptsDirectory + '/PostDeploymentRoleAssignments/Set-UserManagedIdentityPermissions.ps1')
+        Set-UserManagedIdentityPermissions	-SolutionAbbreviation $SolutionAbbreviation `
+                                            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                                            -TenantId $TenantId `
+                                            -SkipPrivilegedDirectoryActions $SkipPrivilegedDirectoryActions `
+                                            -Verbose
+    }
 }

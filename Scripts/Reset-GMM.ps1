@@ -476,3 +476,68 @@ function Set-WebAPIAsResetAdministrator {
         Disconnect-MgGraph -ErrorAction SilentlyContinue
     }
 }
+
+function Show-WebAPIResetAdministratorInstructions {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation
+    )
+
+    $scriptsDirectory = $PSScriptRoot
+    $appName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
+
+    Write-Host "`n⚠️  MANUAL APP ROLE ASSIGNMENT REQUIRED" -ForegroundColor Yellow
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "`nThe WebAPI service principal needs to be assigned the 'Operations.Reset' app role" -ForegroundColor White
+    Write-Host "to itself. This allows the WebAPI to perform reset operations.`n" -ForegroundColor White
+
+    Write-Host "📋 Target Application:" -ForegroundColor Cyan
+    Write-Host "   Application: $appName" -ForegroundColor White
+    Write-Host "   Role to Assign: Operations.Reset`n" -ForegroundColor White
+
+    Write-Host "🔧 PowerShell Script Method:" -ForegroundColor Cyan
+    Write-Host "   If you prefer to run the setup script, use these commands in a separate" -ForegroundColor White
+    Write-Host "   PowerShell session with appropriate permissions:`n" -ForegroundColor White
+
+    Write-Host "   ⚠️  IMPORTANT: Install Required Modules First!" -ForegroundColor Yellow
+    Write-Host "   Before running the setup script below, you must first install the required" -ForegroundColor White
+    Write-Host "   PowerShell modules. Run these commands in your PowerShell session:`n" -ForegroundColor White
+
+    Write-Host "   # Install Required Modules if you haven't already for this session" -ForegroundColor Magenta
+    Write-Host "   . `"$ScriptsDirectory/Install-ModuleIfNeeded.ps1`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Authentication`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Applications`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Identity.DirectoryManagement`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "   Install-ModuleIfNeeded -Name `"Microsoft.Graph.Users`" -Version `"2.17.0`"" -ForegroundColor Gray
+    Write-Host "" -ForegroundColor Gray
+    Write-Host "   `$global:SkipModuleInstall = `$true`n" -ForegroundColor Gray
+    Write-Host "   Once the modules are installed, proceed with the role assignment:`n" -ForegroundColor White
+
+    Write-Host "   # Assign Operations.Reset Role" -ForegroundColor Green
+    Write-Host "   . `"$scriptsDirectory/Reset-GMM.ps1`"" -ForegroundColor Gray
+    Write-Host "   Set-WebAPIAsResetAdministrator ``" -ForegroundColor Gray
+    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`"`n" -ForegroundColor Gray
+
+    Write-Host "📖 Azure Portal Method:" -ForegroundColor Cyan
+    Write-Host "   1. Go to: https://portal.azure.com" -ForegroundColor White
+    Write-Host "   2. Navigate to Microsoft Entra ID > App registrations" -ForegroundColor White
+    Write-Host "   3. Find and select: $appName" -ForegroundColor White
+    Write-Host "   4. Go to 'App roles' in the left menu" -ForegroundColor White
+    Write-Host "   5. Verify the 'Operations.Reset' role exists" -ForegroundColor White
+    Write-Host "   6. Navigate to Microsoft Entra ID > Enterprise applications" -ForegroundColor White
+    Write-Host "   7. Find and select: $appName" -ForegroundColor White
+    Write-Host "   8. Go to 'Permissions' in the left menu" -ForegroundColor White
+    Write-Host "   9. Under 'Admin consent', locate the Operations.Reset permission" -ForegroundColor White
+    Write-Host "   10. Assign the service principal to itself with the 'Operations.Reset' role`n" -ForegroundColor White
+    
+    Write-Host "═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Yellow
+    Write-Host "`n⏸️  Once you have completed the app role assignment, press ENTER to continue..." -ForegroundColor Cyan
+    
+    $null = Read-Host
+
+    Write-Host "`n✅ Continuing with deployment..." -ForegroundColor Green
+}

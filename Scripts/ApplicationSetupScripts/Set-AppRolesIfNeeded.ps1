@@ -26,25 +26,33 @@ function Set-AppRolesIfNeeded {
         [Parameter(Mandatory = $True)]
         [Guid] $TenantId
     )
-    Write-Verbose "Set-AppRolesIfNeeded starting..."
+    Write-Host "Set-AppRolesIfNeeded starting..."
 
     if ($global:SkipModuleInstall -ne $true) {
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
-		. ($scriptsDirectory + '\Install-AzModuleIfNeeded.ps1')
-    	Install-AzModuleIfNeeded
-	}
+        . ($scriptsDirectory + '\Install-MSGraphIfNeeded.ps1')
+        Install-MSGraphIfNeeded
+    }
 
-    $context = Get-AzContext
-	$currentTenantId = $context.Tenant.Id
+    if ($global:SkipMsGraphLogin -ne $true) {
+        # Disconnect any existing session
+        Disconnect-MgGraph -ErrorAction SilentlyContinue 
 
-    if($currentTenantId -ne $TenantId) {
-		Connect-AzAccount -Tenant $TenantId
-	}
+        $requiredScopes = @(
+            "Application.ReadWrite.All", 
+            "AppRoleAssignment.ReadWrite.All"
+        )
+        
+        # Connect to Microsoft Graph with required scopes for the target tenant
+        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        
+        Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
+    }
 
-    $WebApiApp = Get-AzADApplication -ObjectId $WebApiObjectId
+    $WebApiApp = Get-MgApplication -ApplicationId $WebApiObjectId
     if (-not $WebApiApp) {
         Write-Error "Failed to retrieve the Azure AD application with Object Id: $WebApiObjectId"
-        return
+        throw "Azure AD application not found."
     }
 
     $memberTypes = "User", "Application"
@@ -162,28 +170,39 @@ function Set-AppRolesIfNeeded {
         $newAppRolesLookup[$role.Value] = $role
     }
 
-    if ($WebApiApp.AppRole -eq $null) {
-        Write-Verbose "No existing app roles found. Initializing an empty array."
+    if ($WebApiApp.AppRoles -eq $null) {
+        Write-Host "No existing app roles found."
         $currentAppRoles = @()
     } else {
-        $currentAppRoles = $WebApiApp.AppRole.Clone()
+        $currentAppRoles = $WebApiApp.AppRoles | ForEach-Object {
+            @{
+                DisplayName        = $_.DisplayName
+                Description        = $_.Description
+                Value              = $_.Value
+                Id                 = $_.Id
+                IsEnabled          = $_.IsEnabled
+                AllowedMemberTypes = $_.AllowedMemberTypes
+            }
+        }
 
+        # Disable roles that aren't in the new roles list
         foreach ($role in $currentAppRoles) {
             if (-not $newAppRolesLookup.ContainsKey($role.Value) -and $role.IsEnabled) {
-                Write-Verbose "Disabling role: $($role.DisplayName)"
+                Write-Host "Disabling role: $($role.DisplayName)"
                 $role.IsEnabled = $false
             }
         }
 
         try {
-            Update-AzADApplication -ObjectId $WebApiObjectId -AppRole $currentAppRoles
+            Update-MgApplication -ApplicationId $WebApiObjectId -AppRoles $currentAppRoles
             Write-Host "Roles have been disabled as needed."
         }
         catch {
             Write-Error "Failed to disable roles: $_"
-            return
+            throw
         }
 
+        # Keep only roles that are still valid (in the new roles list)
         $currentAppRoles = $currentAppRoles | Where-Object {
             $newAppRolesLookup.ContainsKey($_.Value)
         }
@@ -193,19 +212,27 @@ function Set-AppRolesIfNeeded {
         $currentAppRoles = @()
     }
 
+    # Add any missing roles
     foreach ($role in $newAppRoles) {
         $exists = $currentAppRoles | Where-Object { $_.Value -eq $role.Value }
         if (-not $exists) {
-            Write-Verbose "Adding role: $($role.DisplayName)"
+            Write-Host "Adding role: $($role.DisplayName)"
             $currentAppRoles += $role
         }
     }
 
+    # Single update with all changes
     try {
-        Update-AzADApplication -ObjectId $WebApiObjectId -AppRole $currentAppRoles
+        Update-MgApplication -ApplicationId $WebApiObjectId -AppRoles $currentAppRoles
         Write-Host "Application updated with new roles and removed obsolete roles."
     }
     catch {
         Write-Error "Failed to update application roles: $_"
+        throw
     }
+
+    # Disconnect from Microsoft Graph before returning
+	if ($global:SkipMsGraphLogin -ne $true) {
+		Disconnect-MgGraph -ErrorAction SilentlyContinue
+	}
 }

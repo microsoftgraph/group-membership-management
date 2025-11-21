@@ -55,75 +55,104 @@ function Set-GraphCredentialsAzureADApplication {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory=$True)]
-		[string] $SubscriptionName,
-		[Parameter(Mandatory=$True)]
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[Guid] $TenantIdToCreateAppIn,
-		[Parameter(Mandatory=$True)]
-		[Guid] $TenantIdWithKeyVault,
+		[Guid] $AppTenantId,
+		[Parameter(Mandatory=$False)]
+		[Guid] $KeyVaultTenantId,
 		[Parameter(Mandatory=$False)]
 		[string] $CertificateName,
+		[Parameter(Mandatory=$False)]
+		[string] $SubscriptionName,
 		[Parameter(Mandatory = $False)]
 		[boolean] $SaveToKeyVault = $True,
-		[Parameter(Mandatory = $False)]
-		[boolean] $SkipPrompts = $False,
 		[Parameter(Mandatory = $False)]
 		[boolean] $SkipIfApplicationExists = $True,
 		[Parameter(Mandatory=$False)]
 		[boolean] $Clean = $False,
 		[Parameter(Mandatory=$False)]
+		[boolean] $CreateNewSecret = $True,
+		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
 	)
-	Write-Verbose "Set-GraphCredentialsAzureADApplication starting..."
+	Write-Host "Set-GraphCredentialsAzureADApplication starting..."
+
+	# Validate required parameters when SaveToKeyVault is enabled
+	if ($SaveToKeyVault -eq $true) {
+		if ([string]::IsNullOrWhiteSpace($SubscriptionName)) {
+			throw "SubscriptionName parameter is required when SaveToKeyVault is set to true."
+		}
+		if ([string]::IsNullOrWhiteSpace($KeyVaultTenantId)) {
+			throw "KeyVaultTenantId parameter is required when SaveToKeyVault is set to true."
+		}
+	}
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 
 	if ($global:SkipModuleInstall -ne $true) {
-		. ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
-    	Install-AzModuleIfNeeded
+		. ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
+    	Install-MSGraphIfNeeded
+
+		if ($SaveToKeyVault -eq $true) {
+			. ($scriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
+    		Install-AzModuleIfNeeded
+		}
 	}
 
-	$context = Get-AzContext
-	$currentTenantId = $context.Tenant.Id
-
-	if($currentTenantId -ne $TenantIdToCreateAppIn){
-		Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
-		Connect-AzAccount -Tenant $TenantIdToCreateAppIn
+	if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
+		Connect-AzAccount -Tenant $KeyVaultTenantId
+		Set-AzContext -SubscriptionName $SubscriptionName
 	}
 
-	while ((Set-AzContext -TenantId $TenantIdToCreateAppIn).Tenant.Id -ne $TenantIdToCreateAppIn)
-	{
-		Write-Host "Please sign in as an account that can make Azure AD Apps in your target tenant."
-		Add-AzAccount -TenantId $TenantIdToCreateAppIn
-	}
+	if ($global:SkipMsGraphLogin -ne $true) {
+        # Disconnect any existing session
+        Disconnect-MgGraph -ErrorAction SilentlyContinue 
+
+        $requiredScopes = @(
+            "Application.ReadWrite.All", 
+            "AppRoleAssignment.ReadWrite.All"
+        )
+        
+        # Connect to Microsoft Graph with required scopes for the target tenant
+        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        
+        Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
+    }
 
 	#region Delete Application / Service Principal if they already exist
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
-	$graphApp = (Get-AzADApplication -DisplayName $graphAppDisplayName)
+	$graphApps = Get-MgApplication -Filter "displayName eq '$graphAppDisplayName'"
+	
+	# Validate that we don't have multiple applications with the same name
+	if($null -ne $graphApps -and $graphApps.Count -gt 1) {
+		Write-Error "Found $($graphApps.Count) applications with the name '$graphAppDisplayName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+		throw "Multiple applications found with the same display name: $graphAppDisplayName"
+	}
+	
+	# Convert to single application object if we have exactly one
+	$graphApp = if($null -ne $graphApps -and $graphApps.Count -eq 1) { $graphApps } else { $null }
 	$updatedAPIPermissions = $false
 
 	if($null -ne $graphApp -and $SkipIfApplicationExists -eq $true -and $Clean -eq $false)
 	{
 		Write-Host "Application $graphAppDisplayName already exists. Skipping creation..."
-		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
+		return @{ ApplicationId = $graphApp.AppId; TenantId = $AppTenantId; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 	}
 
-	if($Clean -eq $true)
+	if($Clean -eq $true -and $null -ne $graphApp)
 	{
-		$graphApp | ForEach-Object {
-
-			$displayName = $_.DisplayName;
-			$objectId = $_.Id;
-			try {
-				Remove-AzADApplication -ObjectId $objectId
-				Write-Host "Removed $displayName..." -ForegroundColor Green;
-			}
-			catch {
-				Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
-			}
+		$displayName = $graphApp.DisplayName;
+		$objectId = $graphApp.Id;
+		try {
+			Remove-MgApplication -ApplicationId $objectId
+			Write-Host "Removed $displayName..." -ForegroundColor Green;
+			$graphApp = $null
+		}
+		catch {
+			Write-Host "Failed to remove $displayName..." -ForegroundColor Red;
+			throw
 		}
 	}
     #endregion
@@ -133,98 +162,77 @@ function Set-GraphCredentialsAzureADApplication {
         ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net"};
     $replyUrls += "http://localhost";
 
-	$requiredResourceAccess = @{
-		ResourceAppId = "00000003-0000-0000-c000-000000000000";
-		ResourceAccess = @()
-	}
-
-	$appPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").AppRole `
-		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") } `
-        | ForEach-Object { @{Id = $_.Id; Type = "Role" } }
-
-	$delegatedPermissions = (Get-AzADServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'").Oauth2PermissionScope `
-		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Mail.Send") } `
-		| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
-
-	$requiredResourceAccess.ResourceAccess = $appPermissions + $delegatedPermissions
-	$signInAudience = "AzureADMyOrg"
-	$enableAccessTokenIssuance = $true
-	$enableIdTokenIssuance = $true
-
-	#region Create Appplication
+	#region Create Application
 	if($null -eq $graphApp)
 	{
-		Write-Verbose "Creating Azure AD app $graphAppDisplayName"
-		$graphApp = New-AzADApplication	-DisplayName $graphAppDisplayName `
-                                        -ReplyUrls $replyUrls `
-                                        -RequiredResourceAccess $requiredResourceAccess `
-										-SignInAudience $signInAudience `
-										-IsFallbackPublicClient
+		Write-Host "Creating Azure AD app $graphAppDisplayName"
+
+		$appCreationParameters = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation
 		
+		# Create application body for Microsoft Graph
+		$graphApp = New-MgApplication -BodyParameter $appCreationParameters
 		$updatedAPIPermissions = $true
 		
-        New-AzADServicePrincipal -ApplicationId $graphApp.AppId
+		New-MgServicePrincipal -AppId $graphApp.AppId
 
-		$webSettings = $graphApp.Web
-		$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
-		$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
+		# Update with identifier URI
+		$updatedAppParameters = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-AppId $graphApp.AppId
 
-		Update-AzADApplication -ObjectId $graphApp.Id `
-		                       -IdentifierUris "api://$($graphApp.AppId)" `
-							   -Web $webSettings
+		Update-MgApplication -ApplicationId $graphApp.Id -BodyParameter $updatedAppParameters
+		Write-Host "Created Azure AD app $graphAppDisplayName"
 	}
 	else
 	{
-		Write-Verbose "Azure AD app $graphAppDisplayName already exists."
-		Write-Verbose "Checking if app needs update..."
+		Write-Host "Azure AD app $graphAppDisplayName already exists."
+		Write-Host "Checking if app needs update..."
 
-		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppNeedsUpdate.ps1')
-		if (Test-AppNeedsUpdate -AppObject $graphApp `
-							  -ExpectedRequiredResourceAccess $requiredResourceAccess `
-							  -ExpectedSignInAudience $signInAudience `
-							  -ExpectedEnableAccessTokenIssuance $enableAccessTokenIssuance `
-							  -ExpectedEnableIdTokenIssuance $enableIdTokenIssuance) {
+		$expectedAppConfig = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-AppId $graphApp.AppId
 
-			Write-Verbose "App $graphAppDisplayName needs update."
-
-			Write-Verbose "Updating Azure AD app $graphAppDisplayName"
-
-			$webSettings = $graphApp.Web
-			$webSettings.ImplicitGrantSetting.EnableAccessTokenIssuance = $enableAccessTokenIssuance
-			$webSettings.ImplicitGrantSetting.EnableIdTokenIssuance = $enableIdTokenIssuance
-
-			Update-AzADApplication	-ObjectId $($graphApp.Id) `
-									-DisplayName $graphAppDisplayName `
-									-RequiredResourceAccess $requiredResourceAccess `
-									-SignInAudience $signInAudience `
-									-Web $webSettings
-
+		. ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
+		$needsUpdate = -not (Test-AppMatchesConfiguration -AppObject $graphApp -ExpectedConfiguration $expectedAppConfig)
+		
+		if ($needsUpdate) {
+			Write-Host "App $graphAppDisplayName needs update. Updating..."
+			Update-MgApplication -ApplicationId $graphApp.Id -BodyParameter $expectedAppConfig
 			$updatedAPIPermissions = $true
-
-			Write-Verbose "Finished updating Azure AD app $graphAppDisplayName"
+			Write-Host "Finished updating Azure AD app $graphAppDisplayName"
 		}
 		else {
-			Write-Verbose "No update needed for app $graphAppDisplayName."
+			Write-Host "No update needed for app $graphAppDisplayName."
 		}
     }
 
-	if($SaveToKeyVault -eq $false)
-	{
-		Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
-		return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
+	if ($updatedAPIPermissions -eq $true) {
+		Write-Host "Waiting 15 seconds for Azure AD replication..."
+		Start-Sleep -Seconds 15
+		Write-Host "Done waiting for Azure AD replication."
 	}
 
-	Set-GraphAppKeyVaultSecrets -SubscriptionName $SubscriptionName `
-								-SolutionAbbreviation $SolutionAbbreviation `
-								-EnvironmentAbbreviation $EnvironmentAbbreviation `
-								-TenantIdToCreateAppIn $TenantIdToCreateAppIn `
-								-TenantIdWithKeyVault $TenantIdWithKeyVault `
-								-ApplicationClientId $graphApp.AppId `
-								-CertificateName $CertificateName `
-								-SkipPrompts $SkipPrompts
+	if($SaveToKeyVault -eq $true)
+	{
+		Set-GraphAppKeyVaultSecrets `
+			-SolutionAbbreviation $SolutionAbbreviation `
+			-EnvironmentAbbreviation $EnvironmentAbbreviation `
+			-TenantIdToCreateAppIn $AppTenantId `
+			-ApplicationClientId $graphApp.AppId `
+			-CertificateName $CertificateName `
+			-CreateNewSecret $CreateNewSecret
+	}
 
-	return @{ ApplicationId = $graphApp.AppId; TenantId = $TenantIdToCreateAppIn; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
-	Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
+	# Disconnect from Microsoft Graph before returning
+	if ($global:SkipMsGraphLogin -ne $true) {
+		Disconnect-MgGraph -ErrorAction SilentlyContinue
+
+		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
+	}
+
+	Write-Host "Set-GraphCredentialsAzureADApplication completed."
+	return @{ ApplicationId = $graphApp.AppId; TenantId = $AppTenantId; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 }
 
 
@@ -232,21 +240,20 @@ function Set-GraphAppKeyVaultSecrets {
 	[CmdletBinding()]
 	param(
 		[Parameter(Mandatory=$True)]
-		[string] $SubscriptionName,
-		[Parameter(Mandatory=$True)]
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory=$True)]
 		[string] $EnvironmentAbbreviation,
 		[Parameter(Mandatory=$True)]
-		[Guid] $TenantIdToCreateAppIn,
-		[Parameter(Mandatory=$True)]
-		[Guid] $TenantIdWithKeyVault,
+		[Guid] $AppTenantId,
 		[Parameter(Mandatory=$True)]
 		[Guid] $ApplicationClientId,
+		[AllowNull()]
+		[Parameter(Mandatory = $False)]
+		[string] $AppSecret = $null,
 		[Parameter(Mandatory=$False)]
 		[string] $CertificateName,
-		[Parameter(Mandatory = $False)]
-		[boolean] $SkipPrompts = $False
+		[Parameter(Mandatory=$False)]
+		[boolean] $CreateNewSecret = $True
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -254,20 +261,25 @@ function Set-GraphAppKeyVaultSecrets {
     . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
 	# These need to go into the key vault
-	$graphAppTenantId = $TenantIdToCreateAppIn;
+	$graphAppTenantId = $AppTenantId;
 	$graphAppClientId = $ApplicationClientId;
+	$graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation" 
 
-	# Create new secret
-	$endDate = [System.DateTime]::Now.AddYears(1)
-    $graphAppClientSecret = Get-AzADApplication -ApplicationId $graphAppClientId | New-AzADAppCredential -StartDate $(get-date) -EndDate $endDate
-
-	if ($TenantIdToCreateAppIn -ne $TenantIdWithKeyVault) {
-		Write-Host "Please sign in to your primary tenant."
-		Connect-AzAccount -Tenant $TenantIdWithKeyVault
+	# Create new secret if requested
+	$graphAppClientSecret = $AppSecret
+	if ($CreateNewSecret -eq $true) {
+		$endDate = [System.DateTime]::Now.AddYears(1)
+		$passwordCredential = @{
+			displayName = "GMM Generated Secret"
+			startDateTime = [System.DateTime]::Now
+			endDateTime = $endDate
+		}
+		$appObjectId = (Get-MgApplication -Filter "appId eq '$graphAppClientId'").Id
+	    $graphAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+		Write-Host "Created new application secret for app $graphAppClientId"
+	} else {
+		Write-Host "Skipping secret creation as CreateNewSecret is set to false"
 	}
-
-	Set-AzContext -SubscriptionName $SubscriptionName
-   	Write-Host (Get-AzContext)
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $keyVault = Get-AzKeyVault -VaultName $keyVaultName
@@ -280,56 +292,46 @@ function Set-GraphAppKeyVaultSecrets {
 	# Store Application (client) ID in KeyVault
     $graphClientIdKeyVaultSecretName = "graphAppClientId"
 
-    Write-Verbose "Graph application (client) ID is $graphAppClientId"
-	if($SkipPrompts){
-		$graphClientIdSecret = New-Object System.Security.SecureString
-		$graphAppClientId.ToString().ToCharArray() | ForEach-Object { $graphClientIdSecret.AppendChar($_) }
-	} else {
-		$graphClientIdSecret = Read-Host -AsSecureString -Prompt "Please take the graph application ID from above and paste it here"
-	}
+	$graphClientIdSecret = New-Object System.Security.SecureString
+	$graphAppClientId.ToString().ToCharArray() | ForEach-Object { $graphClientIdSecret.AppendChar($_) }
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
 										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $graphClientIdKeyVaultSecretName `
 										-SecretValue $graphClientIdSecret
 
-	Write-Verbose "$graphClientIdKeyVaultSecretName added to vault for $graphAppDisplayName."
+	Write-Host "$graphClientIdKeyVaultSecretName added to vault for $graphAppDisplayName."
 
-	# Store Application secret in KeyVault
-	$graphAppClientSecretName = "graphAppClientSecret"
+	# Store Application secret in KeyVault (only if a new secret was created)
+	if (-not [string]::IsNullOrEmpty($graphAppClientSecret)) {
+		$graphAppClientSecretName = "graphAppClientSecret"
 
-    Write-Verbose "Graph application client secret is $($graphAppClientSecret.SecretText)"
-	if($SkipPrompts){
+		Write-Host "Storing Graph application client secret in KeyVault"
 		$graphClientSecret = New-Object System.Security.SecureString
-		$graphAppClientSecret.SecretText.ToCharArray() | ForEach-Object { $graphClientSecret.AppendChar($_) }
-	} else {
-		$graphClientSecret = Read-Host -AsSecureString -Prompt "Please take the graph application client secret from above and paste it here"
-	}
+		$graphAppClientSecret.ToCharArray() | ForEach-Object { $graphClientSecret.AppendChar($_) }
 
-	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
+		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
 										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $graphAppClientSecretName `
 										-SecretValue $graphClientSecret
 
-	Write-Verbose "$graphAppClientSecretName added to vault for $graphAppDisplayName."
+		Write-Host "$graphAppClientSecretName added to vault for $graphAppDisplayName."
+	} else {
+		Write-Host "Skipping application secret storage as no new secret was created"
+	}
 
 	# Store tenantID in KeyVault
 	$graphTenantSecretName = "graphAppTenantId"
 
-    Write-Verbose "Graph application tenant id is $graphAppTenantId"
-	if($SkipPrompts){
-		$graphTenantSecret = New-Object System.Security.SecureString
-		$graphAppTenantId.ToString().ToCharArray() | ForEach-Object { $graphTenantSecret.AppendChar($_) }
-	} else {
-		$graphTenantSecret = Read-Host -AsSecureString -Prompt "Please take the graph application tenant id from above and paste it here"
-	}
+	$graphTenantSecret = New-Object System.Security.SecureString
+	$graphAppTenantId.ToString().ToCharArray() | ForEach-Object { $graphTenantSecret.AppendChar($_) }
 
 	Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
 										-ResourceGroup $keyVault.ResourceGroupName `
 										-SecretName $graphTenantSecretName `
 										-SecretValue $graphTenantSecret
 
-    Write-Verbose "$graphTenantSecretName added to vault for $graphAppDisplayName."
+    Write-Host "$graphTenantSecretName added to vault for $graphAppDisplayName."
 
 	# Store certificate name in KeyVault
 	$graphAppCertificateName = "graphAppCertificateName"
@@ -344,21 +346,140 @@ function Set-GraphAppKeyVaultSecrets {
 	}
 
 	if($setGraphAppCertificate){
-		Write-Verbose "Certificate name is $CertificateName"
-		if($SkipPrompts){
-			$graphAppCertificateSecret = New-Object System.Security.SecureString
-			$CertificateName.ToCharArray() | ForEach-Object { $graphAppCertificateSecret.AppendChar($_) }
-		} else {
-			$graphAppCertificateSecret = Read-Host -AsSecureString -Prompt "Please take the certificate name from above and paste it here"
-		}
+		Write-Host "Certificate name is $CertificateName"
+		$graphAppCertificateSecret = New-Object System.Security.SecureString
+		$CertificateName.ToCharArray() | ForEach-Object { $graphAppCertificateSecret.AppendChar($_) }
 
 		Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
 											-ResourceGroup $keyVault.ResourceGroupName `
 											-SecretName $graphAppCertificateName `
 											-SecretValue $graphAppCertificateSecret
-		Write-Verbose "$graphAppCertificateName added to vault for $graphAppDisplayName."
+		Write-Host "$graphAppCertificateName added to vault for $graphAppDisplayName."
 	}
 
-	Write-Verbose "Set-GraphCredentialsAzureADApplication completed."
+	Write-Host "Set-GraphCredentialsAzureADApplication completed."
 }
 
+function New-GraphCredentialsValidationConfiguration {
+	[CmdletBinding()]
+	param(
+		[Parameter(Mandatory = $true)]
+		[string] $SolutionAbbreviation,
+		
+		[Parameter(Mandatory = $true)]
+		[string] $EnvironmentAbbreviation,
+		
+		[AllowNull()]
+		[Parameter(Mandatory = $false)]
+		[string] $AppId  # If provided, will be used for identifier URI
+	)
+	
+	$graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
+	
+	# These are the function apps that need to interact with the graph
+	$replyUrls = @("graphupdater", "groupmembershipobtainer") |
+		ForEach-Object { "https://$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$_.azurewebsites.net" }
+	$replyUrls += "http://localhost"
+	
+	# Get Microsoft Graph service principal to retrieve current permission IDs
+	$mgGraphServicePrincipal = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
+	
+	$appPermissions = $mgGraphServicePrincipal.AppRoles `
+		| Where-Object { ($_.Value -eq "User.Read.All") -or ($_.Value -eq "GroupMember.Read.All") -or ($_.Value -eq "Member.Read.Hidden") } `
+		| ForEach-Object { @{Id = $_.Id; Type = "Role" } }
+
+	$delegatedPermissions = $mgGraphServicePrincipal.Oauth2PermissionScopes `
+		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Mail.Send") } `
+		| ForEach-Object { @{Id = $_.Id; Type = "Scope" } }
+
+	$requiredResourceAccess = @{
+		ResourceAppId = "00000003-0000-0000-c000-000000000000"
+		ResourceAccess = $appPermissions + $delegatedPermissions
+	}
+	
+	$config = @{
+		displayName            = $graphAppDisplayName
+		signInAudience         = "AzureADMyOrg"
+		requiredResourceAccess = @($requiredResourceAccess)
+		isFallbackPublicClient = $true
+		web                    = @{
+			redirectUris = $replyUrls
+			implicitGrantSettings = @{
+				enableAccessTokenIssuance = $true
+				enableIdTokenIssuance     = $true
+			}
+		}
+	}
+	
+	# Add identifier URIs if AppId is provided
+	if (-not [string]::IsNullOrWhiteSpace($AppId)) {
+		$config.identifierUris = @("api://$AppId")
+	} else {
+		$config.identifierUris = @()  # Empty array for initial creation
+	}
+	
+	return $config
+}
+
+function Test-GraphCredentialsApplication {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SolutionAbbreviation,
+        
+        [Parameter(Mandatory = $true)]
+        [string] $EnvironmentAbbreviation
+    )
+    
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
+    
+    $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
+    
+    Write-Host "`n=== Validating Application: $graphAppDisplayName ===" -ForegroundColor Cyan
+    
+    # Step 1: Check if application exists
+    Write-Host "`n[1/3] Checking if application exists..." -ForegroundColor Yellow
+    $graphApps = Get-MgApplication -Filter "displayName eq '$graphAppDisplayName'" -All
+    
+    if ($null -eq $graphApps -or $graphApps.Count -eq 0) {
+        $errorMessage = "Application '$graphAppDisplayName' does not exist. Please run the setup script to create it or follow manual setup steps in the documentation."
+		Write-Host "❌ $errorMessage" -ForegroundColor Red
+		return $false
+	}
+    
+    Write-Host "✅ Application exists." -ForegroundColor Green
+    
+    # Step 2: Validate uniqueness
+    Write-Host "`n[2/3] Validating uniqueness..." -ForegroundColor Yellow
+    if ($graphApps.Count -gt 1) {
+        $errorMessage = "Found $($graphApps.Count) applications with the name '$graphAppDisplayName'. This is ambiguous and could lead to unexpected behavior. Please ensure application names are unique or manually remove duplicate applications before running this script."
+        Write-Host "❌ $errorMessage" -ForegroundColor Red
+        return $false
+    }
+    
+    $graphApp = $graphApps
+    Write-Host "   Application ID: $($graphApp.AppId)" -ForegroundColor Gray
+    Write-Host "   Object ID: $($graphApp.Id)" -ForegroundColor Gray
+    
+    # Step 3: Validate configuration
+    Write-Host "`n[3/3] Validating configuration..." -ForegroundColor Yellow
+    $expectedAppConfig = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppId $graphApp.AppId
+    
+    $configurationMatches = Test-AppMatchesConfiguration -AppObject $graphApp `
+        -ExpectedConfiguration $expectedAppConfig `
+        -ShowDetailedReport
+    
+    if ($configurationMatches) {
+        Write-Host "✅ Configuration matches expected values." -ForegroundColor Green
+    } else {
+        Write-Host "❌ Configuration does not match expected values. Please review the configuration settings and make updates as needed." -ForegroundColor Red
+        return $false
+    }
+
+	Write-Host "`n=== Application Validation Completed Successfully ===" -ForegroundColor Cyan
+    
+    return $true
+}
