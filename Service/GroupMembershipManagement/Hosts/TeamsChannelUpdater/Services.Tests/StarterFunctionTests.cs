@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.TeamsChannelUpdater;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -17,7 +17,7 @@ namespace Services.Tests
     {
         private string _instanceId;
         private Mock<ILoggingRepository> _loggerMock;
-        private Mock<IDurableOrchestrationClient> _durableClientMock;
+        private Mock<DurableTaskClient> _durableClientMock;
         private SyncJob _syncJob;
         private Channel _channel;
         private Mock<ServiceBusReceiver> _serviceBusReceiverMock;
@@ -26,7 +26,7 @@ namespace Services.Tests
         public void SetupTest()
         {
             _instanceId = "1234567890";
-            _durableClientMock = new Mock<IDurableOrchestrationClient>();
+            _durableClientMock = new Mock<DurableTaskClient>("test");
             _loggerMock = new Mock<ILoggingRepository>();
             _serviceBusReceiverMock = new Mock<ServiceBusReceiver>();
             _syncJob = new SyncJob
@@ -52,14 +52,14 @@ namespace Services.Tests
         public async Task ProcessValidRequestTest()
         {
             _durableClientMock
-                .Setup(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<string>(), (object)null))
+                .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<Microsoft.DurableTask.TaskName>(), It.IsAny<object>(), It.IsAny<Microsoft.DurableTask.StartOrchestrationOptions>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(_instanceId);
 
             var instanceId = nameof(QueueMessageOrchestratorFunction);
             var starterFunction = new StarterFunction(_loggerMock.Object, _serviceBusReceiverMock.Object);
-            var timer = new TimerInfo(null, null);
+            var timerInfo = new FakeTimerInfo();
 
-            await starterFunction.RunAsync(timer, _durableClientMock.Object);
+            await starterFunction.RunAsync(timerInfo, _durableClientMock.Object);
 
             _loggerMock.Verify(x => x.LogMessageAsync(
                                         It.Is<LogMessage>(m => m.Message.Contains("function started")),
@@ -68,7 +68,7 @@ namespace Services.Tests
                                         It.IsAny<string>()
                                         ), Times.Once());
 
-            _durableClientMock.Verify(x => x.StartNewAsync(instanceId, instanceId, (object)null), Times.Once());
+            _durableClientMock.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<Microsoft.DurableTask.TaskName>(), It.IsAny<object>(), It.IsAny<Microsoft.DurableTask.StartOrchestrationOptions>(), It.IsAny<CancellationToken>()), Times.Once());
 
             _loggerMock.Verify(x => x.LogMessageAsync(
                             It.Is<LogMessage>(m => m.Message == $"Calling {instanceId}"),
@@ -84,5 +84,9 @@ namespace Services.Tests
                             It.IsAny<string>()
                             ), Times.Once());
         }
+    }
+
+    public class FakeTimerInfo : TimerInfo
+    {
     }
 }

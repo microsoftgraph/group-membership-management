@@ -6,11 +6,10 @@ using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Hosts.TeamsChannelUpdater;
-using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 using Models.ServiceBus;
 using System.Text.Json;
 using Repositories.Contracts.InjectConfig;
@@ -22,8 +21,7 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorTests
     {
-        private Mock<IDurableOrchestrationContext> _mockDurableOrchestrationContext = null!;
-        private Mock<ExecutionContext> _mockExecutionContext = null!;
+        private Mock<TaskOrchestrationContext> _mockDurableOrchestrationContext = null!;
         private TelemetryClient _mockTelemetryClient = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IEmailSenderRecipient> _mockEmailSenderAndRecipients = null!;
@@ -69,44 +67,43 @@ namespace Services.Tests
                 MembersToBeRemoved = 1
             };
 
-            _mockDurableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _mockDurableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _mockDurableOrchestrationContext.Setup(x => x.GetInput<MembershipHttpRequest>())
                 .Returns(input);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<SyncJob>(nameof(JobReaderFunction), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(_syncJob);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(groupMembership.Destination.ObjectId);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(GetChannelFunction), It.IsAny<SyncJob>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(GetChannelFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(_syncJob.Channel.ChannelId);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(_groupMembershipJson);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     await CallLoggerFunctionAsync(request as LoggerRequest);
                 });
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                 });
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
                 .Returns(Task.CompletedTask);
             string groupName = "";
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(GroupNameReaderFunction), It.IsAny<GroupNameReaderRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(GroupNameReaderFunction), It.IsAny<GroupNameReaderRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     groupName = await CallGroupNameReaderFunctionAsync(request as GroupNameReaderRequest);
                 })
                 .ReturnsAsync(() => groupName);
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.IsAny<EmailSenderRequest>()))
-                .Callback<string, object>(async (name, request) =>
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                 {
                     await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                 });
 
 
-            _mockExecutionContext = new Mock<ExecutionContext>();
             _mockTelemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockEmailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
@@ -124,7 +121,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestOrchestratorOngoingSync()
         {
-            _mockDurableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction), It.IsAny<TeamsChannelUpdaterSubOrchestratorRequest>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction), It.IsAny<TeamsChannelUpdaterSubOrchestratorRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(new TeamsChannelUpdaterSubOrchestratorResponse
                 {
                     Type = RequestType.Add,
@@ -138,7 +135,7 @@ namespace Services.Tests
                 _mockEmailSenderAndRecipients.Object,
                 _mockGMMResources.Object);
 
-            await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object, _mockExecutionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
 
             _mockLoggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("OrchestratorFunction function started")),
@@ -163,7 +160,7 @@ namespace Services.Tests
         public async Task TestOrchestratorInitialSync()
         {
             _syncJob.LastRunTime = DateTime.FromFileTimeUtc(0);
-            _mockDurableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction), It.IsAny<TeamsChannelUpdaterSubOrchestratorRequest>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallSubOrchestratorAsync<TeamsChannelUpdaterSubOrchestratorResponse>(nameof(TeamsChannelUpdaterSubOrchestratorFunction), It.IsAny<TeamsChannelUpdaterSubOrchestratorRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(new TeamsChannelUpdaterSubOrchestratorResponse
                 {
                     Type = RequestType.Add,
@@ -177,7 +174,7 @@ namespace Services.Tests
                 _mockEmailSenderAndRecipients.Object,
                 _mockGMMResources.Object);
 
-            await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object, _mockExecutionContext.Object);
+            await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object);
 
             _mockLoggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.Contains("OrchestratorFunction function started")),
@@ -193,14 +190,14 @@ namespace Services.Tests
                                             ), Times.Once);
             _mockLoggingRepository.Verify(x => x.RemoveSyncJobProperties(It.IsAny<Guid>()), Times.Once());
 
-            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));
-            _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()));
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Idle, false, It.IsAny<Guid>()));;
+            _mockTeamsChannelUpdaterService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>() ));
         }
 
         [TestMethod]
         public async Task TestOrchestratorException()
         {
-            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>()))
+            _mockDurableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
                 .ThrowsAsync(new FileNotFoundException());
 
             var orchestratorFunction = new OrchestratorFunction(_mockLoggingRepository.Object,
@@ -208,7 +205,7 @@ namespace Services.Tests
                 _mockEmailSenderAndRecipients.Object,
                 _mockGMMResources.Object);
             
-            await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object, _mockExecutionContext.Object));
+            await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_mockDurableOrchestrationContext.Object));
 
 
             _mockLoggingRepository.Verify(x => x.LogMessageAsync(
@@ -219,7 +216,7 @@ namespace Services.Tests
                                             ), Times.Once);
             _mockLoggingRepository.Verify(x => x.RemoveSyncJobProperties(It.IsAny<Guid>()), Times.Once());
 
-            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Error, false, It.IsAny<Guid>()));
+            _mockTeamsChannelUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.Error, false, It.IsAny<Guid>()));;
         }
 
         private string _groupMembershipJson = @"
