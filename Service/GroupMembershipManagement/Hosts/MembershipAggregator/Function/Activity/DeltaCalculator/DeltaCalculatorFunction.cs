@@ -97,8 +97,8 @@ namespace Hosts.MembershipAggregator
                     };
                 }
 
-                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(sourceBlobResult.Content));
-                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(destinationBlobResult.Content));
+                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceBlobResult.Content);
+                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationBlobResult.Content);
             }
             else
             {
