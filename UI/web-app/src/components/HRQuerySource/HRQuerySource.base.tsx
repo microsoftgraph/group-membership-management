@@ -403,6 +403,35 @@ const checkType = (value: string, type: string | undefined): string => {
       return value;
   }
 };
+
+const formatValueForOperator = (value: string, operator?: string, attributeType?: string): string => {
+  if (!value) {
+    return value;
+  }
+
+  const normalizedOperator = operator?.toUpperCase();
+  if (normalizedOperator === "IN" || normalizedOperator === "NOT IN") {
+    return ensureInClauseFormat(value);
+  }
+  return checkType(value, attributeType) ?? value;
+};
+
+const ensureInClauseFormat = (value?: string): string => {
+  if (!value) {
+    return '';
+  }
+
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return '';
+  }
+
+  if (trimmedValue.startsWith('(') && trimmedValue.endsWith(')')) {
+    return trimmedValue;
+  }
+
+  return `(${trimmedValue})`;
+};
 const getOptions = (
   attributes?: SqlMembershipAttribute[],
   currentAttributeKey?: string
@@ -988,48 +1017,98 @@ const getOptions = (
     newValue: string;
   }
 
-  const updateGroupItem = (updateParams: UpdateParam, index: number, gi?: number, ci?: number): void => {
-    const { property, newValue } = updateParams;
-    let a: number = -1;
-    if ( selectedIndices[0] === -1) {
-      const emptyItemIndex = items.findIndex(item =>
-        item.attribute === "" &&
-        item.equalityOperator === "" &&
-        item.value === "" &&
-        item.andOr === ""
-      );
-      a = emptyItemIndex;
-    }
-    selectedIndices[0] = selectedIndices[0] === -1 ? a : selectedIndices[0];
-    const groupIndex = gi ?? groups.findIndex(group =>
-      group.children?.some(child =>
-          child.items.some(item =>
-              JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
-          )
-      ) || group.items?.some(item =>
-          JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
-      )
-    );
-    const childIndex = groupIndex !== -1 ? ci ?? groups[groupIndex].children.findIndex(child =>
-      child.items.some(item =>
-          JSON.stringify(item) === JSON.stringify(items[selectedIndices[0]])
-      )
-    ) : -1;
+  const updateGroupItem = (updateParams: UpdateParam | UpdateParam[], index: number, gi?: number, ci?: number): void => {
+    const params = Array.isArray(updateParams) ? updateParams : [updateParams];
+    const hasDirectContext = gi !== undefined && gi !== null && gi >= 0 && index !== undefined && index !== null;
 
-    if(groupIndex >= 0 && childIndex < 0 && groups[groupIndex].items[index ?? 0]) {
-      groups[groupIndex].items[index ?? 0][property] = newValue;
-    }
-    else if(childIndex >= 0 && groups[groupIndex].children[childIndex].items[index ?? 0]) {
-      groups[groupIndex].children[childIndex].items[index ?? 0][property] = newValue;
-    }
+    if (hasDirectContext && groups[gi as number]) {
+      const parentIndex = gi as number;
+      const childIndex = ci !== undefined && ci !== null ? ci : -1;
 
-    const updatedItems = [...items];
-    if (updatedItems[index] && updatedItems[selectedIndices[0]]) updatedItems[selectedIndices[0]][property] = newValue;
+      const updatedGroups = groups.map((group, gIndex) => {
+        if (gIndex !== parentIndex) {
+          return group;
+        }
 
-    setItems(updatedItems);
-    setGroups(groups);
-    getGroupLabels(groups);
+        if (childIndex !== -1) {
+          if (!group.children[childIndex]) {
+            return group;
+          }
+
+          const updatedChildItems = group.children[childIndex].items.map((item, itemIndex) => {
+            if (itemIndex === index) {
+              let newItem = { ...item };
+              params.forEach(p => {
+                newItem = { ...newItem, [p.property]: p.newValue };
+              });
+              return newItem;
+            }
+            return item;
+          });
+
+          const updatedChild = {
+            ...group.children[childIndex],
+            items: updatedChildItems
+          };
+
+          const updatedChildren = group.children.map((child, childIdx) =>
+            childIdx === childIndex ? updatedChild : child
+          );
+
+          return {
+            ...group,
+            children: updatedChildren
+          };
+        }
+
+        const updatedItems = group.items.map((item, itemIndex) => {
+          if (itemIndex === index) {
+            let newItem = { ...item };
+            params.forEach(p => {
+              newItem = { ...newItem, [p.property]: p.newValue };
+            });
+            return newItem;
+          }
+          return item;
+        });
+
+        return {
+          ...group,
+          items: updatedItems
+        };
+      });
+
+      setGroups(updatedGroups);
+      const flattenedItems = getCurrentItemsFromGroups(updatedGroups);
+      setItems(flattenedItems);
+      getGroupLabels(updatedGroups);
+      return;
+    }
   }
+
+  const getItemFromGroupContext = (groupIndex?: number, childIndex?: number, itemIndex?: number): IFilterPart | undefined => {
+    if (
+      groupIndex === undefined ||
+      groupIndex === null ||
+      groupIndex < 0 ||
+      itemIndex === undefined ||
+      itemIndex === null ||
+      itemIndex < 0
+    ) {
+      return undefined;
+    }
+
+    const targetGroup = groups[groupIndex];
+    if (!targetGroup) {
+      return undefined;
+    }
+
+    if (childIndex !== undefined && childIndex !== null && childIndex >= 0) {
+      return targetGroup.children?.[childIndex]?.items?.[itemIndex];
+    }
+
+    return targetGroup.items?.[itemIndex];
+  };
 
   const handleAttributeChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (item) {
@@ -1040,7 +1119,7 @@ const getOptions = (
       }
       const updatedItems = items.map((it, idx) => {
         if (idx === index) {
-          return { ...it, attribute: item.text, value: '' };
+          return { ...it, attribute: item.key.toString(), value: '' };
         }
         return it;
       });
@@ -1048,12 +1127,11 @@ const getOptions = (
     }
 
     if (groupingEnabled && item && index != null) {
-      const updateParams: UpdateParam = {
-        property: "attribute",
-        newValue: item.key.toString()
-      };
-      updateGroupItem(updateParams, index, groupIndex, childIndex);
-      updateGroupItem({ property: "value", newValue: "" }, index, groupIndex, childIndex);
+      const updates: UpdateParam[] = [
+        { property: "attribute", newValue: item.key.toString() },
+        { property: "value", newValue: "" }
+      ];
+      updateGroupItem(updates, index, groupIndex, childIndex);
       return;
     }
 
@@ -1106,7 +1184,7 @@ const getOptions = (
 
   const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (groupingEnabled && item && index != null) {
-      const currentItem = items[index];
+      const currentItem = getItemFromGroupContext(groupIndex, childIndex, index) ?? items[index];
       const prevOperator = currentItem?.equalityOperator;
       const newOperator = item.text;
       const currentValue = currentItem?.value || '';
@@ -1116,9 +1194,14 @@ const getOptions = (
       
       let convertedValue = currentValue;
       
-      if (isNewIn && !isPrevIn && currentValue) {
-        if (!(currentValue.startsWith('(') && currentValue.endsWith(')'))) {
-          convertedValue = `(${currentValue})`;
+      if (isNewIn && !isPrevIn) {
+        const currentAttributeKey = currentItem?.attribute;
+        const hasMappings = attributeMappings && attributeMappings[currentAttributeKey] && attributeMappings[currentAttributeKey].mappings.length > 0;
+        
+        if (!hasMappings) {
+          convertedValue = "";
+        } else if (currentValue) {
+          convertedValue = ensureInClauseFormat(currentValue);
         }
       } else if (!isNewIn && isPrevIn && currentValue) {
         if (currentValue.startsWith('(') && currentValue.endsWith(')')) {
@@ -1128,19 +1211,15 @@ const getOptions = (
         }
       }
       
-      const updateParams: UpdateParam = {
-        property: "equalityOperator",
-        newValue: item.text
-      };
-      updateGroupItem(updateParams, index, groupIndex, childIndex);
-      
+      const updates: UpdateParam[] = [
+        { property: "equalityOperator", newValue: item.text }
+      ];
+
       if (convertedValue !== currentValue) {
-        const valueUpdateParams: UpdateParam = {
-          property: "value",
-          newValue: convertedValue
-        };
-        updateGroupItem(valueUpdateParams, index, groupIndex, childIndex);
+        updates.push({ property: "value", newValue: convertedValue });
       }
+      
+      updateGroupItem(updates, index, groupIndex, childIndex);
       return;
     }
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
@@ -1187,25 +1266,24 @@ const getOptions = (
       let selected = item?.selected;
       if (item) {
         setSelectedKeys(prevSelectedKeys => {
-          const isNVarChar = attribute && attributeMappings[attribute] && attributeMappings[attribute.toString()].type === "nvarchar";
           if (prevSelectedKeys.length === 0 && existingValues && existingValues.length > 0) {
             prevSelectedKeys = getSelectedKeys(existingValues);
           }
           const newSelectedKeys = selected
             ? [...prevSelectedKeys, item!.key as string]
             : prevSelectedKeys.filter(k => k !== item!.key);
-          const quotedKeys = isNVarChar
-            ? newSelectedKeys.map(key => `'${key}'`)
-            : newSelectedKeys;
-          selectedValues = `(${quotedKeys.join(', ')})`;
+          selectedValues = newSelectedKeys.map(key => `'${key}'`).join(', ');
           return newSelectedKeys;
         });
       }
     }
     
     if (item) {
-      const selectedValue = operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN") ? selectedValues : item.key.toString();
-      const selectedValueAfterConversion = operator && (operator.toString().toUpperCase() === "IS" || operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN") ? selectedValue : (attributeMappings[attribute] ? checkType(selectedValue, attributeMappings[attribute.toString()].type) : selectedValue);
+      const attributeType = attributeMappings[attribute]?.type;
+      const selectedValue = operator && (operator.toString().toUpperCase() === "IN" || operator.toString().toUpperCase() === "NOT IN")
+        ? ensureInClauseFormat(selectedValues)
+        : item.key.toString();
+      const selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), attributeType);
 
       if (groupingEnabled && index != null) {
         const updateParams: UpdateParam = {
@@ -1255,8 +1333,20 @@ const getOptions = (
   const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string, groupIndex?: number, childIndex?: number) => {
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const isInOperator = operator?.toString().toUpperCase() === "IN" || operator?.toString().toUpperCase() === "NOT IN";
-    const selectedValueAfterConversion = isInOperator ? selectedValue : checkType(selectedValue, selectedAttribute?.type) ?? selectedValue;
+    // Only format if NOT IN/NOT IN, or if it is IN/NOT IN but we are not typing freely (e.g. selection)
+    let selectedValueAfterConversion = selectedValue;
+    const normalizedOperator = operator?.toUpperCase();
+    
+    if (normalizedOperator === "IN" || normalizedOperator === "NOT IN") { 
+        if (selectedValue.trim().startsWith('(')) {
+             selectedValueAfterConversion = selectedValue;
+        } else {
+             selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), selectedAttribute?.type);
+        }
+    } else {
+        selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), selectedAttribute?.type);
+    }
+
     const updatedItems = items.map((it, idx) => {
         if (idx === index) {
             return { ...it, value: selectedValueAfterConversion || selectedValue };
@@ -1283,8 +1373,7 @@ const getOptions = (
     var newValue = event.target.value.trim();
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    const isInOperator = operator?.toString().toUpperCase() === "IN" || operator?.toString().toUpperCase() === "NOT IN";
-    const selectedValueAfterConversion = isInOperator ? selectedValue : checkType(selectedValue, selectedAttribute?.type) ?? selectedValue;
+    const selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), selectedAttribute?.type);
     const regex = /(?<= [Aa][Nn][Dd] | [Oo][Rr] )/;
     let segments = props.source.filter?.split(regex);
     if (selectedValueAfterConversion !== "" && (props.source.filter?.length === 0 || (segments?.length == children.length - 1))) {

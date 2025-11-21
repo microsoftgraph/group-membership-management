@@ -216,7 +216,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                           // editable: your existing behavior
                           : (hasMultiple && !(userTyping || isOpen)
                               ? strings.HROnboarding.multipleItemsSelected
-                              : (isFocused ? searchText : undefined))
+                              : (isFocused ? searchText : (selectedKeys.length === 1 ? attributeValueOptions.find(o => String(o.key) === selectedKeys[0])?.text || selectedKeys[0] : undefined)))
                       )
                     : undefined
                 }
