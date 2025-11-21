@@ -369,23 +369,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                     showOutlookWarning={true}
                   />
                 )}
-                {selectedDestination?.id && (
-                  <div style={{ marginTop: 12 }}>
-                    <Text variant="smallPlus">
-                      {jsxFormat(
-                        strings.ManageMembership.labels.autoFollowGroupConversationsReminder,
-                        <em>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</em>,
-                        <a
-                          href={`https://myaccount.microsoft.com/groups`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {strings.Disclaimer.myGroupsUI}
-                        </a>
-                      )}
-                    </Text>
-                  </div>
-                )}
                 {appIdNotOwnerWarning}
                 {userNotOwnerWarning}
                 {alreadyOnboardedWarning}
