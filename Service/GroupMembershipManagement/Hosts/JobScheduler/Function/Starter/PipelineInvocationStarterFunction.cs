@@ -8,10 +8,8 @@ using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -44,16 +42,18 @@ namespace Hosts.JobScheduler
                 {
                     StartTimeDelayMinutes = delayForDeploymentInMinutes
                 });
-            
-            var statusQueryGetUri = $"{req.Url.Scheme}://{req.Url.Authority}/runtime/webhooks/durabletask/instances/{instanceId}";
+
+            var response = starter.CreateCheckStatusResponse(req, instanceId);
+            using var bodyStream = response.Body;
+            bodyStream.Seek(0, SeekOrigin.Begin);
+            var json = await JsonSerializer.DeserializeAsync<JsonElement>(bodyStream);
+            var statusQueryGetUri = json.TryGetProperty("StatusQueryGetUri", out var uriElement) ? uriElement.GetString() : null;
 
             if (req.Headers.Contains("PlanUrl"))
                 await starter.ScheduleNewOrchestrationInstanceAsync(nameof(StatusCallbackOrchestratorFunction), GetCallbackRequest(req, statusQueryGetUri));
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(PipelineInvocationStarterFunction)} function completed" }, VerbosityLevel.DEBUG);
 
-            var response = req.CreateResponse(HttpStatusCode.Accepted);
-            await response.WriteAsJsonAsync(new { instanceId, statusQueryGetUri });
             return response;
         }
 
