@@ -67,7 +67,7 @@ export function isSourcePartValid(sourcePart: ISourcePart): boolean {
             if (IsHRSourcePartQuery(sourcePart.query)) {
                 const managerId = sourcePart.query.source?.manager?.id;
                 const filter = sourcePart.query.source?.filter;
-                const hasManager = typeof managerId === 'number' && !Number.isNaN(managerId);
+                const hasManager = Number.isFinite(managerId);
                 const hasFilter = typeof filter === 'string' && filter.trim().length > 0;
                 return hasManager || hasFilter;
             }
