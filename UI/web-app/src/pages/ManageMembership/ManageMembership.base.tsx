@@ -444,9 +444,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
   };
 
   // In advanced view, we require the advanced query itself to be valid (ignore sourceParts validity).
-  // In regular view, either the composite source parts are all valid OR the advanced query (if present) is valid.
+  // In regular view, rely solely on the composed source parts validation.
   const isStep3ConditionsMet = (
-    isAdvancedView ? isAdvancedQueryValid : (isAdvancedQueryValid || allSourcePartsValid)
+    isAdvancedView ? isAdvancedQueryValid : allSourcePartsValid
   ) && !isMissingAndOrOperator;
   let isNextDisabled = false;
 

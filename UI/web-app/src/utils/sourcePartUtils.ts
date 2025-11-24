@@ -64,8 +64,12 @@ export function removeUnusedProperties<T extends SourcePartQuery>(sourcePart: T)
 export function isSourcePartValid(sourcePart: ISourcePart): boolean {
     switch(sourcePart.query.type){
         case SourcePartType.HR:
-            if(IsHRSourcePartQuery(sourcePart.query)){
-                return true;
+            if (IsHRSourcePartQuery(sourcePart.query)) {
+                const managerId = sourcePart.query.source?.manager?.id;
+                const filter = sourcePart.query.source?.filter;
+                const hasManager = typeof managerId === 'number' && !Number.isNaN(managerId);
+                const hasFilter = typeof filter === 'string' && filter.trim().length > 0;
+                return hasManager || hasFilter;
             }
             return false;
         case SourcePartType.GroupMembership:
