@@ -13,12 +13,14 @@ function Set-KeyVaultSecretWithFirewallRetry {
         [object]$SecretValue,
 
         [ValidateRange(1, 10)]
-        [int]$MaxRetries = 2
+        [int]$MaxRetries = 10
     )
 
     $directory = $PSScriptRoot
     . ($directory + '/Invoke-WithFirewallRetry.ps1')
     . ($directory + '/Add-KeyVaultIpFromError.ps1')
+
+    Write-Host "`nSetting Key Vault secret '$SecretName' in vault '$VaultName'..."
 
     Invoke-WithFirewallRetry -ResourceGroup $ResourceGroup -MaxRetries $MaxRetries `
         -Operation {
@@ -41,7 +43,6 @@ function Set-KeyVaultSecretWithFirewallRetry {
                 -ErrorAction Stop
 
             Write-Host "✅ Secret '$SecretName' set successfully."
-            $true   # ensures loop exits
         } `
         -OnFirewallError {
             param($err)

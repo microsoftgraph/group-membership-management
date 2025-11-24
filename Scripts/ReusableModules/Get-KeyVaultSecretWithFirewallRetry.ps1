@@ -10,7 +10,7 @@ function Get-KeyVaultSecretWithFirewallRetry {
         [string]$SecretName,
 
         [ValidateRange(1, 10)]
-        [int]$MaxRetries = 2,
+        [int]$MaxRetries = 10,
 
         [switch]$AsPlainText
     )
@@ -18,6 +18,8 @@ function Get-KeyVaultSecretWithFirewallRetry {
     $directory = $PSScriptRoot
     . ($directory + '/Invoke-WithFirewallRetry.ps1')
     . ($directory + '/Add-KeyVaultIpFromError.ps1')
+
+    Write-Host "`nRetrieving Key Vault secret '$SecretName' from vault '$VaultName'..."
 
     Invoke-WithFirewallRetry -ResourceGroup $ResourceGroup -MaxRetries $MaxRetries `
         -Operation {
@@ -28,6 +30,8 @@ function Get-KeyVaultSecretWithFirewallRetry {
                 else {
                     $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -ErrorAction Stop
                 }
+
+                Write-Host "✅ Secret '$SecretName' retrieved successfully."
                 return $secret
             }
             catch {
