@@ -50,50 +50,50 @@ namespace Services.Tests
             _durableOrchestrationContext.Setup(x => x.GetInput<ChannelSyncInfo>())
                                        .Returns(() => _syncInfo);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallLoggerFunctionAsync(request as LoggerRequest);
                                         });
 
             var validated = new ValidateChannelResponse{ ParsedChannel = null, IsValid = false };
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<ValidateChannelResponse>(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<ValidateChannelResponse>(It.IsAny<TaskName>(), It.IsAny<ChannelSyncInfo>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             validated = await CallChannelValidatorFunctionAsync(request as ChannelSyncInfo);
                                         })
                                         .ReturnsAsync(() => validated);
 
             List<AzureADTeamsUser> users = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<AzureADTeamsUser>>(It.IsAny<string>(), It.IsAny<UserReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<AzureADTeamsUser>>(It.IsAny<TaskName>(), It.IsAny<UserReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                            users = await CallUserReaderFunctionAsync(request as UserReaderRequest);
                                         })
                                         .ReturnsAsync(() => users);
 
             string filename = null;
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileUploaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            filename = await CallFileUploaderFunctionAsync(request as FileUploaderRequest);
                                        })
                                        .ReturnsAsync(() => filename);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<QueueMessageSenderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<QueueMessageSenderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallQueueMessageSenderFunctionAsync(request as QueueMessageSenderRequest);
                                         });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallJobStatusUpdaterFunctionAsync(request as JobStatusUpdaterRequest);
                                         });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.ToString() == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         var telemetryRequest = request as TelemetryTrackerRequest;
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
@@ -162,7 +162,7 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<SyncStatus>()), Times.Never);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<SyncStatus>(), It.IsAny<TaskOptions>()), Times.Never);
 
         }
 
@@ -206,7 +206,7 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error)), Times.Once);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
 
         }
 
@@ -238,7 +238,7 @@ namespace Services.Tests
         public async Task TestUnhandledException()
         {
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<ValidateChannelResponse>(It.IsAny<string>(), It.IsAny<ChannelSyncInfo>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<ValidateChannelResponse>(It.IsAny<TaskName>(), It.IsAny<ChannelSyncInfo>(), It.IsAny<TaskOptions>()))
                                        .Throws<Exception>();
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _teamsChannelMembershipObtainerService.Object, _dryRunValue.Object);
@@ -251,7 +251,7 @@ namespace Services.Tests
                                                It.IsAny<string>()
                                            ), Times.Once);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<string>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error)), Times.Once);
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.Is<JobStatusUpdaterRequest>(request => request.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
 
         }
 
@@ -299,3 +299,5 @@ namespace Services.Tests
 
     }
 }
+
+
