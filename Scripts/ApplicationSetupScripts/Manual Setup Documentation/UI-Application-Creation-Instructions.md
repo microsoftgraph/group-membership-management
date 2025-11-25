@@ -109,7 +109,7 @@ If the service principal doesn't exist automatically:
    - Use the same name as the app registration: `{SolutionAbbreviation}-ui-{EnvironmentAbbreviation}`
 5. Search for and select your existing app registration: `{SolutionAbbreviation}-ui-{EnvironmentAbbreviation}`
    - Example: `gmm-ui-prod`
-6. This will create the corresponding service principalServicePrincipal -AppId "{YourApplicationId}"
+6. This will create the corresponding service principal.
 
 ### 10. Verification Checklist
 

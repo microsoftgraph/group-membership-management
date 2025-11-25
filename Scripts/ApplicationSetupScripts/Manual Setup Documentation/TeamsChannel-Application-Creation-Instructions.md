@@ -118,7 +118,7 @@ If the service principal doesn't exist automatically:
    - Use the same name as the app registration: `{SolutionAbbreviation}-TeamsChannel-{EnvironmentAbbreviation}`
 5. Search for and select your existing app registration: `{SolutionAbbreviation}-TeamsChannel-{EnvironmentAbbreviation}`
    - Example: `gmm-TeamsChannel-prod`
-6. This will create the corresponding service principalServicePrincipal -AppId "{YourApplicationId}"
+6. This will create the corresponding service principal.
 
 ### 8. Verification Checklist
 
