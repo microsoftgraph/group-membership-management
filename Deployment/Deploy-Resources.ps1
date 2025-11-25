@@ -802,7 +802,7 @@ function Set-GMMResources {
         Start-Sleep -Seconds 10
     }
     else {
-        Write-Host "`nSkipping app registration secret storage as per configuration [skipAppRegistrationSecretStorage = $($parameterHashtable.skipAppRegistrationSecretStorage.value)]." -ForegroundColor Yellow
+        Write-Host "`nSkipping app registration secret storage as per configuration [skipAppRegistrationSecretStorage = $($ParameterHashtable.skipAppRegistrationSecretStorage.value)]." -ForegroundColor Yellow
     }
    
     # deploy data resources
@@ -1530,9 +1530,6 @@ function Save-GMMAppRegistrationSecrets {
         Write-Host "`n✅ All secrets collected. Proceeding to save them to Key Vault...`n" -ForegroundColor Green
         Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Yellow
     }
-
-    # UI Application Secrets
-    Write-Host "`n📝 Saving UI Application secrets..." -ForegroundColor Yellow
 
     # UI Application Secrets
     Write-Host "`n📝 Saving UI Application secrets..." -ForegroundColor Yellow

@@ -275,8 +275,8 @@ function Set-WebApiAzureADApplication {
 		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
 	}
 
-	return @{ ApplicationId = $webApiApp.AppId; TenantId = $AppTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 	Write-Host "Set-WebApiAzureADApplication completed."
+	return @{ ApplicationId = $webApiApp.AppId; TenantId = $AppTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 }
 
 function Set-WebAPIKeyVaultSecrets {

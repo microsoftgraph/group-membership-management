@@ -201,7 +201,7 @@ function Set-UIAzureADApplication {
 
         . ($scriptsDirectory + '/ApplicationSetupScripts/Test-AppMatchesConfiguration.ps1')
         $needsUpdate = -not (Test-AppMatchesConfiguration -AppObject $uiApp -ExpectedConfiguration $expectedAppConfig)
-		return
+		
         if ($needsUpdate) {
             Write-Host "App $uiAppDisplayName needs update. Updating..."
             Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $expectedAppConfig
@@ -237,8 +237,8 @@ function Set-UIAzureADApplication {
 		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
 	}
 
-    return @{ ApplicationId = $uiApp.AppId; TenantId = $AppTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
     Write-Host "Set-UIAzureADApplication completed."
+    return @{ ApplicationId = $uiApp.AppId; TenantId = $AppTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 }
 
 function Set-UIKeyVaultSecrets {

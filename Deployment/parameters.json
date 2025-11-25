@@ -159,7 +159,7 @@
     "directoryTenantId": {
       "value": "",
       "metadata": {
-        "description": "The tenant id of the directory targetted by GMM. Only required if the Azure resources are hosted in a different tenant from the one where users reside.",
+        "description": "The tenant id of the directory targeted by GMM. Only required if the Azure resources are hosted in a different tenant from the one where users reside.",
         "required": false
       }
     },

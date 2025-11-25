@@ -104,7 +104,7 @@ function Set-UserManagedIdentityPermissions {
 		[string] $SolutionAbbreviation,
 		[Parameter(Mandatory = $True)]
 		[string] $EnvironmentAbbreviation,
-		[Parameter(Mandatory = $False)]
+		[Parameter(Mandatory = $True)]
 		[string] $TenantId,
 		[Parameter(Mandatory = $False)]
 		[boolean] $SkipPrivilegedDirectoryActions = $false
