@@ -2301,7 +2301,8 @@ function Initialize-ScriptDependencies {
     else {
         $requiredScopes = @(
             "AppRoleAssignment.ReadWrite.All",
-            "Directory.ReadWrite.All"
+            "Directory.ReadWrite.All", 
+            "Application.ReadWrite.All"
         )
     }
 
