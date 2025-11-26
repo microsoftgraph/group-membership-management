@@ -1,5 +1,20 @@
 # Release Notes:
 
+## Release 11/26/2025
+
+- Updated naming of the 'Manage Membership' button in the UI to 'Add'.
+- Updated JobTrigger to only use ScheduledDate, which will cause jobs to run more evenly and should close gaps in our JobTrigger dashboard tile.
+- Enhancements to the JSON compression of the MessageSplitter Function.
+- Added lane No-Op tracking to tune lane thresholds and schedule heuristics.
+- Improved logs to improve traceability for membership reads.
+- Updated the query for the ResourceUnitsUsed dashboard tile to improve the resource consumption visibility.
+- Added last modified time column in Jobs list.
+- Updated disclaimer text and Select Destination text to include the "Members auto-follow group conversations" acknowledgement.
+- Fixed issue allowing empty submissions (0 source parts).
+- Fixed bug with the 'IN' operator for HR filters.
+- Added the ability to skip privileged directory actions in the deployment script.
+- Added deployment documentation covering resource overview, ADF/HR-driven sync setup, and deployment instructions.
+
 ## Release 10/08/2025
 
 Multi‑lane Decommission & Session Enablement
