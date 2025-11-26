@@ -32,7 +32,6 @@ export type HRQueryItemColumnStyles = {
   comboBoxOptionList: IStyle;
   readOnlyComboBox: IStyle;
   readOnlyComboBoxInput: IStyle;
-  operatorDescription: IStyle;
 };
 
 export type HRQueryItemColumnStyleProps = {
@@ -82,7 +81,7 @@ export type HRQueryItemColumnProps = React.AllHTMLAttributes<HTMLDivElement> & {
   onDownClick: (index: number, items: IFilterPart[]) => void;
   onAttributeChange: (text: string, index: number, groupIndex?: number, childIndex?: number) => void;
   handleAttributeChange: (event: React.FormEvent<IComboBox>, option?: IComboBoxOption, index?: number, groupIndex?: number, childIndex?: number) => void;
-  handleEqualityOperatorChange: (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number) => void;
+  handleEqualityOperatorChange: (event: React.FormEvent<IComboBox>, option?: IComboBoxOption, index?: number, groupIndex?: number, childIndex?: number) => void;
   handleAttributeValueChange: (attribute: string, event: React.FormEvent<IComboBox>, existingValues?: string, option?: IComboBoxOption, index?: number, operator?: string, groupIndex?: number, childIndex?: number) => void;
   handleTAttributeValueChange: (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string, index: number, operator?: string, groupIndex?: number, childIndex?: number) => void;
   handleBlur: (attribute: string, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number, operator?: string) => void;
@@ -93,7 +92,7 @@ export type HRQueryItemColumnProps = React.AllHTMLAttributes<HTMLDivElement> & {
   getValueOptions: (attributeMappings?: SqlMembershipAttributeMapping[], selectedKeys?: string[]) => IComboBoxOption[];
   getSelectedKeys: (input: string) => string[];
   checkType: (value: string, type: string | undefined) => string;
-  getValidOperatorsForType: (dataType?: string) => IDropdownOption[];
+  getValidOperatorsForType: (dataType?: string) => IComboBoxOption[];
   onRenderAttributeComboBoxOptions: (props?: IComboBoxOption, defaultRender?: (props?: IComboBoxOption) => JSX.Element | null) => JSX.Element | null;
   onRenderValueComboBoxOptions: (props?: IComboBoxOption, defaultRender?: (props?: IComboBoxOption) => JSX.Element | null) => JSX.Element | null;
   onRenderValueComboBoxList: IRenderFunction<ISelectableDroppableTextProps<IComboBox, IComboBox>>;

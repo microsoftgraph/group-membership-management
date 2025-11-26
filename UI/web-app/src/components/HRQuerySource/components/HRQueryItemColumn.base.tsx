@@ -174,15 +174,20 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
         );
       case 'equalityOperator':
         return (
-          <Dropdown
+          <ComboBox
             data-testid="hr-equality-operator-dropdown"
             selectedKey={item.equalityOperator ? item.equalityOperator.toUpperCase() : item.equalityOperator}
-            onChange={(event, option) => handleEqualityOperatorChange(event, option, index, groupIndex, childIndex)}
             options={getValidOperatorsForType(attribute?.type)}
+            onChange={(event, option) =>
+              handleEqualityOperatorChange(event, option, index, groupIndex, childIndex)
+            }
             onRenderOption={onRenderOperatorOptions}
-            styles={{root: classNames.root, title: classNames.equalityOperator}}
+            allowFreeInput={false}
+            useComboBoxAsMenuWidth={true}
+            dropdownMaxWidth={500}
             disabled={isAttributeDisabled || !isJobWriter || !isEditable}
-            title={strings.HROnboarding.equalityOperator}
+            styles={{ root: classNames.equalityOperator }}
+            ariaLabel={strings.HROnboarding.equalityOperator}
           />
         );
       case 'value':

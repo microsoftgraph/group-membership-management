@@ -102,10 +102,5 @@ export const getStyles = (props: HRQueryItemColumnStyleProps): HRQueryItemColumn
       color: theme.palette.neutralDark,
       cursor: 'pointer'
     },
-    operatorDescription: {
-      fontStyle: 'italic',
-      color: theme.palette.neutralSecondary,
-      marginTop: 4,
-    },
   };
 };

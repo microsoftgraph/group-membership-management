@@ -1187,7 +1187,7 @@ const getOptions = (
     setFilteredValueOptions({});
   };
 
-  const handleEqualityOperatorChange = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption, index?: number, groupIndex?: number, childIndex?: number): void => {
+  const handleEqualityOperatorChange = (event: React.FormEvent<IComboBox>, item?: IComboBoxOption, index?: number, groupIndex?: number, childIndex?: number): void => {
     if (groupingEnabled && item && index != null) {
       const currentItem = getItemFromGroupContext(groupIndex, childIndex, index) ?? items[index];
       const prevOperator = currentItem?.equalityOperator;
