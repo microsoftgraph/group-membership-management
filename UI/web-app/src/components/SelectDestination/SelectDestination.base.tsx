@@ -237,12 +237,6 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
               <div className={classNames.messageBarSection}>
                 {jsxFormat(strings.ManageMembership.labels.addOwnerMessage, <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{strings.ManageMembership.labels.here}</a>, onboardingStatus?.additionalDetails?.["owner"])}
               </div>
-              <div className={classNames.messageBarSection}>
-                {jsxFormat(
-                  strings.ManageMembership.labels.refreshInstructions,
-                  <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={{ root: { border: 'none', backgroundColor: 'transparent', padding: '0px 0px' } }} onClick={checkOwnership} />
-                )}
-              </div>
             </div>
           ) : (
             <div>
@@ -432,27 +426,20 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {teamsNotSupportedWarning}
                 {hasNestedGroupsWarning}
                 {(appIdNotOwnerWarning || hasNestedGroupsWarning) && (
-                  <MessageBar
-                    messageBarType={MessageBarType.error}
-                    isMultiline={true}
-                    className={classNames.ownershipWarning}
-                    messageBarIconProps={{ iconName: '' }}
-                  >
-                    <div className={classNames.messageBarContent}>
-                      {jsxFormat(
-                        strings.ManageMembership.labels.refreshInstructions,
-                        <DefaultButton 
-                          text={strings.ManageMembership.labels.checkAgain} 
-                          title={strings.ManageMembership.labels.checkAgain} 
-                          styles={{ root: { border: 'none', backgroundColor: 'transparent', padding: '0px 0px', color: 'inherit' }, label: { color: 'inherit' } }}
-                          onClick={() => {
-                            if (appIdNotOwnerWarning) checkOwnership();
-                            if (hasNestedGroupsWarning) checkNestedGroups();
-                          }} 
-                        />
-                      )}
-                    </div>
-                  </MessageBar>
+                  <div>
+                    {jsxFormat(
+                      strings.ManageMembership.labels.refreshInstructions,
+                      <DefaultButton 
+                        text={strings.ManageMembership.labels.checkAgain} 
+                        title={strings.ManageMembership.labels.checkAgain}
+                        styles={smallButtonStyles}
+                        onClick={() => {
+                          if (appIdNotOwnerWarning) checkOwnership();
+                          if (hasNestedGroupsWarning) checkNestedGroups();
+                        }} 
+                      />
+                    )}
+                  </div>
                 )}
               </div>
               {selectedDestination && selectedDestination.groupSettings && (
