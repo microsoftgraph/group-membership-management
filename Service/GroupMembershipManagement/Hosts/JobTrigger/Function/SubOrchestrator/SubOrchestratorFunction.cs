@@ -3,8 +3,8 @@
 using JobTrigger.Activity.EmailSender;
 using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Models.Notifications;
 using Repositories.Contracts;
@@ -38,8 +38,8 @@ namespace Hosts.JobTrigger
             _emailSenderAndRecipients = emailSenderAndRecipients;
         }
 
-        [FunctionName(nameof(SubOrchestratorFunction))]
-        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
+        [Function(nameof(SubOrchestratorFunction))]
+        public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
 
             var syncJob = context.GetInput<SyncJob>();

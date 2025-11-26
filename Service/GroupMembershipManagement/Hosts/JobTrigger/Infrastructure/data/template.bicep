@@ -27,6 +27,8 @@ module jobTriggerStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'jobTriggerStorageAccountProd'
+    appPackageContainerSettingName: 'jobTriggerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 

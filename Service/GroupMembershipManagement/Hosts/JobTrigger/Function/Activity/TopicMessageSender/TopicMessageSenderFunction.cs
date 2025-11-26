@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -20,7 +19,7 @@ namespace Hosts.JobTrigger
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
         }
 
-        [FunctionName(nameof(TopicMessageSenderFunction))]
+        [Function(nameof(TopicMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] SyncJob syncJob)
         {
             if (syncJob != null)

@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 using Models;
 using Microsoft.ApplicationInsights;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -24,7 +23,7 @@ namespace Hosts.JobTrigger
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
-        [FunctionName(nameof(DestinationVerifierFunction))]
+        [Function(nameof(DestinationVerifierFunction))]
         public async Task<DestinationVerifierResult> VerifyDestinationAsync([ActivityTrigger] SyncJob syncJob)
         {
             var verifierResult = DestinationVerifierResult.NotFound;

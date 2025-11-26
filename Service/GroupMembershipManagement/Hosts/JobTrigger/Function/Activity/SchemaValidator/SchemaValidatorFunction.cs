@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Hosts.JobTrigger;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using NJsonSchema;
 using Repositories.Contracts;
@@ -30,7 +29,7 @@ namespace JobTrigger.Activity.SchemaValidator
             _schemaProvider = jsonSchemaProvider ?? throw new ArgumentNullException(nameof(jsonSchemaProvider));
         }
 
-        [FunctionName(nameof(SchemaValidatorFunction))]
+        [Function(nameof(SchemaValidatorFunction))]
         public async Task<bool> ValidateSchemasAsync([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

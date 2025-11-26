@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -21,7 +20,7 @@ namespace Hosts.JobTrigger
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
-        [FunctionName(nameof(DestinationNameReaderFunction))]
+        [Function(nameof(DestinationNameReaderFunction))]
         public async Task<string> GetDestinationNameAsync([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationNameReaderFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

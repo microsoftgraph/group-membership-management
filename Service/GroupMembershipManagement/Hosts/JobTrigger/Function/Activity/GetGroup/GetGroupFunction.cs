@@ -6,8 +6,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.JobTrigger
 {
@@ -21,7 +20,7 @@ namespace Hosts.JobTrigger
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
-        [FunctionName(nameof(GetGroupFunction))]
+        [Function(nameof(GetGroupFunction))]
         public async Task<Group> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

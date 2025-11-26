@@ -29,27 +29,7 @@ param prereqsKeyVaultResourceGroup string = '${solutionAbbreviation}-prereqs-${e
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'JobTrigger'),0,8)}'
 
 @description('Service plan sku')
-@allowed([
-  'D1'
-  'F1'
-  'B1'
-  'B2'
-  'B3'
-  'S1'
-  'S2'
-  'S3'
-  'P1'
-  'P2'
-  'P3'
-  'P1V2'
-  'P2V2'
-  'P3V2'
-  'I1'
-  'I2'
-  'I3'
-  'Y1'
-])
-param servicePlanSku string = 'Y1'
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -62,11 +42,15 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param functionAppKind string = 'functionapp'
+param functionAppKind string = 'functionapp,linux'
 
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+@description('Maximum instance count.')
+param maxInstanceCount int = 40
+
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 2048
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
@@ -115,17 +99,7 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
-}
-
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-  FUNCTIONS_INPROC_NET8_ENABLED : 1
 }
 
 var appSettings = {
@@ -138,24 +112,24 @@ var appSettings = {
   jobTriggerSchedule: '0 */5 * * * *'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   serviceBusSyncJobTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusSyncJobTopic, '2019-09-01').secretUriWithVersion})'
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
   senderPassword: '@Microsoft.KeyVault(SecretUri=${reference(senderPassword, '2019-09-01').secretUriWithVersion})'
-  'teamsGraphCredentials:ClientCertificateName': featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppCertificateName, '2019-09-01').secretUriWithVersion})' : 'not-set'
-  'teamsGraphCredentials:ClientSecret': featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientSecret, '2019-09-01').secretUriWithVersion})' : 'not-set'
-  'teamsGraphCredentials:ClientId': featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientId, '2019-09-01').secretUriWithVersion})' : 'not-set'
-  'teamsGraphCredentials:TenantId': featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})' : 'not-set'
-  'teamsGraphCredentials:KeyVaultName': prereqsKeyVaultName
-  'teamsGraphCredentials:KeyVaultTenantId': tenantId
+  TeamsGraphCredentials__ClientCertificateName: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppCertificateName, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  TeamsGraphCredentials__ClientSecret: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientSecret, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  TeamsGraphCredentials__ClientId: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppClientId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  TeamsGraphCredentials__TenantId: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  TeamsGraphCredentials__KeyVaultName: prereqsKeyVaultName
+  TeamsGraphCredentials__KeyVaultTenantId: tenantId
   teamsChannelServiceAccountUsername: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountUsername, '2019-09-01').secretUriWithVersion})'
   teamsChannelServiceAccountPassword: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountPassword, '2019-09-01').secretUriWithVersion})'
   teamsChannelServiceAccountObjectId: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountObjectId, '2019-09-01').secretUriWithVersion})'
@@ -163,24 +137,7 @@ var appSettings = {
   appConfigurationEndpoint: appConfigurationEndpoint
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
-}
-
-var activityFunctionSettings = {
-  'AzureWebJobs.StarterFunction.Disabled': 0
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.SubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.DestinationNameReaderFunction.Disabled': 0
-  'AzureWebJobs.DestinationVerifierFunction.Disabled': 0
-  'AzureWebJobs.EmailSenderFunction.Disabled': 0
-  'AzureWebJobs.GetJobsFunction.Disabled': 0
-  'AzureWebJobs.JobTrackerFunction.Disabled': 0
-  'AzureWebJobs.JobUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.ParseAndValidateDestinationFunction.Disabled': 0
-  'AzureWebJobs.SchemaValidatorFunction.Disabled': 0
-  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
-  'AzureWebJobs.TopicMessageSenderFunction.Disabled': 0
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -202,6 +159,16 @@ module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-JobTrigger'
   params: {
     value: dataKeyVault.getSecret('jobTriggerStorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-JobTrigger'
+  params: {
+    value: dataKeyVault.getSecret('jobTriggerAppPackageContainerProd')
   }
   dependsOn: [
     dataKeyVault
@@ -230,7 +197,7 @@ module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    secretSettings: commonSettings
+    appSettings: appSettings
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
@@ -241,19 +208,12 @@ module functionAppTemplate_JobTrigger 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    maxInstanceCount: maxInstanceCount
+    instanceMemoryMB: instanceMemoryMB
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
-    existingLogAnalyticsWorkspace
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-JobTrigger/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, activityFunctionSettings)
-  dependsOn: [
-    functionAppTemplate_JobTrigger
   ]
 }

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Newtonsoft.Json.Linq;
 using Repositories.Contracts;
@@ -22,7 +21,7 @@ namespace Hosts.JobTrigger
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
-        [FunctionName(nameof(ParseAndValidateDestinationFunction))]
+        [Function(nameof(ParseAndValidateDestinationFunction))]
         public async Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync([ActivityTrigger] SyncJob syncJob)
         {
 

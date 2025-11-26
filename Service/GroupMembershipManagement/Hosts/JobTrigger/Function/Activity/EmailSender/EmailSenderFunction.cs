@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 using Models;
 using JobTrigger.Activity.EmailSender;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
@@ -21,7 +20,7 @@ namespace Hosts.JobTrigger
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
         }
 
-        [FunctionName(nameof(EmailSenderFunction))]
+        [Function(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
             var job = request.SyncJob;
