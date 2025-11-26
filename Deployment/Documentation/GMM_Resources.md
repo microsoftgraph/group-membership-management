@@ -93,7 +93,7 @@ GMM uses Azure Functions for its microservices architecture. Functions are organ
 | Resource | Naming Convention | Purpose |
 |----------|-------------------|---------|
 | **SQL Server** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Primary SQL Server |
-| **SQL Server (Replica)** | `{solutionAbbreviation}-data-{environmentAbbreviation}-replica` | Read-only replica for load distribution |
+| **SQL Server (Replica)** | `{solutionAbbreviation}-data-{environmentAbbreviation}-R` | Read-only replica for load distribution |
 | **Jobs Database** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Stores sync job configurations and state |
 | **ADF Database** | `{solutionAbbreviation}-data-{environmentAbbreviation}-adf` | Stores HR data for SQL membership sources |
 

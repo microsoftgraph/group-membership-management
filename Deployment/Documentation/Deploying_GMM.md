@@ -93,7 +93,7 @@ The deploying user must have one of the following Microsoft Entra ID roles:
 - **Global Administrator**, OR
 - **Privileged Role Administrator**
 
-> **Note:** If you do not have directory-level permissions, you can set `SkipPrivilegedDirectoryActions` to `true` in the parameters file. This will require you to manually create the app registrations before deployment. See the [Important Parameters](#important-parameters) section for details.
+> **Note:** If you do not have directory-level permissions, you can set `skipPrivilegedDirectoryActions` to `true` in the parameters file. This will require you to manually create the app registrations before deployment. See the [Important Parameters](#important-parameters) section for details.
 
 ---
 
@@ -254,7 +254,7 @@ The deployment script creates the following app registrations in Microsoft Entra
 - `<solution-abbreviation>-Graph-<environment-abbreviation>`
 - `<solution-abbreviation>-TeamsChannel-<environment-abbreviation>`
 
-> **Note:** If you set `SkipPrivilegedDirectoryActions` to `true`, you must create these app registrations manually before running the deployment script.
+> **Note:** If you set `skipPrivilegedDirectoryActions` to `true`, you must create these app registrations manually before running the deployment script.
 
 **To grant admin consent:**
 1. Navigate to the [Azure Portal](https://portal.azure.com) and go to Microsoft Entra ID.

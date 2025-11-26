@@ -211,7 +211,7 @@ In this case, we have three maps: CountryMap, JobLevelMap, and JobTitleMap. Thes
  - The GMM UI expects three columns: 
     - ColumnName: this is the name of the attribute/column in the table. 
     - Code: this is the given code being mapped to a description.
-    - Description: this is the given descriptio bring mapped to a code. 
+    - Description: this is the given description being mapped to a code.  
 - Select only the columns ColumnName, Code, and Description. 
 
 Once we have these three columns for each of our maps, we union the maps so that we end up with one table containing all of our maps. This is the mapping table.
