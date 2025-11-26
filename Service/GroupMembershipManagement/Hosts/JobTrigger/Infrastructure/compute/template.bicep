@@ -50,7 +50,7 @@ param functionAppKind string = 'functionapp,linux'
 param maxInstanceCount int = 40
 
 @description('Instance memory in MB.')
-param instanceMemoryMB int = 2048
+param instanceMemoryMB int = 4096
 
 @description('Name of the \'data\' key vault.')
 param dataKeyVaultName string = '${solutionAbbreviation}-data-${environmentAbbreviation}'
