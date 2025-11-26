@@ -227,7 +227,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       <MessageBar
         messageBarType={MessageBarType.error}
         isMultiline={true}
-        dismissButtonAriaLabel="Close"
+        dismissButtonAriaLabel={strings.close}
         className={classNames.ownershipWarning}
       >
         <div>

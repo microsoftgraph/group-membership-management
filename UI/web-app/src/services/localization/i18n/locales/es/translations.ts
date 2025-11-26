@@ -437,7 +437,7 @@ export const strings: IStrings = {
       addOwnerMessage: 'Haga clic {0} y agregue manualmente "{1}" como propietario del grupo.',
       teamsServiceAccountNotOwnerWarning: 'GMM no es propietario de este canal de Teams. No podrá administrar la membresía de este canal hasta que lo agregues.{2} {0}{2}Una vez que hayas hecho eso, regresa y haz clic en: {2}{1}',
       userNotOwnerWarning: 'Atención: No eres dueño de este grupo. Solo los propietarios pueden administrar la membresía.',
-      hasNestedGroupsWarning: 'Atención: Este grupo contiene grupos anidados. La gestión de membresía de grupos con grupos anidados puede causar comportamiento inesperado.',
+      hasNestedGroupsWarning: 'Atención: Este grupo contiene grupos anidados. Por favor, elimina los grupos anidados para poder continuar.',
       nestedGroupsFound: 'Grupos anidados encontrados:',
       viewInEntra: 'Puede buscar y eliminar los grupos anidados {0}.',
       here: 'aquí',
