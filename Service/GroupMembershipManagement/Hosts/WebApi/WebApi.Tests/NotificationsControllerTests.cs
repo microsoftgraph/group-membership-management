@@ -58,20 +58,12 @@ namespace Services.Tests
         private List<ThresholdNotification> _thresholdNotifications = null!;
         private ResolveNotification _resolveNotificationModel = null!;
         private TelemetryClient _telemetryClient = null!;
-        private Mock<IActionableMessageTokenValidator> _mockTokenValidator = null!;
-        private ActionableMessageTokenValidationResult _tokenValidationResult = null!;
-        private IOptions<WebApiSettings> _webApiSettings = null!;
         private Mock<IThresholdConfig> _thresholdConfig = null!;
 
         [TestInitialize]
         public void Initialize()
         {
-
             _hostname = "api.test.gmm.microsoft.com";
-            _webApiSettings = Options.Create(new WebApiSettings
-            {
-                ApiHostname = _hostname
-            });
             _providerId = Guid.NewGuid();
             _userUPN = "testuser@contoso.net";
             _nonExistantNotificationId = Guid.Empty;
@@ -93,7 +85,6 @@ namespace Services.Tests
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            _mockTokenValidator = new Mock<IActionableMessageTokenValidator>();
 
             _groupTypes = new List<string>
             {
@@ -169,9 +160,6 @@ namespace Services.Tests
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                 .ReturnsAsync(() => syncJob);
 
-            _mockTokenValidator.Setup(x => x.ValidateTokenAsync(It.IsAny<string>(), It.IsAny<string>()
-                )).ReturnsAsync(() => _tokenValidationResult);
-
             // Items for testing
             _thresholdNotification = _thresholdNotifications[Random.Shared.Next(0, _notificationCount)];
             _groupId = _thresholdNotification.TargetOfficeGroupId;
@@ -210,13 +198,11 @@ namespace Services.Tests
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, _userUPN),
+                new Claim("upn", _userUPN),
             };
 
-            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler, _mockTokenValidator.Object, _webApiSettings);
+            _notificationsController = new NotificationsController(_resolveNotificationsHandler, _notificationCardHandler);
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
-            _tokenValidationResult = new ActionableMessageTokenValidationResult();
-            _tokenValidationResult.ActionPerformer = _userUPN;
         }
         /// <summary>
         /// /notifications/{id}/resolve - Resolve notification with Ignore Once
@@ -279,9 +265,9 @@ namespace Services.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, "notAnOwner@contoso.net")
+                new Claim("upn", "notAnOwner@contoso.net")
             };
-            _tokenValidationResult.ActionPerformer = "notAnOwner@contoso.net";
+            _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.ResolveNotificationAsync(_thresholdNotification.Id, _resolveNotificationModel);
             var result = response.Result as ContentResult;
@@ -381,9 +367,8 @@ namespace Services.Tests
         {
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, "notAnOwner@contoso.com"),
+                new Claim("upn", "notAnOwner@contoso.net"),
             };
-            _tokenValidationResult.ActionPerformer = "notAnOwner@contoso.net";
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);
@@ -401,18 +386,17 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetNotificationCard_HandleUserNotGroupOwnerButInViewerGroupTestAsync()
         {
-            var userObjectId = Guid.NewGuid().ToString();
+            var userObjectId = Guid.NewGuid();
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(
-                It.Is<string>(s => s == userObjectId), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientMemberOfGroupAsync(
+                It.Is<string>(s => s == userObjectId.ToString()), It.IsAny<Guid>()))
                 .ReturnsAsync(true);
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Upn, userObjectId),
+                new Claim("oid", userObjectId.ToString()),
             };
 
-            _tokenValidationResult.ActionPerformer = userObjectId;
             _notificationsController.ControllerContext = CreateControllerContext(claims, "mockBearerToken");
 
             var response = await _notificationsController.GetCardAsync(_thresholdNotification.Id);

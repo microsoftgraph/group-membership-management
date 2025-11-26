@@ -75,6 +75,10 @@ namespace WebApi
             var apiHostName = builder.Configuration.GetValue<string>("Settings:ApiHostname");
             var secureApiHostName = $"https://{apiHostName}";
 
+            var actionableEmailProviderId = builder.Configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
+            var oamEntraAppId = builder.Configuration.GetValue<string>("Settings:oamEntraAppId");
+            var oamEntraAppScope = builder.Configuration.GetValue<string>("Settings:oamEntraAppScope");
+
             builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
 
@@ -145,7 +149,8 @@ namespace WebApi
                     ValidAudiences = new[] {
                         $"api://{azureAdClientId}",
                         azureAdClientId,
-                        secureApiHostName
+                        secureApiHostName,
+                        $"api://auth-am-{actionableEmailProviderId}/{oamEntraAppId}",
                     },
                     ValidateIssuer = true,
                     ValidIssuers = new[] {
@@ -157,6 +162,23 @@ namespace WebApi
                 };
 
                 options.TokenValidationParameters.EnableAadSigningKeyIssuerValidation();
+                
+                options.Events.OnTokenValidated = async context =>
+                {
+                    // Validate scope for OAM (Outlook Actionable Messages) endpoints
+                    var path = context.HttpContext.Request.Path.Value;
+                    if (path != null && path.Contains("/notifications", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var scopeClaim = context.Principal?.Claims.FirstOrDefault(c => c.Type == "scp" || c.Type == "http://schemas.microsoft.com/identity/claims/scope")?.Value;
+                        if (string.IsNullOrWhiteSpace(scopeClaim) || !scopeClaim.Contains(oamEntraAppScope))
+                        {
+                            context.Fail($"Required scope '{oamEntraAppScope}' not present in token");
+                            return;
+                        }
+                    }
+                    await Task.CompletedTask;
+                };
+                
                 options.Events.OnMessageReceived = async context =>
                 {
                     context.Options.TokenValidationParameters.ConfigurationManager ??= options.ConfigurationManager as BaseConfigurationManager;
@@ -326,7 +348,6 @@ namespace WebApi
 
             builder.Services.AddOptions<WebApiSettings>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.ApiHostname = configuration.GetValue<string>("Settings:apiHostname");
                 settings.KeyVaultName = configuration.GetValue<string>("Settings:GraphCredentials:KeyVaultName");
             });
             builder.Services.AddSingleton<IHandleInactiveJobsConfig>(services =>
@@ -355,7 +376,7 @@ namespace WebApi
 
             builder.Services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, configuration) =>
             {
-                settings.ActionableEmailProviderId = configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
+                settings.ActionableEmailProviderId = actionableEmailProviderId;
                 settings.ApiHostname = apiHostName;
             });
 
