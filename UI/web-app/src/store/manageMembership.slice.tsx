@@ -10,6 +10,7 @@ import {
     getChannelOnboardingStatus,
     getGroupEndpoints,
     getGroupOwners,
+    getGroupMembers,
     searchDestinations,
     searchChannels
 } from './manageMembership.api';
@@ -24,6 +25,7 @@ import { isSourcePartValid, removeUnusedProperties } from '../utils/sourcePartUt
 import { createGroup } from './groups.api';
 import { GroupSettings } from '../models/GroupSettings';
 import { DestinationType } from '../models/DestinationType';
+import { GroupMember } from '../models/GroupMember';
 
 export interface ManageMembershipState {
     loadingSearchResults: boolean;
@@ -31,6 +33,11 @@ export interface ManageMembershipState {
     channelPickerSearchResults?: DestinationPickerPersona[];
     selectedDestination: Destination | undefined;
     groupOwners?: GroupOwner[];
+    groupMembers?: {
+        groupId: string;
+        groupMemberCount: number;
+        groups: GroupMember[];
+    };
     onboardingStatus: GroupOnboardingStatus | null;
     hasChanges: boolean;
     currentStep: number;
@@ -60,6 +67,7 @@ const initialState: ManageMembershipState = {
     channelPickerSearchResults: [],
     selectedDestination: undefined,
     groupOwners: [],
+    groupMembers: undefined,
     onboardingStatus: null,
     hasChanges: false,
     currentStep: 0,
@@ -362,6 +370,9 @@ const manageMembershipSlice = createSlice({
         },
         setGroupSettings: (state, action: PayloadAction<GroupSettings | undefined>) => {
             state.groupSettings = action.payload;
+        },
+        clearGroupMembers: (state) => {
+            state.groupMembers = undefined;
         }
     },
     extraReducers: (builder) => {
@@ -428,6 +439,15 @@ const manageMembershipSlice = createSlice({
         builder.addCase(getGroupOwners.fulfilled, (state, action) => {
             state.groupOwners = action.payload;
         });
+        builder.addCase(getGroupMembers.pending, (state) => {
+            state.groupMembers = undefined;
+        });
+        builder.addCase(getGroupMembers.fulfilled, (state, action) => {
+            state.groupMembers = action.payload;
+        });
+        builder.addCase(getGroupMembers.rejected, (state) => {
+            state.groupMembers = undefined;
+        });
     },
 });
 
@@ -465,7 +485,8 @@ export const {
     setCreatedGroupName,
     setCreateGroupErrorMessage,
     setBusinessJustification,
-    setGroupSettings
+    setGroupSettings,
+    clearGroupMembers
 } = manageMembershipSlice.actions;
 
 // General
@@ -520,6 +541,7 @@ export const manageMembershipBusinessJustification = (state: RootState) => state
 export const manageMembershipLastModifiedOnBehalfOfDisplayName = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfDisplayName;
 export const manageMembershipLastModifiedOnBehalfOfObjectId = (state: RootState) => state.manageMembership.newJob.lastModifiedOnBehalfOfObjectId;
 export const manageMembershipGroupOwners = (state: RootState) => state.manageMembership.groupOwners;
+export const manageMembershipGroupMembers = (state: RootState) => state.manageMembership.groupMembers;
 
 export const manageMembershipIsToggleEnabled = (state: RootState) => {
     const isAdvancedView = state.manageMembership.isAdvancedView;

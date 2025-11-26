@@ -57,9 +57,11 @@ import {
   manageMembershipLastModifiedOnBehalfOfObjectId,
   setGroupSettings,
   manageMembershipGroupSettings,
-  getSourcePartsFromState
+  getSourcePartsFromState,
+  manageMembershipGroupMembers
 } from '../../store/manageMembership.slice';
-import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus } from '../../store/manageMembership.api';
+import { getGroupEndpoints, getGroupOnboardingStatus, getChannelOnboardingStatus, getGroupMembers } from '../../store/manageMembership.api';
+import { clearGroupMembers } from '../../store/manageMembership.slice';
 import { NewJob } from '../../models/NewJob';
 import { fetchJobs, postJob } from '../../store/jobs.api';
 import { RunConfiguration } from '../../components/RunConfiguration';
@@ -151,9 +153,12 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
     }
   }, [dispatch, jobDetailsRef.current]);
 
+  const groupMembers = useSelector(manageMembershipGroupMembers);
+  const hasNestedGroups = groupMembers && groupMembers.groupMemberCount > 0;
+
   useEffect(() => {
-    setIsStep1ConditionsMet(!!selectedDestination && isGroupReadyForOnboarding === true);
-  }, [selectedDestination, isGroupReadyForOnboarding]);
+    setIsStep1ConditionsMet(!!selectedDestination && isGroupReadyForOnboarding === true && !hasNestedGroups);
+  }, [selectedDestination, isGroupReadyForOnboarding, hasNestedGroups]);
 
   // Reset isEditingExistingJob when leaving ManageMembership page
   useEffect(() => {
@@ -232,6 +237,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
       dispatch(getGroupEndpoints(selectedGroupId));
       if (updatedDestination.type === DestinationType.GroupMembership) {
         dispatch(getGroupOnboardingStatus(selectedGroupId));
+        dispatch(getGroupMembers(selectedGroupId));
       }
     } else {
       const updatedDestination: Destination = {
@@ -240,6 +246,7 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
         type: selectedDestination?.type ?? DestinationType.GroupMembership
       };
       dispatch(setSelectedDestination(updatedDestination));
+      dispatch(clearGroupMembers());
     }
   };
 

@@ -3,6 +3,8 @@
 
 export * from './Destination';
 export * from './GetJobDetailsRequest';
+export * from './GetGroupMembersResponse';
+export * from './GroupMember';
 export * from './GroupOnboardingStatus';
 export * from './GroupOwner';
 export * from './Job';

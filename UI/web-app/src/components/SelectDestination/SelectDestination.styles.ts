@@ -54,6 +54,7 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
       lineHeight: 16,
       fontFamily: 'Segoe UI',
       color: theme.semanticColors.errorText,
+      width: 500,
     },
     resultsContainer: {
       display: 'flex',
@@ -86,6 +87,30 @@ export const getStyles = (props: ISelectDestinationStyleProps): ISelectDestinati
     },
     textFieldGroup: {
         border: 'none'
+    },
+    messageBarContent: {
+      color: 'inherit'
+    },
+    messageBarSection: {
+      marginTop: 8
+    },
+    linkButton: {
+      root: {
+        border: 'none',
+        backgroundColor: 'transparent',
+        padding: '0px 0px',
+      }
+    },
+    checkAgainButton: {
+      root: {
+        border: 'none',
+        backgroundColor: 'transparent',
+        padding: '0px 0px',
+        color: 'inherit',
+      },
+      label: {
+        color: 'inherit',
+      }
     }
   };
 };

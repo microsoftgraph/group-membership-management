@@ -6,7 +6,7 @@ import { config } from '../authConfig';
 import { GroupOnboardingStatus } from '../models/GroupOnboardingStatus';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { Destination, DestinationPickerPersona, GroupOwner } from '../models';
+import { Destination, DestinationPickerPersona, GroupOwner, GetGroupMembersResponse } from '../models';
 import { SearchChannelRequest } from '../models/SearchChannelRequest';
 import { Channel } from '../models/Channel';
 import { ChannelOnboardingStatusRequest } from '../models/ChannelOnboardingStatusRequest';
@@ -187,6 +187,36 @@ export const getGroupOwners = createAsyncThunk<GroupOwner[], string, ThunkConfig
       return payload;
     } catch (error) {
       throw new Error('Failed to fetch group owners!');
+    }
+  }
+);
+
+export const getGroupMembers = createAsyncThunk<GetGroupMembersResponse | undefined, string, ThunkConfig>(
+  'groupMembers',
+  async (groupId, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers();
+    headers.append('Authorization', `Bearer ${token}`);
+    headers.append('Content-Type', 'application/json');
+
+    const options = {
+      method: 'GET',
+      headers,
+    };
+
+    try {
+      const url = config.getGroupMembers(groupId);
+      const response = await fetch(url, options);
+      
+      if (!response.ok) {
+        return undefined;
+      }
+      
+      const data: GetGroupMembersResponse = await response.json();
+      return data;
+    } catch (error) {
+      return undefined;
     }
   }
 );

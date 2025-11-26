@@ -19,6 +19,8 @@ import {
   IIconProps,
   DefaultButton,
   IButtonStyles,
+  MessageBar,
+  MessageBarType,
 } from '@fluentui/react';
 import {
   ISelectDestinationProps,
@@ -28,13 +30,14 @@ import {
 import { useStrings } from '../../store/hooks';
 import { PageSection } from '../PageSection';
 import { AppDispatch } from '../../store';
-import { searchChannels, searchDestinations, getGroupOnboardingStatus, getChannelOnboardingStatus } from '../../store/manageMembership.api';
+import { searchChannels, searchDestinations, getGroupOnboardingStatus, getChannelOnboardingStatus, getGroupMembers } from '../../store/manageMembership.api';
 import {
   manageMembershipSelectedDestinationEndpoints,
   manageMembershipSearchResults,
   manageMembershipChannelPickerSearchResults,
   manageMembershipLoadingSearchResults,
   manageMembershipGroupOnboardingStatus,
+  manageMembershipGroupMembers,
 } from '../../store/manageMembership.slice';
 import { Destination } from '../../models/Destination';
 import { SearchChannelRequest } from '../../models/SearchChannelRequest';
@@ -126,6 +129,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const selectedDestinationEndpoints = useSelector(manageMembershipSelectedDestinationEndpoints);
   const groupPickerSuggestions = useSelector(manageMembershipSearchResults);
   const channelPickerSuggestions = useSelector(manageMembershipChannelPickerSearchResults);
+  const groupMembers = useSelector(manageMembershipGroupMembers);
   const selectedDestinationType = mapDestinationToType(selectedDestination);
   const selectedDestinationChannelPersona = mapDestinationToChannelPersonaProps(selectedDestination);
   const selectedDestinationPersona = mapDestinationToPersonaProps(selectedDestination);
@@ -220,22 +224,38 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
 
   const appIdNotOwnerWarning =
     onboardingStatus?.status === OnboardingStatus.GmmNotOwner ? (
-      <div className={classNames.ownershipWarning}>
-        {selectedDestination?.type === DestinationType.TeamsChannelMembership
-          ? jsxFormat(strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning,
-                      jsxFormat(strings.ManageMembership.labels.addOwnerMessage, onboardingStatus?.additionalDetails?.["owner"]),
-                      <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={smallButtonStyles} onClick={checkOwnership} />,
-                      <br />,
-            )
-          : jsxFormat(strings.ManageMembership.labels.appIdNotOwnerWarning,
-                     selectedDestination?.type === DestinationType.GroupMembership
-                      && <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">
-                          {jsxFormat(strings.ManageMembership.labels.addOwnerMessage, onboardingStatus?.additionalDetails?.["owner"])}
-                        </a>,
-                     <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={smallButtonStyles} onClick={checkOwnership} />,
-                     <br />,
-                     )}{' '}
-      </div>
+      <MessageBar
+        messageBarType={MessageBarType.error}
+        isMultiline={true}
+        dismissButtonAriaLabel="Close"
+        className={classNames.ownershipWarning}
+      >
+        <div>
+          {selectedDestination?.type === DestinationType.TeamsChannelMembership ? (
+            <div>
+              <div>{strings.ManageMembership.labels.teamsServiceAccountNotOwnerWarning.split('{2}')[0]}</div>
+              <div className={classNames.messageBarSection}>
+                {jsxFormat(strings.ManageMembership.labels.addOwnerMessage, <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{strings.ManageMembership.labels.here}</a>, onboardingStatus?.additionalDetails?.["owner"])}
+              </div>
+              <div className={classNames.messageBarSection}>
+                {jsxFormat(
+                  strings.ManageMembership.labels.refreshInstructions,
+                  <DefaultButton text={strings.continue} title={strings.continue} iconProps={refreshIcon} styles={{ root: { border: 'none', backgroundColor: 'transparent', padding: '0px 0px' } }} onClick={checkOwnership} />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div>{strings.ManageMembership.labels.appIdNotOwnerWarning.split('{2}')[0]}</div>
+              {selectedDestination?.type === DestinationType.GroupMembership && (
+                <div className={classNames.messageBarSection}>
+                  {jsxFormat(strings.ManageMembership.labels.addOwnerMessage, <a href={addGroupOwnerLink} target="_blank" rel="noopener noreferrer">{strings.ManageMembership.labels.here}</a>, onboardingStatus?.additionalDetails?.["owner"])}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </MessageBar>
     ) : null;
 
   const userNotOwnerWarning =
@@ -251,6 +271,43 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
   const teamsNotSupportedWarning =
     onboardingStatus?.status == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === DestinationType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.teamsNotSupportedWarning}</div>
+    ) : null;
+
+  const checkNestedGroups = (
+    item?: any,
+    index?: number,
+    ev?: React.FocusEvent<HTMLElement>
+  ): void => {
+    if (selectedDestination?.id) {
+      dispatch(getGroupMembers(selectedDestination.id));
+    }
+  };
+
+  const hasNestedGroupsWarning =
+    groupMembers && groupMembers.groupMemberCount > 0 ? (
+      <MessageBar
+        messageBarType={MessageBarType.error}
+        isMultiline={true}
+        dismissButtonAriaLabel="Close"
+        className={classNames.ownershipWarning}
+      >
+        <div className={classNames.messageBarContent}>
+          <div>{strings.ManageMembership.labels.hasNestedGroupsWarning}</div>
+          {groupMembers.groups && groupMembers.groups.length > 0 && (
+            <div className={classNames.messageBarSection}>
+              <strong>{strings.ManageMembership.labels.nestedGroupsFound}</strong>
+              <ul style={{ marginTop: '4px', marginBottom: '0' }}>
+                {groupMembers.groups.slice(0, 5).map((group) => (
+                  <li key={group.objectId}>{group.displayName}</li>
+                ))}
+              </ul>
+              <div className={classNames.messageBarSection}>
+                {jsxFormat(strings.ManageMembership.labels.viewInEntra, <a href={`https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/${selectedDestination?.id}`} target="_blank" rel="noopener noreferrer">{strings.ManageMembership.labels.here}</a>)}
+              </div>
+            </div>
+          )}
+        </div>
+      </MessageBar>
     ) : null;
 
   useEffect(() => {}, [dispatch, groupPickerSuggestions]);
@@ -373,6 +430,30 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {userNotOwnerWarning}
                 {alreadyOnboardedWarning}
                 {teamsNotSupportedWarning}
+                {hasNestedGroupsWarning}
+                {(appIdNotOwnerWarning || hasNestedGroupsWarning) && (
+                  <MessageBar
+                    messageBarType={MessageBarType.error}
+                    isMultiline={true}
+                    className={classNames.ownershipWarning}
+                    messageBarIconProps={{ iconName: '' }}
+                  >
+                    <div className={classNames.messageBarContent}>
+                      {jsxFormat(
+                        strings.ManageMembership.labels.refreshInstructions,
+                        <DefaultButton 
+                          text={strings.ManageMembership.labels.checkAgain} 
+                          title={strings.ManageMembership.labels.checkAgain} 
+                          styles={{ root: { border: 'none', backgroundColor: 'transparent', padding: '0px 0px', color: 'inherit' }, label: { color: 'inherit' } }}
+                          onClick={() => {
+                            if (appIdNotOwnerWarning) checkOwnership();
+                            if (hasNestedGroupsWarning) checkNestedGroups();
+                          }} 
+                        />
+                      )}
+                    </div>
+                  </MessageBar>
+                )}
               </div>
               {selectedDestination && selectedDestination.groupSettings && (
                 <GroupSetting />

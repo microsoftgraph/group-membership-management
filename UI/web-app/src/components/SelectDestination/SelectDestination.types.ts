@@ -25,6 +25,10 @@ export interface ISelectDestinationStyles {
   comboBoxOptionCodeText: IStyle;
   textField: IStyle;
   textFieldGroup: IStyle;
+  messageBarContent: IStyle;
+  messageBarSection: IStyle;
+  linkButton: IStyle;
+  checkAgainButton: IStyle;
 }
 
 export interface ISelectDestinationStyleProps {

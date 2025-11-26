@@ -430,6 +430,12 @@ export type IStrings = {
       addOwnerMessage: string;
       teamsServiceAccountNotOwnerWarning: string;
       userNotOwnerWarning: string;
+      hasNestedGroupsWarning: string;
+      nestedGroupsFound: string;
+      viewInEntra: string;
+      here: string;
+      refreshInstructions: string;
+      checkAgain: string;
       groupDescription: string;
       channelDescription: string;
       step2title: string;
