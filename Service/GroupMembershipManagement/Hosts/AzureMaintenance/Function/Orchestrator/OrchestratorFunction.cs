@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Repositories.Contracts;
@@ -27,9 +27,9 @@ namespace Hosts.AzureMaintenance
             _azureMaintenanceService = azureMaintenanceService;
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
+        [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestrator(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var runId = context.NewGuid();
 

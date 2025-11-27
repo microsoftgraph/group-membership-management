@@ -27,6 +27,8 @@ module azureMaintenanceStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'azureMaintenanceStorageAccountProd'
+    appPackageContainerSettingName: 'azureMaintenanceAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 

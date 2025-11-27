@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -22,7 +21,7 @@ namespace Hosts.AzureMaintenance
             _azureMaintenanceService = azureMaintenanceService ?? throw new ArgumentNullException(nameof(azureMaintenanceService));
         }
 
-        [FunctionName(nameof(WarningEmailSenderFunction))]
+        [Function(nameof(WarningEmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] WarningEmailSenderRequest request)
         {
             if (request.SyncJob != null)
