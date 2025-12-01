@@ -7,8 +7,9 @@ param name string
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param kind string = 'functionapp'
+param kind string = 'functionapp,linux'
 
 @description('Function app location.')
 param location string
@@ -18,13 +19,7 @@ param location string
 param servicePlanName string
 
 @description('app settings')
-param secretSettings object
-
-@description('Name of the \'data\' key vault.')
-param dataKeyVaultName string
-
-@description('Name of the resource group where the \'data\' key vault is located.')
-param dataKeyVaultResourceGroup string
+param appSettings object
 
 @description('User assigned managed identities. Single or list of user assigned managed identities. Format: /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/{identityName}')
 param userManagedIdentities object = {}
@@ -40,11 +35,26 @@ param prereqsKeyVaultName string
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultResourceGroup string
 
+@description('Name of the \'data\' key vault.')
+param dataKeyVaultName string
+
+@description('Name of the resource group where the \'data\' key vault is located.')
+param dataKeyVaultResourceGroup string
+
 @description('Flag to indicate if the deployment should set RBAC permissions.')
 param setRBACPermissions bool
 
 @description('Storage account name.')
 param storageAccountName string
+
+@description('Storage account container name.')
+param appPackageContainerName string
+
+@description('Maximum instance count.')
+param maxInstanceCount int = 40
+
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 2048
 
 @description('Instance identifier')
 @allowed([
@@ -55,7 +65,32 @@ param storageAccountName string
 ])
 param instanceIdentifier string
 
-resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
+  name: storageAccountName
+  scope: resourceGroup(dataKeyVaultResourceGroup)
+}
+
+var functionAppConfig = {
+  deployment: {
+    storage: {
+      type: 'blobContainer'
+      value: '${storageAccount.properties.primaryEndpoints.blob}${appPackageContainerName}'
+      authentication: {
+        type: 'SystemAssignedIdentity'
+      }
+    }
+  }
+  scaleAndConcurrency: {
+    maximumInstanceCount: maxInstanceCount
+    instanceMemoryMB: instanceMemoryMB
+  }
+  runtime: {
+    name: 'dotnet-isolated'
+    version: '8.0'
+  }
+}
+
+resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: name
   location: location
   kind: kind
@@ -64,11 +99,16 @@ resource functionApp 'Microsoft.Web/sites@2018-02-01' = {
     clientAffinityEnabled: false
     httpsOnly: true
     siteConfig: {
-      netFrameworkVersion: 'v8.0'
-      use32BitWorkerProcess : false
-      appSettings: secretSettings
+      minTlsVersion: '1.2'
       ftpsState: 'Disabled'
+      appSettings: [
+        for key in objectKeys(appSettings): {
+          name: key
+          value: appSettings[key]
+        }
+      ]
     }
+    functionAppConfig: functionAppConfig
   }
   identity: {
     type: deployUserManagedIdentity ? 'SystemAssigned, UserAssigned' : 'SystemAssigned'
