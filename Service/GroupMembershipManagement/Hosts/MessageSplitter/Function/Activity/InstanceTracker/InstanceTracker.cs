@@ -3,6 +3,7 @@
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Entities;
+using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
 {

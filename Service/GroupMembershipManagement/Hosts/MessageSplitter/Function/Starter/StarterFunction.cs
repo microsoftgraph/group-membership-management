@@ -8,8 +8,10 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.DurableTask.Client;
 using Models;
 using Repositories.Contracts;
+using System;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
 {

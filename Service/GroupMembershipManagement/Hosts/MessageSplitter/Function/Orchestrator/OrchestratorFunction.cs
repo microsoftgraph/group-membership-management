@@ -7,6 +7,8 @@ using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
 using Models;
 using Repositories.Contracts;
+using System;
+using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
 {

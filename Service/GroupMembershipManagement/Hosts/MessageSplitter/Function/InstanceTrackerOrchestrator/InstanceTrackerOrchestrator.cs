@@ -6,6 +6,8 @@ using Hosts.MessageSplitter;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using System;
+using System.Threading.Tasks;
 
 namespace MessageSplitter.TrackerOrchestrator
 {

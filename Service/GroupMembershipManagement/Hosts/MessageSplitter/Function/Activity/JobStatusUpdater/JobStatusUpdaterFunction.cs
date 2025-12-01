@@ -4,6 +4,8 @@ using MessageSplitter.Contracts;
 using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
+using System;
+using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
 {

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.Core;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
@@ -15,6 +14,8 @@ using Microsoft.Extensions.Options;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.ServiceBusTopics;
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 
 namespace Hosts.MessageSplitter

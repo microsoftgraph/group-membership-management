@@ -84,7 +84,8 @@ module servicePlanTemplate 'servicePlan.bicep' = {
   }
 }
 
-var appSettings = {
+// Base app settings for all instances
+var baseAppSettings = {
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
   AzureWebJobsStorage__accountName: storageAccountNameReader.outputs.value
   AzureWebJobsStorage__credential: 'managedidentity'
@@ -104,6 +105,14 @@ var appSettings = {
   ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
 }
+
+// Concurrency settings for s1 instance - allows higher concurrent message processing
+var s1ConcurrencySettings = {
+  AzureFunctionsJobHost__extensions__serviceBus__maxConcurrentCalls: '16'
+}
+
+// Combine app settings based on instance - s1 gets higher concurrency
+var appSettings = instanceIdentifier == 's1' ? union(baseAppSettings, s1ConcurrencySettings) : baseAppSettings
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: dataKeyVaultName

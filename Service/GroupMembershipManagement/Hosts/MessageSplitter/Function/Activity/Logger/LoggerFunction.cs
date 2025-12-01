@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Repositories.Contracts;
+using System;
+using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
 {
