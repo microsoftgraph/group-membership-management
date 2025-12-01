@@ -91,7 +91,6 @@ var appSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}MessageSplitter${instanceIdentifier}'
   AzureFunctionsWebHost__hostid: 'MessageSplitter${instanceIdentifier}'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  'AzureWebJobs.StarterFunction.Disabled': 0
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
@@ -175,7 +174,7 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
     appPackageContainerName: appPackageContainerNameReader.outputs.value
-    instanceMemoryMB: 2048
+    instanceMemoryMB: 4096
     instanceIdentifier: instanceIdentifier
   }
   dependsOn: [
