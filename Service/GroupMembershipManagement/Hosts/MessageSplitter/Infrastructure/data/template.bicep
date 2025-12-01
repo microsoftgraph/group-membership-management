@@ -34,6 +34,8 @@ module messageSplitterStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'messageSplitter${instanceIdentifier}StorageAccountProd'
+    appPackageContainerSettingName: 'messageSplitter${instanceIdentifier}AppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
