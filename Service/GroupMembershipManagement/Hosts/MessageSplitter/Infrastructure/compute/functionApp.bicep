@@ -59,9 +59,7 @@ param instanceMemoryMB int = 2048
 @description('Instance identifier')
 @allowed([
   's1'
-  'm1'
   'l1'
-  'o1'
 ])
 param instanceIdentifier string
 
