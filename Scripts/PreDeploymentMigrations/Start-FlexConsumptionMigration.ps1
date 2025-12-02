@@ -215,6 +215,8 @@ function Get-FunctionsFromComputeArmJson {
     $template = Get-Content -Path $ComputeResourcesArmTemplatePath -Raw | ConvertFrom-Json
 
     $functions = @()
+
+    # Pattern 1: Regular compute resource templates (e.g., "jobTriggerComputeResourcesTemplate")
     $computeResourceTemplates = $template.resources | Where-Object { $_.name -like "*ComputeResourcesTemplate" }
     $servicePlanTemplates = $computeResourceTemplates | ForEach-Object { $_.properties.template.resources | Where-Object { $_.name -like "servicePlanTemplate*" } }
 
@@ -222,11 +224,79 @@ function Get-FunctionsFromComputeArmJson {
         $functionName = ($servicePlanTemplate.name -split "-")[-1]
         $skuName = $servicePlanTemplate.properties.template.parameters.sku.defaultValue
         $servicePlan = $servicePlanTemplate.properties.template.resources | Where-Object { $_.type -eq "Microsoft.Web/serverfarms" } | Select-Object -First 1
-        
+
         $functions += [PSCustomObject]@{
             FunctionName = $functionName
             Sku  = $skuName
             Tier = $servicePlan.sku.tier
+        }
+    }
+
+    # Pattern 2: Copy loop deployments (e.g., "messageSplitter{0}ComputeResources", "graphUpdater{0}ComputeResourcesTemplate")
+    # These have nested templates with servicePlanTemplate resources inside
+    $copyLoopTemplates = $template.resources | Where-Object {
+        $null -ne $_.copy -and ($_.name -like "*ComputeResources*")
+    }
+
+    foreach ($copyLoopTemplate in $copyLoopTemplates) {
+        # Extract base function name from the copy loop name pattern
+        # e.g., "[format('messageSplitter{0}ComputeResources', variables('instanceIds')[copyIndex()])]" -> "MessageSplitter"
+        $templateName = $copyLoopTemplate.name
+        $baseFunctionName = $null
+
+        if ($templateName -match "format\('([a-zA-Z]+)\{0\}ComputeResources") {
+            $baseFunctionName = $Matches[1]
+            # Capitalize first letter for consistency
+            $baseFunctionName = $baseFunctionName.Substring(0,1).ToUpper() + $baseFunctionName.Substring(1)
+        }
+        elseif ($templateName -match "'([a-zA-Z]+)ComputeResourcesTemplate'") {
+            $baseFunctionName = $Matches[1]
+            $baseFunctionName = $baseFunctionName.Substring(0,1).ToUpper() + $baseFunctionName.Substring(1)
+        }
+
+        if ($null -eq $baseFunctionName) {
+            Write-Verbose "Could not extract function name from copy loop template: $templateName"
+            continue
+        }
+
+        # Find servicePlanTemplate inside the nested template resources
+        $nestedResources = $copyLoopTemplate.properties.template.resources
+        $nestedServicePlanTemplates = $nestedResources | Where-Object { $_.name -like "*servicePlanTemplate*" }
+
+        foreach ($servicePlanTemplate in $nestedServicePlanTemplates) {
+            # Get SKU from the nested template parameters
+            $skuName = $null
+            if ($servicePlanTemplate.properties.template.parameters.sku) {
+                $skuName = $servicePlanTemplate.properties.template.parameters.sku.defaultValue
+            }
+
+            # Get tier from the service farm resource in the nested template
+            $servicePlan = $servicePlanTemplate.properties.template.resources | Where-Object { $_.type -eq "Microsoft.Web/serverfarms" } | Select-Object -First 1
+            $tier = if ($servicePlan -and $servicePlan.sku) { $servicePlan.sku.tier } else { $null }
+
+            # Also check the outer template parameters for SKU default value
+            if ([string]::IsNullOrEmpty($skuName)) {
+                $outerParams = $copyLoopTemplate.properties.template.parameters
+                if ($outerParams.servicePlanSku -and $outerParams.servicePlanSku.defaultValue) {
+                    $skuName = $outerParams.servicePlanSku.defaultValue
+                }
+            }
+
+            # Infer tier from SKU if not found
+            if ([string]::IsNullOrEmpty($tier) -or $tier -eq "Dynamic") {
+                $tier = if ($skuName -eq "FC1") { "FlexConsumption" } else { "Dynamic" }
+            }
+
+            Write-Host "  📋 $baseFunctionName (copy loop): SKU=$skuName, Tier=$tier" -ForegroundColor Gray
+
+            $functions += [PSCustomObject]@{
+                FunctionName = $baseFunctionName
+                Sku  = $skuName
+                Tier = $tier
+            }
+
+            # Only add once per function type (not per instance)
+            break
         }
     }
 
@@ -283,7 +353,7 @@ function Get-FunctionsRequiringMigration {
         [string]$SolutionAbbreviation,
         [string]$EnvironmentAbbreviation
     )
-    
+
     $functionsToMigrate = @()
 
     if (-not [string]::IsNullOrEmpty($FunctionTemplatesPath)) {
@@ -303,7 +373,7 @@ function Get-FunctionsRequiringMigration {
             return @()  # Return empty array - no migrations needed
         }
     }
-    
+
     Write-Host "🔍 Analyzing $($desiredFunctions.Count) functions from templates..." -ForegroundColor Cyan
 
     # Set warning action once
@@ -334,7 +404,7 @@ function Get-FunctionsRequiringMigration {
     foreach ($desiredFunction in $desiredFunctions) {
         $desiredSku = $desiredFunction.Sku
         $desiredTier = $desiredFunction.Tier
-        
+
         $existingFunctions = $allFunctionApps | Where-Object {
             $_.Name -like "*$($desiredFunction.FunctionName)*" -or $_.Name -like "*$($desiredFunction.FunctionName.ToLower())*"
         }
@@ -437,7 +507,7 @@ function Set-UpdateSqlServerFirewallRule {
     if ($publicIp) {
         Write-Host "    📍 Current public IP: $publicIp" -ForegroundColor Gray
         # Check if this IP is already whitelisted
-        $existingRule = Get-AzSqlServerFirewallRule -ResourceGroupName $ResourceGroupName -ServerName $SqlServerName -ErrorAction SilentlyContinue | 
+        $existingRule = Get-AzSqlServerFirewallRule -ResourceGroupName $ResourceGroupName -ServerName $SqlServerName -ErrorAction SilentlyContinue |
             Where-Object { $_.StartIpAddress -eq $publicIp -and $_.EndIpAddress -eq $publicIp }
         if ($existingRule) {
             Write-Host "    ✅ IP already whitelisted in SQL firewall (Rule: $($existingRule.FirewallRuleName))" -ForegroundColor Green
