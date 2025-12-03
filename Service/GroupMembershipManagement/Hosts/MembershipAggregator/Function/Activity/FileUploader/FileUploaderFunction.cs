@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Models;
+using Models.Helpers;
 using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;

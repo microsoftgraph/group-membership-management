@@ -48,8 +48,7 @@ namespace Hosts.MembershipAggregator
         {
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
             var runId = request.SyncJob.RunId ?? Guid.Empty;
-            var proxy = context.CreateEntityProxy<IJobTracker>(request.EntityId);
-            var state = await proxy.GetState();
+            var state = await context.Entities.CallEntityAsync<JobState>(request.EntityId, nameof(JobTrackerEntity.GetState));
             var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
 
             foreach (var part in state.CompletedParts)
@@ -423,7 +422,7 @@ namespace Hosts.MembershipAggregator
             return (sourceGroupMembership, destinationGroupMembership);
         }
 
-        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, Guid groupId, IDurableOrchestrationContext context)
+        private FileUploaderRequest CreateAggregatedFileUploaderRequest(GroupMembership membership, DeltaCalculatorResponse deltaResponse, SyncJob syncJob, Guid groupId, TaskOrchestrationContext context)
         {
             var membersToAdd = JsonSerializer.Deserialize<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToAddJSON));
             var membersToRemove = JsonSerializer.Deserialize<ICollection<AzureADUser>>(TextCompressor.Decompress(deltaResponse.CompressedMembersToRemoveJSON));

@@ -7,11 +7,11 @@ using MembershipAggregator.Activity.EmailSender;
 using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Moq;
@@ -46,7 +46,6 @@ namespace Services.Tests
         private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
         private DeltaCalculatorResponse _deltaCalculatorResponse;
-        private (string FilePath, string Content) _downloaderResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
         private TelemetryClient _telemetryClient;
         private SyncJobGroup _groupInformation;
@@ -86,6 +85,7 @@ namespace Services.Tests
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _notificationsQueueRepository = new Mock<IServiceBusQueueRepository>();
             _entityFeature = new Mock<TaskOrchestrationEntityFeature>();
+            _durableContext.Setup(x => x.CurrentUtcDateTime).Returns(() => DateTime.UtcNow);
 
             _multiLaneConfig = new MultiLaneConfig
             {
@@ -176,8 +176,6 @@ namespace Services.Tests
             {
                 JobState = _jobState
             };
-
-            _downloaderResponse = (null, null);
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
@@ -271,22 +269,16 @@ namespace Services.Tests
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
                             .Returns(() => _membershipSubOrchestratorRequest);
 
-            _durableContext.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>()))
-                            .Returns(() => _jobTrackerEntity);
+            _durableContext.Setup(x => x.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                            .Returns<TaskName, object, TaskOptions>((name, request, options) =>
+                                CallFileDownloaderFunctionAsync(request as FileDownloaderRequest));
 
-            _durableContext.Setup(x => x.CallActivityAsync<(string FilePath, string Content)>(It.Is<string>(x => x == nameof(FileDownloaderFunction)), It.IsAny<FileDownloaderRequest>()))
-                            .Callback<string, object>(async (name, request) =>
-                            {
-                                _downloaderResponse = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
-                            })
-                            .ReturnsAsync(() => _downloaderResponse);
-
-            _durableContext.Setup(x => x.CallActivityAsync<DeltaCalculatorResponse>(It.Is<string>(x => x == nameof(DeltaCalculatorFunction)), It.IsAny<DeltaCalculatorRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableContext.Setup(x => x.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), It.IsAny<DeltaCalculatorRequest>(), It.IsAny<TaskOptions>()))
+                            .Returns<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 _deltaCalculatorResponse = await CallDeltaCalculatorFunctionAsync(request as DeltaCalculatorRequest);
-                            })
-                            .ReturnsAsync(() => _deltaCalculatorResponse);
+                                return _deltaCalculatorResponse;
+                            });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(FileUploaderFunction), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()))
                             .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -625,10 +617,11 @@ namespace Services.Tests
             _syncJob.ThresholdPercentageForRemovals = -1;
             _numberOfUsersForSourcePart = 50000;
 
-            var contextMock = new Mock<IDurableOrchestrationContext>();
+            var currentUtcDateTime = DateTime.UtcNow;
+            _durableContext.Setup(x => x.CurrentUtcDateTime).Returns(currentUtcDateTime);
 
-            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "SourceMembership", contextMock.Object), 100000);
-            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "DestinationMembership", contextMock.Object), 0);
+            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "SourceMembership", currentUtcDateTime), 100000);
+            _membersPerFile.Add(GenerateFileName(_syncJob, _group.GroupId, "DestinationMembership", currentUtcDateTime), 0);
 
             var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
             var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
@@ -926,9 +919,9 @@ namespace Services.Tests
             return await function.CalculateDeltaAsync(request);
         }
 
-        private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, TaskOrchestrationContext context)
+        private string GenerateFileName(SyncJob syncJob, Guid groupId, string suffix, DateTime currentUtcDateTime)
         {
-            var timeStamp = context.CurrentUtcDateTime.ToString("MMddyyyy-HHmm");
+            var timeStamp = currentUtcDateTime.ToString("MMddyyyy-HHmm");
             return $"/{groupId}/{timeStamp}_{syncJob.RunId}_{suffix}.json";
         }
     }
