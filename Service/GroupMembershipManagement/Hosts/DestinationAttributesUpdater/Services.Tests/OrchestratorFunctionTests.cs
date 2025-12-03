@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Hosts.DestinationAttributesUpdater;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
@@ -22,7 +22,7 @@ namespace Services.Tests
 
         private Mock<IDestinationAttributesUpdaterService> _mockDestinationAttributeUpdaterService;
         private Mock<ILoggingRepository> _mockLoggingRepository;
-        Mock<IDurableOrchestrationContext> _context;
+        Mock<TaskOrchestrationContext> _context;
 
 
         private const string GroupMembershipDestinationType = "GroupMembership";
@@ -43,37 +43,37 @@ namespace Services.Tests
         {
             _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockDestinationAttributeUpdaterService = new Mock<IDestinationAttributesUpdaterService>();
-            _context = new Mock<IDurableOrchestrationContext>();
+            _context = new Mock<TaskOrchestrationContext>();
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(AttributeCacheUpdaterFunction)), It.IsAny<DestinationAttributes>()))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(AttributeCacheUpdaterFunction)), It.IsAny<DestinationAttributes>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         await CallAttributeCacheUpdaterAsync();
                     });
 
-            _context.Setup(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<string>(x => x == nameof(AttributeReaderFunction)), It.IsAny<AttributeReaderRequest>()))
-                     .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<TaskName>(x => x.Name == nameof(AttributeReaderFunction)), It.IsAny<AttributeReaderRequest>(), It.IsAny<TaskOptions>()))
+                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                      {
                          _attributeReaderResponse = await CallAttributeReaderAsync(request as AttributeReaderRequest);
                      })
                      .ReturnsAsync(() => _attributeReaderResponse);
 
-            _context.Setup(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<string>(x => x == nameof(DestinationReaderFunction)), It.Is<string>(x => x == GroupMembershipDestinationType)))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<TaskName>(x => x.Name == nameof(DestinationReaderFunction)), It.Is<string>(x => x == GroupMembershipDestinationType), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         _destinationReaderResponse = await CallDestinationReaderAsync(request as string);
                     })
                     .ReturnsAsync(() => _destinationReaderResponse);
 
-            _context.Setup(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<string>(x => x == nameof(DestinationReaderFunction)), It.Is<string>(x => x == TeamsChannelMemberhsipDestinationType)))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<TaskName>(x => x.Name == nameof(DestinationReaderFunction)), It.Is<string>(x => x == TeamsChannelMemberhsipDestinationType), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         _destinationReaderResponse = new List<(string Destination, Guid JobId)>();
                     })
                     .ReturnsAsync(() => _destinationReaderResponse);
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
-                   .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                    {
                        await CallLoggerFunctionAsync(request as LoggerRequest);
                    });
@@ -106,11 +106,11 @@ namespace Services.Tests
             var orchestrator = new OrchestratorFunction();
             await orchestrator.RunOrchestratorAsync(_context.Object);
 
-            _context.Verify(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<string>(x => x == nameof(DestinationReaderFunction)), It.IsAny<string>()),
+            _context.Verify(x => x.CallActivityAsync<List<(string Destination, Guid JobId)>>(It.Is<TaskName>(x => x.Name == nameof(DestinationReaderFunction)), It.IsAny<string>(), It.IsAny<TaskOptions>()),
                                 Times.Exactly(2));
-            _context.Verify(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<string>(x => x == nameof(AttributeReaderFunction)), It.Is<AttributeReaderRequest>(x => DeserializeDestination(x.Destinations[0].Destination).Value.ObjectId == DeserializeDestination(destinations[0].Destination).Value.ObjectId)),
+            _context.Verify(x => x.CallActivityAsync<List<DestinationAttributes>>(It.Is<TaskName>(x => x.Name == nameof(AttributeReaderFunction)), It.Is<AttributeReaderRequest>(x => DeserializeDestination(x.Destinations[0].Destination).Value.ObjectId == DeserializeDestination(destinations[0].Destination).Value.ObjectId), It.IsAny<TaskOptions>()),
                                 Times.Once());
-            _context.Verify(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(AttributeCacheUpdaterFunction)), It.Is<DestinationAttributes>(x => x == destinationAttributes1)),
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(AttributeCacheUpdaterFunction)), It.Is<DestinationAttributes>(x => x == destinationAttributes1), It.IsAny<TaskOptions>()),
                                 Times.Once());
         }
 

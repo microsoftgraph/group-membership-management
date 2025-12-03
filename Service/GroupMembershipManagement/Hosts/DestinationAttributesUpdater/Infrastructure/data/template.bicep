@@ -27,6 +27,8 @@ module destinationAttributesUpdaterStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'destinationAttributesUpdaterStorageAccountProd'
+    appPackageContainerSettingName: 'azureMaintenanceAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
