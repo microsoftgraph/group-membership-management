@@ -269,7 +269,7 @@ namespace Services.Tests
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
                             .Returns(() => _membershipSubOrchestratorRequest);
 
-            _durableContext.Setup(x => x.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+            _durableContext.Setup(x => x.CallActivityAsync<FileDownloaderResponse>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
                             .Returns<TaskName, object, TaskOptions>((name, request, options) =>
                                 CallFileDownloaderFunctionAsync(request as FileDownloaderRequest));
 
@@ -877,7 +877,7 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
         }
 
-        private async Task<(string FilePath, string Content)> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
+        private async Task<FileDownloaderResponse> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
         {
             var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
             return await function.DownloadFileAsync(request);

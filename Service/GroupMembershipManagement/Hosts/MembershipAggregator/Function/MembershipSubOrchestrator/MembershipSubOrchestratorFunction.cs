@@ -49,12 +49,12 @@ namespace Hosts.MembershipAggregator
             var request = context.GetInput<MembershipSubOrchestratorRequest>();
             var runId = request.SyncJob.RunId ?? Guid.Empty;
             var state = await context.Entities.CallEntityAsync<JobState>(request.EntityId, nameof(JobTrackerEntity.GetState));
-            var downloadFileTasks = new List<Task<(string FilePath, string Content)>>();
+            var downloadFileTasks = new List<Task<FileDownloaderResponse>>();
 
             foreach (var part in state.CompletedParts)
             {
                 var downloadRequest = new FileDownloaderRequest { FilePath = part, SyncJob = request.SyncJob };
-                downloadFileTasks.Add(context.CallActivityAsync<(string FilePath, string Content)>(nameof(FileDownloaderFunction), downloadRequest));
+                downloadFileTasks.Add(context.CallActivityAsync<FileDownloaderResponse>(nameof(FileDownloaderFunction), downloadRequest));
             }
 
             var completedDownloadTasks = await Task.WhenAll(downloadFileTasks);
@@ -394,7 +394,7 @@ namespace Hosts.MembershipAggregator
         }
 
         private (GroupMembership SourceMembership, GroupMembership DestinationMembership)
-                ExtractMembershipInformationAsync((string FilePath, string Content)[] allGroupMemberships, string destinationPath)
+            ExtractMembershipInformationAsync(FileDownloaderResponse[] allGroupMemberships, string destinationPath)
         {
             var sourceGroupsMemberships = allGroupMemberships
                                             .Where(x => x.FilePath != destinationPath)
