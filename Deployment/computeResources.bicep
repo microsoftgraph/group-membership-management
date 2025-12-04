@@ -408,7 +408,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
-    dataKeyVaultResourceGroup: dataResourceGroupName
+    dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
   }
@@ -466,12 +466,11 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
-    dataKeyVaultResourceGroup: dataResourceGroupName
+    dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
   }
   dependsOn: [
     syncJobUpdaterDataResources
-    notifierComputeResources // depends on notifier to create the service plan
   ]
 }
 

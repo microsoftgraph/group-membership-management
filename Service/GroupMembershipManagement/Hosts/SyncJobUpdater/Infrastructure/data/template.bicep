@@ -18,6 +18,7 @@ param prereqsResourceGroupClassification string = 'prereqs'
 
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('sju${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
+var appPackageContainerName = 'app-package'
 
 module sjuStorageAccountProd 'storageAccount.bicep' = {
   name: 'sjuProdstorageAccountTemplate'
@@ -27,6 +28,8 @@ module sjuStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'syncJobUpdaterStorageAccountProd'
+    appPackageContainerSettingName: 'syncJobUpdaterAppPackageContainerProd'
+    appPackageContainerName: appPackageContainerName
   }
 }
 

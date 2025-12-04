@@ -27,6 +27,8 @@ module notifierStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'notifierStorageAccountProd'
+    appPackageContainerSettingName: 'notifierAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
