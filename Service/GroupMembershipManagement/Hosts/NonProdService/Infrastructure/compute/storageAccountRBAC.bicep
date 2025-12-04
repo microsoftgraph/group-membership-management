@@ -33,7 +33,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2024-01-01' existing 
 }
 
 resource saRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, principalId, roleName)
+  name: guid(roleIdMapping[roleName], principalId, storageAccount.id)
   scope: storageAccount
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleIdMapping[roleName])
