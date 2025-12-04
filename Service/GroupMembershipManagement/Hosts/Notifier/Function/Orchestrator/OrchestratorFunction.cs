@@ -1,14 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Repositories.Contracts;
 using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
 using Services.Contracts;
-using Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification;
+//using Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification;
 using Models;
 using System.Text.Json;
 using System.Collections.Generic;
@@ -22,9 +22,8 @@ namespace Hosts.Notifier
         {
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
-        public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(OrchestratorFunction))]
+        public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var message = context.GetInput<OrchestratorRequest>();
             var messageContent = JsonSerializer.Deserialize<Dictionary<string, Object>>(message.MessageBody);

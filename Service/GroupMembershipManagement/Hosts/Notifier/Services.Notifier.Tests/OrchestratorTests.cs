@@ -15,14 +15,14 @@ using System.Text.Json;
 using Models.ServiceBus;
 using Services.Tests;
 using System.Linq;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 
 namespace Services.Notifier.Tests
 {
     [TestClass]
     public class OrchestratorFunctionTests
     {
-        private Mock<IDurableOrchestrationContext> _durableContext;
+        private Mock<TaskOrchestrationContext> _durableContext;
         private Mock<ILoggingRepository> _loggerFunction;
         private OrchestratorFunction _orchestratorFunction;
         private const string GroupMembership = "GroupMembership";
@@ -30,7 +30,7 @@ namespace Services.Notifier.Tests
         [TestInitialize]
         public void SetupTest()
         {
-            _durableContext = new Mock<IDurableOrchestrationContext>();
+            _durableContext = new Mock<TaskOrchestrationContext>();
             _loggerFunction = new Mock<ILoggingRepository>();
             _orchestratorFunction = new OrchestratorFunction();
         }
@@ -60,19 +60,51 @@ namespace Services.Notifier.Tests
             _durableContext.Setup(x => x.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
 
             var thresholdNotification = new ThresholdNotification();
-            _durableContext.Setup(x => x.CallActivityAsync<ThresholdNotification>(nameof(CreateThresholdNotificationFunction), It.IsAny<OrchestratorRequest>()))
-                            .ReturnsAsync(thresholdNotification);
+            _durableContext.Setup(x => x.CallActivityAsync<ThresholdNotification>(
+                    nameof(CreateThresholdNotificationFunction),
+                    It.IsAny<OrchestratorRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(thresholdNotification);
+
+            _durableContext.Setup(x => x.CallActivityAsync(
+                    nameof(SendThresholdNotification),
+                    thresholdNotification,
+                    It.IsAny<TaskOptions>()))
+                .Returns(Task.CompletedTask);
+
+            _durableContext.Setup(x => x.CallActivityAsync(
+                    nameof(UpdateNotificationStatusFunction),
+                    It.IsAny<UpdateNotificationStatusRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .Returns(Task.CompletedTask);
+
+            _durableContext.Setup(x => x.CallActivityAsync(
+                    nameof(LoggerFunction),
+                    It.IsAny<LoggerRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .Returns(Task.CompletedTask);
 
             await _orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             _durableContext.Verify(x => x.CallActivityAsync<ThresholdNotification>(
-                nameof(CreateThresholdNotificationFunction), It.IsAny<OrchestratorRequest>()), Times.Once);
-            _durableContext.Setup(x => x.CallActivityAsync<bool>(nameof(SendThresholdNotification), It.IsAny<ThresholdNotification>()))
-                                .ReturnsAsync(false);
+                nameof(CreateThresholdNotificationFunction),
+                It.IsAny<OrchestratorRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once);
+
             _durableContext.Verify(x => x.CallActivityAsync(
-                nameof(UpdateNotificationStatusFunction), It.IsAny<UpdateNotificationStatusRequest>()), Times.Once);
+                nameof(SendThresholdNotification),
+                thresholdNotification,
+                It.IsAny<TaskOptions>()), Times.Once);
+
             _durableContext.Verify(x => x.CallActivityAsync(
-                nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.AtLeastOnce);
+                nameof(UpdateNotificationStatusFunction),
+                It.IsAny<UpdateNotificationStatusRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once);
+
+            _durableContext.Verify(x => x.CallActivityAsync(
+                nameof(LoggerFunction),
+                It.IsAny<LoggerRequest>(),
+                It.IsAny<TaskOptions>()), Times.AtLeastOnce);
         }
     }
 }
