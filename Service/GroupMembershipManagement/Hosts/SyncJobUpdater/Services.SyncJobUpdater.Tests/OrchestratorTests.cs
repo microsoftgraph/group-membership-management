@@ -1,8 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Hosts.SyncJobUpdater;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -10,17 +14,13 @@ using Models.SyncJobHistory;
 using Moq;
 using Repositories.Contracts;
 using Services.SyncJobUpdater.Tests.Mocks;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Services.Tests
 {
     [TestClass]
     public class OrchestratorFunctionTests
     {
-        private Mock<IDurableOrchestrationContext> _mockContext;
+        private Mock<TaskOrchestrationContext> _mockContext;
         private Mock<IDatabaseSyncJobsRepository> _mockDatabaseSyncJobsRepository;
         private Mock<ISyncJobHistoryRepository> _mockSyncJobHistoryRepository;
         private MockLoggingRepository _mockLogger;
@@ -32,7 +32,7 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
-            _mockContext = new Mock<IDurableOrchestrationContext>();
+            _mockContext = new Mock<TaskOrchestrationContext>();
             _mockLogger = new MockLoggingRepository();
             _mockDatabaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
@@ -46,15 +46,19 @@ namespace Services.Tests
                                                                _mockDatabaseSyncJobsRepository.Object,
                                                                _mockLogger,
                                                                _mockSyncJobHistoryRepository.Object);
-            _orchestratorFunction = new OrchestratorFunction();
-            _mockContext.Setup(c => c.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdateQueueMessage>()))
-                        .Callback<string, object>(async (name, request) =>
-                        {
-                            var message = (JobStatusUpdateQueueMessage)request;
-                            await CallJobStatusUpdaterFunction(message);
-                        });
+                _orchestratorFunction = new OrchestratorFunction();
+                _mockContext.Setup(c => c.CallActivityAsync(
+                    It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)),
+                    It.IsAny<JobStatusUpdateQueueMessage>(),
+                    It.IsAny<TaskOptions>()))
+                .Returns((TaskName _, object payload, TaskOptions __) =>
+                    CallJobStatusUpdaterFunction((JobStatusUpdateQueueMessage)payload));
 
-            
+                _mockContext.Setup(c => c.CallActivityAsync(
+                    It.Is<TaskName>(n => n.Name == nameof(LoggerFunction)),
+                    It.IsAny<LoggerRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .Returns(Task.CompletedTask);
         }
 
         [TestMethod]
@@ -77,9 +81,9 @@ namespace Services.Tests
 
             _mockContext.Setup(c => c.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
 
-            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object, null);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdateQueueMessage>()), Times.Once);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.Exactly(2));
+            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object);
+            _mockContext.Verify(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdateQueueMessage>(), It.IsAny<TaskOptions>()), Times.Once);
+            _mockContext.Verify(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
             _mockDatabaseSyncJobsRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<IEnumerable<SyncJob>>(jobs => jobs.Any(j => j.Id == message.JobId)), message.NewStatus), Times.Once);
             _mockSyncJobHistoryRepository.Verify(x => x.CreateAsync(It.Is<SyncJobHistory>(history => history.SyncJobId == message.JobId && history.Status == message.NewStatus.ToString())), Times.Once);
         }
@@ -117,9 +121,9 @@ namespace Services.Tests
 
             _mockContext.Setup(c => c.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
 
-            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object, null);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdateQueueMessage>()), Times.Once);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.Exactly(2));
+            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object);
+            _mockContext.Verify(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdateQueueMessage>(), It.IsAny<TaskOptions>()), Times.Once);
+            _mockContext.Verify(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
             _mockDatabaseSyncJobsRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<IEnumerable<SyncJob>>(jobs => jobs.Any(j => j.Id == message.JobId)), message.NewStatus), Times.Once);
             _mockSyncJobHistoryRepository.Verify(x => x.UpdateAsync(It.Is<SyncJobHistory>(history => history.SyncJobId == message.JobId && history.Status == message.NewStatus.ToString())), Times.Once);
         }
@@ -144,15 +148,15 @@ namespace Services.Tests
             
             var loggerRequests = new List<LoggerRequest>();
             _mockContext
-                .Setup(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()))
-                .Callback<string, object>((name, request) => loggerRequests.Add((LoggerRequest)request))
+                .Setup(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>((_, request, __) => loggerRequests.Add((LoggerRequest)request))
                 .Returns(Task.CompletedTask);
 
             _mockContext.Setup(c => c.GetInput<OrchestratorRequest>()).Returns(orchestratorRequest);
 
-            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object, null);
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>()), Times.Exactly(2), "Expected LoggerFunction to be called exactly twice.");
-            _mockContext.Verify(context => context.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdateQueueMessage>()), Times.Once);
+            await _orchestratorFunction.RunOrchestratorAsync(_mockContext.Object);
+            _mockContext.Verify(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2), "Expected LoggerFunction to be called exactly twice.");
+            _mockContext.Verify(context => context.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdateQueueMessage>(), It.IsAny<TaskOptions>()), Times.Once);
             _mockDatabaseSyncJobsRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.Is<IEnumerable<SyncJob>>(jobs => jobs.Any(j => j.Id == message.JobId)), message.NewStatus), Times.Once);
             _mockSyncJobHistoryRepository.Verify(x => x.CreateAsync(It.Is<SyncJobHistory>(history => history.SyncJobId == message.JobId && history.Status == message.NewStatus.ToString())), Times.Once);
         }

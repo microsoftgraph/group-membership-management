@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using System;
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Client;
 using Models;
 using Models.ServiceBus;
 using Repositories.Contracts;
@@ -21,14 +22,18 @@ namespace Hosts.SyncJobUpdater
             _loggingRepository = loggingRepository;
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
             [ServiceBusTrigger("%serviceBusSyncJobUpdaterQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
-            [DurableClient] IDurableOrchestrationClient starter)
+            [DurableClient] DurableTaskClient starter)
         {
-            var updateRequest = JsonSerializer.Deserialize<JobStatusUpdateQueueMessage>(Encoding.UTF8.GetString(message.Body));
+            var body = Encoding.UTF8.GetString(message.Body.ToArray());
+            var updateRequest = JsonSerializer.Deserialize<JobStatusUpdateQueueMessage>(body) ?? throw new InvalidOperationException("Failed to deserialize JobStatusUpdateQueueMessage.");
             var runId = updateRequest.RunId;
-            _loggingRepository.SetSyncJobProperties(runId, updateRequest.SyncJob.ToDictionary());
+            if (updateRequest.SyncJob != null)
+            {
+                _loggingRepository.SetSyncJobProperties(runId, updateRequest.SyncJob.ToDictionary());
+            }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
 
@@ -37,7 +42,7 @@ namespace Hosts.SyncJobUpdater
                 Message = updateRequest
             };
 
-            var instanceId = await starter.StartNewAsync(nameof(OrchestratorFunction), request);
+            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId} for job Id: {updateRequest.JobId} ", RunId = runId });
             
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
