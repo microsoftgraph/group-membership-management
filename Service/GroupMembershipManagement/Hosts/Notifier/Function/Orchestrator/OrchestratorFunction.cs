@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Models.ThresholdNotifications;
 using Models.Notifications;
 using Services.Contracts;
-//using Hosts.AzureMaintenance.Activity.SendNormalThresholdNotification;
 using Models;
 using System.Text.Json;
 using System.Collections.Generic;
