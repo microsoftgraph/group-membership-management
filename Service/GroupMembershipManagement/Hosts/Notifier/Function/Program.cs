@@ -36,7 +36,7 @@ namespace Hosts.Notifier
 
                     config.AddAzureAppConfiguration(options =>
                     {
-                        DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
+                        DefaultAzureCredential credential = new DefaultAzureCredential();
                         options.Connect(new Uri(appConfigEndpoint), credential).UseFeatureFlags();
                     });
                 })

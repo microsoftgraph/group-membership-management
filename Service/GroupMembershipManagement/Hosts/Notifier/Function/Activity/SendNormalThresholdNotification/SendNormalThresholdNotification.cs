@@ -27,7 +27,7 @@ namespace Hosts.Notifier
         [Function(nameof(SendNormalThresholdNotification))]
         public async Task SendNormalThresholdNotificationAsync([ActivityTrigger] OrchestratorRequest message)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function started at: {DateTime.UtcNow}" });
+            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNormalThresholdNotification)} function started at: {DateTime.UtcNow}" });
             await _notifierService.SendNormalThresholdEmailAsync(message.MessageBody);
             await _loggingRepository.LogMessageAsync(new LogMessage { RunId = message.RunId, Message = $"{nameof(SendNotification)} function completed at: {DateTime.UtcNow}" });
         }
