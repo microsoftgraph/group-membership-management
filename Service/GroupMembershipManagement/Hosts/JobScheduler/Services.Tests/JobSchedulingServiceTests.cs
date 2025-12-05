@@ -202,6 +202,7 @@ namespace Services.Tests
         public async Task ScheduleJobsOneFromLogs_MaxMetric()
         {
             _jobSchedulerConfig.Setup(x => x.GetRunTimeFromLogs).Returns(true);
+            _jobSchedulerConfig.Setup(x => x.RunTimeMetric).Returns("MaxProcessingTime");
             _jobSchedulingService = new JobSchedulingService(
                                         _mockDatabaseSyncJobRepository,
                                         _logsRuntimeRetrievalService,
@@ -210,7 +211,7 @@ namespace Services.Tests
             var numberOfJobs = 5;
             var periodInHours = 1;
             var jobs = CreateSampleSyncJobs(numberOfJobs, periodInHours);
-            var groupRuntimes = new List<(string Id, double Median, double Average)>();
+            var groupRuntimes = new List<(string Id, double Max, double Average)>();
             var max = 100.0;
             var avg = 5.0;
             foreach (var job in jobs)
@@ -231,7 +232,7 @@ namespace Services.Tests
             DateTime dateTimeNow = DateTime.UtcNow;
             List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS);
 
-            double totalTimeInSeconds = groupRuntimes.Select(x => x.Median).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
+            double totalTimeInSeconds = groupRuntimes.Select(x => x.Max).Sum() + (jobs.Count - groupRuntimes.Count) * DEFAULT_RUNTIME_SECONDS;
             int concurrencyNumber = (int)Math.Ceiling(totalTimeInSeconds / (periodInHours * 3600));
 
             Assert.AreEqual(concurrencyNumber, 1);
@@ -245,7 +246,7 @@ namespace Services.Tests
                 if (currentJobIndex > 0)
                 {
                     var previousJobRunTime = groupRuntimes.First(x => x.Id.ToString() == updatedJobs[currentJobIndex - 1].Id.ToString());
-                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Median);
+                    baseStartDate = baseStartDate.AddSeconds(BUFFER_SECONDS + previousJobRunTime.Max);
                 }
 
                 Assert.AreEqual(updateJob.ScheduledDate, baseStartDate);
@@ -279,7 +280,7 @@ namespace Services.Tests
         private Response<LogsQueryResult> CreateLogsQueryResult(List<(string Destination, double Max, double Avg)> groupRuntimes)
         {
             var columns = new List<LogsTableColumn>();
-            var columnNames = new[] { "Destination", "MedianProcessingTime", "AverageProcessingTime" };
+            var columnNames = new[] { "Destination", "MaxProcessingTime", "AvgProcessingTime" };
             var logsTableColumnConstructor = typeof(LogsTableColumn).GetConstructor(BindingFlags.Instance | BindingFlags.NonPublic,
                                                                                     new[] { typeof(string), typeof(LogsColumnType) });
 
