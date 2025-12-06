@@ -23,7 +23,7 @@ namespace Hosts.GroupMembershipObtainer
         public async Task DeleteAsync([ActivityTrigger] DeleteBlobRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeleteBlobFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            string prefix = $"{request.GroupId}/userUploads/{request.RunId}_GroupMembership_{request.CurrentPart}";
+            string prefix = $"{request.GroupId}/userUploads/{request.RunId}_GroupMembership_{request.CurrentPart}_";
             await _blobStorageRepository.DeleteBlobsAsync(prefix);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeleteBlobFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }

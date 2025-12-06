@@ -46,11 +46,11 @@ namespace Hosts.GroupMembershipObtainer
                 }, VerbosityLevel.DEBUG);
 
                 // Get the delta users to add and remove from blob storage
-                string prefixAdds = $"{request.TargetGroupId}/userUploads/deltaLink/adds/{request.RunId}_GroupMembership_{request.CurrentPart}";
+                string prefixAdds = $"{request.TargetGroupId}/userUploads/deltaLink/adds/{request.RunId}_GroupMembership_{request.CurrentPart}_";
                 var blobResultAdds = await _blobStorageRepository.ReadBlobsAsync(prefixAdds);
                 var deltaUsersToAdd = blobResultAdds;
 
-                string prefixRemoves = $"{request.TargetGroupId}/userUploads/deltaLink/removes/{request.RunId}_GroupMembership_{request.CurrentPart}";
+                string prefixRemoves = $"{request.TargetGroupId}/userUploads/deltaLink/removes/{request.RunId}_GroupMembership_{request.CurrentPart}_";
                 var blobResultRemoves = await _blobStorageRepository.ReadBlobsAsync(prefixRemoves);
                 var deltaUsersToRemove = blobResultRemoves;
 

@@ -206,7 +206,7 @@ namespace Hosts.GroupMembershipObtainer
             var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
 
             // get all blobs
-            string prefix = $"{targetOfficeGroupId}/userUploads/{runId}_GroupMembership_{currentPart}";
+            string prefix = $"{targetOfficeGroupId}/userUploads/{runId}_GroupMembership_{currentPart}_";
             var sourceMembers = await _blobStorageRepository.ReadBlobsAsync(prefix);
             await _log.LogMessageAsync(new LogMessage
             {
