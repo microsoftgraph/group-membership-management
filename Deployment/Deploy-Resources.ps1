@@ -114,7 +114,9 @@ function Set-PreDeploymentUpdates {
         [Parameter(Mandatory = $false)]
         [string]$SyncJobsDBConnectionString,
         [Parameter(Mandatory = $false)]
-        [string]$ADFDBConnectionString
+        [string]$ADFDBConnectionString,
+        [Parameter(Mandatory = $false)]
+        [bool]$SetRBACPermissions = $false
     )
 
     . ($ScriptsDirectory + '/PreDeploymentMigrations/Set-PreDeploymentMigrations.ps1')
@@ -123,7 +125,8 @@ function Set-PreDeploymentUpdates {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -SyncJobsDBConnectionString $SyncJobsDBConnectionString `
-        -ADFDBConnectionString $ADFDBConnectionString
+        -ADFDBConnectionString $ADFDBConnectionString `
+        -SetRBACPermissions $SetRBACPermissions
 }
 
 function Set-Subscription {
@@ -2499,7 +2502,8 @@ function Deploy-Resources {
             -SolutionAbbreviation $solutionAbbreviation `
             -EnvironmentAbbreviation $environmentAbbreviation `
             -SyncJobsDBConnectionString $connectionString `
-            -ADFDBConnectionString $connectionStringADF
+            -ADFDBConnectionString $connectionStringADF `
+            -SetRBACPermissions $setRBACPermissions
     }
 
 
