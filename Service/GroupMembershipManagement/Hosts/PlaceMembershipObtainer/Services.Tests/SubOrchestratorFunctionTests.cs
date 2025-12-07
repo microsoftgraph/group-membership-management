@@ -3,13 +3,14 @@
 using Hosts.PlaceMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using Services;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,7 @@ namespace Tests.Services
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IEmailSenderRecipient> _emailSenderRecipient;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
 
         private int _userCount;
         private BlobResult _blobResult;
@@ -53,7 +54,7 @@ namespace Tests.Services
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
 
             _userCount = 10;
 
@@ -88,29 +89,29 @@ namespace Tests.Services
 
             _durableOrchestrationContext.Setup(x => x.GetInput<SubOrchestratorRequest>()).Returns(() => _subOrchestratorRequest);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<string>(), It.IsAny<RoomsReaderRequest>()))
-                                         .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<TaskName>(), It.IsAny<RoomsReaderRequest>(), It.IsAny<TaskOptions>()))
+                                         .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                          {
                                              _placesReaderResponse = await CallRoomsReaderFunctionAsync(request as RoomsReaderRequest);
                                          })
                                          .ReturnsAsync(() => _placesReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<string>(), It.IsAny<WorkSpacesReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<PlaceInformation>(It.IsAny<TaskName>(), It.IsAny<WorkSpacesReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _workSpacesReaderResponse = await CallWorkSpacesReaderFunctionAsync(request as WorkSpacesReaderRequest);
                                         })
                                         .ReturnsAsync(() => _workSpacesReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<string>(), It.IsAny<UsersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<TaskName>(), It.IsAny<UsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _usersReaderResponse = await CallUsersReaderFunctionAsync(request as UsersReaderRequest);
                                         })
                                         .ReturnsAsync(() => _usersReaderResponse);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<string>(), It.IsAny<SubsequentUsersReaderRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<UserInformation>(It.IsAny<TaskName>(), It.IsAny<SubsequentUsersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             _usersReaderResponse = await CallSubsequentUsersReaderFunctionAsync(request as SubsequentUsersReaderRequest);
                                         })

@@ -3,7 +3,7 @@
 
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -11,6 +11,7 @@ using Tests.Services.Helpers;
 using Moq;
 using Hosts.PlaceMembershipObtainer;
 using Repositories.Contracts;
+using Repositories.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -23,23 +24,16 @@ namespace Tests.Services
     [TestClass]
     public class OrchestratorFunctionTests
     {
-        private int _profilesCount = 10;
-        private List<GraphProfileInformation> _profiles;
         private Mock<IConfiguration> _configuration;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<IDurableOrchestrationContext> _context;
-        private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
+        private Mock<TaskOrchestrationContext> _context;
         private SyncJob _syncJob;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
         private SyncStatus _subOrchestratorResponseStatus;
-        private SyncStatus _senderResponseStatus = SyncStatus.InProgress;
-        private string _senderResponseFilePath = "file-path";
-        private DurableHttpResponse _membershipAggregatorResponse;
-        private TelemetryClient _telemetryClient;
         private PlaceMembershipObtainerService _placeMembershipObtainerService;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
-        SchemaProvider _schemaProvider;
+        private SchemaProvider _schemaProvider;
         private bool _isValid = true;
         private int _usersToReturn;
 
@@ -86,30 +80,15 @@ namespace Tests.Services
             groupsRepository.Object,
             channelsRepository.Object,
             mockDryRunValue.Object);
-            _context = new Mock<IDurableOrchestrationContext>();
-            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
-            _telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            _context = new Mock<TaskOrchestrationContext>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
 
             _context.Setup(x => x.GetInput<OrchestratorRequest>())
                                        .Returns(() => _orchestratorRequest);
 
-            _profiles = new List<GraphProfileInformation>();
-            for (int i = 0; i < _profilesCount; i++)
-            {
-                _profiles.Add(new GraphProfileInformation
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    PersonnelNumber = (i + 1).ToString(),
-                    UserPrincipalName = $"user{i}@domain.com"
-                });
-            }
-
-            _membershipAggregatorResponse = new DurableHttpResponse(HttpStatusCode.NoContent);
-
             _subOrchestratorResponseStatus = SyncStatus.InProgress;
 
-            _context.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<string>(), It.IsAny<object>()))
+            _context.Setup(x => x.CallSubOrchestratorAsync<SubOrchestratorResponse>(It.IsAny<TaskName>(), It.IsAny<object>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(() =>
                 {
                     var users = new List<AzureADUser>();
@@ -123,27 +102,25 @@ namespace Tests.Services
             });
 
             string _filePath = null;
-            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>()))
+            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(Guid.NewGuid());
-            _context.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<UsersSenderRequest>()))
-               .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<UsersSenderRequest>(), It.IsAny<TaskOptions>()))
+               .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                {
                    _filePath = await CallUsersSenderFunctionAsync(request as UsersSenderRequest);
                })
                .ReturnsAsync(() => _filePath);
 
-            _context.Setup(x => x.CallHttpAsync(It.IsAny<DurableHttpRequest>())).ReturnsAsync(() => _membershipAggregatorResponse);
-
-            _context.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>()))
-                                        .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                         {
                                             await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
                                         });
 
             _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
 
-            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
                     })
@@ -181,8 +158,8 @@ namespace Tests.Services
                 GroupId = Guid.NewGuid()
             };
 
-            _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
                     })
@@ -190,8 +167,8 @@ namespace Tests.Services
 
             var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _placeMembershipObtainerService, _configuration.Object);
             await orchestratorFunction.RunOrchestratorAsync(_context.Object);
-            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError)), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(It.IsAny<TaskName>(),
+                                                    It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.SchemaError), It.IsAny<TaskOptions>()), Times.Once());
         }
 
         private async Task<string> CallUsersSenderFunctionAsync(UsersSenderRequest request)

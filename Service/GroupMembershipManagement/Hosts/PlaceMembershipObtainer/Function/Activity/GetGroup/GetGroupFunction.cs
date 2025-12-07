@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services;
@@ -22,7 +21,7 @@ namespace Hosts.PlaceMembershipObtainer
             _membershipProviderService = membershipProviderService ?? throw new ArgumentNullException(nameof(membershipProviderService));
         }
 
-        [FunctionName(nameof(GetGroupFunction))]
+        [Function(nameof(GetGroupFunction))]
         public async Task<Guid> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

@@ -19,7 +19,7 @@ param prereqsResourceGroupClassification string = 'prereqs'
 var keyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var prodStorageAccountName = substring('pmo${solutionAbbreviation}${environmentAbbreviation}prod${uniqueString(resourceGroup().id)}',0,23)
 
-module pmoStorageAccountProd 'storageAccount.bicep' = {
+module placeMembershipObtainerStorageAccountProd 'storageAccount.bicep' = {
   name: 'pmoProdstorageAccountTemplate'
   params: {
     name: prodStorageAccountName
@@ -27,18 +27,20 @@ module pmoStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'placeMembershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'placeMembershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
 var nspName = '${solutionAbbreviation}-nsp-${environmentAbbreviation}'
 var prereqsResourceGroupName = '${solutionAbbreviation}-${prereqsResourceGroupClassification}-${environmentAbbreviation}'
 
-module pmStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
-  name: 'pmStorageAccountAssociationTemplate'
+module pmoStorageAccountAssociationTemplate 'networkSecurityPerimeterResourceAssociation.bicep' = {
+  name: 'pmoStorageAccountAssociationTemplate'
   scope: resourceGroup(prereqsResourceGroupName)
   params: {
     nspName: nspName
     profileName: 'storageaccount'
-    resourceId: pmoStorageAccountProd.outputs.storageAccountId
+    resourceId: placeMembershipObtainerStorageAccountProd.outputs.storageAccountId
   }
 }

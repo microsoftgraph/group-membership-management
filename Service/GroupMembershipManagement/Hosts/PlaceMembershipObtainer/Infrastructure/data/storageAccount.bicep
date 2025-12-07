@@ -14,16 +14,22 @@ param keyVaultName string
 ])
 param sku string = 'Standard_LRS'
 
-@description('Key vault name.')
+@description('Blob lifecycle management policy flag.')
 param addJobsStorageAccountPolicies bool = false
 
 @description('Specifies the Azure location where the storage account will be created.')
 param location string
 
-@description('Key vault setting name to store the account name.')
+@description('Key vault setting name to store the storage account name.')
 param storageAccountSettingName string
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
+@description('Key vault setting name to store the name of the app package container.')
+param appPackageContainerSettingName string
+
+@description('Specifies the name of the app package container.')
+param appPackageContainerName string
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' = {
   name: name
   location: location
   kind: 'StorageV2'
@@ -38,6 +44,16 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2019-04-01' = {
   }
   identity: {
     type: 'SystemAssigned'
+  }
+
+  resource blobServices 'blobServices' = {
+    name: 'default'
+    resource container 'containers' = {
+      name: appPackageContainerName
+      properties: {
+        publicAccess: 'None'
+      }
+    }
   }
 }
 
@@ -100,8 +116,12 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultSecrets: {
       secrets: [
         {
-          name:  storageAccountSettingName
+          name: storageAccountSettingName
           value: name
+        }
+        {
+          name: appPackageContainerSettingName
+          value: appPackageContainerName
         }
       ]
     }

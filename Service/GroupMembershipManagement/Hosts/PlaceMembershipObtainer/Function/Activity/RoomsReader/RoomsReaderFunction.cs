@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Entities;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+
 using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
@@ -24,7 +24,7 @@ namespace Hosts.PlaceMembershipObtainer
             _membershipProviderService = membershipProviderService ?? throw new ArgumentNullException(nameof(membershipProviderService));
 		}
 
-		[FunctionName(nameof(RoomsReaderFunction))]
+		[Function(nameof(RoomsReaderFunction))]
 		public async Task<PlaceInformation> GetRoomsAsync([ActivityTrigger] RoomsReaderRequest request)
 		{
 			await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(RoomsReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
