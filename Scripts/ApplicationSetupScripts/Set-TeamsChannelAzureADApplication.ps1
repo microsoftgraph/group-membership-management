@@ -85,7 +85,7 @@ function Set-TeamsChannelAzureADApplication {
         [Parameter(Mandatory=$False)]
         [string] $ErrorActionPreference = $Stop
     )
-    Write-Host "Set-TeamsChannelAzureADApplication starting..."
+    Write-Host "`nSet-TeamsChannelAzureADApplication starting...`n"
 
     # Validate required parameters when SaveToKeyVault is enabled
     if ($SaveToKeyVault -eq $true) {
@@ -239,7 +239,7 @@ function Set-TeamsChannelAzureADApplication {
 		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
 	}
 
-    Write-Host "Set-TeamsChannelAzureADApplication completed."
+    Write-Host "`nSet-TeamsChannelAzureADApplication completed.`n"
 	return @{ ApplicationId = $teamsChannelApp.AppId; TenantId = $AppTenantId; ApplicationName = $teamsChannelAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 }
 

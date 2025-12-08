@@ -86,7 +86,7 @@ function Set-WebApiAzureADApplication {
 		[Parameter(Mandatory = $False)]
 		[string] $ErrorActionPreference = $Stop
 	)
-	Write-Host "Set-WebApiAzureADApplication starting..."
+	Write-Host "`nSet-WebApiAzureADApplication starting...`n"
 
 	# Validate required parameters when SaveToKeyVault is enabled
 	if ($SaveToKeyVault -eq $true) {
@@ -262,7 +262,7 @@ function Set-WebApiAzureADApplication {
 	. ($scriptsDirectory + '/ApplicationSetupScripts/Grant-LoggedInUserWebapiAppRoles.ps1')
 	Grant-LoggedInUserWebapiAppRoles 	-SolutionAbbreviation $SolutionAbbreviation `
                                   		-EnvironmentAbbreviation $EnvironmentAbbreviation
-										
+
 	if ($SaveToKeyVault -eq $true) {
 		Set-WebAPIKeyVaultSecrets `
 			-SolutionAbbreviation $SolutionAbbreviation `
@@ -280,7 +280,7 @@ function Set-WebApiAzureADApplication {
 		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
 	}
 
-	Write-Host "Set-WebApiAzureADApplication completed."
+	Write-Host "`nSet-WebApiAzureADApplication completed.`n"
 	return @{ ApplicationId = $webApiApp.AppId; TenantId = $AppTenantId; ApplicationName = $webApiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions; }
 }
 

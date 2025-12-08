@@ -92,7 +92,7 @@ function Set-UIAzureADApplication {
         [Parameter(Mandatory = $False)]
         [string] $ErrorActionPreference = $Stop
     )
-    Write-Host "Set-UIAzureADApplication starting..."
+    Write-Host "`nSet-UIAzureADApplication starting...`n"
 
     # Validate required parameters when SaveToKeyVault is enabled
 	if ($SaveToKeyVault -eq $true) {
@@ -237,7 +237,7 @@ function Set-UIAzureADApplication {
 		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
 	}
 
-    Write-Host "Set-UIAzureADApplication completed."
+    Write-Host "`nSet-UIAzureADApplication completed.`n"
     return @{ ApplicationId = $uiApp.AppId; TenantId = $AppTenantId; ApplicationName = $uiAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 }
 

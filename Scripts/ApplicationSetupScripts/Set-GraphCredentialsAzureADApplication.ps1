@@ -77,7 +77,7 @@ function Set-GraphCredentialsAzureADApplication {
 		[Parameter(Mandatory=$False)]
 		[string] $ErrorActionPreference = $Stop
 	)
-	Write-Host "Set-GraphCredentialsAzureADApplication starting..."
+	Write-Host "`nSet-GraphCredentialsAzureADApplication starting...`n"
 
 	# Validate required parameters when SaveToKeyVault is enabled
 	if ($SaveToKeyVault -eq $true) {
@@ -231,7 +231,7 @@ function Set-GraphCredentialsAzureADApplication {
 		Write-Host "Disconnected from Microsoft Graph." -ForegroundColor Green
 	}
 
-	Write-Host "Set-GraphCredentialsAzureADApplication completed."
+	Write-Host "`nSet-GraphCredentialsAzureADApplication completed.`n"
 	return @{ ApplicationId = $graphApp.AppId; TenantId = $AppTenantId; ApplicationName = $graphAppDisplayName; UpdatedApiPermissions = $updatedAPIPermissions;}
 }
 

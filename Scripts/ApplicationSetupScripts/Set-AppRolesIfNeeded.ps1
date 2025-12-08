@@ -26,7 +26,7 @@ function Set-AppRolesIfNeeded {
         [Parameter(Mandatory = $True)]
         [Guid] $TenantId
     )
-    Write-Host "Set-AppRolesIfNeeded starting..."
+    Write-Host "`nSet-AppRolesIfNeeded starting...`n"
 
     if ($global:SkipModuleInstall -ne $true) {
         $scriptsDirectory = Split-Path $PSScriptRoot -Parent
@@ -235,4 +235,6 @@ function Set-AppRolesIfNeeded {
 	if ($global:SkipMsGraphLogin -ne $true) {
 		Disconnect-MgGraph -ErrorAction SilentlyContinue
 	}
+
+    Write-Host "`nSet-AppRolesIfNeeded completed successfully.`n"
 }
