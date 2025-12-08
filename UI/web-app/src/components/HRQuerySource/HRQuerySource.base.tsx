@@ -27,7 +27,7 @@ import { selectIsJobWriter } from '../../store/roles.slice';
 import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../models';
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
-import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups } from './QuerySerializer';
+import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
 import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth } from '../../utils/titleGenerator';
 import { getEqualityOperatorOptions, nullOptions, getOrAndOperatorOptions, getYesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError, selectIsAITitleEnabled } from '../../store/settings.slice';
@@ -398,12 +398,18 @@ const getGroupLabels = (groups: Group[]) => {
 
 const checkType = (value: string, type: string | undefined): string => {
   switch (type) {
-    case "nvarchar":
-      if (value.startsWith("'") && value.endsWith("'")) {
-        return value;
-      } else {
-          return `'${value}'`;
+    case "nvarchar": {
+      const trimmed = value.trim();
+      if (trimmed.length >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
+        const inner = trimmed.slice(1, -1);
+        const normalizedInner = inner.replace(/''/g, "'");
+        const escapedInner = normalizedInner.replace(/'/g, "''");
+        return `'${escapedInner}'`;
       }
+
+      const escapedValue = value.replace(/'/g, "''");
+      return `'${escapedValue}'`;
+    }
     default:
       return value;
   }
@@ -490,15 +496,16 @@ const getOptions = (
     if (props.source.filter && !groupingEnabled) {
       let isParsingFilter = false;
       let isParsingGroup = false;
-      let numberOfOpenParenthesis = countOccurrences(props.source.filter, "(");
-      const numberOfCloseParenthesis = countOccurrences(props.source.filter, ")");
+      const sanitizedFilter = stripQuotedContent(props.source.filter);
+      const numberOfOpenParenthesis = countOccurrences(sanitizedFilter, "(");
+      const numberOfCloseParenthesis = countOccurrences(sanitizedFilter, ")");
       // Count both IN and NOT IN clauses properly, but exclude quoted values like 'IN'
       const inOperatorRegex = /\s+(NOT\s+)?IN\s+\(/gi;
-      const matches = props.source.filter.match(inOperatorRegex) || [];
+      const matches = sanitizedFilter.match(inOperatorRegex) || [];
       const numberOfInClause = matches.length;
 
       setSelectedKeys([]);
-      const hasParentheses = props.source.filter.includes("(") || props.source.filter.includes(")");
+      const hasParentheses = sanitizedFilter.includes("(") || sanitizedFilter.includes(")");
       const hasInClause = numberOfInClause > 0;
       if (hasParentheses && hasInClause) {
         if (numberOfOpenParenthesis > numberOfInClause && numberOfCloseParenthesis > numberOfInClause) {
@@ -522,7 +529,7 @@ const getOptions = (
           setFilterTextEnabled(true);
           return;
         }
-        const b = setItemsBasedOnGroups(groups);
+        setItemsBasedOnGroups(groups);
         setGroups(groups);
         setGroupingEnabled(true);
       }
@@ -531,7 +538,7 @@ const getOptions = (
         const regex = new RegExp(`( And | Or | ${PLACEHOLDER_OPERATOR} )`, 'gi');
         if (props.source.filter != undefined) {
           const parts = props.source.filter.split(regex);
-          let childFilters = [];
+          const childFilters: string[] = [];
           let currentFilter = "";
           for (let i = 0; i < parts.length; i += 2) {
             currentFilter = parts[i].trim();

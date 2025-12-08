@@ -344,6 +344,19 @@ test.describe('Job Details Tests', () => {
     await page.getByTestId('hr-value-textfield').click();
     await page.getByTestId('hr-value-textfield').fill('65');
 
+    // Add an additional clause that includes parentheses and quotes in the value to ensure simple mode remains active
+    await page.getByTestId('hr-add-attribute-button').click();
+    await page.getByTestId('hr-attribute-combobox').nth(3).click();
+    await page.getByRole('option', { name: 'CostCenterCode' }).click();
+    await page.getByTestId('hr-equality-operator-dropdown').nth(3).click();
+    await page.getByRole('option', { name: '=' }).click();
+    await page.getByTestId('hr-value-textfield').nth(1).click();
+    await page.getByTestId('hr-value-textfield').nth(1).fill("O'Reilly (test)");
+    await page.keyboard.press('Tab');
+
+    // The grid should remain visible; falling back to raw text would surface #filterTextField
+    await expect(page.locator('#filterTextField')).toHaveCount(0);
+
     // Select the 2nd and 3rd attribute rows, then group
     await selectHrAttributeRows(page, [1, 2]);
     await page.getByTestId('hr-group-button').click();
@@ -381,6 +394,7 @@ test.describe('Job Details Tests', () => {
     expect(filterInQuery).toContain("EmployeeType_Code IN ('FTE', 'Intern')");
     expect(filterInQuery).toMatch(/SupervisorInd\s*=\s*1/);
     expect(filterInQuery).toMatch(/PayScaleStockLevelNbr\s*>=\s*65/);
+    expect(filterInQuery).toContain("CostCenterCode = 'O''Reilly (test)'");
     expect(filterInQuery).toMatch(/\)\s*And\s*\(/);
     expect(filterInQuery).toMatch(/\sOr\s/);
 
@@ -424,13 +438,12 @@ test.describe('Job Details Tests', () => {
     // const hrValueCombobox = page.locator('input[value*="FTE"][value*="Intern"]').first();
     // await hrValueCombobox.click();
     const fteIcon = page.locator('label:has-text("FTE") i');
-    let failed = false;
     try {
       await fteIcon.click({ timeout: 800 }); // expect this to fail in read-only view
       // If it didn’t throw, that’s a problem.
       expect(false, 'FTE option was clickable but should not be').toBe(true);
     } catch {
-      failed = true;
+      // Expected: the value picker should be read-only in review mode
     }
     console.log('✅ EmployeeType values confirmed read-only (FTE & Intern unchanged).');
 
@@ -515,7 +528,8 @@ test.describe('Job Details Tests', () => {
 
       return derivedId;
     } catch (error) {
-      throw new Error(`Failed to select option for "${label}": ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to select option for "${label}": ${message}`);
     }
   };
 

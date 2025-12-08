@@ -1,6 +1,19 @@
 import { Group } from '../../models/Group';
 import { IFilterPart } from '../../models/IFilterPart';
 
+const SINGLE_QUOTE_LITERAL_PATTERN = /'(?:''|[^'])*'/g;
+const DOUBLE_QUOTE_LITERAL_PATTERN = /"(?:""|[^"])*"/g;
+
+export function stripQuotedContent(filter: string): string {
+  if (!filter) {
+    return filter;
+  }
+
+  return filter
+    .replace(SINGLE_QUOTE_LITERAL_PATTERN, (match) => ' '.repeat(match.length))
+    .replace(DOUBLE_QUOTE_LITERAL_PATTERN, (match) => ' '.repeat(match.length));
+}
+
 export function containsSqlExpression(filter: string): boolean {
   const sqlExpressions = [' BETWEEN ', ' LIKE ', ' NOT LIKE ', ' IS ', ' IS NOT '];
   const regex = new RegExp(`(${sqlExpressions.join('|').trim()})`, 'i');
