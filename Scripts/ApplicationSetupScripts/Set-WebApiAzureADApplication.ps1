@@ -258,6 +258,11 @@ function Set-WebApiAzureADApplication {
 	. ($scriptsDirectory + '/ApplicationSetupScripts/Set-AppRolesIfNeeded.ps1')
 	Set-AppRolesIfNeeded -WebApiObjectId $webApiApp.Id -TenantId $AppTenantId
 
+	# Grant logged in user app roles
+	. ($scriptsDirectory + '/ApplicationSetupScripts/Grant-LoggedInUserWebapiAppRoles.ps1')
+	Grant-LoggedInUserWebapiAppRoles 	-SolutionAbbreviation $SolutionAbbreviation `
+                                  		-EnvironmentAbbreviation $EnvironmentAbbreviation
+										
 	if ($SaveToKeyVault -eq $true) {
 		Set-WebAPIKeyVaultSecrets `
 			-SolutionAbbreviation $SolutionAbbreviation `
