@@ -47,6 +47,7 @@ namespace Services
         private readonly IJobTriggerConfig _jobTriggerConfig;
         private readonly TelemetryClient _telemetryClient;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         private Guid _runId;
         public Guid RunId
@@ -76,7 +77,8 @@ namespace Services
             IServiceBusQueueRepository serviceBusQueueRepository,
             IGMMResources gmmResources,
             IJobTriggerConfig jobTriggerConfig,
-            TelemetryClient telemetryClient
+            TelemetryClient telemetryClient,
+            ISyncJobStatusService syncJobStatusService
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -96,6 +98,7 @@ namespace Services
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _jobTriggerConfig = jobTriggerConfig ?? throw new ArgumentNullException(nameof(jobTriggerConfig));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -201,7 +204,7 @@ namespace Services
                 job.LastSuccessfulStartTime = DateTime.UtcNow;
             }
 
-            await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, functionName: "JobTrigger");
         }
         public async Task SendMessageAsync(SyncJob job)
         {

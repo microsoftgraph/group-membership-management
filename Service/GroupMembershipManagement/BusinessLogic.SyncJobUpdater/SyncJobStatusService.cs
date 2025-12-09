@@ -24,7 +24,7 @@ namespace BusinessLogic.SyncJobUpdater
             _syncJobHistoryRepository = syncJobHistoryRepository;
         }
 
-        public async Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null)
+        public async Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null, string? functionName = null)
         {
             await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
 
@@ -36,8 +36,7 @@ namespace BusinessLogic.SyncJobUpdater
                     SyncJobId = job.Id,
                     RunId = job.RunId ?? Guid.Empty,
                     Status = (status ?? SyncStatus.Error).ToString(),
-                    // TODO: add UpdatedByFunction when it's available
-                    UpdatedByFunction = "SyncJobStatusService",
+                    UpdatedByFunction = functionName,
                     StartTime = job.LastRunTime,
                     CreatedAt = now,
                     UpdatedAt = now

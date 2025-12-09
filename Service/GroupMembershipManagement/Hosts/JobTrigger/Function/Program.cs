@@ -15,11 +15,13 @@ using Microsoft.Graph;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
+using Repositories.EntityFramework;
 using Repositories.ServiceBusQueue;
 using Repositories.ServiceBusTopics;
 using Repositories.TeamsChannel;
 using Services;
 using Services.Contracts;
+using BusinessLogic.SyncJobUpdater;
 using System;
 using System.IO;
 
@@ -122,7 +124,9 @@ namespace Hosts.JobTrigger
                         return new ServiceBusQueueRepository(sender);
                     });
 
+                    services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
                     services.AddScoped<IJobTriggerService, JobTriggerService>();
+                    services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 
                     var jsonSchemasPath = Path.Combine(rootPath, "JsonSchemas");
                     var schemaProvider = new JsonSchemaProvider();

@@ -459,6 +459,7 @@ namespace Services.Tests
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
                         var serviceBusTopicsRepository = new ServiceBusTopicsRepository(serviceBusSender.Object);
                         var serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+                        var syncJobStatusService = new Mock<ISyncJobStatusService>();
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
@@ -476,7 +477,8 @@ namespace Services.Tests
                                                         serviceBusQueueRepository.Object,
                                                         gmmResources.Object,
                                                         jobTriggerConfig.Object,
-                                                        _telemetryClient
+                                                        _telemetryClient,
+                                                        syncJobStatusService.Object
                                                         );
 
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);
@@ -545,6 +547,7 @@ namespace Services.Tests
                         var teamsChannelServiceAccountObjectId = new Mock<IKeyVaultSecret<IJobTriggerService, Guid>>();
                         var emailSenderAndRecipients = new Mock<IEmailSenderRecipient>();
                         var serviceBusTopicsRepository = new ServiceBusTopicsRepository(serviceBusSender.Object);
+                        var syncJobStatusService = new Mock<ISyncJobStatusService>();
                         var jobTriggerService = new JobTriggerService(
                                                         _loggingRespository.Object,
                                                         syncJobRepository.Object,
@@ -562,7 +565,8 @@ namespace Services.Tests
                                                         serviceBusQueueRepository.Object,
                                                         gmmResources.Object,
                                                         jobTriggerConfig.Object,
-                                                        _telemetryClient
+                                                        _telemetryClient,
+                                                        syncJobStatusService.Object
                                                         );
 
                         await CallTopicMessageSenderFunctionAsync(jobTriggerService: jobTriggerService);

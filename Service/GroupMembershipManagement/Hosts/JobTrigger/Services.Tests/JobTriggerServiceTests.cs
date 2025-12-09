@@ -24,6 +24,7 @@ using Models.Entities;
 using Newtonsoft.Json;
 using Models.Notifications;
 using Models.ServiceBus;
+using Models.SyncJobHistory;
 using Models.Helpers;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -48,6 +49,7 @@ namespace Services.Tests
         private GMMResources _gMMResources = null;
         private MockJobTriggerConfig _jobTriggerConfig = null;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
+        private Mock<ISyncJobStatusService> _syncJobStatusService = null;
 
         private const string Organization = "Organization";
         private const string GroupMembership = "GroupMembership";
@@ -74,6 +76,11 @@ namespace Services.Tests
             _graphGroupRepository = new MockGraphGroupRepository();
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _jobTriggerConfig = new MockJobTriggerConfig();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
+            _syncJobStatusService.Setup(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory?>(), It.IsAny<string>()))
+                .Callback<SyncJob, SyncStatus?, SyncJobHistory?, string>((job, status, history, functionName) => job.Status = status.ToString())
+                .Returns(Task.CompletedTask);
+
             _jobTriggerService = new JobTriggerService(
                                         _loggingRepository,
                                         _syncJobRepository,
@@ -91,7 +98,8 @@ namespace Services.Tests
                                         _serviceBusQueueRepository.Object,
                                         _gMMResources,
                                         _jobTriggerConfig,
-                                        new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+                                        new TelemetryClient(TelemetryConfiguration.CreateDefault()),
+                                        _syncJobStatusService.Object);
 
             _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
@@ -492,7 +500,8 @@ namespace Services.Tests
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
-       new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+       new TelemetryClient(TelemetryConfiguration.CreateDefault()),
+       _syncJobStatusService.Object);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
@@ -543,7 +552,8 @@ namespace Services.Tests
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
-       new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+       new TelemetryClient(TelemetryConfiguration.CreateDefault()),
+       _syncJobStatusService.Object);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
@@ -586,7 +596,8 @@ namespace Services.Tests
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
-       new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+       new TelemetryClient(TelemetryConfiguration.CreateDefault()),
+       _syncJobStatusService.Object);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;
@@ -628,7 +639,8 @@ namespace Services.Tests
                 _serviceBusQueueRepository.Object,
                 _gMMResources,
                 _jobTriggerConfig,
-       new TelemetryClient(TelemetryConfiguration.CreateDefault()));
+       new TelemetryClient(TelemetryConfiguration.CreateDefault()),
+       _syncJobStatusService.Object);
 
             var validStartDateJobs = 5;
             var futureStartDateJobs = 3;

@@ -10,7 +10,7 @@ namespace Services.Contracts
 {
     public interface ISyncJobStatusService
     {
-        Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null);
+        Task UpdateJobStatusAsync(SyncJob job, SyncStatus? status, SyncJobHistory? history = null,  string? functionName = null);
         Task CreateOrUpdateJobHistoryAsync(SyncJobHistory history);
     }
 }
