@@ -71,8 +71,8 @@ namespace Hosts.TeamsChannelUpdater
                     .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
                     {
                         var config = s.GetService<IConfiguration>();
-                        var storageAccountName = config["membershipStorageAccountName"];
-                        var containerName = config["membershipContainerName"];
+                        var storageAccountName = CommonServices.GetValueOrThrowBase(config, "membershipStorageAccountName");
+                        var containerName = CommonServices.GetValueOrThrowBase(config, "membershipContainerName");
 
                         return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
                     })
