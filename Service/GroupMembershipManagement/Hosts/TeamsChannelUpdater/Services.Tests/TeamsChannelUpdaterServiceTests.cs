@@ -6,10 +6,12 @@ using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Services.TeamsChannelUpdater;
 using System.Threading.Channels;
 using Models.ServiceBus;
+using Models.SyncJobHistory;
 
 namespace Services.Tests
 {
@@ -24,6 +26,7 @@ namespace Services.Tests
         private Mock<IDatabaseChannelsRepository> _mockChannelsRepository = null!;
         private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
+        private Mock<ISyncJobStatusService> _mockSyncJobStatusService = null!;
 
         private string _groupName = "Group 1 Display Name";
 
@@ -80,24 +83,22 @@ namespace Services.Tests
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobRepository.Setup<Task<SyncJob>>(repo => repo.GetSyncJobAsync(_syncInfo.SyncJob.Id))
                 .ReturnsAsync(_syncInfo.SyncJob);
-            _mockSyncJobRepository.Setup(repo => repo.UpdateSyncJobStatusAsync(It.IsAny<SyncJob[]>(), SyncStatus.Error))
-                .Callback(() =>
-                {
-                    _syncInfo.SyncJob.Status = SyncStatus.Error.ToString();
-                });
-            _mockSyncJobRepository.Setup(repo => repo.UpdateSyncJobStatusAsync(It.IsAny<SyncJob[]>(), SyncStatus.Idle))
-                .Callback(() =>
-                {
-                    _syncInfo.SyncJob.Status = SyncStatus.Idle.ToString();
-                });
 
 
             _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            _mockSyncJobStatusService
+                .Setup(service => service.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory?>(), It.IsAny<string>()))
+                .Callback<SyncJob, SyncStatus?, SyncJobHistory?, string>((job, status, history, functionName) =>
+                {
+                    job.Status = status?.ToString();
+                });
 
             _teamsChannelUpdaterService = new TeamsChannelUpdaterService(_mockTeamsChannelRepository.Object, _mockSyncJobRepository.Object,
                 _mockGroupsRepository.Object, _mockChannelsRepository.Object,
-                _mockLoggingRepository.Object, _mockServiceBusQueueRepository.Object);
+                _mockLoggingRepository.Object, _mockServiceBusQueueRepository.Object,
+                _mockSyncJobStatusService.Object);
 
         }
 

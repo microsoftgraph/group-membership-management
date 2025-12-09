@@ -28,6 +28,7 @@
     <ProjectReference Include="..\Function\TeamsChannelUpdater.csproj" />
     <ProjectReference Include="..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj" />
     <ProjectReference Include="..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj" />
+    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

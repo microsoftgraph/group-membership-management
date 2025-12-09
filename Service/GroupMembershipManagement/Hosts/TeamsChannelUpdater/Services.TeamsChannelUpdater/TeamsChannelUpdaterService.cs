@@ -3,6 +3,7 @@
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
+using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
 using Models.Notifications;
 using Models.ServiceBus;
@@ -22,6 +23,7 @@ namespace Services.TeamsChannelUpdater
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         private Guid _runId;
         public Guid RunId
@@ -39,7 +41,8 @@ namespace Services.TeamsChannelUpdater
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
             ILoggingRepository loggingRepository,
-            IServiceBusQueueRepository serviceBusQueueRepository)
+            IServiceBusQueueRepository serviceBusQueueRepository,
+            ISyncJobStatusService syncJobStatusService)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -47,6 +50,7 @@ namespace Services.TeamsChannelUpdater
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         public async Task<Guid> GetGroupIdAsync(SyncJob syncJob)
@@ -103,7 +107,7 @@ namespace Services.TeamsChannelUpdater
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status);
 
             var groupId = await GetGroupIdAsync(job);
 
@@ -116,7 +120,7 @@ namespace Services.TeamsChannelUpdater
 
         public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
         {
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Error);
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Error);
         }
 
         public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members)

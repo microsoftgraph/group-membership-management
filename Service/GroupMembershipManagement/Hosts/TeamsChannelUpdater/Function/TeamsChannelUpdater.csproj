@@ -33,12 +33,14 @@
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
-    <ProjectReference Include="..\..\..\Models\Models.csproj" />
-    <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
-    <ProjectReference Include="..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj" />
-    <ProjectReference Include="..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj" />
+	  <ProjectReference Include="..\..\..\Models\Models.csproj" />
+	  <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
+	  <ProjectReference Include="..\Services.TeamsChannelUpdater.Contracts\Services.TeamsChannelUpdater.Contracts.csproj" />
+	  <ProjectReference Include="..\Services.TeamsChannelUpdater\Services.TeamsChannelUpdater.csproj" />
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
   </ItemGroup>
 
   <ItemGroup>
