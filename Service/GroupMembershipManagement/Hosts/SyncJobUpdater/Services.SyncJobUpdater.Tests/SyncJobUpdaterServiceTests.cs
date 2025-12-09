@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using BusinessLogic.SyncJobUpdater;
 using Hosts.SyncJobUpdater;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -32,10 +33,15 @@ namespace Services.Tests
             _mockDatabaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _mockLoggingRepository = new MockLoggingRepository();
+
+            var syncJobStatusService = new SyncJobStatusService(
+                _mockDatabaseSyncJobsRepository.Object,
+                _mockSyncJobHistoryRepository.Object);
+
             _syncJobUpdaterService = new SyncJobUpdaterService(
                 _mockDatabaseSyncJobsRepository.Object, 
                 _mockLoggingRepository,
-                _mockSyncJobHistoryRepository.Object);
+                syncJobStatusService);
 
             _mockDatabaseSyncJobsRepository.Setup(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()))
                 .Callback<IEnumerable<SyncJob>, SyncStatus?>((jobs, status) => 

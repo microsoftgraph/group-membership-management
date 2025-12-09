@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using BusinessLogic.SyncJobUpdater;
 using Hosts.SyncJobUpdater;
 using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -42,10 +43,14 @@ namespace Services.Tests
             _mockSyncJobHistoryRepository.Setup(x => x.CreateAsync(It.IsAny<SyncJobHistory>()));
             _mockSyncJobHistoryRepository.Setup(x => x.UpdateAsync(It.IsAny<SyncJobHistory>()));
 
+            var syncJobStatusService = new SyncJobStatusService(
+                _mockDatabaseSyncJobsRepository.Object,
+                _mockSyncJobHistoryRepository.Object);
+
             _syncJobUpdaterService = new SyncJobUpdaterService( 
                                                                _mockDatabaseSyncJobsRepository.Object,
                                                                _mockLogger,
-                                                               _mockSyncJobHistoryRepository.Object);
+                                                               syncJobStatusService);
                 _orchestratorFunction = new OrchestratorFunction();
                 _mockContext.Setup(c => c.CallActivityAsync(
                     It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)),

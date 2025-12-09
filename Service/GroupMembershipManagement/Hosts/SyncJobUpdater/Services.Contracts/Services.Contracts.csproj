@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>SyncJobUpdater.Services.Contracts</AssemblyName>
+    <RootNamespace>Services.Contracts</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

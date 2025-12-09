@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Repositories.Contracts;
 using Repositories.EntityFramework;
 using Services.Contracts;
+using BusinessLogic.SyncJobUpdater;
 
 namespace Hosts.SyncJobUpdater
 {
@@ -45,12 +46,12 @@ namespace Hosts.SyncJobUpdater
                         DryRunSettingName,
                         rootPath);
 
-                    services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
+                    services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                     services.AddScoped<ISyncJobUpdaterService>(sp =>
                         new SyncJobUpdaterService(
                             sp.GetRequiredService<IDatabaseSyncJobsRepository>(),
                             sp.GetRequiredService<ILoggingRepository>(),
-                            sp.GetRequiredService<ISyncJobHistoryRepository>()));
+                            sp.GetRequiredService<ISyncJobStatusService>()));
                 })
                 .Build();
 

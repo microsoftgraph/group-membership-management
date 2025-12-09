@@ -14,16 +14,16 @@ namespace Hosts.SyncJobUpdater
     {
         private readonly ILoggingRepository _log;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
-        private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         public SyncJobUpdaterService(
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ILoggingRepository logging,
-            ISyncJobHistoryRepository syncJobHistoryRepository)
+            ISyncJobStatusService syncJobStatusService)
         {
             _log = logging;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
-            _syncJobHistoryRepository = syncJobHistoryRepository;
+            _syncJobStatusService = syncJobStatusService;
         }
 
         public async Task UpdateSyncJobStatusAsync(JobStatusUpdateQueueMessage message)
@@ -67,10 +67,22 @@ namespace Hosts.SyncJobUpdater
             syncJob.ScheduledDate = currentDate.AddHours(syncJob.Period);
 
             // Update the sync job status
-            await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, message.NewStatus);
+            var history = new SyncJobHistory
+            {
+                SyncJobId = message.JobId,
+                RunId = message.RunId,
+                Status = message.NewStatus.ToString(),
+                UpdatedByFunction = message.UpdatedByFunction,
+                StartTime = message.JobStartTime,
+                EndTime = message.JobEndTime,
+                UsersAdded = message.UsersAddedCount,
+                UsersRemoved = message.UsersRemovedCount,
+                ThresholdViolations = message.ThresholdViolations,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-            // Create or update job history
-            await CreateOrUpdateJobHistoryAsync(message);
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, message.NewStatus, history);
 
             await _log.LogMessageAsync(new LogMessage 
             { 
@@ -79,63 +91,5 @@ namespace Hosts.SyncJobUpdater
             });
         }
 
-        private async Task CreateOrUpdateJobHistoryAsync(JobStatusUpdateQueueMessage message)
-        {
-            // Check if a history entry already exists for this run
-            var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(message.RunId);
-            
-            if (existingHistory != null)
-            {
-                // Update existing history entry - preserve existing values if new values are null/empty
-                existingHistory.EndTime = message.JobEndTime ?? existingHistory.EndTime;
-                existingHistory.Status = message.NewStatus.ToString();
-                existingHistory.UsersAdded = message.UsersAddedCount ?? existingHistory.UsersAdded;
-                existingHistory.UsersRemoved = message.UsersRemovedCount ?? existingHistory.UsersRemoved;
-                existingHistory.ThresholdViolations = message.ThresholdViolations ?? existingHistory.ThresholdViolations;
-                existingHistory.UpdatedByFunction = !string.IsNullOrEmpty(message.UpdatedByFunction) ? message.UpdatedByFunction : existingHistory.UpdatedByFunction;
-                existingHistory.UpdatedAt = DateTime.UtcNow;
-                
-                // Update StartTime only if provided and not already set
-                if (message.JobStartTime.HasValue && !existingHistory.StartTime.HasValue)
-                {
-                    existingHistory.StartTime = message.JobStartTime;
-                }
-                
-                // Calculate duration if both start and end times are available
-                if (existingHistory.StartTime.HasValue && existingHistory.EndTime.HasValue)
-                {
-                    existingHistory.Duration = (int)(existingHistory.EndTime.Value - existingHistory.StartTime.Value).TotalSeconds;
-                }
-                
-                await _syncJobHistoryRepository.UpdateAsync(existingHistory);
-            }
-            else
-            {
-                var now = DateTime.UtcNow;
-                // Create new history entry
-                var newHistory = new SyncJobHistory
-                {
-                    SyncJobId = message.JobId,
-                    RunId = message.RunId,
-                    StartTime = message.JobStartTime,
-                    EndTime = message.JobEndTime,
-                    Status = message.NewStatus.ToString(),
-                    UsersAdded = message.UsersAddedCount,
-                    UsersRemoved = message.UsersRemovedCount,
-                    ThresholdViolations = message.ThresholdViolations,
-                    UpdatedByFunction = message.UpdatedByFunction,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-
-                // Calculate duration if both start and end times are available
-                if (newHistory.StartTime.HasValue && newHistory.EndTime.HasValue)
-                {
-                    newHistory.Duration = (int)(newHistory.EndTime.Value - newHistory.StartTime.Value).TotalSeconds;
-                }
-
-                await _syncJobHistoryRepository.CreateAsync(newHistory);
-            }
-        }
     }
 }
