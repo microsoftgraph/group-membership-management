@@ -2,12 +2,13 @@
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
 using Hosts.GroupOwnershipObtainer;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Mocks;
 using System.Text;
 using System.Text.Json;
 
@@ -19,7 +20,7 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
-        private Mock<IDurableOrchestrationClient> _durableOrchestrationClient = null!;
+        private Mock<MockDurableTaskClient> _durableTaskClient = null!;
         private SyncJob _syncJob = null!;
 
         [TestInitialize]
@@ -28,7 +29,7 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
-            _durableOrchestrationClient = new Mock<IDurableOrchestrationClient>();
+            _durableTaskClient = new Mock<MockDurableTaskClient>();
 
             _syncJob = new SyncJob
             {
@@ -56,11 +57,13 @@ namespace Tests.Services
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
-            await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
+            await starterFunction.RunAsync(message, _durableTaskClient.Object);
 
-            _durableOrchestrationClient.Verify(x => x.StartNewAsync(
-                                                        It.IsAny<string>(),
-                                                        It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3)
+            _durableTaskClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
+                                                        It.IsAny<TaskName>(),
+                                                        It.Is<OrchestratorRequest>(r => r.CurrentPart == 1 && r.TotalParts == 3),
+                                                        null,
+                                                        It.IsAny<CancellationToken>()
                                                 ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -94,9 +97,13 @@ namespace Tests.Services
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
 
             var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
-            await starterFunction.RunAsync(message, _durableOrchestrationClient.Object);
+            await starterFunction.RunAsync(message, _durableTaskClient.Object);
 
-            _durableOrchestrationClient.Verify(x => x.StartNewAsync(It.IsAny<string>(), It.IsAny<OrchestratorRequest>()), Times.Never);
+            _durableTaskClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
+                                                        It.IsAny<TaskName>(), 
+                                                        It.IsAny<OrchestratorRequest>(), 
+                                                        null, 
+                                                        It.IsAny<CancellationToken>()), Times.Never);
             _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(

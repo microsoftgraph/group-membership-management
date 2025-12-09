@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -23,7 +23,7 @@ namespace Hosts.GroupOwnershipObtainer
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
+        [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(

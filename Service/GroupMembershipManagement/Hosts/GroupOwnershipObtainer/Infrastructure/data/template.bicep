@@ -27,6 +27,8 @@ module groupOwnershipObtainerStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'groupOwnershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'groupOwnershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 

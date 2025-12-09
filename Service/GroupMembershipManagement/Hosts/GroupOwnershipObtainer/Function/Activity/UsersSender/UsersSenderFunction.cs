@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -21,7 +21,7 @@ namespace Hosts.GroupOwnershipObtainer
             _groupOwnershipObtainerService = groupOwnershipObtainerService ?? throw new ArgumentNullException(nameof(groupOwnershipObtainerService));
         }
 
-        [FunctionName(nameof(UsersSenderFunction))]
+        [Function(nameof(UsersSenderFunction))]
         public async Task<string> SendUsersAsync([ActivityTrigger] UsersSenderRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(UsersSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
