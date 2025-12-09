@@ -20,7 +20,11 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('path-to-regexp', ['<0.1.10'], '0.1.10'),
     new PackageUpgradeStrategy('rollup', ['<2.79.2'], '2.79.2'),
     new PackageUpgradeStrategy('http-proxy-middleware', ['<2.0.7'], '2.0.7'),
-    new PackageUpgradeStrategy('form-data', ['<4.0.2'], '4.0.4')
+    new PackageUpgradeStrategy('form-data', ['<4.0.2'], '4.0.4'),
+    new PackageUpgradeStrategy('glob', ['^10.3.10'], '10.5.0'),
+    new PackageUpgradeStrategy('jws', ['^3.2.2'], '3.2.3'),
+    new PackageUpgradeStrategy('node-forge', ['^1'], '1.3.2'),
+    new PackageUpgradeStrategy('axios', ['1.8.2'], '1.13.2'),
   ];
 
   const logger = new Logger(context);
