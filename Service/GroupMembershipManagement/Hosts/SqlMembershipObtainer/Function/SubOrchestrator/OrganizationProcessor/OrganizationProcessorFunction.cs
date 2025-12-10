@@ -1,8 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
 using Repositories.Contracts;
 using SqlMembershipObtainer.Entities;
 using System.Threading.Tasks;
@@ -15,8 +15,8 @@ namespace SqlMembershipObtainer
         {
         }
 
-        [FunctionName(nameof(OrganizationProcessorFunction))]
-        public async Task<MembershipFileResult> ProcessQueryAsync([OrchestrationTrigger] IDurableOrchestrationContext context)
+        [Function(nameof(OrganizationProcessorFunction))]
+        public async Task<MembershipFileResult> ProcessQueryAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var response = new MembershipFileResult();           
             var request = context.GetInput<OrganizationProcessorRequest>();
@@ -60,7 +60,6 @@ namespace SqlMembershipObtainer
                                                         GroupId = request.GroupId,
                                                         CurrentPart = request.CurrentPart,
                                                         Exclusionary = request.Exclusionary,
-                                                        AdaptiveCardTemplateDirectory = request.AdaptiveCardTemplateDirectory,
                                                         TableName = tableName
                                                     });
             }
@@ -77,7 +76,6 @@ namespace SqlMembershipObtainer
                                                                     GroupId = request.GroupId,
                                                                     CurrentPart = request.CurrentPart,
                                                                     Exclusionary = request.Exclusionary,
-                                                                    AdaptiveCardTemplateDirectory = request.AdaptiveCardTemplateDirectory,
                                                                     TableName = tableName
                                                                 });
                 }

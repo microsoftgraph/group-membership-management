@@ -109,7 +109,6 @@ namespace Services.Tests
             var filter = "filter";
             var depth = 2;
             var exclusionary = false;
-            var adaptiveCardTemplateDirectory = "dir";
 
             var personEntities = new List<PersonEntity>
             {
@@ -135,7 +134,7 @@ namespace Services.Tests
                                             dryRunValue.Object,
                                             dfService.Object);
 
-            var result = await sqlMembershipObtainerService.GetChildEntitiesAsync(filter, 0, tableName, depth, syncJob, groupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
+            var result = await sqlMembershipObtainerService.GetChildEntitiesAsync(filter, 0, tableName, depth, syncJob, groupId, currentPart, exclusionary);
 
             loggingRepository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains($"Retrieved a total of {personEntities.Count} records from {tableName} table")),
@@ -163,7 +162,6 @@ namespace Services.Tests
             var tableName = "TestTable";
             var query = "query";
             var exclusionary = false;
-            var adaptiveCardTemplateDirectory = "dir";
 
             var personEntities = new List<PersonEntity>
             {
@@ -189,7 +187,7 @@ namespace Services.Tests
                                             dryRunValue.Object,
                                             dfService.Object);
 
-            var result = await sqlMembershipObtainerService.FilterChildEntitiesAsync(query, tableName, syncJob, groupId, currentPart, exclusionary, adaptiveCardTemplateDirectory);
+            var result = await sqlMembershipObtainerService.FilterChildEntitiesAsync(query, tableName, syncJob, groupId, currentPart, exclusionary);
 
             loggingRepository.Verify(x => x.LogMessageAsync(
                 It.Is<LogMessage>(m => m.Message.Contains($"Retrieved a total of {personEntities.Count} records from {tableName} table")),

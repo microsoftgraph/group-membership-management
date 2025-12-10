@@ -1,8 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Data.SqlClient;
+using Microsoft.DurableTask;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Graph;
 using Models;
@@ -27,9 +27,9 @@ namespace SqlMembershipObtainer
             _loggingRepository = loggingRepository;
         }
 
-        [FunctionName(nameof(OrchestratorFunction))]
+        [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync(
-            [OrchestrationTrigger] IDurableOrchestrationContext context, ExecutionContext executionContext)
+            [OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var mainRequest = context.GetInput<OrchestratorRequest>();
             if (mainRequest == null || mainRequest.SyncJob == null) { return; }
@@ -103,6 +103,7 @@ namespace SqlMembershipObtainer
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"Group Id for job:{syncJob.Id} is {groupId}", SyncJob = syncJob, Verbosity = VerbosityLevel.INFO });
                 var query = JsonSerializer.Deserialize<Query>(currentQueryAsString);
+
                 var senderResponse = await context.CallSubOrchestratorAsync<MembershipFileResult>(
                             nameof(OrganizationProcessorFunction),
                             new OrganizationProcessorRequest
@@ -111,8 +112,7 @@ namespace SqlMembershipObtainer
                                 SyncJob = syncJob,
                                 GroupId = groupId,
                                 CurrentPart = mainRequest.CurrentPart,
-                                Exclusionary = mainRequest.Exclusionary,
-                                AdaptiveCardTemplateDirectory = executionContext.FunctionAppDirectory
+                                Exclusionary = mainRequest.Exclusionary
                             });
 
                 if (senderResponse.Status != SyncStatus.InProgress)

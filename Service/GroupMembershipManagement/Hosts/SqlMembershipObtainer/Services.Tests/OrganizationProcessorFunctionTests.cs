@@ -1,6 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.DurableTask;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
@@ -29,8 +29,7 @@ namespace Services.Tests
                                                                 It.IsAny<SyncJob>(),
                                                                 It.IsAny<Guid>(),
                                                                 It.IsAny<int>(),
-                                                                It.IsAny<bool>(),
-                                                                It.IsAny<string>()
+                                                                It.IsAny<bool>()
                                                                 )).ReturnsAsync(() => _groupMembershipSenderResponse);
 
             _sqlMembershipObtainerService.Setup(x => x.GetChildEntitiesAsync(
@@ -41,8 +40,7 @@ namespace Services.Tests
                                                     It.IsAny<SyncJob>(),
                                                     It.IsAny<Guid>(),
                                                     It.IsAny<int>(),
-                                                    It.IsAny<bool>(),
-                                                    It.IsAny<string>()
+                                                    It.IsAny<bool>()
                                                     )).ReturnsAsync(() => _groupMembershipSenderResponse);
 
         }
@@ -50,7 +48,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task ProcessQueryWithOrgLeadersTest()
         {
-            var orgProcessorContext = new Mock<IDurableOrchestrationContext>();
+            var orgProcessorContext = new Mock<TaskOrchestrationContext>();
             var request = new OrganizationProcessorRequest
             {
                 Query = new Query { Filter = "Department = 'IT'", Manager = new Manager { Id = 123, Depth = 1 } },
@@ -62,30 +60,29 @@ namespace Services.Tests
                 },
                 GroupId = Guid.NewGuid(),
                 CurrentPart = 1,
-                Exclusionary = false,
-                AdaptiveCardTemplateDirectory = ""
+                Exclusionary = false
             };
 
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
-            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>()))
+            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync("sometable");
             orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()))
+                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(new MembershipFileResult());
 
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()), Times.Once());
+                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>()), Times.Never());
+                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()), Times.Never());
         }
 
 
         [TestMethod]
         public async Task ProcessQueryWithNoOrgLeadersTest()
         {
-            var orgProcessorContext = new Mock<IDurableOrchestrationContext>();
+            var orgProcessorContext = new Mock<TaskOrchestrationContext>();
             var request = new OrganizationProcessorRequest
             {
                 Query = new Query { Filter = "Department = 'IT'" },
@@ -97,23 +94,22 @@ namespace Services.Tests
                 },
                 GroupId = Guid.NewGuid(),
                 CurrentPart = 1,
-                Exclusionary = false,
-                AdaptiveCardTemplateDirectory = ""
+                Exclusionary = false
             };
 
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
-            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>()))
+            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync("sometable");
             orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()))
+                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(new MembershipFileResult());
 
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>()), Times.Never());
+                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>()), Times.Once());
+                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()), Times.Once());
         }
     }
 }

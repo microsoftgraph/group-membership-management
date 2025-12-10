@@ -13,6 +13,5 @@ namespace SqlMembershipObtainer
         public required SyncJob SyncJob { get; init; }
         public required int CurrentPart { get; init; }
         public required bool Exclusionary { get; init; }
-        public required string AdaptiveCardTemplateDirectory { get; init; }
     }
 }

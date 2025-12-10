@@ -29,8 +29,9 @@ module smoStorageAccountProd 'storageAccount.bicep' = {
     sku: storageAccountSku
     keyVaultName: dataKeyVaultName
     location: location
-    sqlMembershipObtainerStorageAccountName: 'sqlMembershipObtainerStorageAccountNameProd'
     storageAccountSettingName: 'sqlMembershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'sqlMembershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 
