@@ -588,10 +588,8 @@ function Set-ComputeResources {
     )
 
     write-Host "`nEnsuring secrets are set in the Key Vault"
-    $parameterObject = Get-TemplateAsHashtable -TemplateFilePath $ParameterFilePath
-    $parameters = $parameterObject.parameters
-    $storageAccountSecretName  = Get-DefaultString -Value $parameters['storageAccountSecretName'].value -Default "adfStorageAccountName"
-
+    
+    $storageAccountSecretName  = Get-DefaultString -Value $ParameterHashtable.storageAccountSecretName.value -Default "adfStorageAccountName"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $secrets = @("sqlServerMSIConnectionString", $storageAccountSecretName)
     Set-DefaultSecretsIfMissing `
