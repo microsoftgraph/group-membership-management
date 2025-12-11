@@ -1227,7 +1227,7 @@ namespace Tests.Services
             _groupCount = transitiveGroupCount;
 
             var nestedGroups = Enumerable.Range(0, transitiveGroupCount)
-                .Select(i => new AzureADGroup { ObjectId = Guid.NewGuid() })
+                .Select(i => new AzureADGroup { ObjectId = Guid.NewGuid(), Name = $"NestedGroup{i}" })
                 .ToList();
 
             _graphGroupRepository.Setup(x => x.GetDirectGroupTypeMembersAsync(It.IsAny<Guid>()))
@@ -1246,11 +1246,17 @@ namespace Tests.Services
                                         })
                                         .ReturnsAsync(() => _groupCount);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LogNestedGroupsRequest>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<List<AzureADGroup>>(It.IsAny<TaskName>(), It.IsAny<LogNestedGroupsRequest>(), It.IsAny<TaskOptions>()))
                                         .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
                                         {
                                             await CallLogNestedGroupsFunctionAsync(req as LogNestedGroupsRequest);
-                                        });
+                                        })
+                                        .ReturnsAsync(nestedGroups);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+                                        .ReturnsAsync("Test Group Name");
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()));
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
                                         .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
@@ -1263,9 +1269,14 @@ namespace Tests.Services
 
             Assert.AreEqual(SyncStatus.NestedGroupsFound, response.Status);
 
-            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<List<AzureADGroup>>(
                 It.Is<TaskName>(n => n.Name == nameof(LogNestedGroupsFunction)),
                 It.Is<LogNestedGroupsRequest>(r => r.RunId == runId && r.GroupId == groupId),
+                It.IsAny<TaskOptions>()), Times.Once);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(EmailSenderFunction)),
+                It.IsAny<EmailSenderRequest>(),
                 It.IsAny<TaskOptions>()), Times.Once);
 
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync(

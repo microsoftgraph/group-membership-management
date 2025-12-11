@@ -8,10 +8,12 @@ using Microsoft.Extensions.Azure;
 using Microsoft.Graph;
 using Models;
 using Models.Helpers;
+using Models.Notifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -80,8 +82,25 @@ namespace Hosts.GroupMembershipObtainer
                     }
 
                     if (request.SourceGroup.ObjectId == request.GroupId && transitiveGroupCount > 0)
-                    {                        
-                        await context.CallActivityAsync(nameof(LogNestedGroupsFunction), new LogNestedGroupsRequest { RunId = request.RunId, GroupId = request.GroupId });
+                    {
+                        var nestedGroups = await context.CallActivityAsync<List<AzureADGroup>>(nameof(LogNestedGroupsFunction), new LogNestedGroupsRequest { RunId = request.RunId, GroupId = request.GroupId });
+                        var destinationName = await context.CallActivityAsync<string>(nameof(DestinationNameReaderFunction), request.SyncJob);
+                        var nestedGroupsInfo = string.Join("\n", nestedGroups.Select(g => $"- {g.Name} ({g.ObjectId})"));
+                        var additionalContentParams = new[]
+                        {
+                            request.GroupId.ToString(),
+                            destinationName.ToString(),
+                            nestedGroups.Count.ToString(),
+                            nestedGroupsInfo,
+                            DisabledNotificationType.StatusDescriptions[NotificationMessageType.NestedGroupsFoundNotification]
+                        };
+                        await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest
+                        {
+                            SyncJob = request.SyncJob,
+                            NotificationType = NotificationMessageType.NestedGroupsFoundNotification,
+                            AdditionalContentParams = additionalContentParams
+                        });
+
                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.NestedGroupsFound, SyncJob = request.SyncJob });
                         return new SubOrchestratorResponse { Status = SyncStatus.NestedGroupsFound };
                     }

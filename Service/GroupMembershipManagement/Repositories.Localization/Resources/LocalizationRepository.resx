@@ -1257,4 +1257,29 @@ Your sync job is now active and will run according to its configured schedule.
 
 You can access the GMM UI to view your sync job status and configuration.</value>
   </data>
+  <data name="NestedGroupsFoundTitle" xml:space="preserve">
+    <value>Sync Disabled with Status {4}</value>
+  </data>
+  <data name="NestedGroupsFoundSubject" xml:space="preserve">
+    <value>[Action Required] Sync Disabled for {1}</value>
+  </data>
+  <data name="NestedGroupsFoundEmailBody" xml:space="preserve">
+    <value>You received this notification because you are listed as an owner of **{1}**.
+
+GMM cannot manage a destination group that contains nested groups (groups added as members). As a result, membership sync has been automatically disabled for {1} with object Id: {0}.
+
+Nested groups detected:
+
+{3}
+
+**What you need to do**
+
+To continue using GMM to manage this group:
+1. **Remove the nested groups** listed above from {1} via Entra ID
+2. Go to the **GMM UI** and **re-enable membership sync**
+
+Once the nested groups are removed and group sync re-enabled, GMM will resume managing membership based on your configured rules.
+
+If you intentionally require nested groups, GMM will not be able to manage this group, and you should keep manual or alternative management.</value>
+  </data>
 </root>

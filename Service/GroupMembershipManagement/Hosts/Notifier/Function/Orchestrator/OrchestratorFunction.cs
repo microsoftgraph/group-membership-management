@@ -127,6 +127,13 @@ namespace Hosts.Notifier
                     await context.CallActivityAsync(nameof(SendNotification), message);
                     break;
 
+                case nameof(NotificationMessageType.NestedGroupsFoundNotification):
+                    message.MessageTitle = NotificationConstants.NestedGroupsFoundTitle;
+                    message.SubjectTemplate = NotificationConstants.NestedGroupsFoundSubject;
+                    message.ContentTemplate = NotificationConstants.NestedGroupsFoundContent;
+                    await context.CallActivityAsync(nameof(SendNotification), message);
+                    break;
+
                 default:
                     await context.CallActivityAsync(nameof(LoggerFunction),
                     new LoggerRequest

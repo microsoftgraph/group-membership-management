@@ -13,7 +13,8 @@ namespace Models.Notifications
             { NotificationMessageType.NotOwnerNotification, "Not Owner Of Destination" },
             { NotificationMessageType.NotValidSourceNotification, "Source Not Valid" },
             { NotificationMessageType.SourceNotExistNotification, "Source Does Not Exist" },
-            { NotificationMessageType.GuestUserFailureNotification, "Guest Users Cannot Be Added To Unified Group" }
+            { NotificationMessageType.GuestUserFailureNotification, "Guest Users Cannot Be Added To Unified Group" },
+            { NotificationMessageType.NestedGroupsFoundNotification, "Nested Groups Found" }
         };
     }
 }

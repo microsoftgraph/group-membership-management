@@ -46,5 +46,8 @@ namespace Services.Contracts
         public const string JobPurgingWarningEmailTitle = "JobPurgingWarningEmailTitle";
         public const string JobPurgingWarningEmailSubject = "JobPurgingWarningEmailSubject";
         public const string JobPurgingWarningEmailBody = "JobPurgingWarningEmailBody";
+        public const string NestedGroupsFoundTitle = "NestedGroupsFoundTitle";
+        public const string NestedGroupsFoundSubject = "NestedGroupsFoundSubject";
+        public const string NestedGroupsFoundContent = "NestedGroupsFoundEmailBody";
     }
 }

@@ -16,5 +16,6 @@ namespace Models.Notifications
         SubmissionRejectedNotification = 11,
         JobPurgingWarningNotification = 12,
         SubmissionApprovedNotification = 13,
+        NestedGroupsFoundNotification = 14,
     }
 }

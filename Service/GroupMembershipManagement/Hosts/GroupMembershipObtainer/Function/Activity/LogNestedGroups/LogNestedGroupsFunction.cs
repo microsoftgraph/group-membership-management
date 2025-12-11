@@ -4,6 +4,7 @@ using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -21,7 +22,7 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         [Function(nameof(LogNestedGroupsFunction))]
-        public async Task LogNestedGroupsAsync([ActivityTrigger] LogNestedGroupsRequest request)
+        public async Task<List<AzureADGroup>> LogNestedGroupsAsync([ActivityTrigger] LogNestedGroupsRequest request)
         {
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(LogNestedGroupsFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
 
@@ -34,6 +35,9 @@ namespace Hosts.GroupMembershipObtainer
                     RunId = request.RunId,
                     Message = $"Retrieved {groups.Count} group-type members for group {request.GroupId}. Group IDs: {string.Join(", ", groups.Select(g => g.ObjectId))}"
                 });
+
+                await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(LogNestedGroupsFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
+                return groups;
             }
             catch (Exception ex)
             {
@@ -44,8 +48,6 @@ namespace Hosts.GroupMembershipObtainer
                 });
                 throw;
             }
-
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(LogNestedGroupsFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }
