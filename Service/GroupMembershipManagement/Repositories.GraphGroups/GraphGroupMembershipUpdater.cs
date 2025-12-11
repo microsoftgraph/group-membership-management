@@ -246,7 +246,17 @@ namespace Repositories.GraphGroups
                                     });
                                 }
                             }
+                            else if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.NotFound)
+                            {
+                                // Single-user PATCH that got NotFound - user doesn't exist, no point retrying
+                                await _loggingRepository.LogMessageAsync(new LogMessage
+                                {
+                                    Message = $"Adding {chunkToRetry.ToSend[0].ObjectId} failed as this resource does not exist.",
+                                    RunId = RunId
+                                });
 
+                                _usersNotFound.Add(chunkToRetry.ToSend[0]);
+                            }
                             else if (chunkToRetry.ToSend.Count == 1 && idToRetry.HttpStatusCode == HttpStatusCode.Forbidden && idToRetry.ResponseCode == ResponseCode.GuestError)
                             {
                                 await _loggingRepository.LogMessageAsync(new LogMessage
