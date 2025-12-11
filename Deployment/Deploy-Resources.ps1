@@ -653,6 +653,98 @@ function Set-ADFResources {
     }
 }
 
+function Reset-Functions {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId
+    )
+
+    Write-Host "`n" -NoNewline
+    Write-Host ("=" * 60) -ForegroundColor Cyan
+    Write-Host "  Resetting Azure Functions" -ForegroundColor Cyan
+    Write-Host ("=" * 60) -ForegroundColor Cyan
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    
+    Write-Host "`nQuerying Function Apps in resource group: " -NoNewline
+    Write-Host $computeResourceGroup -ForegroundColor Yellow
+
+    # Get all Function Apps in the compute resource group
+    $functionApps = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup
+
+    if ($null -eq $functionApps -or $functionApps.Count -eq 0) {
+        Write-Host "  No Function Apps found in resource group '$computeResourceGroup'." -ForegroundColor DarkYellow
+        return
+    }
+
+    Write-Host "  Found $($functionApps.Count) Function App(s)" -ForegroundColor Green
+    Write-Host ""
+
+    # Load the Reset-Function script
+    $deploymentPackageDirectory = (Split-Path $PSScriptRoot -Parent)
+    $resetFunctionScriptPath = Join-Path $deploymentPackageDirectory "Scripts/Reset-Function.ps1"
+    
+    if (-not (Test-Path $resetFunctionScriptPath)) {
+        Write-Warning "Reset-Function script not found at: $resetFunctionScriptPath"
+        return
+    }
+
+    . $resetFunctionScriptPath
+
+    $functionIndex = 0
+    $totalFunctions = $functionApps.Count
+
+    foreach ($functionApp in $functionApps) {
+        $functionIndex++
+        $functionAppName = $functionApp.Name
+
+        # Extract the function name from the full app name
+        # Expected format: {SolutionAbbreviation}-compute-{EnvironmentAbbreviation}-{FunctionName}
+        $prefix = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-"
+        if ($functionAppName.StartsWith($prefix)) {
+            $functionName = $functionAppName.Substring($prefix.Length)
+        }
+        else {
+            Write-Host "  [$functionIndex/$totalFunctions] " -ForegroundColor Magenta -NoNewline
+            Write-Host "Skipping " -ForegroundColor DarkYellow -NoNewline
+            Write-Host $functionAppName -ForegroundColor White -NoNewline
+            Write-Host " - does not match expected naming convention" -ForegroundColor DarkYellow
+            continue
+        }
+
+        Write-Host "  [$functionIndex/$totalFunctions] " -ForegroundColor Magenta -NoNewline
+        Write-Host "Resetting: " -ForegroundColor Gray -NoNewline
+        Write-Host $functionName -ForegroundColor White
+
+        try {
+            Reset-Function `
+                -SubscriptionId $SubscriptionId `
+                -SolutionAbbreviation $SolutionAbbreviation `
+                -EnvironmentAbbreviation $EnvironmentAbbreviation `
+                -FunctionName $functionName `
+                -StartFunction $false
+
+            Write-Host "    ✓ Successfully reset $functionName `n`n" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "    ✗ Failed to reset $($functionName): $($_.Exception.Message) `n`n" -ForegroundColor Red
+        }
+    }
+
+    Write-Host "`nWaiting 60 seconds for function tables/queues to be deleted..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 60
+
+    Write-Host ""
+    Write-Host ("=" * 60) -ForegroundColor Green
+    Write-Host "  ✓ Reset-Functions completed" -ForegroundColor Green
+    Write-Host ("=" * 60) -ForegroundColor Green
+    Write-Host ""
+}
+
 function Set-DefaultSecretsIfMissing {
     param (
         [Parameter(Mandatory = $true)]
@@ -2554,7 +2646,7 @@ function Deploy-Resources {
     }
 
     if ($true -eq $setRBACPermissions) {
-        $isUserAssignedManagedIdentityAuth = if ($ParameterHashtable.authenticationType.value -eq "UserAssignedManagedIdentity") { $true } else { $false }
+        $isUserAssignedManagedIdentityAuth = if ($parameterHashtable.authenticationType.value -eq "UserAssignedManagedIdentity") { $true } else { $false }
         Set-RBACPermissions `
         -SolutionAbbreviation $solutionAbbreviation `
         -EnvironmentAbbreviation $environmentAbbreviation `
@@ -2562,6 +2654,13 @@ function Deploy-Resources {
         -ScriptsDirectory "$scriptsDirectory/PostDeploymentRoleAssignments" `
         -SetUserAssignedManagedIdentityPermissions $isUserAssignedManagedIdentityAuth `
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
+    }
+
+    if (-not $parameterHashtable.isInitialDeployment.value) {
+        Reset-Functions `
+            -SolutionAbbreviation $solutionAbbreviation `
+            -EnvironmentAbbreviation $environmentAbbreviation `
+            -SubscriptionId $subscriptionId
     }
 
     Set-FunctionAppCode `
@@ -2609,9 +2708,6 @@ function Deploy-Resources {
         -ConnectionString $connectionString
 
     if(!$isInitialDeployment -and $resetGMMType -ne "Skip") {
-        Write-Host "`nStopping function apps in resource group $computeResourceGroup"
-        Stop-FunctionApps -ResourceGroupName $computeResourceGroup
-
         . ($scriptsDirectory + '/Reset-GMM.ps1')
 
         if ($parameterHashtable.skipPrivilegedDirectoryActions.value -eq $true) {
