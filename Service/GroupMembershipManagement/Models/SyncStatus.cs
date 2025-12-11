@@ -31,6 +31,7 @@ namespace Models
         DeveloperPaused = 23,
         PendingReview = 24,
         SubmissionRejected = 25,
-        PendingConfiguration = 26
+        PendingConfiguration = 26,
+        NestedGroupsFound = 27
     }
 }

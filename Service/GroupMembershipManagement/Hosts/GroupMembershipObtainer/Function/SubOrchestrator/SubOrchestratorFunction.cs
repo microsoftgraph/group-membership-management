@@ -79,6 +79,13 @@ namespace Hosts.GroupMembershipObtainer
                         }
                     }
 
+                    if (request.SourceGroup.ObjectId == request.GroupId && transitiveGroupCount > 0)
+                    {                        
+                        await context.CallActivityAsync(nameof(LogNestedGroupsFunction), new LogNestedGroupsRequest { RunId = request.RunId, GroupId = request.GroupId });
+                        await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.NestedGroupsFound, SyncJob = request.SyncJob });
+                        return new SubOrchestratorResponse { Status = SyncStatus.NestedGroupsFound };
+                    }
+
                     if (transitiveGroupCount > 0 || !_deltaCachingConfig.DeltaCacheEnabled)
                     {
                         if (!context.IsReplaying) _ = _log.LogMessageAsync(new LogMessage { RunId = request.RunId, Message = $"Run transitive members query for group {request.SourceGroup.ObjectId}" });

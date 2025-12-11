@@ -1184,6 +1184,274 @@ namespace Tests.Services
             var function = new ProcessCachedAndDeltaUsersFunction(_loggingRepository.Object, _membershipCalculator, _blobStorageRepository.Object);
             await function.RunAsync(request);
         }
+
+        private async Task CallLogNestedGroupsFunctionAsync(LogNestedGroupsRequest request)
+        {
+            var function = new LogNestedGroupsFunction(_loggingRepository.Object, _graphGroupRepository.Object);
+            await function.LogNestedGroupsAsync(request);
+        }
+
+        [TestMethod]
+        public async Task WhenSourceEqualsDestinationWithNestedGroups_ShouldDetectAndReturnNestedGroupsFoundStatus()
+        {
+            var runId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+            var sourceGroupId = groupId; // Source equals destination
+            var transitiveGroupCount = 5; // Has nested groups
+
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                TargetOfficeGroupId = groupId,
+                RunId = runId,
+                Status = "InProgress",
+                Query = $"[{{\"type\":\"GroupMembership\",\"sources\":[{sourceGroupId}]}}]"
+            };
+
+            var request = new GroupMembershipRequest
+            {
+                RunId = runId,
+                GroupId = groupId,
+                SourceGroup = new AzureADGroup { ObjectId = sourceGroupId },
+                SyncJob = syncJob,
+                CurrentPart = 1,
+                Exclusionary = false
+            };
+
+            _groupExists = true;
+            _groupCount = transitiveGroupCount;
+
+            var nestedGroups = Enumerable.Range(0, transitiveGroupCount)
+                .Select(i => new AzureADGroup { ObjectId = Guid.NewGuid() })
+                .ToList();
+
+            _graphGroupRepository.Setup(x => x.GetDirectGroupTypeMembersAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(nestedGroups);
+
+            _durableOrchestrationContext.Setup(x => x.GetInput<GroupMembershipRequest>()).Returns(request);
+            _durableOrchestrationContext.SetupGet(x => x.IsReplaying).Returns(false);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
+                                        .ReturnsAsync(_groupExists);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _groupCount = await CallGroupsReaderFunctionAsync(req as GetTransitiveGroupCountRequest);
+                                        })
+                                        .ReturnsAsync(() => _groupCount);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LogNestedGroupsRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            await CallLogNestedGroupsFunctionAsync(req as LogNestedGroupsRequest);
+                                        });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            await CallJobStatusUpdaterFunctionAsync(req as JobStatusUpdaterRequest);
+                                        });
+
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, _telemetryClient);
+            var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            Assert.AreEqual(SyncStatus.NestedGroupsFound, response.Status);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(LogNestedGroupsFunction)),
+                It.Is<LogNestedGroupsRequest>(r => r.RunId == runId && r.GroupId == groupId),
+                It.IsAny<TaskOptions>()), Times.Once);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)),
+                It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.NestedGroupsFound && r.SyncJob.Id == syncJob.Id),
+                It.IsAny<TaskOptions>()), Times.Once);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(
+                It.Is<TaskName>(n => n.Name == nameof(MembersReaderFunction)),
+                It.IsAny<MembersReaderRequest>(),
+                It.IsAny<TaskOptions>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task WhenSourceDiffersFromDestinationWithNestedGroups_ShouldContinueNormalProcessing()
+        {
+            var runId = Guid.NewGuid();
+            var destinationGroupId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid(); // Source differs from destination
+            var transitiveGroupCount = 3; // Has nested groups but not self-referencing
+
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                TargetOfficeGroupId = destinationGroupId,
+                RunId = runId,
+                Status = "InProgress",
+                Query = $"[{{\"type\":\"GroupMembership\",\"sources\":[{sourceGroupId}]}}]"
+            };
+
+            var request = new GroupMembershipRequest
+            {
+                RunId = runId,
+                GroupId = destinationGroupId,
+                SourceGroup = new AzureADGroup { ObjectId = sourceGroupId },
+                SyncJob = syncJob,
+                CurrentPart = 1,
+                Exclusionary = false
+            };
+
+            _groupExists = true;
+            _groupCount = transitiveGroupCount;
+            _membersReaderResponse = string.Empty;
+
+            _durableOrchestrationContext.Setup(x => x.GetInput<GroupMembershipRequest>()).Returns(request);
+            _durableOrchestrationContext.SetupGet(x => x.IsReplaying).Returns(false);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
+                                        .ReturnsAsync(_groupExists);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _groupCount = await CallGroupsReaderFunctionAsync(req as GetTransitiveGroupCountRequest);
+                                        })
+                                        .ReturnsAsync(() => _groupCount);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<MembersReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _membersReaderResponse = await CallMembersReaderFunctionAsync(req as MembersReaderRequest);
+                                        })
+                                        .ReturnsAsync(() => _membersReaderResponse);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupMembershipFileResult>(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _membershipFileResult = await CallTransitiveAndDeltaUsersSenderFunctionAsync(req as TransitiveAndDeltaUsersSenderRequest);
+                                        })
+                                        .ReturnsAsync(() => new GroupMembershipFileResult { FilePath = _filePath, MemberCount = _userCount });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            await CallDeleteBlobFunctionAsync(req as DeleteBlobRequest);
+                                        });
+
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, _telemetryClient);
+            var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
+            Assert.AreEqual(_filePath, response.FilePath);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(LogNestedGroupsFunction)),
+                It.IsAny<LogNestedGroupsRequest>(),
+                It.IsAny<TaskOptions>()), Times.Never);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)),
+                It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.NestedGroupsFound),
+                It.IsAny<TaskOptions>()), Times.Never);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync<string>(
+                It.Is<TaskName>(n => n.Name == nameof(MembersReaderFunction)),
+                It.IsAny<MembersReaderRequest>(),
+                It.IsAny<TaskOptions>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task WhenSourceEqualsDestinationWithoutNestedGroups_ShouldContinueNormalProcessing()
+        {
+            var runId = Guid.NewGuid();
+            var groupId = Guid.NewGuid();
+            var sourceGroupId = groupId; // Source equals destination
+            var transitiveGroupCount = 0; // No nested groups
+
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                TargetOfficeGroupId = groupId,
+                RunId = runId,
+                Status = "InProgress",
+                Query = $"[{{\"type\":\"GroupMembership\",\"sources\":[{sourceGroupId}]}}]"
+            };
+
+            var request = new GroupMembershipRequest
+            {
+                RunId = runId,
+                GroupId = groupId,
+                SourceGroup = new AzureADGroup { ObjectId = sourceGroupId },
+                SyncJob = syncJob,
+                CurrentPart = 1,
+                Exclusionary = false
+            };
+
+            _groupExists = true;
+            _groupCount = transitiveGroupCount;
+            _deltaUserReaderResponse = new DeltaUrls { DeltaUrl = "delta-url", NextPageUrl = string.Empty };
+
+            _durableOrchestrationContext.Setup(x => x.GetInput<GroupMembershipRequest>()).Returns(request);
+            _durableOrchestrationContext.SetupGet(x => x.IsReplaying).Returns(false);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
+                                        .ReturnsAsync(_groupExists);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetTransitiveGroupCountRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _groupCount = await CallGroupsReaderFunctionAsync(req as GetTransitiveGroupCountRequest);
+                                        })
+                                        .ReturnsAsync(() => _groupCount);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<DeltaUrls>(It.IsAny<TaskName>(), It.IsAny<DeltaUserReaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _deltaUserReaderResponse = await CallDeltaUserReaderFunctionAsync(req as DeltaUserReaderRequest);
+                                        })
+                                        .ReturnsAsync(() => _deltaUserReaderResponse);
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<GroupMembershipFileResult>(It.IsAny<TaskName>(), It.IsAny<TransitiveAndDeltaUsersSenderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            _membershipFileResult = await CallTransitiveAndDeltaUsersSenderFunctionAsync(req as TransitiveAndDeltaUsersSenderRequest);
+                                        })
+                                        .ReturnsAsync(() => new GroupMembershipFileResult { FilePath = _filePath, MemberCount = _userCount });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            await CallDeleteBlobFunctionAsync(req as DeleteBlobRequest);
+                                        });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<CacheUploaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            await CallCacheUploaderFunctionAsync(req as CacheUploaderRequest);
+                                        });
+
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeltaLinkUploaderRequest>(), It.IsAny<TaskOptions>()))
+                                        .Callback<TaskName, object, TaskOptions>(async (name, req, options) =>
+                                        {
+                                            await CallDeltaLinkUploaderFunctionAsync(req as DeltaLinkUploaderRequest);
+                                        });
+
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, _telemetryClient);
+            var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
+
+            Assert.AreEqual(SyncStatus.InProgress, response.Status);
+            Assert.AreEqual(_filePath, response.FilePath);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(LogNestedGroupsFunction)),
+                It.IsAny<LogNestedGroupsRequest>(),
+                It.IsAny<TaskOptions>()), Times.Never);
+
+            _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)),
+                It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.NestedGroupsFound),
+                It.IsAny<TaskOptions>()), Times.Never);
+        }
     }
 }
 

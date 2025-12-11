@@ -139,10 +139,10 @@ namespace Hosts.GroupMembershipObtainer
                                                                                                                             Exclusionary = mainRequest.Exclusionary
                                                                                                                         });
 
-                        if (sgResponse.Status == SyncStatus.SecurityGroupNotFound)
+                        if (sgResponse.Status == SyncStatus.SecurityGroupNotFound || sgResponse.Status == SyncStatus.NestedGroupsFound)
                         {
-                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.SecurityGroupNotFound });
-                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.SecurityGroupNotFound, ResultStatus = ResultStatus.Success, RunId = runId });
+                            await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = sgResponse.Status });
+                            await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = sgResponse.Status, ResultStatus = ResultStatus.Success, RunId = runId });
                             return;
                         }
 
