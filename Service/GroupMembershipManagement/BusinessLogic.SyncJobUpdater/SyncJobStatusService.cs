@@ -28,6 +28,13 @@ namespace BusinessLogic.SyncJobUpdater
         {
             await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
 
+            // Some callers use this method to persist SyncJob field updates without changing status.
+            // In that case we must not write a SyncJobHistory record with a default/incorrect status.
+            if (!status.HasValue && history == null)
+            {
+                return;
+            }
+
             if (history == null)
             {
                 var now = DateTime.UtcNow;
@@ -35,7 +42,7 @@ namespace BusinessLogic.SyncJobUpdater
                 {
                     SyncJobId = job.Id,
                     RunId = job.RunId ?? Guid.Empty,
-                    Status = (status ?? SyncStatus.Error).ToString(),
+                    Status = status.Value.ToString(),
                     UpdatedByFunction = functionName,
                     StartTime = job.LastRunTime,
                     CreatedAt = now,
