@@ -100,7 +100,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
                       label: jsxFormat(
                         strings.Disclaimer.autoSubscribeSettings,
                         <strong>{strings.Disclaimer.membersAutoFollowGroupConversationsOption}</strong>,
-                        <strong><a href="https://myaccount.microsoft.com/groups" target="_blank" rel="noopener noreferrer" style={{ color: '#0078D4', textDecoration: 'underline' }}>{strings.Disclaimer.myGroupsUI}</a></strong>
+                        <strong><a href="https://myaccount.microsoft.com/groups" target="_blank" rel="noopener noreferrer" style={{ color: theme.palette.themePrimary, textDecoration: 'underline' }}>{strings.Disclaimer.myGroupsUI}</a></strong>
                       )
                     },
                     { id: 'authorizedSenders', label: jsxFormat(strings.Disclaimer.authorizedSenders,<strong>{strings.Disclaimer.authorizedSendersBoldNote}</strong>) },
