@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
