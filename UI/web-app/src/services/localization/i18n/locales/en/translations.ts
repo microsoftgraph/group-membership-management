@@ -511,8 +511,7 @@ export const strings: IStrings = {
       expandAll: 'Expand all',
       collapseAll: 'Collapse all',
       allUsersInGroup: 'All Users in {0}',
-      allUsersInFallback: 'All Users in Group',
-      autoFollowGroupConversationsReminder: 'The {0} option must be checked for members to receive emails and calendar invitations in their personal inbox by default. Please review your group settings in the {1} before proceeding with GMM onboarding.',
+      allUsersInFallback: 'All Users in Group'
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',

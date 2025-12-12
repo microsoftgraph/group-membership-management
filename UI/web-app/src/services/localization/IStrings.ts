@@ -507,7 +507,6 @@ export type IStrings = {
       collapseAll: string;
       allUsersInGroup: string;
       allUsersInFallback: string;
-      autoFollowGroupConversationsReminder: string;
     },
     CreateGroup: {
       createNewGroup: string;

@@ -513,8 +513,7 @@ export const strings: IStrings = {
       expandAll: 'Expandir todo',
       collapseAll: 'Contraer todo',
       allUsersInGroup: 'Todos los usuarios en {0}',
-      allUsersInFallback: 'Todos los usuarios en el grupo',
-      autoFollowGroupConversationsReminder: 'La opción {0} debe estar seleccionada para que los miembros reciban correos electrónicos e invitaciones de calendario en su bandeja de entrada personal de forma predeterminada. Revise la configuración de su grupo en {1} antes de continuar con la incorporación en GMM.',
+      allUsersInFallback: 'Todos los usuarios en el grupo'
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',
