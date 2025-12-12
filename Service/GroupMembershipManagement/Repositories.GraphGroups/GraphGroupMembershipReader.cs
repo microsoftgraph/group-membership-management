@@ -89,7 +89,7 @@ namespace Repositories.GraphGroups
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"From group {groupId}, transitive group count {count}\n"
+                Message = $"From group {groupId}, transitive count of nested groups: {count}\n"
             });
 
             return count;
