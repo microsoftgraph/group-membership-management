@@ -27,6 +27,8 @@ module teamsChannelMembershipObtainerStorageAccountProd 'storageAccount.bicep' =
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'teamsChannelMembershipObtainerStorageAccountProd'
+    appPackageContainerSettingName: 'teamsChannelMembershipObtainerAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
   }
 }
 

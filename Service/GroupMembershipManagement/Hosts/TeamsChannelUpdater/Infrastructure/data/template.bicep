@@ -27,6 +27,9 @@ module teamsChannelUpdaterStorageAccountProd 'storageAccount.bicep' = {
     keyVaultName: keyVaultName
     location: location
     storageAccountSettingName: 'teamsChannelUpdaterStorageAccountProd'
+    appPackageContainerSettingName: 'teamsChannelUpdaterAppPackageContainerProd'
+    appPackageContainerName: 'app-package'
+
   }
 }
 
