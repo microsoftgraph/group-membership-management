@@ -35,16 +35,16 @@ param subscriptionId string = subscription().subscriptionId
 param tenantId string
 
 @description('SQL SKU Name')
-param sqlSkuName string
+param sqlSkuName string = 'GP_S_Gen5'
 
 @description('SQL SKU Tier')
-param sqlSkuTier string
+param sqlSkuTier string = 'GeneralPurpose'
 
 @description('SQL SKU Family')
-param sqlSkuFamily string
+param sqlSkuFamily string = 'Gen5'
 
 @description('SQL SKU Capacity')
-param sqlSkuCapacity int
+param sqlSkuCapacity int = 4
 
 @description('Key vault name.')
 @minLength(1)
@@ -84,7 +84,75 @@ param serviceBusName string = '${solutionAbbreviation}-${resourceGroupClassifica
 param serviceBusSku string = 'Standard'
 
 @description('Enter service bus topic\'s subscriptions.')
-param serviceBusTopicSubscriptions topicSubscription[]
+param serviceBusTopicSubscriptions topicSubscription[] = [
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'GraphUpdater'
+    ruleName: 'updaterType'
+    ruleSqlExpression: 'Type = \'GroupMembership\''
+  }
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'TeamsChannelUpdater'
+    ruleName: 'updaterType'
+    ruleSqlExpression: 'Type = \'TeamsChannelMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'PlaceMembership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'PlaceMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'GroupMembership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'GroupMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'TeamsChannelMembership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'TeamsChannelMembership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'GroupOwnership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'GroupOwnership\''
+  }
+  {
+    topicName: 'syncJobs'
+    subscriptionName: 'SqlMembership'
+    ruleName: 'syncType'
+    ruleSqlExpression: 'Type = \'SqlMembership\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Small'
+    ruleName: 'jobSize'
+    ruleSqlExpression: 'LaneSize = \'Small\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Large'
+    ruleName: 'jobSize'
+    ruleSqlExpression: 'LaneSize = \'Large\''
+  }
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'GraphUpdater_small_1'
+    ruleName: 'GraphUpdater_small_rule'
+    ruleSqlExpression: 'Type = \'groupmembership_small_1\''
+  }
+  {
+    topicName: 'membershipUpdaters'
+    subscriptionName: 'GraphUpdater_large_1'
+    ruleName: 'GraphUpdater_large_rule'
+    ruleSqlExpression: 'Type = \'groupmembership_large_1\''
+    sessionEnabled: true
+  }
+]
 
 @description('Enter membership aggregator service bus queue name')
 param serviceBusMembershipAggregatorQueue string = 'membershipAggregator'

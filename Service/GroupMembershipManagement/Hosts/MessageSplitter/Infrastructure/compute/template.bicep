@@ -60,7 +60,16 @@ param appConfigurationEndpoint string = 'https://${solutionAbbreviation}-appconf
 param setRBACPermissions bool = false
 
 @description('Available messageSplitter subscriptions')
-param availableMessageSplitterSubscriptions array
+param availableMessageSplitterSubscriptions array = [
+  {
+    name: 's1'
+    subscription: 'Small'
+  }
+  {
+    name: 'l1'
+    subscription: 'Large'
+  }
+]
 
 var functionFullName = '${functionAppName}-MessageSplitter-${instanceIdentifier}'
 var messageSplitterSubscription = filter(availableMessageSplitterSubscriptions, x => x.name == instanceIdentifier)[0].subscription

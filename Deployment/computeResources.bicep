@@ -18,7 +18,16 @@ param uiLocation string
 param pipeline string
 
 // Message Splitter
-param availableMessageSplitterSubscriptions array
+param availableMessageSplitterSubscriptions array = [
+  {
+    name: 's1'
+    subscription: 'Small'
+  }
+  {
+    name: 'l1'
+    subscription: 'Large'
+  }
+]
 
 //AzureUserReader
 param storageAccountSecretName string = 'adfStorageAccountName'
