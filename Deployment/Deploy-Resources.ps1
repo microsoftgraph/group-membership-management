@@ -735,6 +735,7 @@ function Reset-Functions {
 
     Write-Host "`nWaiting 60 seconds for function tables/queues to be deleted..." -ForegroundColor Yellow
     Start-Sleep -Seconds 60
+    Write-Host "✓ Wait complete.`n" -ForegroundColor Green
 
     Write-Host ""
     Write-Host ("=" * 60) -ForegroundColor Green
@@ -1295,7 +1296,9 @@ function Stop-FunctionApps {
 function Start-FunctionApps {
     param (
         [Parameter(Mandatory = $true)]
-        [string]$ResourceGroupName
+        [string]$ResourceGroupName,
+        [Parameter(Mandatory = $false)]
+        [bool]$SkipJobTrigger = $false
     )
 
     $rgObject = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
@@ -1308,6 +1311,10 @@ function Start-FunctionApps {
 
     $functionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName
     foreach ($functionApp in $functionApps) {
+        if ($SkipJobTrigger -eq $true -and $functionApp.Name -match "JobTrigger") {
+            Write-Host "Skipping start of job trigger function app $($functionApp.Name)"
+            continue
+        }
         Write-Host "Starting function app $($functionApp.Name)"
         Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name
     }
