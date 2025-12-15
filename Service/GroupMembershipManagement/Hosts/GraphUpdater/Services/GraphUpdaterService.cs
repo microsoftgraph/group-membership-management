@@ -136,6 +136,7 @@ namespace Services
                 Status = status.ToString(),
                 UpdatedByFunction = "GraphUpdater",
                 ThresholdViolations = job.ThresholdViolations > 0 ? job.ThresholdViolations : (int?)null,
+                StartTime = job.LastSuccessfulStartTime,
                 EndTime = IsTerminalStatus(status) ? currentDate : (DateTime?)null,
                 CreatedAt = currentDate,
                 UpdatedAt = currentDate
@@ -159,8 +160,12 @@ namespace Services
                    status == SyncStatus.SecurityGroupNotFound || 
                    status == SyncStatus.NotOwnerOfTargetGroup ||
                    status == SyncStatus.DestinationNotFound ||
+                   status == SyncStatus.DestinationGroupNotFound ||
                    status == SyncStatus.ThresholdExceeded ||
-                   status == SyncStatus.CustomerPaused;
+                   status == SyncStatus.CustomerPaused ||
+                   status == SyncStatus.TransientError ||
+                   status == SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup;
+        }
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {

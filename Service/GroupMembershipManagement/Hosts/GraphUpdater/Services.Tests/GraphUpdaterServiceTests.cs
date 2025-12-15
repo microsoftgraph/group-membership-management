@@ -164,7 +164,8 @@ namespace Services.Tests
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
-            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
+            var lastSuccessfulStartTime = DateTime.UtcNow.AddMinutes(-30);
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime, LastSuccessfulStartTime = lastSuccessfulStartTime };
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
@@ -178,7 +179,11 @@ namespace Services.Tests
             mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                 It.IsAny<SyncJob>(),
                 SyncStatus.Idle,
-                It.Is<SyncJobHistory>(h => h.UpdatedByFunction == "GraphUpdater" && h.RunId == runId)),
+                It.Is<SyncJobHistory>(h => 
+                    h.UpdatedByFunction == "GraphUpdater" && 
+                    h.RunId == runId &&
+                    h.StartTime == lastSuccessfulStartTime &&
+                    h.EndTime.HasValue)),
                 Times.Once);
         }
 
@@ -200,7 +205,8 @@ namespace Services.Tests
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup,mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
-            var job = new SyncJob { Id = Guid.NewGuid(), DryRunTimeStamp = lastRunTime };
+            var lastSuccessfulStartTime = DateTime.UtcNow.AddMinutes(-30);
+            var job = new SyncJob { Id = Guid.NewGuid(), DryRunTimeStamp = lastRunTime, LastSuccessfulStartTime = lastSuccessfulStartTime };
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
@@ -214,7 +220,11 @@ namespace Services.Tests
             mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                 It.IsAny<SyncJob>(),
                 SyncStatus.Idle,
-                It.Is<SyncJobHistory>(h => h.UpdatedByFunction == "GraphUpdater" && h.RunId == runId)),
+                It.Is<SyncJobHistory>(h => 
+                    h.UpdatedByFunction == "GraphUpdater" && 
+                    h.RunId == runId &&
+                    h.StartTime == lastSuccessfulStartTime &&
+                    h.EndTime.HasValue)),
                 Times.Once);
         }
 
