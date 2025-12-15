@@ -59,6 +59,7 @@ namespace BusinessLogic.SyncJobUpdater
 
             if (existingHistory != null)
             {
+                existingHistory.StartTime = history.StartTime ?? existingHistory.StartTime;
                 existingHistory.EndTime = history.EndTime ?? existingHistory.EndTime;
                 existingHistory.Status = history.Status;
                 existingHistory.UsersAdded = history.UsersAdded ?? existingHistory.UsersAdded;
