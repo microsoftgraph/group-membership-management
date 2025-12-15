@@ -18,6 +18,9 @@ using Repositories.TeamsChannel;
 using Services.TeamsChannelUpdater;
 using Services.TeamsChannelUpdater.Contracts;
 using System;
+using Repositories.EntityFramework;
+using Services.Contracts;
+using BusinessLogic.SyncJobUpdater;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -93,7 +96,9 @@ namespace Hosts.TeamsChannelUpdater
                         var sender = client.CreateSender(notificationsQueue);
                         return new ServiceBusQueueRepository(sender);
                     })
-                    .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>();
+                    .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>()
+                    .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
+                    .AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                 })
                 .Build();
 
