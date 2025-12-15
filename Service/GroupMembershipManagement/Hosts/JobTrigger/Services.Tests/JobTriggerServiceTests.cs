@@ -427,6 +427,33 @@ namespace Services.Tests
 
 
         [TestMethod]
+        public async Task VerifyTerminatingStatusSetsHistoryEndTime()
+        {
+            SyncJobHistory capturedHistory = null;
+
+            _syncJobStatusService
+                .Setup(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.NotOwnerOfDestinationGroup, It.IsAny<SyncJobHistory?>(), It.IsAny<string>()))
+                .Callback<SyncJob, SyncStatus?, SyncJobHistory?, string>((job, status, history, functionName) =>
+                {
+                    capturedHistory = history;
+                    job.Status = status.ToString();
+                })
+                .Returns(Task.CompletedTask);
+
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, GroupMembership).First();
+            job.RunId = Guid.NewGuid();
+
+            await _jobTriggerService.UpdateSyncJobAsync(SyncStatus.NotOwnerOfDestinationGroup, job);
+
+            Assert.IsNotNull(capturedHistory);
+            Assert.AreEqual(job.Id, capturedHistory.SyncJobId);
+            Assert.AreEqual(job.RunId.Value, capturedHistory.RunId);
+            Assert.IsTrue(capturedHistory.EndTime.HasValue);
+            Assert.IsFalse(capturedHistory.StartTime.HasValue);
+        }
+
+
+        [TestMethod]
         public async Task VerifyJobStatusIsUpdatedToInProgressDueToTenantAPIPermissions()
         {
             var jobs = 2;

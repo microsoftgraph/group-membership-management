@@ -6,6 +6,7 @@ using Models.Entities;
 using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -181,6 +182,9 @@ namespace Services
 
         public async Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job)
         {
+            var now = DateTime.UtcNow;
+            SyncJobHistory history = null;
+
             if (status == SyncStatus.InProgress)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage
@@ -189,7 +193,8 @@ namespace Services
                     Message = $"Starting job."
                 });
 
-                job.LastSuccessfulStartTime = DateTime.UtcNow;
+                job.LastRunTime = now;
+                job.LastSuccessfulStartTime = now;
             }
 
             if (status == SyncStatus.StuckInProgress)
@@ -200,11 +205,26 @@ namespace Services
                     Message = $"Restarting job stuck in InProgress."
                 });
 
-                job.LastRunTime = DateTime.UtcNow;
-                job.LastSuccessfulStartTime = DateTime.UtcNow;
+                job.LastRunTime = now;
+                job.LastSuccessfulStartTime = now;
             }
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status, functionName: "JobTrigger");
+            if (status.HasValue
+                && status.Value != SyncStatus.InProgress
+                && status.Value != SyncStatus.StuckInProgress
+                && job.RunId.HasValue)
+            {
+                history = new SyncJobHistory
+                {
+                    SyncJobId = job.Id,
+                    RunId = job.RunId.Value,
+                    EndTime = now,
+                    Status = status.Value.ToString(),
+                    UpdatedByFunction = "JobTrigger"
+                };
+            }
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "JobTrigger");
         }
         public async Task SendMessageAsync(SyncJob job)
         {
