@@ -116,12 +116,12 @@ namespace Services.TeamsChannelUpdater
                 RunId = runId,
                 Status = status.ToString(),
                 ThresholdViolations = job.ThresholdViolations,
-                UpdatedByFunction = nameof(TeamsChannelUpdaterService),
+                UpdatedByFunction = "TeamsChannelUpdater",
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,
                 UpdatedAt = currentDate
             };
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status, historyPatch, nameof(TeamsChannelUpdaterService));
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, historyPatch, "TeamsChannelUpdater");
 
             var groupId = await GetGroupIdAsync(job);
 
@@ -141,12 +141,12 @@ namespace Services.TeamsChannelUpdater
                 RunId = syncJob.RunId ?? Guid.Empty,
                 Status = SyncStatus.Error.ToString(),
                 ThresholdViolations = syncJob.ThresholdViolations,
-                UpdatedByFunction = nameof(TeamsChannelUpdaterService),
+                UpdatedByFunction = "TeamsChannelUpdater",
                 EndTime = now,
                 UpdatedAt = now
             };
 
-            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Error, historyPatch, nameof(TeamsChannelUpdaterService));
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Error, historyPatch, "TeamsChannelUpdater");
         }
 
         public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members)
