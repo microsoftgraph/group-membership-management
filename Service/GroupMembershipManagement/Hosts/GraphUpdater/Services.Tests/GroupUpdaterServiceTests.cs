@@ -9,6 +9,7 @@ using Models;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Mocks;
+using Services.Contracts;
 using Services.Entities;
 using Services.Tests.Mocks;
 using System;
@@ -34,7 +35,7 @@ namespace Services.Tests
             var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
-            var mockSyncJobStatusService = new Mock<SyncJobStatusService>(null, null);
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
             var runId = Guid.NewGuid();
@@ -69,7 +70,7 @@ namespace Services.Tests
             var mockNotificationType = new MockNotificationTypesRepository();
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
-            var mockSyncJobStatusService = new Mock<SyncJobStatusService>(null, null);
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
 
             var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
             var runId = Guid.NewGuid();

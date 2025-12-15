@@ -58,7 +58,7 @@ namespace Hosts.GraphUpdater
             })
 
             .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
-            .AddScoped<SyncJobStatusService>()
+            .AddScoped<ISyncJobStatusService, SyncJobStatusService>()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphUpdaterService, GraphUpdaterService>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>

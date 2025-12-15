@@ -32,7 +32,7 @@ namespace Services
         private readonly INotificationTypesRepository _notificationTypesRepository;
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
-        private readonly BusinessLogic.SyncJobUpdater.SyncJobStatusService _syncJobStatusService;
+        private readonly ISyncJobStatusService _syncJobStatusService;
         private Guid _runId;
         public Guid RunId
         {
@@ -55,7 +55,7 @@ namespace Services
                 INotificationTypesRepository notificationTypesRepository,
 			    IJobNotificationsRepository jobNotificationRepository,
                 IServiceBusQueueRepository serviceBusQueueRepository,
-                BusinessLogic.SyncJobUpdater.SyncJobStatusService syncJobStatusService)
+            ISyncJobStatusService syncJobStatusService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -111,6 +111,8 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
+            job.Status = status.ToString();
+
             var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
             var currentDate = DateTime.UtcNow;
@@ -135,14 +137,12 @@ namespace Services
                 RunId = runId,
                 Status = status.ToString(),
                 UpdatedByFunction = "GraphUpdater",
-                ThresholdViolations = job.ThresholdViolations > 0 ? job.ThresholdViolations : (int?)null,
-                StartTime = job.LastSuccessfulStartTime,
-                EndTime = IsTerminalStatus(status) ? currentDate : (DateTime?)null,
-                CreatedAt = currentDate,
+                ThresholdViolations = job.ThresholdViolations,
+                EndTime = status != SyncStatus.InProgress ? currentDate : null,              
                 UpdatedAt = currentDate
             };
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history);
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "GraphUpdater");
             
             var groupId = await GetGroupIdAsync(job);
 
@@ -153,19 +153,7 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }
 
-        private bool IsTerminalStatus(SyncStatus status)
-        {
-            return status == SyncStatus.Idle || 
-                   status == SyncStatus.Error || 
-                   status == SyncStatus.SecurityGroupNotFound || 
-                   status == SyncStatus.NotOwnerOfTargetGroup ||
-                   status == SyncStatus.DestinationNotFound ||
-                   status == SyncStatus.DestinationGroupNotFound ||
-                   status == SyncStatus.ThresholdExceeded ||
-                   status == SyncStatus.CustomerPaused ||
-                   status == SyncStatus.TransientError ||
-                   status == SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup;
-        }
+
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
