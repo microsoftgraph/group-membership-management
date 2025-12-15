@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.ServiceBus" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
     <ProjectReference Include="..\..\..\DIConcreteTypes\DIConcreteTypes.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />

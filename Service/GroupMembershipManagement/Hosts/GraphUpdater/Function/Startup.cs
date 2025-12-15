@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
+using BusinessLogic.SyncJobUpdater;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using GraphUpdater.Entities;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Options;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Services;
@@ -55,6 +57,8 @@ namespace Hosts.GraphUpdater
                 };
             })
 
+            .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
+            .AddScoped<SyncJobStatusService>()
             .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
             .AddScoped<IGraphUpdaterService, GraphUpdaterService>()
             .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>

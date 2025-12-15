@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights;
 using Models;
 using Models.ServiceBus;
 using Models.Notifications;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -31,6 +32,7 @@ namespace Services
         private readonly INotificationTypesRepository _notificationTypesRepository;
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly BusinessLogic.SyncJobUpdater.SyncJobStatusService _syncJobStatusService;
         private Guid _runId;
         public Guid RunId
         {
@@ -52,7 +54,8 @@ namespace Services
                 IDatabaseGroupsRepository databaseGroupsRepository,
                 INotificationTypesRepository notificationTypesRepository,
 			    IJobNotificationsRepository jobNotificationRepository,
-                IServiceBusQueueRepository serviceBusQueueRepository)
+                IServiceBusQueueRepository serviceBusQueueRepository,
+                BusinessLogic.SyncJobUpdater.SyncJobStatusService syncJobStatusService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -64,6 +67,7 @@ namespace Services
             _jobNotificationRepository = jobNotificationRepository ?? throw new ArgumentNullException(nameof(jobNotificationRepository));
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
@@ -125,7 +129,19 @@ namespace Services
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            var history = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                Status = status.ToString(),
+                UpdatedByFunction = "GraphUpdater",
+                ThresholdViolations = job.ThresholdViolations > 0 ? job.ThresholdViolations : (int?)null,
+                EndTime = IsTerminalStatus(status) ? currentDate : (DateTime?)null,
+                CreatedAt = currentDate,
+                UpdatedAt = currentDate
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history);
             
             var groupId = await GetGroupIdAsync(job);
 
@@ -135,6 +151,16 @@ namespace Services
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
         }
+
+        private bool IsTerminalStatus(SyncStatus status)
+        {
+            return status == SyncStatus.Idle || 
+                   status == SyncStatus.Error || 
+                   status == SyncStatus.SecurityGroupNotFound || 
+                   status == SyncStatus.NotOwnerOfTargetGroup ||
+                   status == SyncStatus.DestinationNotFound ||
+                   status == SyncStatus.ThresholdExceeded ||
+                   status == SyncStatus.CustomerPaused;
 
         public async Task<SyncJob> GetSyncJobAsync(Guid syncJobId)
         {
