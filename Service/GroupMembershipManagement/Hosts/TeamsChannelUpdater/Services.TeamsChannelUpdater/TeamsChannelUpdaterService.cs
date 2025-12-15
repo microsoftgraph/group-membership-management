@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Models;
 using Models.Entities;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.TeamsChannelUpdater.Contracts;
@@ -107,7 +108,20 @@ namespace Services.TeamsChannelUpdater
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status);
+            // TeamsChannelUpdater only owns end-time + threshold violations history updates.
+            // StartTime is created by JobTrigger when the run is created.
+            var historyPatch = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                Status = status.ToString(),
+                ThresholdViolations = job.ThresholdViolations,
+                UpdatedByFunction = nameof(TeamsChannelUpdaterService),
+                EndTime = status != SyncStatus.InProgress ? currentDate : null,
+                UpdatedAt = currentDate
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, historyPatch, nameof(TeamsChannelUpdaterService));
 
             var groupId = await GetGroupIdAsync(job);
 
@@ -120,7 +134,19 @@ namespace Services.TeamsChannelUpdater
 
         public async Task MarkSyncJobAsErroredAsync(SyncJob syncJob)
         {
-            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Error);
+            var now = DateTime.UtcNow;
+            var historyPatch = new SyncJobHistory
+            {
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId ?? Guid.Empty,
+                Status = SyncStatus.Error.ToString(),
+                ThresholdViolations = syncJob.ThresholdViolations,
+                UpdatedByFunction = nameof(TeamsChannelUpdaterService),
+                EndTime = now,
+                UpdatedAt = now
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Error, historyPatch, nameof(TeamsChannelUpdaterService));
         }
 
         public async Task<(int SuccessCount, List<AzureADTeamsUser> UsersToRetry, List<AzureADTeamsUser> UsersNotFound)> AddUsersToChannelAsync(AzureADTeamsChannel azureADTeamsChannel, List<AzureADTeamsUser> members)
