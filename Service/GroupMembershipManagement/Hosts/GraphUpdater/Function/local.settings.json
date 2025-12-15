@@ -26,7 +26,6 @@
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "serviceBusMembershipUpdatersTopic": "",
     "serviceBusNotificationsQueue": "",
-    "serviceBusSyncJobUpdaterQueue": "",
     "triggerSchedule": "0,30 * * * * *",
     "triggerDelay": "0",
     "instanceIdentifier": "small|large",
