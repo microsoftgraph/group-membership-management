@@ -1192,6 +1192,20 @@ function Set-FunctionAppCode {
         Retry-Operation `
             -Operation $publishCodeOperation `
             -OperationName "Deploying code for $($functionApp.Name)"
+
+        Write-Host "Successfully published code for function app $($functionApp.Name)`n" -ForegroundColor Green
+
+        if ($functionApp.Kind -eq "functionapp") {
+            Write-Host "Function app $($functionApp.Name) is on Comsumption. Setting functionAppScaleLimit = 1..."
+            Set-AzResource -ResourceGroupName $ComputeResourceGroup `
+                -ResourceType "Microsoft.Web/sites" `
+                -ResourceName "$($functionApp.Name)/config/web" `
+                -ApiVersion "2022-03-01" `
+                -Properties @{ functionAppScaleLimit = 1 } `
+                -Force
+            Write-Host "Successfully set functionAppScaleLimit for $($functionApp.Name)`n" -ForegroundColor Green
+        }
+        
     }
 
     # publish web api code
@@ -1206,6 +1220,8 @@ function Set-FunctionAppCode {
     Retry-Operation `
         -Operation $publishWebAPICodeOperation `
         -OperationName "Deploying code for $($webApi.Name)"
+    
+    Write-Host "Successfully published code for web api app $($webApi.Name)`n" -ForegroundColor Green
 }
 
 function Set-KeyVaultFirewallRules {
