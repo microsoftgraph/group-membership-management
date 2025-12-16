@@ -111,8 +111,6 @@ namespace Services
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
-            job.Status = status.ToString();
-
             var isDryRunSync = job.IsDryRunEnabled || isDryRun;
 
             var currentDate = DateTime.UtcNow;
@@ -141,6 +139,8 @@ namespace Services
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,              
                 UpdatedAt = currentDate
             };
+
+            job.Status = status.ToString();
 
             await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "GraphUpdater");
             
