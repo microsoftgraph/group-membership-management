@@ -69,7 +69,9 @@ function Retry-Operation {
             Write-Warning $_.Exception.Message
 
             $retryCount++
+            
             if ($retryCount -ge $maxRetries) {
+                Write-Warning "'$OperationName' failed on retry attempt ($retryCount/$maxRetries). No more retries remaining."
                 throw
             }
 
