@@ -817,7 +817,7 @@ function Set-GMMResources {
         -DataTemplateDirectoryPath  $TemplateFilesDirectory `
         -ParameterHashtable         $ParameterHashtable `
         -AdditionalParameters       $commonParametersObject `
-        -SetRBACPermissions         $setRBACPermissions 
+        -SetRBACPermissions         $setRBACPermissions
 
     Start-Sleep -Seconds 10
 
