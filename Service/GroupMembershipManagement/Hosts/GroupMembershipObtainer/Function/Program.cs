@@ -20,6 +20,8 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using System;
+using BusinessLogic.SyncJobUpdater;
+using Services.Contracts;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -71,6 +73,7 @@ namespace Hosts.GroupMembershipObtainer
                     {
                         return new DeltaCachingConfig(services.GetService<IOptions<DeltaCachingConfig>>().Value.DeltaCacheEnabled);
                     });
+                    services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                     services.AddGraphAPIClient()
                     .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
                     .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
@@ -98,7 +101,8 @@ namespace Hosts.GroupMembershipObtainer
                             notificationsQueueRepository,
                             services.GetRequiredService<IDatabaseDestinationAttributesRepository>(),
                             services.GetRequiredService<ILoggingRepository>(),
-                            services.GetRequiredService<IDryRunValue>()
+                            services.GetRequiredService<IDryRunValue>(),
+                            services.GetRequiredService<ISyncJobStatusService>()
                         );
                     })
                     .AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>

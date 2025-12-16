@@ -12,6 +12,8 @@ using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
+using Models.SyncJobHistory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -39,6 +41,7 @@ namespace Tests.Services
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider;
         private Mock<IDatabaseDestinationAttributesRepository> _databaseDestinationAttributesRepository;
         private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
+        private Mock<ISyncJobStatusService> _syncJobStatusService;
         private int _usersToReturn;
         private QuerySample _querySample;
         private OrchestratorRequest _orchestratorRequest;
@@ -67,6 +70,7 @@ namespace Tests.Services
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _databaseDestinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _usersToReturn = 10;
             _querySample = QuerySample.GenerateQuerySample("GroupMembership");
 
@@ -101,7 +105,8 @@ namespace Tests.Services
                                     _serviceBusQueueRepository.Object,
                                     _databaseDestinationAttributesRepository.Object,
                                     _loggingRepository.Object,
-                                    _dryRunValue.Object
+                                    _dryRunValue.Object,
+                                    _syncJobStatusService.Object
                                     );
 
             var configurationRefresher = new Mock<IConfigurationRefresher>();
@@ -240,9 +245,11 @@ namespace Tests.Services
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Error)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.Error,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
         }
 
@@ -269,9 +276,11 @@ namespace Tests.Services
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.QueryNotValid,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
 
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
@@ -302,9 +311,11 @@ namespace Tests.Services
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.QueryNotValid)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.QueryNotValid,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
 
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.Is<ServiceBusMessage>(msg =>
@@ -344,9 +355,11 @@ namespace Tests.Services
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.SecurityGroupNotFound)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.SecurityGroupNotFound,
+                                                It.IsAny<SyncJobHistory>(),
+                                                "GroupMembershipObtainer"
                                             ), Times.Once);
         }
 
@@ -372,9 +385,11 @@ namespace Tests.Services
                 It.IsAny<string>()
             ), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                        It.IsAny<IEnumerable<SyncJob>>(),
-                                        It.Is<SyncStatus>(s => s == SyncStatus.Error)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.IsAny<SyncJob>(),
+                                        SyncStatus.Error,
+                                        It.IsAny<SyncJobHistory>(),
+                                        "GroupMembershipObtainer"
                                     ), Times.Once);
         }
 
@@ -403,9 +418,11 @@ namespace Tests.Services
             ), Times.Once);
 
             var currentUtcDate = _durableOrchestrationContext.Object.CurrentUtcDateTime;
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                        It.Is<IEnumerable<SyncJob>>(x => x.All(y => y.StartDate == currentUtcDate.AddMinutes(30))),
-                                        It.Is<SyncStatus>(s => s == SyncStatus.Idle)
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.Is<SyncJob>(x => x.StartDate == currentUtcDate.AddMinutes(30)),
+                                        SyncStatus.Idle,
+                                        It.IsAny<SyncJobHistory>(),
+                                        "GroupMembershipObtainer"
                                     ), Times.Once);
         }
 
@@ -438,9 +455,11 @@ namespace Tests.Services
                 It.IsAny<string>()
             ), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                        It.IsAny<IEnumerable<SyncJob>>(),
-                                        It.IsAny<SyncStatus>()
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                        It.IsAny<SyncJob>(),
+                                        It.IsAny<SyncStatus?>(),
+                                        It.IsAny<SyncJobHistory>(),
+                                        It.IsAny<string>()
                                     ), Times.Never);
         }
 

@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Services.Contracts;
 using Tests.FunctionApps.Mocks;
 using Tests.Services;
 using Models;
@@ -36,6 +37,7 @@ namespace Tests.FunctionApps
         private TelemetryClient _telemetryClient;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository;
         private Mock<IDatabaseDestinationAttributesRepository> _databaseDestinationAttributesRepository;
+        private Mock<ISyncJobStatusService> _syncJobStatusService;
         private Guid _destinationGroup;
         private List<AzureADUser> _allUsers;
         [TestInitialize]
@@ -55,6 +57,7 @@ namespace Tests.FunctionApps
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _databaseDestinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _destinationGroup = Guid.NewGuid();
             _allUsers = new List<AzureADUser>();
 
@@ -74,7 +77,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var testJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -123,7 +126,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var testJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -172,7 +175,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var testJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
@@ -223,7 +226,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -273,7 +276,7 @@ namespace Tests.FunctionApps
                 ThrowNonSocketExceptionFromGroupExists = errorOnGroupExists
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -324,7 +327,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
             {
@@ -356,7 +359,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -411,7 +414,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
 
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
 
             var sampleQuery = QuerySample.GenerateQuerySample("GroupMembership");
             var testJob = new SyncJob
@@ -442,7 +445,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
             _channelsRepository.Setup(x => x.GetChannelUsingSyncJobIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Channel { GroupId = new Guid("3ec876c5-59c2-44ee-b068-a8575995bf34"), SyncJobId = Guid.NewGuid() });
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var syncJob = new SyncJob { MembershipType = "TeamsChannelMembership" };
             var result = await calc.GetDestinationNameAsync(syncJob);
 
@@ -462,7 +465,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
             _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Group { GroupId = new Guid("3ec876c5-59c2-44ee-b068-a8575995bf34"), SyncJobId = Guid.NewGuid() });
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var syncJob = new SyncJob { MembershipType = "GroupMembership" };
             var result = await calc.GetDestinationNameAsync(syncJob);
 
@@ -482,7 +485,7 @@ namespace Tests.FunctionApps
                 ThrowSocketExceptionsFromGetUsersInGroupBeforeSuccess = getMembersExceptions
             };
             _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>())).ReturnsAsync(new Group { GroupId = new Guid("3ec876c5-59c2-44ee-b068-a8575995bf34"), SyncJobId = Guid.NewGuid() });
-            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun);
+            var calc = new SGMembershipCalculator(graphRepo, _blobRepository, _syncJobs, _groupsRepository.Object, _channelsRepository.Object, _notificationsQueueRepository.Object, _databaseDestinationAttributesRepository.Object, new MockLoggingRepository(), _dryRun, _syncJobStatusService.Object);
             var syncJob = new SyncJob { MembershipType = "GroupMembership" };
             var result = await calc.GetDestinationNameAsync(syncJob);
 

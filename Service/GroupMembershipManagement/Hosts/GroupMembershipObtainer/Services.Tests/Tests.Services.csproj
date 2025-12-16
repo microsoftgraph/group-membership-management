@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\..\Repositories.Mocks\Repositories.Mocks.csproj" />
     <ProjectReference Include="..\Function\GroupMembershipObtainer.csproj" />
     <ProjectReference Include="..\Services\GroupMembershipObtainerService\GroupMembershipObtainerService.csproj" />
+    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,10 +4,12 @@ using Models;
 using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
+using Models.SyncJobHistory;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,6 +31,8 @@ namespace Hosts.GroupMembershipObtainer
         private readonly bool _isGroupMembershipDryRunEnabled;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
+        private const string UpdatedByFunction = "GroupMembershipObtainer";
 
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
@@ -38,7 +42,8 @@ namespace Hosts.GroupMembershipObtainer
                                       IServiceBusQueueRepository notificationsQueueRepository,
                                       IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
                                       ILoggingRepository logging,
-                                      IDryRunValue dryRun
+                                      IDryRunValue dryRun,
+                                      ISyncJobStatusService syncJobStatusService
                                       )
         {
             _graphGroupRepository = graphGroupRepository;
@@ -50,6 +55,7 @@ namespace Hosts.GroupMembershipObtainer
             _notificationsQueueRepository = notificationsQueueRepository;
             _databaseDestinationAttributesRepository = databaseDestinationAttributesRepository;
             _isGroupMembershipDryRunEnabled = dryRun.DryRunEnabled;
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         private const int NumberOfGraphRetries = 5;
@@ -307,7 +313,17 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
-            await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
+            var history = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = job.RunId ?? Guid.Empty,
+                Status = status.ToString(),
+                UpdatedByFunction = UpdatedByFunction,
+                StartTime = job.LastRunTime,
+                EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, UpdatedByFunction);
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)

@@ -17,6 +17,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Services.Contracts;
 
 namespace Tests.Services
 {
@@ -39,6 +40,7 @@ namespace Tests.Services
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository;
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository;
+        private Mock<ISyncJobStatusService> _syncJobStatusService;
 
         private int _userCount;
         private bool _groupExists;
@@ -76,6 +78,7 @@ namespace Tests.Services
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
 
             _deltaUserReaderResponse = new DeltaUrls
             {
@@ -168,7 +171,8 @@ namespace Tests.Services
                                             _serviceBusQueueRepository.Object,
                                             _destinationAttributesRepository.Object,
                                             _loggingRepository.Object,
-                                            _dryRunValue.Object
+                                            _dryRunValue.Object,
+                                            _syncJobStatusService.Object
                                             );
 
             _durableOrchestrationContext.Setup(x => x.GetInput<GroupMembershipRequest>()).Returns(() => _groupMembershipRequest);
