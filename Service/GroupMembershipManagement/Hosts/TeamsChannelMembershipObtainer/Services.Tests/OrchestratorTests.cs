@@ -10,6 +10,7 @@ using Models.Entities;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
 namespace Services.Tests

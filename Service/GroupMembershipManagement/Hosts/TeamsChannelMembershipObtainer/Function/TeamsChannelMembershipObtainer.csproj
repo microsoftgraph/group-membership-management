@@ -36,6 +36,8 @@
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Logging\Repositories.Logging.csproj" />
     <ProjectReference Include="..\..\..\Repositories.TeamsChannel\Repositories.TeamsChannel.csproj" />
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
+    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
 	<ProjectReference Include="..\Services.Contracts\TeamsChannelMembershipObtainer.Service.Contracts.csproj" />
     <ProjectReference Include="..\Services\TeamsChannelMembershipObtainer.Service\TeamsChannelMembershipObtainer.Service.csproj" />
   </ItemGroup>

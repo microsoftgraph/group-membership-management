@@ -27,6 +27,9 @@
     <ProjectReference Include="..\..\..\Entities\Entities.csproj" />
     <ProjectReference Include="..\..\..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj" />
     <ProjectReference Include="..\Function\TeamsChannelMembershipObtainer.csproj" />
+    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
+    <ProjectReference Include="..\..\..\Models\Models.csproj" />
     <ProjectReference Include="..\Services.Contracts\TeamsChannelMembershipObtainer.Service.Contracts.csproj" />
     <ProjectReference Include="..\Services\TeamsChannelMembershipObtainer.Service\TeamsChannelMembershipObtainer.Service.csproj" />
   </ItemGroup>

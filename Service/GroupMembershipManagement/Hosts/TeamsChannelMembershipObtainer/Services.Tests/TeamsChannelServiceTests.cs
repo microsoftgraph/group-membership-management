@@ -12,6 +12,7 @@ using Repositories.Contracts;
 using System.Net;
 using TeamsChannelMembershipObtainer.Service;
 using TeamsChannelMembershipObtainer.Service.Contracts;
+using Services.Contracts;
 
 namespace Services.Tests
 {
@@ -29,6 +30,7 @@ namespace Services.Tests
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
+        private Mock<ISyncJobStatusService> _syncJobStatusService = null!;
         private Mock<HttpMessageHandler> _messageHandler = null!;
         private HttpStatusCode _responseStatusCode = HttpStatusCode.NoContent;
 
@@ -63,6 +65,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
 
             _messageHandler = new Mock<HttpMessageHandler>();
             _messageHandler
@@ -92,7 +95,8 @@ namespace Services.Tests
                                                 _channelsRepository.Object,
                                                 _loggingRepository.Object,
                                                 _configurationRefresherProvider.Object,
-                                                _serviceBusQueueRepository.Object);
+                                                _serviceBusQueueRepository.Object,
+                                                _syncJobStatusService.Object);
 
             _syncInfo = new ChannelSyncInfo
             {
@@ -190,7 +194,7 @@ namespace Services.Tests
                .Returns((IEnumerable<SyncJob> jobs, SyncStatus status) =>  UpdateJobStatus(jobs, status));
 
             await _service.UpdateSyncJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error);
-            Assert.AreEqual(SyncStatus.Error.ToString(), _syncInfo.SyncJob.Status);
+            _syncJobStatusService.Verify(s => s.UpdateJobStatusAsync(_syncInfo.SyncJob, SyncStatus.Error, It.IsAny<Models.SyncJobHistory.SyncJobHistory>(), "TeamsChannelMembershipObtainer"), Times.Once);
         }
 
         private Task UpdateJobStatus(IEnumerable<SyncJob> jobs, SyncStatus status)

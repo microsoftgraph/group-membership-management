@@ -5,6 +5,8 @@ using Models;
 using Models.Entities;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Services.Contracts;
+using Models.SyncJobHistory;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
@@ -21,6 +23,7 @@ namespace TeamsChannelMembershipObtainer.Service
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly ILoggingRepository _logger;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
         public TeamsChannelMembershipObtainerService(
             ITeamsChannelRepository teamsChannelRepository,
@@ -30,7 +33,8 @@ namespace TeamsChannelMembershipObtainer.Service
             IDatabaseChannelsRepository channelsRepository,
             ILoggingRepository loggingRepository,
             IConfigurationRefresherProvider refresherProvider,
-            IServiceBusQueueRepository serviceBusQueueRepository)
+            IServiceBusQueueRepository serviceBusQueueRepository,
+            ISyncJobStatusService syncJobStatusService)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
@@ -38,6 +42,7 @@ namespace TeamsChannelMembershipObtainer.Service
             _databaseChannelsRepository = channelsRepository ?? throw new ArgumentException(nameof(channelsRepository));
             _logger = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         public async Task<Channel> GetDestinationAsync(SyncJob syncJob)
@@ -150,7 +155,21 @@ namespace TeamsChannelMembershipObtainer.Service
 
         public async Task UpdateSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
         {
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, status);
+            var history = new SyncJobHistory
+            {
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId ?? Guid.Empty,
+                Status = status.ToString(),
+                StartTime = syncJob.LastRunTime,
+                UpdatedByFunction = "TeamsChannelMembershipObtainer"
+            };
+
+            if (status != SyncStatus.InProgress)
+            {
+                history.EndTime = DateTime.UtcNow;
+            }
+
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, status, history, "TeamsChannelMembershipObtainer");
         }
 
         private async Task SendMembershipAggregatorMessageAsync(MembershipAggregatorHttpRequest request)

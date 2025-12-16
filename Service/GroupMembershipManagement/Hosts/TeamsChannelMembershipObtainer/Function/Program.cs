@@ -16,6 +16,8 @@ using Repositories.Contracts;
 using Repositories.ServiceBusQueue;
 using Repositories.TeamsChannel;
 using System;
+using BusinessLogic.SyncJobUpdater;
+using Services.Contracts;
 using TeamsChannelMembershipObtainer.Service;
 using TeamsChannelMembershipObtainer.Service.Contracts;
 
@@ -46,6 +48,8 @@ namespace Hosts.TeamsChannelMembershipObtainer
                     var dryRunSettingName = "TeamsChannelMembershipObtainer:IsDryRunEnabled";
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+
+                    services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 
                     services.AddSingleton((services) =>
                     {
