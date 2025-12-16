@@ -12,10 +12,12 @@ using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
+using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Services;
 using Services.Contracts;
+using BusinessLogic.SyncJobUpdater;
 using System;
 
 namespace Hosts.GroupOwnershipObtainer
@@ -56,7 +58,9 @@ namespace Hosts.GroupOwnershipObtainer
                     });
 
                     services.AddScoped<IGraphGroupRepository, GraphGroupRepository>();
+                    services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
                     services.AddScoped<IGroupOwnershipObtainerService, GroupOwnershipObtainerService>();
+                    services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 
                     services.AddSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>(services =>
                     {

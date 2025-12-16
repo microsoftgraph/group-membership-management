@@ -4,8 +4,10 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Models;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -16,13 +18,16 @@ namespace Hosts.GroupOwnershipObtainer
     public class StarterFunction
     {
         private readonly ILoggingRepository _loggingRepository;
-        private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
         private readonly bool _isDryRunEnabled;
 
-        public StarterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository, IDryRunValue dryRun)
+        public StarterFunction(
+            ILoggingRepository loggingRepository,
+            ISyncJobStatusService syncJobStatusService,
+            IDryRunValue dryRun)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
             _isDryRunEnabled = dryRun != null ? dryRun.DryRunEnabled : throw new ArgumentNullException(nameof(dryRun));
         }
 
@@ -40,7 +45,22 @@ namespace Hosts.GroupOwnershipObtainer
 
             if ((DateTime.UtcNow - syncJob.DryRunTimeStamp) < TimeSpan.FromHours(syncJob.Period) && _isDryRunEnabled)
             {
-                await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, SyncStatus.Idle);
+                syncJob.Status = SyncStatus.Idle.ToString();
+
+                var now = DateTime.UtcNow;
+                var history = new SyncJobHistory
+                {
+                    SyncJobId = syncJob.Id,
+                    RunId = syncJob.RunId ?? Guid.Empty,
+                    Status = SyncStatus.Idle.ToString(),
+                    StartTime = syncJob.LastRunTime,
+                    EndTime = now,
+                    UpdatedByFunction = "GroupOwnershipObtainer",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Idle, history, functionName: "GroupOwnershipObtainer");
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period",

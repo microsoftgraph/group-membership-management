@@ -33,6 +33,7 @@ namespace Services.Tests
         private Mock<IBlobStorageRepository> _blobStorageRepository = null!;
         private Mock<IGroupOwnershipObtainerService> _groupOwnershipObtainerService = null!;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
+        private Mock<ISyncJobStatusService> _syncJobStatusService = null!;
         private Mock<TaskOrchestrationContext> _durableOrchestrationContext = null!;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider = null!;
         SchemaProvider _schemaProvider;
@@ -56,6 +57,7 @@ namespace Services.Tests
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _groupOwnershipObtainerService = new Mock<IGroupOwnershipObtainerService>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
 
@@ -271,9 +273,11 @@ namespace Services.Tests
                                     It.IsAny<string>(),
                                     It.IsAny<string>()), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                        It.IsAny<IEnumerable<SyncJob>>(),
-                        SyncStatus.MembershipDataNotFound), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                        It.IsAny<SyncJob>(),
+                        SyncStatus.MembershipDataNotFound,
+                        It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                        It.IsAny<string?>()), Times.Once);
 
         }
 
@@ -293,9 +297,11 @@ namespace Services.Tests
                                                 It.IsAny<string>()
                                             ), Times.Once);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.IsAny<IEnumerable<SyncJob>>(),
-                                                SyncStatus.Error
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.IsAny<SyncJob>(),
+                                                SyncStatus.Error,
+                                                It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                                                It.IsAny<string?>()
                                             ), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -336,9 +342,11 @@ namespace Services.Tests
                                It.IsAny<string>(),
                                It.IsAny<string>()), Times.Once());
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                    It.IsAny<IEnumerable<SyncJob>>(),
-                                    SyncStatus.QueryNotValid), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                    It.IsAny<SyncJob>(),
+                                    SyncStatus.QueryNotValid,
+                                    It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                                    It.IsAny<string?>()), Times.Once);
         }
 
         [TestMethod]
@@ -362,9 +370,11 @@ namespace Services.Tests
                                It.IsAny<string>(),
                                It.IsAny<string>()), Times.Never());
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                    It.IsAny<IEnumerable<SyncJob>>(),
-                                    SyncStatus.QueryNotValid), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                    It.IsAny<SyncJob>(),
+                                    SyncStatus.QueryNotValid,
+                                    It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                                    It.IsAny<string?>()), Times.Once);
 
         }
 
@@ -406,9 +416,11 @@ namespace Services.Tests
                     ), Times.Once);
 
             var currentUtcDate = _durableOrchestrationContext.Object.CurrentUtcDateTime;
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                                It.Is<IEnumerable<SyncJob>>(jobs=> jobs.All(y => (y.StartDate - currentUtcDate.AddMinutes(30)).Duration().TotalSeconds < 1)),
-                                                It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                It.Is<SyncJob>(job => job.StartDate != default && Math.Abs((job.StartDate - currentUtcDate.AddMinutes(30)).TotalSeconds) < 1),
+                                                SyncStatus.Idle,
+                                                It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                                                It.IsAny<string?>()), Times.Once);
         }
 
         [TestMethod]
@@ -425,9 +437,11 @@ namespace Services.Tests
 
             await orchestratorFunction.RunOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(
-                                    It.IsAny<IEnumerable<SyncJob>>(),
-                                    SyncStatus.SchemaError), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                    It.IsAny<SyncJob>(),
+                                    SyncStatus.SchemaError,
+                                    It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                                    It.IsAny<string?>()), Times.Once);
         }
 
         [TestMethod]
@@ -470,7 +484,7 @@ namespace Services.Tests
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
         {
-            var function = new JobStatusUpdaterFunction(_loggingRepository.Object, _syncJobRepository.Object);
+            var function = new JobStatusUpdaterFunction(_loggingRepository.Object, _syncJobStatusService.Object);
             await function.UpdateJobStatusAsync(request);
         }
 

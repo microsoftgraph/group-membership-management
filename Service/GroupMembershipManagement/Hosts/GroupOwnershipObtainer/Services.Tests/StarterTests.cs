@@ -11,6 +11,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
 using System.Text;
 using System.Text.Json;
+using Services.Contracts;
 
 namespace Tests.Services
 {
@@ -19,7 +20,7 @@ namespace Tests.Services
     {
         private Mock<IDryRunValue> _dryRunValue = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
-        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
+        private Mock<ISyncJobStatusService> _syncJobStatusService = null!;
         private Mock<MockDurableTaskClient> _durableTaskClient = null!;
         private SyncJob _syncJob = null!;
 
@@ -28,7 +29,7 @@ namespace Tests.Services
         {
             _dryRunValue = new Mock<IDryRunValue>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _durableTaskClient = new Mock<MockDurableTaskClient>();
 
             _syncJob = new SyncJob
@@ -56,7 +57,7 @@ namespace Tests.Services
             };
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
-            var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
+            var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobStatusService.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableTaskClient.Object);
 
             _durableTaskClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
@@ -72,6 +73,12 @@ namespace Tests.Services
                                                     It.IsAny<string>(),
                                                     It.IsAny<string>()
                                                 ), Times.Once);
+
+                _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                        It.IsAny<SyncJob>(),
+                                                        It.IsAny<SyncStatus?>(),
+                                                        It.IsAny<Models.SyncJobHistory.SyncJobHistory?>(),
+                                                        It.IsAny<string?>()), Times.Never);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                     It.Is<LogMessage>(m => m.Message.Contains("function completed")),
@@ -96,7 +103,7 @@ namespace Tests.Services
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(syncJobBytes), properties: properties);
 
-            var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobRepository.Object, _dryRunValue.Object);
+            var starterFunction = new StarterFunction(_loggingRepository.Object, _syncJobStatusService.Object, _dryRunValue.Object);
             await starterFunction.RunAsync(message, _durableTaskClient.Object);
 
             _durableTaskClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
@@ -104,7 +111,11 @@ namespace Tests.Services
                                                         It.IsAny<OrchestratorRequest>(), 
                                                         null, 
                                                         It.IsAny<CancellationToken>()), Times.Never);
-            _syncJobRepository.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.Is<SyncStatus>(s => s == SyncStatus.Idle)), Times.Once);
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                                                    It.Is<SyncJob>(job => job.Status == SyncStatus.Idle.ToString()),
+                                                    It.Is<SyncStatus?>(s => s == SyncStatus.Idle),
+                                                    It.Is<Models.SyncJobHistory.SyncJobHistory>(h => h.Status == SyncStatus.Idle.ToString() && h.UpdatedByFunction == "GroupOwnershipObtainer" && h.EndTime.HasValue),
+                                                    It.Is<string?>(fn => fn == "GroupOwnershipObtainer")), Times.Once);
 
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                 It.Is<LogMessage>(m => m.Message.StartsWith("Setting the status of the sync back to Idle")),
