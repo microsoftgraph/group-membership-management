@@ -745,7 +745,6 @@ function Set-GMMResources {
                                 -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     $setRBACPermissions      = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
-    $setRBACPermissionsBicep = Get-Default -Value $ParameterHashtable['setRBACPermissionsBicep'].value -Default $false
     $createResourceGroups = Get-Default -Value $ParameterHashtable['createResourceGroups'].value -Default $false
     $skipAzureDataFactoryDeployment = Get-Default -Value $ParameterHashtable['skipAzureDataFactoryDeployment'].value -Default $false
     $ipRangesToWhiteList = Get-Default -Value $ParameterHashtable['IpRangesToWhiteList'].value -Default @()
@@ -779,7 +778,7 @@ function Set-GMMResources {
         -PrereqsTemplateDirectoryPath   $TemplateFilesDirectory `
         -ParameterHashtable             $ParameterHashtable `
         -AdditionalParameters           $commonParametersObject `
-        -SetRBACPermissions             $setRBACPermissionsBicep
+        -SetRBACPermissions             $setRBACPermissions
 
     Start-Sleep -Seconds 10
 
@@ -818,7 +817,7 @@ function Set-GMMResources {
         -DataTemplateDirectoryPath  $TemplateFilesDirectory `
         -ParameterHashtable         $ParameterHashtable `
         -AdditionalParameters       $commonParametersObject `
-        -SetRBACPermissions         $setRBACPermissionsBicep 
+        -SetRBACPermissions         $setRBACPermissions 
 
     Start-Sleep -Seconds 10
 

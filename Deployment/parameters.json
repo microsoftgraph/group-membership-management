@@ -219,13 +219,6 @@
         "required": false
       }
     },
-    "setRBACPermissionsBicep": {
-      "value": true,
-      "metadata": {
-        "description": "Flag to set RBAC permissions for some service principals from the bicep templates.",
-        "required": false
-      }
-    },
     "skipPrivilegedDirectoryActions": {
       "value": false,
       "metadata": {
