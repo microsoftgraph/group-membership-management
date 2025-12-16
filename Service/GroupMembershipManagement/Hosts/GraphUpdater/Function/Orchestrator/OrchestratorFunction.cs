@@ -7,6 +7,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Identity.Client;
 using Models;
+using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Repositories.Contracts;
@@ -105,7 +106,8 @@ namespace Hosts.GraphUpdater
                                                                                 SyncJob = syncJob
                                                                             });
 
-                groupMembership = JsonSerializer.Deserialize<GroupMembership>(fileContent);
+                var membershipJson = TryDecompress(fileContent);
+                groupMembership = JsonSerializer.Deserialize<GroupMembership>(membershipJson);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", SyncJob = syncJob, Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -400,6 +402,23 @@ namespace Hosts.GraphUpdater
                 Type = type,
                 IsInitialSync = isInitialSync
             };
+        }
+
+        private static string TryDecompress(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+            {
+                return content;
+            }
+
+            try
+            {
+                return TextCompressor.Decompress(content);
+            }
+            catch (FormatException)
+            {
+                return content;
+            }
         }
 
         private string GetUsersDataMessage(Guid targetGroupId, int membersToAdd, int membersToRemove)

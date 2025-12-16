@@ -205,16 +205,19 @@ namespace Services
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Calculating membership difference {fromto}. " +
-                          $"Destination group has {destinationMembership.SourceMembers.Count} users.",
+                          $"Destination group has {destinationMembership?.SourceMembers?.Count ?? 0} users.",
                 RunId = sourceMembership.RunId
             });
 
             var stopwatch = Stopwatch.StartNew();
-            var sourceSet = new HashSet<AzureADUser>(sourceMembership.SourceMembers);
-            var destinationSet = new HashSet<AzureADUser>(destinationMembership.SourceMembers);
+            var sourceMembers = sourceMembership?.SourceMembers ?? new List<AzureADUser>();
+            var destinationMembers = destinationMembership?.SourceMembers ?? new List<AzureADUser>();
 
-            sourceSet.ExceptWith(destinationMembership.SourceMembers);
-            destinationSet.ExceptWith(sourceMembership.SourceMembers);
+            var sourceSet = new HashSet<AzureADUser>(sourceMembers);
+            var destinationSet = new HashSet<AzureADUser>(destinationMembers);
+
+            sourceSet.ExceptWith(destinationMembers);
+            destinationSet.ExceptWith(sourceMembers);
 
             var toAdd = sourceSet.ToList();
             toAdd.ForEach(x => x.MembershipAction = MembershipAction.Add);
@@ -234,7 +237,9 @@ namespace Services
                 RunId = sourceMembership.RunId
             });
 
-            return (delta, destinationMembership.SourceMembers.Count);
+            var destinationMemberCount = destinationMembers.Count;
+
+            return (delta, destinationMemberCount);
         }
 
         private async Task<ThresholdResult> CalculateThresholdAsync(SyncJob job, Guid groupId, MembershipDelta<AzureADUser> delta, int totalMembersCount, Guid runId)

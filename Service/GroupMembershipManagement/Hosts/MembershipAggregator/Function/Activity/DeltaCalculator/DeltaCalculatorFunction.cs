@@ -96,8 +96,11 @@ namespace Hosts.MembershipAggregator
                     };
                 }
 
-                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceBlobResult.Content);
-                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationBlobResult.Content);
+                var sourceJson = TryDecompress(sourceBlobResult.Content);
+                var destinationJson = TryDecompress(destinationBlobResult.Content);
+
+                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceJson);
+                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationJson);
             }
             else
             {
@@ -116,6 +119,23 @@ namespace Hosts.MembershipAggregator
                 CompressedMembersToAddJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToAdd)),
                 CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToRemove)),
             };
+        }
+
+        private static string TryDecompress(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+            {
+                return content;
+            }
+
+            try
+            {
+                return TextCompressor.Decompress(content);
+            }
+            catch (FormatException)
+            {
+                return content;
+            }
         }
     }
 }

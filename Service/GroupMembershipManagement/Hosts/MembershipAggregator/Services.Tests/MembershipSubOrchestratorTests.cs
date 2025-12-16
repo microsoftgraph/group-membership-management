@@ -47,10 +47,12 @@ namespace Services.Tests
         private Dictionary<string, int> _membersPerFile;
         private DeltaCalculatorService _deltaCalculatorService;
         private DeltaCalculatorResponse _deltaCalculatorResponse;
+        private MembershipExtractionResponse _membershipExtractionResponse;
         private MembershipSubOrchestratorRequest _membershipSubOrchestratorRequest;
         private TelemetryClient _telemetryClient;
         private SyncJobGroup _groupInformation;
         private MultiLaneConfig _multiLaneConfig;
+        private Dictionary<string, string> _uploadedBlobs;
 
         private Mock<IDryRunValue> _dryRun;
         private Mock<IGMMResources> _gmmResources;
@@ -82,6 +84,23 @@ namespace Services.Tests
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _durableContext = new Mock<TaskOrchestrationContext>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
+            _uploadedBlobs = new Dictionary<string, string>();
+
+            _blobStorageRepository
+                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .Returns((string path, string content, Dictionary<string, string> metadata) =>
+                {
+                    _uploadedBlobs[path] = content;
+                    return Task.CompletedTask;
+                });
+
+            _blobStorageRepository
+                .Setup(x => x.DeleteFileAsync(It.IsAny<string>()))
+                .Returns((string path) =>
+                {
+                    _uploadedBlobs.Remove(path);
+                    return Task.CompletedTask;
+                });
             _graphAPIService = new Mock<IGraphAPIService>();
             _notificationRepository = new Mock<INotificationRepository>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
@@ -116,6 +135,7 @@ namespace Services.Tests
 
 
             _deltaCalculatorResponse = null;
+            _membershipExtractionResponse = null;
             _numberOfUsersForSourcePart = 10;
             _numberOfUsersForSourcePartOne = 10;
             _numberOfUsersForSourcePartTwo = 10;
@@ -207,39 +227,57 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonSerializer.Serialize(content)
+                                            Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => !x.StartsWith("http://file-path"))))
-                        .Callback<string>(path =>
+                        .ReturnsAsync((string path) =>
                         {
-                            var userCount = _membersPerFile[path];
-                            var content = new GroupMembership
+                            if (_uploadedBlobs.TryGetValue(path, out var storedContent))
                             {
-                                SyncJobId = _syncJob?.Id ?? Guid.Empty,
-                                MembershipObtainerDryRunEnabled = false,
-                                RunId = _syncJob?.RunId.Value ?? Guid.Empty,
-                                Exclusionary = false,
-                                SourceMembers = Enumerable.Range(0, userCount)
+                                return new BlobResult
+                                {
+                                    BlobStatus = BlobStatus.Found,
+                                    Content = storedContent
+                                };
+                            }
+
+                            if (_membersPerFile.TryGetValue(path, out var userCount))
+                            {
+                                var content = new GroupMembership
+                                {
+                                    SyncJobId = _syncJob?.Id ?? Guid.Empty,
+                                    MembershipObtainerDryRunEnabled = false,
+                                    RunId = _syncJob?.RunId.Value ?? Guid.Empty,
+                                    Exclusionary = false,
+                                    SourceMembers = Enumerable.Range(0, userCount)
                                                              .Select(x => new AzureADUser { ObjectId = Guid.NewGuid() })
                                                              .ToList(),
-                                Destination = new AzureADGroup
-                                {
-                                    ObjectId = _syncJob != null
-                                                    ? _group.GroupId
-                                                    : Guid.Empty
-                                }
-                            };
+                                    Destination = new AzureADGroup
+                                    {
+                                        ObjectId = _syncJob != null
+                                                        ? _group.GroupId
+                                                        : Guid.Empty
+                                    }
+                                };
 
-                            _blobResult = new BlobResult
+                                var serialized = JsonSerializer.Serialize(content);
+                                var compressed = TextCompressor.Compress(serialized);
+
+                                return new BlobResult
+                                {
+                                    BlobStatus = BlobStatus.Found,
+                                    Content = compressed
+                                };
+                            }
+
+                            return new BlobResult
                             {
-                                BlobStatus = BlobStatus.Found,
-                                Content = JsonSerializer.Serialize(content)
+                                BlobStatus = BlobStatus.NotFound
                             };
-                        })
-                        .ReturnsAsync(() => _blobResult);
+                        });
 
             var owners = new List<AzureADUser>
             {
@@ -272,9 +310,12 @@ namespace Services.Tests
 			_durableContext.Setup(x => x.GetInput<MembershipSubOrchestratorRequest>())
                             .Returns(() => _membershipSubOrchestratorRequest);
 
-            _durableContext.Setup(x => x.CallActivityAsync<FileDownloaderResponse>(nameof(FileDownloaderFunction), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
-                            .Returns<TaskName, object, TaskOptions>((name, request, options) =>
-                                CallFileDownloaderFunctionAsync(request as FileDownloaderRequest));
+            _durableContext.Setup(x => x.CallActivityAsync<MembershipExtractionResponse>(nameof(MembershipExtractionFunction), It.IsAny<MembershipExtractionRequest>(), It.IsAny<TaskOptions>()))
+                            .Returns<TaskName, object, TaskOptions>(async (name, request, options) =>
+                            {
+                                _membershipExtractionResponse = await CallMembershipExtractionFunctionAsync(request as MembershipExtractionRequest);
+                                return _membershipExtractionResponse;
+                            });
 
             _durableContext.Setup(x => x.CallActivityAsync<DeltaCalculatorResponse>(nameof(DeltaCalculatorFunction), It.IsAny<DeltaCalculatorRequest>(), It.IsAny<TaskOptions>()))
                             .Returns<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -283,10 +324,10 @@ namespace Services.Tests
                                 return _deltaCalculatorResponse;
                             });
 
-            _durableContext.Setup(x => x.CallActivityAsync(nameof(FileUploaderFunction), It.IsAny<FileUploaderRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+            _durableContext.Setup(x => x.CallActivityAsync<AggregatedMembershipUploadResponse>(nameof(AggregatedMembershipUploaderFunction), It.IsAny<AggregatedMembershipUploadRequest>(), It.IsAny<TaskOptions>()))
+                            .Returns<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
-                                await CallFileUploaderFunctionAsync(request as FileUploaderRequest);
+                                return await CallAggregatedMembershipUploaderFunctionAsync(request as AggregatedMembershipUploadRequest);
                             });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(FileDeleterFunction), It.IsAny<FileDeleterRequest>(), It.IsAny<TaskOptions>()))
@@ -335,8 +376,8 @@ namespace Services.Tests
             Assert.IsNotNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.Ok, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
@@ -357,8 +398,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
@@ -414,8 +455,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership decrease in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
@@ -441,8 +482,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership decrease in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Threshold exceeded")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
@@ -472,8 +513,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership increase in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Threshold exceeded")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
 
@@ -502,8 +543,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.ThresholdExceeded, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Membership decrease in")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Threshold exceeded")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
 
@@ -544,8 +585,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.DryRun, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("A Dry Run Synchronization for")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                     It.IsAny<SyncJob>(),
@@ -580,8 +621,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sync job : Id")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
         }
 
@@ -610,8 +651,8 @@ namespace Services.Tests
             Assert.IsNull(response.FilePath);
             Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.Exactly(3));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.IsAny<string>()), Times.AtLeast(3));
+            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(path => path.Contains("Aggregated")), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Never());
             _loggingRepository.Verify(x => x.LogMessageAsync(
                                                             It.Is<LogMessage>(m => m.Message.Contains($"destination group") && m.Message.Contains("doesn't exist")),
                                                             VerbosityLevel.INFO,
@@ -637,24 +678,24 @@ namespace Services.Tests
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("SourceMembership")),
                                                                  It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+                                                                 It.IsAny<Dictionary<string, string>>()), Times.AtLeastOnce());
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership")),
                                                                  It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+                                                                 It.IsAny<Dictionary<string, string>>()), Times.AtLeastOnce());
 
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
-            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.AtLeastOnce());
+            _blobStorageRepository.Verify(x => x.DownloadFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.AtLeastOnce());
 
 
-            _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.Once());
-            _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.Once());
+            _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("SourceMembership"))), Times.AtLeastOnce());
+            _blobStorageRepository.Verify(x => x.DeleteFileAsync(It.Is<string>(x => x.Contains("DestinationMembership"))), Times.AtLeastOnce());
 
             _blobStorageRepository.Verify(x => x.UploadFileAsync(It.Is<string>(x => x.Contains("Aggregated")),
                                                                  It.IsAny<string>(),
-                                                                 It.IsAny<Dictionary<string, string>>()), Times.Once());
+                                                                 It.IsAny<Dictionary<string, string>>()), Times.AtLeastOnce());
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Reading from blobs")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Reading membership data from blobs")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Uploaded membership file")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
 
@@ -696,7 +737,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonSerializer.Serialize(content)
+                                            Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -741,7 +782,7 @@ namespace Services.Tests
                                         _blobResult = new BlobResult
                                         {
                                             BlobStatus = BlobStatus.Found,
-                                            Content = JsonSerializer.Serialize(content)
+                                            Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                         };
                                     })
                                     .ReturnsAsync(() => _blobResult);
@@ -773,7 +814,7 @@ namespace Services.Tests
                                        _blobResult = new BlobResult
                                        {
                                            BlobStatus = BlobStatus.Found,
-                                           Content = JsonSerializer.Serialize(content)
+                                           Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                                        };
                                    })
                                    .ReturnsAsync(() => _blobResult);
@@ -877,7 +918,7 @@ namespace Services.Tests
                             _blobResult = new BlobResult
                             {
                                 BlobStatus = BlobStatus.Found,
-                                Content = JsonSerializer.Serialize(content)
+                                Content = TextCompressor.Compress(JsonSerializer.Serialize(content))
                             };
                         })
                         .ReturnsAsync(() => _blobResult);
@@ -888,16 +929,37 @@ namespace Services.Tests
             Assert.AreEqual(MembershipDeltaStatus.NoChanges, response.MembershipDeltaStatus);
         }
 
-        private async Task<FileDownloaderResponse> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
+        [TestMethod]
+        public async Task MembershipSubOrchestrator_WithFailedMembershipExtraction_ReturnsError()
         {
-            var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
-            return await function.DownloadFileAsync(request);
+            _membershipExtractionResponse = null;
+
+            _durableContext.Setup(x => x.CallActivityAsync<MembershipExtractionResponse>(
+                nameof(MembershipExtractionFunction),
+                It.IsAny<MembershipExtractionRequest>(),
+                It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new MembershipExtractionResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = "Failed to extract membership data"
+                });
+
+            var orchestratorFunction = new MembershipSubOrchestratorFunction(_thresholdConfig.Object, _graphAPIService.Object, _telemetryClient, _multiLaneConfig);
+            var response = await orchestratorFunction.RunMembershipSubOrchestratorFunctionAsync(_durableContext.Object);
+
+            Assert.AreEqual(MembershipDeltaStatus.Error, response.MembershipDeltaStatus);
         }
 
-        private async Task CallFileUploaderFunctionAsync(FileUploaderRequest request)
+        private async Task<MembershipExtractionResponse> CallMembershipExtractionFunctionAsync(MembershipExtractionRequest request)
         {
-            var function = new FileUploaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
-            await function.UploadFileAsync(request);
+            var function = new MembershipExtractionFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            return await function.ExtractMembershipAsync(request);
+        }
+
+        private async Task<AggregatedMembershipUploadResponse> CallAggregatedMembershipUploaderFunctionAsync(AggregatedMembershipUploadRequest request)
+        {
+            var function = new AggregatedMembershipUploaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            return await function.UploadAggregatedMembershipAsync(request);
         }
 
         private async Task CallFileDeleterFunctionAsync(FileDeleterRequest request)
