@@ -40,6 +40,8 @@
     <ProjectReference Include="..\..\..\Repositories.DataFactory\Repositories.DataFactory.csproj" />
     <ProjectReference Include="..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
     <ProjectReference Include="..\..\..\Repositories.SqlMembershipRepository\Repositories.SqlMembershipRepository.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
     <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\Services\Services\Services.csproj" />
   </ItemGroup>

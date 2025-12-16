@@ -31,7 +31,7 @@ namespace Services.Tests
         {
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
-            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var loggingRepository = new Mock<ILoggingRepository>();
@@ -69,7 +69,7 @@ namespace Services.Tests
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
-                                            syncJobRepository.Object,
+                                            syncJobStatusService.Object,
                                             groupsRepository.Object,
                                             channelsRepository.Object,
                                             loggingRepository.Object,
@@ -94,7 +94,7 @@ namespace Services.Tests
         {
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
-            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var loggingRepository = new Mock<ILoggingRepository>();
@@ -126,7 +126,7 @@ namespace Services.Tests
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
-                                            syncJobRepository.Object,
+                                            syncJobStatusService.Object,
                                             groupsRepository.Object,
                                             channelsRepository.Object,
                                             loggingRepository.Object,
@@ -148,7 +148,7 @@ namespace Services.Tests
         {
             var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
             var blobStorageRepository = new Mock<IBlobStorageRepository>();
-            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var loggingRepository = new Mock<ILoggingRepository>();
@@ -179,7 +179,7 @@ namespace Services.Tests
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
-                                            syncJobRepository.Object,
+                                            syncJobStatusService.Object,
                                             groupsRepository.Object,
                                             channelsRepository.Object,
                                             loggingRepository.Object,

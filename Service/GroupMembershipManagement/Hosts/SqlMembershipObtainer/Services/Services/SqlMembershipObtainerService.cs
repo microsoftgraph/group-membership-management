@@ -4,6 +4,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Data.SqlClient;
 using Models;
 using Models.ServiceBus;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
@@ -17,7 +18,7 @@ namespace Services
     {
         private readonly ISqlMembershipRepository _sqlMembershipRepository = null;
         private readonly IBlobStorageRepository _blobStorageRepository = null;
-        private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
+        private readonly ISyncJobStatusService _syncJobStatusService = null;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository = null;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository = null;
         private readonly ILoggingRepository _loggingRepository = null;
@@ -32,7 +33,7 @@ namespace Services
 
         public SqlMembershipObtainerService(ISqlMembershipRepository sqlMembershipRepository,
                                     IBlobStorageRepository blobStorageRepository,
-                                    IDatabaseSyncJobsRepository syncJobRepository,
+                                    ISyncJobStatusService syncJobStatusService,
                                     IDatabaseGroupsRepository databaseGroupsRepository,
                                     IDatabaseChannelsRepository databaseChannelsRepository,
                                     ILoggingRepository loggingRepository,
@@ -41,7 +42,7 @@ namespace Services
                                     IDataFactoryService dataFactoryService)
         {
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
-            _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
@@ -213,7 +214,20 @@ namespace Services
                 Message = $"Updating status of job {job.Id} to Idle."
             });
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { job }, SyncStatus.Idle);
+            var now = DateTime.UtcNow;
+            var history = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = job.RunId ?? Guid.Empty,
+                Status = SyncStatus.Idle.ToString(),
+                UpdatedByFunction = "SqlMembershipObtainer",
+                EndTime = now,
+                UpdatedAt = now
+            };
+
+            job.Status = SyncStatus.Idle.ToString();
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, SyncStatus.Idle, history, functionName: "SqlMembershipObtainer");
         }
 
         private async Task SetSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
@@ -224,7 +238,20 @@ namespace Services
                 RunId = syncJob.RunId
             });
 
-            await _syncJobRepository.UpdateSyncJobStatusAsync(new[] { syncJob }, status);
+            var now = DateTime.UtcNow;
+            var history = new SyncJobHistory
+            {
+                SyncJobId = syncJob.Id,
+                RunId = syncJob.RunId ?? Guid.Empty,
+                Status = status.ToString(),
+                UpdatedByFunction = "SqlMembershipObtainer",
+                EndTime = status != SyncStatus.InProgress ? now : null,
+                UpdatedAt = now
+            };
+
+            syncJob.Status = status.ToString();
+
+            await _syncJobStatusService.UpdateJobStatusAsync(syncJob, status, history, functionName: "SqlMembershipObtainer");
         }
 
         private async Task<string> GetADFRunIdAsync(Guid? runId)
