@@ -7,10 +7,13 @@ using Hosts.FunctionBase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Repositories.BlobStorage;
 using Repositories.Contracts;
+using Repositories.BlobStorage;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
+using Repositories.EntityFramework;
+using Services.Contracts;
+using BusinessLogic.SyncJobUpdater;
 using Services;
 using System;
 
@@ -43,6 +46,8 @@ namespace Hosts.PlaceMembershipObtainer
 
                     services.AddGraphAPIClient()
                         .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
+                        .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
+                        .AddScoped<ISyncJobStatusService, SyncJobStatusService>()
                         .AddScoped<PlaceMembershipObtainerService>();
 
                     services.AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>

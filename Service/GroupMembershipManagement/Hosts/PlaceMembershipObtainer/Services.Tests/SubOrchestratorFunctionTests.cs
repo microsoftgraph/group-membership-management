@@ -12,6 +12,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.Mocks;
 using Services;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,7 +27,7 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue;
         private Mock<IMailRepository> _mailRepository;
         private Mock<ILoggingRepository> _loggingRepository;
-        private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
+        private Mock<ISyncJobStatusService> _syncJobStatusService;
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
         private Mock<IDatabaseChannelsRepository> _channelsRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
@@ -48,7 +49,7 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _mailRepository = new Mock<IMailRepository>();
             _loggingRepository = new Mock<ILoggingRepository>();
-            _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            _syncJobStatusService = new Mock<ISyncJobStatusService>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
@@ -81,7 +82,7 @@ namespace Tests.Services
             _service = new PlaceMembershipObtainerService(
                                             _graphGroupRepository.Object,
                                             _blobStorageRepository.Object,
-                                            _syncJobRepository.Object,
+                                            _syncJobStatusService.Object,
                                             _groupsRepository.Object,
                                             _channelsRepository.Object,
                                             _dryRunValue.Object

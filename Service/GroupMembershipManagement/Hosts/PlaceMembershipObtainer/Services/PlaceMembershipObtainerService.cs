@@ -2,9 +2,11 @@
 // Licensed under the MIT license.
 using Models;
 using Models.ServiceBus;
+using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using System.Text.Json;
+using Services.Contracts;
 
 namespace Services
 {
@@ -12,14 +14,14 @@ namespace Services
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
-        private readonly IDatabaseSyncJobsRepository _syncJob;
+        private readonly ISyncJobStatusService _syncJobStatusService;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly bool _isPlaceMembershipObtainerDryRunEnabled;
 
         public PlaceMembershipObtainerService(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
-                                      IDatabaseSyncJobsRepository syncJob,
+                                      ISyncJobStatusService syncJobStatusService,
                                       IDatabaseGroupsRepository databaseGroupsRepository,
                                       IDatabaseChannelsRepository databaseChannelsRepository,
                                       IDryRunValue dryRun
@@ -27,7 +29,7 @@ namespace Services
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
-            _syncJob = syncJob ?? throw new ArgumentNullException(nameof(syncJob));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _isPlaceMembershipObtainerDryRunEnabled = dryRun.DryRunEnabled;
@@ -123,7 +125,18 @@ namespace Services
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
-            await _syncJob.UpdateSyncJobStatusAsync(new[] { job }, status);
+            var currentDate = DateTime.UtcNow;
+            var history = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = job.RunId ?? Guid.Empty,
+                Status = status.ToString(),
+                UpdatedByFunction = "PlaceMembershipObtainer",
+                EndTime = status != SyncStatus.InProgress ? currentDate : null,              
+                UpdatedAt = currentDate
+            };
+
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "PlaceMembershipObtainer");
         }
     }
 }

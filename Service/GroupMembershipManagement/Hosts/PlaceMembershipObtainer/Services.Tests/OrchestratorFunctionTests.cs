@@ -18,6 +18,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Services;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 
 namespace Tests.Services
 {
@@ -45,7 +46,7 @@ namespace Tests.Services
             _loggingRepository = new Mock<ILoggingRepository>();
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             var mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
-            var mockSyncJob = new Mock<IDatabaseSyncJobsRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
             var mockDryRunValue = new Mock<IDryRunValue>();
@@ -76,7 +77,7 @@ namespace Tests.Services
             _placeMembershipObtainerService = new PlaceMembershipObtainerService(
             mockGraphGroupRepository.Object,
             mockBlobStorageRepository.Object,
-            mockSyncJob.Object,
+            mockSyncJobStatusService.Object,
             groupsRepository.Object,
             channelsRepository.Object,
             mockDryRunValue.Object);

@@ -18,6 +18,10 @@
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.BlobStorage\Repositories.BlobStorage.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj" />
+    <ProjectReference Include="..\..\..\Services.Contracts\Services.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
   <ItemGroup>
