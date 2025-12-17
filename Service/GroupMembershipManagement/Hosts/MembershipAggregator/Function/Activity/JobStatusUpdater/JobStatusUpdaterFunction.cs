@@ -3,6 +3,8 @@
 using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
+using Services.Contracts;
+using Models.SyncJobHistory;
 using System;
 using System.Threading.Tasks;
 
@@ -12,11 +14,16 @@ namespace Hosts.MembershipAggregator
     {
         private readonly ILoggingRepository _loggingRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
 
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRespository)
+        public JobStatusUpdaterFunction(
+            ILoggingRepository loggingRepository,
+            IDatabaseSyncJobsRepository syncJobRespository,
+            ISyncJobStatusService syncJobStatusService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobRepository = syncJobRespository ?? throw new ArgumentNullException(nameof(syncJobRespository));
+            _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
 
         [Function(nameof(JobStatusUpdaterFunction))]
@@ -48,7 +55,21 @@ namespace Hosts.MembershipAggregator
 
                 syncJob.ScheduledDate = currentDate.AddHours(syncJob.Period);
 
-                await _syncJobRepository.UpdateSyncJobsAsync(new[] { syncJob }, request.Status);
+                syncJob.Status = request.Status.ToString();
+                syncJob.RunId = syncJob.RunId ?? request.SyncJob.RunId;
+
+                var history = new SyncJobHistory
+                {
+                    SyncJobId = syncJob.Id,
+                    RunId = syncJob.RunId ?? request.SyncJob.RunId ?? Guid.Empty,
+                    Status = request.Status.ToString(),
+                    UpdatedByFunction = "MembershipAggregator",
+                    ThresholdViolations = syncJob.ThresholdViolations,
+                    EndTime = currentDate,
+                    UpdatedAt = currentDate
+                };
+
+                await _syncJobStatusService.UpdateJobStatusAsync(syncJob, request.Status, history, functionName: "MembershipAggregator");
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);

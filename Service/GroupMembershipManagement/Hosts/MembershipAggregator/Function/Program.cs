@@ -1,3 +1,4 @@
+using BusinessLogic.SyncJobUpdater;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Common.DependencyInjection;
@@ -14,6 +15,7 @@ using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Repositories.ServiceBusTopics;
+using Repositories.EntityFramework;
 using Services;
 using Services.Contracts;
 using System;
@@ -79,6 +81,8 @@ namespace Hosts.MembershipAggregator
                             notificationsQueueRepository
                         );
                     })
+                    .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
+                    .AddScoped<ISyncJobStatusService, SyncJobStatusService>()
                      .AddSingleton<IThresholdConfig>(services =>
                      {
                          return new ThresholdConfig
