@@ -32,9 +32,14 @@ param availableMessageSplitterSubscriptions array = [
 //AzureUserReader
 param storageAccountSecretName string = 'adfStorageAccountName'
 
-@description('Object with flags to determine behaviour')
+// GraphUpdater
+param concurrentWriteRequests int = 1
+
+// Used by: JobTrigger, DestinationAttributesUpdater, AzureUserReader, Notifier, JobScheduler, WebApi, NonProdService, GraphUpdater
 param featureFlags object = {
   skipListingFunctionAppKeys : true
+  enableTeamsChannel: false
+  enableOpenAI: false
 }
 
 var prereqsResourceGroupName = isManagedApplication ? managedResourceGroupName : '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -64,6 +69,7 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     jobTriggerDataResources
@@ -92,6 +98,7 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     destinationAttributesUpdaterDataResources
@@ -302,6 +309,7 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     instanceIdentifier: instance
+    concurrentWriteRequests: concurrentWriteRequests
   }
   dependsOn: [
     graphUpdaterDataResources
@@ -615,6 +623,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     dataResourceGroup: dataResourceGroupName
     adfPipeline: pipeline
     setRBACPermissions: setRBACPermissions
+    featureFlags: featureFlags
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources
