@@ -3,8 +3,9 @@
 using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
 using GraphUpdater.QueueMessageOrchestrator;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.Options;
 using Models;
 using Models.ServiceBus;
@@ -37,11 +38,11 @@ namespace Hosts.GraphUpdater
             _multilaneConfig = multilaneConfig?.Value ?? throw new ArgumentNullException(nameof(multilaneConfig));
         }
 
-        [FunctionName(SMALL_FUNCTION_NAME)]
+        [Function(SMALL_FUNCTION_NAME)]
         public async Task RunSmallLaneAsync(
            [ServiceBusTrigger("membershipupdaters", SMALL_SUBSCRIPTION_NAME, Connection = "gmmServiceBus")]
             ServiceBusReceivedMessage message,
-           [DurableClient] IDurableOrchestrationClient client)
+           [DurableClient] DurableTaskClient client)
         {
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
             var dynamicProperties = groupMembership.SyncJob.ToDictionary();
@@ -71,7 +72,7 @@ namespace Hosts.GraphUpdater
                 TopicName = _membershipUpdaters.CurrentTopicName,
             };
 
-            await client.StartNewAsync(nameof(OrchestratorMultiLaneFunction), null, request);
+            await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorMultiLaneFunction), request);
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
@@ -80,11 +81,11 @@ namespace Hosts.GraphUpdater
             });
         }
 
-        [FunctionName(LARGE_FUNCTION_NAME)]
+        [Function(LARGE_FUNCTION_NAME)]
         public async Task RunLargeLaneAsync(
             [ServiceBusTrigger("membershipupdaters", LARGE_SUBSCRIPTION_NAME, Connection = "gmmServiceBus", IsSessionsEnabled = true)]
              ServiceBusReceivedMessage message,
-            [DurableClient] IDurableOrchestrationClient client)
+            [DurableClient] DurableTaskClient client)
         {
             var groupMembership = JsonSerializer.Deserialize<GroupMembership>(Encoding.UTF8.GetString(message.Body));
             var dynamicProperties = groupMembership.SyncJob.ToDictionary();
@@ -109,7 +110,7 @@ namespace Hosts.GraphUpdater
             try
             {
                 var instanceId = $"{groupMembership.RunId}_{message.SequenceNumber}";
-                var orchestratorStatus = await client.GetStatusAsync(instanceId);
+                var orchestratorStatus = await client.GetInstanceAsync(instanceId);
 
                 if (orchestratorStatus == null)
                 {
@@ -121,20 +122,18 @@ namespace Hosts.GraphUpdater
                         TopicName = _membershipUpdaters.CurrentTopicName,
                     };
 
-                    await client.StartNewAsync(nameof(OrchestratorMultiLaneFunction), instanceId, request);
+                    await client.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorMultiLaneFunction), request, new StartOrchestrationOptions { InstanceId = instanceId });
                     await WaitForInstanceAsync(client, instanceId);
 
                 }
                 else if (orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Running
-                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Pending
-                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.ContinuedAsNew)
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Pending)
                 {
                     await WaitForInstanceAsync(client, instanceId);
                 }
                 else if (orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Completed
                         || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Terminated
-                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed
-                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Canceled)
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed)
 
                 {
                     await _loggingRepository.LogMessageAsync(new LogMessage
@@ -160,10 +159,10 @@ namespace Hosts.GraphUpdater
             });
         }
 
-        [FunctionName(nameof(StarterFunction))]
+        [Function(nameof(StarterFunction))]
         public async Task RunAsync(
          [TimerTrigger("%triggerSchedule%")] TimerInfo myTimer,
-         [DurableClient] IDurableOrchestrationClient client)
+         [DurableClient] DurableTaskClient client)
         {
             // Handle the default GraphUpdater instance
             if (_multilaneConfig.IsEnabled && string.IsNullOrWhiteSpace(_membershipUpdaters.CurrentLaneSize))
@@ -212,7 +211,7 @@ namespace Hosts.GraphUpdater
             return instances;
         }
 
-        private async Task ProcessTimerAsync(IDurableOrchestrationClient client, string subscriptionName)
+        private async Task ProcessTimerAsync(DurableTaskClient client, string subscriptionName)
         {
             var additionalProperties = new Dictionary<string, string> { { "Instance", subscriptionName } };
             await _loggingRepository.LogMessageAsync(new LogMessage
@@ -223,7 +222,7 @@ namespace Hosts.GraphUpdater
 
             var orchestrator = nameof(QueueMessageOrchestratorFunction);
             var instanceId = $"{nameof(QueueMessageOrchestratorFunction)}_{subscriptionName.ToLowerInvariant()}";
-            var orchestratorStatus = await client.GetStatusAsync(instanceId);
+            var orchestratorStatus = await client.GetInstanceAsync(instanceId);
             var isRunning = orchestratorStatus != null
                     && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Completed
                     && orchestratorStatus.RuntimeStatus != OrchestrationRuntimeStatus.Terminated
@@ -237,13 +236,13 @@ namespace Hosts.GraphUpdater
                     DynamicProperties = additionalProperties
                 }, VerbosityLevel.INFO);
 
-                await client.StartNewAsync(orchestrator, instanceId, new QueueMessageOrchestratorRequest
+                await client.ScheduleNewOrchestrationInstanceAsync(orchestrator, new QueueMessageOrchestratorRequest
                 {
                     TopicName = _membershipUpdaters.CurrentTopicName,
                     LaneSize = _membershipUpdaters.CurrentLaneSize,
                     SubscriptionName = subscriptionName,
                     IsMultiLaneEnabled = _multilaneConfig.IsEnabled
-                });
+                }, new StartOrchestrationOptions { InstanceId = instanceId });
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage
@@ -253,7 +252,7 @@ namespace Hosts.GraphUpdater
             }, VerbosityLevel.DEBUG);
         }
 
-        private async Task WaitForInstanceAsync(IDurableOrchestrationClient client, string instanceId)
+        private async Task WaitForInstanceAsync(DurableTaskClient client, string instanceId)
         {
             var delay = TimeSpan.FromSeconds(1);
             var maxDelay = TimeSpan.FromSeconds(30);
@@ -262,14 +261,13 @@ namespace Hosts.GraphUpdater
             {
                 await Task.Delay(delay);
 
-                var orchestratorStatus = await client.GetStatusAsync(instanceId);
+                var orchestratorStatus = await client.GetInstanceAsync(instanceId);
                 if (orchestratorStatus != null)
                 {
                     // Only return when the orchestration has reached a terminal state.
                     if (orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Completed
                         || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Terminated
-                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed
-                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Canceled)
+                        || orchestratorStatus.RuntimeStatus == OrchestrationRuntimeStatus.Failed)
                     {
                         return;
                     }
