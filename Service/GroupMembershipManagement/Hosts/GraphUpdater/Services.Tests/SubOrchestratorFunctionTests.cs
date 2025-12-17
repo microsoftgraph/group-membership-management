@@ -3,9 +3,9 @@
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
-using Microsoft.Graph;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -16,6 +16,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Services.Tests
@@ -27,7 +28,7 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IGraphGroupRepository> _graphGroupRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
-        private Mock<IDurableOrchestrationContext> _durableOrchestrationContext;
+        private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
 
         private int _userCount;
         private BlobResult _blobResult;
@@ -41,7 +42,7 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _durableOrchestrationContext = new Mock<IDurableOrchestrationContext>();
+            _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
 
             _userCount = 10;
 
@@ -106,21 +107,21 @@ namespace Services.Tests
         public async Task DownloadCacheFileAsync()
         {
             _cacheUrl = "http://cache-url";
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<string>(), It.IsAny<FileDownloaderRequest>()))
-                                       .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
+                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
                                            _cacheUrl = await CallFileDownloaderFunctionAsync(request as FileDownloaderRequest);
                                        })
                                        .ReturnsAsync(() => _cacheUrl);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(CacheUpdaterFunction)), It.IsAny<CacheUpdaterRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(CacheUpdaterFunction)), It.IsAny<CacheUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallCacheUpdaterFunctionAsync(request as CacheUpdaterRequest);
                             });
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<string>(x => x == nameof(LoggerFunction)), It.IsAny<LoggerRequest>()))
-                            .Callback<string, object>(async (name, request) =>
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                            .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                             {
                                 await CallLoggerFunctionAsync(request as LoggerRequest);
                             });
@@ -131,7 +132,7 @@ namespace Services.Tests
                 Path = "cache/file-name.txt",
             };
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction), It.IsAny<BlobCheckerRequest>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<BlobResult>(It.Is<TaskName>(x => x.Name == nameof(BlobCheckerFunction)), It.IsAny<BlobCheckerRequest>(), It.IsAny<TaskOptions>()))
                             .ReturnsAsync(() => cacheBlobResult);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
@@ -174,4 +175,3 @@ namespace Services.Tests
         }
     }
 }
-

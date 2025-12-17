@@ -5,7 +5,10 @@ using GraphUpdater.Activity.JobTracker;
 using Hosts.GraphUpdater;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
+using Microsoft.DurableTask.Entities;
 using Microsoft.Identity.Client;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -21,6 +24,7 @@ using System.Data.SqlTypes;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Models.Group;
 
@@ -35,12 +39,11 @@ namespace Services.Tests
         };
 
         MockLoggingRepository _mockLoggingRepo;
-        Mock<IDurableOrchestrationContext> _context;
+        Mock<TaskOrchestrationContext> _context;
         //Mock<TaskOrchestrationEntityFeature> _entitiesMock;
 
         SyncJob _syncJob;
         JobState _jobState;
-        JobTrackerEntity _jobTrackerEntity;
         GroupMembership _groupMembership;
         EmailSenderRecipient _mailSenders;
         TelemetryClient _telemetryClient;
@@ -50,6 +53,7 @@ namespace Services.Tests
         OrchestratorMultiLaneRequest _orchestratorMultiLaneRequest;
         Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository;
         GroupUpdaterResponse _groupUpdaterFunctionResponse;
+        RunLimiterSettings _runLimiterSettings;
 
         int _membersAdded = 1;
         int _membersRemoved = 0;
@@ -86,15 +90,13 @@ namespace Services.Tests
                 TotalMembersRemoved = 0,
             };
 
-            _jobTrackerEntity = new JobTrackerEntity();
-            _jobTrackerEntity.JobState = _jobState;
-
             _orchestratorMultiLaneRequest = new OrchestratorMultiLaneRequest
             {
                 GroupMembership = _groupMembership,
                 RunId = _groupMembership.RunId,
                 SubscriptionName = "GraphUpdater_small_1",
-                TopicName = "membershipupdaters"
+                TopicName = "membershipupdaters",
+                LaneSize = "Small"
             };
 
             _mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
@@ -106,18 +108,32 @@ namespace Services.Tests
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _mockGraphUpdaterService = new MockGraphUpdaterService(_mockServiceBusQueueRepository.Object);
 
-            _context = new Mock<IDurableOrchestrationContext>();
-            _context.Setup(x => x.CreateEntityProxy<IJobTracker>(It.IsAny<EntityId>())).Returns(_jobTrackerEntity);
+            _runLimiterSettings = new RunLimiterSettings
+            {
+                IsEnabled = true,
+                LeaseTimeoutMinutes = 15,
+                HeartbeatIntervalMinutes = 3
+            };
+
+            _context = new Mock<TaskOrchestrationContext>();
+            var mockEntities = new Mock<TaskOrchestrationEntityFeature>();
+            mockEntities.Setup(x => x.CallEntityAsync<JobState>(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(() => _jobState);
+            mockEntities.Setup(x => x.CallEntityAsync(It.IsAny<EntityInstanceId>(), It.IsAny<string>(), It.IsAny<object>(), It.IsAny<CallEntityOptions>()))
+                .Returns(Task.CompletedTask);
+            mockEntities.Setup(x => x.LockEntitiesAsync(It.IsAny<EntityInstanceId[]>()))
+                .ReturnsAsync(new Mock<IAsyncDisposable>().Object);
+            _context.Setup(x => x.Entities).Returns(mockEntities.Object);
             _context.Setup(x => x.GetInput<OrchestratorMultiLaneRequest>()).Returns(() => _orchestratorMultiLaneRequest);
-            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<string>(), It.IsAny<JobReaderRequest>())).ReturnsAsync(() => _syncJob);
-            _context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<LoggerRequest>()))
-                    .Callback<string, object>(async (name, request) => await CallLogMessageFunctionAsync((LoggerRequest)request, _mockLoggingRepo));
-            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<string>(x => x == nameof(GetGroupFunction)), It.IsAny<SyncJob>())).ReturnsAsync(_syncJob.Group.GroupId);
-            _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.IsAny<TaskName>(), It.IsAny<JobReaderRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(() => _syncJob);
+            _context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) => await CallLogMessageFunctionAsync((LoggerRequest)request, _mockLoggingRepo));
+            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>())).ReturnsAsync(_syncJob.Group.GroupId);
+            _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
                     .Returns(async () => await CheckIfGroupExistsAsync(_groupMembership, _mockLoggingRepo, _mockGraphUpdaterService, _mailSenders));
 
-            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
-                .Callback<string, object>((name, request) =>
+            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>((name, request, options) =>
                 {
                     var guRequest = request as GroupUpdaterRequest;
 
@@ -131,11 +147,71 @@ namespace Services.Tests
                 })
                 .ReturnsAsync(() => _groupUpdaterFunctionResponse);
 
-            _context.Setup(x => x.CallActivityAsync(It.IsAny<string>(), It.IsAny<JobStatusUpdaterRequest>()))
-                    .Callback<string, object>((name, request) =>
+            _context.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>((name, request, options) =>
                     {
                         _updateJobRequest = request as JobStatusUpdaterRequest;
                     });
+
+                _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()))
+                    .Returns(Task.CompletedTask);
+
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterLeaseRenewSenderFunction)), It.IsAny<MessageSplitterLeaseRenewSignal>(), It.IsAny<TaskOptions>()))
+                .Returns(Task.CompletedTask);
+
+            _context.Setup(x => x.CreateTimer(It.IsAny<DateTime>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorAsync_WithSmallLane_DoesNotSendLeaseRenew()
+        {
+            _orchestratorMultiLaneRequest.LaneSize = "Small";
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
+            await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            _context.Verify(
+                x => x.CallActivityAsync(
+                    It.Is<TaskName>(n => n.Name == nameof(MessageSplitterLeaseRenewSenderFunction)),
+                    It.IsAny<MessageSplitterLeaseRenewSignal>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never);
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorAsync_WithLargeLane_WhenRunLimiterDisabled_DoesNotSendLeaseRenew()
+        {
+            _orchestratorMultiLaneRequest.LaneSize = "Large";
+
+            _mockLoggingRepo.SetSyncJobProperties(_syncJob.RunId.Value, _syncJob.ToDictionary());
+            _mockGraphUpdaterService.Jobs.Add(_syncJob);
+            _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
+
+            var disabledRunLimiterSettings = new RunLimiterSettings
+            {
+                IsEnabled = false,
+                HeartbeatIntervalMinutes = 0,
+                LeaseTimeoutMinutes = 0
+            };
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, disabledRunLimiterSettings);
+            var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
+
+            _context.Verify(
+                x => x.CallActivityAsync(
+                    It.Is<TaskName>(n => n.Name == nameof(MessageSplitterLeaseRenewSenderFunction)),
+                    It.IsAny<MessageSplitterLeaseRenewSignal>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never);
+
+            _context.Verify(
+                x => x.CallActivityAsync(
+                    It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)),
+                    It.IsAny<MessageSplitterCompletionSignal>(),
+                    It.IsAny<TaskOptions>()),
+                Times.Never);
         }
 
         [TestMethod]
@@ -146,11 +222,13 @@ namespace Services.Tests
             // triggers group validation
             _jobState.IsValidGroup = null;
 
-            _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<string>(), It.IsAny<GroupValidatorRequest>()))
+            _context.Setup(x => x.CallActivityAsync<bool>(It.IsAny<TaskName>(), It.IsAny<GroupValidatorRequest>(), It.IsAny<TaskOptions>()))
                 .ThrowsAsync(new MsalClientException("MULTIPLE_MATCHING_TOKENS_DETECTED", "MULTIPLE_MATCHING_TOKENS_DETECTED"));
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             await Assert.ThrowsExceptionAsync<MsalClientException>(async () => await orchestrator.RunOrchestratorAsync(_context.Object));
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Never);
 
             Assert.IsFalse(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught MsalClientException, marking sync job status as transient error.")));
@@ -170,13 +248,15 @@ namespace Services.Tests
             _mockGraphUpdaterService.Jobs.Add(_syncJob);
             _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
 
-            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
+
+            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
 
             var logProperties = _mockLoggingRepo.SyncJobPropertiesHistory[_syncJob.RunId.Value].Properties;
 
@@ -192,7 +272,7 @@ namespace Services.Tests
             _jobState.TotalMembersToAdd = _membersAdded;
             _mockLoggingRepo.SetSyncJobProperties(_syncJob.RunId.Value, _syncJob.ToDictionary());
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -204,9 +284,27 @@ namespace Services.Tests
             Assert.AreEqual(logProperties["RunId"], _syncJob.RunId.ToString());
             Assert.AreEqual(logProperties["Id"], _syncJob.Id.ToString());
 
-            _context.Verify(x => x.CallActivityAsync(nameof(EmailSenderFunction), It.IsAny<EmailSenderRequest>()), Times.Once);
-            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
-            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Idle)), Times.Once);
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(EmailSenderFunction)), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once);
+            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Idle), It.IsAny<TaskOptions>()), Times.Once);
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task RunOrchestratorGroupIdEmptyEmitsCompletionTest()
+        {
+            _mockLoggingRepo.SetSyncJobProperties(_syncJob.RunId.Value, _syncJob.ToDictionary());
+
+            _context.Setup(x => x.CallActivityAsync<Guid>(It.Is<TaskName>(x => x.Name == nameof(GetGroupFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+                    .ReturnsAsync(Guid.Empty);
+
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
+            var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            Assert.AreEqual(OrchestrationRuntimeStatus.Failed, response);
+            Assert.AreEqual(SyncStatus.Error, _updateJobRequest.Status);
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
         }
 
         [TestMethod]
@@ -219,14 +317,16 @@ namespace Services.Tests
             _mockGraphUpdaterService.Jobs.Add(_syncJob);
             _mockGraphUpdaterService.Groups.Add(_groupMembership.Destination.ObjectId, new Group { Id = _groupMembership.Destination.ObjectId.ToString() });
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Skipping additional messages if any")));
 
-            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Never());
-            _context.Verify(x => x.CallActivityAsync(nameof(MessageRemoverFunction), It.IsAny<GroupUpdaterRequest>()), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
+
+            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageRemoverFunction)), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Never());
 
             var logProperties = _mockLoggingRepo.SyncJobPropertiesHistory[_syncJob.RunId.Value].Properties;
 
@@ -244,14 +344,16 @@ namespace Services.Tests
             // Set additional expected message
             _groupMembership.TotalMessageCount++;
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
 
-            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
-            _context.Verify(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Error)), Times.Once);
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
+
+            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.Is<JobStatusUpdaterRequest>(y => y.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once);
 
             var logProperties = _mockLoggingRepo.SyncJobPropertiesHistory[_syncJob.RunId.Value].Properties;
 
@@ -266,11 +368,13 @@ namespace Services.Tests
         {
             _mockLoggingRepo.SetSyncJobProperties(_syncJob.RunId.Value, _syncJob.ToDictionary());
 
-            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
+            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
                     .Throws<HttpRequestException>();
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+                var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             await Assert.ThrowsExceptionAsync<HttpRequestException>(async () => await orchestrator.RunOrchestratorAsync(_context.Object));
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Never);
 
             Assert.IsFalse(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught HttpRequestException, marking sync job status as transient error.")));
@@ -288,11 +392,13 @@ namespace Services.Tests
         {
             _mockLoggingRepo.SetSyncJobProperties(_syncJob.RunId.Value, _syncJob.ToDictionary());
 
-            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()))
+            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()))
                     .Throws<Exception>();
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+                var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestrator.RunOrchestratorAsync(_context.Object));
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
 
             Assert.IsFalse(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
@@ -309,8 +415,10 @@ namespace Services.Tests
         {
             _syncJob = null;
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
 
             Assert.IsFalse(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message.Contains("Caught unexpected exception, marking sync job as errored.")));
@@ -323,8 +431,10 @@ namespace Services.Tests
             _jobState.IsValidGroup = null;
             _mockLoggingRepo.SetSyncJobProperties(_syncJob.RunId.Value, _syncJob.ToDictionary());
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
 
             Assert.AreEqual(SyncStatus.DestinationGroupNotFound, _updateJobRequest.Status);
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
@@ -347,14 +457,16 @@ namespace Services.Tests
             var graphUpdaterService = new Mock<IGraphUpdaterService>();
             graphUpdaterService.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>())).ReturnsAsync(() => _syncJob);
 
-            _context.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>()))
-                    .Callback<string, object>(async (name, request) =>
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
                         await CallJobStatusUpdaterFunctionAsync(_mockLoggingRepo, graphUpdaterService.Object, request as JobStatusUpdaterRequest);
                     });
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, graphUpdaterService.Object, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, graphUpdaterService.Object, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             var response = await orchestrator.RunOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(n => n.Name == nameof(MessageSplitterCompletionSenderFunction)), It.IsAny<MessageSplitterCompletionSignal>(), It.IsAny<TaskOptions>()), Times.Once);
 
             Assert.IsTrue(response == OrchestrationRuntimeStatus.Completed);
             Assert.IsTrue(_mockLoggingRepo.MessagesLogged.Any(x => x.Message == nameof(OrchestratorMultiLaneFunction) + " function completed"));
@@ -366,7 +478,7 @@ namespace Services.Tests
             Assert.AreEqual(logProperties["Id"], _syncJob.Id.ToString());
 
             graphUpdaterService.Verify(x => x.UpdateSyncJobStatusAsync(It.IsAny<SyncJob>(), SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup, false, It.IsAny<Guid>()));
-            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<string>(), It.IsAny<GroupUpdaterRequest>()), Times.Exactly(2));
+            _context.Verify(x => x.CallActivityAsync<GroupUpdaterResponse>(It.IsAny<TaskName>(), It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
         }
 
         [TestMethod]
@@ -387,18 +499,18 @@ namespace Services.Tests
             };
 
             _groupMembership.SourceMembers.Add(usersToRemove.First());
-            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(nameof(GroupUpdaterFunction),
-                                                                             It.IsAny<GroupUpdaterRequest>())).ReturnsAsync(() => new GroupUpdaterResponse
+            _context.Setup(x => x.CallActivityAsync<GroupUpdaterResponse>(It.Is<TaskName>(n => n.Name == nameof(GroupUpdaterFunction)),
+                                                                             It.IsAny<GroupUpdaterRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(() => new GroupUpdaterResponse
                                                                              {
                                                                                  SuccessCount = 1,
                                                                                  UsersNotFound = usersToRemove,
                                                                                  UsersAlreadyExist = usersAlreadyExist
                                                                              });
 
-            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig);
+            var orchestrator = new OrchestratorMultiLaneFunction(_telemetryClient, _mockGraphUpdaterService, _mailSenders, _gmmResources, _mockLoggingRepo, _mockDeltaCachingConfig, _runLimiterSettings);
             await orchestrator.RunOrchestratorAsync(_context.Object);
 
-            _context.Verify(x => x.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction), It.IsAny<CacheUserUpdaterRequest>()), Times.Exactly(2));
+            _context.Verify(x => x.CallSubOrchestratorAsync(It.Is<TaskName>(n => n.Name == nameof(CacheUserUpdaterSubOrchestratorFunction)), It.IsAny<CacheUserUpdaterRequest>(), It.IsAny<TaskOptions>()), Times.Exactly(2));
         }
 
         private async Task<bool> CheckIfGroupExistsAsync(
@@ -459,4 +571,3 @@ namespace Services.Tests
         }
     }
 }
-
