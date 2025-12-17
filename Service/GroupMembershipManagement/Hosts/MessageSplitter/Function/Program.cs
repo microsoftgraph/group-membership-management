@@ -3,6 +3,7 @@
 
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using BusinessLogic.SyncJobUpdater;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using MessageSplitter.Contracts;
@@ -17,6 +18,7 @@ using Repositories.ServiceBusTopics;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using Services.Contracts;
 
 namespace Hosts.MessageSplitter
 {
@@ -95,7 +97,8 @@ namespace Hosts.MessageSplitter
                                 var containerName = configuration["membershipContainerName"];
                                 return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
                             })
-                            .AddScoped<IMessageSplitterService, MessageSplitterService>();
+                            .AddScoped<IMessageSplitterService, MessageSplitterService>()
+                            .AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 
 
 
