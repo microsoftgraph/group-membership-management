@@ -32,19 +32,20 @@ namespace SqlMembershipObtainer
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
 
             var now = DateTime.UtcNow;
+            var updatedBy = nameof(Hosts.SqlMembershipObtainer);
             var history = new SyncJobHistory
             {
                 SyncJobId = request.SyncJob.Id,
                 RunId = request.SyncJob.RunId ?? Guid.Empty,
                 Status = request.Status.ToString(),
-                UpdatedByFunction = "SqlMembershipObtainer",
+                UpdatedByFunction = updatedBy,
                 EndTime = request.Status != SyncStatus.InProgress ? now : null,
                 UpdatedAt = now
             };
 
             request.SyncJob.Status = request.Status.ToString();
 
-            await _syncJobStatusService.UpdateJobStatusAsync(request.SyncJob, request.Status, history, functionName: "SqlMembershipObtainer");
+            await _syncJobStatusService.UpdateJobStatusAsync(request.SyncJob, request.Status, history, functionName: updatedBy);
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
         }
