@@ -13,6 +13,8 @@ param setRBACPermissions bool
 param customDomainName string = ''
 param apiServiceBaseUri string
 param uiLocation string
+param branch string = 'not-set'
+param repositoryUrl string = 'https://url'
 
 // API parameters
 param pipeline string
@@ -644,8 +646,8 @@ module uiComputeResources '../Service/GroupMembershipManagement/Hosts/UI/Infrast
     solutionAbbreviation: solutionAbbreviation
     environmentAbbreviation: environmentAbbreviation
     location: uiLocation
-    branch: 'not-set'
-    repositoryUrl: 'https://url'
+    branch: branch
+    repositoryUrl: repositoryUrl
     customDomainName: customDomainName
     apiServiceBaseUri: apiServiceBaseUri
     dataResourceGroupName: dataResourceGroupName
