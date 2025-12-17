@@ -54,7 +54,7 @@ function Set-KeyVaultAccessRoles {
 
 	$prereqsKeyVault = Get-AzKeyVault -ResourceGroupName $PrereqsResourceGroupName -Name "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
 	$dataKeyVault = Get-AzKeyVault -ResourceGroupName $DataResourceGroupName -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-	$functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName
+	$functionApps = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName
 
 	$serviceConnectionName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
 	$serviceConnectionPrincipal = Get-AzADServicePrincipal -DisplayName $serviceConnectionName

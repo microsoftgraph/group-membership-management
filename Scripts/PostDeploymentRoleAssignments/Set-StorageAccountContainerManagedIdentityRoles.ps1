@@ -37,7 +37,7 @@ function Set-StorageAccountContainerManagedIdentityRoles
 	)
 
 	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-	$functionApps = Get-AzFunctionApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
+	$functionApps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
 
 	foreach ($functionAppName in $functionApps)
 	{

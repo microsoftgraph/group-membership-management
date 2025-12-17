@@ -55,7 +55,7 @@ function Set-ServiceBusManagedIdentityRoles {
 		-ResourceGroupName $DataResourceGroupName `
 		-Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 
-	$functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName
+	$functionApps = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName
 
 	foreach ($functionApp in $functionApps) {
 		$functionServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionApp.Name
