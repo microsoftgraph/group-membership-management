@@ -48,19 +48,18 @@ namespace Hosts.GroupOwnershipObtainer
                 syncJob.Status = SyncStatus.Idle.ToString();
 
                 var now = DateTime.UtcNow;
+                var updateBy = nameof(Hosts.GroupOwnershipObtainer);
                 var history = new SyncJobHistory
                 {
                     SyncJobId = syncJob.Id,
                     RunId = syncJob.RunId ?? Guid.Empty,
                     Status = SyncStatus.Idle.ToString(),
-                    StartTime = syncJob.LastRunTime,
                     EndTime = now,
-                    UpdatedByFunction = "GroupOwnershipObtainer",
-                    CreatedAt = now,
+                    UpdatedByFunction = updateBy,
                     UpdatedAt = now
                 };
 
-                await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Idle, history, functionName: "GroupOwnershipObtainer");
+                await _syncJobStatusService.UpdateJobStatusAsync(syncJob, SyncStatus.Idle, history, functionName: updateBy);
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
                     Message = $"Setting the status of the sync back to Idle as the sync has run within the previous DryRunTimeStamp period",
