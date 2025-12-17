@@ -35,7 +35,7 @@ namespace Hosts.GroupOwnershipObtainer
                 }, VerbosityLevel.DEBUG);
 
             var now = DateTime.UtcNow;
-            var updatedBy = "GroupOwnershipObtainer";
+            var updatedBy = nameof(Hosts.GroupOwnershipObtainer);
 
             request.SyncJob.Status = request.Status.ToString();
             var history = new SyncJobHistory
@@ -43,10 +43,8 @@ namespace Hosts.GroupOwnershipObtainer
                 SyncJobId = request.SyncJob.Id,
                 RunId = request.SyncJob.RunId ?? Guid.Empty,
                 Status = request.Status.ToString(),
-                StartTime = request.SyncJob.LastRunTime,
                 EndTime = request.Status != SyncStatus.InProgress ? now : null,
                 UpdatedByFunction = updatedBy,
-                CreatedAt = now,
                 UpdatedAt = now
             };
 
