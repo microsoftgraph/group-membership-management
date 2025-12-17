@@ -59,6 +59,36 @@
           "ruleSqlExpression": "LaneSize = 'Large'"
         },
         {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Pending_Small",
+          "ruleName": "pending_small",
+          "ruleSqlExpression": "MessageType = 'pending_small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Pending_Large",
+          "ruleName": "pending_large",
+          "ruleSqlExpression": "MessageType = 'pending_large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Completion_Small",
+          "ruleName": "completion_small",
+          "ruleSqlExpression": "MessageType = 'completion_small'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "Completion_Large",
+          "ruleName": "completion_large",
+          "ruleSqlExpression": "MessageType = 'completion_large'"
+        },
+        {
+          "topicName": "messageSplitter",
+          "subscriptionName": "LeaseRenew_Large",
+          "ruleName": "lease_renew_large",
+          "ruleSqlExpression": "MessageType = 'lease_renew_large'"
+        },
+        {
           "topicName": "membershipUpdaters",
           "subscriptionName": "GraphUpdater_small_1",
           "ruleName": "GraphUpdater_small_rule",
@@ -70,7 +100,7 @@
           "ruleName": "GraphUpdater_large_rule",
           "ruleSqlExpression": "Type = 'groupmembership_large_1'",
           "sessionEnabled": true
-        },
+        }
       ]
     },
     "notifierProviderId": {

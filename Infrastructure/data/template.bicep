@@ -140,6 +140,36 @@ param serviceBusTopicSubscriptions topicSubscription[] = [
     ruleSqlExpression: 'LaneSize = \'Large\''
   }
   {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Pending_Small'
+    ruleName: 'pending_small'
+    ruleSqlExpression: 'MessageType = \'pending_small\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Pending_Large'
+    ruleName: 'pending_large'
+    ruleSqlExpression: 'MessageType = \'pending_large\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Completion_Small'
+    ruleName: 'completion_small'
+    ruleSqlExpression: 'MessageType = \'completion_small\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'Completion_Large'
+    ruleName: 'completion_large'
+    ruleSqlExpression: 'MessageType = \'completion_large\''
+  }
+  {
+    topicName: 'messageSplitter'
+    subscriptionName: 'LeaseRenew_Large'
+    ruleName: 'lease_renew_large'
+    ruleSqlExpression: 'MessageType = \'lease_renew_large\''
+  }
+  {
     topicName: 'membershipUpdaters'
     subscriptionName: 'GraphUpdater_small_1'
     ruleName: 'GraphUpdater_small_rule'
@@ -489,6 +519,70 @@ param appConfigurationKeyData array = [
     key: 'MultiLane:AvailableMembershipUpdaters'
     value: string(availableMembershipUpdaters)
     contentType: 'string'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:IsEnabled'
+    value: true
+    contentType: 'boolean'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:MaxInFlightMessages'
+    value: 16
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:LeaseTimeoutMinutes'
+    value: 2
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Small:RateLimiter:HeartbeatIntervalMinutes'
+    value: 0
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:IsEnabled'
+    value: true
+    contentType: 'boolean'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:MaxInFlightMessages'
+    value: 3
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:LeaseTimeoutMinutes'
+    value: 15
+    contentType: 'int'
+    tag: {
+      tag1: 'MultiLane'
+    }
+  }
+  {
+    key: 'MultiLane:Large:RateLimiter:HeartbeatIntervalMinutes'
+    value: 3
+    contentType: 'int'
     tag: {
       tag1: 'MultiLane'
     }
