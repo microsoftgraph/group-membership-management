@@ -31,7 +31,10 @@ var instanceSuffix = empty(instanceIdentifier) ? '' : '-${instanceIdentifier}'
 var servicePlanName  = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}${instanceSuffix}-${substring(uniqueString(subscription().id,'GraphUpdater'),0,8)}'
 
 @description('Service plan sku')
-param servicePlanSku string = 'Y1'
+@allowed([
+  'FC1'
+])
+param servicePlanSku string = 'FC1'
 
 @description('Resource location.')
 param location string
@@ -44,11 +47,15 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
   'functionapp'
   'linux'
   'container'
+  'functionapp,linux'
 ])
-param functionAppKind string = 'functionapp'
+param functionAppKind string = 'functionapp,linux'
 
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
+@description('Maximum instance count.')
+param maxInstanceCount int = 40
+
+@description('Instance memory in MB.')
+param instanceMemoryMB int = 4096
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -93,6 +100,7 @@ var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, da
 var actionableEmailProviderId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'notifierProviderId')
 var serviceBusFQN = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusFQN')
 var serviceBusMembershipUpdatersTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMembershipUpdatersTopic')
+var serviceBusMessageSplitterTopic = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusMessageSplitterTopic')
 var jobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsMSIConnectionString')
 var replicaJobsMSIConnectionString = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'replicaJobsMSIConnectionString')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
@@ -104,21 +112,11 @@ module servicePlanTemplate 'servicePlan.bicep' = {
     name: servicePlanName
     sku: servicePlanSku
     location: location
-    maximumElasticWorkerCount: maximumElasticWorkerCount
   }
 }
 
 var triggerSchedule = instanceIdentifier == 'small' ? '*/10 * * * * *' : instanceIdentifier == 'large' ? '*/20 * * * * *' :  '*/30 * * * * *'
 var triggerDelay = 0
-
-var commonSettings = {
-  WEBSITE_ADD_SITENAME_BINDINGS_IN_APPHOST_CONFIG: 1
-  WEBSITE_ENABLE_SYNC_UPDATE_SITE: 1
-  SCM_TOUCH_WEBCONFIG_AFTER_DEPLOYMENT: 0
-  FUNCTIONS_WORKER_RUNTIME: 'dotnet'
-  FUNCTIONS_EXTENSION_VERSION: '~4'
-  FUNCTIONS_INPROC_NET8_ENABLED : 1
-}
 
 var appSettings = {
   AZURE_TOKEN_CREDENTIALS: 'ManagedIdentityCredential'
@@ -127,14 +125,14 @@ var appSettings = {
   AzureFunctionsJobHost__extensions__durableTask__hubName: '${solutionAbbreviation}compute${environmentAbbreviation}GraphUpdater${instanceIdentifier}'
   AzureFunctionsWebHost__hostid: 'GraphUpdater${instanceIdentifier}'
   APPINSIGHTS_INSTRUMENTATIONKEY: '@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientCertificateName': '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientSecret': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:ClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:TenantId': '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:KeyVaultName': prereqsKeyVaultName
-  'graphCredentials:KeyVaultTenantId': tenantId
-  'ConnectionStrings:JobsContext': '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
-  'ConnectionStrings:JobsContextReadOnly': '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientCertificateName: '@Microsoft.KeyVault(SecretUri=${reference(graphAppCertificateName, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientSecret: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientSecret, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__ClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__TenantId: '@Microsoft.KeyVault(SecretUri=${reference(graphAppTenantId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__KeyVaultName: prereqsKeyVaultName
+  graphCredentials__KeyVaultTenantId: tenantId
+  ConnectionStrings__JobsContext: '@Microsoft.KeyVault(SecretUri=${reference(jobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
+  ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
   logAnalyticsCustomerId: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsCustomerId, '2019-09-01').secretUriWithVersion})'
   logAnalyticsPrimarySharedKey: '@Microsoft.KeyVault(SecretUri=${reference(logAnalyticsPrimarySharedKey, '2019-09-01').secretUriWithVersion})'
   senderAddress: '@Microsoft.KeyVault(SecretUri=${reference(senderUsername, '2019-09-01').secretUriWithVersion})'
@@ -146,35 +144,17 @@ var appSettings = {
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   gmmServiceBus__fullyQualifiedNamespace: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusFQN, '2019-09-01').secretUriWithVersion})'
   serviceBusMembershipUpdatersTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMembershipUpdatersTopic, '2019-09-01').secretUriWithVersion})'
+  serviceBusMessageSplitterTopic: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusMessageSplitterTopic, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
-  'graphCredentials:UserAssignedManagedIdentityClientId': '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
   instanceIdentifier: instanceIdentifier
   triggerSchedule: triggerSchedule
   triggerDelay: triggerDelay
   concurrentWriteRequests: concurrentWriteRequests
-  'GraphUpdater:UpdateBatchSize': 400
-}
-
-var activityFunctionSettings = {
+  GraphUpdater__UpdateBatchSize: 400
   'AzureWebJobs.StarterFunction.Disabled': instanceIdentifier == '' ? 0 : 1
   'AzureWebJobs.StarterFunction_small.Disabled': instanceIdentifier == 'small' ? 0 : 1
   'AzureWebJobs.StarterFunction_large.Disabled': instanceIdentifier == 'large' ? 0 : 1
-  'AzureWebJobs.OrchestratorFunction.Disabled': 0
-  'AzureWebJobs.QueueMessageOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.CacheUserUpdaterSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterSubOrchestratorFunction.Disabled': 0
-  'AzureWebJobs.CacheUpdaterFunction.Disabled': 0
-  'AzureWebJobs.EmailSenderFunction.Disabled': 0
-  'AzureWebJobs.FileDownloaderFunction.Disabled': 0
-  'AzureWebJobs.GroupNameReaderFunction.Disabled': 0
-  'AzureWebJobs.GroupOwnersReaderFunction.Disabled': 0
-  'AzureWebJobs.GroupUpdaterFunction.Disabled': 0
-  'AzureWebJobs.GroupValidatorFunction.Disabled': 0
-  'AzureWebJobs.JobReaderFunction.Disabled': 0
-  'AzureWebJobs.JobStatusUpdaterFunction.Disabled': 0
-  'AzureWebJobs.LoggerFunction.Disabled': 0
-  'AzureWebJobs.MessageReaderFunction.Disabled': 0
-  'AzureWebJobs.TelemetryTrackerFunction.Disabled': 0
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
@@ -196,6 +176,16 @@ module storageAccountNameReader 'keyVaultReader.bicep' = {
   name: 'storageAccountNameReader-GraphUpdater${instanceSuffix}'
   params: {
     value: dataKeyVault.getSecret('graphUpdater${instanceIdentifier}StorageAccountProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-GraphUpdater${instanceSuffix}'
+  params: {
+    value: dataKeyVault.getSecret('graphUpdater${instanceIdentifier}AppPackageContainerProd')
   }
   dependsOn: [
     dataKeyVault
@@ -226,7 +216,7 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     dataKeyVaultName: dataKeyVaultName
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
-    secretSettings: commonSettings
+    appSettings: appSettings
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
@@ -237,18 +227,12 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     setRBACPermissions: setRBACPermissions
     instanceIdentifier: instanceIdentifier
     storageAccountName: storageAccountNameReader.outputs.value
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
+    maxInstanceCount: maxInstanceCount
+    instanceMemoryMB: instanceMemoryMB
   }
   dependsOn: [
     servicePlanTemplate
     graphUAMI
-  ]
-}
-
-resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
-  name: '${functionAppName}-GraphUpdater${instanceSuffix}/appsettings'
-  kind: 'string'
-  properties: union(commonSettings, appSettings, activityFunctionSettings)
-  dependsOn: [
-    functionAppTemplate_GraphUpdater
   ]
 }

@@ -3,23 +3,23 @@
 param name string
 
 @description('Service plan sku.')
-param sku string = 'Y1'
+@allowed([
+  'FC1'
+])
+param sku string = 'FC1'
 
 @description('Service plan location.')
 param location string
 
-@description('Maximum elastic worker count.')
-param maximumElasticWorkerCount int = 1
-
-resource servicePlan 'Microsoft.Web/serverfarms@2018-02-01' = {
+resource servicePlan 'Microsoft.Web/serverfarms@2023-12-01' = {
   name: name
   location: location
+  kind: 'functionapp'
   properties: {
-    maximumElasticWorkerCount: maximumElasticWorkerCount
-    targetWorkerCount: maximumElasticWorkerCount
+    reserved: true
   }
   sku: {
     name: sku
-    tier: 'Dynamic'
+    tier: 'FlexConsumption'
   }
 }

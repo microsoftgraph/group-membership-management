@@ -1,15 +1,15 @@
 {
   "version": "2.0",
-  "functionTimeout": "00:10:00",
+  "functionTimeout": "00:20:00",
   "extensions": {
     "durableTask": {
       "extendedSessionsEnabled": true,
       "extendedSessionIdleTimeoutInSeconds": 30
     },
     "serviceBus": {
-      "maxConcurrentCalls": 3,
-      "prefetchCount": 1,
-      "maxAutoLockRenewalDuration": "00:10:00",
+      "maxConcurrentCalls": 16,
+      "prefetchCount": 0,
+      "maxAutoLockRenewalDuration": "00:20:00",
       "autoCompleteMessages": true,
       "maxMessageBatchSize": 1,
       "maxConcurrentSessions": 3,
