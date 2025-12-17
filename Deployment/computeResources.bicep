@@ -17,6 +17,9 @@ param uiLocation string
 // API parameters
 param pipeline string
 
+//WebAPI, Notifier
+param apiHostname string = '${solutionAbbreviation}-compute-${environmentAbbreviation}-webapi.azurewebsites.net'
+
 // Message Splitter
 param availableMessageSplitterSubscriptions array = [
   {
@@ -428,6 +431,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    apiHostname: apiHostname
   }
   dependsOn: [
     notifierDataResources
@@ -624,6 +628,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     adfPipeline: pipeline
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    apiHostname: apiHostname
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources
