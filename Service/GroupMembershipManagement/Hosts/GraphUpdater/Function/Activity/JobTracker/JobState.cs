@@ -6,6 +6,7 @@ namespace GraphUpdater.Activity.JobTracker
     public class JobState
     {
         public bool? IsValidGroup { get; set; }
+        public bool CompletionSent { get; set; }
         public int TotalMembersToAdd { get; set; }
         public int TotalMembersToRemove { get; set; }
         public int TotalMembersAdded { get; set; }
