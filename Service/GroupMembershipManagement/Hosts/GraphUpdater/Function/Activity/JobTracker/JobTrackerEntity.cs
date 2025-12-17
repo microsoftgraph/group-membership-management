@@ -1,31 +1,34 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Entities;
 using System.Threading.Tasks;
 
 namespace GraphUpdater.Activity.JobTracker
 {
-    public class JobTrackerEntity : IJobTracker
+    public class JobTrackerEntity : TaskEntity<JobState>, IJobTracker
     {
-        public JobState JobState { get; set; } = new JobState();
+        protected override JobState InitializeState(TaskEntityOperation operation)
+        {
+            return new JobState();
+        }
 
         public Task<JobState> GetState()
         {
-            return Task.FromResult(JobState);
+            return Task.FromResult(State);
         }
 
         public Task SetState(JobState state)
         {
-            JobState = state;
+            State = state;
             return Task.CompletedTask;
         }
 
-        [FunctionName(nameof(JobTrackerEntity))]
-        public static Task Run([EntityTrigger] IDurableEntityContext ctx)
+        [Function(nameof(JobTrackerEntity))]
+        public static Task RunEntityAsync([EntityTrigger] TaskEntityDispatcher dispatcher)
         {
-            return ctx.DispatchAsync<JobTrackerEntity>();
+            return dispatcher.DispatchAsync<JobTrackerEntity>();
         }
     }
 }

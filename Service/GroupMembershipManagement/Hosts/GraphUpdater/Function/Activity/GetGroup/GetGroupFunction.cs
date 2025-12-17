@@ -1,12 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 
 namespace Hosts.GraphUpdater
 {
@@ -21,7 +20,7 @@ namespace Hosts.GraphUpdater
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
-        [FunctionName(nameof(GetGroupFunction))]
+        [Function(nameof(GetGroupFunction))]
         public async Task<Guid> GetGroupNameAsync([ActivityTrigger] SyncJob syncJob)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);

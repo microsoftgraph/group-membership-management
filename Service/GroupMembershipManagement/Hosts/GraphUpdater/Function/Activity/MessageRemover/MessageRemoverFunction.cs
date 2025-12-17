@@ -1,8 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure.Messaging.ServiceBus;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -21,7 +20,7 @@ namespace Hosts.GraphUpdater
             _serviceBusClient = serviceBusClient ?? throw new ArgumentNullException(nameof(serviceBusClient));
         }
 
-        [FunctionName(nameof(MessageRemoverFunction))]
+        [Function(nameof(MessageRemoverFunction))]
         public async Task RemoveMessagesAsync([ActivityTrigger] MessageRemoverRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageRemoverFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);

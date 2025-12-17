@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
+using Microsoft.Azure.Functions.Worker;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -23,7 +22,7 @@ namespace Hosts.GraphUpdater
             _graphUpdaterService = graphUpdaterService ?? throw new ArgumentNullException(nameof(graphUpdaterService));
         }
 
-        [FunctionName(nameof(JobStatusUpdaterFunction))]
+        [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
