@@ -54,7 +54,7 @@ namespace Hosts.GroupOwnershipObtainer
                     SyncJobId = syncJob.Id,
                     RunId = syncJob.RunId ?? Guid.Empty,
                     Status = SyncStatus.Idle.ToString(),
-                    EndTime = now,
+                    EndTime = syncJob.Status != SyncStatus.InProgress.ToString() ? now : null,
                     UpdatedByFunction = updateBy,
                     UpdatedAt = now
                 };
