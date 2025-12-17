@@ -3,7 +3,6 @@
 
 using DIConcreteTypes;
 using Hosts.MessageSplitter;
-using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -16,7 +15,6 @@ namespace Services.Tests
     [TestClass]
     public class TopicMessageSenderFunctionTests
     {
-        private IOptions<MultiLaneConfig> _multilaneConfig;
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IServiceBusTopicsRepository> _serviceBusTopicsRepository;
@@ -28,7 +26,6 @@ namespace Services.Tests
         {
             _loggingRepository = new Mock<ILoggingRepository>();
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
-            _multilaneConfig = Options.Create(new MultiLaneConfig());
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
 
             _fileContent = new GroupMembership
@@ -59,7 +56,6 @@ namespace Services.Tests
             var function = new TopicMessageSenderFunction(
                                     _loggingRepository.Object,
                                     _serviceBusTopicsRepository.Object,
-                                    _multilaneConfig,
                                     _blobStorageRepository.Object);
 
 
@@ -106,7 +102,6 @@ namespace Services.Tests
             var function = new TopicMessageSenderFunction(
                                     _loggingRepository.Object,
                                     _serviceBusTopicsRepository.Object,
-                                    _multilaneConfig,
                                     _blobStorageRepository.Object);
 
 
