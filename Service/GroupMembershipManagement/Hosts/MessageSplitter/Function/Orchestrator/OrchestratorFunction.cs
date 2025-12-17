@@ -37,27 +37,19 @@ namespace Hosts.MessageSplitter
 
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
             {
-                Message = new LogMessage { Message = $"Processing message {request.MessageId}", RunId = runId }
+                Message = new LogMessage { Message = $"Processing message {request.MessageId}, by orchestrator instance {context.InstanceId}", RunId = runId }
             });
 
             try
             {
-                await using (await context.Entities.LockEntitiesAsync(instanceTrackerEntityId))
+                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), new TopicMessageSenderRequest
                 {
-                    var instanceToUse = await context.Entities.CallEntityAsync<int>(instanceTrackerEntityId, "Get");
-                    instanceToUse = (instanceToUse <= 0 || ++instanceToUse > subscription.Instances) ? 1 : instanceToUse;
-                    var setInstanceTask = context.Entities.CallEntityAsync(instanceTrackerEntityId, "Set", instanceToUse);
-                    var sendMessagesTask = context.CallActivityAsync(nameof(TopicMessageSenderFunction), new TopicMessageSenderRequest
-                    {
-                        MembershipRequest = request.MembershipRequest,
-                        MessageSize = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize].MessageSize,
-                        SubscriptionName = request.SubscriptionName,
-                        InstanceToUse = instanceToUse,
-                        LaneSize = request.CurrentLaneSize
-                    });
-
-                    await Task.WhenAll(setInstanceTask, sendMessagesTask);
-                }
+                    MembershipRequest = request.MembershipRequest,
+                    MessageSize = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize].MessageSize,
+                    SubscriptionName = request.SubscriptionName,
+                    InstanceToUse = 1,
+                    LaneSize = request.CurrentLaneSize
+                });
             }
             catch (Exception ex)
             {

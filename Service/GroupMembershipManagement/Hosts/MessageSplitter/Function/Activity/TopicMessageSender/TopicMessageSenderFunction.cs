@@ -3,7 +3,6 @@
 using DIConcreteTypes;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
@@ -30,7 +29,6 @@ namespace Hosts.MessageSplitter
         public TopicMessageSenderFunction(
             ILoggingRepository loggingRepository,
             [FromKeyedServices("membershipUpdaterSender")] IServiceBusTopicsRepository membershipUpdaterSender,
-            IOptions<MultiLaneConfig> multilaneConfig,
             IBlobStorageRepository blobStorageRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));

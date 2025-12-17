@@ -12,6 +12,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Models;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.ServiceBusTopics;
@@ -51,6 +52,23 @@ namespace Hosts.MessageSplitter
                             CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
 
                             services.Configure<MultiLaneConfig>(configuration.GetSection("MultiLane"));
+                            services.Configure<RunLimiterSettings>(settings =>
+                            {
+                                if (instanceIdentifier.Equals("s1", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    configuration.GetSection("MultiLane:Small:RateLimiter").Bind(settings);
+                                }
+                                else if (instanceIdentifier.Equals("l1", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    configuration.GetSection("MultiLane:Large:RateLimiter").Bind(settings);
+                                }
+                                else
+                                {
+                                    throw new Exception($"Unknown instance identifier: {instanceIdentifier}");
+                                }
+                            });
+
+                            services.AddSingleton<RunLimiterSettings>(services => services.GetRequiredService<IOptions<RunLimiterSettings>>().Value);
 
                             services.AddKeyedSingleton<IServiceBusTopicsRepository>("membershipUpdaterSender", (services, _) =>
                             {
@@ -58,6 +76,30 @@ namespace Hosts.MessageSplitter
                                 var client = services.GetRequiredService<ServiceBusClient>();
                                 var sender = client.CreateSender(messageSplitterTopic);
                                 return new ServiceBusTopicsRepository(sender);
+                            })
+                            .AddKeyedSingleton<ServiceBusSender>("messageSplitterTopicSender", (services, _) =>
+                            {
+                                var topicName = configuration["serviceBusMessageSplitterTopic"];
+                                var client = services.GetRequiredService<ServiceBusClient>();
+                                return client.CreateSender(topicName);
+                            })
+                            .AddKeyedSingleton<IServiceBusTopicsRepository>("messageSplitterTopicSenderRepository", (services, _) =>
+                            {
+                                var topicName = configuration["serviceBusMessageSplitterTopic"];
+                                var client = services.GetRequiredService<ServiceBusClient>();
+                                var sender = client.CreateSender(topicName);
+                                return new ServiceBusTopicsRepository(sender);
+                            })
+                            .AddKeyedSingleton<ServiceBusReceiver>("messageSplitterPendingReceiver", (services, _) =>
+                            {
+                                var configuration = services.GetRequiredService<IConfiguration>();
+                                var topicName = configuration["serviceBusMessageSplitterTopic"];
+                                var pendingSubscriptionName = CommonServices.GetValueOrThrowBase(configuration, "messageSplitterPendingSubscription");
+                                var client = services.GetRequiredService<ServiceBusClient>();
+                                return client.CreateReceiver(topicName, pendingSubscriptionName, new ServiceBusReceiverOptions
+                                {
+                                    ReceiveMode = ServiceBusReceiveMode.PeekLock
+                                });
                             })
                             .AddSingleton(services =>
                             {

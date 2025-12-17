@@ -4,8 +4,8 @@ using Azure.Messaging.ServiceBus;
 using DIConcreteTypes;
 using MessageSplitter.Contracts;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -20,22 +20,28 @@ namespace Hosts.MessageSplitter
         private readonly ILoggingRepository _loggingRepository;
         private readonly IMessageSplitterService _messageSplitterService;
         private readonly MembershipUpdaters _membershipUpdaters;
+        private readonly IServiceBusTopicsRepository _messageSplitterTopicSenderRepository;
+        private readonly RunLimiterSettings _runLimiterSettings;
 
         public StarterFunction(ILoggingRepository loggingRepository,
                                IMessageSplitterService messageSplitterService,
-                               MembershipUpdaters membershipUpdaters)
+                               MembershipUpdaters membershipUpdaters,
+                               [FromKeyedServices("messageSplitterTopicSenderRepository")] IServiceBusTopicsRepository messageSplitterTopicSenderRepository,
+                               RunLimiterSettings runLimiterSettings)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _membershipUpdaters = membershipUpdaters ?? throw new ArgumentNullException(nameof(membershipUpdaters));
             _messageSplitterService = messageSplitterService ?? throw new ArgumentNullException(nameof(messageSplitterService));
+            _messageSplitterTopicSenderRepository = messageSplitterTopicSenderRepository ?? throw new ArgumentNullException(nameof(messageSplitterTopicSenderRepository));
+            _runLimiterSettings = runLimiterSettings ?? throw new ArgumentNullException(nameof(runLimiterSettings));
         }
 
         [Function(nameof(StarterFunction))]
-        [Singleton(Mode = SingletonMode.Function)]
         public async Task ProcessServiceBusMessageAsync(
-            [ServiceBusTrigger(topicName: "%serviceBusMessageSplitterTopic%", subscriptionName: "%messageSplitterSubscription%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message,
+            [ServiceBusTrigger(topicName: "%serviceBusMessageSplitterTopic%", subscriptionName: "%messageSplitterSubscription%", Connection = "gmmServiceBus")]
+            ServiceBusReceivedMessage message,
             ServiceBusMessageActions actions,
-            [DurableClient] DurableTaskClient starter)
+            [DurableClient] DurableTaskClient durableClient)
         {
             var request = JsonSerializer.Deserialize<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
             var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
@@ -45,9 +51,14 @@ namespace Hosts.MessageSplitter
 
             try
             {
-                var instanceId = await RunMainOrchestratorAsync(message, request, starter);
+                var orchestrationRequest = CreateOrchestratorRequest(message, request);
+
+                if(_runLimiterSettings.IsEnabled)
+                    await EnqueuePendingWorkAsync(orchestrationRequest);
+                else
+                    await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), orchestrationRequest);
+
                 await actions.CompleteMessageAsync(message);
-                await WaitForOrchestratorToCompleteAsync(instanceId, starter);
             }
             catch (Exception ex)
             {
@@ -57,17 +68,13 @@ namespace Hosts.MessageSplitter
             }
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
-
         }
 
-        private async Task<string> RunMainOrchestratorAsync(
-                                    ServiceBusReceivedMessage message,
-                                    MembershipHttpRequest request,
-                                    DurableTaskClient starter)
+        private OrchestratorRequest CreateOrchestratorRequest(ServiceBusReceivedMessage message, MembershipHttpRequest request)
         {
             var updaterType = message.ApplicationProperties["Type"].ToString();
             var subscription = _membershipUpdaters.AvailableInstances[updaterType][_membershipUpdaters.CurrentLaneSize];
-            var orchestrationRequest = new OrchestratorRequest
+            return new OrchestratorRequest
             {
                 MembershipRequest = request,
                 MessageId = message.MessageId,
@@ -75,37 +82,22 @@ namespace Hosts.MessageSplitter
                 SubscriptionName = subscription.Name,
                 CurrentLaneSize = _membershipUpdaters.CurrentLaneSize
             };
-
-            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), orchestrationRequest);
-
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceID: '{instanceId}'", RunId = runId });
-            return instanceId;
         }
 
-
-        private async Task WaitForOrchestratorToCompleteAsync(string instanceId, DurableTaskClient starter)
+        private async Task EnqueuePendingWorkAsync(OrchestratorRequest orchestrationRequest)
         {
-            await Task.Delay(1000);
-
-            var isCompleted = false;
-            do
+            var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(orchestrationRequest));
+            var pendingMessage = new Models.ServiceBus.ServiceBusMessage
             {
-                var instanceMetadata = await starter.GetInstanceAsync(instanceId);
-                if (instanceMetadata != null)
-                    isCompleted = IsOrchestrationCompleted(instanceMetadata.RuntimeStatus);
+                // Must be unique across retries due to topic duplicate detection.
+                MessageId = $"pending_{orchestrationRequest.MembershipRequest.SyncJob.RunId}_{Guid.NewGuid()}"
+            };
 
-                if (!isCompleted)
-                    await Task.Delay(2000);
-            }
-            while (!isCompleted);
-        }
+            pendingMessage.Body = body;
 
-        private bool IsOrchestrationCompleted(OrchestrationRuntimeStatus status)
-        {
-            return status == OrchestrationRuntimeStatus.Completed
-                || status == OrchestrationRuntimeStatus.Failed
-                || status == OrchestrationRuntimeStatus.Terminated;
+            pendingMessage.ApplicationProperties["MessageType"] = $"pending_{orchestrationRequest.CurrentLaneSize.ToLowerInvariant()}";
+
+            await _messageSplitterTopicSenderRepository.AddMessageAsync(pendingMessage);
         }
     }
 }
