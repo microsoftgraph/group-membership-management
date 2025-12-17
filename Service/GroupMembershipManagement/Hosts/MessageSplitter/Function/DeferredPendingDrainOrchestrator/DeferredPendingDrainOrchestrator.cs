@@ -1,0 +1,269 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
+using Models;
+using Repositories.Contracts;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace Hosts.MessageSplitter
+{
+    public class DeferredPendingDrainOrchestrator
+    {
+        private readonly RunLimiterSettings _runLimiterSettings;
+
+        public DeferredPendingDrainOrchestrator(RunLimiterSettings runLimiterSettings)
+        {
+            _runLimiterSettings = runLimiterSettings ?? throw new ArgumentNullException(nameof(runLimiterSettings));
+        }
+
+        [Function(nameof(DeferredPendingDrainOrchestrator))]
+        public async Task RunAsync([OrchestrationTrigger] TaskOrchestrationContext context)
+        {
+            var input = context.GetInput<DeferredPendingDrainRequest>();
+            var lane = (input?.LaneSize ?? string.Empty).ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(lane))
+            {
+                // Nothing to do.
+                return;
+            }
+
+            await context.CallActivityAsync(
+                nameof(LoggerFunction),
+                new LoggerRequest
+                {
+                    Message = new LogMessage
+                    {
+                        Message = $"DeferredPendingDrain: start lane={lane}",
+                    },
+                    Verbosity = VerbosityLevel.INFO
+                });
+
+            var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
+
+            var utcNow = new DateTimeOffset(context.CurrentUtcDateTime, TimeSpan.Zero);
+
+            // Acquire a short-lived drain lock to reduce redundant drains.
+            var lockAcquired = false;
+            await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+            {
+                lockAcquired = await context.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.TryAcquireDrainLock),
+                    new TryAcquireDrainLockRequest(utcNow, 60));
+            }
+
+            if (!lockAcquired)
+            {
+                await context.CallActivityAsync(
+                    nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage { Message = $"DeferredPendingDrain: drain lock not acquired lane={lane} (another drain in progress)" },
+                        Verbosity = VerbosityLevel.INFO
+                    });
+                return;
+            }
+
+            try
+            {
+                var maxItems = GetMaxDrainBatch(lane);
+
+                var processed = 0;
+                var removed = 0;
+                var newlyDispatched = 0;
+                var messageNotFound = 0;
+                var capacityDenied = 0;
+
+                List<DeferredPendingItem> batch;
+                await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                {
+                    batch = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
+                        indexEntityId,
+                        nameof(DeferredPendingIndexEntity.TakeNextBatch),
+                        new TakeNextBatchRequest(utcNow, maxItems, 120));
+                }
+
+                if (batch == null || batch.Count == 0)
+                {
+                    await context.CallActivityAsync(
+                        nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            Message = new LogMessage { Message = $"DeferredPendingDrain: no items to process lane={lane}" },
+                            Verbosity = VerbosityLevel.INFO
+                        });
+                    return;
+                }
+
+                var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
+
+                foreach (var item in batch)
+                {
+                    processed++;
+                    var leaseAcquiredForDispatch = false;
+                    if (!item.Dispatched)
+                    {
+                        AcquireLeaseResponse lease;
+                        await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
+                        {
+                            lease = await context.Entities.CallEntityAsync<AcquireLeaseResponse>(
+                                limiterEntityId,
+                                nameof(RunLimiter.Acquire),
+                                new AcquireLeaseRequest(item.RunId, _runLimiterSettings.MaxInFlightMessages, _runLimiterSettings.LeaseTimeoutMinutes, utcNow));
+                        }
+
+                        if (!lease.Acquired)
+                        {
+                            capacityDenied++;
+                            await context.CallActivityAsync(
+                                nameof(LoggerFunction),
+                                new LoggerRequest
+                                {
+                                    Message = new LogMessage
+                                    {
+                                        Message = $"DeferredPendingDrain: no capacity; stopping drain lane={lane} inFlight={lease.InFlightCount} runId={item.RunId} seq={item.SequenceNumber}",
+                                        RunId = item.RunId
+                                    },
+                                    Verbosity = VerbosityLevel.INFO
+                                });
+                            // No capacity: release in-progress marker and stop.
+                            await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                            {
+                                await context.Entities.CallEntityAsync<bool>(
+                                    indexEntityId,
+                                    nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                                    item.SequenceNumber);
+                            }
+
+                            return;
+                        }
+
+                        leaseAcquiredForDispatch = true;
+                    }
+
+                    ReceiveDeferredPendingResponse received;
+                    try
+                    {
+                        received = await context.CallActivityAsync<ReceiveDeferredPendingResponse>(
+                            nameof(ReceiveDeferredPendingFunction),
+                            new ReceiveDeferredPendingRequest(item.SequenceNumber, item.RunId, item.Dispatched, item.OrchestrationInstanceId));
+                    }
+                    catch
+                    {
+                        await context.CallActivityAsync(
+                            nameof(LoggerFunction),
+                            new LoggerRequest
+                            {
+                                Message = new LogMessage
+                                {
+                                    Message = $"DeferredPendingDrain: ReceiveDeferredPending failed; lane={lane} runId={item.RunId} seq={item.SequenceNumber}",
+                                    RunId = item.RunId
+                                },
+                                Verbosity = VerbosityLevel.INFO
+                            });
+                        if (leaseAcquiredForDispatch)
+                        {
+                            // No work was dispatched: release the lease.
+                            await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
+                            {
+                                await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
+                            }
+                        }
+
+                        // Activity failed: release in-progress marker and let the deferred message unlock naturally.
+                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                        {
+                            await context.Entities.CallEntityAsync<bool>(
+                                indexEntityId,
+                                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                                item.SequenceNumber);
+                        }
+
+                        throw;
+                    }
+
+                    if (received.MessageNotFound)
+                    {
+                        messageNotFound++;
+                    }
+
+                    if (received.Dispatched && !item.Dispatched)
+                    {
+                        newlyDispatched++;
+                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                        {
+                            await context.Entities.CallEntityAsync<bool>(
+                                indexEntityId,
+                                nameof(DeferredPendingIndexEntity.MarkDispatched),
+                                new MarkDeferredPendingDispatchedRequest(item.SequenceNumber, received.OrchestrationInstanceId));
+                        }
+                    }
+
+                    // If no work was dispatched, release the lease.
+                    // If the message was not found, we conservatively keep the lease to avoid exceeding capacity
+                    // in the case where dispatch happened but index cleanup didn't.
+                    if (!received.Dispatched && leaseAcquiredForDispatch && !received.MessageNotFound)
+                    {
+                        await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
+                        {
+                            await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
+                        }
+                    }
+
+                    if (received.ShouldRemoveFromIndex)
+                    {
+                        removed++;
+                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                        {
+                            await context.Entities.CallEntityAsync<bool>(
+                                indexEntityId,
+                                nameof(DeferredPendingIndexEntity.Remove),
+                                item.SequenceNumber);
+                        }
+                    }
+                    else
+                    {
+                        // Keep it for retry.
+                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                        {
+                            await context.Entities.CallEntityAsync<bool>(
+                                indexEntityId,
+                                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                                item.SequenceNumber);
+                        }
+                    }
+
+                }
+
+                await context.CallActivityAsync(
+                    nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
+                        {
+                            Message = $"DeferredPendingDrain: completed lane={lane} processed={processed} newlyDispatched={newlyDispatched} removed={removed} messageNotFound={messageNotFound} capacityDenied={capacityDenied}",
+                        },
+                        Verbosity = VerbosityLevel.INFO
+                    });
+            }
+            finally
+            {
+                await using (await context.Entities.LockEntitiesAsync(indexEntityId))
+                {
+                    await context.Entities.CallEntityAsync(indexEntityId, nameof(DeferredPendingIndexEntity.ReleaseDrainLock));
+                }
+            }
+        }
+
+        private static int GetMaxDrainBatch(string lane)
+        {
+            // Policy: Small=16, Large=3
+            return lane.Equals("large", StringComparison.OrdinalIgnoreCase) ? 3 : 16;
+        }
+    }
+}
