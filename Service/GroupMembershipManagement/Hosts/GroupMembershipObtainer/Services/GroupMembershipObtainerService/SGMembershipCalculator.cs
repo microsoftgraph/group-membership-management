@@ -11,6 +11,7 @@ using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Net.Sockets;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -70,12 +71,12 @@ namespace Hosts.GroupMembershipObtainer
         public async Task<PolicyResult<bool>> GroupExistsAsync(Guid objectId, Guid runId)
         {
             // make this fresh every time because the lambda has to capture the run ID
-            _graphRetryPolicy = Policy.Handle<SocketException>().WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            _graphRetryPolicy = Policy.Handle<HttpRequestException>().Or<SocketException>().WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                    onRetry: async (ex, count) =>
                    {
                        await _log.LogMessageAsync(new LogMessage
                        {
-                           Message = $"Got a transient SocketException. Retrying. This was try {count} out of {NumberOfGraphRetries}.\n" + ex.ToString(),
+                           Message = $"Got a transient exception. Retrying. This was try {count} out of {NumberOfGraphRetries}.\n" + ex.ToString(),
                            RunId = runId
                        });
                    });
