@@ -126,17 +126,18 @@ namespace Services
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
             var currentDate = DateTime.UtcNow;
+            var updatedBy = nameof(Host.PlaceMembershipObtainer);
             var history = new SyncJobHistory
             {
                 SyncJobId = job.Id,
                 RunId = job.RunId ?? Guid.Empty,
                 Status = status.ToString(),
-                UpdatedByFunction = "PlaceMembershipObtainer",
+                UpdatedByFunction = updatedBy,
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,              
                 UpdatedAt = currentDate
             };
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "PlaceMembershipObtainer");
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: updatedBy);
         }
     }
 }
