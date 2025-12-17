@@ -126,7 +126,7 @@ namespace Services
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
         {
             var currentDate = DateTime.UtcNow;
-            var updatedBy = nameof(Host.PlaceMembershipObtainer);
+            var updatedBy = "PlaceMembershipObtainer";
             var history = new SyncJobHistory
             {
                 SyncJobId = job.Id,
