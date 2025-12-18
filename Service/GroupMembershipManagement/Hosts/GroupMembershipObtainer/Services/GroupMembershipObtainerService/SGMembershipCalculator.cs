@@ -32,7 +32,6 @@ namespace Hosts.GroupMembershipObtainer
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly IDatabaseDestinationAttributesRepository _databaseDestinationAttributesRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
-        private const string UpdatedByFunction = "GroupMembershipObtainer";
 
         public SGMembershipCalculator(IGraphGroupRepository graphGroupRepository,
                                       IBlobStorageRepository blobStorageRepository,
@@ -318,12 +317,12 @@ namespace Hosts.GroupMembershipObtainer
                 SyncJobId = job.Id,
                 RunId = job.RunId ?? Guid.Empty,
                 Status = status.ToString(),
-                UpdatedByFunction = UpdatedByFunction,
-                StartTime = job.LastRunTime,
-                EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null
+                UpdatedByFunction = "GroupMembershipObtainer",
+                EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
+                UpdatedAt = DateTime.UtcNow
             };
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, UpdatedByFunction);
+            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, "GroupMembershipObtainer");
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
