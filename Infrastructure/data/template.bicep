@@ -541,7 +541,7 @@ param appConfigurationKeyData array = [
   }
   {
     key: 'MultiLane:Small:RateLimiter:LeaseTimeoutMinutes'
-    value: 2
+    value: 5
     contentType: 'int'
     tag: {
       tag1: 'MultiLane'
