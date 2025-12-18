@@ -155,15 +155,35 @@ namespace Repositories.GraphGroups
         {
             try
             {
-                var groupCollectionPage = await _graphServiceClient.Groups
-                                                   .GetAsync(requestConfiguration =>
-                                                   {
-                                                       requestConfiguration
-                                                        .QueryParameters
-                                                        .Filter = $"startswith(displayName, '{groupName}')";
-                                                   });
+                var nativeResponseHandler = new NativeResponseHandler();
 
-                return groupCollectionPage.Value?.Any() ?? false;
+                await _graphServiceClient.Groups
+                                   .GetAsync(requestConfiguration =>
+                                   {
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Filter = $"startswith(displayName, '{groupName}')";
+                                       requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                                   });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse == null)
+                {
+                    return false;
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                if (!nativeResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to verify group existence. Status code: {nativeResponse.StatusCode}");
+                }
+
+                var groupCollectionPage = await DeserializeResponseAsync(nativeResponse, GroupCollectionResponse.CreateFromDiscriminatorValue);
+
+                return groupCollectionPage?.Value?.Any() ?? false;
             }
             catch (ODataError ex)
             {
@@ -404,6 +424,10 @@ namespace Repositories.GraphGroups
             foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
             {
                 using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+
+                var headers = response.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId: null);
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseHandler = new ResponseHandler<DirectoryObjectCollectionResponse>();
@@ -444,7 +468,20 @@ namespace Repositories.GraphGroups
 
                 var batchResponse = await _graphServiceClient.Batch.PostAsync(batchRequest);
 
-                var group = await batchResponse.GetResponseByIdAsync<Group>(outlookRequestId);
+                var outlookResponse = await batchResponse.GetResponseByIdAsync(outlookRequestId);
+                Group group = null;
+
+                if (outlookResponse != null)
+                {
+                    var outlookHeaders = outlookResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(outlookHeaders, QueryType.Other, runId);
+
+                    if (outlookResponse.IsSuccessStatusCode)
+                    {
+                        group = await DeserializeResponseAsync(outlookResponse, Group.CreateFromDiscriminatorValue);
+                    }
+                }
+
                 if (group != null)
                 {
                     var isMailEnabled = group.MailEnabled ?? false;
@@ -459,9 +496,15 @@ namespace Repositories.GraphGroups
 
                 var siteResponse = await batchResponse.GetResponseByIdAsync(sharepointRequestId);
 
-                if (siteResponse.IsSuccessStatusCode || siteResponse.StatusCode == HttpStatusCode.Forbidden)
+                if (siteResponse != null)
                 {
-                    endpoints.Add("SharePoint");
+                    var siteHeaders = siteResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(siteHeaders, QueryType.Other, runId);
+
+                    if (siteResponse.IsSuccessStatusCode || siteResponse.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        endpoints.Add("SharePoint");
+                    }
                 }
             }
             catch (ApiException ex)
@@ -481,13 +524,30 @@ namespace Repositories.GraphGroups
                 getRequestInformation.URI = new Uri(endpointsUrl);
                 getRequestInformation.PathParameters["baseurl"] = baseUrl;
 
-                var endpointCollectionResponse = await _graphServiceClient
-                                                            .RequestAdapter
-                                                            .SendAsync(getRequestInformation,
-                                                            factory: EndpointCollectionResponse.CreateFromDiscriminatorValue);
+                var nativeResponseHandler = new NativeResponseHandler();
 
-                if (endpointCollectionResponse.Value?.Any() ?? false)
-                    endpoints.AddRange(endpointCollectionResponse.Value.Select(x => x.ProviderName));
+                getRequestInformation.AddRequestOptions(new IRequestOption[] { new ResponseHandlerOption { ResponseHandler = nativeResponseHandler } });
+
+                await _graphServiceClient
+                        .RequestAdapter
+                        .SendAsync<EndpointCollectionResponse>(getRequestInformation,
+                        EndpointCollectionResponse.CreateFromDiscriminatorValue);
+
+                var endpointResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (endpointResponse != null)
+                {
+                    var endpointHeaders = endpointResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(endpointHeaders, QueryType.Other, runId);
+
+                    if (endpointResponse.IsSuccessStatusCode)
+                    {
+                        var endpointCollectionResponse = await DeserializeResponseAsync(endpointResponse, EndpointCollectionResponse.CreateFromDiscriminatorValue);
+
+                        if (endpointCollectionResponse?.Value?.Any() ?? false)
+                            endpoints.AddRange(endpointCollectionResponse.Value.Select(x => x.ProviderName));
+                    }
+                }
 
             }
             catch (ODataError ex)
@@ -576,23 +636,69 @@ namespace Repositories.GraphGroups
                     MailNickname = newGroupAlias ?? Guid.NewGuid().ToString()
                 };
 
-                var group = await _graphServiceClient.Groups.PostAsync(groupDefinition);
+                Group createdGroup = null;
+                var createResponseHandler = new NativeResponseHandler();
 
-                await _graphServiceClient.Groups[group.Id]
+                await _graphServiceClient.Groups.PostAsync(groupDefinition, requestConfiguration =>
+                {
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = createResponseHandler });
+                });
+
+                var createResponse = createResponseHandler.Value as HttpResponseMessage;
+
+                if (createResponse != null)
+                {
+                    var createHeaders = createResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(createHeaders, QueryType.Other, runId);
+
+                    if (createResponse.IsSuccessStatusCode)
+                    {
+                        createdGroup = await DeserializeResponseAsync(createResponse, Group.CreateFromDiscriminatorValue);
+                    }
+                    else
+                    {
+                        throw new HttpRequestException($"Failed to create group. Status code: {createResponse.StatusCode}");
+                    }
+                }
+
+                if (createdGroup == null)
+                {
+                    return null;
+                }
+
+                var ownerResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Groups[createdGroup.Id]
                                             .Owners
                                             .Ref
                                             .PostAsync(new ReferenceCreate
                                             {
                                                 OdataId = $"https://graph.microsoft.com/v1.0/directoryObjects/{groupOwnerId}"
+                                            }, requestConfiguration =>
+                                            {
+                                                requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = ownerResponseHandler });
                                             });
 
+                var ownerResponse = ownerResponseHandler.Value as HttpResponseMessage;
 
-                if (await GroupExistsAsync(new Guid(group.Id), runId))
+                if (ownerResponse != null)
+                {
+                    var ownerHeaders = ownerResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(ownerHeaders, QueryType.Other, runId);
+
+                    if (!ownerResponse.IsSuccessStatusCode)
+                    {
+                        throw new HttpRequestException($"Failed to assign owner to newly created group. Status code: {ownerResponse.StatusCode}");
+                    }
+                }
+
+
+                if (await GroupExistsAsync(new Guid(createdGroup.Id), runId))
                 {
                     return new AzureADGroup
                     {
-                        ObjectId = new Guid(group.Id),
-                        Name = group.DisplayName
+                        ObjectId = new Guid(createdGroup.Id),
+                        Name = createdGroup.DisplayName
                     };
                 }
                 else
@@ -675,6 +781,9 @@ namespace Repositories.GraphGroups
                             group.Visibility = graphGroup.Visibility?.ToString();
                         }
 
+                        var headers = graphGroupResonse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                        await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
                         groups.Add(group);
                     }
 
@@ -707,7 +816,9 @@ namespace Repositories.GraphGroups
             try
             {
                 var results = new List<AzureADGroup>();
-                var groupCollectionPage = await _graphServiceClient.Groups
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Groups
                                    .GetAsync(requestConfiguration =>
                                    {
                                        requestConfiguration
@@ -716,9 +827,27 @@ namespace Repositories.GraphGroups
                                        requestConfiguration
                                         .QueryParameters
                                         .Top = MaxGroupResultCount;
+                                       requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                                    });
 
-                if (groupCollectionPage.Value.Count > 0)
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse == null)
+                {
+                    return results;
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId: null);
+
+                if (!nativeResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to search for groups. Status code: {nativeResponse.StatusCode}");
+                }
+
+                var groupCollectionPage = await DeserializeResponseAsync(nativeResponse, GroupCollectionResponse.CreateFromDiscriminatorValue);
+
+                if (groupCollectionPage?.Value?.Count > 0)
                 {
                     foreach (var group in groupCollectionPage.Value)
                     {

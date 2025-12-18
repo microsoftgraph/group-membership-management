@@ -4,11 +4,14 @@
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -30,7 +33,7 @@ namespace Repositories.GraphGroups
         public async Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip, Guid? runId)
         {
             var users = new List<AzureADUser>();
-            var roomsResponse = await GetRoomsAsync(url, top, skip);
+            var roomsResponse = await GetRoomsAsync(url, top, skip, runId);
             if (roomsResponse.Value.Count > 0)
             {
                 foreach (var room in roomsResponse.Value)
@@ -46,7 +49,7 @@ namespace Repositories.GraphGroups
                 for (int i = 0; i <= numberOfRequests; i++)
                 {
                     skip += top;
-                    roomsResponse = await GetRoomsAsync(url, top, skip);
+                    roomsResponse = await GetRoomsAsync(url, top, skip, runId);
                     if (roomsResponse.Value.Count > 0)
                     {
                         foreach (var room in roomsResponse.Value)
@@ -64,7 +67,7 @@ namespace Repositories.GraphGroups
         public async Task<(List<AzureADUser> users, string nextPageUrl)> GetWorkSpacesPageAsync(string url, int top, int skip, Guid? runId)
         {
             var users = new List<AzureADUser>();
-            var response = await GetWorkSpacesAsync(url, top, skip);
+            var response = await GetWorkSpacesAsync(url, top, skip, runId);
 
             if (response.Value.Count > 0)
             {
@@ -83,7 +86,7 @@ namespace Repositories.GraphGroups
                 for (int i = 0; i <= numberOfRequests; i++)
                 {
                     skip += top;
-                    response = await GetWorkSpacesAsync(url, top, skip);
+                    response = await GetWorkSpacesAsync(url, top, skip, runId);
                     if (response.Value.Count > 0)
                     {
                         foreach (var room in response.Value)
@@ -98,7 +101,7 @@ namespace Repositories.GraphGroups
             return (users, response.OdataNextLink);
         }
 
-        private async Task<RoomCollectionResponse> GetRoomsAsync(string url, int top, int skip)
+        private async Task<RoomCollectionResponse> GetRoomsAsync(string url, int top, int skip, Guid? runId)
         {
             var queryParamValues = HttpUtility.ParseQueryString(url, Encoding.UTF8);
             var filterValue = queryParamValues["$filter"];
@@ -110,22 +113,27 @@ namespace Repositories.GraphGroups
                 selectValues = selectValues.Append("emailAddress").ToArray();
             }
 
-            var roomsResponse = await _graphServiceClient
-                                .Places
-                                .GraphRoom
-                                .GetAsync(requestConfiguration =>
-                                {
-                                    requestConfiguration.QueryParameters.Top = top;
-                                    requestConfiguration.QueryParameters.Skip = skip;
-                                    requestConfiguration.QueryParameters.Filter = filterValue;
-                                    requestConfiguration.QueryParameters.Select = selectValues;
-                                    requestConfiguration.QueryParameters.Count = true;
-                                });
+            var nativeResponseHandler = new NativeResponseHandler();
+            var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
-            return roomsResponse;
+            await _graphServiceClient
+                    .Places
+                    .GraphRoom
+                    .GetAsync(requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Top = top;
+                        requestConfiguration.QueryParameters.Skip = skip;
+                        requestConfiguration.QueryParameters.Filter = filterValue;
+                        requestConfiguration.QueryParameters.Select = selectValues;
+                        requestConfiguration.QueryParameters.Count = true;
+                        requestConfiguration.Options.Add(responseHandlerOption);
+                    });
+
+            var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+            return await DeserializeRoomResponseAsync(nativeResponse, runId);
         }
 
-        private async Task<RoomCollectionResponse> GetWorkSpacesAsync(string url, int top, int skip)
+        private async Task<RoomCollectionResponse> GetWorkSpacesAsync(string url, int top, int skip, Guid? runId)
         {
             var requestInformation = new RequestInformation
             {
@@ -138,12 +146,45 @@ namespace Repositories.GraphGroups
             if (skip > 0)
                 requestInformation.QueryParameters.Add("$skip", skip);
 
-            var workspaceResponse = await _graphServiceClient
-                                            .RequestAdapter
-                                            .SendAsync(requestInformation,
-                                                       RoomCollectionResponse.CreateFromDiscriminatorValue);
+            var nativeResponseHandler = new NativeResponseHandler();
+            var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
-            return workspaceResponse;
+            requestInformation.AddRequestOptions(new List<IRequestOption> { responseHandlerOption });
+
+            await _graphServiceClient
+                    .RequestAdapter
+                    .SendAsync(requestInformation,
+                               RoomCollectionResponse.CreateFromDiscriminatorValue);
+
+            var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+            return await DeserializeRoomResponseAsync(nativeResponse, runId);
+        }
+
+        private async Task<RoomCollectionResponse> DeserializeRoomResponseAsync(HttpResponseMessage nativeResponse, Guid? runId)
+        {
+            if (nativeResponse == null)
+            {
+                throw new InvalidOperationException("Unable to obtain a response from Microsoft Graph for the places query.");
+            }
+
+            var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+            await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+            if (!nativeResponse.IsSuccessStatusCode)
+            {
+                var errorContent = await nativeResponse.Content.ReadAsStringAsync();
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Failed to retrieve place information from Microsoft Graph. StatusCode {(int)nativeResponse.StatusCode} - {nativeResponse.StatusCode}. Response: {errorContent}",
+                    RunId = runId
+                });
+
+                nativeResponse.EnsureSuccessStatusCode();
+            }
+
+            var response = await DeserializeResponseAsync(nativeResponse, RoomCollectionResponse.CreateFromDiscriminatorValue) ?? new RoomCollectionResponse();
+            nativeResponse.Dispose();
+            return response;
         }
     }
 }

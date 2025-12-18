@@ -4,6 +4,7 @@
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
+using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Repositories.Contracts;
 using System;
@@ -53,17 +54,35 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var user = await _graphServiceClient.Users[userIdentifier].GetAsync();
-                if (user != null) userDetails = new AzureADUser
-                {
-                    ObjectId = Guid.Parse(user.Id),
-                    UserPrincipalName = user.UserPrincipalName,
-                    OnPremisesImmutableId = user.OnPremisesImmutableId
-                };
+                var nativeResponseHandler = new NativeResponseHandler();
 
-                if (includeMailProperty)
+                await _graphServiceClient.Users[userIdentifier].GetAsync(requestConfiguration =>
                 {
-                    userDetails.Mail = user.Mail;
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse != null)
+                {
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    if (nativeResponse.IsSuccessStatusCode)
+                    {
+                        var user = await DeserializeResponseAsync(nativeResponse, User.CreateFromDiscriminatorValue);
+
+                        if (user != null)
+                        {
+                            userDetails = new AzureADUser
+                            {
+                                ObjectId = Guid.Parse(user.Id),
+                                UserPrincipalName = user.UserPrincipalName,
+                                OnPremisesImmutableId = user.OnPremisesImmutableId,
+                                Mail = includeMailProperty ? user.Mail : null
+                            };
+                        }
+                    }
                 }
             }
 
@@ -85,18 +104,37 @@ namespace Repositories.GraphGroups
 
             try
             {
-                var user = await _graphServiceClient.Users[userIdentifier]
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Users[userIdentifier]
                     .GetAsync(requestConfiguration =>
                     {
                         requestConfiguration.QueryParameters.Select = new string[] { "id", "userPrincipalName", "onPremisesImmutableId" };
+                        requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                     });
 
-                if (user != null) userDetails = new AzureADUser
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse != null)
                 {
-                    ObjectId = Guid.Parse(user.Id),
-                    UserPrincipalName = user.UserPrincipalName,
-                    OnPremisesImmutableId = user.OnPremisesImmutableId
-                };
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    if (nativeResponse.IsSuccessStatusCode)
+                    {
+                        var user = await DeserializeResponseAsync(nativeResponse, User.CreateFromDiscriminatorValue);
+
+                        if (user != null)
+                        {
+                            userDetails = new AzureADUser
+                            {
+                                ObjectId = Guid.Parse(user.Id),
+                                UserPrincipalName = user.UserPrincipalName,
+                                OnPremisesImmutableId = user.OnPremisesImmutableId
+                            };
+                        }
+                    }
+                }
             }
             catch (Exception exception)
             {

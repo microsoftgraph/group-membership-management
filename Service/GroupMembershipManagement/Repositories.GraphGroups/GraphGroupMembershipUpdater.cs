@@ -3,6 +3,7 @@
 using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Constants;
 using Services.Entities;
 using System;
 using System.Collections.Concurrent;
@@ -464,8 +465,6 @@ namespace Repositories.GraphGroups
             var retryResponses = new List<RetryResponse>();
             bool beenThrottled = false;
 
-            var resourceUnitsUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.ResourceUnitsUsed));
-            var throttleLimitPercentage = _graphGroupMetricTracker.GetMetric(nameof(Metric.ThrottleLimitPercentage));
             var writesUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.WritesUsed));
             var writeRequests = _graphGroupMetricTracker.GetMetric(nameof(Metric.WriteRequests));
 
@@ -476,16 +475,8 @@ namespace Repositories.GraphGroups
                 var status = response.StatusCode;
                 var content = await response.Content.ReadAsStringAsync();
 
-                if (response.Headers.TryGetValues(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
-                {
-                    int ruu = GraphGroupMetricTracker.ParseFirst<int>(resourceValues, int.TryParse);
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = RunId });
-                    _graphGroupMetricTracker.TrackResourceUnitsUsedByTypeEvent(ruu, QueryType.Other, RunId);
-                    resourceUnitsUsed.TrackValue(ruu);
-                }
-
-                if (response.Headers.TryGetValues(GraphResponseHeader.ThrottlePercentageHeader, out var throttleValues))
-                    throttleLimitPercentage.TrackValue(GraphGroupMetricTracker.ParseFirst<double>(throttleValues, double.TryParse));
+                var headers = response.Headers.ToDictionary(h => h.Key, h => h.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, RunId);
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
@@ -586,8 +577,8 @@ namespace Repositories.GraphGroups
                         var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter) + TimeSpan.FromSeconds(10);
 
                         var startThrottling = Task.Delay(throttleWait);
-                        var gotThrottleInfo = response.Headers.TryGetValues(GraphResponseHeader.ThrottleInfoHeader, out var throttleInfo);
-                        var gotThrottleScope = response.Headers.TryGetValues(GraphResponseHeader.ThrottleScopeHeader, out var throttleScope);
+                        var gotThrottleInfo = response.Headers.TryGetValues(GraphResponseHeaders.ThrottleInformation, out var throttleInfo);
+                        var gotThrottleScope = response.Headers.TryGetValues(GraphResponseHeaders.ThrottleScope, out var throttleScope);
                         await _loggingRepository.LogMessageAsync(new LogMessage
                         {
                             Message = string.Format("Got 429 throttled. Waiting {0} seconds. Delta: {1} Date: {2} Reason: {3} Scope: {4}",

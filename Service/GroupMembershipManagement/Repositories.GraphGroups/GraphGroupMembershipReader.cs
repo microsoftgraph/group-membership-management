@@ -7,6 +7,7 @@ using Microsoft.Graph.Models.ODataErrors;
 using Microsoft.Kiota.Abstractions;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Constants;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
@@ -205,19 +206,39 @@ namespace Repositories.GraphGroups
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading direct group-type members of group {groupId}." });
 
-                var response = await _graphServiceClient
-                                        .Groups[groupId.ToString()]
-                                        .Members
-                                        .GraphGroup
-                                        .GetAsync(requestConfig =>
-                                        {
-                                            requestConfig.QueryParameters.Top = MaxResultCount;
-                                            requestConfig.QueryParameters.Select = new[] { "id", "displayName" };
-                                        });
+                var nativeResponseHandler = new NativeResponseHandler();
 
-                if (response?.Value != null)
+                await _graphServiceClient
+                        .Groups[groupId.ToString()]
+                        .Members
+                        .GraphGroup
+                        .GetAsync(requestConfig =>
+                        {
+                            requestConfig.QueryParameters.Top = MaxResultCount;
+                            requestConfig.QueryParameters.Select = new[] { "id", "displayName" };
+                            requestConfig.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                        });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse == null)
                 {
-                    groups.AddRange(response.Value.Where(g => g.Id != null).Select(g => new AzureADGroup
+                    return groups;
+                }
+
+                var initialHeaders = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(initialHeaders, QueryType.Other, runId);
+
+                if (!nativeResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to retrieve direct group-type members. Status code: {nativeResponse.StatusCode}");
+                }
+
+                var initialResponse = await DeserializeResponseAsync(nativeResponse, GroupCollectionResponse.CreateFromDiscriminatorValue);
+
+                if (initialResponse?.Value != null)
+                {
+                    groups.AddRange(initialResponse.Value.Where(g => g.Id != null).Select(g => new AzureADGroup
                     {
                         ObjectId = Guid.Parse(g.Id),
                         Name = g.DisplayName
@@ -225,7 +246,7 @@ namespace Repositories.GraphGroups
                 }
 
                 // Page through results if needed
-                var nextLink = response?.OdataNextLink;
+                var nextLink = initialResponse?.OdataNextLink;
                 while (!string.IsNullOrEmpty(nextLink))
                 {
                     var requestInfo = new RequestInformation
@@ -234,7 +255,27 @@ namespace Repositories.GraphGroups
                         UrlTemplate = nextLink,
                     };
 
-                    var nextResponse = await _graphServiceClient.RequestAdapter.SendAsync(requestInfo, GroupCollectionResponse.CreateFromDiscriminatorValue);
+                    var pageResponseHandler = new NativeResponseHandler();
+                    requestInfo.AddRequestOptions(new IRequestOption[] { new ResponseHandlerOption { ResponseHandler = pageResponseHandler } });
+
+                    await _graphServiceClient.RequestAdapter.SendAsync<GroupCollectionResponse>(requestInfo, GroupCollectionResponse.CreateFromDiscriminatorValue);
+
+                    var pageResponseMessage = pageResponseHandler.Value as HttpResponseMessage;
+
+                    if (pageResponseMessage == null)
+                    {
+                        break;
+                    }
+
+                    var pageHeaders = pageResponseMessage.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(pageHeaders, QueryType.Other, runId);
+
+                    if (!pageResponseMessage.IsSuccessStatusCode)
+                    {
+                        throw new HttpRequestException($"Failed to retrieve direct group-type members page. Status code: {pageResponseMessage.StatusCode}");
+                    }
+
+                    var nextResponse = await DeserializeResponseAsync(pageResponseMessage, GroupCollectionResponse.CreateFromDiscriminatorValue);
 
                     if (nextResponse?.Value != null)
                     {
@@ -244,6 +285,7 @@ namespace Repositories.GraphGroups
                             Name = g.DisplayName
                         }));
                     }
+
                     nextLink = nextResponse?.OdataNextLink;
                 }
 
@@ -259,9 +301,6 @@ namespace Repositories.GraphGroups
 
         private async Task<int> GetGroupDirectoryObjectMembersCount(RequestInformation request, Guid? runId)
         {
-            var resourceUnitsUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.ResourceUnitsUsed));
-            var throttleLimitPercentage = _graphGroupMetricTracker.GetMetric(nameof(Metric.ThrottleLimitPercentage));
-
             var nativeResponseHandler = new NativeResponseHandler();
             var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
 
@@ -275,17 +314,8 @@ namespace Repositories.GraphGroups
 
             var nativeHttpResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
-            if (nativeHttpResponse.Headers.TryGetValues(GraphResponseHeader.ResourceUnitHeader, out var resourceValues))
-            {
-                int ruu = GraphGroupMetricTracker.ParseFirst<int>(resourceValues, int.TryParse);
-                await _loggingRepository.LogMessageAsync(
-                    new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), QueryType.Other)} - {ruu}", RunId = runId });
-                _graphGroupMetricTracker.TrackResourceUnitsUsedByTypeEvent(ruu, QueryType.Other, runId);
-                resourceUnitsUsed.TrackValue(ruu);
-            }
-
-            if (nativeHttpResponse.Headers.TryGetValues(GraphResponseHeader.ThrottlePercentageHeader, out var throttleValues))
-                throttleLimitPercentage.TrackValue(GraphGroupMetricTracker.ParseFirst<double>(throttleValues, double.TryParse));
+            var headers = nativeHttpResponse.Headers.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
             var responseContent = await nativeHttpResponse.Content.ReadAsStringAsync();
             return int.Parse(responseContent);
@@ -540,6 +570,12 @@ namespace Repositories.GraphGroups
                     });
 
                     var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                    if (nativeResponse != null)
+                    {
+                        var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                        await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+                    }
 
                     if (nativeResponse.IsSuccessStatusCode)
                     {

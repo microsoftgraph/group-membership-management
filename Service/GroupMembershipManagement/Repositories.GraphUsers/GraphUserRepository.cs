@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
@@ -9,6 +10,8 @@ using Polly;
 using Polly.Retry;
 using Polly.Wrap;
 using Repositories.Contracts;
+using Repositories.Contracts.Constants;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using Services.Models;
 using System;
@@ -35,17 +38,20 @@ namespace Repositories.GraphAzureADUsers
         private readonly GraphServiceClient _graphClient;
         private readonly ILoggingRepository _loggingRepository = null;
         private readonly IRetryPolicyProvider _retryPolicyProvider;
+        private readonly TelemetryClient _telemetryClient;
 
         public GraphUserRepository(
                 ILoggingRepository loggingRepository,
                 GraphServiceClient graphClient,
-                IRetryPolicyProvider retryPolicyProvider
+                IRetryPolicyProvider retryPolicyProvider,
+                TelemetryClient telemetryClient
             )
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _cache = new Dictionary<string, GraphProfileInformation>();
             _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task<IList<GraphProfileInformation>> GetAzureADObjectIdsAsync(IList<string> personnelNumbers, Guid? runId)
@@ -142,6 +148,8 @@ namespace Repositories.GraphAzureADUsers
                 var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await batchResponse.GetResponseByIdAsync(x.Key))));
                 foreach (var response in responses)
                 {
+                    await GraphTelemetryHelper.TrackResourceUnitsAsync(response.Value, QueryType.Other, runId, _loggingRepository, _telemetryClient);
+
                     // request was successful
                     if (response.Value.IsSuccessStatusCode)
                     {
@@ -211,11 +219,11 @@ namespace Repositories.GraphAzureADUsers
                 var responses = await Task.WhenAll(responseStatusCodes.Select(async x => new KeyValuePair<string, HttpResponseMessage>(x.Key, await batchResponse.GetResponseByIdAsync(x.Key))));
                 var allResponses = responses.ToDictionary(x => x.Key, x => x.Value);
 
-                var profileResponses = await ProcessIndividualResponsesAsync(allResponses);
+                var profileResponses = await ProcessIndividualResponsesAsync(allResponses, runId);
                 profiles.AddRange(profileResponses.Profiles);
 
                 var usersToRetry = users.Where(u => profileResponses.UserIdsToRetry.Contains(u.OnPremisesImmutableId));
-                var newProfiles = await RetrySingleRequestsAsync(allResponses, new Queue<GraphUser>(usersToRetry));
+                var newProfiles = await RetrySingleRequestsAsync(allResponses, new Queue<GraphUser>(usersToRetry), runId);
                 profiles.AddRange(newProfiles);
             }
 
@@ -223,13 +231,15 @@ namespace Repositories.GraphAzureADUsers
         }
 
         private async Task<(List<GraphProfileInformation> Profiles, List<string> UserIdsToRetry)>
-            ProcessIndividualResponsesAsync(Dictionary<string, HttpResponseMessage> responses)
+            ProcessIndividualResponsesAsync(Dictionary<string, HttpResponseMessage> responses, Guid? runId)
         {
             var profiles = new List<GraphProfileInformation>();
             var userIdsToRetry = new List<string>();
 
             foreach (var response in responses)
             {
+                await GraphTelemetryHelper.TrackResourceUnitsAsync(response.Value, QueryType.Other, runId, _loggingRepository, _telemetryClient);
+
                 if (response.Value.IsSuccessStatusCode)
                 {
                     var profile = await ExtractProfileAsync(response.Value, response.Key);
@@ -270,7 +280,8 @@ namespace Repositories.GraphAzureADUsers
 
         private async Task<List<GraphProfileInformation>> RetrySingleRequestsAsync(
             Dictionary<string, HttpResponseMessage> responses,
-            Queue<GraphUser> usersToRetry)
+            Queue<GraphUser> usersToRetry,
+            Guid? runId)
         {
             var profiles = new List<GraphProfileInformation>();
 
@@ -299,6 +310,7 @@ namespace Repositories.GraphAzureADUsers
                 {
                     var user = usersToRetry.Dequeue();
                     var singleResponse = await SendSingleRequestAsync(user, null);
+                    await GraphTelemetryHelper.TrackResourceUnitsAsync(singleResponse, QueryType.Other, runId, _loggingRepository, _telemetryClient);
 
                     if (singleResponse.IsSuccessStatusCode)
                     {
@@ -463,14 +475,51 @@ namespace Repositories.GraphAzureADUsers
             var retryPolicy = GetRetryPolicy(runId);
             await retryPolicy.ExecuteAsync(async () =>
            {
+               var nativeResponseHandler = new NativeResponseHandler();
 
-               var response = await _graphClient.Users.GetAsync((requestConfiguration) =>
-                {
-                    requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
-                    requestConfiguration.QueryParameters.Count = true;
-                });
-               users = (int)response.OdataCount;
+               await _graphClient.Users.GetAsync(requestConfiguration =>
+               {
+                   requestConfiguration.Headers.Add("ConsistencyLevel", "eventual");
+                   requestConfiguration.QueryParameters.Count = true;
+                   requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+               });
 
+               if (nativeResponseHandler.Value is HttpResponseMessage nativeResponse)
+               {
+                   try
+                   {
+                       await GraphTelemetryHelper.TrackResourceUnitsAsync(nativeResponse, QueryType.Other, runId, _loggingRepository, _telemetryClient);
+
+                       if (nativeResponse.IsSuccessStatusCode)
+                       {
+                           var content = await nativeResponse.Content.ReadAsStringAsync();
+                           if (!string.IsNullOrEmpty(content))
+                           {
+                               using var document = JsonDocument.Parse(content);
+                               if (document.RootElement.TryGetProperty("@odata.count", out var countElement) && countElement.TryGetInt32(out var count))
+                               {
+                                   users = count;
+                               }
+                               else
+                               {
+                                   await _loggingRepository.LogMessageAsync(new LogMessage
+                                   {
+                                       Message = "@odata.count not found in Graph users count response.",
+                                       RunId = runId
+                                   });
+                               }
+                           }
+                       }
+                       else
+                       {
+                           await LogErrorAsync(nativeResponse, runId);
+                       }
+                   }
+                   finally
+                   {
+                       nativeResponse.Dispose();
+                   }
+               }
            });
             return users;
         }

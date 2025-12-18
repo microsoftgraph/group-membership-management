@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using AdaptiveCards.Templating;
+using Microsoft.ApplicationInsights;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
@@ -9,6 +10,8 @@ using Models;
 using Models.AdaptiveCards;
 using Polly.Wrap;
 using Repositories.Contracts;
+using Repositories.Contracts.Constants;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
@@ -30,6 +33,7 @@ namespace Repositories.Mail
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSettingsRepository _settingsRepository;
         private readonly IRetryPolicyProvider _retryPolicyProvider;
+        private readonly TelemetryClient _telemetryClient;
 
         public MailRepository(
             GraphServiceClient graphClient, 
@@ -39,7 +43,8 @@ namespace Repositories.Mail
             string actionableEmailProviderId, 
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSettingsRepository settingsRepository,
-            IRetryPolicyProvider retryPolicyProvider
+            IRetryPolicyProvider retryPolicyProvider,
+            TelemetryClient telemetryClient
             )
         {
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
@@ -50,6 +55,7 @@ namespace Repositories.Mail
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _retryPolicyProvider = retryPolicyProvider ?? throw new ArgumentNullException(nameof(retryPolicyProvider));
+            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         public async Task<HttpResponseMessage> SendMailAsync(EmailMessage emailMessage, Guid? runId)
@@ -162,6 +168,10 @@ namespace Repositories.Mail
                     RunId = runId,
                     Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
                 });
+            }
+            if (httpResponse != null)
+            {
+                await GraphTelemetryHelper.TrackResourceUnitsAsync(httpResponse, QueryType.Other, runId, _loggingRepository, _telemetryClient);
             }
             if (httpResponse == null)
             {

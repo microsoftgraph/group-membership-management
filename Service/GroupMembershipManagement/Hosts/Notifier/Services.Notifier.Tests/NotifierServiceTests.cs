@@ -424,7 +424,8 @@ namespace Services.Notifier.Tests
                                                     "abc",
                                                     _graphGroupRepository.Object,
                                                     new Mock<IDatabaseSettingsRepository>().Object,
-                                                    retryRepo);
+                                                    retryRepo,
+                                                    _telemetryClient);
 
             _notifierService = new NotifierService(_loggerMock.Object,
                                     mailRepository,

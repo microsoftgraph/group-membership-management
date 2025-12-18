@@ -5,8 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Polly" />
+    <PackageReference Include="Microsoft.ApplicationInsights" />
     <PackageReference Include="Microsoft.Graph" />
+    <PackageReference Include="Polly" />
   </ItemGroup>
 
   <ItemGroup>

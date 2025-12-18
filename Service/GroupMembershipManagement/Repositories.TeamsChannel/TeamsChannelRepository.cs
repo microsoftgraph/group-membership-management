@@ -13,6 +13,8 @@ using Repositories.Contracts;
 using Repositories.GraphGroups;
 using System.Collections.Immutable;
 using System.Net;
+using System.Net.Http;
+using System.Linq;
 using Channel = Microsoft.Graph.Models.Channel;
 using Group = Microsoft.Graph.Models.Group;
 
@@ -46,28 +48,81 @@ namespace Repositories.TeamsChannel
 
             try
             {
-                var members = await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.GetAsync(requestConfiguration =>
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Teams[groupId.ToString()].Channels[channelId].Members.GetAsync(requestConfiguration =>
                 {
-                    requestConfiguration.QueryParameters.Filter = query;
+                    if (!string.IsNullOrEmpty(query))
+                    {
+                        requestConfiguration.QueryParameters.Filter = query;
+                    }
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                 });
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {members.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
-                // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
-                // it's fine here because the where clause guarantees there's no nulls.
-                toReturn.AddRange(members.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
+                if (nativeResponse == null)
+                {
+                    return toReturn;
+                }
 
-                while (members.OdataNextLink != null)
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _teamsChannelMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                if (!nativeResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to read Teams channel members. Status code: {nativeResponse.StatusCode}");
+                }
+
+                var membersPage = await DeserializeResponseAsync(nativeResponse, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+
+                if (membersPage?.Value != null)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                    // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
+                    // it's fine here because the where clause guarantees there's no nulls.
+                    toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
+                }
+
+                var nextLink = membersPage?.OdataNextLink;
+
+                while (!string.IsNullOrEmpty(nextLink))
                 {
                     var request = new RequestInformation
                     {
                         HttpMethod = Method.GET,
-                        UrlTemplate = members.OdataNextLink
+                        UrlTemplate = nextLink
                     };
 
-                    members = await _graphServiceClient.RequestAdapter.SendAsync<ConversationMemberCollectionResponse>(request, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
-                    toReturn.AddRange(members.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {members.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                    var pageResponseHandler = new NativeResponseHandler();
+                    request.AddRequestOptions(new List<IRequestOption> { new ResponseHandlerOption { ResponseHandler = pageResponseHandler } });
+
+                    await _graphServiceClient.RequestAdapter.SendAsync<ConversationMemberCollectionResponse>(request, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+
+                    var pageResponse = pageResponseHandler.Value as HttpResponseMessage;
+
+                    if (pageResponse == null)
+                    {
+                        break;
+                    }
+
+                    var pageHeaders = pageResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _teamsChannelMetricTracker.TrackMetricsAsync(pageHeaders, QueryType.Other, runId);
+
+                    if (!pageResponse.IsSuccessStatusCode)
+                    {
+                        throw new HttpRequestException($"Failed to read Teams channel members page. Status code: {pageResponse.StatusCode}");
+                    }
+
+                    membersPage = await DeserializeResponseAsync(pageResponse, ConversationMemberCollectionResponse.CreateFromDiscriminatorValue);
+
+                    if (membersPage?.Value != null)
+                    {
+                        toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
+                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                    }
+
+                    nextLink = membersPage?.OdataNextLink;
                 }
 
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}." });

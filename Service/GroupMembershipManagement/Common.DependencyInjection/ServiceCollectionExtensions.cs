@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Azure.Core;
 using DIConcreteTypes;
+using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -81,7 +82,8 @@ namespace Common.DependencyInjection
                         GetValueOrDefault("actionableEmailProviderId"),
                         provider.GetService<IGraphGroupRepository>(),
                         provider.GetService<IDatabaseSettingsRepository>(),
-                        provider.GetService<IRetryPolicyProvider>()
+                        provider.GetService<IRetryPolicyProvider>(),
+                        provider.GetRequiredService<TelemetryClient>()
                         );
             });
 
