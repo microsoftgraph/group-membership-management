@@ -3,6 +3,7 @@
 
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using BusinessLogic.SyncJobUpdater;
 using Common.DependencyInjection;
 using DIConcreteTypes;
 using GraphUpdater.Entities;
@@ -15,6 +16,7 @@ using Models;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.EntityFramework;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
 using Services;
@@ -74,6 +76,8 @@ namespace Hosts.GraphUpdater
                             ConcurrentWriteRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests
                         };
                     })
+                    .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
+                    .AddScoped<ISyncJobStatusService, SyncJobStatusService>()
                     .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
                     .AddScoped<IGraphUpdaterService, GraphUpdaterService>()
                     .AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
