@@ -160,14 +160,10 @@ namespace TeamsChannelMembershipObtainer.Service
                 SyncJobId = syncJob.Id,
                 RunId = syncJob.RunId ?? Guid.Empty,
                 Status = status.ToString(),
-                StartTime = syncJob.LastRunTime,
-                UpdatedByFunction = "TeamsChannelMembershipObtainer"
+                UpdatedByFunction = "TeamsChannelMembershipObtainer",
+                EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
+                UpdatedAt = DateTime.UtcNow
             };
-
-            if (status != SyncStatus.InProgress)
-            {
-                history.EndTime = DateTime.UtcNow;
-            }
 
             await _syncJobStatusService.UpdateJobStatusAsync(syncJob, status, history, "TeamsChannelMembershipObtainer");
         }
