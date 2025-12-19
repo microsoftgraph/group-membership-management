@@ -20,7 +20,8 @@ param repositoryUrl string = 'https://url'
 param pipeline string
 
 //WebAPI, Notifier
-param apiHostname string = '${solutionAbbreviation}-compute-${environmentAbbreviation}-webapi.azurewebsites.net'
+param apiHostname string = ''
+var resolvedApiHostname = apiHostname == '' ? '${solutionAbbreviation}-compute-${environmentAbbreviation}-webapi.azurewebsites.net' : apiHostname
 
 // Message Splitter
 param availableMessageSplitterSubscriptions array = [
@@ -433,7 +434,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
-    apiHostname: apiHostname
+    apiHostname: resolvedApiHostname
   }
   dependsOn: [
     notifierDataResources
@@ -630,7 +631,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     adfPipeline: pipeline
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
-    apiHostname: apiHostname
+    apiHostname: resolvedApiHostname
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources
