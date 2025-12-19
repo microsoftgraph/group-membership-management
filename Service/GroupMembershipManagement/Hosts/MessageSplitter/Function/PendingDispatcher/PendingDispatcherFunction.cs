@@ -57,19 +57,35 @@ namespace Hosts.MessageSplitter
             }
 
             // Index + drain kick are done via an orchestrator to keep durable operations deterministic.
-            await durableClient.ScheduleNewOrchestrationInstanceAsync(
+            var orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
                 nameof(DeferredPendingEnqueueOrchestrator),
                 new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId));
 
             await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Indexed+deferred pending message; lane={lane} seq={message.SequenceNumber}", RunId = runId },
+                new LogMessage { Message = $"Scheduled pending drain orchestrator; instanceId={orchestrationInstanceId} lane={lane} seq={message.SequenceNumber}", RunId = runId },
                 VerbosityLevel.INFO);
 
             // Defer the message in the pending subscription; drain will later receive by sequence number.
-            await actions.DeferMessageAsync(message);
+            try
+            {
+                await actions.DeferMessageAsync(message);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage
+                    {
+                        Message = $"Failed to defer pending message; lane={lane} seq={message.SequenceNumber} deliveryCount={message.DeliveryCount} lockedUntilUtc={message.LockedUntil:O} errType={ex.GetType().FullName} err={ex.Message}",
+                        RunId = runId
+                    },
+                    VerbosityLevel.INFO);
+
+                // Rethrow so Service Bus trigger retries; deferral is required for drain-by-sequence.
+                throw;
+            }
 
             await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Deferred pending message; lane={lane} seq={message.SequenceNumber}", RunId = runId },
+                new LogMessage { Message = $"Defer succeeded for pending message; lane={lane} seq={message.SequenceNumber}", RunId = runId },
                 VerbosityLevel.INFO);
         }
     }

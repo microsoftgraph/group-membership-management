@@ -118,14 +118,6 @@ var baseAppSettings = {
   ConnectionStrings__JobsContextReadOnly: '@Microsoft.KeyVault(SecretUri=${reference(replicaJobsMSIConnectionString, '2019-09-01').secretUriWithVersion})'
 }
 
-// Concurrency settings for s1 instance - allows higher concurrent message processing
-var s1ConcurrencySettings = {
-  AzureFunctionsJobHost__extensions__serviceBus__maxConcurrentCalls: '16'
-}
-
-// Combine app settings based on instance - s1 gets higher concurrency
-var appSettings = instanceIdentifier == 's1' ? union(baseAppSettings, s1ConcurrencySettings) : baseAppSettings
-
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: dataKeyVaultName
   scope: resourceGroup(dataKeyVaultResourceGroup)
@@ -183,7 +175,7 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
     kind: functionAppKind
     location: location
     servicePlanName: servicePlanName
-    appSettings: appSettings
+    appSettings: baseAppSettings
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

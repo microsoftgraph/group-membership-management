@@ -8,7 +8,9 @@
     },
     "serviceBus": {
       "autoCompleteMessages": false,
-      "maxConcurrentCalls": 1
+      "maxConcurrentCalls": 1,
+      "prefetchCount": 0,
+      "maxMessageBatchSize": 1
     }
   },
   "logging": {
