@@ -91,7 +91,8 @@ param serviceBusTopicSubscriptions array = [
     sessionEnabled: true
   }
 ]
-param appConfigurationKeyData array = [
+param appConfigurationKeyData array = []
+var defaultAppConfigurationKeyData = [
   {
     key: 'JobTrigger:IsGroupReadWriteAllGranted'
     value: 'false'
@@ -347,6 +348,7 @@ param appConfigurationKeyData array = [
     }
   }
 ]
+var resolvedAppConfigurationKeyData = empty(appConfigurationKeyData) ? defaultAppConfigurationKeyData : appConfigurationKeyData
 param availableMembershipUpdaters array = [
   {
     name: 'GroupMembership'
@@ -386,7 +388,7 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     isMailApplicationPermissionGranted: isMailApplicationPermissionGranted
     isTeamsChannelApplicationPermissionGranted: isTeamsChannelApplicationPermissionGranted
     emailReceivers: emailReceivers
-    appConfigurationKeyData: appConfigurationKeyData
+    appConfigurationKeyData: resolvedAppConfigurationKeyData
     notificationAlertThreshold: notificationAlertThreshold
     isProduction: isProduction
     availableMembershipUpdaters: availableMembershipUpdaters
