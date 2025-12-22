@@ -97,6 +97,7 @@ export const strings: IStrings = {
     AppHeader: {
       title: 'Group Membership Management',
       settings: 'Settings',
+      reviewDisclaimer: 'Review disclaimer',
     },
     Banner: {
       bannerMessageStart: "Need help? ",

@@ -96,7 +96,8 @@ export const strings: IStrings = {
   Components: {
     AppHeader: {
       title: 'Membership Management',
-      settings: 'Configuración'
+      settings: 'Configuración',
+      reviewDisclaimer: 'Revisar aviso'
     },
     Banner:{
       bannerMessageStart:

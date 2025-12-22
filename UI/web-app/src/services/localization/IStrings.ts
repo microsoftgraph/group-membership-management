@@ -94,6 +94,7 @@ export type IStrings = {
     AppHeader: {
       title: string;
       settings: string;
+      reviewDisclaimer: string;
     },
     Banner: {
       bannerMessageStart: string;

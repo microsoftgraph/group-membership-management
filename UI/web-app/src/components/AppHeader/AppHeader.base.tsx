@@ -16,6 +16,7 @@ import { getProfilePhoto } from '../../store/profile.api';
 import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
 import { selectHasAdminCenterPermissions } from '../../store/roles.slice';
+import { selectIsDisclaimerEnabled } from '../../store/settings.slice';
 import { Disclaimer } from '../Disclaimer';
 import { jsxFormat } from '../../utils/stringUtils';
 
@@ -41,6 +42,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   const dispatch = useDispatch<AppDispatch>();
   const profilePhoto = useSelector(selectProfilePhoto);
   const canViewSettings = useSelector(selectHasAdminCenterPermissions);
+  const isDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
 
   useEffect(() => {
     if (!profilePhoto) {
@@ -101,17 +103,20 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
               styles={buttonStyles}
               onClick={onSettingsButtonClicked} />
             <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
-            <IconButton
-              title="Review Disclaimer"
-              iconProps={{ iconName: 'Info' }}
-              className={classNames.settingsIcon}
-              styles={buttonStyles}
-              onClick={onReviewDisclaimerClicked} />
+            {isDisclaimerEnabled && (
+              <IconButton
+                title={strings.Components.AppHeader.reviewDisclaimer}
+                iconProps={{ iconName: 'Info' }}
+                className={classNames.settingsIcon}
+                styles={buttonStyles}
+                onClick={onReviewDisclaimerClicked}
+              />
+            )}
           </div>
         }
       </header>
       <>
-        {isDisclaimerOpen && (
+        {isDisclaimerEnabled && isDisclaimerOpen && (
           <Disclaimer
             checkboxes={[
               { id: 'membershipRules', label: jsxFormat(strings.Disclaimer.membershipRules,<strong>{strings.Disclaimer.membershipRulesBoldNote}</strong>) },
