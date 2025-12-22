@@ -110,7 +110,7 @@ namespace WebApi.Controllers.v1.Jobs
                     });
                 }
 
-                var changeReason = Request.Headers["X-Change-Reason"].ToString();
+                var changeReason = patchRequest.ChangeReason;
                 var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.SubmissionApproved.ToString(), SyncJobChangeReason.SubmissionRejected.ToString()],
                     "Invalid change reason. Only 'SubmissionRejected' and 'SubmissionApproved' are allowed.");
                 if (changeReasonValidation != null)
@@ -118,9 +118,11 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
+                var normalizedChangeReason = changeReason!;
+
                 var canApproveJob = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, changeReason, patchRequest.BusinessJustification, canApproveJob));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, normalizedChangeReason, patchRequest.BusinessJustification, canApproveJob));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -170,7 +172,7 @@ namespace WebApi.Controllers.v1.Jobs
                     });
                 }
 
-                var changeReason = Request.Headers["X-Change-Reason"].ToString();
+                var changeReason = patchRequest.ChangeReason;
                 var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.StatusUpdate.ToString()],
                     "Invalid change reason. Only 'StatusUpdate' is allowed.");
                 if (changeReasonValidation != null)
@@ -178,7 +180,9 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, changeReason, patchRequest.BusinessJustification, false));
+                var normalizedChangeReason = changeReason!;
+
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, normalizedChangeReason, patchRequest.BusinessJustification, false));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -228,7 +232,7 @@ namespace WebApi.Controllers.v1.Jobs
                     });
                 }
 
-                var changeReason = Request.Headers["X-Change-Reason"].ToString();
+                var changeReason = patchRequest.ChangeReason;
                 var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.Update.ToString()],
                     "Invalid change reason. Only 'Update' is allowed.");
                 if (changeReasonValidation != null)
@@ -236,9 +240,11 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
+                var normalizedChangeReason = changeReason!;
+
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchRequest.PatchDocument, displayName, changeReason, patchRequest.BusinessJustification, false));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchRequest.PatchDocument, displayName, normalizedChangeReason, patchRequest.BusinessJustification, false));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -311,7 +317,7 @@ namespace WebApi.Controllers.v1.Jobs
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
         }
-        private ActionResult ValidateChangeReason(string changeReason, List<string> expectedReasons, string errorMessage)
+        private ActionResult? ValidateChangeReason(string? changeReason, List<string> expectedReasons, string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(changeReason))
             {
@@ -322,7 +328,9 @@ namespace WebApi.Controllers.v1.Jobs
                 });
             }
 
-            if (!expectedReasons.Contains(changeReason))
+            var normalizedChangeReason = changeReason!;
+
+            if (!expectedReasons.Contains(normalizedChangeReason))
             {
                 return BadRequest(new PatchJobResponse
                 {
