@@ -22,6 +22,7 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using WebApi.Controllers.v1.Jobs;
+using WebApi.Models;
 using WebApi.Models.DTOs;
 using Channel = Models.Channel;
 using Roles = WebApi.Models.Roles;
@@ -61,6 +62,15 @@ namespace Services.Tests
         private Mock<IThresholdConfig> _thresholdConfig = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
+
+        private static PatchJobRequestBody CreatePatchRequest(JsonPatchDocument<SyncJobPatch> patchDocument, string justification = "Business justification")
+        {
+            return new PatchJobRequestBody
+            {
+                PatchDocument = patchDocument,
+                BusinessJustification = justification
+            };
+        }
 
         [TestInitialize]
         public void Initialize()
@@ -616,7 +626,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, newStatus);
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -671,7 +681,7 @@ namespace Services.Tests
                 value = titlesJson
             });
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -722,7 +732,7 @@ namespace Services.Tests
 
             patchDocument.Replace(x => x.Titles, titles);
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -752,7 +762,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, newStatus);
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -784,7 +794,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, newStatus);
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as ObjectResult;
             var problem = result.Value as ProblemDetails;
 
@@ -829,7 +839,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -873,7 +883,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -918,7 +928,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "SubmissionRejected");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -961,7 +971,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
 
             var patchResponse = result.Value as PatchJobResponse;
@@ -1017,7 +1027,7 @@ namespace Services.Tests
             _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => syncJobChangeByUserId);
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
             Assert.IsNotNull(patchResponse);
@@ -1054,7 +1064,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Idle");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1099,7 +1109,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "Error");
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1129,7 +1139,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Query, newQuery);
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -1156,7 +1166,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Query, "UpdatedQuery");
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as ObjectResult;
             var problem = result.Value as ProblemDetails;
 
@@ -1183,7 +1193,7 @@ namespace Services.Tests
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, "InvalidStatus");
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
 
             Assert.IsNotNull(result);
@@ -1213,7 +1223,7 @@ namespace Services.Tests
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as NotFoundObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1241,7 +1251,7 @@ namespace Services.Tests
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1270,7 +1280,7 @@ namespace Services.Tests
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as ForbidResult;
 
             Assert.IsNotNull(result);
@@ -1295,7 +1305,7 @@ namespace Services.Tests
 
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, patchDocument);
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
             var result = response as ObjectResult;
             var problem = result.Value as ProblemDetails;
 

@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Models.SyncJobChange;
 using Services.Contracts;
@@ -9,6 +8,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using System.Security.Claims;
+using WebApi.Models;
 using WebApi.Models.DTOs;
 
 namespace WebApi.Controllers.v1.Jobs
@@ -87,8 +87,7 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = $"{Models.Roles.SUBMISSION_REVIEWER}, {Models.Roles.SUBMISSION_REJECTOR}")]
         [HttpPatch("{syncJobId}/review")]
-        [Consumes("application/json-patch+json")]
-        public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
+        public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] PatchJobRequestBody patchRequest)
         {
             try
             {
@@ -102,6 +101,15 @@ namespace WebApi.Controllers.v1.Jobs
                     return new ForbidResult();
                 }
 
+                if (patchRequest?.PatchDocument == null)
+                {
+                    return BadRequest(new PatchJobResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        ErrorCode = "PatchDocumentIsRequired"
+                    });
+                }
+
                 var changeReason = Request.Headers["X-Change-Reason"].ToString();
                 var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.SubmissionApproved.ToString(), SyncJobChangeReason.SubmissionRejected.ToString()],
                     "Invalid change reason. Only 'SubmissionRejected' and 'SubmissionApproved' are allowed.");
@@ -110,11 +118,9 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
-
                 var canApproveJob = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification, canApproveJob));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, changeReason, patchRequest.BusinessJustification, canApproveJob));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -141,8 +147,7 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = $"{Models.Roles.JOB_OWNER_ENABLER}, {Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}")]
         [HttpPatch("{syncJobId}/enable")]
-        [Consumes("application/json-patch+json")]
-        public async Task<ActionResult> EnableJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
+        public async Task<ActionResult> EnableJobAsync(Guid syncJobId, [FromBody] PatchJobRequestBody patchRequest)
         {
             try
             {
@@ -156,6 +161,15 @@ namespace WebApi.Controllers.v1.Jobs
                     return new ForbidResult();
                 }
 
+                if (patchRequest?.PatchDocument == null)
+                {
+                    return BadRequest(new PatchJobResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        ErrorCode = "PatchDocumentIsRequired"
+                    });
+                }
+
                 var changeReason = Request.Headers["X-Change-Reason"].ToString();
                 var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.StatusUpdate.ToString()],
                     "Invalid change reason. Only 'StatusUpdate' is allowed.");
@@ -164,9 +178,7 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
-
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification, false));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, changeReason, patchRequest.BusinessJustification, false));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -193,8 +205,7 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = $"{Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}")]
         [HttpPatch("{syncJobId}/update")]
-        [Consumes("application/json-patch+json")]
-        public async Task<ActionResult> UpdateJobAsync(Guid syncJobId, [FromBody] JsonPatchDocument<SyncJobPatch> patchDocument)
+        public async Task<ActionResult> UpdateJobAsync(Guid syncJobId, [FromBody] PatchJobRequestBody patchRequest)
         {
             try
             {
@@ -208,6 +219,15 @@ namespace WebApi.Controllers.v1.Jobs
                     return new ForbidResult();
                 }
 
+                if (patchRequest?.PatchDocument == null)
+                {
+                    return BadRequest(new PatchJobResponse
+                    {
+                        StatusCode = HttpStatusCode.BadRequest,
+                        ErrorCode = "PatchDocumentIsRequired"
+                    });
+                }
+
                 var changeReason = Request.Headers["X-Change-Reason"].ToString();
                 var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.Update.ToString()],
                     "Invalid change reason. Only 'Update' is allowed.");
@@ -216,11 +236,9 @@ namespace WebApi.Controllers.v1.Jobs
                     return changeReasonValidation;
                 }
 
-                var businessJustification = System.Net.WebUtility.UrlDecode(Request.Headers["X-Business-Justification"].ToString());
-
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, changeReason, businessJustification, false));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchRequest.PatchDocument, displayName, changeReason, patchRequest.BusinessJustification, false));
 
                 var patchJobResponse = new PatchJobResponse
                 {
