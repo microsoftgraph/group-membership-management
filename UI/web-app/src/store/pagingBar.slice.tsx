@@ -38,8 +38,9 @@ const loadPersistedState = (): Partial<PagingBarState> => {
     const savedState = localStorage.getItem(STORAGE_KEY);
     if (savedState) {
       const parsed = JSON.parse(savedState);
-      // Only restore filter state, not sorting or pagination
+      // Restore filters and page size preferences
       return {
+        pageSize: parsed.pageSize,
         filterStatus: parsed.filterStatus,
         filterActionRequired: parsed.filterActionRequired,
         filterDestinationId: parsed.filterDestinationId,

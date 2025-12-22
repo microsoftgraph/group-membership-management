@@ -14,6 +14,7 @@ const PERSISTABLE_ACTIONS = [
   'pagingBar/setFilterDestinationName',
   'pagingBar/setFilterDestinationOwner',
   'pagingBar/setFilterDestinationOwnerPersona',
+  'pagingBar/setPageSize',
   'pagingBar/resetFilters',
 ];
 
@@ -21,8 +22,9 @@ const STORAGE_KEY = 'gmmJobListState';
 
 const saveStateToStorage = (pagingBarState: PagingBarState) => {
   try {
-    // Only save filter state, not sorting or pagination
+    // Persist filters plus page size preference
     const stateToSave = {
+      pageSize: pagingBarState.pageSize,
       filterStatus: pagingBarState.filterStatus,
       filterActionRequired: pagingBarState.filterActionRequired,
       filterDestinationId: pagingBarState.filterDestinationId,
