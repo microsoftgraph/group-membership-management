@@ -221,7 +221,12 @@ function Get-TemplateParameters {
     if ($AdditionalParameters.parameters.Keys.Count -gt 0) {
         $TemplateObject.parameters.Keys | ForEach-Object {
             if ($AdditionalParameters.parameters.Keys -contains $_) {
-                $commonParametersObject[$_] = @{ value = $AdditionalParameters.parameters[$_].value }
+                $param = $AdditionalParameters.parameters[$_]
+                if ($param.Keys -contains "reference") {
+                    $commonParametersObject[$_] = @{ reference = $param.reference }
+                } else {
+                    $commonParametersObject[$_] = @{ value = $param.value }
+                }
             }
         }
     }
@@ -229,7 +234,12 @@ function Get-TemplateParameters {
     # add (or overwrite) from the parameters file
     $TemplateObject.parameters.Keys | ForEach-Object {
         if ($ParameterHashtable.Keys -contains $_) {
-            $commonParametersObject[$_] = @{ value = $ParameterHashtable[$_].value }
+            $param = $ParameterHashtable[$_]
+            if ($param.Keys -contains "reference") {
+                $commonParametersObject[$_] = @{ reference = $param.reference }
+            } else {
+                $commonParametersObject[$_] = @{ value = $param.value }
+            }
         }
     }
 
