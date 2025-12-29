@@ -24,6 +24,7 @@ namespace Services.Tests
         private MembershipExtractionFunction _membershipExtractionFunction;
         private SyncJob _syncJob;
         private Guid _groupId;
+        private Dictionary<string, string> _uploadedFiles;
 
         [TestInitialize]
         public void Setup()
@@ -32,8 +33,13 @@ namespace Services.Tests
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _membershipExtractionFunction = new MembershipExtractionFunction(_loggingRepository.Object, _blobStorageRepository.Object);
 
+            _uploadedFiles = new Dictionary<string, string>();
             _blobStorageRepository
                 .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .Callback<string, string, Dictionary<string, string>>((path, content, metadata) =>
+                {
+                    _uploadedFiles[path] = content;
+                })
                 .Returns(Task.CompletedTask);
             
             _groupId = Guid.NewGuid();
@@ -72,9 +78,13 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
             Assert.IsNull(response.ErrorMessage);
+
+            var sourceMembership = GetSourceMembership(response);
+            var destinationMembership = GetDestinationMembership(response);
+
+            Assert.AreEqual(response.SourceMemberCount, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(response.DestinationMemberCount, destinationMembership.SourceMembers.Count);
             
             // Verify logging calls
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -103,8 +113,8 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.AreEqual($"File {missingFilePath} was not found", response.ErrorMessage);
-            Assert.IsNull(response.SourceMembership);
-            Assert.IsNull(response.DestinationMembership);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.SourceMembershipFilePath));
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.DestinationMembershipFilePath));
         }
 
         [TestMethod]
@@ -198,11 +208,12 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            
+            var sourceMembership = GetSourceMembership(response);
+
             // With exclusionary groups, some members should be filtered out
             // The exact count depends on the overlap between inclusive and exclusive sets
-            Assert.IsTrue(response.SourceMembership.SourceMembers.Count >= 0);
+            Assert.AreEqual(sourceMembership.SourceMembers.Count, response.SourceMemberCount);
+            Assert.IsTrue(response.SourceMemberCount >= 0);
         }
 
         [TestMethod]
@@ -249,9 +260,12 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
-            Assert.AreEqual(0, response.SourceMembership.SourceMembers.Count);
+            var sourceMembership = GetSourceMembership(response);
+            var destinationMembership = GetDestinationMembership(response);
+
+            Assert.AreEqual(0, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(0, response.SourceMemberCount);
+            Assert.AreEqual(destinationMembership.SourceMembers.Count, response.DestinationMemberCount);
         }
 
         [TestMethod]
@@ -277,10 +291,12 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
+            var sourceMembership = GetSourceMembership(response);
+            var destinationMembership = GetDestinationMembership(response);
             // With only exclusionary groups, all members are excluded, so we get 0 members
-            Assert.AreEqual(0, response.SourceMembership.SourceMembers.Count);
+            Assert.AreEqual(0, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(0, response.SourceMemberCount);
+            Assert.AreEqual(destinationMembership.SourceMembers.Count, response.DestinationMemberCount);
         }
 
         [TestMethod]
@@ -310,9 +326,10 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
+            var sourceMembership = GetSourceMembership(response);
             // Should have 5 users (first 5 from inclusive, users 6-8 excluded)
-            Assert.AreEqual(5, response.SourceMembership.SourceMembers.Count);
+            Assert.AreEqual(5, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(5, response.SourceMemberCount);
         }
 
         [TestMethod]
@@ -342,10 +359,12 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
-            Assert.AreEqual(7, response.SourceMembership.SourceMembers.Count);
-            Assert.AreEqual(3, response.DestinationMembership.SourceMembers.Count);
+            var sourceMembership = GetSourceMembership(response);
+            var destinationMembership = GetDestinationMembership(response);
+            Assert.AreEqual(7, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(3, destinationMembership.SourceMembers.Count);
+            Assert.AreEqual(7, response.SourceMemberCount);
+            Assert.AreEqual(3, response.DestinationMemberCount);
         }
 
         [TestMethod]
@@ -362,8 +381,11 @@ namespace Services.Tests
             // Assert
             // Should still work, but with null RunId in GroupMembership objects
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
+            Assert.IsNull(response.ErrorMessage);
+            var sourceMembership = GetSourceMembership(response);
+            var destinationMembership = GetDestinationMembership(response);
+            Assert.AreEqual(response.SourceMemberCount, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(response.DestinationMemberCount, destinationMembership.SourceMembers.Count);
         }
 
         [TestMethod]
@@ -391,10 +413,12 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
-            Assert.AreEqual(80, response.SourceMembership.SourceMembers.Count); // 50 + 30
-            Assert.AreEqual(40, response.DestinationMembership.SourceMembers.Count);
+            var sourceMembership = GetSourceMembership(response);
+            var destinationMembership = GetDestinationMembership(response);
+            Assert.AreEqual(80, sourceMembership.SourceMembers.Count); // 50 + 30
+            Assert.AreEqual(40, destinationMembership.SourceMembers.Count);
+            Assert.AreEqual(80, response.SourceMemberCount);
+            Assert.AreEqual(40, response.DestinationMemberCount);
         }
 
         [TestMethod]
@@ -425,10 +449,11 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.AreEqual(5, response.SourceMembership.SourceMembers.Count);
-            
+            var sourceMembership = GetSourceMembership(response);
+            Assert.AreEqual(5, sourceMembership.SourceMembers.Count);
+
             // Verify source groups are preserved (all users should have SourceGroups populated)
-            var usersWithSourceGroups = response.SourceMembership.SourceMembers.Where(u => u.SourceGroups?.Count > 0);
+            var usersWithSourceGroups = sourceMembership.SourceMembers.Where(u => u.SourceGroups?.Count > 0);
             Assert.AreEqual(5, usersWithSourceGroups.Count());
         }
 
@@ -455,9 +480,10 @@ namespace Services.Tests
 
             // Assert 
             Assert.IsTrue(response.IsSuccessful, $"Response should be successful, but got error: {response.ErrorMessage}");
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNull(response.DestinationMembership); // Expected null when destination not in completed parts
-            Assert.AreEqual(3, response.SourceMembership.SourceMembers.Count);
+            var sourceMembership = GetSourceMembership(response);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.DestinationMembershipFilePath)); // Expected null when destination not in completed parts
+            Assert.AreEqual(3, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(3, response.SourceMemberCount);
         }
 
         [TestMethod] 
@@ -498,10 +524,11 @@ namespace Services.Tests
             // Assert
             Assert.IsTrue(response.IsSuccessful);
             // Should have 3 unique users total (2 unique from each group, 1 shared)
-            Assert.AreEqual(3, response.SourceMembership.SourceMembers.Count);
+            var sourceMembership = GetSourceMembership(response);
+            Assert.AreEqual(3, sourceMembership.SourceMembers.Count);
             
             // The shared user should have both source groups
-            var sharedUser = response.SourceMembership.SourceMembers.FirstOrDefault(u => u.ObjectId == sharedObjectId);
+            var sharedUser = sourceMembership.SourceMembers.FirstOrDefault(u => u.ObjectId == sharedObjectId);
             Assert.IsNotNull(sharedUser);
             Assert.AreEqual(2, sharedUser.SourceGroups.Count); // Should have both group1Id and group2Id
         }
@@ -529,6 +556,24 @@ namespace Services.Tests
             Assert.IsNotNull(response.ErrorMessage);
             // Don't check for specific error message content - just ensure it failed with an error
             Assert.IsTrue(response.ErrorMessage.Length > 0);
+        }
+
+        private GroupMembership GetSourceMembership(MembershipExtractionResponse response)
+        {
+            Assert.IsFalse(string.IsNullOrWhiteSpace(response.SourceMembershipFilePath), "Expected a source membership file path.");
+            Assert.IsTrue(_uploadedFiles.ContainsKey(response.SourceMembershipFilePath), $"No uploaded source membership located at {response.SourceMembershipFilePath}.");
+
+            var json = TextCompressor.Decompress(_uploadedFiles[response.SourceMembershipFilePath]);
+            return JsonSerializer.Deserialize<GroupMembership>(json);
+        }
+
+        private GroupMembership GetDestinationMembership(MembershipExtractionResponse response)
+        {
+            Assert.IsFalse(string.IsNullOrWhiteSpace(response.DestinationMembershipFilePath), "Expected a destination membership file path.");
+            Assert.IsTrue(_uploadedFiles.ContainsKey(response.DestinationMembershipFilePath), $"No uploaded destination membership located at {response.DestinationMembershipFilePath}.");
+
+            var json = TextCompressor.Decompress(_uploadedFiles[response.DestinationMembershipFilePath]);
+            return JsonSerializer.Deserialize<GroupMembership>(json);
         }
 
         [TestMethod]
@@ -634,15 +679,15 @@ namespace Services.Tests
             var request = CreateValidRequest();
             var sourceUsers = CreateUsers(3);
             var destinationUsers = CreateUsers(2);
-            var sourceMembership = CreateGroupMembership(sourceUsers, false);
-            var destinationMembership = CreateGroupMembership(destinationUsers, false);
+            var sourceMembershipPayload = CreateGroupMembership(sourceUsers, false);
+            var destinationMembershipPayload = CreateGroupMembership(destinationUsers, false);
 
             // Setup source with raw JSON (not compressed)
             _blobStorageRepository.Setup(x => x.DownloadFileAsync("source1"))
                                  .ReturnsAsync(new BlobResult 
                                  { 
                                      BlobStatus = BlobStatus.Found, 
-                                     Content = JsonSerializer.Serialize(sourceMembership) // Raw JSON
+                                     Content = JsonSerializer.Serialize(sourceMembershipPayload) // Raw JSON
                                  });
 
             // Setup second source normally
@@ -651,16 +696,18 @@ namespace Services.Tests
 
             // Setup destination
             _blobStorageRepository.Setup(x => x.DownloadFileAsync("destination"))
-                                 .ReturnsAsync(CreateBlobResult(destinationMembership));
+                                 .ReturnsAsync(CreateBlobResult(destinationMembershipPayload));
 
             // Act
             var response = await _membershipExtractionFunction.ExtractMembershipAsync(request);
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
-            Assert.AreEqual(5, response.SourceMembership.SourceMembers.Count); // 3 + 2 from sources
+            var extractedSource = GetSourceMembership(response);
+            var extractedDestination = GetDestinationMembership(response);
+            Assert.AreEqual(5, extractedSource.SourceMembers.Count); // 3 + 2 from sources
+            Assert.AreEqual(5, response.SourceMemberCount);
+            Assert.AreEqual(extractedDestination.SourceMembers.Count, response.DestinationMemberCount);
         }
 
         [TestMethod]
@@ -671,12 +718,12 @@ namespace Services.Tests
             var request = CreateValidRequest();
             var sourceUsers = CreateUsers(3);
             var destinationUsers = CreateUsers(2);
-            var sourceMembership = CreateGroupMembership(sourceUsers, false);
-            var destinationMembership = CreateGroupMembership(destinationUsers, false);
+            var sourceMembershipPayload = CreateGroupMembership(sourceUsers, false);
+            var destinationMembershipPayload = CreateGroupMembership(destinationUsers, false);
 
             // Setup sources normally
             _blobStorageRepository.Setup(x => x.DownloadFileAsync("source1"))
-                                 .ReturnsAsync(CreateBlobResult(sourceMembership));
+                                 .ReturnsAsync(CreateBlobResult(sourceMembershipPayload));
             _blobStorageRepository.Setup(x => x.DownloadFileAsync("source2"))
                                  .ReturnsAsync(CreateBlobResult(CreateGroupMembership(CreateUsers(2), false)));
 
@@ -685,7 +732,7 @@ namespace Services.Tests
                                  .ReturnsAsync(new BlobResult 
                                  { 
                                      BlobStatus = BlobStatus.Found, 
-                                     Content = JsonSerializer.Serialize(destinationMembership) // Raw JSON
+                                     Content = JsonSerializer.Serialize(destinationMembershipPayload) // Raw JSON
                                  });
 
             // Act
@@ -693,9 +740,11 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
-            Assert.AreEqual(2, response.DestinationMembership.SourceMembers.Count);
+            var sourceFromResponse = GetSourceMembership(response);
+            var destinationFromResponse = GetDestinationMembership(response);
+            Assert.AreEqual(response.SourceMemberCount, sourceFromResponse.SourceMembers.Count);
+            Assert.AreEqual(2, destinationFromResponse.SourceMembers.Count);
+            Assert.AreEqual(2, response.DestinationMemberCount);
             
             // Verify destination processing debug logging
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -929,10 +978,12 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNotNull(response.DestinationMembership);
-            Assert.AreEqual(6, response.SourceMembership.SourceMembers.Count); // 4 + 2
-            Assert.AreEqual(3, response.DestinationMembership.SourceMembers.Count);
+            var extractedSourceMembership = GetSourceMembership(response);
+            var extractedDestinationMembership = GetDestinationMembership(response);
+            Assert.AreEqual(6, extractedSourceMembership.SourceMembers.Count); // 4 + 2
+            Assert.AreEqual(3, extractedDestinationMembership.SourceMembers.Count);
+            Assert.AreEqual(6, response.SourceMemberCount);
+            Assert.AreEqual(3, response.DestinationMemberCount);
         }
 
         [TestMethod]
@@ -963,9 +1014,10 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
-            Assert.IsNull(response.DestinationMembership); // Expected to be null when destination not in completed parts
-            Assert.AreEqual(5, response.SourceMembership.SourceMembers.Count); // 3 + 2 users from both sources
+            var extractedSource = GetSourceMembership(response);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.DestinationMembershipFilePath)); // Expected to be null when destination not in completed parts
+            Assert.AreEqual(5, extractedSource.SourceMembers.Count); // 3 + 2 users from both sources
+            Assert.AreEqual(5, response.SourceMemberCount);
             
             // Verify success logging
             _loggingRepository.Verify(x => x.LogMessageAsync(
@@ -1026,9 +1078,10 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            Assert.IsNotNull(response.SourceMembership);
+            var sourceMembership = GetSourceMembership(response);
             // Should have users 1,2 (first 2 from inclusive, users 3-6 excluded)
-            Assert.AreEqual(2, response.SourceMembership.SourceMembers.Count);
+            Assert.AreEqual(2, sourceMembership.SourceMembers.Count);
+            Assert.AreEqual(2, response.SourceMemberCount);
         }
 
         [TestMethod]

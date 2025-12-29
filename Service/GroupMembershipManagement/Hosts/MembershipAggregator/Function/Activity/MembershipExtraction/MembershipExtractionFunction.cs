@@ -107,20 +107,20 @@ namespace Hosts.MembershipAggregator
                     await _blobStorageRepository.UploadFileAsync(destinationFilePath, destinationContent);
                 }
 
+                var sourceMemberCount = membershipResult.SourceMembership.SourceMembers.Count;
+
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Successfully extracted membership information with {membershipResult.SourceMembership.SourceMembers.Count} source members and {destinationMemberCount} destination members",
+                    Message = $"Successfully extracted membership information with {sourceMemberCount} source members and {destinationMemberCount} destination members",
                     RunId = request.SyncJob?.RunId
                 }, VerbosityLevel.DEBUG);
 
                 return new MembershipExtractionResponse
                 {
                     IsSuccessful = true,
-                    SourceMembership = membershipResult.SourceMembership,
-                    DestinationMembership = membershipResult.DestinationMembership,
                     SourceMembershipFilePath = sourceFilePath,
                     DestinationMembershipFilePath = destinationFilePath,
-                    SourceMemberCount = membershipResult.SourceMembership.SourceMembers.Count,
+                    SourceMemberCount = sourceMemberCount,
                     DestinationMemberCount = destinationMemberCount
                 };
             }
