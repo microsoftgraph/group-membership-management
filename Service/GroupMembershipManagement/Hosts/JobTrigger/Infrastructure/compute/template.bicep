@@ -130,14 +130,15 @@ var appSettings = {
   TeamsGraphCredentials__TenantId: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelAppTenantId, '2019-09-01').secretUriWithVersion})' : 'not-set'
   TeamsGraphCredentials__KeyVaultName: prereqsKeyVaultName
   TeamsGraphCredentials__KeyVaultTenantId: tenantId
-  teamsChannelServiceAccountUsername: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountUsername, '2019-09-01').secretUriWithVersion})'
-  teamsChannelServiceAccountPassword: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountPassword, '2019-09-01').secretUriWithVersion})'
-  teamsChannelServiceAccountObjectId: '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountObjectId, '2019-09-01').secretUriWithVersion})'
+  teamsChannelServiceAccountUsername: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountUsername, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  teamsChannelServiceAccountPassword: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountPassword, '2019-09-01').secretUriWithVersion})' : 'not-set'
+  teamsChannelServiceAccountObjectId: featureFlags.enableTeamsChannel ? '@Microsoft.KeyVault(SecretUri=${reference(teamsChannelServiceAccountObjectId, '2019-09-01').secretUriWithVersion})' : '00000000-0000-0000-0000-000000000000'
   supportEmailAddresses: '@Microsoft.KeyVault(SecretUri=${reference(supportEmailAddresses, '2019-09-01').secretUriWithVersion})'
   appConfigurationEndpoint: appConfigurationEndpoint
   actionableEmailProviderId: '@Microsoft.KeyVault(SecretUri=${reference(actionableEmailProviderId, '2019-09-01').secretUriWithVersion})'
   serviceBusNotificationsQueue: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
   graphCredentials__UserAssignedManagedIdentityClientId: '@Microsoft.KeyVault(SecretUri=${reference(graphUserAssignedManagedIdentityClientId, '2019-09-01').secretUriWithVersion})'
+  enableTeamsChannel: featureFlags.enableTeamsChannel
 }
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {

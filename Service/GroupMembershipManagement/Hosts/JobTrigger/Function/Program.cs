@@ -79,12 +79,19 @@ namespace Hosts.JobTrigger
 
                     services.Configure<GraphCredentials>("TeamsGraphCredentials", configuration.GetSection("TeamsGraphCredentials"));
 
-                    services.AddTransient<ITeamsChannelRepository, TeamsChannelRepository>((services) =>
+                    services.AddTransient<ITeamsChannelRepository>((services) =>
                     {
+                        var configuration = services.GetService<IConfiguration>();
+                        var enableTeamsChannel = GetBoolSetting(configuration, "enableTeamsChannel", false);
+
+                        if (!enableTeamsChannel)
+                        {
+                            return new DisabledTeamsChannelRepository();
+                        }
+
                         var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                         var telemetryClient = services.GetRequiredService<TelemetryClient>();
 
-                        var configuration = services.GetService<IConfiguration>();
                         var teamsGraphCredentials = services.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
 
                         var channelReadWriteApplicationPermissionGranted = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);

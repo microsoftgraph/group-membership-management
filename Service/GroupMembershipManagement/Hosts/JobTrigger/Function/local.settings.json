@@ -30,6 +30,7 @@
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "serviceBusNotificationsQueue": "",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
-    "actionableEmailProviderId": ""
+    "actionableEmailProviderId": "",
+    "enableTeamsChannel": false
   }
 }
