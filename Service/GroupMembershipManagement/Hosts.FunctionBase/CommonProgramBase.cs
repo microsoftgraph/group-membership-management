@@ -119,6 +119,7 @@ namespace Hosts.FunctionBase
             services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
             services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
+            services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
             services.AddScoped<IDatabaseSettingsRepository, DatabaseSettingsRepository>();
             services.AddScoped<IDatabaseDestinationAttributesRepository, DatabaseDestinationAttributesRespository>();
             services.AddScoped<INotificationTypesRepository, NotificationTypesRepository>();
