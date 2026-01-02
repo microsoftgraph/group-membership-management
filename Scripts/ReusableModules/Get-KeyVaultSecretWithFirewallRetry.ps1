@@ -12,7 +12,9 @@ function Get-KeyVaultSecretWithFirewallRetry {
         [ValidateRange(1, 10)]
         [int]$MaxRetries = 10,
 
-        [switch]$AsPlainText
+        [switch]$AsPlainText,
+
+        [switch]$ErrorOnNotFound
     )
 
     $directory = $PSScriptRoot
@@ -21,7 +23,7 @@ function Get-KeyVaultSecretWithFirewallRetry {
 
     Write-Host "`nRetrieving Key Vault secret '$SecretName' from vault '$VaultName'..."
 
-    Invoke-WithFirewallRetry -ResourceGroup $ResourceGroup -MaxRetries $MaxRetries `
+    $result = Invoke-WithFirewallRetry -ResourceGroup $ResourceGroup -MaxRetries $MaxRetries `
         -Operation {
             try {
                 if ($AsPlainText) {
@@ -30,14 +32,18 @@ function Get-KeyVaultSecretWithFirewallRetry {
                 else {
                     $secret = Get-AzKeyVaultSecret -VaultName $VaultName -Name $SecretName -ErrorAction Stop
                 }
-
-                Write-Host "✅ Secret '$SecretName' retrieved successfully."
                 return $secret
             }
             catch {
                 if ($_.Exception.Message -match "was not found") {
-                    Write-Warning "⚠️ Secret '$SecretName' does not exist in vault '$VaultName'."
-                    return $null   # break retry loop immediately
+                    if ($ErrorOnNotFound) {
+                        Write-Host "Secret '$SecretName' does not exist in vault '$VaultName'." -ForegroundColor Red
+                        return $null   # break retry loop immediately
+                    }
+                    else {
+                        Write-Host "ℹ️ Secret '$SecretName' not found in vault '$VaultName'. This is expected."
+                        return $null   # break retry loop immediately
+                    }
                 }
                 throw  # let the retry wrapper handle firewall errors
             }
@@ -46,4 +52,14 @@ function Get-KeyVaultSecretWithFirewallRetry {
             param($err) 
             Add-KeyVaultIpFromError -VaultName $VaultName -ResourceGroup $ResourceGroup -ErrorMessage $err
         }
+
+    if ($null -eq $result -and $ErrorOnNotFound) {
+        throw "Secret '$SecretName' does not exist in vault '$VaultName'."
+    }   
+
+    if ($null -ne $result) {
+        Write-Host "✅ Secret '$SecretName' retrieved successfully."
+    }
+
+    return $result
 }
