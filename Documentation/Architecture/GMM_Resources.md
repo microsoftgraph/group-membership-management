@@ -10,9 +10,9 @@ GMM deploys resources across three resource groups, each serving a specific purp
 
 | Resource Group | Naming Convention | Purpose |
 |----------------|-------------------|---------|
-| **Prereqs** | `{solutionAbbreviation}-prereqs-{environmentAbbreviation}` | Stores prerequisites like secrets and credentials |
-| **Data** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Core data infrastructure (SQL, Service Bus, Storage) |
-| **Compute** | `{solutionAbbreviation}-compute-{environmentAbbreviation}` | Azure Functions, Web API, and UI |
+| **Prereqs** | `<solutionAbbreviation>-prereqs-<environmentAbbreviation>` | Stores prerequisites like secrets and credentials |
+| **Data** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Core data infrastructure (SQL, Service Bus, Storage) |
+| **Compute** | `<solutionAbbreviation>-compute-<environmentAbbreviation>` | Azure Functions, Web API, and UI |
 
 ---
 
@@ -22,10 +22,10 @@ GMM creates four app registrations in Microsoft Entra ID for authentication and 
 
 | App Registration | Naming Convention | Purpose |
 |-----------------|-------------------|---------|
-| **UI** | `{solutionAbbreviation}-ui-{environmentAbbreviation}` | Authentication for the React SPA |
-| **WebAPI** | `{solutionAbbreviation}-webapi-{environmentAbbreviation}` | Authentication for the backend API |
-| **Graph** | `{solutionAbbreviation}-Graph-{environmentAbbreviation}` | Microsoft Graph API access for membership operations |
-| **TeamsChannel** | `{solutionAbbreviation}-TeamsChannel-{environmentAbbreviation}` | Teams channel membership management |
+| **UI** | `<solutionAbbreviation>-ui-<environmentAbbreviation>` | Authentication for the React SPA |
+| **WebAPI** | `<solutionAbbreviation>-webapi-<environmentAbbreviation>` | Authentication for the backend API |
+| **Graph** | `<solutionAbbreviation>-Graph-<environmentAbbreviation>` | Microsoft Graph API access for membership operations |
+| **TeamsChannel** | `<solutionAbbreviation>-TeamsChannel-<environmentAbbreviation>` | Teams channel membership management |
 
 ---
 
@@ -82,9 +82,9 @@ GMM uses Azure Functions for its microservices architecture. Functions are organ
 
 | Resource | Naming Convention | Purpose |
 |----------|-------------------|---------|
-| **WebAPI** | `{solutionAbbreviation}-compute-{environmentAbbreviation}-webapi` | RESTful API for the GMM UI and operations |
-| **Static Web App** | `{solutionAbbreviation}-ui` | React SPA for managing sync jobs |
-| **SignalR Service** | `{solutionAbbreviation}-compute-{environmentAbbreviation}-signalr` | Real-time communication for the UI |
+| **WebAPI** | `<solutionAbbreviation>-compute-<environmentAbbreviation>-webapi` | RESTful API for the GMM UI and operations |
+| **Static Web App** | `<solutionAbbreviation>-ui` | React SPA for managing sync jobs |
+| **SignalR Service** | `<solutionAbbreviation>-compute-<environmentAbbreviation>-signalr` | Real-time communication for the UI |
 
 ---
 
@@ -92,10 +92,10 @@ GMM uses Azure Functions for its microservices architecture. Functions are organ
 
 | Resource | Naming Convention | Purpose |
 |----------|-------------------|---------|
-| **SQL Server** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Primary SQL Server |
-| **SQL Server (Replica)** | `{solutionAbbreviation}-data-{environmentAbbreviation}-R` | Read-only replica for load distribution |
-| **Jobs Database** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Stores sync job configurations and state |
-| **ADF Database** | `{solutionAbbreviation}-data-{environmentAbbreviation}-adf` | Stores HR data for SQL membership sources |
+| **SQL Server** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Primary SQL Server |
+| **SQL Server (Replica)** | `<solutionAbbreviation>-data-<environmentAbbreviation>-R` | Read-only replica for load distribution |
+| **Jobs Database** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Stores sync job configurations and state |
+| **ADF Database** | `<solutionAbbreviation>-data-<environmentAbbreviation>-adf` | Stores HR data for SQL membership sources |
 
 ---
 
@@ -105,7 +105,7 @@ GMM uses Azure Service Bus for decoupled inter-service communication.
 
 | Resource | Naming Convention | Purpose |
 |----------|-------------------|---------|
-| **Namespace** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Service Bus namespace containing topics and queues |
+| **Namespace** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Service Bus namespace containing topics and queues |
 
 ### Topics
 
@@ -138,8 +138,8 @@ GMM uses Azure Service Bus for decoupled inter-service communication.
 
 | Key Vault | Naming Convention | Purpose |
 |-----------|-------------------|---------|
-| **Prereqs Key Vault** | `{solutionAbbreviation}-prereqs-{environmentAbbreviation}` | App registration secrets, sender credentials, Teams service account |
-| **Data Key Vault** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Connection strings, storage keys, service bus secrets, managed identity info |
+| **Prereqs Key Vault** | `<solutionAbbreviation>-prereqs-<environmentAbbreviation>` | App registration secrets, sender credentials, Teams service account |
+| **Data Key Vault** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Connection strings, storage keys, service bus secrets, managed identity info |
 
 ---
 
@@ -147,9 +147,9 @@ GMM uses Azure Service Bus for decoupled inter-service communication.
 
 | Resource | Naming Convention | Purpose |
 |----------|-------------------|---------|
-| **Application Insights** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Application performance monitoring |
-| **Log Analytics Workspace** | `{solutionAbbreviation}-data-{environmentAbbreviation}` | Centralized log collection |
-| **Dashboard** | `GMM Dashboard ({environmentAbbreviation})` | Operations dashboard for monitoring system health |
+| **Application Insights** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Application performance monitoring |
+| **Log Analytics Workspace** | `<solutionAbbreviation>-data-<environmentAbbreviation>` | Centralized log collection |
+| **Dashboard** | `GMM Dashboard (<environmentAbbreviation>)` | Operations dashboard for monitoring system health |
 
 ---
 
@@ -157,5 +157,5 @@ GMM uses Azure Service Bus for decoupled inter-service communication.
 
 | Resource | Naming Convention | Purpose |
 |----------|-------------------|---------|
-| **App Configuration** | `{solutionAbbreviation}-appConfig-{environmentAbbreviation}` | Centralized configuration and feature flags |
-| **User Assigned Managed Identity** | `{solutionAbbreviation}-identity-{environmentAbbreviation}-Graph` | Managed identity for Graph API access |
+| **App Configuration** | `<solutionAbbreviation>-appConfig-<environmentAbbreviation>` | Centralized configuration and feature flags |
+| **User Assigned Managed Identity** | `<solutionAbbreviation>-identity-<environmentAbbreviation>-Graph` | Managed identity for Graph API access |

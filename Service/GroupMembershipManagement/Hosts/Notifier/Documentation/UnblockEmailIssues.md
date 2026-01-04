@@ -4,8 +4,8 @@
 This guide addresses a common issue encountered when sending emails through a demo tenant, typically resulting in failures due to IP address problems. This issue often arises from emails being sent from IP addresses with low reputation, a scenario frequent in new or trial tenants.
 
 #### Issue snapshots
-![IssueSnapshot1](IPIssueSnapshot1.png)
-![IssueSnapshot2](IPIssueSnapshot2.png)
+![IssueSnapshot1](Images/IPIssueSnapshot1.png)
+![IssueSnapshot2](Images/IPIssueSnapshot2.png)
 
 ### Solution Steps
 1. Access the Azure Portal
@@ -26,7 +26,7 @@ Action: After submitting the ticket, Azure support will contact you. They typica
 This guide provides steps to resolve issues encountered when when the number of emails sent from demo tenants surpasses the limits set by Outlook.
 
 #### Issue snapshots
-![IssueSnapshot1](TenantThreshold.png)
+![IssueSnapshot1](Images/TenantThreshold.png)
 
 ### Steps to Identify and Resolve the Issue
 

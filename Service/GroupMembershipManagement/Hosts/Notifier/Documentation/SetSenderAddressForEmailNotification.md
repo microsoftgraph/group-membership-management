@@ -25,6 +25,8 @@ Follow the steps below to set the sender's credentials that will be used to send
         ```
         $secureSenderUsername = ConvertTo-SecureString -AsPlainText -Force "<username-of-the-user-created-in-the-previous-step>"
         $secureSecurePassword = ConvertTo-SecureString -AsPlainText -Force "<password-of-the-user-created-in-the-previous-step>"
+        $secureSyncCompletedCCEmailAddresses = ConvertTo-SecureString -AsPlainText -Force "<cc email addresses when sync is completed>"
+        $secureSyncDisabledCCEmailAddresses = ConvertTo-SecureString -AsPlainText -Force "<cc email addresses when sync is disabled>"
         $secureSupportEmailAddresses = ConvertTo-SecureString -AsPlainText -Force "<cc email addresses when sync is disabled>"
 
         Set-SenderRecipientCredentials	-SubscriptionName "<SubscriptionName>" `
@@ -32,6 +34,8 @@ Follow the steps below to set the sender's credentials that will be used to send
                                         -EnvironmentAbbreviation "<EnvironmentAbbreviation>" `
                                         -SecureSenderUsername $secureSenderUsername `
                                         -SecureSenderPassword $secureSecurePassword `
+                                        -SecureSyncCompletedCCEmailAddresses $secureSyncCompletedCCEmailAddresses `
+                                        -SecureSyncDisabledCCEmailAddresses $secureSyncDisabledCCEmailAddresses `
                                         -SecureSupportEmailAddresses $secureSupportEmailAddresses `
                                         -GmmGraphAppHasMailApplicationPermissions $false `
                                         -Verbose

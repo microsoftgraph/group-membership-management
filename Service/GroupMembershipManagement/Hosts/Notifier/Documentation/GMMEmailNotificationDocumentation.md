@@ -49,7 +49,7 @@ This email notifies the user that a synchronization job has started. It ensures 
 - ActionableMessage: Yes
 - Visual Example: 
 
-![SyncStartedNotification](/Documentation/NotificationImages/SyncStartedNotification.png)
+![SyncStartedNotification](NotificationImages/SyncStartedNotification.png)
 
 ### Triggered By:
 - **JobTrigger Function**: Responsible for initiating this notification when a sync job begins.
@@ -66,7 +66,7 @@ Sent to inform the user when a synchronization job is successfully completed. It
 - ActionableMessage: Yes
 - Visual Example: 
 
-![SyncCompletedNotification](/Documentation/NotificationImages/SyncCompletedNotification.png)
+![SyncCompletedNotification](NotificationImages/SyncCompletedNotification.png)
 
 ### Triggered By:
 - **GraphUpdater** or **TeamsChannelUpdater**: Responsible for triggering the email when the sync job is marked as completed.
@@ -83,7 +83,7 @@ This email informs the user that synchronization was disabled because the destin
 - ActionableMessage: Yes
 - Visual Example: 
 
-![DestinationNotExistNotification](/Documentation/NotificationImages/DestinationNotExistNotification.png)
+![DestinationNotExistNotification](NotificationImages/DestinationNotExistNotification.png)
 
 ### Triggered By:
 - **JobTrigger** and **GraphUpdater** Functions: These functions initiate this email if the destination group does not exist during the sync process.
@@ -100,7 +100,7 @@ Informs the user that no data was found for the requested sync, providing clarit
 - ActionableMessage: Yes
 - Visual Example: 
 
-![NoDataNotification](/Documentation/NotificationImages/NoDataNotification.png)
+![NoDataNotification](NotificationImages/NoDataNotification.png)
 
 ### Triggered By:
 - **MembershipAggregator Function**: Responsible for sending this notification when no data is available during aggregation.
@@ -117,7 +117,7 @@ Alerts the user that a synchronization job has been paused due to GMM is not an 
 - ActionableMessage: Yes
 - Visual Example: 
 
-![NotOwnerNotification](/Documentation/NotificationImages/NotOwnerNotification.png)
+![NotOwnerNotification](NotificationImages/NotOwnerNotification.png)
 
 ### Triggered By:
 - **JobTrigger Function**: This function triggers the email after checking whether GMM is an owner of the group.
@@ -134,7 +134,7 @@ This email informs the user that synchronization was disabled because the source
 - ActionableMessage: Yes
 - Visual Example: 
 
-![NotValidSourceNotification](/Documentation/NotificationImages/NotValidSourceNotification.png)
+![NotValidSourceNotification](NotificationImages/NotValidSourceNotification.png)
 
 ### Triggered By:
 - **GroupMembershipObtainer Function**: This function triggers the email after checking whether source group is a valid guid.
@@ -151,7 +151,7 @@ This email informs the user that synchronization was disabled because the source
 - ActionableMessage: Yes
 - Visual Example:
 
-![SourceNotExistNotification](/Documentation/NotificationImages/SourceNotExistNotification.png)
+![SourceNotExistNotification](NotificationImages/SourceNotExistNotification.png)
 
 ### Triggered By:
 - **GroupMembershipObtainer Function**: These functions initiate this email if the source group does not exist during the sync process.
@@ -168,7 +168,7 @@ This email informs the user that their group’s synchronization with GMM has be
 - ActionableMessage: Yes
 - Visual Example:
 
-![InactiveSyncJobNotification](/Documentation/NotificationImages/InactiveSyncJobNotification.png)
+![InactiveSyncJobNotification](NotificationImages/InactiveSyncJobNotification.png)
 
 ### Triggered By:
 - **AzureMaintenance Function**: This function triggers the email if the group has been inactive for reasons such as the group no longer existing or the sync being paused for more than 30 days.
@@ -185,7 +185,7 @@ This email informs the user that GMM was unable to add guest users to the destin
 - ActionableMessage: Yes
 - Visual Example:
 
-![GuestUserFailureNotification](/Documentation/NotificationImages/GuestUserFailureNotification.png)
+![GuestUserFailureNotification](NotificationImages/GuestUserFailureNotification.png)
 
 ### Triggered By:
 - **GraphUpdater Function**: This function triggers the email when guest users cannot be added to a destination group due to configuration restrictions in the destination settings.
@@ -202,7 +202,7 @@ This email informs the user that the most recent attempt to update the membershi
 - ActionableMessage: Yes
 - Visual Example:
 
-![ThresholdNotification](/Documentation/NotificationImages/ThresholdNotification.png)
+![ThresholdNotification](NotificationImages/ThresholdNotification.png)
 
 ### Triggered By:
 - **MembershipAggregator Function**: This notification is triggered when membership changes (additions or removals) exceed the preconfigured threshold for a group.
@@ -218,7 +218,7 @@ This email informs the user that synchronization of their GMM group has been dis
 - ActionableMessage: Yes
 - Visual Example:
 
-![ThresholdNotificationDisabled](/Documentation/NotificationImages/ThresholdNotificationDisabled.png)
+![ThresholdNotificationDisabled](NotificationImages/ThresholdNotificationDisabled.png)
 
 ### Triggered By:
 - **MembershipAggregator Function**: Triggered when the threshold for changes is exceeded after a certain number of days (as configured) without a response, causing the sync to be disabled.
@@ -235,7 +235,7 @@ This email notifies the user that the notification no longer exists in the syste
 - ActionableMessage: No
 - Visual Example:
 
-![ThresholdNotificationNotFound](/Documentation/NotificationImages/ThresholdNotificationNotFound.png)
+![ThresholdNotificationNotFound](NotificationImages/ThresholdNotificationNotFound.png)
 
 ### Triggered By:
 - **WebApi**: Triggered when a user attempts to access a notification that has already been pruned or is no longer valid in the system.
@@ -252,7 +252,7 @@ This email informs the user that a previously sent threshold notification has be
 - ActionableMessage: No
 - Visual Example:
 
-![ThresholdNotificationResolved](/Documentation/NotificationImages/ThresholdNotificationResolved.png)
+![ThresholdNotificationResolved](NotificationImages/ThresholdNotificationResolved.png)
 
 ### Triggered By:
 - **WebApi**: Triggered after a threshold alert has been addressed and resolved, informing the user of the outcome
@@ -269,7 +269,7 @@ This email informs the user that they are no longer authorized to view the notif
 - ActionableMessage: No
 - Visual Example:
 
-![ThresholdNotificationUnauthorized](/Documentation/NotificationImages/ThresholdNotificationUnauthorized.png)
+![ThresholdNotificationUnauthorized](NotificationImages/ThresholdNotificationUnauthorized.png)
 
 ### Triggered By:
 - **WebApi**: Triggered when the user loses ownership of the group and therefore no longer has the necessary permissions to view group notifications.
@@ -286,7 +286,7 @@ This email notifies the user that a notification has expired. The time period to
 - ActionableMessage: No
 - Visual Example:
 
-![ThresholdNotificationExpired](/Documentation/NotificationImages/ThresholdNotificationExpired.png)
+![ThresholdNotificationExpired](NotificationImages/ThresholdNotificationExpired.png)
 
 ### Triggered By:
 - **WebApi**: Triggered when a threshold violation is not addressed within the allotted time, resulting in the sync being purged and the notification expiring.
@@ -303,7 +303,7 @@ This email is sent as a fallback notification when an Outlook Actionable Message
 - ActionableMessage: No
 - Visual Example:
 
-![ThresholdNotificationFallback](/Documentation/NotificationImages/ThresholdNotificationFallback.png)
+![ThresholdNotificationFallback](NotificationImages/ThresholdNotificationFallback.png)
 
 ### Triggered By:
 - **Notifier**: Triggered when a Group Membership Management (GMM) notification using Outlook Actionable Messages fails to render properly. The fallback message ensures the user still receives the content of the notification.
@@ -320,7 +320,7 @@ This email informs the user that their submission to onboard a new or modify an 
 - ActionableMessage: Yes
 - Visual Example:
 
-![SubmissionRejectedNotification](/Documentation/NotificationImages/SubmissionRejectedNotification.png)
+![SubmissionRejectedNotification](NotificationImages/SubmissionRejectedNotification.png)
 
 ### Triggered By:
 - **Review Process in the UI**: Triggered when a user's request to onboard a new/modify an existing sync job is reviewed and rejected by GMM administrators.

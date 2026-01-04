@@ -6,7 +6,7 @@ This script will deploy all resources in the specified environment with minimal 
 
 ### Related Documentation
 
-- [GMM Resource Overview](GMM_Resources.md) - Overview of all Azure resources deployed by GMM
+- [GMM Resource Overview](../../Documentation/Architecture/GMM_Resources.md) - Overview of all Azure resources deployed by GMM
 
 ---
 
@@ -56,7 +56,7 @@ The deployment script automates the complete setup of the GMM environment. At a 
 10. **Runs Database Migrations**
     - Triggers Entity Framework migrations via the WebAPI
 
-For a complete list of all Azure resources created, see the [GMM Resource Overview](GMM_Resources.md).
+For a complete list of all Azure resources created, see the [GMM Resource Overview](../../Documentation/Architecture/GMM_Resources.md).
 
 ---
 
@@ -124,8 +124,8 @@ Before running the deployment, update the [parameters.json](../parameters.json) 
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
-| `solutionAbbreviation` | Short name for the solution (used in resource naming) | `gmm` |
-| `environmentAbbreviation` | Environment identifier | `int`, `ua`, `prod` |
+| `solutionAbbreviation` | Short name for the solution, used in resource naming (2-3 characters, lowercase letters/numbers only) | `gmm` |
+| `environmentAbbreviation` | Environment identifier (2-6 characters, lowercase letters/numbers only) | `int`, `ua`, `prod` |
 | `subscriptionId` | Azure subscription ID for deployment | `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` |
 | `location` | Azure region for resources | `eastus` |
 | `uiLocation` | Azure region for Static Web App | `eastus2` |
@@ -134,6 +134,28 @@ Before running the deployment, update the [parameters.json](../parameters.json) 
 | `sqlAdministratorsGroupName` | Display name of the SQL administrators group | `GMM SQL Admins` |
 | `appConfigurationDataOwners` | List of principals who will own App Configuration data | `[{"principalId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "principalType": "User"}]` |
 | `authenticationType` | Authentication method for the Graph application | `UserAssignedManagedIdentity`, `ClientSecret`, or `Certificate` |
+
+#### Resource Naming Conventions
+
+GMM uses the `solutionAbbreviation` and `environmentAbbreviation` parameters to create consistent names for all Azure resources. The naming convention follows this pattern:
+
+```
+<solutionAbbreviation>-<ResourceGroupName>-<environmentAbbreviation>
+```
+
+**Examples:**
+- `gmm-data-ua` (data resource group for the "ua" environment)
+- `gmm-compute-prod` (compute resource group for the "prod" environment)
+- `gmm-prereqs-int` (prereqs resource group for the "int" environment)
+
+> ⚠️ **Important Naming Requirements:**
+>
+> - Both `solutionAbbreviation` and `environmentAbbreviation` must contain **only lowercase letters and/or numbers**. Using capital letters will cause deployment failures.
+> - `solutionAbbreviation`: minimum 2 characters, maximum 3 characters
+> - `environmentAbbreviation`: minimum 2 characters, maximum 6 characters
+> - Use unique values for both parameters to avoid name collisions. Some Azure resources (such as storage accounts and Key Vaults) require globally unique names across all tenants.
+
+For a complete list of all resources and their naming patterns, see the [GMM Resource Overview](../../Documentation/Architecture/GMM_Resources.md).
 
 ---
 

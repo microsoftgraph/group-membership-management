@@ -67,7 +67,6 @@ stages:
         Contents: |
           **/*.json
           **/*.ps1
-          Documentation/**
         TargetFolder: '$(build.artifactstagingdirectory)/Deployment'
 
     - task: PublishBuildArtifacts@1

@@ -26,9 +26,9 @@ This guide provides instructions for setting up a demo ADF pipeline. The concept
 
 ### Prerequisites
 
-- GMM deployment completed successfully (see [Deploying GMM](Deploying_GMM.md))
+- GMM deployment completed successfully (see [Deploying GMM](../../../Deployment/Documentation/Deploying_GMM.md))
 - Access to the Azure Portal with appropriate permissions
-- For demo setup: A demo tenant created following the [Create Demo Tenant](../../Documentation/CreateDemoTenant/CreateDemoTenant.md) guide
+- For demo setup: A demo tenant created following the [Create Demo Tenant](../../../Documentation/CreateDemoTenant/CreateDemoTenant.md) guide
 
 ### Required Resources
 
