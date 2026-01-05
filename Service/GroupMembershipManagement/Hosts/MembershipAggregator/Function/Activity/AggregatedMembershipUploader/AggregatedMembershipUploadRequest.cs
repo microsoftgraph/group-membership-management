@@ -7,11 +7,11 @@ namespace Hosts.MembershipAggregator
 {
     public class AggregatedMembershipUploadRequest
     {
-        public SyncJob SyncJob { get; set; }
+        public required SyncJob SyncJob { get; set; }
         public Guid GroupId { get; set; }
-        public string SourceMembershipFilePath { get; set; }
-        public string CompressedMembersToAddJson { get; set; }
-        public string CompressedMembersToRemoveJson { get; set; }
+        public required string SourceMembershipFilePath { get; set; }
+        public required string CompressedMembersToAddJson { get; set; }
+        public required string CompressedMembersToRemoveJson { get; set; }
         public DateTime CurrentUtcDateTime { get; set; }
         public Guid RunId { get; set; }
     }
