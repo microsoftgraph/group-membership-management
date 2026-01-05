@@ -106,6 +106,12 @@
     "notifierProviderId": {
       "value": ""
     },
+    "oamEntraAppId": {
+      "value": ""
+    },
+    "oamEntraAppScope": {
+      "value": ""
+    },
     "sqlAdministratorsGroupId": {
       "value": ""
     },
