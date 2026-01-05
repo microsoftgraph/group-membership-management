@@ -50,7 +50,7 @@ This document will guide you through the process of configuring a demo tenant fo
 3. Locate Settings.json, we need to make some changes to this file before running the program.  
    Notice it has several settings: ClientId, TenantId, TenantName, UserCount
     - ClientId - This the Application (client) Id of the application we created in the previous step. You will find this id under the Overview blade of your application on the Azure Portal.
-    - TenandId - This is your tenant id, you can find this value under the Overview blade for Azure 'Active Directory'.
+    - TenantId - This is your tenant id, you can find this value under the Overview blade for Azure 'Active Directory'.
     - TenantName - This is the domain used on your users' email addresses. i.e. "contoso.com, <MyDomain>.onmicrosoft.com"
     - UserCount - This is the number of users that will be generated. This also represent the number of users that will be read from the data.csv file.
 4. Save your changes and run the application (You might need to set DemoUserSetup as your startup project).
