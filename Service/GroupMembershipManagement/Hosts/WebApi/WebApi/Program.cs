@@ -78,8 +78,6 @@ namespace WebApi
             var actionableEmailProviderId = builder.Configuration.GetValue<Guid>("Settings:ActionableEmailProviderId");
             var oamEntraAppId = builder.Configuration.GetValue<string>("Settings:oamEntraAppId");
             var oamEntraAppScope = builder.Configuration.GetValue<string>("Settings:oamEntraAppScope");
-            var customAudienceOverride = builder.Configuration.GetValue<string>("Settings:customAudienceOverride");
-            var customIssuerOverride = builder.Configuration.GetValue<string>("Settings:customIssuerOverride");
 
             builder.Services.AddDbContext<GMMContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
@@ -153,16 +151,14 @@ namespace WebApi
                         azureAdClientId,
                         secureApiHostName,
                         $"api://auth-am-{actionableEmailProviderId}/{oamEntraAppId}",
-                        oamEntraAppId,
-                        customAudienceOverride
-                    }.Where(i => !string.IsNullOrWhiteSpace(i)).ToArray(),
+                        oamEntraAppId
+                    },
                     ValidateIssuer = true,
                     ValidIssuers = new[] {
                         $"https://sts.windows.net/{azureAdTenantId}/",
                         $"https://login.microsoftonline.com/{azureAdTenantId}/v2.0",
-                        "https://substrate.office.com/sts/",
-                        customIssuerOverride
-                    }.Where(i => !string.IsNullOrWhiteSpace(i)).ToArray(),
+                        "https://substrate.office.com/sts/"
+                    },
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKeys = tenantSigningKeys.Concat(tenantSigningKeysv2).Concat(officeSigningKeys)
                 };
