@@ -124,7 +124,6 @@ namespace Hosts.JobTrigger
                         return new ServiceBusQueueRepository(sender);
                     });
 
-                    services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
                     services.AddScoped<IJobTriggerService, JobTriggerService>();
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 

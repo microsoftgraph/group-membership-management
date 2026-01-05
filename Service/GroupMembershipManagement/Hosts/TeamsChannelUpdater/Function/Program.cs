@@ -97,7 +97,6 @@ namespace Hosts.TeamsChannelUpdater
                         return new ServiceBusQueueRepository(sender);
                     })
                     .AddTransient<ITeamsChannelUpdaterService, TeamsChannelUpdaterService>()
-                    .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()
                     .AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                 })
                 .Build();

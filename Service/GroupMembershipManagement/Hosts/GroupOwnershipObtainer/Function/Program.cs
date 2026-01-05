@@ -58,7 +58,6 @@ namespace Hosts.GroupOwnershipObtainer
                     });
 
                     services.AddScoped<IGraphGroupRepository, GraphGroupRepository>();
-                    services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
                     services.AddScoped<IGroupOwnershipObtainerService, GroupOwnershipObtainerService>();
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
 

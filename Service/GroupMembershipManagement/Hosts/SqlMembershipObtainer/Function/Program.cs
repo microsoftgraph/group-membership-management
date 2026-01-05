@@ -74,7 +74,6 @@ namespace Hosts.SqlMembershipObtainer
 
                     services.AddGraphAPIClient();
 
-                    services.AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>();
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                     services.AddSingleton<IDataFactoryService, DataFactoryService>();
                     services.AddScoped<ISqlMembershipObtainerService, SqlMembershipObtainerService>();
