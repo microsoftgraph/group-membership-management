@@ -143,16 +143,24 @@ namespace WebApi
                 var tenantSigningKeysv2 = await GetSigningKeysFromUrlAsync($"{azureAdInstanceUrl}{azureAdTenantId}/v2.0/.well-known/openid-configuration");
                 var officeSigningKeys = await GetSigningKeysFromUrlAsync("https://substrate.office.com/sts/common/.well-known/openid-configuration");
 
+                var validAudiences = new[] {
+                        $"api://{azureAdClientId}",
+                        azureAdClientId,
+                        secureApiHostName
+                    };
+
+                if (!string.IsNullOrWhiteSpace(oamEntraAppId))
+                {
+                    validAudiences = validAudiences.Concat(new[] {
+                        $"api://auth-am-{actionableEmailProviderId}/{oamEntraAppId}",
+                        oamEntraAppId
+                    }).ToArray();
+                }
+
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateAudience = true,
-                    ValidAudiences = new[] {
-                        $"api://{azureAdClientId}",
-                        azureAdClientId,
-                        secureApiHostName,
-                        $"api://auth-am-{actionableEmailProviderId}/{oamEntraAppId}",
-                        oamEntraAppId
-                    },
+                    ValidAudiences = validAudiences,
                     ValidateIssuer = true,
                     ValidIssuers = new[] {
                         $"https://sts.windows.net/{azureAdTenantId}/",
