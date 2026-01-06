@@ -8,9 +8,14 @@ namespace Hosts.MembershipAggregator
 {
     public class MembershipExtractionRequest
     {
-        public List<string> CompletedParts { get; init; } = new();
-        public string DestinationPart { get; set; }
-        public SyncJob SyncJob { get; set; }
+        private List<string> _completedParts = new();
+        public List<string> CompletedParts
+        {
+            get => _completedParts;
+            set => _completedParts = value ?? new();
+        }
+        public string DestinationPart { get; init; }
+        public SyncJob SyncJob { get; init; }
         public Guid GroupId { get; set; }
         public DateTime CurrentUtcDateTime { get; set; }
     }

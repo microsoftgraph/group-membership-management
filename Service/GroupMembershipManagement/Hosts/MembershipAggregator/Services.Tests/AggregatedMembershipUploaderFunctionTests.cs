@@ -5,7 +5,6 @@ using Hosts.MembershipAggregator;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
-using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using System;
@@ -21,7 +20,8 @@ namespace Services.Tests
         private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private AggregatedMembershipUploaderFunction _function;
-        private Dictionary<string, string> _blobStore;
+        private Dictionary<string, string> _uploadedBlobs;
+        private HashSet<string> _existingSourcePaths;
         private SyncJob _syncJob;
         private Guid _groupId;
 
@@ -31,7 +31,8 @@ namespace Services.Tests
             _loggingRepository = new Mock<ILoggingRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _function = new AggregatedMembershipUploaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
-            _blobStore = new Dictionary<string, string>();
+            _uploadedBlobs = new Dictionary<string, string>();
+            _existingSourcePaths = new HashSet<string>();
             _groupId = Guid.NewGuid();
             _syncJob = new SyncJob { Id = Guid.NewGuid(), RunId = Guid.NewGuid(), TargetOfficeGroupId = _groupId };
 
@@ -39,17 +40,16 @@ namespace Services.Tests
                 .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
                 .Returns((string path, string content, Dictionary<string, string> metadata) =>
                 {
-                    _blobStore[path] = content;
+                    _uploadedBlobs[path] = content;
                     return Task.CompletedTask;
                 });
 
             _blobStorageRepository
-                .Setup(x => x.DownloadFileAsync(It.IsAny<string>()))
+                .Setup(x => x.GetBlobMetadataAsync(It.IsAny<string>()))
                 .ReturnsAsync((string path) =>
                 {
-                    return _blobStore.TryGetValue(path, out var storedContent)
-                        ? new BlobResult { BlobStatus = BlobStatus.Found, Content = storedContent }
-                        : new BlobResult { BlobStatus = BlobStatus.NotFound };
+                    var status = _existingSourcePaths.Contains(path) ? BlobStatus.Found : BlobStatus.NotFound;
+                    return new BlobMetadataResult { BlobStatus = status, Metadata = null };
                 });
         }
 
@@ -57,14 +57,8 @@ namespace Services.Tests
         public async Task UploadAggregatedMembershipAsync_WithValidData_ReturnsSuccess()
         {
             // Arrange
-            var sourceMembership = new GroupMembership
-            {
-                SourceMembers = new List<AzureADUser>(),
-                Destination = new AzureADGroup { ObjectId = _groupId }
-            };
-
             var sourcePath = $"/{_groupId}/source.json";
-            _blobStore[sourcePath] = TextCompressor.Compress(JsonSerializer.Serialize(sourceMembership));
+            _existingSourcePaths.Add(sourcePath);
 
             var membersToAdd = new List<AzureADUser>
             {
@@ -94,7 +88,7 @@ namespace Services.Tests
             Assert.IsTrue(response.IsSuccessful);
             Assert.IsNotNull(response.FilePath);
             Assert.AreEqual(2, response.MemberCount);
-            Assert.IsTrue(_blobStore.ContainsKey(response.FilePath));
+            Assert.IsTrue(_uploadedBlobs.ContainsKey(response.FilePath));
         }
 
         [TestMethod]

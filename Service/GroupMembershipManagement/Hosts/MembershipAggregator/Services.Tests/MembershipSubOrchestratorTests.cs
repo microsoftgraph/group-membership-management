@@ -95,6 +95,14 @@ namespace Services.Tests
                 });
 
             _blobStorageRepository
+                .Setup(x => x.GetBlobMetadataAsync(It.IsAny<string>()))
+                .ReturnsAsync((string path) =>
+                {
+                    var status = _uploadedBlobs.ContainsKey(path) ? BlobStatus.Found : BlobStatus.NotFound;
+                    return new BlobMetadataResult { BlobStatus = status, Metadata = null };
+                });
+
+            _blobStorageRepository
                 .Setup(x => x.DeleteFileAsync(It.IsAny<string>()))
                 .Returns((string path) =>
                 {

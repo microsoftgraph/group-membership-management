@@ -39,42 +39,27 @@ namespace Hosts.MembershipAggregator
                 return Failure("GroupId is required for aggregated membership upload.");
             }
 
-            if (string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
-            {
-                return Failure("Source membership file path is missing.");
-            }
-
             try
             {
-                var sourceBlob = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
-                if (sourceBlob.BlobStatus == BlobStatus.NotFound)
+                if (request.SyncJob == null)
+                {
+                    return Failure("Sync job information is required for aggregated membership upload.");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
+                {
+                    return Failure("Source membership file path is missing.");
+                }
+
+                var metadata = await _blobStorageRepository.GetBlobMetadataAsync(request.SourceMembershipFilePath);
+                if (metadata == null || metadata.BlobStatus == BlobStatus.NotFound)
                 {
                     return Failure($"Source membership blob was not found at path {request.SourceMembershipFilePath}.");
                 }
-
-                var sourceMembershipJson = TryDecompress(sourceBlob.Content);
-                var sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceMembershipJson);
-                if (sourceMembership == null)
-                {
-                    return Failure("Source membership payload could not be deserialized.");
-                }
-
                 var membersToAdd = DeserializeMembers(request.CompressedMembersToAddJson);
                 var membersToRemove = DeserializeMembers(request.CompressedMembersToRemoveJson);
 
-                var aggregatedMembership = (GroupMembership)sourceMembership.Clone();
-                aggregatedMembership.SourceMembers.Clear();
-
-                if (membersToAdd != null)
-                {
-                    aggregatedMembership.SourceMembers.AddRange(membersToAdd);
-                }
-
-                if (membersToRemove != null)
-                {
-                    aggregatedMembership.SourceMembers.AddRange(membersToRemove);
-                }
-
+                var aggregatedMembership = BuildAggregatedMembership(request, membersToAdd, membersToRemove);
                 var memberCount = aggregatedMembership.SourceMembers.Count;
 
                 var currentTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
@@ -113,23 +98,6 @@ namespace Hosts.MembershipAggregator
             }
         }
 
-        private static string TryDecompress(string content)
-        {
-            if (string.IsNullOrEmpty(content))
-            {
-                return content;
-            }
-
-            try
-            {
-                return TextCompressor.Decompress(content);
-            }
-            catch (FormatException)
-            {
-                return content;
-            }
-        }
-
         private static ICollection<AzureADUser> DeserializeMembers(string compressedMembersJson)
         {
             if (string.IsNullOrWhiteSpace(compressedMembersJson))
@@ -139,6 +107,74 @@ namespace Hosts.MembershipAggregator
 
             var decompressed = TextCompressor.Decompress(compressedMembersJson);
             return JsonSerializer.Deserialize<ICollection<AzureADUser>>(decompressed) ?? Array.Empty<AzureADUser>();
+        }
+
+        private static GroupMembership BuildAggregatedMembership(
+            AggregatedMembershipUploadRequest request,
+            ICollection<AzureADUser> membersToAdd,
+            ICollection<AzureADUser> membersToRemove)
+        {
+            var runId = request.RunId != Guid.Empty
+                ? request.RunId
+                : request.SyncJob.RunId ?? Guid.Empty;
+
+            var destination = new AzureADGroup
+            {
+                ObjectId = request.GroupId,
+                Name = request.SyncJob.DestinationName?.Name,
+                Email = request.SyncJob.DestinationEmail?.Email
+            };
+
+            var aggregatedMembershipMembers = ExtractAggregatedMembers(membersToAdd, membersToRemove);
+
+            var aggregatedMembership = new GroupMembership
+            {
+                Destination = destination,
+                SyncJobId = request.SyncJob.Id,
+                SyncJob = request.SyncJob,
+                RunId = runId,
+                MembershipObtainerDryRunEnabled = request.SyncJob.IsDryRunEnabled,
+                Exclusionary = false,
+                ProjectedMemberCount = (membersToAdd?.Count ?? 0) + (membersToRemove?.Count ?? 0),
+                TotalMembersToAdd = membersToAdd?.Count,
+                TotalMembersToRemove = membersToRemove?.Count,
+                Query = request.SyncJob.Query,
+                SourceMembers = aggregatedMembershipMembers
+            };
+
+            return aggregatedMembership;
+        }
+
+        private static List<AzureADUser> ExtractAggregatedMembers(
+            ICollection<AzureADUser> membersToAdd,
+            ICollection<AzureADUser> membersToRemove)
+        {
+            // Reuse the add collection when possible to avoid additional allocations.
+            List<AzureADUser> aggregatedMembers;
+            if (membersToAdd is List<AzureADUser> addList)
+            {
+                aggregatedMembers = addList;
+            }
+            else if (membersToAdd != null)
+            {
+                aggregatedMembers = new List<AzureADUser>(membersToAdd);
+            }
+            else
+            {
+                aggregatedMembers = new List<AzureADUser>();
+            }
+
+            if (membersToRemove != null && membersToRemove.Count > 0)
+            {
+                aggregatedMembers.AddRange(membersToRemove);
+
+                if (membersToRemove is List<AzureADUser> removeList)
+                {
+                    removeList.Clear();
+                }
+            }
+
+            return aggregatedMembers;
         }
 
         private static AggregatedMembershipUploadResponse Failure(string message)
