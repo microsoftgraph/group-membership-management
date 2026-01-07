@@ -56,19 +56,16 @@ namespace Hosts.MessageSplitter
                 return;
             }
 
-            // Index + drain kick are done via an orchestrator to keep durable operations deterministic.
-            var orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
-                nameof(DeferredPendingEnqueueOrchestrator),
-                new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId));
-
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Scheduled pending drain orchestrator; instanceId={orchestrationInstanceId} lane={lane} seq={message.SequenceNumber}", RunId = runId },
-                VerbosityLevel.INFO);
-
-            // Defer the message in the pending subscription; drain will later receive by sequence number.
+            // Defer the message first to minimize the window for gRPC connection issues.
+            // The gRPC channel between the isolated worker and Functions host can become unavailable
+            // if there's too much delay between message receipt and deferral.
             try
             {
                 await actions.DeferMessageAsync(message);
+
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage { Message = $"Defer succeeded for pending message; lane={lane} seq={message.SequenceNumber}", RunId = runId },
+                    VerbosityLevel.INFO);
             }
             catch (Exception ex)
             {
@@ -84,8 +81,13 @@ namespace Hosts.MessageSplitter
                 throw;
             }
 
+            // Index + drain kick are done via an orchestrator to keep durable operations deterministic.
+            var orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
+                nameof(DeferredPendingEnqueueOrchestrator),
+                new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId));
+
             await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Defer succeeded for pending message; lane={lane} seq={message.SequenceNumber}", RunId = runId },
+                new LogMessage { Message = $"Scheduled pending drain orchestrator; instanceId={orchestrationInstanceId} lane={lane} seq={message.SequenceNumber}", RunId = runId },
                 VerbosityLevel.INFO);
         }
     }
