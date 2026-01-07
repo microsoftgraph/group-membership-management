@@ -1,0 +1,67 @@
+%%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
+flowchart TD
+    subgraph PHASE1["1. MESSAGE ARRIVAL"]
+        A0["<b>MS.StarterFunction</b>"]:::header
+        A0 --> A1[Job arrives from<br/>MembershipAggregator]
+        A1 --> A2[EnqueuePendingWorkAsync<br/>sends to pending subscription]
+        A2 --> A3[Message has MessageType<br/>= pending_small or pending_large]
+    end
+
+    subgraph PHASE2["2. DEFERRAL"]
+        B0["<b>MS.PendingDispatcherFunction</b>"]:::header
+        B0 --> B1[ServiceBus trigger fires<br/>on pending subscription]
+        B1 --> B2[Deserialize OrchestratorRequest]
+        B2 --> B3[actions.DeferMessageAsync<br/>Message held by sequence number]
+        B3 --> B4[Message invisible to consumers<br/>Only retrievable by seqNum]
+    end
+
+    subgraph PHASE3["3. INDEXING"]
+        C0["<b>MS.DeferredPendingEnqueueOrchestrator</b>"]:::header
+        C0 --> C1[Scheduled after deferral]
+        C1 --> C2[Lock DeferredPendingIndexEntity]
+        C2 --> C3[Add item to index<br/>seqNum + runId + timestamp]
+        C3 --> C4[Call sub-orchestrator<br/>DeferredPendingDrainOrchestrator]
+    end
+
+    subgraph PHASE4["4. DRAIN"]
+        D0["<b>MS.DeferredPendingDrainOrchestrator</b>"]:::header
+        D0 --> D1[Try acquire drain lock<br/>60 second duration]
+        D1 --> D2{Lock acquired?}
+        D2 -->|No| D3[Exit: Another drain<br/>already running]
+        D2 -->|Yes| D4[TakeNextBatch from index<br/>Sets InProgressUntilUtc marker]
+        D4 --> D5[Process batch items]
+    end
+
+    subgraph PHASE5["5. LEASE CHECK"]
+        E0["<b>For Each Item in Batch</b>"]:::header
+        E0 --> E1[Lock MS.RunLimiter entity]
+        E1 --> E2[Call Acquire with<br/>runId, maxInFlight, timeout]
+        E2 --> E3{Lease granted?}
+        E3 -->|No| E4[At capacity<br/>Release in-progress marker]
+        E4 --> E5[Stop batch processing<br/>Wait for completion signal]
+        E3 -->|Yes| E6[Lease created<br/>Expiry time set]
+    end
+
+    subgraph PHASE6["6. DISPATCH"]
+        F0["<b>MS.ReceiveDeferredPendingFunction</b>"]:::header
+        F0 --> F1[ReceiveDeferredMessageAsync<br/>by sequence number]
+        F1 --> F2{Message found?}
+        F2 -->|No| F3[Message expired or settled<br/>Remove from index]
+        F2 -->|Yes| F4[Deserialize OrchestratorRequest]
+        F4 --> F5[Schedule GU.OrchestratorMultiLaneFunction<br/>Deterministic instanceId prevents duplicates]
+        F5 --> F6[CompleteMessageAsync<br/>Remove from ServiceBus]
+        F6 --> F7[Remove from index<br/>Item fully processed]
+    end
+
+    classDef header fill:#1976d2,color:#fff,font-weight:bold
+
+    A3 --> B1
+    B4 --> C1
+    C4 --> D1
+    D5 --> E1
+    E6 --> F1
+
+    style D3 fill:#fff3e0
+    style E5 fill:#ffcdd2
+    style F3 fill:#ffcdd2
+    style F7 fill:#c8e6c9

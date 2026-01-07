@@ -1,0 +1,69 @@
+%%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
+flowchart TD
+    subgraph ENTRY["1. JOB ENTRY"]
+        A0["<b>MS.StarterFunction</b>"]:::header
+        A0 --> A1[Sync job arrives from<br/>MembershipAggregator]
+        A1 --> A2{RunLimiter<br/>Enabled?}
+        A2 -->|No| A3[Direct dispatch to<br/>MS.OrchestratorFunction]
+        A2 -->|Yes| A4[Send to Pending Queue<br/>MessageType = pending_lane]
+    end
+
+    subgraph DEFER["2. MESSAGE DEFERRAL"]
+        B0["<b>MS.PendingDispatcherFunction</b>"]:::header
+        B0 --> B1[Receive from pending subscription]
+        B1 --> B2[Defer message in ServiceBus<br/>Message held by sequence number]
+        B2 --> B3[Schedule MS.DeferredPendingEnqueueOrchestrator]
+    end
+
+    subgraph INDEX["3. INDEXING"]
+        C0["<b>MS.DeferredPendingEnqueueOrchestrator</b>"]:::header
+        C0 --> C1[Add to MS.DeferredPendingIndexEntity<br/>Track: seqNum, runId, timestamp]
+        C1 --> C2[Kick drain orchestrator]
+    end
+
+    subgraph DRAIN["4. DRAIN LOGIC"]
+        D0["<b>MS.DeferredPendingDrainOrchestrator</b>"]:::header
+        D0 --> D1{Acquire drain lock?<br/>60 sec duration}
+        D1 -->|No| D2[Exit: Another drain running]
+        D1 -->|Yes| D3[TakeNextBatch from index<br/>Small: 16 items, Large: 3 items]
+        D3 --> D4[For each item in batch]
+        D4 --> D5{Call MS.RunLimiter.Acquire<br/>Capacity available?}
+        D5 -->|No| D6[Release in-progress marker<br/>Stop processing batch]
+        D5 -->|Yes| D7[MS.ReceiveDeferredPendingFunction<br/>Get message by sequence number]
+        D7 --> D8[Schedule GU.OrchestratorMultiLaneFunction<br/>with deterministic instanceId]
+        D8 --> D9[Complete ServiceBus message<br/>Remove from index]
+        D9 --> D10{More items?}
+        D10 -->|Yes| D4
+        D10 -->|No| D11[Release drain lock]
+    end
+
+    subgraph PROCESS["5. JOB PROCESSING"]
+        E0["<b>GU.OrchestratorMultiLaneFunction</b>"]:::header
+        E0 --> E1[Add/Remove members<br/>via Microsoft Graph API]
+        E1 --> E2[Update GU.JobTrackerEntity]
+        E2 --> E3{All messages<br/>processed?}
+        E3 -->|No| E4[Wait for next message]
+        E3 -->|Yes| E5[GU.MessageSplitterCompletionSenderFunction]
+    end
+
+    subgraph COMPLETE["6. COMPLETION"]
+        F0["<b>MS.CompletionListenerFunction</b>"]:::header
+        F0 --> F1[Receive completion signal]
+        F1 --> F2[MS.CompletionOrchestratorFunction<br/>calls RunLimiter.Release]
+        F2 --> F3[Lease removed<br/>Capacity freed]
+        F3 --> F4[Kick drain for<br/>waiting jobs]
+    end
+
+    classDef header fill:#1976d2,color:#fff,font-weight:bold
+
+    A4 --> B1
+    B3 --> C1
+    C2 --> D1
+    D8 -.->|Async| E1
+    E5 --> F1
+    F4 -.-> D1
+
+    style A3 fill:#c8e6c9
+    style D6 fill:#ffcdd2
+    style D9 fill:#c8e6c9
+    style F3 fill:#c8e6c9
