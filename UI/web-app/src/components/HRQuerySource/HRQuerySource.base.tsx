@@ -28,7 +28,7 @@ import { SqlMembershipAttribute, SqlMembershipAttributeMapping } from '../../mod
 import { IFilterPart } from '../../models/IFilterPart';
 import { Group } from '../../models/Group';
 import { containsSqlExpression, countOccurrences, parseGroup, stringifyGroups, stripQuotedContent } from './QuerySerializer';
-import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth } from '../../utils/titleGenerator';
+import { updateHRTitleWithNewLeader, updateHRTitleWithNewDepth, combineHRTitleWithAICriteria } from '../../utils/titleGenerator';
 import { getEqualityOperatorOptions, nullOptions, getOrAndOperatorOptions, getYesNoOptions } from '../../models/Options';
 import { selectSupportEmail, selectSupportEmailLoading, selectSupportEmailError, selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
@@ -36,9 +36,11 @@ import { InfoWord } from '../InfoWord';
 import { OrgLeader } from '../OrgLeader';
 import { jsxFormat } from '../../utils/stringUtils';
 import { selectIsGeneratingTitle } from '../../store/title.slice';
-import { getTitle } from '../../store/title.api';
+import { fetchOrgLeaderDetailsAndGenerateHRTitle, getTitle } from '../../store/title.api';
 import { setIsMissingAndOrOperator } from '../../store/manageMembership.slice';
 import { HRQueryItemColumn } from './components';
+import { SourcePartQuery } from '../../models/SourcePartQuery';
+import { SourcePartType } from '../../models/SourcePartType';
 
 const PLACEHOLDER_OPERATOR = 'placeholder';
 
@@ -610,22 +612,14 @@ const getOptions = (
   };
 
   const generateTitle = async () => {
-    let generatedTitle = "";
-    const orgLeaderPattern = /^(Everyone in .+'s org|\d+\slevels? of direct reports of .+)( with the following summarized criteria: .+)?$/;
-    if (source.filter) {
-      const result = await dispatch(getTitle(source.filter));
-      generatedTitle = result.payload as string;
-    }
-    let newTitle = props.title;
-    if (props.title && orgLeaderPattern.test(props.title)) {
-      if (props.title.includes("with the following summarized criteria:")) {
-        newTitle = props.title.replace(/with the following summarized criteria: .+/, `with the following summarized criteria: ${generatedTitle}`);
-      } else {
-          newTitle = `${props.title} with the following summarized criteria: ${generatedTitle}`;
-      }
-    } else {
-      newTitle = generatedTitle;
-    }
+    const hrTitle = source.manager?.id
+      ? ((await dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({
+          part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: false } as SourcePartQuery, isNew: false, isExpanded: true },
+          strings }))).payload as any)?.title || '' : '';
+
+    const aiTitle = source.filter ? (await dispatch(getTitle(source.filter))).payload as string : '';
+    const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, !!source.manager?.id, strings.HROnboarding.withSummarizedCriteria);
+
     onEnableEdit(true);
     onSourceChange(props.source, partId, newTitle);
     setLocalTitle(newTitle);
