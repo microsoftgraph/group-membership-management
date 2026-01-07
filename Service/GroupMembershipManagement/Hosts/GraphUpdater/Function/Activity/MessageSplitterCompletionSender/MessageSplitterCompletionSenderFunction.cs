@@ -40,7 +40,7 @@ namespace Hosts.GraphUpdater
 
             await _messageSplitterTopicSender.SendMessageAsync(message);
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Completion message for RunId {request.RunId} has been sent.", RunId = request.RunId }, VerbosityLevel.INFO);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageSplitterCompletionSenderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(MessageSplitterCompletionSenderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }
