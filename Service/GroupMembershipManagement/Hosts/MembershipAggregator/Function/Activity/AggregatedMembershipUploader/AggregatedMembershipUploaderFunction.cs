@@ -125,6 +125,8 @@ namespace Hosts.MembershipAggregator
                 Email = request.SyncJob.DestinationEmail?.Email
             };
 
+            var totalMembersToAdd = membersToAdd?.Count ?? 0;
+            var totalMembersToRemove = membersToRemove?.Count ?? 0;
             var aggregatedMembershipMembers = ExtractAggregatedMembers(membersToAdd, membersToRemove);
 
             var aggregatedMembership = new GroupMembership
@@ -135,9 +137,9 @@ namespace Hosts.MembershipAggregator
                 RunId = runId,
                 MembershipObtainerDryRunEnabled = request.SyncJob.IsDryRunEnabled,
                 Exclusionary = false,
-                ProjectedMemberCount = (membersToAdd?.Count ?? 0) + (membersToRemove?.Count ?? 0),
-                TotalMembersToAdd = membersToAdd?.Count,
-                TotalMembersToRemove = membersToRemove?.Count,
+                ProjectedMemberCount = totalMembersToAdd + totalMembersToRemove,
+                TotalMembersToAdd = totalMembersToAdd,
+                TotalMembersToRemove = totalMembersToRemove,
                 Query = request.SyncJob.Query,
                 SourceMembers = aggregatedMembershipMembers
             };
@@ -167,11 +169,6 @@ namespace Hosts.MembershipAggregator
             if (membersToRemove != null && membersToRemove.Count > 0)
             {
                 aggregatedMembers.AddRange(membersToRemove);
-
-                if (membersToRemove is List<AzureADUser> removeList)
-                {
-                    removeList.Clear();
-                }
             }
 
             return aggregatedMembers;

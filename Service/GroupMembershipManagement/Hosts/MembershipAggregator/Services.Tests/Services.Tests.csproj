@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Function\MembershipAggregator.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
+    <ProjectReference Include="..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj" />
   </ItemGroup>
 
 </Project>

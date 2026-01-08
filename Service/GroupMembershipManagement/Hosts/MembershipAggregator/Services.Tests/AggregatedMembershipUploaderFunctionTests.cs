@@ -2,9 +2,11 @@
 // Licensed under the MIT license.
 
 using Hosts.MembershipAggregator;
+using Hosts.MembershipAggregator.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
+using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
 using System;
@@ -92,6 +94,276 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithOnlyRemovals_ReturnsSuccess()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+
+            var removeList = new List<AzureADUser>
+            {
+                new AzureADUser { ObjectId = Guid.NewGuid() },
+                new AzureADUser { ObjectId = Guid.NewGuid() }
+            };
+            var expectedRemovalCount = removeList.Count;
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = string.Empty,
+                CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(removeList)),
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsTrue(response.IsSuccessful);
+            Assert.AreEqual(expectedRemovalCount, response.MemberCount);
+            Assert.IsTrue(_uploadedBlobs.ContainsKey(response.FilePath));
+            Assert.AreEqual(expectedRemovalCount, removeList.Count);
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithMissingSourcePath_ReturnsFailure()
+        {
+            // Arrange
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = "  ",
+                CompressedMembersToAddJson = string.Empty,
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            StringAssert.Contains(response.ErrorMessage, "Source membership file path is missing");
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithCustomTimestamp_UploadsExpectedContent()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+
+            var addMembers = new List<AzureADUser>
+            {
+                new AzureADUser { ObjectId = Guid.NewGuid() },
+                new AzureADUser { ObjectId = Guid.NewGuid() }
+            };
+            var removeMembers = new List<AzureADUser>
+            {
+                new AzureADUser { ObjectId = Guid.NewGuid() }
+            };
+
+            var expectedAdds = addMembers.Count;
+            var expectedRemoves = removeMembers.Count;
+            var requestRunId = Guid.NewGuid();
+            var currentTime = new DateTime(2025, 1, 5, 12, 30, 0, DateTimeKind.Utc);
+
+            _syncJob.RunId = Guid.NewGuid();
+            _syncJob.Query = "SELECT * FROM Users";
+            _syncJob.DestinationName = new DestinationName { Id = _syncJob.Id, Name = "Destination Team" };
+            _syncJob.DestinationEmail = new DestinationEmail { Id = _syncJob.Id, Email = "team@example.com" };
+            _syncJob.IsDryRunEnabled = true;
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(addMembers)),
+                CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(removeMembers)),
+                CurrentUtcDateTime = currentTime,
+                RunId = requestRunId
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsTrue(response.IsSuccessful);
+            Assert.AreEqual(expectedAdds + expectedRemoves, response.MemberCount);
+
+            var expectedFilePath = MembershipFilePathHelper.BuildFilePath(_syncJob, _groupId, "Aggregated", currentTime);
+            Assert.AreEqual(expectedFilePath, response.FilePath);
+            Assert.IsTrue(_uploadedBlobs.ContainsKey(response.FilePath));
+
+            var aggregatedMembership = GetUploadedMembership(response.FilePath);
+
+            Assert.IsNotNull(aggregatedMembership);
+            Assert.AreEqual(requestRunId, aggregatedMembership.RunId);
+            Assert.AreEqual(_syncJob.Id, aggregatedMembership.SyncJobId);
+            Assert.AreEqual(_syncJob.Query, aggregatedMembership.Query);
+            Assert.AreEqual(_syncJob.IsDryRunEnabled, aggregatedMembership.MembershipObtainerDryRunEnabled);
+            Assert.AreEqual(expectedAdds + expectedRemoves, aggregatedMembership.SourceMembers.Count);
+            Assert.AreEqual(expectedAdds, aggregatedMembership.TotalMembersToAdd);
+            Assert.AreEqual(expectedRemoves, aggregatedMembership.TotalMembersToRemove);
+            Assert.AreEqual(expectedAdds + expectedRemoves, aggregatedMembership.ProjectedMemberCount);
+            Assert.AreEqual("Destination Team", aggregatedMembership.Destination.Name);
+            Assert.AreEqual("team@example.com", aggregatedMembership.Destination.Email);
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithEmptyRequestRunId_UsesSyncJobRunId()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+
+            var currentTime = new DateTime(2025, 2, 10, 9, 15, 0, DateTimeKind.Utc);
+            var syncJobRunId = Guid.NewGuid();
+            _syncJob.RunId = syncJobRunId;
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
+                CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
+                CurrentUtcDateTime = currentTime,
+                RunId = Guid.Empty
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsTrue(response.IsSuccessful);
+
+            var expectedFilePath = MembershipFilePathHelper.BuildFilePath(_syncJob, _groupId, "Aggregated", currentTime);
+            Assert.AreEqual(expectedFilePath, response.FilePath);
+
+            var aggregatedMembership = GetUploadedMembership(response.FilePath);
+
+            Assert.IsNotNull(aggregatedMembership);
+            Assert.AreEqual(syncJobRunId, aggregatedMembership.RunId);
+            Assert.AreEqual(syncJobRunId, aggregatedMembership.SyncJob.RunId);
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithNullSyncJob_ReturnsFailure()
+        {
+            // Arrange
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = null!,
+                GroupId = _groupId,
+                SourceMembershipFilePath = $"/{_groupId}/source.json",
+                CompressedMembersToAddJson = string.Empty,
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(response.ErrorMessage));
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithEmptyGroupId_ReturnsFailure()
+        {
+            // Arrange
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = Guid.Empty,
+                SourceMembershipFilePath = "/ignored/path.json",
+                CompressedMembersToAddJson = string.Empty,
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            StringAssert.Contains(response.ErrorMessage, "GroupId");
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WhenBlobMetadataIsNull_ReturnsFailure()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _blobStorageRepository
+                .Setup(x => x.GetBlobMetadataAsync(sourcePath))
+                .ReturnsAsync((BlobMetadataResult)null!);
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = string.Empty,
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            StringAssert.Contains(response.ErrorMessage, "blob was not found");
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WhenUploadFails_ReturnsFailure()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+
+            _blobStorageRepository
+                .Setup(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+                .ThrowsAsync(new InvalidOperationException("upload failure"));
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = string.Empty,
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            StringAssert.Contains(response.ErrorMessage, "upload failure");
+        }
+
+        [TestMethod]
         public async Task UploadAggregatedMembershipAsync_WhenSourceBlobMissing_ReturnsFailure()
         {
             // Arrange
@@ -113,6 +385,73 @@ namespace Services.Tests
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsNull(response.FilePath);
             Assert.IsFalse(string.IsNullOrWhiteSpace(response.ErrorMessage));
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithInvalidCompressedAddContent_ReturnsFailure()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = "not-valid-base64",
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(response.ErrorMessage));
+        }
+
+        [TestMethod]
+        public async Task UploadAggregatedMembershipAsync_WithInvalidJsonAfterDecompression_ReturnsFailure()
+        {
+            // Arrange
+            var sourcePath = $"/{_groupId}/source.json";
+            _existingSourcePaths.Add(sourcePath);
+
+            var invalidJson = TextCompressor.Compress("{ this is not valid json }");
+
+            var request = new AggregatedMembershipUploadRequest
+            {
+                SyncJob = _syncJob,
+                GroupId = _groupId,
+                SourceMembershipFilePath = sourcePath,
+                CompressedMembersToAddJson = invalidJson,
+                CompressedMembersToRemoveJson = string.Empty,
+                CurrentUtcDateTime = DateTime.UtcNow,
+                RunId = Guid.NewGuid()
+            };
+
+            // Act
+            var response = await _function.UploadAggregatedMembershipAsync(request);
+
+            // Assert
+            Assert.IsFalse(response.IsSuccessful);
+            Assert.IsTrue(string.IsNullOrWhiteSpace(response.FilePath));
+            Assert.IsFalse(string.IsNullOrWhiteSpace(response.ErrorMessage));
+        }
+
+        private GroupMembership GetUploadedMembership(string filePath)
+        {
+            Assert.IsTrue(_uploadedBlobs.ContainsKey(filePath), "Expected uploaded blob content to be present.");
+            var compressedContent = _uploadedBlobs[filePath];
+            var json = TextCompressor.Decompress(compressedContent);
+            return JsonSerializer.Deserialize<GroupMembership>(json, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
         }
     }
 }
