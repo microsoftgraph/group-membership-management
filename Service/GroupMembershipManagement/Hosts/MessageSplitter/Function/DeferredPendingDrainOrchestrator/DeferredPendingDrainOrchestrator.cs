@@ -120,24 +120,34 @@ namespace Hosts.MessageSplitter
                         if (!lease.Acquired)
                         {
                             capacityDenied++;
-                            await context.CallActivityAsync(
-                                nameof(LoggerFunction),
-                                new LoggerRequest
-                                {
-                                    Message = new LogMessage
+
+                            // Only log if this item wasn't denied capacity recently (within 60 seconds)
+                            // to reduce log noise when the same item is repeatedly attempted
+                            var shouldLog = !item.LastCapacityDeniedAtUtc.HasValue ||
+                                            (utcNow - item.LastCapacityDeniedAtUtc.Value).TotalSeconds > 60;
+
+                            if (shouldLog)
+                            {
+                                await context.CallActivityAsync(
+                                    nameof(LoggerFunction),
+                                    new LoggerRequest
                                     {
-                                        Message = $"DeferredPendingDrain: no capacity; stopping drain lane={lane} inFlight={lease.InFlightCount} runId={item.RunId} seq={item.SequenceNumber}",
-                                        RunId = item.RunId
-                                    },
-                                    Verbosity = VerbosityLevel.INFO
-                                });
-                            // No capacity: release in-progress marker and stop.
+                                        Message = new LogMessage
+                                        {
+                                            Message = $"DeferredPendingDrain: no capacity; stopping drain lane={lane} inFlight={lease.InFlightCount} runId={item.RunId} seq={item.SequenceNumber}",
+                                            RunId = item.RunId
+                                        },
+                                        Verbosity = VerbosityLevel.INFO
+                                    });
+                            }
+
+                            // Mark capacity denied and release in-progress marker
                             await using (await context.Entities.LockEntitiesAsync(indexEntityId))
                             {
                                 await context.Entities.CallEntityAsync<bool>(
                                     indexEntityId,
-                                    nameof(DeferredPendingIndexEntity.ReleaseInProgress),
-                                    item.SequenceNumber);
+                                    nameof(DeferredPendingIndexEntity.MarkCapacityDeniedAndRelease),
+                                    new MarkCapacityDeniedRequest(item.SequenceNumber, utcNow));
                             }
 
                             return;

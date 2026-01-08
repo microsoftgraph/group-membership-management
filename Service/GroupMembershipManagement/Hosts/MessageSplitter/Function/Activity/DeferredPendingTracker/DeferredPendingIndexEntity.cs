@@ -115,6 +115,25 @@ namespace Hosts.MessageSplitter
             return true;
         }
 
+        /// <summary>
+        /// Marks the item as having been denied capacity at the specified time and releases its in-progress marker.
+        /// This timestamp is used to suppress repeated "no capacity" log messages.
+        /// </summary>
+        public bool MarkCapacityDeniedAndRelease(MarkCapacityDeniedRequest request)
+        {
+            State ??= new DeferredPendingIndexState();
+
+            var item = State.Items.FirstOrDefault(i => i.SequenceNumber == request.SequenceNumber);
+            if (item == null)
+            {
+                return false;
+            }
+
+            item.LastCapacityDeniedAtUtc = request.DeniedAtUtc;
+            item.InProgressUntilUtc = null;
+            return true;
+        }
+
         public bool MarkDispatched(MarkDeferredPendingDispatchedRequest request)
         {
             State ??= new DeferredPendingIndexState();

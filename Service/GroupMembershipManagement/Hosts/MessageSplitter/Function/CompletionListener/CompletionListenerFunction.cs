@@ -101,20 +101,25 @@ namespace Hosts.MessageSplitter
                 released = await context.Entities.CallEntityAsync<bool>(entityId, nameof(RunLimiter.Release), request.RunId);
             }
 
+            var drainAction = released ? "Starting deferred drain." : "Skipping drain (nothing released).";
+
             await context.CallActivityAsync(
                 nameof(LoggerFunction),
                 new LoggerRequest
                 {
                     Message = new LogMessage
                     {
-                        Message = $"Completion processed; lane={request.LaneSize.ToLowerInvariant()} released={released}. Kicking deferred drain.",
+                        Message = $"Completion processed; lane={request.LaneSize.ToLowerInvariant()} released={released}. {drainAction}",
                         RunId = request.RunId
                     },
                     Verbosity = VerbosityLevel.INFO
                 });
 
-            // Drain deferred pending work now that capacity may be available.
-            await context.CallSubOrchestratorAsync(nameof(DeferredPendingDrainOrchestrator), new DeferredPendingDrainRequest(request.LaneSize.ToLowerInvariant()));
+            if (released)
+            {
+                // Drain deferred pending work now that capacity is available.
+                await context.CallSubOrchestratorAsync(nameof(DeferredPendingDrainOrchestrator), new DeferredPendingDrainRequest(request.LaneSize.ToLowerInvariant()));
+            }
         }
     }
 }
