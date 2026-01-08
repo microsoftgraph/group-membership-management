@@ -3943,7 +3943,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 150s)\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'Write Requests'
+                  PartTitle: 'WritesUsed'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -3965,7 +3965,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'Write Requests'
+                title: 'WritesUsed'
                 subtitle: ''
               }
             }
