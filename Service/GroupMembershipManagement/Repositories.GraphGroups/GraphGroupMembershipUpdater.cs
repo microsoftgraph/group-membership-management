@@ -483,6 +483,8 @@ namespace Repositories.GraphGroups
                     RunId = RunId
                 }, VerbosityLevel.DEBUG);
 
+                writeRequests.TrackValue(1);
+
                 // Note that the ones with empty bodies mean "this response is okay and we don't have to do anything about it."
                 if (status == HttpStatusCode.BadRequest)
                 {
@@ -559,7 +561,6 @@ namespace Repositories.GraphGroups
                 else if (_isOkay.Contains(status)) 
                 { 
                     writesUsed.TrackValue(1);
-                    writeRequests.TrackValue(1);
                 }
                 else if (status == HttpStatusCode.TooManyRequests)
                 {
