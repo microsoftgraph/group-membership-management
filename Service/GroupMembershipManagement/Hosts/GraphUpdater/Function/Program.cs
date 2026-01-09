@@ -111,7 +111,8 @@ namespace Hosts.GraphUpdater
                     .AddSingleton(services =>
                     {
                         var client = services.GetRequiredService<ServiceBusClient>();
-                        var serviceBusMembershipUpdatersTopic = CommonServices.GetValueOrThrowBase(configuration, "serviceBusMembershipUpdatersTopic");
+                        var config = services.GetRequiredService<IConfiguration>();
+                        var serviceBusMembershipUpdatersTopic = CommonServices.GetValueOrThrowBase(config, "serviceBusMembershipUpdatersTopic");
                         var receiver = client.CreateReceiver(serviceBusMembershipUpdatersTopic, "GraphUpdater");
                         return receiver;
                     })
@@ -138,14 +139,6 @@ namespace Hosts.GraphUpdater
                         }
                     })
                     .AddSingleton(services => services.GetRequiredService<IOptions<RunLimiterSettings>>().Value)
-                    .AddSingleton(services =>
-                    {
-                        var client = services.GetRequiredService<ServiceBusClient>();
-                        var configuration = services.GetRequiredService<IConfiguration>();
-                        var serviceBusMembershipUpdatersTopic = CommonServices.GetValueOrThrowBase(configuration, "serviceBusMembershipUpdatersTopic");
-                        var receiver = client.CreateReceiver(serviceBusMembershipUpdatersTopic, "GraphUpdater");
-                        return receiver;
-                    })
                     .AddSingleton(services =>
                     {
                         var multilaneConfig = services.GetRequiredService<IOptions<MultiLaneConfig>>();
