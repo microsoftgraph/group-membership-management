@@ -2,6 +2,8 @@ param location string
 param environmentAbbreviation string
 param solutionAbbreviation string
 param notifierProviderId string
+param oamEntraAppId string
+param oamEntraAppScope string
 param sqlAdministratorsGroupId string
 param sqlAdministratorsGroupName string
 param sqlSkuCapacity int = 4
@@ -405,6 +407,8 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     notifierProviderId: notifierProviderId
+    oamEntraAppId: oamEntraAppId
+    oamEntraAppScope: oamEntraAppScope
     serviceBusTopicSubscriptions: serviceBusTopicSubscriptions
     sqlAdministratorsGroupId: sqlAdministratorsGroupId
     sqlAdministratorsGroupName: sqlAdministratorsGroupName

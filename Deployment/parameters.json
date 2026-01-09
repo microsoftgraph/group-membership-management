@@ -166,7 +166,21 @@
     "notifierProviderId": {
       "value": "00000000-0000-0000-0000-000000000000",
       "metadata": {
-        "description": "The provider id of the notifier. See https://github.com/microsoftgraph/group-membership-management/blob/main/Documentation/NotifierSetup.md",
+        "description": "The OAM provider id for the notifier to send actionable emails with. See https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md",
+        "required": false
+      }
+    },
+    "oamEntraAppId": {
+      "value": "00000000-0000-0000-0000-000000000000",
+      "metadata": {
+        "description": "The application id of the OAM Entra application. See https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md",
+        "required": false
+      }
+    },
+    "oamEntraAppScope": {
+      "value": "Global",
+      "metadata": {
+        "description": "The scope of the OAM Entra application. See https://github.com/microsoftgraph/group-membership-management/blob/main/Service/GroupMembershipManagement/Hosts/Notifier/Documentation/NotifierSetup.md",
         "required": false
       }
     },
