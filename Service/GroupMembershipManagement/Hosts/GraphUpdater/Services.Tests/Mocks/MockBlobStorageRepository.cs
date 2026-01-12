@@ -55,6 +55,11 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             throw new NotImplementedException();

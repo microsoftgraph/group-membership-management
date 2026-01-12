@@ -65,6 +65,11 @@ namespace Tests.FunctionApps.Mocks
             return Task.CompletedTask;
         }
 
+        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             throw new NotImplementedException();

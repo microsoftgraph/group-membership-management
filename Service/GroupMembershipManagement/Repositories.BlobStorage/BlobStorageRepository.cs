@@ -173,6 +173,21 @@ namespace Repositories.BlobStorage
             }
         }
 
+        public async Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null)
+        {
+            var blobClient = _containerClient.GetBlobClient(path);
+
+            // OpenWriteAsync streams directly to blob storage, avoiding large in-memory strings
+            var options = new BlobOpenWriteOptions();
+            if (metadata != null && metadata.Count > 0)
+            {
+                options.Metadata = metadata;
+            }
+
+            await using var stream = await blobClient.OpenWriteAsync(overwrite: true, options);
+            await JsonSerializer.SerializeAsync(stream, content);
+        }
+
         public async Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             var blockBlobClient = _containerClient.GetBlockBlobClient(path);

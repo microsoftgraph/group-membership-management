@@ -39,5 +39,15 @@ namespace Repositories.Contracts
         /// <param name="metadata">Optional metadata to attach to the cache blob.</param>
         /// <returns>The count of GUIDs written to the cache.</returns>
         public Task<int> StreamMembershipToCacheAsync(string sourceMembershipFilePath, string destinationCacheFilePath, Dictionary<string, string> metadata = null);
+
+        /// <summary>
+        /// Serialize an object directly to blob storage as JSON without creating intermediate string.
+        /// This reduces memory usage for large objects by streaming the serialization.
+        /// </summary>
+        /// <typeparam name="T">Type of the object to serialize.</typeparam>
+        /// <param name="path">Blob path.</param>
+        /// <param name="content">Object to serialize.</param>
+        /// <param name="metadata">Optional metadata to attach to the blob.</param>
+        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null);
     }
 }

@@ -234,7 +234,8 @@ namespace Hosts.GroupMembershipObtainer
 
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMembership));
+            // Stream JSON directly to blob to avoid creating large intermediate string
+            await _blobStorageRepository.UploadFileStreamAsync(fileName, groupMembership);
 
             return new GroupMembershipFileResult
             {
