@@ -54,32 +54,29 @@ namespace Repositories.BlobStorage
 
         public async Task<List<AzureADUser>> ReadBlobsAsync(string path)
         {
+            var uniqueUsers = new HashSet<AzureADUser>();
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
             var blobs = _containerClient.GetBlobsAsync(prefix: path);
-            var blobReaderTasks = new List<Task<Stream>>();
             await foreach (BlobItem blobItem in blobs)
             {
-                blobReaderTasks.Add(_containerClient.GetBlobClient(blobItem.Name).OpenReadAsync());
+                await using var stream = await _containerClient.GetBlobClient(blobItem.Name).OpenReadAsync();
+                var users = await JsonSerializer.DeserializeAsync<List<AzureADUser>>(stream, options);
+                if (users == null)
+                {
+                    throw new Exception($"Failed to deserialize blob: {blobItem.Name}");
+                }
+
+                foreach (var user in users)
+                {
+                    uniqueUsers.Add(user);
+                }
             }
 
-            var blobStreams = await Task.WhenAll(blobReaderTasks);
-            var blobDeserializationTasks = blobStreams
-                .Select(async stream =>
-                {
-                    var options = new JsonSerializerOptions
-                    {
-                        PropertyNameCaseInsensitive = true
-                    };
-                    var users = await JsonSerializer.DeserializeAsync<List<AzureADUser>>(stream, options);
-                    if (users == null)
-                    {
-                        throw new Exception("Failed to deserialize blob");
-                    }
-                    return users;
-                })
-                .ToArray();
-
-            var adUsers = await Task.WhenAll(blobDeserializationTasks);
-            return adUsers.SelectMany(userList => userList).Distinct().ToList();
+            return uniqueUsers.ToList();
         }
 
         public async Task DeleteBlobsAsync(string path)
@@ -248,6 +245,86 @@ namespace Repositories.BlobStorage
             using var stream = await blobClient.OpenReadAsync(new BlobOpenReadOptions(false));
             var ids = GroupMembershipSourceMembersStreamingExtractor.Extract(stream);
             return ids;
+        }
+
+        public async Task<int> StreamMembershipToCacheAsync(string sourceMembershipFilePath, string destinationCacheFilePath, Dictionary<string, string> metadata = null)
+        {
+            var sourceClient = _containerClient.GetBlobClient(sourceMembershipFilePath);
+            var exists = await sourceClient.ExistsAsync();
+            if (!exists)
+                throw new FileNotFoundException(sourceMembershipFilePath);
+
+            var destClient = _containerClient.GetBlockBlobClient(destinationCacheFilePath);
+            var blockIds = new List<string>();
+            int count = 0;
+            const int batchSize = 10000; // Write in batches of 10k GUIDs (~380KB per block)
+
+            using var sourceStream = await sourceClient.OpenReadAsync(new BlobOpenReadOptions(false));
+            var sb = new StringBuilder();
+
+            foreach (var guid in GroupMembershipSourceMembersStreamingExtractor.EnumerateGuids(sourceStream))
+            {
+                if (sb.Length > 0)
+                    sb.Append(Environment.NewLine);
+                sb.Append(guid.ToString());
+                count++;
+
+                // Flush batch to blob storage
+                if (count % batchSize == 0)
+                {
+                    var blockId = await StageBlockAsync(destClient, sb.ToString());
+                    blockIds.Add(blockId);
+                    sb.Clear();
+                }
+            }
+
+            // Write remaining content
+            if (sb.Length > 0)
+            {
+                var blockId = await StageBlockAsync(destClient, sb.ToString());
+                blockIds.Add(blockId);
+            }
+
+            // Commit all blocks
+            if (blockIds.Count > 0)
+            {
+                var commitOptions = new CommitBlockListOptions();
+                if (metadata != null)
+                {
+                    foreach (var kvp in metadata)
+                    {
+                        commitOptions.Metadata[kvp.Key] = kvp.Value;
+                    }
+                }
+                await destClient.CommitBlockListAsync(blockIds, commitOptions);
+            }
+            else
+            {
+                // Empty file case - use regular blob client for simple upload
+                var blobClient = _containerClient.GetBlobClient(destinationCacheFilePath);
+                var options = new BlobUploadOptions();
+                if (metadata != null && metadata.Count > 0)
+                {
+                    options.Metadata = metadata;
+                }
+                await blobClient.UploadAsync(BinaryData.FromString(string.Empty), options);
+            }
+
+            return count;
+        }
+
+        private static async Task<string> StageBlockAsync(BlockBlobClient blockBlobClient, string content)
+        {
+            var blockIdBytes = Encoding.UTF8.GetBytes(Guid.NewGuid().ToString());
+            var blockId = Convert.ToBase64String(blockIdBytes);
+            var byteArray = Encoding.UTF8.GetBytes(content);
+
+            using (var stream = new MemoryStream(byteArray))
+            {
+                await blockBlobClient.StageBlockAsync(blockId, stream);
+            }
+
+            return blockId;
         }
     }
 }

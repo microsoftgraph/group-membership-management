@@ -28,6 +28,27 @@ namespace Repositories.BlobStorage
             if (!jsonStream.CanRead) throw new ArgumentException("Stream must be readable.", nameof(jsonStream));
             if (bufferSize < 4096) bufferSize = 4096;
             var ids = new HashSet<Guid>();
+
+            foreach (var guid in EnumerateGuids(jsonStream, bufferSize, cancellationToken))
+            {
+                ids.Add(guid);
+            }
+
+            return ids;
+        }
+
+        /// <summary>
+        /// Streaming enumerable that yields GUIDs one at a time without accumulating them in memory.
+        /// Use this for writing directly to a cache file.
+        /// Note: This does NOT deduplicate - if the source contains duplicates, they will be yielded.
+        /// For deduplicated results, use Extract() instead.
+        /// </summary>
+        public static IEnumerable<Guid> EnumerateGuids(Stream jsonStream, int bufferSize = 64 * 1024, CancellationToken cancellationToken = default)
+        {
+            if (jsonStream == null) throw new ArgumentNullException(nameof(jsonStream));
+            if (!jsonStream.CanRead) throw new ArgumentException("Stream must be readable.", nameof(jsonStream));
+            if (bufferSize < 4096) bufferSize = 4096;
+
             byte[] buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
 
             // Utf8JsonReader state across chunks
@@ -64,6 +85,9 @@ namespace Repositories.BlobStorage
 
                     var span = new ReadOnlySpan<byte>(buffer, 0, bytesInBuffer);
                     var reader = new Utf8JsonReader(span, isFinalBlock, readerState);
+
+                    // Collect GUIDs found in this chunk to yield after updating reader state
+                    var guidsToYield = new List<Guid>();
 
                     try
                     {
@@ -115,7 +139,9 @@ namespace Repositories.BlobStorage
                                     {
                                         var s = reader.GetString();
                                         if (!string.IsNullOrWhiteSpace(s) && Guid.TryParse(s, out var g))
-                                            ids.Add(g);
+                                        {
+                                            guidsToYield.Add(g);
+                                        }
                                     }
                                     break;
                             }
@@ -136,11 +162,15 @@ namespace Repositories.BlobStorage
                     bytesInBuffer = remaining;
                     readerState = reader.CurrentState;
 
+                    // Yield GUIDs found in this chunk
+                    foreach (var guid in guidsToYield)
+                    {
+                        yield return guid;
+                    }
+
                     if (isFinalBlock)
                         break; // done
                 }
-
-                return ids;
             }
             finally
             {

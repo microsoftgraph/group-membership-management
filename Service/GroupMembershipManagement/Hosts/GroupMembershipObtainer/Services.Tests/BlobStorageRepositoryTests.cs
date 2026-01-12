@@ -74,5 +74,90 @@ namespace Tests.Services
             var guids = Repositories.BlobStorage.GroupMembershipSourceMembersStreamingExtractor.Extract(memoryStream);
             groupMembership.SourceMembers.ForEach(x => Assert.IsTrue(guids.Contains(x.ObjectId)));
         }
+
+        [TestMethod]
+        public void EnumerateGuids_YieldsAllGuidsFromStream()
+        {
+            // Arrange - create a GroupMembership JSON with known GUIDs
+            var expectedGuids = Enumerable.Range(0, 1000).Select(_ => Guid.NewGuid()).ToList();
+            var groupMembership = new Models.ServiceBus.GroupMembership();
+            expectedGuids.ForEach(g => groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = g }));
+
+            var json = System.Text.Json.JsonSerializer.Serialize(groupMembership);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act - enumerate and collect
+            var enumeratedGuids = Repositories.BlobStorage.GroupMembershipSourceMembersStreamingExtractor
+                .EnumerateGuids(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(expectedGuids.Count, enumeratedGuids.Count);
+            foreach (var expected in expectedGuids)
+            {
+                Assert.IsTrue(enumeratedGuids.Contains(expected), $"Missing GUID: {expected}");
+            }
+        }
+
+        [TestMethod]
+        public void EnumerateGuids_YieldsDuplicatesWhenPresent()
+        {
+            // Arrange - create JSON with duplicate GUIDs
+            var duplicateGuid = Guid.NewGuid();
+            var groupMembership = new Models.ServiceBus.GroupMembership();
+            groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = duplicateGuid });
+            groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = duplicateGuid });
+            groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = Guid.NewGuid() });
+
+            var json = System.Text.Json.JsonSerializer.Serialize(groupMembership);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedGuids = Repositories.BlobStorage.GroupMembershipSourceMembersStreamingExtractor
+                .EnumerateGuids(memoryStream)
+                .ToList();
+
+            // Assert - EnumerateGuids does NOT deduplicate, so we expect 3 items
+            Assert.AreEqual(3, enumeratedGuids.Count);
+            Assert.AreEqual(2, enumeratedGuids.Count(g => g == duplicateGuid));
+        }
+
+        [TestMethod]
+        public void EnumerateGuids_HandlesEmptySourceMembers()
+        {
+            // Arrange
+            var groupMembership = new Models.ServiceBus.GroupMembership();
+            var json = System.Text.Json.JsonSerializer.Serialize(groupMembership);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedGuids = Repositories.BlobStorage.GroupMembershipSourceMembersStreamingExtractor
+                .EnumerateGuids(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(0, enumeratedGuids.Count);
+        }
+
+        [TestMethod]
+        public void EnumerateGuids_HandlesLargeDataSet()
+        {
+            // Arrange - 100K members to ensure streaming works across multiple chunks
+            const int memberCount = 100000;
+            var expectedGuids = Enumerable.Range(0, memberCount).Select(_ => Guid.NewGuid()).ToList();
+            var groupMembership = new Models.ServiceBus.GroupMembership();
+            expectedGuids.ForEach(g => groupMembership.SourceMembers.Add(new Models.AzureADUser { ObjectId = g }));
+
+            var json = System.Text.Json.JsonSerializer.Serialize(groupMembership);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedGuids = Repositories.BlobStorage.GroupMembershipSourceMembersStreamingExtractor
+                .EnumerateGuids(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(memberCount, enumeratedGuids.Count);
+        }
     }
 }

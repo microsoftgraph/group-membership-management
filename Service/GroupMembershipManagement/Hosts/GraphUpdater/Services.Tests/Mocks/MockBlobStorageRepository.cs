@@ -91,5 +91,11 @@ namespace Services.Tests.Mocks
         {
             throw new NotImplementedException();
         }
+
+        public Task<int> StreamMembershipToCacheAsync(string sourceMembershipFilePath, string destinationCacheFilePath, Dictionary<string, string> metadata = null)
+        {
+            // For testing, just return 0 - tests can override this behavior if needed
+            return Task.FromResult(0);
+        }
     }
 }

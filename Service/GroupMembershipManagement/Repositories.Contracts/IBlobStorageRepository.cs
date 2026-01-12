@@ -29,5 +29,15 @@ namespace Repositories.Contracts
         /// <param name="path"></param>
         /// <returns></returns>
         public Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path);
+
+        /// <summary>
+        /// Stream GUIDs from a GroupMembership JSON blob and write them as a cache file (one GUID per line).
+        /// This avoids loading all GUIDs into memory at once.
+        /// </summary>
+        /// <param name="sourceMembershipFilePath">Path to the source GroupMembership JSON blob.</param>
+        /// <param name="destinationCacheFilePath">Path where the cache file should be written.</param>
+        /// <param name="metadata">Optional metadata to attach to the cache blob.</param>
+        /// <returns>The count of GUIDs written to the cache.</returns>
+        public Task<int> StreamMembershipToCacheAsync(string sourceMembershipFilePath, string destinationCacheFilePath, Dictionary<string, string> metadata = null);
     }
 }

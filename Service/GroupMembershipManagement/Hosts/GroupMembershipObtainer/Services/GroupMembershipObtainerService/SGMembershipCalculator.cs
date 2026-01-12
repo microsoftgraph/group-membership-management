@@ -257,19 +257,19 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult)
         {
-            var ids = await _blobStorageRepository.ExtractGroupMembershipSourceMembersAsync(fileResult.FilePath);
             var fileName = CacheFileNaming.BuildCacheFileName(id, DateTime.UtcNow);
-            var content = string.Join(Environment.NewLine, ids);
             var metadata = new Dictionary<string, string>
             {
-                { "RunId", runId.ToString() },
-                { "NumberOfUsers", ids.Count.ToString() }
+                { "RunId", runId.ToString() }
             };
-            await _blobStorageRepository.UploadFileAsync(fileName, content, metadata);
+
+            // Stream directly from membership file to cache file to avoid loading all GUIDs into memory
+            var count = await _blobStorageRepository.StreamMembershipToCacheAsync(fileResult.FilePath, fileName, metadata);
+
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"After initial delta call, successfully uploaded {ids.Count} users to cache for group {id}."
+                Message = $"After initial delta call, successfully uploaded {count} users to cache for group {id}."
 
             }, VerbosityLevel.DEBUG);
         }
