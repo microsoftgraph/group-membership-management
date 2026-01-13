@@ -49,5 +49,32 @@ namespace Repositories.Contracts
         /// <param name="content">Object to serialize.</param>
         /// <param name="metadata">Optional metadata to attach to the blob.</param>
         public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null);
+
+        /// <summary>
+        /// Merge multiple user array blobs into a single GroupMembership JSON blob with streaming.
+        /// This method:
+        /// 1. Reads source blobs one at a time using streaming JSON parser
+        /// 2. Deduplicates users by ObjectId using HashSet&lt;Guid&gt; (16 bytes per user)
+        /// 3. Writes each unique user directly to output stream
+        /// Peak memory: O(unique_user_count * 16 bytes) instead of O(user_count * user_object_size)
+        /// </summary>
+        /// <param name="sourceBlobPrefix">Prefix to find source user array blobs.</param>
+        /// <param name="destinationPath">Path for output GroupMembership JSON blob.</param>
+        /// <param name="destination">The destination group.</param>
+        /// <param name="runId">The run ID.</param>
+        /// <param name="syncJobId">The sync job ID.</param>
+        /// <param name="exclusionary">Whether this is an exclusionary sync.</param>
+        /// <param name="membershipObtainerDryRunEnabled">Dry run flag.</param>
+        /// <param name="query">The sync job query.</param>
+        /// <returns>The count of unique users written.</returns>
+        public Task<int> MergeAndStreamUserBlobsAsync(
+            string sourceBlobPrefix,
+            string destinationPath,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query);
     }
 }

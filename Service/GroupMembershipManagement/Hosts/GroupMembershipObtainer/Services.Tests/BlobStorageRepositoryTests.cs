@@ -159,5 +159,117 @@ namespace Tests.Services
             // Assert
             Assert.AreEqual(memberCount, enumeratedGuids.Count);
         }
+
+        [TestMethod]
+        public void EnumerateUsers_YieldsAllUsersFromArray()
+        {
+            // Arrange - create a JSON array of AzureADUser (the format MembersReaderFunction produces)
+            var users = new System.Collections.Generic.List<Models.AzureADUser>
+            {
+                new Models.AzureADUser { ObjectId = Guid.NewGuid(), Mail = "user1@test.com", DisplayName = "User One" },
+                new Models.AzureADUser { ObjectId = Guid.NewGuid(), Mail = "user2@test.com", DisplayName = "User Two" },
+                new Models.AzureADUser { ObjectId = Guid.NewGuid(), Mail = "user3@test.com", DisplayName = "User Three" }
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(users.Count, enumeratedUsers.Count);
+            for (int i = 0; i < users.Count; i++)
+            {
+                Assert.AreEqual(users[i].ObjectId, enumeratedUsers[i].ObjectId);
+                Assert.AreEqual(users[i].Mail, enumeratedUsers[i].Mail);
+                Assert.AreEqual(users[i].DisplayName, enumeratedUsers[i].DisplayName);
+            }
+        }
+
+        [TestMethod]
+        public void EnumerateUsers_HandlesEmptyArray()
+        {
+            // Arrange
+            var users = new System.Collections.Generic.List<Models.AzureADUser>();
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(0, enumeratedUsers.Count);
+        }
+
+        [TestMethod]
+        public void EnumerateUsers_HandlesLargeDataSet()
+        {
+            // Arrange - 10K users to ensure streaming works across multiple chunks
+            const int userCount = 10000;
+            var users = Enumerable.Range(0, userCount)
+                .Select(i => new Models.AzureADUser 
+                { 
+                    ObjectId = Guid.NewGuid(), 
+                    Mail = $"user{i}@test.com",
+                    DisplayName = $"User {i}"
+                })
+                .ToList();
+
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(userCount, enumeratedUsers.Count);
+            for (int i = 0; i < userCount; i++)
+            {
+                Assert.AreEqual(users[i].ObjectId, enumeratedUsers[i].ObjectId);
+            }
+        }
+
+        [TestMethod]
+        public void EnumerateUsers_PreservesAllProperties()
+        {
+            // Arrange - test that all AzureADUser properties are preserved
+            var user = new Models.AzureADUser
+            {
+                ObjectId = Guid.NewGuid(),
+                Mail = "test@example.com",
+                UserPrincipalName = "test@example.com",
+                DisplayName = "Test User",
+                OnPremisesImmutableId = "immutableId123",
+                SourceGroup = Guid.NewGuid(),
+                MembershipAction = Models.MembershipAction.Add
+            };
+
+            var users = new System.Collections.Generic.List<Models.AzureADUser> { user };
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Act
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(1, enumeratedUsers.Count);
+            var result = enumeratedUsers[0];
+            Assert.AreEqual(user.ObjectId, result.ObjectId);
+            Assert.AreEqual(user.Mail, result.Mail);
+            Assert.AreEqual(user.UserPrincipalName, result.UserPrincipalName);
+            Assert.AreEqual(user.DisplayName, result.DisplayName);
+            Assert.AreEqual(user.OnPremisesImmutableId, result.OnPremisesImmutableId);
+            Assert.AreEqual(user.SourceGroup, result.SourceGroup);
+            Assert.AreEqual(user.MembershipAction, result.MembershipAction);
+        }
     }
 }

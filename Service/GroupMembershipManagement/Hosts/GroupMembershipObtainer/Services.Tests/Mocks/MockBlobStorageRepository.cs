@@ -123,6 +123,19 @@ namespace Tests.FunctionApps.Mocks
             // For testing, just return 0 - tests can override this behavior if needed
             return Task.FromResult(0);
         }
+
+        public Task<int> MergeAndStreamUserBlobsAsync(
+            string sourceBlobPrefix,
+            string destinationPath,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            return Task.FromResult(0);
+        }
     }
 
     public class MockBlobContainerClient : BlobContainerClient
