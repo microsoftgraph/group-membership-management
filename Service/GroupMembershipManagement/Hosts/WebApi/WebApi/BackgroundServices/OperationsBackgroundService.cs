@@ -333,6 +333,8 @@ namespace WebApi.BackgroundServices
                 Message = $"Clearing topic {topicName} subscription {subscriptionName}"
             });
 
+            await ClearDeferredMessagesAsync(topicName, subscriptionName, cancellationToken);
+
             var receiver = _serviceBusClient.CreateReceiver(topicName, subscriptionName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
 
             // Use subscription runtime properties for verification (Scheduled count not exposed for subscriptions)
@@ -353,10 +355,201 @@ namespace WebApi.BackgroundServices
                 cancellationToken: cancellationToken);
 
             await receiver.CloseAsync();
+            
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 Message = $"Clearing topic {topicName} subscription {subscriptionName} completed"
             });
+        }
+
+        private async Task ClearDeferredMessagesAsync(string topicName, string subscriptionName, CancellationToken cancellationToken)
+        {
+            // Check remaining count - if messages remain after draining active, they're likely deferred
+            var runtime = await _sbAdministrationClient.GetSubscriptionRuntimePropertiesAsync(topicName, subscriptionName, cancellationToken);
+            if (runtime.Value.ActiveMessageCount == 0)
+            {
+                return;
+            }
+
+            var entityName = $"{topicName}/{subscriptionName}";
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Processing deferred messages in {entityName} (remaining: {runtime.Value.ActiveMessageCount})"
+            });
+
+            // Configuration for high-throughput processing
+            const int peekBatchSize = 100;
+            const int completeBatchSize = 50;          // Smaller batches for completion to avoid lock timeouts
+            const int maxEmptyPeeks = 5;
+            const int maxRetries = 3;
+            const int progressLogInterval = 500;
+
+            var receiver = _serviceBusClient.CreateReceiver(
+                topicName,
+                subscriptionName,
+                new ServiceBusReceiverOptions
+                {
+                    ReceiveMode = ServiceBusReceiveMode.PeekLock,
+                    PrefetchCount = 0  // Disable prefetch for deferred message handling
+                });
+
+            try
+            {
+                long totalDeferredCleared = 0;
+                long totalFailed = 0;
+                int emptyPeekStreak = 0;
+                long fromSequenceNumber = 0;
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    IReadOnlyList<ServiceBusReceivedMessage> peekedMessages;
+
+                    try
+                    {
+                        peekedMessages = await receiver.PeekMessagesAsync(peekBatchSize, fromSequenceNumber, cancellationToken);
+                    }
+                    catch (ServiceBusException sbEx) when (sbEx.IsTransient)
+                    {
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Transient error peeking {entityName}: {sbEx.Reason}. Retrying..."
+                        });
+                        await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+                        continue;
+                    }
+
+                    if (peekedMessages.Count == 0)
+                    {
+                        emptyPeekStreak++;
+                        if (emptyPeekStreak >= maxEmptyPeeks)
+                            break;
+
+                        // Small delay before retrying empty peek
+                        await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+                        continue;
+                    }
+
+                    emptyPeekStreak = 0;
+                    fromSequenceNumber = peekedMessages[^1].SequenceNumber + 1;
+
+                    // Collect deferred message sequence numbers
+                    var deferredSequenceNumbers = peekedMessages
+                        .Where(m => m.State == ServiceBusMessageState.Deferred)
+                        .Select(m => m.SequenceNumber)
+                        .ToList();
+
+                    if (deferredSequenceNumbers.Count == 0)
+                        continue;
+
+                    // Process in smaller batches with retry logic
+                    foreach (var batch in deferredSequenceNumbers.Chunk(completeBatchSize))
+                    {
+                        var (completed, failed) = await ProcessDeferredBatchWithRetryAsync(
+                            receiver,
+                            batch,
+                            entityName,
+                            maxRetries,
+                            cancellationToken);
+
+                        totalDeferredCleared += completed;
+                        totalFailed += failed;
+
+                        // Progress logging for high-volume scenarios
+                        if (totalDeferredCleared > 0 && totalDeferredCleared % progressLogInterval == 0)
+                        {
+                            var rate = totalDeferredCleared / stopwatch.Elapsed.TotalSeconds;
+                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            {
+                                Message = $"Deferred progress {entityName}: cleared={totalDeferredCleared}, failed={totalFailed}, rate={rate:F1}/sec"
+                            });
+                        }
+                    }
+                }
+
+                stopwatch.Stop();
+
+                if (totalDeferredCleared > 0 || totalFailed > 0)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"DEFERRED-SUMMARY entity=\"{entityName}\" cleared={totalDeferredCleared} failed={totalFailed} duration={stopwatch.Elapsed.TotalSeconds:F1}s"
+                    });
+                }
+            }
+            finally
+            {
+                await receiver.CloseAsync(cancellationToken);
+            }
+        }
+
+        private async Task<(long completed, long failed)> ProcessDeferredBatchWithRetryAsync(
+            ServiceBusReceiver receiver,
+            long[] sequenceNumbers,
+            string entityName,
+            int maxRetries,
+            CancellationToken cancellationToken)
+        {
+            long completed = 0;
+            long failed = 0;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
+            {
+                try
+                {
+                    var deferredMessages = await receiver.ReceiveDeferredMessagesAsync(sequenceNumbers, cancellationToken);
+
+                    var completionTasks = deferredMessages.Select(async message =>
+                    {
+                        try
+                        {
+                            await receiver.CompleteMessageAsync(message, cancellationToken);
+                            return (success: true, seqNum: message.SequenceNumber);
+                        }
+                        catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessageLockLost)
+                        {
+                            // Lock lost - message will need to be retried or will eventually expire
+                            return (success: false, seqNum: message.SequenceNumber);
+                        }
+                    });
+
+                    var results = await Task.WhenAll(completionTasks);
+                    completed += results.Count(r => r.success);
+                    failed += results.Count(r => !r.success);
+
+                    return (completed, failed);
+                }
+                catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessageNotFound)
+                {
+                    // Messages may have expired or been processed - not a failure
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Some deferred messages not found in {entityName} (may have expired)"
+                    });
+                    return (completed, failed);
+                }
+                catch (ServiceBusException ex) when (ex.IsTransient && attempt < maxRetries)
+                {
+                    // Exponential backoff for transient errors
+                    var delay = TimeSpan.FromMilliseconds(Math.Pow(2, attempt) * 100);
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Transient error processing deferred batch in {entityName} (attempt {attempt}/{maxRetries}): {ex.Reason}"
+                    });
+                    await Task.Delay(delay, cancellationToken);
+                }
+                catch (Exception ex) when (attempt == maxRetries)
+                {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Failed to process deferred batch in {entityName} after {maxRetries} attempts: {ex.Message}"
+                    });
+                    failed += sequenceNumbers.Length;
+                    return (completed, failed);
+                }
+            }
+
+            return (completed, failed);
         }
 
         private async Task ClearSessionEnabledTopicAsync(string topicName, string subscriptionName, CancellationToken cancellationToken)
