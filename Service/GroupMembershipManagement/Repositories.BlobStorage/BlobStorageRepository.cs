@@ -54,7 +54,8 @@ namespace Repositories.BlobStorage
 
         public async Task<List<AzureADUser>> ReadBlobsAsync(string path)
         {
-            var uniqueUsers = new HashSet<AzureADUser>();
+            var seenIds = new HashSet<Guid>();
+            var uniqueUsers = new List<AzureADUser>();
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -72,11 +73,14 @@ namespace Repositories.BlobStorage
 
                 foreach (var user in users)
                 {
-                    uniqueUsers.Add(user);
+                    if (seenIds.Add(user.ObjectId))
+                    {
+                        uniqueUsers.Add(user);
+                    }
                 }
             }
 
-            return uniqueUsers.ToList();
+            return uniqueUsers;
         }
 
         public async Task DeleteBlobsAsync(string path)
@@ -304,6 +308,8 @@ namespace Repositories.BlobStorage
             if (blockIds.Count > 0)
             {
                 var commitOptions = new CommitBlockListOptions();
+                commitOptions.Metadata = commitOptions.Metadata ?? new Dictionary<string, string>();
+
                 if (metadata != null)
                 {
                     foreach (var kvp in metadata)
@@ -340,74 +346,6 @@ namespace Repositories.BlobStorage
             }
 
             return blockId;
-        }
-
-        public async Task<int> MergeAndStreamUserBlobsAsync(
-            string sourceBlobPrefix,
-            string destinationPath,
-            AzureADGroup destination,
-            Guid runId,
-            Guid syncJobId,
-            bool exclusionary,
-            bool membershipObtainerDryRunEnabled,
-            string query)
-        {
-            var seenIds = new HashSet<Guid>();
-            int count = 0;
-
-            var destClient = _containerClient.GetBlobClient(destinationPath);
-
-            // Open writable stream to destination blob
-            await using var destStream = await destClient.OpenWriteAsync(overwrite: true);
-            await using var writer = new Utf8JsonWriter(destStream);
-
-            // Start GroupMembership object
-            writer.WriteStartObject();
-
-            // Write SourceMembers array - this is the streaming part
-            writer.WritePropertyName("SourceMembers");
-            writer.WriteStartArray();
-
-            // Stream through each source blob
-            var blobs = _containerClient.GetBlobsAsync(prefix: sourceBlobPrefix);
-            await foreach (var blobItem in blobs)
-            {
-                await using var sourceStream = await _containerClient.GetBlobClient(blobItem.Name).OpenReadAsync();
-
-                // Enumerate users one at a time from the source blob
-                foreach (var user in UserArrayStreamingExtractor.EnumerateUsers(sourceStream))
-                {
-                    // Deduplicate by ObjectId
-                    if (seenIds.Add(user.ObjectId))
-                    {
-                        // Serialize this user directly to the output stream
-                        JsonSerializer.Serialize(writer, user);
-                        count++;
-                    }
-                }
-            }
-
-            writer.WriteEndArray(); // End SourceMembers
-
-            // Write other GroupMembership properties
-            writer.WritePropertyName("Destination");
-            JsonSerializer.Serialize(writer, destination);
-
-            writer.WriteString("RunId", runId);
-            writer.WriteString("SyncJobId", syncJobId);
-            writer.WriteBoolean("Exclusionary", exclusionary);
-            writer.WriteBoolean("MembershipObtainerDryRunEnabled", membershipObtainerDryRunEnabled);
-
-            if (query != null)
-            {
-                writer.WriteString("Query", query);
-            }
-
-            writer.WriteEndObject(); // End GroupMembership
-
-            await writer.FlushAsync();
-
-            return count;
         }
     }
 }

@@ -211,32 +211,36 @@ namespace Hosts.GroupMembershipObtainer
             var runId = syncJob.RunId.GetValueOrDefault();
             var targetOfficeGroupId = await GetGroupIdAsync(syncJob);
 
-            // Build paths
+            // get all blobs
             string prefix = $"{targetOfficeGroupId}/userUploads/{runId}_GroupMembership_{currentPart}_";
-            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
-            var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
-
-            // Stream merge: reads source blobs one at a time, deduplicates by ObjectId, writes directly to output
-            var memberCount = await _blobStorageRepository.MergeAndStreamUserBlobsAsync(
-                prefix,
-                fileName,
-                new AzureADGroup { ObjectId = targetOfficeGroupId },
-                runId,
-                syncJob.Id,
-                exclusionary,
-                _isGroupMembershipDryRunEnabled,
-                syncJob.Query);
-
+            var sourceMembers = await _blobStorageRepository.ReadBlobsAsync(prefix);
             await _log.LogMessageAsync(new LogMessage
             {
                 RunId = runId,
-                Message = $"Read {memberCount} users from group {objectId} to be synced into the destination group {targetOfficeGroupId}."
+                Message = $"Read {sourceMembers.Count} users from group {objectId} to be synced into the destination group {targetOfficeGroupId}."
+
             }, VerbosityLevel.DEBUG);
+
+            var groupMembership = new GroupMembership
+            {
+                SourceMembers = sourceMembers ?? new List<AzureADUser>(),
+                Destination = new AzureADGroup { ObjectId = targetOfficeGroupId },
+                RunId = runId,
+                Exclusionary = exclusionary,
+                SyncJobId = syncJob.Id,
+                MembershipObtainerDryRunEnabled = _isGroupMembershipDryRunEnabled,
+                Query = syncJob.Query
+            };
+
+            var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
+            var fileName = $"/{targetOfficeGroupId}/{timeStamp}_{runId}_GroupMembership_{currentPart}.json";
+            // Stream JSON directly to blob to avoid creating large intermediate string
+            await _blobStorageRepository.UploadFileStreamAsync(fileName, groupMembership);
 
             return new GroupMembershipFileResult
             {
                 FilePath = fileName,
-                MemberCount = memberCount
+                MemberCount = sourceMembers.Count
             };
         }
 
