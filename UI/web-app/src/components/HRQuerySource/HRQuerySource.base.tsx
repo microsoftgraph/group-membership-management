@@ -1843,7 +1843,7 @@ const getOptions = (
       datetime2: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
       float: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
       int: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN'],
-      nvarchar: ['=', '<>', '<', '<=', '>', '>=', 'IN', 'NOT IN']
+      nvarchar: ['=', '<>', 'IN', 'NOT IN']
     };
 
     const validKeys = dataType ? validOperatorsMap[dataType.toLowerCase()] : undefined;
