@@ -1439,7 +1439,9 @@ function Set-GMMAppRegistrationsProgrammatically {
         [Parameter(Mandatory = $true)]
         [string]$ScriptsDirectory,
         [Parameter(Mandatory = $false)]
-        [string]$DirectoryTenantId
+        [string]$DirectoryTenantId,
+        [Parameter(Mandatory = $false)]
+        [boolean]$SaveToKeyVault = $false
     )
 
     Write-Host "`n📝 Creating app registrations programmatically...`n" -ForegroundColor Cyan
@@ -1449,7 +1451,7 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
-        -SaveToKeyVault $false `
+        -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
 
@@ -1458,7 +1460,7 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
-        -SaveToKeyVault $false `
+        -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
 
@@ -1467,7 +1469,7 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
-        -SaveToKeyVault $false `
+        -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
 
@@ -1476,7 +1478,7 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
-        -SaveToKeyVault $false `
+        -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
 
