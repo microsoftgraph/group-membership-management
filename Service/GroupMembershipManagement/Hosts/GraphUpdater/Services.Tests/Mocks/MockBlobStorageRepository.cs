@@ -55,7 +55,7 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
-        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null)
+        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null)
         {
             throw new NotImplementedException();
         }

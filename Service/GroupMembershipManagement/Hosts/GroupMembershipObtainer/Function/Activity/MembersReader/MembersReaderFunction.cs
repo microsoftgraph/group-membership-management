@@ -44,7 +44,7 @@ namespace Hosts.GroupMembershipObtainer
             };
 
             var fileName = $"/{request.TargetGroupId}/userUploads/{request.RunId}_GroupMembership_{request.CurrentPart}_{Guid.NewGuid()}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(response.Users, serializerSettings));
+            await _blobStorageRepository.UploadFileStreamAsync(fileName, response.Users, serializerOptions: serializerSettings);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(MembersReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return response.NextPageUrl;
         }

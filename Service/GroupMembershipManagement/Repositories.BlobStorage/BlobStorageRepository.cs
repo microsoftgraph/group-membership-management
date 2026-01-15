@@ -177,7 +177,7 @@ namespace Repositories.BlobStorage
             }
         }
 
-        public async Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null)
+        public async Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null)
         {
             var blobClient = _containerClient.GetBlobClient(path);
 
@@ -189,7 +189,7 @@ namespace Repositories.BlobStorage
             }
 
             await using var stream = await blobClient.OpenWriteAsync(overwrite: true, options);
-            await JsonSerializer.SerializeAsync(stream, content);
+            await JsonSerializer.SerializeAsync(stream, content, serializerOptions);
         }
 
         public async Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)

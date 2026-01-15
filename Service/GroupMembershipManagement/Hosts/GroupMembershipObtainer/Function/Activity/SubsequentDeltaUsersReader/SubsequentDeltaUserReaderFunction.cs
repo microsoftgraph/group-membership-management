@@ -44,7 +44,7 @@ namespace Hosts.GroupMembershipObtainer
             };
 
             var fileName = $"/{request.TargetGroupId}/userUploads/{request.RunId}_GroupMembership_{request.CurrentPart}_{Guid.NewGuid()}.json";
-            await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(response.UsersToAdd, serializerSettings));
+            await _blobStorageRepository.UploadFileStreamAsync(fileName, response.UsersToAdd, serializerOptions: serializerSettings);
             await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(SubsequentDeltaUserReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
             return new DeltaUrls
             {

@@ -65,7 +65,7 @@ namespace Tests.FunctionApps.Mocks
             return Task.CompletedTask;
         }
 
-        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null)
+        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null)
         {
             return Task.CompletedTask;
         }

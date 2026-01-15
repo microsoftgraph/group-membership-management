@@ -3,6 +3,7 @@
 using Models;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
@@ -48,6 +49,6 @@ namespace Repositories.Contracts
         /// <param name="path">Blob path.</param>
         /// <param name="content">Object to serialize.</param>
         /// <param name="metadata">Optional metadata to attach to the blob.</param>
-        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null);
+        public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null);
     }
 }
