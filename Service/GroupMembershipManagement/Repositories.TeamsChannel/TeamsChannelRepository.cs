@@ -11,6 +11,8 @@ using Models;
 using Models.Entities;
 using Repositories.Contracts;
 using Repositories.GraphGroups;
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Net;
 using System.Net.Http;
@@ -145,11 +147,39 @@ namespace Repositories.TeamsChannel
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}." });
 
-                var channelData = await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId].GetAsync();
+                var nativeResponseHandler = new NativeResponseHandler();
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData.MembershipType}." });
+                await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId].GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                });
 
-                return channelData.MembershipType.ToString();
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse == null)
+                {
+                    return string.Empty;
+                }
+
+                try
+                {
+                    await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(runId));
+
+                    if (!nativeResponse.IsSuccessStatusCode)
+                    {
+                        throw new HttpRequestException($"Failed to read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. Status code: {nativeResponse.StatusCode}");
+                    }
+
+                    var channelData = await DeserializeResponseAsync(nativeResponse, Channel.CreateFromDiscriminatorValue);
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData?.MembershipType}." });
+
+                    return channelData?.MembershipType?.ToString() ?? string.Empty;
+                }
+                finally
+                {
+                    nativeResponse.Dispose();
+                }
             }
             catch (ODataError e)
             {
@@ -177,7 +207,27 @@ namespace Repositories.TeamsChannel
                 var requestBody = CreateRequestBody(member.ObjectId.ToString());
                 try
                 {
-                    var addedMember = await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId.ToString()].Members.PostAsync(requestBody);
+                    var nativeResponseHandler = new NativeResponseHandler();
+
+                    await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()].Channels[teamsChannel.ChannelId.ToString()].Members.PostAsync(requestBody, requestConfiguration =>
+                    {
+                        requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                    });
+
+                    var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                    if (nativeResponse != null)
+                    {
+                        try
+                        {
+                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId());
+                        }
+                        finally
+                        {
+                            nativeResponse.Dispose();
+                        }
+                    }
+
                     successCount++;
                 }
                 catch (ODataError e)
@@ -220,10 +270,30 @@ namespace Repositories.TeamsChannel
                 try
                 {
                     var conversationMember = member as AzureADTeamsUser;
+                    var nativeResponseHandler = new NativeResponseHandler();
+
                     await _graphServiceClient.Teams[teamsChannel.ObjectId.ToString()]
                         .Channels[teamsChannel.ChannelId.ToString()]
                         .Members[conversationMember.ConversationMemberId]
-                        .DeleteAsync();
+                        .DeleteAsync(requestConfiguration =>
+                        {
+                            requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                        });
+
+                    var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                    if (nativeResponse != null)
+                    {
+                        try
+                        {
+                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId());
+                        }
+                        finally
+                        {
+                            nativeResponse.Dispose();
+                        }
+                    }
+
                     successCount++;
                 }
                 catch (ODataError e)
@@ -410,6 +480,9 @@ namespace Repositories.TeamsChannel
             foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
             {
                 using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+
+                await TrackResponseMetricsAsync(response, ResolveRunId());
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseHandler = new ResponseHandler<Channel>();
@@ -429,15 +502,41 @@ namespace Repositories.TeamsChannel
         {
             try
             {
-                var channelResponse = await _graphServiceClient.Teams[teamObjectId.ToString()]
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Teams[teamObjectId.ToString()]
                     .Channels
                     .GetAsync(requestConfig =>
                     {
                         requestConfig.QueryParameters.Select = ["id", "displayName", "membershipType"];
                         requestConfig.QueryParameters.Filter = filter;
+                        requestConfig.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
                     });
 
-                return channelResponse?.Value?.ToList() ?? new List<Channel>();
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse == null)
+                {
+                    return new List<Channel>();
+                }
+
+                try
+                {
+                    await TrackResponseMetricsAsync(nativeResponse, ResolveRunId());
+
+                    if (!nativeResponse.IsSuccessStatusCode)
+                    {
+                        throw new HttpRequestException($"Failed to search Teams channels for team {teamObjectId}. Status code: {nativeResponse.StatusCode}");
+                    }
+
+                    var channelResponse = await DeserializeResponseAsync(nativeResponse, ChannelCollectionResponse.CreateFromDiscriminatorValue);
+
+                    return channelResponse?.Value?.ToList() ?? new List<Channel>();
+                }
+                finally
+                {
+                    nativeResponse.Dispose();
+                }
             }
             catch (ODataError ex)
             {
@@ -451,23 +550,77 @@ namespace Repositories.TeamsChannel
         }
         public async Task<Channel> GetMainChannelAsync(Guid teamObjectId)
         {
-            var team = await _graphServiceClient.Teams[teamObjectId.ToString()]
+            var teamResponseHandler = new NativeResponseHandler();
+
+            await _graphServiceClient.Teams[teamObjectId.ToString()]
                 .GetAsync(requestConfig =>
                 {
                     requestConfig.QueryParameters.Select = new[] { "internalId" };
+                    requestConfig.Options.Add(new ResponseHandlerOption { ResponseHandler = teamResponseHandler });
                 });
+
+            var teamResponse = teamResponseHandler.Value as HttpResponseMessage;
+
+            if (teamResponse == null)
+            {
+                return null;
+            }
+
+            Team team = null;
+
+            try
+            {
+                await TrackResponseMetricsAsync(teamResponse, ResolveRunId());
+
+                if (!teamResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to read team {teamObjectId}. Status code: {teamResponse.StatusCode}");
+                }
+
+                team = await DeserializeResponseAsync(teamResponse, Team.CreateFromDiscriminatorValue);
+            }
+            finally
+            {
+                teamResponse.Dispose();
+            }
 
             if (team == null || string.IsNullOrEmpty(team.InternalId))
             {
                 return null;
             }
-            var mainChannel = await _graphServiceClient.Teams[teamObjectId.ToString()]
+
+            var channelResponseHandler = new NativeResponseHandler();
+
+            await _graphServiceClient.Teams[teamObjectId.ToString()]
                 .Channels[team.InternalId]
                 .GetAsync(requestConfig =>
                 {
                     requestConfig.QueryParameters.Select = new[] { "id", "displayName", "email" };
+                    requestConfig.Options.Add(new ResponseHandlerOption { ResponseHandler = channelResponseHandler });
                 });
-            return mainChannel;
+
+            var channelResponse = channelResponseHandler.Value as HttpResponseMessage;
+
+            if (channelResponse == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                await TrackResponseMetricsAsync(channelResponse, ResolveRunId());
+
+                if (!channelResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to read channel {team.InternalId} for team {teamObjectId}. Status code: {channelResponse.StatusCode}");
+                }
+
+                return await DeserializeResponseAsync(channelResponse, Channel.CreateFromDiscriminatorValue);
+            }
+            finally
+            {
+                channelResponse.Dispose();
+            }
         }
         public async Task<Dictionary<string,string>> GetTeamsChannelEmailsAsync(List<AzureADTeamsChannel> channels)
         {
@@ -494,6 +647,9 @@ namespace Repositories.TeamsChannel
             foreach (var statusCodeResponse in await batchResponse.GetResponsesStatusCodesAsync())
             {
                 using var response = await batchResponse.GetResponseByIdAsync(statusCodeResponse.Key);
+
+                await TrackResponseMetricsAsync(response, ResolveRunId());
+
                 if (response.IsSuccessStatusCode)
                 {
                     var responseHandler = new ResponseHandler<Channel>();
@@ -538,21 +694,36 @@ namespace Repositories.TeamsChannel
                 });
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
-                if (nativeResponse.IsSuccessStatusCode)
+                var statusCode = nativeResponse?.StatusCode;
+                if (nativeResponse != null)
                 {
-                    var response = await DeserializeResponseAsync(nativeResponse, Channel.CreateFromDiscriminatorValue);
-                    channelExists = response?.Id != null;
-                }
-                else if (nativeResponse.StatusCode == HttpStatusCode.NotFound)
-                {
-                    channelExists = false;
-                }
+                    try
+                    {
+                        await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(runId));
 
-                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                        if (nativeResponse.IsSuccessStatusCode)
+                        {
+                            var response = await DeserializeResponseAsync(nativeResponse, Channel.CreateFromDiscriminatorValue);
+                            channelExists = response?.Id != null;
+                        }
+                        else if (nativeResponse.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            channelExists = false;
+                        }
+                    }
+                    finally
+                    {
+                        nativeResponse.Dispose();
+                    }
+                }
+                else
+                {
+                    channelExists = null;
+                }
 
                 if (!channelExists.HasValue)
                 {
-                    throw new Exception($"Unable to determine if channel {{ objectId: {channel.ObjectId} channelId: {channel.ChannelId} }} exists. Status code: {nativeResponse.StatusCode}");
+                    throw new Exception($"Unable to determine if channel {{ objectId: {channel.ObjectId} channelId: {channel.ChannelId} }} exists. Status code: {statusCode?.ToString() ?? "(none)"}");
                 }
 
                 return channelExists.Value;
@@ -580,6 +751,56 @@ namespace Repositories.TeamsChannel
 
                 throw;
             }
+        }
+
+        private Guid? ResolveRunId(Guid? runId = null)
+        {
+            if (runId.HasValue && runId.Value != Guid.Empty)
+            {
+                return runId.Value;
+            }
+
+            return RunId == Guid.Empty ? null : RunId;
+        }
+
+        private async Task TrackResponseMetricsAsync(HttpResponseMessage response, Guid? runId)
+        {
+            if (response == null)
+            {
+                return;
+            }
+
+            var headers = GetResponseHeaders(response);
+
+            if (headers != null)
+            {
+                await _teamsChannelMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+            }
+        }
+
+        private static IDictionary<string, IEnumerable<string>> GetResponseHeaders(HttpResponseMessage response)
+        {
+            if (response == null)
+            {
+                return null;
+            }
+
+            var headers = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var header in response.Headers)
+            {
+                headers[header.Key] = header.Value;
+            }
+
+            if (response.Content != null)
+            {
+                foreach (var header in response.Content.Headers)
+                {
+                    headers[header.Key] = header.Value;
+                }
+            }
+
+            return headers;
         }
     }
 }
