@@ -70,6 +70,20 @@ namespace Tests.FunctionApps.Mocks
             return Task.CompletedTask;
         }
 
+        public Task<int> MergeAndStreamUserBlobsAsync(
+            string sourceBlobPrefix,
+            string destinationPath,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            // For testing, just return 0 - tests can override this behavior if needed
+            return Task.FromResult(0);
+        }
+
         public Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             throw new NotImplementedException();

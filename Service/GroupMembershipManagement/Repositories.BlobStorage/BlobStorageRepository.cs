@@ -347,5 +347,74 @@ namespace Repositories.BlobStorage
 
             return blockId;
         }
+
+        public async Task<int> MergeAndStreamUserBlobsAsync(
+            string sourceBlobPrefix,
+            string destinationPath,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            var seenIds = new HashSet<Guid>();
+            int count = 0;
+
+            var destClient = _containerClient.GetBlobClient(destinationPath);
+
+            await using var destStream = await destClient.OpenWriteAsync(overwrite: true);
+            await using var writer = new Utf8JsonWriter(destStream);
+
+            writer.WriteStartObject();
+
+            writer.WritePropertyName("SourceMembers");
+            writer.WriteStartArray();
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var blobs = _containerClient.GetBlobsAsync(prefix: sourceBlobPrefix);
+            await foreach (var blobItem in blobs)
+            {
+                await using var sourceStream = await _containerClient.GetBlobClient(blobItem.Name).OpenReadAsync();
+
+                await foreach (var user in JsonSerializer.DeserializeAsyncEnumerable<AzureADUser>(sourceStream, options))
+                {
+                    if (user == null)
+                    {
+                        continue;
+                    }
+
+                    if (seenIds.Add(user.ObjectId))
+                    {
+                        JsonSerializer.Serialize(writer, user);
+                        count++;
+                    }
+                }
+            }
+
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Destination");
+            JsonSerializer.Serialize(writer, destination);
+
+            writer.WriteString("RunId", runId);
+            writer.WriteString("SyncJobId", syncJobId);
+            writer.WriteBoolean("Exclusionary", exclusionary);
+            writer.WriteBoolean("MembershipObtainerDryRunEnabled", membershipObtainerDryRunEnabled);
+            if (query != null)
+            {
+                writer.WriteString("Query", query);
+            }
+
+            writer.WriteEndObject();
+
+            await writer.FlushAsync();
+
+            return count;
+        }
     }
 }

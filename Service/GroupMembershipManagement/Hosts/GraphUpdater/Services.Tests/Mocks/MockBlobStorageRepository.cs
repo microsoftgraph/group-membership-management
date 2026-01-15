@@ -60,6 +60,19 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<int> MergeAndStreamUserBlobsAsync(
+            string sourceBlobPrefix,
+            string destinationPath,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)
         {
             throw new NotImplementedException();
