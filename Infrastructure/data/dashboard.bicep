@@ -719,7 +719,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result == "Success" and DryRun == false\n| summarize by Destination, Type, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, Type\n\n'
+                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result in ("Success", "PartialSuccess") and DryRun == false\n| extend ResultLabel = case(Result == "Success", "Success Jobs", Result == "PartialSuccess", "Partial Success Jobs", Result)\n| summarize by Destination, Type, ResultLabel, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, ResultLabel\n\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Sync Jobs Successful By Destination'
@@ -736,7 +736,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     ]
                     splitBy: [
                       {
-                        name: 'Type'
+                        name: 'ResultLabel'
                         type: 'string'
                       }
                     ]
