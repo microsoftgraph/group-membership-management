@@ -95,11 +95,7 @@ namespace Hosts.MessageSplitter
 
             var request = context.GetInput<MessageSplitterCompletionSignal>();
             var entityId = new EntityInstanceId(nameof(RunLimiter), request.LaneSize.ToLowerInvariant());
-            var released = false;
-            await using (await context.Entities.LockEntitiesAsync(entityId))
-            {
-                released = await context.Entities.CallEntityAsync<bool>(entityId, nameof(RunLimiter.Release), request.RunId);
-            }
+            var released = await context.Entities.CallEntityAsync<bool>(entityId, nameof(RunLimiter.Release), request.RunId);
 
             var drainAction = released ? "Starting deferred drain." : "Skipping drain (nothing released).";
 

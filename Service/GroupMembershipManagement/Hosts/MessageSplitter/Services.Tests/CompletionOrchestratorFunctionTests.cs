@@ -23,9 +23,6 @@ namespace Services.Tests
             var context = new Mock<TaskOrchestrationContext> { DefaultValue = DefaultValue.Mock };
             context.Setup(x => x.GetInput<MessageSplitterCompletionSignal>()).Returns(signal);
 
-            context.Setup(x => x.Entities.LockEntitiesAsync(It.IsAny<EntityInstanceId>()))
-                   .ReturnsAsync(new TestAsyncDisposable());
-
             context.Setup(x => x.Entities.CallEntityAsync<bool>(
                     It.IsAny<EntityInstanceId>(),
                     nameof(RunLimiter.Release),
@@ -76,8 +73,6 @@ namespace Services.Tests
 
             var orchestrator = new CompletionOrchestratorFunction(new RunLimiterSettings { IsEnabled = false });
             await orchestrator.RunAsync(context.Object);
-
-            context.Verify(x => x.Entities.LockEntitiesAsync(It.IsAny<EntityInstanceId>()), Times.Never());
             context.Verify(x => x.Entities.CallEntityAsync<bool>(
                 It.IsAny<EntityInstanceId>(),
                 nameof(RunLimiter.Release),

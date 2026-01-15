@@ -71,11 +71,7 @@ namespace Hosts.MessageSplitter
 
             // Prune stale leases.
             var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
-            var pruned = 0;
-            await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
-            {
-                pruned = await context.Entities.CallEntityAsync<int>(limiterEntityId, nameof(RunLimiter.Prune), utcNow);
-            }
+            var pruned = await context.Entities.CallEntityAsync<int>(limiterEntityId, nameof(RunLimiter.Prune), utcNow);
 
             await context.CallActivityAsync(
                 nameof(LoggerFunction),

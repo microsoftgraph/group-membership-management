@@ -31,9 +31,6 @@ namespace Services.Tests
             var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
             var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
 
-            context.Setup(x => x.Entities.LockEntitiesAsync(It.IsAny<EntityInstanceId>()))
-                .ReturnsAsync(new TestAsyncDisposable());
-
             context.Setup(x => x.Entities.CallEntityAsync<bool>(
                     indexEntityId,
                     nameof(DeferredPendingIndexEntity.TryAcquireDrainLock),
@@ -101,6 +98,12 @@ namespace Services.Tests
             });
 
             await orchestrator.RunAsync(context.Object);
+
+            // We rely on the index entity's own serialization and markers; no explicit entity lock should be taken for it.
+            context.Verify(x => x.Entities.LockEntitiesAsync(It.Is<EntityInstanceId>(id => id == indexEntityId)), Times.Never());
+
+            // RunLimiter is also a single entity instance per lane; explicit locks are redundant.
+            context.Verify(x => x.Entities.LockEntitiesAsync(It.Is<EntityInstanceId>(id => id == limiterEntityId)), Times.Never());
 
             // Lease was acquired, but since the deferred message was not found we do NOT release the lease here.
             context.Verify(x => x.Entities.CallEntityAsync<bool>(

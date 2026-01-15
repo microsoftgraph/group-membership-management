@@ -33,27 +33,24 @@ namespace Hosts.MessageSplitter
             var lane = (request.LaneSize ?? "large").ToLowerInvariant();
             var entityId = new EntityInstanceId(nameof(RunLimiter), lane);
 
-            await using (await context.Entities.LockEntitiesAsync(entityId))
-            {
-                var response = await context.Entities.CallEntityAsync<RenewLeaseResponse>(
-                    entityId,
-                    nameof(RunLimiter.Renew),
-                    new RenewLeaseRequest(request.RunId, request.LeaseTimeoutMinutes, context.CurrentUtcDateTime));
+            var response = await context.Entities.CallEntityAsync<RenewLeaseResponse>(
+                entityId,
+                nameof(RunLimiter.Renew),
+                new RenewLeaseRequest(request.RunId, request.LeaseTimeoutMinutes, context.CurrentUtcDateTime));
 
-                if (!response.Renewed)
-                {
-                    await context.CallActivityAsync(
-                        nameof(LoggerFunction),
-                        new LoggerRequest
+            if (!response.Renewed)
+            {
+                await context.CallActivityAsync(
+                    nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
                         {
-                            Message = new LogMessage
-                            {
-                                Message = $"Lease renew signal ignored; no existing lease found. lane={lane}",
-                                RunId = request.RunId
-                            },
-                            Verbosity = VerbosityLevel.INFO
-                        });
-                }
+                            Message = $"Lease renew signal ignored; no existing lease found. lane={lane}",
+                            RunId = request.RunId
+                        },
+                        Verbosity = VerbosityLevel.INFO
+                    });
             }
         }
     }

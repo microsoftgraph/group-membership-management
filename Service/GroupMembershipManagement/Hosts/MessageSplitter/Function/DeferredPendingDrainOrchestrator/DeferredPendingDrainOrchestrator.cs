@@ -49,13 +49,10 @@ namespace Hosts.MessageSplitter
 
             // Acquire a short-lived drain lock to reduce redundant drains.
             var lockAcquired = false;
-            await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-            {
-                lockAcquired = await context.Entities.CallEntityAsync<bool>(
-                    indexEntityId,
-                    nameof(DeferredPendingIndexEntity.TryAcquireDrainLock),
-                    new TryAcquireDrainLockRequest(utcNow, 60));
-            }
+            lockAcquired = await context.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.TryAcquireDrainLock),
+                new TryAcquireDrainLockRequest(utcNow, 60));
 
             if (!lockAcquired)
             {
@@ -80,13 +77,10 @@ namespace Hosts.MessageSplitter
                 var capacityDenied = 0;
 
                 List<DeferredPendingItem> batch;
-                await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                {
-                    batch = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
-                        indexEntityId,
-                        nameof(DeferredPendingIndexEntity.TakeNextBatch),
-                        new TakeNextBatchRequest(utcNow, maxItems, 120));
-                }
+                batch = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.TakeNextBatch),
+                    new TakeNextBatchRequest(utcNow, maxItems, 120));
 
                 if (batch == null || batch.Count == 0)
                 {
@@ -109,13 +103,10 @@ namespace Hosts.MessageSplitter
                     if (!item.Dispatched)
                     {
                         AcquireLeaseResponse lease;
-                        await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
-                        {
-                            lease = await context.Entities.CallEntityAsync<AcquireLeaseResponse>(
-                                limiterEntityId,
-                                nameof(RunLimiter.Acquire),
-                                new AcquireLeaseRequest(item.RunId, _runLimiterSettings.MaxInFlightMessages, _runLimiterSettings.LeaseTimeoutMinutes, utcNow));
-                        }
+                        lease = await context.Entities.CallEntityAsync<AcquireLeaseResponse>(
+                            limiterEntityId,
+                            nameof(RunLimiter.Acquire),
+                            new AcquireLeaseRequest(item.RunId, _runLimiterSettings.MaxInFlightMessages, _runLimiterSettings.LeaseTimeoutMinutes, utcNow));
 
                         if (!lease.Acquired)
                         {
@@ -142,13 +133,10 @@ namespace Hosts.MessageSplitter
                             }
 
                             // Mark capacity denied and release in-progress marker
-                            await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                            {
-                                await context.Entities.CallEntityAsync<bool>(
-                                    indexEntityId,
-                                    nameof(DeferredPendingIndexEntity.MarkCapacityDeniedAndRelease),
-                                    new MarkCapacityDeniedRequest(item.SequenceNumber, utcNow));
-                            }
+                            await context.Entities.CallEntityAsync<bool>(
+                                indexEntityId,
+                                nameof(DeferredPendingIndexEntity.MarkCapacityDeniedAndRelease),
+                                new MarkCapacityDeniedRequest(item.SequenceNumber, utcNow));
 
                             return;
                         }
@@ -179,20 +167,14 @@ namespace Hosts.MessageSplitter
                         if (leaseAcquiredForDispatch)
                         {
                             // No work was dispatched: release the lease.
-                            await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
-                            {
-                                await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
-                            }
+                            await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
                         }
 
                         // Activity failed: release in-progress marker and let the deferred message unlock naturally.
-                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                        {
-                            await context.Entities.CallEntityAsync<bool>(
-                                indexEntityId,
-                                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
-                                item.SequenceNumber);
-                        }
+                        await context.Entities.CallEntityAsync<bool>(
+                            indexEntityId,
+                            nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                            item.SequenceNumber);
 
                         throw;
                     }
@@ -205,13 +187,10 @@ namespace Hosts.MessageSplitter
                     if (received.Dispatched && !item.Dispatched)
                     {
                         newlyDispatched++;
-                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                        {
-                            await context.Entities.CallEntityAsync<bool>(
-                                indexEntityId,
-                                nameof(DeferredPendingIndexEntity.MarkDispatched),
-                                new MarkDeferredPendingDispatchedRequest(item.SequenceNumber, received.OrchestrationInstanceId));
-                        }
+                        await context.Entities.CallEntityAsync<bool>(
+                            indexEntityId,
+                            nameof(DeferredPendingIndexEntity.MarkDispatched),
+                            new MarkDeferredPendingDispatchedRequest(item.SequenceNumber, received.OrchestrationInstanceId));
                     }
 
                     // If no work was dispatched, release the lease.
@@ -219,33 +198,24 @@ namespace Hosts.MessageSplitter
                     // in the case where dispatch happened but index cleanup didn't.
                     if (!received.Dispatched && leaseAcquiredForDispatch && !received.MessageNotFound)
                     {
-                        await using (await context.Entities.LockEntitiesAsync(limiterEntityId))
-                        {
-                            await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
-                        }
+                        await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
                     }
 
                     if (received.ShouldRemoveFromIndex)
                     {
                         removed++;
-                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                        {
-                            await context.Entities.CallEntityAsync<bool>(
-                                indexEntityId,
-                                nameof(DeferredPendingIndexEntity.Remove),
-                                item.SequenceNumber);
-                        }
+                        await context.Entities.CallEntityAsync<bool>(
+                            indexEntityId,
+                            nameof(DeferredPendingIndexEntity.Remove),
+                            item.SequenceNumber);
                     }
                     else
                     {
                         // Keep it for retry.
-                        await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                        {
-                            await context.Entities.CallEntityAsync<bool>(
-                                indexEntityId,
-                                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
-                                item.SequenceNumber);
-                        }
+                        await context.Entities.CallEntityAsync<bool>(
+                            indexEntityId,
+                            nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                            item.SequenceNumber);
                     }
 
                 }
@@ -263,10 +233,7 @@ namespace Hosts.MessageSplitter
             }
             finally
             {
-                await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-                {
-                    await context.Entities.CallEntityAsync(indexEntityId, nameof(DeferredPendingIndexEntity.ReleaseDrainLock));
-                }
+                await context.Entities.CallEntityAsync(indexEntityId, nameof(DeferredPendingIndexEntity.ReleaseDrainLock));
             }
         }
 

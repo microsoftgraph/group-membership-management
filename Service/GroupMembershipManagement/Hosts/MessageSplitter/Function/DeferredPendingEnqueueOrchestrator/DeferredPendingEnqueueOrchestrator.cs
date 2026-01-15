@@ -34,13 +34,10 @@ namespace Hosts.MessageSplitter
             var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
             var utcNow = new DateTimeOffset(context.CurrentUtcDateTime, TimeSpan.Zero);
 
-            await using (await context.Entities.LockEntitiesAsync(indexEntityId))
-            {
-                await context.Entities.CallEntityAsync(
-                    indexEntityId,
-                    nameof(DeferredPendingIndexEntity.Add),
-                    new AddDeferredPendingRequest(request.SequenceNumber, request.RunId, utcNow));
-            }
+            await context.Entities.CallEntityAsync(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Add),
+                new AddDeferredPendingRequest(request.SequenceNumber, request.RunId, utcNow));
 
             await context.CallActivityAsync(
                 nameof(LoggerFunction),
