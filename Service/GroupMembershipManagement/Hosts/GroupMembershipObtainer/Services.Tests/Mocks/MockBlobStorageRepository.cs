@@ -71,6 +71,27 @@ namespace Tests.FunctionApps.Mocks
             return Task.CompletedTask;
         }
 
+        public Task UploadGroupMembershipFromGuidsAsync(
+            string membershipFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task UploadCacheFromGuidsAsync(
+            string destinationCacheFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            Dictionary<string, string> metadata = null)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task<int> MergeAndStreamUserBlobsAsync(
             string sourceBlobPrefix,
             string destinationPath,
@@ -112,6 +133,12 @@ namespace Tests.FunctionApps.Mocks
         }
 
         public Task<List<AzureADUser>> ReadBlobsAsync(string path) => Task.FromResult(new List<AzureADUser>());
+
+        public async IAsyncEnumerable<AzureADUser> StreamUsersFromBlobsAsync(string path)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
 
         public Task DeleteBlobsAsync(string path)
         {

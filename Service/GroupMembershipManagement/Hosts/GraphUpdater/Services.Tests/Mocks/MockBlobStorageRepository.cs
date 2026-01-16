@@ -5,6 +5,7 @@ using Models;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Services.Tests.Mocks
@@ -60,6 +61,27 @@ namespace Services.Tests.Mocks
             throw new NotImplementedException();
         }
 
+        public Task UploadGroupMembershipFromGuidsAsync(
+            string membershipFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task UploadCacheFromGuidsAsync(
+            string destinationCacheFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            Dictionary<string, string> metadata = null)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<int> MergeAndStreamUserBlobsAsync(
             string sourceBlobPrefix,
             string destinationPath,
@@ -89,6 +111,12 @@ namespace Services.Tests.Mocks
         }
 
         public Task<List<AzureADUser>> ReadBlobsAsync(string path) => Task.FromResult(new List<AzureADUser>());
+
+        public async IAsyncEnumerable<AzureADUser> StreamUsersFromBlobsAsync(string path)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
 
         public Task DeleteBlobsAsync(string path)
         {

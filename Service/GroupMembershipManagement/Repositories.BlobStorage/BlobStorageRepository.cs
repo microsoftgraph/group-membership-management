@@ -83,6 +83,33 @@ namespace Repositories.BlobStorage
             return uniqueUsers;
         }
 
+        public async IAsyncEnumerable<AzureADUser> StreamUsersFromBlobsAsync(string path)
+        {
+            var seenIds = new HashSet<Guid>();
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var blobs = _containerClient.GetBlobsAsync(prefix: path);
+            await foreach (BlobItem blobItem in blobs)
+            {
+                await using var stream = await _containerClient.GetBlobClient(blobItem.Name).OpenReadAsync();
+                await foreach (var user in JsonSerializer.DeserializeAsyncEnumerable<AzureADUser>(stream, options))
+                {
+                    if (user == null)
+                    {
+                        continue;
+                    }
+
+                    if (seenIds.Add(user.ObjectId))
+                    {
+                        yield return user;
+                    }
+                }
+            }
+        }
+
         public async Task DeleteBlobsAsync(string path)
         {
             var blobItems = _containerClient.GetBlobsAsync(prefix: path);
@@ -190,6 +217,109 @@ namespace Repositories.BlobStorage
 
             await using var stream = await blobClient.OpenWriteAsync(overwrite: true, options);
             await JsonSerializer.SerializeAsync(stream, content, serializerOptions);
+        }
+
+        public async Task UploadGroupMembershipFromGuidsAsync(
+            string membershipFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query)
+        {
+            var destClient = _containerClient.GetBlobClient(membershipFilePath);
+            await using var destStream = await destClient.OpenWriteAsync(overwrite: true);
+            await using var writer = new Utf8JsonWriter(destStream);
+
+            writer.WriteStartObject();
+
+            writer.WritePropertyName("SourceMembers");
+            writer.WriteStartArray();
+
+            foreach (var id in sourceMemberIds)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("ObjectId", id);
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+
+            writer.WritePropertyName("Destination");
+            JsonSerializer.Serialize(writer, destination);
+
+            writer.WriteString("RunId", runId);
+            writer.WriteString("SyncJobId", syncJobId);
+            writer.WriteBoolean("Exclusionary", exclusionary);
+            writer.WriteBoolean("MembershipObtainerDryRunEnabled", membershipObtainerDryRunEnabled);
+            if (query != null)
+            {
+                writer.WriteString("Query", query);
+            }
+
+            writer.WriteEndObject();
+            await writer.FlushAsync();
+        }
+
+        public async Task UploadCacheFromGuidsAsync(
+            string destinationCacheFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            Dictionary<string, string> metadata = null)
+        {
+            var destClient = _containerClient.GetBlockBlobClient(destinationCacheFilePath);
+            var blockIds = new List<string>();
+            int count = 0;
+            const int batchSize = 10000; // Write in batches of 10k GUIDs (~380KB per block)
+
+            var sb = new StringBuilder();
+
+            foreach (var id in sourceMemberIds)
+            {
+                if (sb.Length > 0)
+                    sb.Append(Environment.NewLine);
+                sb.Append(id.ToString());
+                count++;
+
+                if (count % batchSize == 0)
+                {
+                    var blockId = await StageBlockAsync(destClient, sb.ToString());
+                    blockIds.Add(blockId);
+                    sb.Clear();
+                }
+            }
+
+            if (sb.Length > 0)
+            {
+                var blockId = await StageBlockAsync(destClient, sb.ToString());
+                blockIds.Add(blockId);
+            }
+
+            if (blockIds.Count > 0)
+            {
+                var commitOptions = new CommitBlockListOptions();
+                commitOptions.Metadata = commitOptions.Metadata ?? new Dictionary<string, string>();
+
+                if (metadata != null)
+                {
+                    foreach (var kvp in metadata)
+                    {
+                        commitOptions.Metadata[kvp.Key] = kvp.Value;
+                    }
+                }
+                await destClient.CommitBlockListAsync(blockIds, commitOptions);
+            }
+            else
+            {
+                var blobClient = _containerClient.GetBlobClient(destinationCacheFilePath);
+                var options = new BlobUploadOptions();
+                if (metadata != null && metadata.Count > 0)
+                {
+                    options.Metadata = metadata;
+                }
+                await blobClient.UploadAsync(BinaryData.FromString(string.Empty), options);
+            }
         }
 
         public async Task<string> UploadFileBlockAsync(string path, string content, Dictionary<string, string> metadata = null)

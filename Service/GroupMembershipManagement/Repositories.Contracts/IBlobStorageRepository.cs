@@ -20,6 +20,7 @@ namespace Repositories.Contracts
         public Task<BlobMetadataResult> GetBlobMetadataAsync(string path);
         public Task CommitFileAsync(string path, List<string> blockIds);
         public Task<List<AzureADUser>> ReadBlobsAsync(string path);
+        public IAsyncEnumerable<AzureADUser> StreamUsersFromBlobsAsync(string path);
         public Task DeleteBlobsAsync(string path);
         public Task<BlobResult> FindLatestFileAsync(string prefix);
         public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, System.Func<string, T> parseFunction);
@@ -50,6 +51,21 @@ namespace Repositories.Contracts
         /// <param name="content">Object to serialize.</param>
         /// <param name="metadata">Optional metadata to attach to the blob.</param>
         public Task UploadFileStreamAsync<T>(string path, T content, Dictionary<string, string> metadata = null, JsonSerializerOptions serializerOptions = null);
+
+        public Task UploadGroupMembershipFromGuidsAsync(
+            string membershipFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            AzureADGroup destination,
+            Guid runId,
+            Guid syncJobId,
+            bool exclusionary,
+            bool membershipObtainerDryRunEnabled,
+            string query);
+
+        public Task UploadCacheFromGuidsAsync(
+            string destinationCacheFilePath,
+            IEnumerable<Guid> sourceMemberIds,
+            Dictionary<string, string> metadata = null);
 
         /// <summary>
         /// Merge multiple user array blobs into a single GroupMembership JSON blob with streaming.
