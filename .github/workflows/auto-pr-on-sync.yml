@@ -1,0 +1,39 @@
+
+name: Auto PR on sync branches
+
+on:
+  push:
+    branches:
+      - 'sync/**'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  create-pr:
+    name: Create or update PR to main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Derive branch name
+        id: refs
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ steps.refs.outputs.branch }}
+          base: main
+          title: "Sync from ADO ${{ steps.refs.outputs.branch }}"
+          body: |
+            Automated sync from ADO.
+            Source branch: `${{ steps.refs.outputs.branch }}`
+            Triggered by: `${{ github.actor }}` at `${{ github.event.head_commit.timestamp }}`
+          draft: false
+          delete-branch: false
+          labels: |
+            sync
+            automated
