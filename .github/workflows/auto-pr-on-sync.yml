@@ -16,17 +16,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1) Check out the repo at the pushed ref so the action has a git repo context
+      - name: Checkout repo@pushed ref
+        uses: actions/checkout@v4
+        with:
+          # This checks out the exact branch that triggered the workflow
+          ref: ${{ github.ref }}
+          # pull full history so the action can create/update branches if needed
+          fetch-depth: 0
+
+      # 2) Derive plain branch name from refs/heads/...
       - name: Derive branch name
         id: refs
         run: |
           BRANCH="${GITHUB_REF#refs/heads/}"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
+      # 3) Create or update PR from that branch to main
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: ${{ steps.refs.outputs.branch }}
-          base: main
+          branch: ${{ steps.refs.outputs.branch }}  # head branch
+          base: main                                # base branch
           title: "Sync from ADO ${{ steps.refs.outputs.branch }}"
           body: |
             Automated sync from ADO.
