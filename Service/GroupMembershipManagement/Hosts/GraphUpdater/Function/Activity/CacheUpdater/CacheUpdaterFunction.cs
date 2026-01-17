@@ -7,8 +7,6 @@ using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Hosts.GraphUpdater
@@ -38,16 +36,11 @@ namespace Hosts.GraphUpdater
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(CacheUpdaterFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
         }
 
-        private async Task<List<AzureADUser>> GetUsersFromCacheAsync(CacheUpdaterRequest request)
+        private async Task<HashSet<Guid>> GetUsersFromCacheAsync(CacheUpdaterRequest request)
         {
-            var parser = new Func<string, AzureADUser>(s =>
-            {
-                var id = Guid.Parse(s);
-                var user = new AzureADUser { ObjectId = id };
-                return user;
-            });
+            var parser = new Func<string, Guid>(s => Guid.Parse(s));
 
-            HashSet<AzureADUser> cacheMembers = await _blobStorageRepository.ReadValuesFromBlobAsync(request.CacheFilePath, parser);
+            HashSet<Guid> cacheMembers = await _blobStorageRepository.ReadValuesFromBlobAsync(request.CacheFilePath, parser);
 
             await _loggingRepository.LogMessageAsync(
             new LogMessage
@@ -57,20 +50,21 @@ namespace Hosts.GraphUpdater
             },
             VerbosityLevel.DEBUG);
 
-            var newUsers = cacheMembers.Except(request.UserIds).ToList();
+            // updates the cache members set in place
+            cacheMembers.ExceptWith(request.UserIds);
 
             await _loggingRepository.LogMessageAsync(
             new LogMessage
             {
-                Message = $"{nameof(CacheUpdaterFunction)} {newUsers.Count} newUsers to add to cache/{request.GroupId}",
+                Message = $"{nameof(CacheUpdaterFunction)} {cacheMembers.Count} newUsers to add to cache/{request.GroupId}",
                 RunId = request.RunId
             },
             VerbosityLevel.DEBUG);
 
-            return newUsers;
+            return cacheMembers;
         }
 
-        private async Task UploadCacheFileAsync(CacheUpdaterRequest request, List<AzureADUser> newUsers)
+        private async Task UploadCacheFileAsync(CacheUpdaterRequest request, HashSet<Guid> newUsers)
         {
             var fileName = CacheFileNaming.BuildCacheFileName(request.GroupId, request.Timestamp);
             var metadata = new Dictionary<string, string>
@@ -78,7 +72,12 @@ namespace Hosts.GraphUpdater
                 { "RunId", request.RunId.ToString() },
                 { "NumberOfUsers", newUsers.Count.ToString() }
             };
-            await _blobStorageRepository.UploadFileAsync(fileName, string.Join(Environment.NewLine, newUsers.Select(x => x.ObjectId)), metadata);
+            await _blobStorageRepository.UploadCacheFromGuidsAsync(fileName, newUsers, metadata);
+
+            // Delete old cache files, keeping only the latest one
+            var cachePrefix = CacheFileNaming.BuildCacheFileNamePrefix(request.GroupId);
+            await _blobStorageRepository.DeleteFilesByPrefixAsync(cachePrefix, excludeLatest: true);
+
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
                 RunId = request.RunId,

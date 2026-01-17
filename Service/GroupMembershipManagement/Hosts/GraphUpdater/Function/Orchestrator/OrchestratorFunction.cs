@@ -306,50 +306,69 @@ namespace Hosts.GraphUpdater
             if (sourceUsersNotFound != null && destinationUsersNotFound != null)
             {
                 var destination = JsonParser.GetDestination(syncJob);
-                var totalUsersNotFound = sourceUsersNotFound.Union(destinationUsersNotFound).ToList();
-
-                if (!context.IsReplaying & totalUsersNotFound.Count > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFound.Count, destination.ObjectId); }
 
                 var sourceObjectIds = new HashSet<Guid>(sourceUsersNotFound.Select(emp => emp.ObjectId));
-                var sourceUsers = sourceMembers.Where(product => sourceObjectIds.Contains(product.ObjectId)).ToList();
                 var destinationObjectIds = new HashSet<Guid>(destinationUsersNotFound.Select(emp => emp.ObjectId));
-                var destinationUsers = sourceMembers.Where(product => destinationObjectIds.Contains(product.ObjectId)).ToList();
 
-                if (sourceUsers.Count > 0)
+                // Compute count by unioning into a copy to avoid allocating intermediate LINQ collection
+                var totalUsersNotFoundCount = sourceObjectIds.Count + destinationObjectIds.Count(id => !sourceObjectIds.Contains(id));
+
+                if (!context.IsReplaying && totalUsersNotFoundCount > 0) { TrackUsersNotFoundEvent(syncJob.RunId, totalUsersNotFoundCount, destination.ObjectId); }
+                var sourceGroups = new Dictionary<Guid, HashSet<Guid>>();
+                var destinationUserIds = new HashSet<Guid>();
+
+                foreach (var member in sourceMembers)
                 {
-                    var sourceGroups = sourceUsers
-                                    .SelectMany(u => u.SourceGroups.Select(c => (ObjectId: u, SourceGroup: c)))
-                                    .GroupBy(x => x.SourceGroup)
-                                    .Select(g => new GroupInfo { GroupId = g.Key, UserIds = g.Select(x => x.ObjectId).Distinct().ToList() }).ToList();
-
-                    sourceGroups.RemoveAll(g => g.GroupId == Guid.Empty);
-
-                    if (sourceGroups != null && sourceGroups.Count > 0)
+                    if (sourceObjectIds.Contains(member.ObjectId) && member.SourceGroups != null)
                     {
-                        // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory.
-                        // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan.
-                        foreach (var sourceGroup in sourceGroups)
+                        foreach (var sourceGroupId in member.SourceGroups)
                         {
-                            await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
-                                new CacheUserUpdaterRequest
-                                {
-                                    GroupId = sourceGroup.GroupId,
-                                    UserIds = sourceGroup.UserIds,
-                                    RunId = syncJob.RunId,
-                                    SyncJob = syncJob
-                                });
+                            if (sourceGroupId == Guid.Empty)
+                            {
+                                continue;
+                            }
+
+                            if (!sourceGroups.TryGetValue(sourceGroupId, out var userIdsForGroup))
+                            {
+                                userIdsForGroup = new HashSet<Guid>();
+                                sourceGroups[sourceGroupId] = userIdsForGroup;
+                            }
+
+                            userIdsForGroup.Add(member.ObjectId);
                         }
+                    }
+
+                    if (destinationObjectIds.Contains(member.ObjectId))
+                    {
+                        destinationUserIds.Add(member.ObjectId);
                     }
                 }
 
-                if (destinationUsers.Count > 0)
+                if (sourceGroups.Count > 0)
+                {
+                    // These calls to the cache updater suborchestrator were once done in parallel, but this caused an OutOfMemoryException due to loading multiple big files at once into memory.
+                    // Although this does not affect many sync runs, we should revise it once we have upgraded our service plan.
+                    foreach (var sourceGroup in sourceGroups)
+                    {
+                        await context.CallSubOrchestratorAsync(nameof(CacheUserUpdaterSubOrchestratorFunction),
+                            new CacheUserUpdaterRequest
+                            {
+                                GroupId = sourceGroup.Key,
+                                UserIds = sourceGroup.Value,
+                                RunId = syncJob.RunId,
+                                SyncJob = syncJob
+                            });
+                    }
+                }
+
+                if (destinationUserIds.Count > 0)
                 {
                     await context.CallSubOrchestratorAsync(
                         nameof(CacheUserUpdaterSubOrchestratorFunction),
                         new CacheUserUpdaterRequest
                         {
                             GroupId = destination.ObjectId,
-                            UserIds = destinationUsers,
+                            UserIds = destinationUserIds,
                             RunId = syncJob.RunId,
                             SyncJob = syncJob
                         });

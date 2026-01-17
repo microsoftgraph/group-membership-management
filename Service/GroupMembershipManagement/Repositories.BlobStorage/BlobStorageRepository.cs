@@ -6,6 +6,7 @@ using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Azure.Storage.Blobs.Specialized;
 using Models;
+using Models.ServiceBus;
 using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
@@ -95,7 +96,13 @@ namespace Repositories.BlobStorage
             await foreach (BlobItem blobItem in blobs)
             {
                 await using var stream = await _containerClient.GetBlobClient(blobItem.Name).OpenReadAsync();
-                await foreach (var user in JsonSerializer.DeserializeAsyncEnumerable<AzureADUser>(stream, options))
+                var users = await JsonSerializer.DeserializeAsync<List<AzureADUser>>(stream, options);
+                if (users == null)
+                {
+                    continue; // Handle the case where users is null
+                }
+
+                foreach (var user in users)
                 {
                     if (user == null)
                     {
@@ -274,19 +281,22 @@ namespace Repositories.BlobStorage
             const int batchSize = 10000; // Write in batches of 10k GUIDs (~380KB per block)
 
             var sb = new StringBuilder();
+            bool needsNewline = false; // Track if we need to prepend newline (for block boundaries)
 
             foreach (var id in sourceMemberIds)
             {
-                if (sb.Length > 0)
+                if (needsNewline || sb.Length > 0)
                     sb.Append(Environment.NewLine);
                 sb.Append(id.ToString());
                 count++;
+                needsNewline = false;
 
                 if (count % batchSize == 0)
                 {
                     var blockId = await StageBlockAsync(destClient, sb.ToString());
                     blockIds.Add(blockId);
                     sb.Clear();
+                    needsNewline = true; // Next block needs to start with newline to separate from previous block
                 }
             }
 
@@ -410,13 +420,15 @@ namespace Repositories.BlobStorage
 
             using var sourceStream = await sourceClient.OpenReadAsync(new BlobOpenReadOptions(false));
             var sb = new StringBuilder();
+            bool needsNewline = false; // Track if we need to prepend newline (for block boundaries)
 
             foreach (var guid in GroupMembershipSourceMembersStreamingExtractor.EnumerateGuids(sourceStream))
             {
-                if (sb.Length > 0)
+                if (needsNewline || sb.Length > 0)
                     sb.Append(Environment.NewLine);
                 sb.Append(guid.ToString());
                 count++;
+                needsNewline = false;
 
                 // Flush batch to blob storage
                 if (count % batchSize == 0)
@@ -424,6 +436,7 @@ namespace Repositories.BlobStorage
                     var blockId = await StageBlockAsync(destClient, sb.ToString());
                     blockIds.Add(blockId);
                     sb.Clear();
+                    needsNewline = true; // Next block needs to start with newline to separate from previous block
                 }
             }
 
@@ -434,30 +447,34 @@ namespace Repositories.BlobStorage
                 blockIds.Add(blockId);
             }
 
+            // Build final metadata including NumberOfUsers
+            var finalMetadata = new Dictionary<string, string>();
+            if (metadata != null)
+            {
+                foreach (var kvp in metadata)
+                {
+                    finalMetadata[kvp.Key] = kvp.Value;
+                }
+            }
+            finalMetadata["NumberOfUsers"] = count.ToString();
+
             // Commit all blocks
             if (blockIds.Count > 0)
             {
-                var commitOptions = new CommitBlockListOptions();
-                commitOptions.Metadata = commitOptions.Metadata ?? new Dictionary<string, string>();
-
-                if (metadata != null)
+                var commitOptions = new CommitBlockListOptions
                 {
-                    foreach (var kvp in metadata)
-                    {
-                        commitOptions.Metadata[kvp.Key] = kvp.Value;
-                    }
-                }
+                    Metadata = finalMetadata
+                };
                 await destClient.CommitBlockListAsync(blockIds, commitOptions);
             }
             else
             {
                 // Empty file case - use regular blob client for simple upload
                 var blobClient = _containerClient.GetBlobClient(destinationCacheFilePath);
-                var options = new BlobUploadOptions();
-                if (metadata != null && metadata.Count > 0)
+                var options = new BlobUploadOptions
                 {
-                    options.Metadata = metadata;
-                }
+                    Metadata = finalMetadata
+                };
                 await blobClient.UploadAsync(BinaryData.FromString(string.Empty), options);
             }
 
@@ -489,17 +506,8 @@ namespace Repositories.BlobStorage
             string query)
         {
             var seenIds = new HashSet<Guid>();
+            var uniqueUsers = new List<AzureADUser>();
             int count = 0;
-
-            var destClient = _containerClient.GetBlobClient(destinationPath);
-
-            await using var destStream = await destClient.OpenWriteAsync(overwrite: true);
-            await using var writer = new Utf8JsonWriter(destStream);
-
-            writer.WriteStartObject();
-
-            writer.WritePropertyName("SourceMembers");
-            writer.WriteStartArray();
 
             var options = new JsonSerializerOptions
             {
@@ -510,8 +518,13 @@ namespace Repositories.BlobStorage
             await foreach (var blobItem in blobs)
             {
                 await using var sourceStream = await _containerClient.GetBlobClient(blobItem.Name).OpenReadAsync();
+                var users = await JsonSerializer.DeserializeAsync<List<AzureADUser>>(sourceStream, options);
+                if (users == null)
+                {
+                    throw new Exception($"Failed to deserialize blob: {blobItem.Name}");
+                }
 
-                await foreach (var user in JsonSerializer.DeserializeAsyncEnumerable<AzureADUser>(sourceStream, options))
+                foreach (var user in users)
                 {
                     if (user == null)
                     {
@@ -520,29 +533,24 @@ namespace Repositories.BlobStorage
 
                     if (seenIds.Add(user.ObjectId))
                     {
-                        JsonSerializer.Serialize(writer, user);
+                        uniqueUsers.Add(user);
                         count++;
                     }
                 }
             }
 
-            writer.WriteEndArray();
-
-            writer.WritePropertyName("Destination");
-            JsonSerializer.Serialize(writer, destination);
-
-            writer.WriteString("RunId", runId);
-            writer.WriteString("SyncJobId", syncJobId);
-            writer.WriteBoolean("Exclusionary", exclusionary);
-            writer.WriteBoolean("MembershipObtainerDryRunEnabled", membershipObtainerDryRunEnabled);
-            if (query != null)
+            var groupMembership = new GroupMembership
             {
-                writer.WriteString("Query", query);
-            }
+                SourceMembers = uniqueUsers,
+                Destination = destination,
+                RunId = runId,
+                SyncJobId = syncJobId,
+                Exclusionary = exclusionary,
+                MembershipObtainerDryRunEnabled = membershipObtainerDryRunEnabled,
+                Query = query
+            };
 
-            writer.WriteEndObject();
-
-            await writer.FlushAsync();
+            await UploadFileAsync(destinationPath, JsonSerializer.Serialize(groupMembership));
 
             return count;
         }

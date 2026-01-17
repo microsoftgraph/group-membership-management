@@ -80,27 +80,24 @@ namespace Services.Tests
                 RunId = Guid.NewGuid()
             };
 
-            var users = new List<AzureADUser>();
+            var userIds = new HashSet<Guid>();
             for (int i = 0; i < 10; i++)
             {
-                users.Add(new AzureADUser
-                {
-                    ObjectId = Guid.NewGuid()
-                });
+                userIds.Add(Guid.NewGuid());
             }
 
             _cacheUserUpdaterRequest = new CacheUserUpdaterRequest
             {
                 RunId = Guid.NewGuid(),
-                UserIds = users,
+                UserIds = userIds,
                 SyncJob = syncJob,
                 GroupId = Guid.NewGuid()
             };
 
             _durableOrchestrationContext.Setup(x => x.GetInput<CacheUserUpdaterRequest>()).Returns(() => _cacheUserUpdaterRequest);
             _blobStorageRepository.Setup(x => x.DownloadCacheFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
-            _blobStorageRepository.Setup(x => x.ReadValuesFromBlobAsync<AzureADUser>(It.IsAny<string>(), It.IsAny<Func<string, AzureADUser>>()))
-                                  .ReturnsAsync(() => content.SourceMembers.ToHashSet());
+            _blobStorageRepository.Setup(x => x.ReadValuesFromBlobAsync<Guid>(It.IsAny<string>(), It.IsAny<Func<string, Guid>>()))
+                                  .ReturnsAsync(() => content.SourceMembers.Select(x => x.ObjectId).ToHashSet());
         }
 
         [TestMethod]
@@ -145,8 +142,8 @@ namespace Services.Tests
                                     It.IsAny<string>()
                                 ), Times.Once);
 
-            _blobStorageRepository.Verify(x => x.ReadValuesFromBlobAsync(It.IsAny<string>(), It.IsAny<Func<string, AzureADUser>>()), Times.Exactly(1));
-            _blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Exactly(1));
+            _blobStorageRepository.Verify(x => x.ReadValuesFromBlobAsync(It.IsAny<string>(), It.IsAny<Func<string, Guid>>()), Times.Exactly(1));
+            _blobStorageRepository.Verify(x => x.UploadCacheFromGuidsAsync(It.IsAny<string>(), It.IsAny<IEnumerable<Guid>>(), It.IsAny<Dictionary<string, string>>()), Times.Exactly(1));
             _loggingRepository.Verify(x => x.LogMessageAsync(
                         It.Is<LogMessage>(m => m.Message == $"{nameof(CacheUserUpdaterSubOrchestratorFunction)} function completed"),
                         It.IsAny<VerbosityLevel>(),
