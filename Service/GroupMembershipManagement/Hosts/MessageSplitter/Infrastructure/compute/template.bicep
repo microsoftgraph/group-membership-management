@@ -19,6 +19,9 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 @description('Instance identifier')
 @allowed([
   's1'
@@ -176,6 +179,7 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
     location: location
     servicePlanName: servicePlanName
     appSettings: baseAppSettings
+    functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

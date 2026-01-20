@@ -13,6 +13,7 @@ param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
 param teamsChannelServiceAccountUsername string
+param functionAuthAppClientId string
 
 param isInitialDeployment bool
 
@@ -34,7 +35,8 @@ var secretsToUpdate = union(
   isInitialDeployment || !empty(supportEmailAddresses) ? [{ name: 'supportEmailAddresses', value: supportEmailAddresses }] : [],
   isInitialDeployment || !empty(teamsChannelServiceAccountObjectId) ? [{ name: 'teamsChannelServiceAccountObjectId', value: teamsChannelServiceAccountObjectId }] : [],
   isInitialDeployment || !empty(teamsChannelServiceAccountPassword) ? [{ name: 'teamsChannelServiceAccountPassword', value: teamsChannelServiceAccountPassword }] : [],
-  isInitialDeployment || !empty(teamsChannelServiceAccountUsername) ? [{ name: 'teamsChannelServiceAccountUsername', value: teamsChannelServiceAccountUsername }] : []
+  isInitialDeployment || !empty(teamsChannelServiceAccountUsername) ? [{ name: 'teamsChannelServiceAccountUsername', value: teamsChannelServiceAccountUsername }] : [],
+  isInitialDeployment || !empty(functionAuthAppClientId) ? [{ name: 'functionAuthAppClientId', value: functionAuthAppClientId }] : []
 )
 
 module prereqsScretsTemplate '../Infrastructure/data/keyVaultSecretsSecure.bicep' = if (!empty(secretsToUpdate)) {

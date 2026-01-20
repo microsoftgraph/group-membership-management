@@ -156,6 +156,13 @@
         "required": false
       }
     },
+    "functionAuthAppClientId": {
+      "value": "",
+      "metadata": {
+        "description": "The client id of the function authentication app registration. If left empty, the script will create it and store/retrieve it from the keyvault.",
+        "required": false
+      }
+    },
     "directoryTenantId": {
       "value": "",
       "metadata": {

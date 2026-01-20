@@ -4,6 +4,7 @@ param aiLocation string
 param environmentAbbreviation string
 param solutionAbbreviation string
 param tenantId string
+param functionAuthAppClientId string
 param managedResourceGroupName string = ''
 param isManagedApplication bool = false
 param appConfigurationName string
@@ -72,6 +73,7 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -101,6 +103,7 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -130,6 +133,7 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -158,6 +162,7 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     authority: 'https://login.windows.net/${tenantId}'
@@ -189,6 +194,7 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -217,6 +223,7 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -245,6 +252,7 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -273,6 +281,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -310,6 +319,7 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -342,6 +352,7 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -375,6 +386,7 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     appConfigurationName: appConfigurationName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     nonProdServiceDataResources
@@ -405,6 +417,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     storageAccountSecretName: storageAccountSecretName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     azureUserReaderDataResources
@@ -435,6 +448,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     apiHostname: resolvedApiHostname
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     notifierDataResources
@@ -464,6 +478,7 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     jobSchedulerDataResources
@@ -489,6 +504,7 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -524,6 +540,7 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
     environmentAbbreviation: environmentAbbreviation
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
+    functionAuthAppClientId: functionAuthAppClientId
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions

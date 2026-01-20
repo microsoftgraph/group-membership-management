@@ -14,6 +14,9 @@ param kind string = 'functionapp,linux'
 @description('Function app location.')
 param location string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 @description('Service plan name.')
 @minLength(1)
 param servicePlanName string
@@ -118,6 +121,40 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
     setRBACPermissions: setRBACPermissions
     productionSlotPrincipalId: functionApp.identity.principalId
     storageAccountName: storageAccountName
+  }
+}
+
+resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = {
+  parent: functionApp
+  name: 'authsettingsV2'
+  properties: {
+    platform: {
+      enabled: true
+      runtimeVersion: '~1'
+    }
+    globalValidation: {
+      requireAuthentication: true
+      unauthenticatedClientAction: 'Return401'
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          clientId: functionAuthAppClientId
+          openIdIssuer: '${environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
+        }
+        validation: {
+          allowedAudiences: [
+            'api://${functionAuthAppClientId}'
+          ]
+        }
+      }
+    }
+    login: {
+      tokenStore: {
+        enabled: false
+      }
+    }
   }
 }
 

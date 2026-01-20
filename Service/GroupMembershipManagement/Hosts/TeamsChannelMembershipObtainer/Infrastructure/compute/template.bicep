@@ -19,6 +19,9 @@ param environmentAbbreviation string
 @description('Tenant id.')
 param tenantId string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'TeamsChannelMembershipObtainer'),0,8)}'
 
@@ -184,6 +187,7 @@ module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = 
     location: location
     servicePlanName: servicePlanName
     appSettings: appSettings
+    functionAuthAppClientId: functionAuthAppClientId
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
