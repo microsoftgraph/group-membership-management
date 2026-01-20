@@ -281,6 +281,7 @@ namespace Tests.Services
 
             _blobStorageRepository.Setup(x => x.DownloadCacheFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.IsAny<string>())).ReturnsAsync(() => _blobResult);
+            _blobStorageRepository.Setup(x => x.StreamUsersFromBlobsAsync(It.IsAny<string>())).Returns(GetEmptyAsyncEnumerable<AzureADUser>());
             _blobStorageRepository.Setup(x => x.ReadBlobsAsync(It.IsAny<string>())).ReturnsAsync(() =>
             {
                 var users = new List<AzureADUser>();
@@ -1455,6 +1456,12 @@ namespace Tests.Services
                 It.Is<TaskName>(n => n.Name == nameof(JobStatusUpdaterFunction)),
                 It.Is<JobStatusUpdaterRequest>(r => r.Status == SyncStatus.NestedGroupsFound),
                 It.IsAny<TaskOptions>()), Times.Never);
+        }
+
+        private static async IAsyncEnumerable<T> GetEmptyAsyncEnumerable<T>()
+        {
+            await Task.CompletedTask;
+            yield break;
         }
     }
 }
