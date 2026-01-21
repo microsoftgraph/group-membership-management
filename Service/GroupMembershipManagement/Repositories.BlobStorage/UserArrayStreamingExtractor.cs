@@ -103,14 +103,17 @@ namespace Repositories.BlobStorage
                                         if (objectDepth == 0)
                                         {
                                             // End of user object - extract and deserialize
+                                            // Append bytes from current chunk: from userObjectStartIndex to BytesConsumed
+                                            // For single-chunk objects: userObjectStartIndex is the start position
+                                            // For multi-chunk objects: userObjectStartIndex was reset to 0, and previous
+                                            // chunks' bytes are already in userJsonBuilder
                                             int endIndex = (int)reader.BytesConsumed;
-                                            int length = endIndex - userObjectStartIndex;
+                                            int startPos = Math.Max(0, userObjectStartIndex);
 
-                                            // Append remaining bytes from current chunk
-                                            if (userObjectStartIndex < bytesInBuffer)
+                                            if (startPos < endIndex && startPos < bytesInBuffer)
                                             {
-                                                int bytesToAppend = Math.Min(length, bytesInBuffer - userObjectStartIndex);
-                                                for (int i = userObjectStartIndex; i < userObjectStartIndex + bytesToAppend; i++)
+                                                int bytesToAppend = Math.Min(endIndex - startPos, bytesInBuffer - startPos);
+                                                for (int i = startPos; i < startPos + bytesToAppend; i++)
                                                 {
                                                     userJsonBuilder.Add(buffer[i]);
                                                 }

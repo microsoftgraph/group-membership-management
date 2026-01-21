@@ -271,5 +271,105 @@ namespace Tests.Services
             Assert.AreEqual(user.SourceGroup, result.SourceGroup);
             Assert.AreEqual(user.MembershipAction, result.MembershipAction);
         }
+
+        [TestMethod]
+        public void EnumerateUsers_HandlesUserObjectsSpanningMultipleChunks()
+        {
+            // Arrange - create users with long property values that will exceed a small buffer size
+            // This forces the streaming parser to handle user objects that span multiple read chunks
+            var longDisplayName = new string('A', 200); // 200 character display name
+            var longMail = new string('B', 150) + "@test.com"; // ~160 character email
+
+            var users = new System.Collections.Generic.List<Models.AzureADUser>
+            {
+                new Models.AzureADUser 
+                { 
+                    ObjectId = Guid.NewGuid(), 
+                    Mail = longMail, 
+                    DisplayName = longDisplayName,
+                    UserPrincipalName = longMail,
+                    OnPremisesImmutableId = new string('C', 100)
+                },
+                new Models.AzureADUser 
+                { 
+                    ObjectId = Guid.NewGuid(), 
+                    Mail = longMail, 
+                    DisplayName = longDisplayName,
+                    UserPrincipalName = longMail,
+                    OnPremisesImmutableId = new string('D', 100)
+                },
+                new Models.AzureADUser 
+                { 
+                    ObjectId = Guid.NewGuid(), 
+                    Mail = longMail, 
+                    DisplayName = longDisplayName,
+                    UserPrincipalName = longMail,
+                    OnPremisesImmutableId = new string('E', 100)
+                }
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Use a very small buffer size (256 bytes) to force user objects to span multiple chunks
+            // Each user object is approximately 600+ bytes, so it will span at least 2-3 chunks
+            const int smallBufferSize = 256;
+
+            // Act
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream, bufferSize: smallBufferSize)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(users.Count, enumeratedUsers.Count, "Should enumerate all users even when spanning chunks");
+            
+            for (int i = 0; i < users.Count; i++)
+            {
+                Assert.AreEqual(users[i].ObjectId, enumeratedUsers[i].ObjectId, $"User {i} ObjectId mismatch");
+                Assert.AreEqual(users[i].Mail, enumeratedUsers[i].Mail, $"User {i} Mail mismatch");
+                Assert.AreEqual(users[i].DisplayName, enumeratedUsers[i].DisplayName, $"User {i} DisplayName mismatch");
+                Assert.AreEqual(users[i].UserPrincipalName, enumeratedUsers[i].UserPrincipalName, $"User {i} UserPrincipalName mismatch");
+                Assert.AreEqual(users[i].OnPremisesImmutableId, enumeratedUsers[i].OnPremisesImmutableId, $"User {i} OnPremisesImmutableId mismatch");
+            }
+        }
+
+        [TestMethod]
+        public void EnumerateUsers_HandlesUserObjectStartingAtChunkBoundary()
+        {
+            // Arrange - test edge case where a user object starts right at the beginning of a new chunk
+            // This is a tricky scenario where userObjectStartIndex gets reset to 0
+            var users = new System.Collections.Generic.List<Models.AzureADUser>();
+            
+            // Create varying sized users to increase chance of hitting boundary conditions
+            for (int i = 0; i < 20; i++)
+            {
+                users.Add(new Models.AzureADUser 
+                { 
+                    ObjectId = Guid.NewGuid(), 
+                    Mail = $"user{i}@test.com",
+                    DisplayName = $"User {i} " + new string('X', 50 + (i * 10)), // Varying lengths
+                    OnPremisesImmutableId = $"immutable{i}"
+                });
+            }
+
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Use minimum buffer size to maximize chunk transitions
+            const int minBufferSize = 4096;
+
+            // Act
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream, bufferSize: minBufferSize)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(users.Count, enumeratedUsers.Count);
+            for (int i = 0; i < users.Count; i++)
+            {
+                Assert.AreEqual(users[i].ObjectId, enumeratedUsers[i].ObjectId, $"User {i} ObjectId mismatch");
+                Assert.AreEqual(users[i].DisplayName, enumeratedUsers[i].DisplayName, $"User {i} DisplayName mismatch");
+            }
+        }
     }
 }
