@@ -94,6 +94,7 @@ function Set-OrphanedRoleAssignmentsCleanup {
 	)
 
 	Write-Verbose "Set-OrphanedRoleAssignmentsCleanup starting..."
+	Write-Host "Starting orphaned role assignments cleanup operation..." -ForegroundColor Cyan
 	Write-Verbose "SkipPrincipalVerification: $SkipPrincipalVerification"
 
 	# Interactive mode for manual execution
@@ -224,6 +225,18 @@ function Set-OrphanedRoleAssignmentsCleanup {
 	Write-Host ""
 	Write-Host "Found $($orphanedAssignments.Count) orphaned role assignment(s) to remove:" -ForegroundColor Yellow
 	Write-Host ""
+	Write-Host "What are orphaned role assignments?" -ForegroundColor Cyan
+	Write-Host "An orphaned role assignment is a permission granted to a user, group, or service principal that no longer exists in Azure AD."
+	Write-Host "This commonly occurs when:"
+	Write-Host "  • A user is deleted from Azure AD but their role assignments remain"
+	Write-Host "  • A service principal or managed identity is removed but permissions aren't cleaned up"
+	Write-Host "  • A group is deleted but still has assigned roles"
+	Write-Host ""
+	Write-Host "Why remove them?"
+	Write-Host "  • Security: Eliminates stale permissions that shouldn't exist"
+	Write-Host "  • Compliance: Ensures RBAC assignments only grant access to active principals"
+	Write-Host "  • Maintenance: Reduces clutter and confusion when auditing permissions"
+	Write-Host ""
 	$orphanedAssignments | ForEach-Object {
 		$principal = $_.DisplayName
 		if (-not $principal) { $principal = $_.ObjectId }
@@ -271,4 +284,6 @@ function Set-OrphanedRoleAssignmentsCleanup {
 	}
 
 	Write-Verbose "Set-OrphanedRoleAssignmentsCleanup completed."
+	Write-Host ""
+	Write-Host "Completed orphaned role assignments cleanup operation." -ForegroundColor Green
 }
