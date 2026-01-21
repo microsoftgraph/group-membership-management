@@ -773,9 +773,15 @@ namespace WebApi.BackgroundServices
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Calling JobScheduler..." });
                 var jobSchedulerUrl = $"{_operationsSettings.JobSchedulerFunctionBaseUrl}/api/PipelineInvocationStarterFunction?code={_operationsSettings.JobSchedulerFunctionKey}";
 
+                // Acquire token for JobScheduler function app with platform authentication
+                var credential = new DefaultAzureCredential();
+                var tokenRequestContext = new TokenRequestContext(new[] { $"api://{_operationsSettings.FunctionAuthAppClientId}/.default" });
+                var accessToken = await credential.GetTokenAsync(tokenRequestContext, cancellationToken);
+                
                 await retryPolicy.ExecuteAsync(async () =>
                 {
                     var request = new HttpRequestMessage(HttpMethod.Post, jobSchedulerUrl);
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken.Token);
                     request.Content = new StringContent(JsonSerializer.Serialize(new { DelayForDeploymentInMinutes = 5 }), Encoding.UTF8, "application/json");
                     var response = await _httpClient.SendAsync(request);
                     var responseContent = await response.Content.ReadAsStringAsync();

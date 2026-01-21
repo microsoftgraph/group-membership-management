@@ -433,8 +433,10 @@ namespace WebApi
                 configuration.GetSection("Settings:ServiceBus").Bind(settings);
                 var functionBaseUrl = configuration.GetValue<string>("Settings:JobSchedulerFunctionBaseUrl");
                 var functionKey = configuration.GetValue<string>("Settings:JobSchedulerFunctionKey");
+                var functionAuthAppClientId = configuration.GetValue<string>("Settings:FunctionAuthAppClientId");
                 settings.JobSchedulerFunctionBaseUrl = functionBaseUrl;
                 settings.JobSchedulerFunctionKey = functionKey;
+                settings.FunctionAuthAppClientId = functionAuthAppClientId;
                 settings.DataResourceGroupName = rmsc.Value.DataResourceGroup;
                 settings.ComputeResourceGroupName = rmsc.Value.ComputeResourceGroup;
             });

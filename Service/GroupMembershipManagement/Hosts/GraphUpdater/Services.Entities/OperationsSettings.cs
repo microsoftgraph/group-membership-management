@@ -15,6 +15,7 @@ namespace Services.Entities
         public string JobSchedulerFunctionBaseUrl { get; set; }
         public string DataResourceGroupName { get; set; }
         public string ComputeResourceGroupName { get; set; }
+        public string FunctionAuthAppClientId { get; set; }
 
     }
 }

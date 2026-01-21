@@ -115,6 +115,7 @@ var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataResou
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
 var jobSchedulerFunctionBaseUrl = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionBaseUrl')
 var jobSchedulerFunctionKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionKey')
+var functionAuthAppClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'functionAuthAppClientId')
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   scope: resourceGroup(dataResourceGroup)
@@ -313,6 +314,10 @@ var appSettings = [
   {
     name: 'Settings:JobSchedulerFunctionKey'
     value: '@Microsoft.KeyVault(SecretUri=${reference(jobSchedulerFunctionKey, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:FunctionAuthAppClientId'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(functionAuthAppClientId, '2019-09-01').secretUriWithVersion})'
   }
 ]
 
