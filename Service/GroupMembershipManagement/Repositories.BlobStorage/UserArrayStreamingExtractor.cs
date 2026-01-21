@@ -64,7 +64,6 @@ namespace Repositories.BlobStorage
                     var reader = new Utf8JsonReader(span, isFinalBlock, readerState);
 
                     var usersToYield = new List<AzureADUser>();
-                    long lastConsumedBeforeUser = 0;
 
                     try
                     {
@@ -87,7 +86,6 @@ namespace Repositories.BlobStorage
                                         insideUserObject = true;
                                         objectDepth = 1;
                                         userObjectStartIndex = (int)reader.TokenStartIndex;
-                                        lastConsumedBeforeUser = reader.BytesConsumed;
                                         userJsonBuilder.Clear();
                                     }
                                     else if (insideUserObject)
