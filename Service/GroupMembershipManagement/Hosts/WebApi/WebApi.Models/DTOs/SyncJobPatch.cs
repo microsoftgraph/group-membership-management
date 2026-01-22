@@ -26,5 +26,7 @@ namespace WebApi.Models.DTOs
         public bool IsDryRunEnabled { get; set; }
         public DateTime DryRunTimeStamp { get; set; }
         public int ThresholdViolations { get; set; }
+        public string ChangeReason { get; set; }
+        public string BusinessJustification { get; set; }
     }
 }

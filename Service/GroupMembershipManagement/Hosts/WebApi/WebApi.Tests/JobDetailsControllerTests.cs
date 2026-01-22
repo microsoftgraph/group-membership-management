@@ -63,16 +63,16 @@ namespace Services.Tests
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
 
-        private static PatchJobRequestBody CreatePatchRequest(JsonPatchDocument<SyncJobPatch> patchDocument, string? changeReason = "Update", string justification = "Business justification")
+        private PatchJobRequestDTO CreatePatchJobRequestDTO(List<PatchOperation> operations, string changeReason, string businessJustification)
         {
-            return new PatchJobRequestBody
+            return new PatchJobRequestDTO
             {
-                PatchDocument = patchDocument,
+                PatchOperation = operations,
                 ChangeReason = changeReason,
-                BusinessJustification = justification
+                BusinessJustification = businessJustification
             };
         }
-
+        
         [TestInitialize]
         public void Initialize()
         {
@@ -616,19 +616,22 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var newStatus = SyncStatus.Idle.ToString();
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, newStatus);
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing status update" }
+            };
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.StatusUpdate.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing status update");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -650,18 +653,13 @@ namespace Services.Tests
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var newStatus = SyncStatus.CustomerPaused.ToString();
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, newStatus);
-
             var mockTitles = new List<Title>
             {
                 new Title
@@ -677,14 +675,16 @@ namespace Services.Tests
             };
             var titlesJson = JsonSerializer.Serialize(mockTitles);
 
-            patchDocument.Operations.Add(new Operation<SyncJobPatch>
+            var operations = new List<PatchOperation>
             {
-                op = "replace",
-                path = "/Titles",
-                value = titlesJson
-            });
+                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing titles update" },
+                new PatchOperation { Op = "replace", Path = "/Titles", Value = titlesJson }
+            };
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.StatusUpdate.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing titles update");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -715,28 +715,22 @@ namespace Services.Tests
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var newStatus = SyncStatus.Idle.ToString();
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, newStatus);
-
-            // Example for creating a patch document with titles
-            var titles = new NewTitle[]
+            var operations = new List<PatchOperation>
             {
-                new NewTitle { PartId = "550e8400-e29b-41d4-a716-446655440000", Name = "Software Engineers" },
-                new NewTitle { PartId = "550e8400-e29b-41d4-a716-446655440001", Name = "Product Managers" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing no titles" }
             };
 
-            patchDocument.Replace(x => x.Titles, titles);
-
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.StatusUpdate.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing no titles");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -753,21 +747,24 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             _jobEntity.Status = SyncStatus.CustomerPaused.ToString();
 
             var newStatus = SyncStatus.Error.ToString();
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, newStatus);
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing bad status" }
+            };
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.StatusUpdate.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing bad status");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -788,19 +785,22 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var newStatus = SyncStatus.Idle.ToString();
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, newStatus);
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing pending review" }
+            };
 
-            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.StatusUpdate.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing pending review");
+            var response = await _jobDetailsController.EnableJobAsync(_jobEntity.Id, requestDTO);
             var result = response as ObjectResult;
             var problem = result.Value as ProblemDetails;
 
@@ -835,18 +835,21 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Approved" }
+            };
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionApproved.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -854,7 +857,7 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Idle.ToString(), _jobEntity.Status);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
         }
-
+        
         [TestMethod]
         [DataRow(Roles.SUBMISSION_REVIEWER)]
         public async Task ApproveSubmissionSetsThresholdViolationsAsync(string role)
@@ -888,10 +891,16 @@ namespace Services.Tests
                 })
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
+            var newStatus = SyncStatus.Idle.ToString();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Approved" }
+            };
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionApproved.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -926,18 +935,21 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "SubmissionRejected");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "SubmissionRejected" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionRejected.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Rejected" }
+            };
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionRejected.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionRejected.ToString(), "Rejected");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -970,18 +982,21 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Approved attempt by rejector" }
+            };
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionApproved.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved attempt by rejector");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
 
             var patchResponse = result.Value as PatchJobResponse;
@@ -1019,16 +1034,18 @@ namespace Services.Tests
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId.ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Own submission review attempt" }
+            };
 
             var syncJobChangeByUserId = new SyncJobChange
             {
@@ -1038,7 +1055,8 @@ namespace Services.Tests
             _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => syncJobChangeByUserId);
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionApproved.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Own submission review attempt");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
             Assert.IsNotNull(patchResponse);
@@ -1065,18 +1083,21 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Idle");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Submitter not owner" }
+            };
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionApproved.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Submitter not owner");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1111,18 +1132,21 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "Error");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "Error" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Bad end status" }
+            };
 
-            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, SyncJobChangeReason.SubmissionApproved.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Bad end status");
+            var response = await _jobDetailsController.ReviewJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1141,19 +1165,22 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.Idle.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             var newQuery = "UpdatedQuery";
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Query, newQuery);
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = newQuery },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Updating query" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, changeReason: SyncJobChangeReason.Update.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Updating query");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as OkObjectResult;
 
             Assert.IsNotNull(result);
@@ -1170,18 +1197,21 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Query, "UpdatedQuery");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Query", Value = "UpdatedQuery" },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Update pending review" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, changeReason: SyncJobChangeReason.Update.ToString()));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Update pending review");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as ObjectResult;
             var problem = result.Value as ProblemDetails;
 
@@ -1198,18 +1228,19 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
-            patchDocument.Replace(x => x.Status, "InvalidStatus");
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/Status", Value = "InvalidStatus" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument, changeReason: string.Empty));
+            var requestDTO = CreatePatchJobRequestDTO(operations, null, "");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
 
             Assert.IsNotNull(result);
@@ -1227,20 +1258,23 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(_jobEntity.Id))
                               .ReturnsAsync(() => null);
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as NotFoundObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1257,19 +1291,22 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             _jobEntity.Group = null;
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as BadRequestObjectResult;
             var patchResponse = result.Value as PatchJobResponse;
 
@@ -1286,20 +1323,23 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
                                     .ReturnsAsync(() => false);
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as ForbidResult;
 
             Assert.IsNotNull(result);
@@ -1313,19 +1353,22 @@ namespace Services.Tests
         {
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {
-                ControllerContext = CreateControllerContext(new List<Claim>
-                {
+                ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
                     new Claim(ClaimTypes.Role, role),
-                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
-                })
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
             _jobEntity.Status = SyncStatus.InProgress.ToString();
 
-            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            var operations = new List<PatchOperation>
+            {
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+            };
 
-            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, CreatePatchRequest(patchDocument));
+            var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
+            var response = await _jobDetailsController.UpdateJobAsync(_jobEntity.Id, requestDTO);
             var result = response as ObjectResult;
             var problem = result.Value as ProblemDetails;
 

@@ -16,6 +16,8 @@ namespace Services.Messages.Requests
         public string ChangeReason { get; set; }
         public string BusinessJustification { get; set; }
         public bool CanApproveJob { get; set; }
+        public string TitlesValue { get; set; }
+        public bool HasTitlesOperation { get; set; }
 
         public PatchJobRequest(
             bool isAllowed,
@@ -25,7 +27,9 @@ namespace Services.Messages.Requests
             string userDisplayName, 
             string changeReason, 
             string businessJustification,
-            bool canApproveJob)
+            bool canApproveJob,
+            string titlesValue = null,
+            bool hasTitlesOperation = false)
         {
             IsAllowed = isAllowed;
             UserIdentity = userIdentity;
@@ -35,6 +39,8 @@ namespace Services.Messages.Requests
             ChangeReason = changeReason;
             BusinessJustification = businessJustification;
             CanApproveJob = canApproveJob;
+            TitlesValue = titlesValue;
+            HasTitlesOperation = hasTitlesOperation;
         }
     }
 }

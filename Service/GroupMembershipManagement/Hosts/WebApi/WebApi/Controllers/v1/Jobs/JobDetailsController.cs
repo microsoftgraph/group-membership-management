@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.JsonPatch;
+using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Models.SyncJobChange;
 using Services.Contracts;
@@ -8,7 +10,6 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using System.Security.Claims;
-using WebApi.Models;
 using WebApi.Models.DTOs;
 
 namespace WebApi.Controllers.v1.Jobs
@@ -87,7 +88,8 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = $"{Models.Roles.SUBMISSION_REVIEWER}, {Models.Roles.SUBMISSION_REJECTOR}")]
         [HttpPatch("{syncJobId}/review")]
-        public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] PatchJobRequestBody patchRequest)
+        [Consumes("application/json")]
+        public async Task<ActionResult> ReviewJobAsync(Guid syncJobId, [FromBody] PatchJobRequestDTO requestDTO)
         {
             try
             {
@@ -101,28 +103,18 @@ namespace WebApi.Controllers.v1.Jobs
                     return new ForbidResult();
                 }
 
-                if (patchRequest?.PatchDocument == null)
-                {
-                    return BadRequest(new PatchJobResponse
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PatchDocumentIsRequired"
-                    });
-                }
-
-                var changeReason = patchRequest.ChangeReason;
-                var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.SubmissionApproved.ToString(), SyncJobChangeReason.SubmissionRejected.ToString()],
+                var changeReasonValidation = ValidateChangeReason(requestDTO.ChangeReason, [SyncJobChangeReason.SubmissionApproved.ToString(), SyncJobChangeReason.SubmissionRejected.ToString()],
                     "Invalid change reason. Only 'SubmissionRejected' and 'SubmissionApproved' are allowed.");
                 if (changeReasonValidation != null)
                 {
                     return changeReasonValidation;
                 }
 
-                var normalizedChangeReason = changeReason!;
-
+                var (titlesValue, hasTitlesOp) = ExtractAndRemoveTitles(requestDTO.PatchOperation);
+                var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
                 var canApproveJob = User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, normalizedChangeReason, patchRequest.BusinessJustification, canApproveJob));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, canApproveJob, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -149,7 +141,8 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = $"{Models.Roles.JOB_OWNER_ENABLER}, {Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}")]
         [HttpPatch("{syncJobId}/enable")]
-        public async Task<ActionResult> EnableJobAsync(Guid syncJobId, [FromBody] PatchJobRequestBody patchRequest)
+        [Consumes("application/json")]
+        public async Task<ActionResult> EnableJobAsync(Guid syncJobId, [FromBody] PatchJobRequestDTO requestDTO)
         {
             try
             {
@@ -163,26 +156,17 @@ namespace WebApi.Controllers.v1.Jobs
                     return new ForbidResult();
                 }
 
-                if (patchRequest?.PatchDocument == null)
-                {
-                    return BadRequest(new PatchJobResponse
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PatchDocumentIsRequired"
-                    });
-                }
-
-                var changeReason = patchRequest.ChangeReason;
-                var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.StatusUpdate.ToString()],
+                var changeReasonValidation = ValidateChangeReason(requestDTO.ChangeReason, [SyncJobChangeReason.StatusUpdate.ToString()],
                     "Invalid change reason. Only 'StatusUpdate' is allowed.");
                 if (changeReasonValidation != null)
                 {
                     return changeReasonValidation;
                 }
 
-                var normalizedChangeReason = changeReason!;
+                var (titlesValue, hasTitlesOp) = ExtractAndRemoveTitles(requestDTO.PatchOperation);
+                var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
 
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchRequest.PatchDocument, displayName, normalizedChangeReason, patchRequest.BusinessJustification, false));
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(true, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -209,7 +193,8 @@ namespace WebApi.Controllers.v1.Jobs
 
         [Authorize(Roles = $"{Models.Roles.JOB_OWNER_WRITER}, {Models.Roles.JOB_TENANT_WRITER}")]
         [HttpPatch("{syncJobId}/update")]
-        public async Task<ActionResult> UpdateJobAsync(Guid syncJobId, [FromBody] PatchJobRequestBody patchRequest)
+        [Consumes("application/json")]
+        public async Task<ActionResult> UpdateJobAsync(Guid syncJobId, [FromBody] PatchJobRequestDTO requestDTO)
         {
             try
             {
@@ -223,28 +208,20 @@ namespace WebApi.Controllers.v1.Jobs
                     return new ForbidResult();
                 }
 
-                if (patchRequest?.PatchDocument == null)
-                {
-                    return BadRequest(new PatchJobResponse
-                    {
-                        StatusCode = HttpStatusCode.BadRequest,
-                        ErrorCode = "PatchDocumentIsRequired"
-                    });
-                }
-
-                var changeReason = patchRequest.ChangeReason;
-                var changeReasonValidation = ValidateChangeReason(changeReason, [SyncJobChangeReason.Update.ToString()],
+                var changeReasonValidation = ValidateChangeReason(requestDTO.ChangeReason, [SyncJobChangeReason.Update.ToString()],
                     "Invalid change reason. Only 'Update' is allowed.");
                 if (changeReasonValidation != null)
                 {
                     return changeReasonValidation;
                 }
 
-                var normalizedChangeReason = changeReason!;
-
+                var (titlesValue, hasTitlesOp) = ExtractAndRemoveTitles(requestDTO.PatchOperation);
+                var patchDocument = ConvertToPatchDocument(requestDTO.PatchOperation);
+                
                 // This is a double check right now, keeping this in place for future use when the api call is open up to all users
                 var isAllowed = User.IsInRole(Models.Roles.JOB_TENANT_WRITER) || User.IsInRole(Models.Roles.SUBMISSION_REVIEWER);
-                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchRequest.PatchDocument, displayName, normalizedChangeReason, patchRequest.BusinessJustification, false));
+
+                var response = await _patchJobRequestHandler.ExecuteAsync(new PatchJobRequest(isAllowed, userId, syncJobId, patchDocument, displayName, requestDTO.ChangeReason, requestDTO.BusinessJustification, false, titlesValue, hasTitlesOp));
 
                 var patchJobResponse = new PatchJobResponse
                 {
@@ -317,7 +294,21 @@ namespace WebApi.Controllers.v1.Jobs
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
         }
-        private ActionResult? ValidateChangeReason(string? changeReason, List<string> expectedReasons, string errorMessage)
+        private (string titlesValue, bool hasTitlesOp) ExtractAndRemoveTitles(List<PatchOperation> patchOperations)
+        {
+            var titlesOp = patchOperations?.FirstOrDefault(op => op.Path == "/Titles");
+            var hasTitlesOp = titlesOp != null;
+            var titlesValue = titlesOp?.Value?.ToString();
+
+            if (hasTitlesOp && patchOperations != null)
+            {
+                patchOperations.RemoveAll(op => op.Path == "/Titles");
+            }
+
+            return (titlesValue, hasTitlesOp);
+        }
+
+        private ActionResult ValidateChangeReason(string changeReason, List<string> expectedReasons, string errorMessage)
         {
             if (string.IsNullOrWhiteSpace(changeReason))
             {
@@ -328,9 +319,7 @@ namespace WebApi.Controllers.v1.Jobs
                 });
             }
 
-            var normalizedChangeReason = changeReason!;
-
-            if (!expectedReasons.Contains(normalizedChangeReason))
+            if (!expectedReasons.Contains(changeReason))
             {
                 return BadRequest(new PatchJobResponse
                 {
@@ -341,6 +330,85 @@ namespace WebApi.Controllers.v1.Jobs
             }
 
             return null;
+        }
+
+        private JsonPatchDocument<SyncJobPatch> ConvertToPatchDocument(List<PatchOperation> operations)
+        {
+            var patchDoc = new JsonPatchDocument<SyncJobPatch>();
+            
+            if (operations == null || operations.Count == 0)
+            {
+                return patchDoc;
+            }
+
+            foreach (var op in operations)
+            {
+                // Handle the actual value type
+                object actualValue = op.Value;
+                
+                // If the value is a JsonElement, extract its actual value
+                if (op.Value != null && op.Value.GetType().Name == "JsonElement")
+                {
+                    var jsonElement = (System.Text.Json.JsonElement)op.Value;
+                    
+                    if (jsonElement.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        actualValue = jsonElement.GetString();
+                    }
+                    else if (jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    {
+                        actualValue = jsonElement.GetRawText();
+                    }
+                    else
+                    {
+                        actualValue = jsonElement.GetRawText();
+                    }
+                }
+                
+                // Check if this is an empty Titles operation
+                bool isTitlesPath = op.Path?.Equals("/Titles", StringComparison.OrdinalIgnoreCase) == true;
+                bool isReplace = op.Op?.ToLower() == "replace";
+                bool isValueEmpty = actualValue == null || (actualValue is string str && string.IsNullOrEmpty(str));
+                
+                if (isTitlesPath && isReplace && isValueEmpty)
+                {
+                    // Skip empty Titles operation - it will be handled separately in the handler
+                    continue;
+                }
+                switch (op.Op?.ToLower())
+                {
+                    case "replace":
+                        patchDoc.Operations.Add(new Operation<SyncJobPatch>
+                        {
+                            op = "replace",
+                            path = op.Path,
+                            value = actualValue,
+                            from = null
+                        });
+                        break;
+                    case "add":
+                        patchDoc.Operations.Add(new Operation<SyncJobPatch>
+                        {
+                            op = "add",
+                            path = op.Path,
+                            value = actualValue,
+                            from = null
+                        });
+                        break;
+                    case "remove":
+                        patchDoc.Operations.Add(new Operation<SyncJobPatch>
+                        {
+                            op = "remove",
+                            path = op.Path,
+                            from = null
+                        });
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported JSON Patch operation: {op.Op}");
+                }
+            }
+
+            return patchDoc;
         }
     }
 }

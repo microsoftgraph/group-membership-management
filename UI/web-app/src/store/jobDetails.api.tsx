@@ -103,6 +103,7 @@ export const patchJobDetails = createAsyncThunk<
   PatchJobRequest,
   ThunkConfig
 >('jobs/patchJobDetails', async (request, { extra }) => {
+  
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers();
@@ -113,9 +114,9 @@ export const patchJobDetails = createAsyncThunk<
     method: 'PATCH',
     headers,
     body: JSON.stringify({
-      patchDocument: request.patchOperation,
+      patchOperation: request.patchOperation,
       changeReason: request.changeReason,
-      businessJustification: request.businessJustification ?? '',
+      businessJustification: request.businessJustification,
     }),
   };
 

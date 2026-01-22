@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.AspNetCore.JsonPatch;
 using Models;
 using Models.SyncJobChange;
 using Repositories.Contracts;
@@ -89,9 +90,19 @@ namespace Services.WebApi
 
             var isAITitleEnabled = await IsAITitleEnabledAsync();
 
+            // Use TitlesValue if Titles operation was present, otherwise get from PatchDocument
+            string titles = null;
+            if (request.HasTitlesOperation)
+            {
+                titles = request.TitlesValue;
+            }
+            else
+            {
+                titles = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Titles")?.value?.ToString();
+            }
+            
             var changedOnBehalfOfDisplayName = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfDisplayName")?.value?.ToString();
             var changedOnBehalfOfObjectId = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/LastModifiedOnBehalfOfObjectId")?.value?.ToString();
-            var titles = request.PatchDocument.Operations.FirstOrDefault(op => op.path == "/Titles")?.value.ToString();
 
             var syncJobChange = new SyncJobChange
             {
@@ -219,7 +230,7 @@ namespace Services.WebApi
                 if (result != null) return result;
             }
 
-            if (isAITitleEnabled && request.PatchDocument.Operations.Any(op => op.path == "/Titles"))
+            if (isAITitleEnabled && request.HasTitlesOperation)
             {
                 if (!string.IsNullOrEmpty(titles))
                 {
@@ -241,8 +252,7 @@ namespace Services.WebApi
 
             return response;
         }
-
-        private async Task<PatchJobResponse?> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJob syncJob, SyncJobChange syncJobChange, string status)
+        private async Task<PatchJobResponse> ValidateAndUpdateSyncJob(PatchJobRequest request, SyncJob syncJob, SyncJobChange syncJobChange, string status)
         {
             var syncJobToPatch = MapEntityToDto(request.SyncJobId, syncJob);
             var changeReason = request.ChangeReason;
@@ -251,7 +261,14 @@ namespace Services.WebApi
 
             if(request.ChangeReason == SyncJobChangeReason.Update.ToString())
             {
-                request.PatchDocument.ApplyTo(syncJobToPatch);
+                try
+                {
+                    request.PatchDocument.ApplyTo(syncJobToPatch);
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
             }
             syncJobToPatch.Status = status;
 
