@@ -371,5 +371,48 @@ namespace Tests.Services
                 Assert.AreEqual(users[i].DisplayName, enumeratedUsers[i].DisplayName, $"User {i} DisplayName mismatch");
             }
         }
+
+        [TestMethod]
+        public void EnumerateUsers_GrowsBufferWhenSingleTokenExceedsBufferSize()
+        {
+            // Arrange - create a user with a property value larger than the minimum buffer size
+            // This tests the buffer growth logic when a single JSON token cannot fit in the buffer
+            var veryLongDisplayName = new string('A', 5000); // 5KB display name exceeds 4KB min buffer
+
+            var users = new System.Collections.Generic.List<Models.AzureADUser>
+            {
+                new Models.AzureADUser
+                {
+                    ObjectId = Guid.NewGuid(),
+                    Mail = "user1@test.com",
+                    DisplayName = veryLongDisplayName
+                },
+                new Models.AzureADUser
+                {
+                    ObjectId = Guid.NewGuid(),
+                    Mail = "user2@test.com",
+                    DisplayName = "Normal User"
+                }
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(users);
+            var memoryStream = new System.IO.MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+
+            // Use minimum buffer size (4096) which is smaller than the user object with 5KB display name
+            const int minBufferSize = 4096;
+
+            // Act - this would fail before the fix because Read(buffer, offset, 0) returns 0
+            // and incorrectly sets isFinalBlock = true
+            var enumeratedUsers = Repositories.BlobStorage.UserArrayStreamingExtractor
+                .EnumerateUsers(memoryStream, bufferSize: minBufferSize)
+                .ToList();
+
+            // Assert
+            Assert.AreEqual(2, enumeratedUsers.Count, "Should enumerate all users after buffer growth");
+            Assert.AreEqual(users[0].ObjectId, enumeratedUsers[0].ObjectId);
+            Assert.AreEqual(veryLongDisplayName, enumeratedUsers[0].DisplayName, "Long display name should be preserved");
+            Assert.AreEqual(users[1].ObjectId, enumeratedUsers[1].ObjectId);
+            Assert.AreEqual("Normal User", enumeratedUsers[1].DisplayName);
+        }
     }
 }

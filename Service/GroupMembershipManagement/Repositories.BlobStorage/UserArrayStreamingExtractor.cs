@@ -49,6 +49,16 @@ namespace Repositories.BlobStorage
 
                     if (!isFinalBlock)
                     {
+                        // If buffer is full and we made no progress, we need a bigger buffer
+                        if (bytesInBuffer == buffer.Length)
+                        {
+                            int newSize = buffer.Length * 2;
+                            byte[] newBuffer = ArrayPool<byte>.Shared.Rent(newSize);
+                            Buffer.BlockCopy(buffer, 0, newBuffer, 0, bytesInBuffer);
+                            ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+                            buffer = newBuffer;
+                        }
+
                         int read = jsonStream.Read(buffer, bytesInBuffer, buffer.Length - bytesInBuffer);
                         if (read == 0)
                         {
