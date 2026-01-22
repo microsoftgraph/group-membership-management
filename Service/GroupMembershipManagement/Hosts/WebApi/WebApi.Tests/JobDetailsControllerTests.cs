@@ -72,6 +72,23 @@ namespace Services.Tests
                 BusinessJustification = businessJustification
             };
         }
+
+        private JsonElement? ConvertToJsonElement(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return null;
+            
+            // If value looks like JSON (starts with { or [), use as-is
+            var trimmed = value.Trim();
+            if ((trimmed.StartsWith("{") || trimmed.StartsWith("[")) && 
+                (trimmed.EndsWith("}") || trimmed.EndsWith("]")))
+            {
+                return JsonDocument.Parse(value).RootElement;
+            }
+            
+            // Otherwise, wrap it as a JSON string
+            return JsonDocument.Parse($"\"{value}\"").RootElement;
+        }
         
         [TestInitialize]
         public void Initialize()
@@ -625,9 +642,9 @@ namespace Services.Tests
             var newStatus = SyncStatus.Idle.ToString();
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing status update" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Testing status update") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing status update");
@@ -677,10 +694,10 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing titles update" },
-                new PatchOperation { Op = "replace", Path = "/Titles", Value = titlesJson }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Testing titles update") },
+                new PatchOperation { Op = "replace", Path = "/Titles", Value = ConvertToJsonElement(titlesJson) }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing titles update");
@@ -724,9 +741,9 @@ namespace Services.Tests
             var newStatus = SyncStatus.Idle.ToString();
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing no titles" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Testing no titles") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing no titles");
@@ -758,9 +775,9 @@ namespace Services.Tests
             var newStatus = SyncStatus.Error.ToString();
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing bad status" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Testing bad status") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing bad status");
@@ -794,9 +811,9 @@ namespace Services.Tests
             var newStatus = SyncStatus.Idle.ToString();
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.StatusUpdate.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Testing pending review" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.StatusUpdate.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Testing pending review") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.StatusUpdate.ToString(), "Testing pending review");
@@ -843,9 +860,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Approved" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("Idle") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Approved") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved");
@@ -894,9 +911,9 @@ namespace Services.Tests
             var newStatus = SyncStatus.Idle.ToString();
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = newStatus },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Approved" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement(newStatus) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Approved") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved");
@@ -943,9 +960,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "SubmissionRejected" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionRejected.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Rejected" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("SubmissionRejected") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionRejected.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Rejected") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionRejected.ToString(), "Rejected");
@@ -990,9 +1007,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Approved attempt by rejector" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("Idle") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Approved attempt by rejector") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Approved attempt by rejector");
@@ -1042,9 +1059,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Own submission review attempt" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("Idle") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Own submission review attempt") }
             };
 
             var syncJobChangeByUserId = new SyncJobChange
@@ -1091,9 +1108,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "Idle" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Submitter not owner" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("Idle") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Submitter not owner") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Submitter not owner");
@@ -1140,9 +1157,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "Error" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.SubmissionApproved.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Bad end status" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("Error") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.SubmissionApproved.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Bad end status") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.SubmissionApproved.ToString(), "Bad end status");
@@ -1174,9 +1191,9 @@ namespace Services.Tests
             var newQuery = "UpdatedQuery";
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Query", Value = newQuery },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Updating query" }
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement(newQuery) },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Updating query") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Updating query");
@@ -1205,9 +1222,9 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Query", Value = "UpdatedQuery" },
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Update pending review" }
+                new PatchOperation { Op = "replace", Path = "/Query", Value = ConvertToJsonElement("UpdatedQuery") },
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Update pending review") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Update pending review");
@@ -1236,7 +1253,7 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/Status", Value = "InvalidStatus" }
+                new PatchOperation { Op = "replace", Path = "/Status", Value = ConvertToJsonElement("InvalidStatus") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, null, "");
@@ -1269,8 +1286,8 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Test") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
@@ -1301,8 +1318,8 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Test") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
@@ -1334,8 +1351,8 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Test") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
@@ -1363,8 +1380,8 @@ namespace Services.Tests
 
             var operations = new List<PatchOperation>
             {
-                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = SyncJobChangeReason.Update.ToString() },
-                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = "Test" }
+                new PatchOperation { Op = "replace", Path = "/ChangeReason", Value = ConvertToJsonElement(SyncJobChangeReason.Update.ToString()) },
+                new PatchOperation { Op = "replace", Path = "/BusinessJustification", Value = ConvertToJsonElement("Test") }
             };
 
             var requestDTO = CreatePatchJobRequestDTO(operations, SyncJobChangeReason.Update.ToString(), "Test");
