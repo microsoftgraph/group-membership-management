@@ -267,6 +267,11 @@ namespace Services.WebApi
                 }
                 catch (Exception ex)
                 {
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Error applying patch document for SyncJobId {request.SyncJobId}: {ex.Message}",
+                        StackTrace = ex.StackTrace
+                    });
                     throw;
                 }
             }
