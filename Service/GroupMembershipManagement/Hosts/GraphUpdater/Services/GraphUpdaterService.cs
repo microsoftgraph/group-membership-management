@@ -107,7 +107,7 @@ namespace Services
 
             });
         }
-		public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId)
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded = null, int? usersRemoved = null)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 
@@ -136,6 +136,8 @@ namespace Services
                 Status = status.ToString(),
                 UpdatedByFunction = "GraphUpdater",
                 ThresholdViolations = job.ThresholdViolations,
+                UsersAdded = usersAdded,
+                UsersRemoved = usersRemoved,
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,              
                 UpdatedAt = currentDate
             };

@@ -338,7 +338,7 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = message, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                         CreateJobStatusUpdaterRequest(groupMembership.SyncJobId,
-                                                                      syncStatus, 0, groupMembership.RunId));
+                                                                      syncStatus, 0, groupMembership.RunId, jobState.TotalMembersAdded, jobState.TotalMembersRemoved));
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction),
                                         new TelemetryTrackerRequest { JobStatus = syncStatus, ResultStatus = resultStatus, RunId = syncJob.RunId });
 
@@ -596,14 +596,16 @@ namespace Hosts.GraphUpdater
             _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
-        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId)
+        private JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(Guid jobId, SyncStatus syncStatus, int thresholdViolations, Guid runId, int? usersAdded = null, int? usersRemoved = null)
         {
             return new JobStatusUpdaterRequest
             {
                 RunId = runId,
                 JobId = jobId,
                 Status = syncStatus,
-                ThresholdViolations = thresholdViolations
+                ThresholdViolations = thresholdViolations,
+                UsersAdded = usersAdded,
+                UsersRemoved = usersRemoved
             };
         }
 
