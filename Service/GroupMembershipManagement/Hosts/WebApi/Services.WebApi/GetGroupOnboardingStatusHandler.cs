@@ -30,16 +30,38 @@ namespace Services
 
         protected override async Task<GetOnboardingStatusResponse> ExecuteCoreAsync(GetGroupOnboardingStatusRequest request)
         {
-            var isAppIdOwner = await _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, request.GroupId);
-            var isUserOwner = await _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, request.GroupId);
-            var syncJobExists = await _syncJobRepository.GetSyncJobByObjectIdAsync(request.GroupId);
-            bool isOnboarded = syncJobExists != null;
+            var groupExists = await _graphGroupRepository.GroupExists(request.GroupId);
+
+            var isAppIdOwnerTask = groupExists
+              ? _graphGroupRepository.IsAppIDOwnerOfGroup(_gmmAppId, request.GroupId, validateGroupExists: false)
+              : Task.FromResult(false);
+
+            var isUserOwnerTask = groupExists
+                ? _graphGroupRepository.IsEmailRecipientOwnerOfGroupAsync(request.UserIdentity, request.GroupId, validateGroupExists: false)
+                : Task.FromResult(false);
+
+            var isSyncedOnPremisesTask = groupExists
+                ? _graphGroupRepository.IsGroupSyncedOnPremisesAsync(request.GroupId)
+                : Task.FromResult(false);
+
+            var syncJobTask = _syncJobRepository.GetSyncJobByObjectIdAsync(request.GroupId);
+
+            await Task.WhenAll(isAppIdOwnerTask, isUserOwnerTask, isSyncedOnPremisesTask, syncJobTask);
+
+            var isAppIdOwner = await isAppIdOwnerTask;
+            var isUserOwner = await isUserOwnerTask;
+            var isSyncedOnPremises = await isSyncedOnPremisesTask;
+            var isOnboarded = await syncJobTask != null;
 
             var response = new GetOnboardingStatusResponse();
 
             if (isOnboarded)
             {
                 response.Status = OnboardingStatus.Onboarded;
+            }
+            else if (isSyncedOnPremises)
+            {
+                response.Status = OnboardingStatus.SyncedOnPremises;
             }
             else if (!isAppIdOwner)
             {

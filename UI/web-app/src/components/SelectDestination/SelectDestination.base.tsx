@@ -276,6 +276,11 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.alreadyOnboardedWarning}</div>
     ) : null;
 
+  const onPremGroupWarning =
+    onboardingStatus?.status === OnboardingStatus.SyncedOnPremises ? (
+      <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.onPremisesSyncedGroup}</div>
+    ) : null;
+
   const teamsNotSupportedWarning =
     onboardingStatus?.status == OnboardingStatus.ReadyForOnboarding && selectedDestination?.type === DestinationType.TeamsChannelMembership && !selectedDestinationEndpoints?.includes("Microsoft Teams") ? (
       <div className={classNames.ownershipWarning}>{strings.ManageMembership.labels.teamsNotSupportedWarning}</div>
@@ -427,7 +432,8 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {!hasRequiredEndpoints() && (
                   <div className={classNames.spinnerContainer}>{loadingSearchResults ? <Spinner /> : null}</div>
                 )}
-                {selectedDestination && selectedDestinationEndpoints && (
+                {selectedDestination && selectedDestinationEndpoints && 
+                 onboardingStatus?.status !== OnboardingStatus.SyncedOnPremises && (
                   <EndpointsList
                     endpoints={selectedDestinationEndpoints}
                     groupName={selectedDestination.name}
@@ -437,6 +443,7 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
                 {appIdNotOwnerWarning}
                 {userNotOwnerWarning}
                 {alreadyOnboardedWarning}
+                {onPremGroupWarning}
                 {teamsNotSupportedWarning}
                 {hasNestedGroupsWarning}
                 {(appIdNotOwnerWarning || hasNestedGroupsWarning) && (

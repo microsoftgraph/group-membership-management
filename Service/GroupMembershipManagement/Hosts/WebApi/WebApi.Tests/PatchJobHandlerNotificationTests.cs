@@ -88,7 +88,7 @@ namespace WebApi.Tests
             _mockSyncJobRepository.Setup(x => x.GetSyncJobAsync(_testSyncJob.Id))
                 .ReturnsAsync(_testSyncJob);
 
-            _mockGraphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _mockGraphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                 .ReturnsAsync(true);
 
             _mockSyncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(_testSyncJob.Id))

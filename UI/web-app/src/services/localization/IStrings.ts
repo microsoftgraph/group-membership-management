@@ -433,6 +433,7 @@ export type IStrings = {
       noResultsFound: string;
       appsUsed: string;
       entraSecurityGroup: string;
+      onPremisesSyncedGroup: string;
       outlookWarning: string;
       teamsNotSupportedWarning: string;
       appIdNotOwnerWarning: string;

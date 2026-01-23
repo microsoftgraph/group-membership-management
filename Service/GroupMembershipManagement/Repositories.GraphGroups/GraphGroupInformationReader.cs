@@ -92,6 +92,66 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId, Guid? runId)
+        {
+            try
+            {
+                var nativeResponseHandler = new NativeResponseHandler();
+                var responseHandlerOption = new ResponseHandlerOption { ResponseHandler = nativeResponseHandler };
+                var retryHandlerOption = new RetryHandlerOption { MaxRetry = 4, Delay = 20 };
+
+                await _graphServiceClient.Groups[groupId.ToString()].GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = new[] { "onPremisesSyncEnabled" };
+                    requestConfiguration.Options.Add(retryHandlerOption);
+                    requestConfiguration.Options.Add(responseHandlerOption);
+                });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse.IsSuccessStatusCode)
+                {
+                    var group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
+                    // null or false means cloud-native, only true means on-prem synced
+                    return group?.OnPremisesSyncEnabled == true;
+                }
+                else if (nativeResponse.StatusCode == HttpStatusCode.NotFound)
+                {
+                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+                    return false;
+                }
+
+                throw new Exception($"Unable to determine if group {groupId} is on-premises synced. Status code: {nativeResponse.StatusCode}");
+            }
+            catch (ODataError ex)
+            {
+                if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+                    return false;
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = ex.GetBaseException().ToString(),
+                    RunId = runId
+                });
+
+                throw;
+            }
+        }
+
         public async Task<bool> GroupExistsAsync(string groupName, Guid? runId)
         {
             try

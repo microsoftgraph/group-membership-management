@@ -10,5 +10,6 @@ export enum OnboardingStatus {
     Onboarded,
     ReadyForOnboarding,
     GmmNotOwner,
-    UserNotOwner
+    UserNotOwner,
+    SyncedOnPremises
 };

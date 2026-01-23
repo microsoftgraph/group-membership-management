@@ -46,7 +46,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
+        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true)
         {
             return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
         }
@@ -54,6 +54,11 @@ namespace Repositories.ServiceBusTopics.Tests
         public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetFirstTransitiveMembersPageAsync(Guid objectId)
         {
             throw new NotImplementedException();
+        }
+
+        public Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId)
+        {
+            return Task.FromResult(false);
         }
 
         public Task<(List<AzureADUser> users, Dictionary<string, int> nonUserGraphObjects, string nextPageUrl)> GetNextTransitiveMembersPageAsync(Guid objectId, string nextPageUrl)
@@ -97,7 +102,7 @@ namespace Repositories.ServiceBusTopics.Tests
             throw new NotImplementedException();
         }
 
-        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId, bool validateGroupExists = true)
         {
             throw new NotImplementedException();
         }

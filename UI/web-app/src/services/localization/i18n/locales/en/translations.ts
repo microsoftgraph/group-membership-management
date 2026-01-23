@@ -438,6 +438,7 @@ export const strings: IStrings = {
       noResultsFound: 'No results found',
       appsUsed: 'This group uses the following apps:',
       entraSecurityGroup: 'This is an Entra Security Group',
+      onPremisesSyncedGroup: 'On-Premises groups are not supported',
       outlookWarning: 'There are important settings that should be considered before sending an email to this Outlook group. Please follow the instructions provided by your organization.',
       teamsNotSupportedWarning: 'Warning: This group is not Teams-enabled so Teams channel cannot be managed by GMM.',
       appIdNotOwnerWarning: 'To manage this group\'s membership GMM must be an owner of the group.{2} {0}{2}Once you have done that, come back and click:{2}{1}',

@@ -61,6 +61,11 @@ namespace Repositories.GraphGroups
             return await _graphGroupInformationReader.GroupExistsAsync(groupName, RunId);
         }
 
+        public async Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId)
+        {
+            return await _graphGroupInformationReader.IsGroupSyncedOnPremisesAsync(groupId, RunId);
+        }
+
         public async Task<AzureADGroup> GetGroup(string groupName)
         {
             return await _graphGroupInformationReader.GetGroupAsync(groupName, RunId);
@@ -101,10 +106,13 @@ namespace Repositories.GraphGroups
             return await _graphGroupMembershipReader.GetChildrenOfGroup(groupId, RunId);
         }
 
-        public async Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
+        public async Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true)
         {
-            var groupExists = await _graphGroupInformationReader.GroupExistsAsync(groupObjectId, RunId);
-            if (!groupExists) return false;
+            if (validateGroupExists)
+            {
+                var groupExists = await _graphGroupInformationReader.GroupExistsAsync(groupObjectId, RunId);
+                if (!groupExists) return false;
+            }
 
             return await _graphGroupOwnerReader.IsAppIDOwnerOfGroupAsync(appId, groupObjectId, RunId);
         }
@@ -114,10 +122,13 @@ namespace Repositories.GraphGroups
             return await _graphGroupOwnerReader.IsServiceAccountOwnerOfGroupAsync(serviceAccountObjectId, groupObjectId, RunId);
         }
 
-        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId)
+        public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId, bool validateGroupExists = true)
         {
-            var groupExists = await _graphGroupInformationReader.GroupExistsAsync(groupObjectId, RunId);
-            if (!groupExists) return false;
+            if (validateGroupExists)
+            {
+                var groupExists = await _graphGroupInformationReader.GroupExistsAsync(groupObjectId, RunId);
+                if (!groupExists) return false;
+            }
 
             return await _graphGroupOwnerReader.IsEmailRecipientOwnerOfGroupAsync(userIdentifier, groupObjectId, RunId);
         }
@@ -286,7 +297,7 @@ namespace Repositories.GraphGroups
         }
 
         public async Task<List<AzureADGroup>> GetDirectGroupTypeMembersAsync(Guid groupObjectId)
-        {            
+        {
             var children = await _graphGroupMembershipReader.GetDirectGroupMembersAsync(groupObjectId, RunId);
             return children.OfType<AzureADGroup>().ToList();
         }

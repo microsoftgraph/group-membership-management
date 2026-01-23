@@ -111,7 +111,7 @@ namespace Services.Tests
                 var groupName = $"Test Group {index}";
 
                 _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(
-                    It.Is<string>(s => s == _userUPN), It.Is<Guid>(groupId => groupId == group.ObjectId)))
+                    It.Is<string>(s => s == _userUPN), It.Is<Guid>(groupId => groupId == group.ObjectId), It.IsAny<bool>()))
                     .ReturnsAsync(true);
 
                 _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.Is<Guid>(g => g == group.ObjectId)))

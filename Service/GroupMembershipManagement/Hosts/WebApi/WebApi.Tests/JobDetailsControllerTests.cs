@@ -107,7 +107,7 @@ namespace Services.Tests
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => _isGroupOwner);
 
             _graphGroupRepository.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>()))
@@ -463,7 +463,7 @@ namespace Services.Tests
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(
@@ -556,7 +556,7 @@ namespace Services.Tests
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(
@@ -598,7 +598,7 @@ namespace Services.Tests
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(
@@ -1347,7 +1347,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())})
             };
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             var operations = new List<PatchOperation>
@@ -1434,7 +1434,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(context)
             };
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(userId, _jobEntity.Group.GroupId))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(userId, _jobEntity.Group.GroupId, It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             var response = await _jobDetailsController.RemoveGMMAsync(_jobEntity.Id);
@@ -1486,7 +1486,7 @@ namespace Services.Tests
                 ControllerContext = CreateControllerContext(context)
             };
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             var response = await _jobDetailsController.RemoveGMMAsync(syncJobId);

@@ -57,7 +57,12 @@ namespace Tests.FunctionApps.Mocks
             return Task.FromResult(GroupsToUsers.ContainsKey(objectId));
         }
 
-        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId)
+        public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId)
         {
             throw new NotImplementedException();
         }
@@ -130,7 +135,7 @@ namespace Tests.FunctionApps.Mocks
             return Task.FromResult((users, nonUserGraphObjects, ""));
         }
 
-        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId)
+        public Task<bool> IsEmailRecipientOwnerOfGroupAsync(string email, Guid groupObjectId, bool validateGroupExists = true)
         {
             throw new NotImplementedException();
         }

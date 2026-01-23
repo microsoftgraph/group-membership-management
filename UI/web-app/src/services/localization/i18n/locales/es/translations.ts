@@ -440,6 +440,7 @@ export const strings: IStrings = {
       noResultsFound: 'No se encontraron resultados',
       appsUsed: 'Este grupo utiliza las siguientes aplicaciones.',
       entraSecurityGroup: 'Este es un grupo de seguridad de Entra',
+      onPremisesSyncedGroup: 'Los grupos de Active Directory local no son compatibles',
       outlookWarning: 'Hay configuraciones importantes que deben considerarse antes de enviar un correo electrónico a este grupo de Outlook. Por favor, siga las instrucciones proporcionadas por su organización.',
       teamsNotSupportedWarning: "Atención: Este grupo de Teams no es compatible con GMM. Por favor, seleccione un grupo diferente.",
       appIdNotOwnerWarning: 'Para administrar la membresía de este grupo, GMM debe ser propietario del grupo.{2} {0}{2}Una vez que hayas hecho eso, regresa y haz clic en: {1}',

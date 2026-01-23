@@ -140,7 +140,7 @@ namespace Services.Tests
             _channels = [new Channel { Id = "TestId", DisplayName = "TestName" }];
 
             _graphGroupRepository.Setup(x => x.SearchDestinationsAsync(It.IsAny<string>())).ReturnsAsync(() => _destinations);
-            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == _validDestinationId))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == _validDestinationId), It.IsAny<bool>())).ReturnsAsync(true);
             _graphGroupRepository.Setup(x => x.GetGroupEndpointsAsync(It.IsAny<Guid>())).ReturnsAsync(_expectedEndpoints);
 
             _teamsChannelRepository.Setup(x => x.SearchTeamsChannelsAsync(It.IsAny<Guid>(), It.IsAny<string>())).ReturnsAsync(() => _channels);
@@ -223,8 +223,10 @@ namespace Services.Tests
         {
             Guid groupNotOnboarded = Guid.NewGuid();
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
-            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.GroupExists(It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsGroupSyncedOnPremisesAsync(It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded), It.IsAny<bool>())).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded), It.IsAny<bool>())).ReturnsAsync(true);
 
             var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
             var result = response.Result as OkObjectResult;
@@ -243,8 +245,10 @@ namespace Services.Tests
         {
             Guid groupNotOnboarded = Guid.NewGuid();
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
-            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.GroupExists(It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsGroupSyncedOnPremisesAsync(It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded), It.IsAny<bool>())).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded), It.IsAny<bool>())).ReturnsAsync(true);
 
             var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
             var result = response.Result as OkObjectResult;
@@ -276,8 +280,10 @@ namespace Services.Tests
 
             Guid groupNotOnboarded = Guid.NewGuid();
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
-            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.GroupExists(It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsGroupSyncedOnPremisesAsync(It.Is<Guid>(g => g == groupNotOnboarded))).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded), It.IsAny<bool>())).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupNotOnboarded), It.IsAny<bool>())).ReturnsAsync(false);
 
             var response = await _destinationController.GetGroupOnboardingStatusAsync(groupNotOnboarded);
             var result = response.Result as OkObjectResult;
@@ -305,8 +311,8 @@ namespace Services.Tests
 
             Guid groupId = Guid.NewGuid();
             _syncJobRepository.Setup(x => x.GetSyncJobByObjectIdAsync(It.IsAny<Guid>())).ReturnsAsync((SyncJob)null);
-            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupId))).ReturnsAsync(true);
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupId))).ReturnsAsync(false);
+            _graphGroupRepository.Setup(x => x.IsAppIDOwnerOfGroup(It.IsAny<string>(), It.Is<Guid>(g => g == groupId), It.IsAny<bool>())).ReturnsAsync(true);
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.Is<Guid>(g => g == groupId), It.IsAny<bool>())).ReturnsAsync(false);
 
             var response = await _destinationController.GetGroupOnboardingStatusAsync(groupId);
             var result = response.Result as ForbidResult;

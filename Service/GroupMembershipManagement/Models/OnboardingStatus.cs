@@ -8,6 +8,7 @@ namespace Models
         Onboarded,
         ReadyForOnboarding,
         GmmNotOwner,
-        UserNotOwner
+        UserNotOwner,
+        SyncedOnPremises
     }
 }

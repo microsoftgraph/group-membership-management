@@ -695,7 +695,7 @@ namespace Services.Tests
                 HttpContext = _context
             };
 
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                     .ReturnsAsync(() => false);
 
             _databaseSyncJobsRepository.Setup(x => x.CreateSyncJobAsync(It.IsAny<SyncJob>()))
@@ -2293,7 +2293,7 @@ namespace Services.Tests
 
             // Setup required mocks for job creation
             var destinationGuid = Guid.NewGuid();
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                 .ReturnsAsync(true);
 
             _graphGroupRepository.Setup(x => x.GetGroupEmailAsync(It.IsAny<Guid>()))
@@ -2366,7 +2366,7 @@ namespace Services.Tests
 
             // Setup required mocks for job creation
             var destinationGuid = Guid.NewGuid();
-            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()))
+            _graphGroupRepository.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<bool>()))
                                 .ReturnsAsync(true);
 
             _graphGroupRepository.Setup(x => x.GetGroupEmailAsync(It.IsAny<Guid>()))

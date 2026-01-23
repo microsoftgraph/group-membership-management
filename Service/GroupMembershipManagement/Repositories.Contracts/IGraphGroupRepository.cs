@@ -21,14 +21,15 @@ namespace Repositories.Contracts
         Task<Dictionary<Guid, string>> GetGroupEmailsAsync(List<Guid> objectIds);
 
         Task<List<string>> GetGroupEndpointsAsync(Guid groupId);
-        Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId);
+        Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true);
         Task<bool> IsServiceAccountOwnerOfGroupAsync(Guid serviceAccountObjectId, Guid groupObjectId);
-        Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId);
+        Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId, bool validateGroupExists = true);
         Task<bool> IsEmailRecipientMemberOfGroupAsync(string userIdentifier, Guid groupObjectId);
         Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds);
         Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, int top = 0);
         Task<bool> GroupExists(Guid objectId);
         Task<bool> GroupExists(string groupName);
+        Task<bool> IsGroupSyncedOnPremisesAsync(Guid groupId);
         Task<AzureADGroup> GetGroup(string groupName);
         Task CreateGroup(string newGroupName, TestGroupType testGroupType, List<Guid> groupOwnerIds);
         Task<AzureADGroup> CreateGroupFromUI(string newGroupName, Guid groupOwnerId, string newGroupAlias);
