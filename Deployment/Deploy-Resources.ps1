@@ -1495,13 +1495,22 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SkipIfApplicationExists $false `
         -Clean $false
 
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1')
+    $functionAuthInformation = Set-FunctionAuthApplication `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppTenantId $DirectoryTenantId `
+        -SaveToKeyVault $SaveToKeyVault `
+        -SkipIfApplicationExists $false `
+        -Clean $false
 
     # determine which apps need admin consent
     $appInformationObjects = @(
         $uiInformation,
         $apiInformation,
         $graphInformation,
-        $teamsChannelInformation
+        $teamsChannelInformation,
+        $functionAuthInformation
     )
 
     $appsThatNeedAdminConsent = @()
@@ -1521,9 +1530,11 @@ function Set-GMMAppRegistrationsProgrammatically {
         WebApiAppId = $apiInformation.ApplicationId
         GraphAppId = $graphInformation.ApplicationId
         TeamsChannelAppId = $teamsChannelInformation.ApplicationId
+        FunctionAuthAppId = $functionAuthInformation.ApplicationId
         AppsThatNeedAdminConsent = $appsThatNeedAdminConsent
     }
 }
+
 
 function Save-GMMAppRegistrationSecrets {
     [CmdletBinding()]
@@ -1585,6 +1596,13 @@ function Save-GMMAppRegistrationSecrets {
         return
     }
     Write-Host "  ✓ Teams Channel App ID: $teamsChannelAppId" -ForegroundColor Gray
+
+    $functionAuthAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'").AppId
+    if (-not $functionAuthAppId) {
+        Write-Error "FunctionAuth Application '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation' not found"
+        return
+    }
+    Write-Host "  ✓ FunctionAuth App ID: $functionAuthAppId" -ForegroundColor Gray
 
     $createNewSecrets = $false
     $askForSecretInput = $false
@@ -1741,6 +1759,20 @@ function Save-GMMAppRegistrationSecrets {
 
     Write-Host "✅ Teams Channel Application secrets saved" -ForegroundColor Green
 
+    # FunctionAuth Application Secrets
+    Write-Host "`n📝 Saving FunctionAuth Application secrets..." -ForegroundColor Yellow
+
+    $functionAuthScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-FunctionAuthApplication.ps1"
+    . $functionAuthScriptPath
+
+    Set-FunctionAuthKeyVaultSecrets `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -AppTenantId $AppTenantId `
+        -FunctionAuthAppClientId $functionAuthAppId
+
+    Write-Host "✅ FunctionAuth Application secrets saved" -ForegroundColor Green
+
     Write-Host "`n✅ All app registration secrets have been saved to Key Vault" -ForegroundColor Green
     Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
 }
@@ -1771,6 +1803,7 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "   2. WebAPI Application      ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)" -ForegroundColor White
     Write-Host "   3. Graph Application       ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)" -ForegroundColor White
     Write-Host "   4. Teams Channel App       ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)" -ForegroundColor White
+    Write-Host "   5. FunctionAuth App        ($SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation)" -ForegroundColor White
 
     Write-Host "`n📖 Manual Setup Documentation:" -ForegroundColor Cyan
     Write-Host "   Please refer to the following documentation for manual setup steps:" -ForegroundColor White
@@ -1778,6 +1811,7 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/WebAPI-Application-Creation-Instructions.md" -ForegroundColor Gray
     Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/GraphCredentials-Application-Creation-Instructions.md" -ForegroundColor Gray
     Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/TeamsChannel-Application-Creation-Instructions.md" -ForegroundColor Gray
+    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/FunctionAuth-Application-Creation-Instructions.md" -ForegroundColor Gray
 
     Write-Host "`n🔧 PowerShell Script Signatures:" -ForegroundColor Cyan
     Write-Host "   If you prefer to run the setup scripts, use these commands in a separate" -ForegroundColor White
@@ -1841,6 +1875,16 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
     Write-Host "       -Clean `$false`n" -ForegroundColor Gray
 
+    Write-Host "   # 5. FunctionAuth Application" -ForegroundColor Green
+    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1`"" -ForegroundColor Gray
+    Write-Host "   Set-FunctionAuthApplication ``" -ForegroundColor Gray
+    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
+    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
+    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
+    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
+    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+
     if ($IsClientSecretAuth -eq $true) {
         Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
         Write-Host "🔐 Creating Application Secrets (Client Secret Authentication)" -ForegroundColor Yellow
@@ -1873,12 +1917,14 @@ function Set-GMMAppRegistrationsManually {
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1')
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1')
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1')
+    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1')
 
     # Validate each application
     $uiValid = Test-UIApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $webApiValid = Test-WebApiApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $graphValid = Test-GraphCredentialsApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $teamsChannelValid = Test-TeamsChannelApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $functionAuthValid = Test-FunctionAuthApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
 
     Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
     Write-Host "📊 Validation Summary:" -ForegroundColor Cyan
@@ -1886,9 +1932,10 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "   WebAPI Application:       $(if ($webApiValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($webApiValid) { 'Green' } else { 'Red' })
     Write-Host "   Graph Application:        $(if ($graphValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($graphValid) { 'Green' } else { 'Red' })
     Write-Host "   Teams Channel Application: $(if ($teamsChannelValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($teamsChannelValid) { 'Green' } else { 'Red' })
+    Write-Host "   FunctionAuth Application: $(if ($functionAuthValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($functionAuthValid) { 'Green' } else { 'Red' })
     Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
 
-    if (-not ($uiValid -and $webApiValid -and $graphValid -and $teamsChannelValid)) {
+    if (-not ($uiValid -and $webApiValid -and $graphValid -and $teamsChannelValid -and $functionAuthValid)) {
         Write-Host "❌ One or more applications failed validation. Please review the errors above and fix the issues." -ForegroundColor Red
         Write-Host "   You can re-run the validation by calling the Test-*Application functions individually.`n" -ForegroundColor Yellow
         throw "App registration validation failed. Please fix the issues and try again."
@@ -1901,6 +1948,7 @@ function Set-GMMAppRegistrationsManually {
     $webApiApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'"
     $graphApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'"
     $teamsChannelApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'"
+    $functionAuthApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'"
 
     # Check which apps need admin consent based on their required resource access
     $appsThatNeedAdminConsent = @()
@@ -1909,7 +1957,8 @@ function Set-GMMAppRegistrationsManually {
         $uiApp,
         $webApiApp,
         $graphApp,
-        $teamsChannelApp
+        $teamsChannelApp,
+        $functionAuthApp
     )
 
     foreach ($app in $apps) {
@@ -1928,6 +1977,7 @@ function Set-GMMAppRegistrationsManually {
         WebApiAppId = $webApiApp.AppId
         GraphAppId = $graphApp.AppId
         TeamsChannelAppId = $teamsChannelApp.AppId
+        FunctionAuthAppId = $functionAuthApp.AppId
         AppsThatNeedAdminConsent = $appsThatNeedAdminConsent
     }   
 }
