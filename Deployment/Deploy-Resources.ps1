@@ -659,6 +659,19 @@ function Set-ADFResources {
         -KeyVaultName $dataResourceGroup `
         -SecretNames $adfDataSecrets
 
+    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+    $functionAuthAppClientId = Get-KeyVaultSecretWithFirewallRetry `
+                                -VaultName $prereqsResourceGroup `
+                                -ResourceGroup $prereqsResourceGroup `
+                                -SecretName "functionAuthAppClientId" `
+                                -AsPlainText
+    
+    if ([string]::IsNullOrWhiteSpace($functionAuthAppClientId)) {
+        throw "Function Auth App Client Id secret is not set in the Key Vault '$prereqsResourceGroup'. Please set the secret and re-run the deployment."
+    }
+
+    $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
+    
     # Deploy ADF resources
     Write-Host "`nCreating ADF resources"
     $templateFilePath = "$ADFTemplateDirectoryPath/adfHRResources.json"

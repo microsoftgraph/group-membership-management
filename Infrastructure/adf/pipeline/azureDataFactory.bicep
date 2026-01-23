@@ -28,6 +28,9 @@ param azureUserReaderFunctionKey string
 @secure()
 param storageAccountName string
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
 var destinationDatabaseLinkedService = 'DestinationDatabase_${resourceSuffix}'
@@ -92,11 +95,12 @@ resource linkedService_AzureUserReader 'Microsoft.DataFactory/factories/linkedSe
     type: 'AzureFunction'
     typeProperties: {
       functionAppUrl: azureUserReaderUrl
+      authentication: 'MSI'
+      resourceId: 'api://${functionAuthAppClientId}'
       functionKey: {
         type: 'SecureString'
         value: azureUserReaderFunctionKey
       }
-      authentication: 'Anonymous'
     }
   }
   dependsOn: []

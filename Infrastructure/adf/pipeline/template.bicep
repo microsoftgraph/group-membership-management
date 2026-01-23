@@ -26,6 +26,9 @@ param azureDataFactoryName string = '${solutionAbbreviation}-data-${environmentA
 @description('Resource name suffix')
 param resourceSuffix string = 'demo'
 
+@description('Function authentication app client id.')
+param functionAuthAppClientId string
+
 var dataKeyVaultName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 
 resource dataKeyVault 'Microsoft.KeyVault/vaults@2019-09-01' existing = {
@@ -45,5 +48,6 @@ module azureDataFactoryTemplate 'azureDataFactory.bicep' = {
 		azureUserReaderUrl: dataKeyVault.getSecret('azureUserReaderUrl')
 		azureUserReaderFunctionKey: dataKeyVault.getSecret('azureUserReaderKey')
 		storageAccountName: dataKeyVault.getSecret('adfStorageAccountName')
+		functionAuthAppClientId: functionAuthAppClientId
 	}
 }

@@ -1,8 +1,8 @@
 param location string
 param environmentAbbreviation string
 param solutionAbbreviation string
-
 param tenantId string
+param functionAuthAppClientId string
 
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
@@ -28,6 +28,7 @@ module adfForHRData '../Infrastructure/adf/pipeline/template.bicep' = {
     tenantId: tenantId
     sqlServerName: sqlServerName
     sqlDatabaseName: sqlDataBaseName
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     sqlForHRData
