@@ -108,13 +108,32 @@ namespace Services.Tests
 
                     });
 
-            _requestAdapter.Setup(x => x.SendAsync(
+            _requestAdapter.Setup(x => x.SendAsync<EndpointCollectionResponse>(
                                                     It.IsAny<RequestInformation>(),
                                                     It.IsAny<ParsableFactory<EndpointCollectionResponse>>(),
                                                     It.IsAny<Dictionary<string, ParsableFactory<IParsable>>>(),
                                                     It.IsAny<CancellationToken>()
                                                   )
                                  )
+                            .Callback<RequestInformation, ParsableFactory<EndpointCollectionResponse>, Dictionary<string, ParsableFactory<IParsable>>, CancellationToken>(
+                    (request, factory, errorMapping, cancellationToken) =>
+                    {
+                        var responseHandler = request?.RequestOptions?.FirstOrDefault(x => x.GetType() == typeof(ResponseHandlerOption)) as ResponseHandlerOption;
+                        
+                        if (responseHandler?.ResponseHandler is NativeResponseHandler nativeResponseHandler)
+                        {
+                            // Build the provider array JSON
+                            var providerArray = string.Join(",", providers.Select(p => $"{{\"providerName\":\"{p}\"}}"));
+                            var jsonContent = $"{{\"value\":[{providerArray}]}}";
+                            
+                            var httpResponse = new HttpResponseMessage(HttpStatusCode.OK)
+                            {
+                                Content = new StringContent(jsonContent, Encoding.UTF8, "application/json")
+                            };
+
+                            nativeResponseHandler.Value = httpResponse;
+                        }
+                    })
                             .ReturnsAsync(() =>
                             {
                                 var collectionReponse = new EndpointCollectionResponse() { Value = new List<Endpoint>() };
