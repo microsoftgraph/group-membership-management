@@ -6,27 +6,6 @@ If an actionable message is sent from an email address that is not part of the a
 
 These are the steps to procure a `provider id` for an environment.
 
-## Create OAM Entra App
-
-1. Navigate to the [Azure Portal] and go to **Azure Active Directory** > **App registrations**.
-1. Click **New registration** and provide:
-    - **Name**: A descriptive name for the app. *Example: `<SolutionAbbreviation>`-OAM-`<EnvironmentAbbreviation>`.*
-    - **Supported account types**: Select "Accounts in this organizational directory only (Single tenant)".
-    - **Redirect URI**: Leave blank for now.
-1. Click **Register**.
-1. After the app is created, note the **Application (client) ID** - you'll need this for the `oamEntraAppId` parameter.
-1. Navigate to **Expose an API** and click **Add a scope**:
-    - **Scope name**: `Global`
-    - **Who can consent**: Admins and users
-    - **Admin consent display name**: Access OAM application
-    - **Admin consent description**: Allows the app to access OAM functionality on behalf of the signed-in user
-    - **State**: Enabled
-1. Click **Add scope**.
-1. Still in **Expose an API**, scroll down to **Authorized client applications** and click **Add a client application**:
-    - **Client ID**: Enter the Outlook client application ID: `48af08dc-f6d2-435f-b2a7-069abd99c086`
-    - **Authorized scopes**: Check the scope you just created (e.g., `api://auth-am-<oam-provider-id>/<your-app-id>/Global`)
-1. Click **Add application**.
-
 ## Create a Provider
 
 1. Navigate to the [Outlook Actionable Messages Developer Dashboard].
@@ -35,11 +14,40 @@ These are the steps to procure a `provider id` for an environment.
     Field Name | Description
     -|-
     Friendly Name | A name that represents the environment associated with the Originator Id. *Example: `<SolutionAbbreviation>` Notifier `<EnvironmentAbbreviation>`.*
+    MsEntraAuth > MSEntra Application Id | The id of the OAM app. See [Create OAM Entra App](#create-oam-entra-app) below for setup instructions. Use the Provider Id in the actionable email dashboard as the input for the OamProviderId parameter in the script.
+    MsEntraAuth > App Id Uri | This should be already set to 'api://auth-am-\<providerId\>/\<appId\>'
+    MsEntraAuth > Supported Token Type | Should be set to AadToken
     Sender Email Address | The email address from which actionable messages will be sent.
     Target URLs | The endpoints where the actional messages will send responses. Example: https://`<SolutionAbbreviation>`-compute-`<EnvironmentAbbreviation>`-webapi.azurewebsites.net/.+
     Scope of Submission | This should be set to `Organization` scope.
 
 After the submission is sent, an email will be sent to the Exchange admins asking them to review the request. The email contains an actionable message with a button that directs them to the [Outlook Actionable Messages Admin Dashboard] where they can approve the request.
+
+## Create OAM Entra App
+
+You can create the OAM Entra App using either the automated PowerShell script (recommended) or manually through the Azure Portal.
+
+### Option 1: Automated Setup (Recommended)
+
+Run the [Set-OAMEmailApplication.ps1](../../../../../Scripts/ApplicationSetupScripts/Set-OAMEmailApplication.ps1) script:
+
+```powershell
+Set-OAMEmailApplication -SolutionAbbreviation "<solution-abbreviation>" `
+                        -EnvironmentAbbreviation "<environment-abbreviation>" `
+                        -AppTenantId "<app-tenant-id>" `
+                        -OamProviderId "<oam-provider-id>" `
+                        -Clean $false
+```
+
+> **Note**: You will need the OAM Provider ID from the [Create a Provider](#create-a-provider) step before running this script. You can create the provider first, then run the script with the provider ID.
+
+The script will output the Application (client) ID which you'll need for the `oamEntraAppId` parameter.
+
+### Option 2: Manual Setup
+
+For manual setup instructions, see [OAMEmail-Application-Creation-Instructions.md](../../../../../Scripts/ApplicationSetupScripts/Manual%20Setup%20Documentation/OAMEmail-Application-Creation-Instructions.md).
+
+
 
 
 ## Update parameters.env.json file with your new notifierId
