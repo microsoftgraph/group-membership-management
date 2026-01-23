@@ -81,24 +81,21 @@ function Test-OrphanedRoleAssignmentPrincipalExists {
 function Set-OrphanedRoleAssignmentsCleanup {
 	[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
 	param(
-		[Parameter(Mandatory = $false)]
+		[Parameter(Mandatory = $true)]
 		[string] $SubscriptionId,
 		[Parameter(Mandatory = $false)]
 		[string] $Scope,
 		[Parameter(Mandatory = $false)]
 		[string] $ScriptsDirectory,
 		[Parameter(Mandatory = $false)]
-		[switch] $SkipPrincipalVerification,
-		[Parameter(Mandatory = $false)]
 		[switch] $Interactive
 	)
 
 	Write-Verbose "Set-OrphanedRoleAssignmentsCleanup starting..."
 	Write-Host "Starting orphaned role assignments cleanup operation..." -ForegroundColor Cyan
-	Write-Verbose "SkipPrincipalVerification: $SkipPrincipalVerification"
 
 	# Interactive mode for manual execution
-	if ($Interactive -or [string]::IsNullOrWhiteSpace($SubscriptionId)) {
+	if ($Interactive) {
 		Write-Host ""
 		Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
 		Write-Host "║          Orphaned Role Assignments Cleanup Tool                ║" -ForegroundColor Cyan
@@ -118,31 +115,6 @@ function Set-OrphanedRoleAssignmentsCleanup {
 
 		Write-Host "Current Azure Account: $($currentContext.Account.Id)" -ForegroundColor Green
 		Write-Host ""
-
-		# Get subscription
-		if ([string]::IsNullOrWhiteSpace($SubscriptionId)) {
-			$subscriptions = Get-AzSubscription | Select-Object -Property Name, Id, TenantId
-			if ($subscriptions.Count -gt 1) {
-				Write-Host "Available subscriptions:"
-				$subscriptions | ForEach-Object { Write-Host "  [$($_.Id)] $($_.Name)" }
-				Write-Host ""
-				$SubscriptionId = Read-Host "Enter Subscription ID"
-			}
-			elseif ($subscriptions.Count -eq 1) {
-				$SubscriptionId = $subscriptions.Id
-				Write-Host "Using subscription: $($subscriptions.Name) [$SubscriptionId]" -ForegroundColor Green
-			}
-			else {
-				throw "No subscriptions found. Check your Azure login."
-			}
-		}
-
-		Write-Host ""
-		$response = Read-Host "Continue with cleanup? (yes/no)"
-		if ($response -ne 'yes') {
-			Write-Host "Cleanup cancelled." -ForegroundColor Yellow
-			return
-		}
 	}
 
 	if ([string]::IsNullOrWhiteSpace($Scope)) {
@@ -200,19 +172,11 @@ function Set-OrphanedRoleAssignmentsCleanup {
 			continue
 		}
 
-		if ($SkipPrincipalVerification) {
-			# In skip mode, treat all assignments as potential orphans
-			# This avoids authorization errors when service principal lacks Directory.Read.All permission
-			Write-Verbose "Adding to orphan list (SkipPrincipalVerification mode): ObjectId=$objectId, DisplayName=$($assignment.DisplayName), Type=$($assignment.ObjectType), Role=$($assignment.RoleDefinitionName)"
-			$orphanedAssignments += $assignment
-		}
-		else {
-			$exists = Test-OrphanedRoleAssignmentPrincipalExists -ObjectId $objectId -ObjectType $assignment.ObjectType -DisplayName $assignment.DisplayName
+		$exists = Test-OrphanedRoleAssignmentPrincipalExists -ObjectId $objectId -ObjectType $assignment.ObjectType -DisplayName $assignment.DisplayName
 
-			if ($exists -eq $false) {
-				Write-Verbose "Adding to orphan list (principal not found): ObjectId=$objectId, DisplayName=$($assignment.DisplayName), Type=$($assignment.ObjectType), Role=$($assignment.RoleDefinitionName)"
-				$orphanedAssignments += $assignment
-			}
+		if ($exists -eq $false) {
+			Write-Verbose "Adding to orphan list (principal not found): ObjectId=$objectId, DisplayName=$($assignment.DisplayName), Type=$($assignment.ObjectType), Role=$($assignment.RoleDefinitionName)"
+			$orphanedAssignments += $assignment
 		}
 	}
 
@@ -244,8 +208,28 @@ function Set-OrphanedRoleAssignmentsCleanup {
 	}
 	Write-Host ""
 
-	# Ask for confirmation once, upfront
-	$response = Read-Host "Remove these $($orphanedAssignments.Count) orphaned role assignment(s)? (yes/no)"
+	# Ask for confirmation once, upfront with a 60-second timeout
+	Write-Host "Remove these $($orphanedAssignments.Count) orphaned role assignment(s)? (yes/no) [timeout in 60 seconds]: " -ForegroundColor DarkYellow -NoNewline
+	
+	$inputJob = Start-Job -ScriptBlock { Read-Host }
+	$startTime = [DateTime]::UtcNow
+	$timeoutSeconds = 60
+	
+	while (-not $inputJob.State -eq 'Completed' -and ([DateTime]::UtcNow - $startTime).TotalSeconds -lt $timeoutSeconds) {
+		Start-Sleep -Milliseconds 200
+	}
+	
+	if ($inputJob.State -eq 'Completed') {
+		$response = Receive-Job -Job $inputJob 2>$null
+		Remove-Job -Job $inputJob -Force
+	}
+	else {
+		Remove-Job -Job $inputJob -Force
+		Write-Host ""
+		Write-Host "Input timeout (60 seconds). Exiting script." -ForegroundColor Yellow
+		return
+	}
+	
 	if ($response -ne 'yes') {
 		Write-Host "Cleanup cancelled." -ForegroundColor Yellow
 		return
@@ -262,6 +246,12 @@ function Set-OrphanedRoleAssignmentsCleanup {
 		}
 		if (-not $principalLabel) {
 			$principalLabel = $assignment.ObjectId
+		}
+
+		if ($WhatIfPreference) {
+			Write-Host "What if: Removing orphaned role assignment '$($assignment.RoleDefinitionName)' for '$principalLabel'." -ForegroundColor Cyan
+			$removedAssignments += $assignment
+			continue
 		}
 
 		try {
