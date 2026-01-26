@@ -34,7 +34,7 @@ namespace Hosts.AzureMaintenance
 
                     config.AddAzureAppConfiguration(options =>
                     {
-                        DefaultAzureCredential credential = new DefaultAzureCredential();
+                        DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
                         options.Connect(new Uri(appConfigEndpoint), credential).UseFeatureFlags();
                     });
                 })
