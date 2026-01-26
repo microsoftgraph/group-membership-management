@@ -109,19 +109,18 @@ namespace Repositories.GraphGroups
 
                 var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
 
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+
                 if (nativeResponse.IsSuccessStatusCode)
                 {
                     var group = await DeserializeResponseAsync(nativeResponse, Group.CreateFromDiscriminatorValue);
-                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
-                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
                     // null or false means cloud-native, only true means on-prem synced
                     return group?.OnPremisesSyncEnabled == true;
                 }
                 else if (nativeResponse.StatusCode == HttpStatusCode.NotFound)
                 {
-                    var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
-                    await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
                     return false;
                 }
 
