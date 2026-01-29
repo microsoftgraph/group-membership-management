@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Azure.Messaging.ServiceBus;
+using MessageSplitter.Contracts;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Models;
@@ -15,12 +16,16 @@ namespace Hosts.MessageSplitter
 {
     public class PendingDispatcherFunction
     {
+        private const int MaxDeliveryCount = 10;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly IMessageSplitterService _messageSplitterService;
 
         public PendingDispatcherFunction(
-            ILoggingRepository loggingRepository)
+            ILoggingRepository loggingRepository,
+            IMessageSplitterService messageSplitterService)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _messageSplitterService = messageSplitterService ?? throw new ArgumentNullException(nameof(messageSplitterService));
         }
 
         [Function(nameof(PendingDispatcherFunction))]
@@ -56,9 +61,52 @@ namespace Hosts.MessageSplitter
                 return;
             }
 
-            // Defer the message first to minimize the window for gRPC connection issues.
-            // The gRPC channel between the isolated worker and Functions host can become unavailable
-            // if there's too much delay between message receipt and deferral.
+            // Schedule the orchestrator FIRST, before deferring.
+            // If this fails (e.g., gRPC timeout), the message is NOT deferred and Service Bus will retry delivery.
+            // This prevents messages from being stranded in a deferred state without being indexed.
+            string orchestrationInstanceId;
+            try
+            {
+                orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
+                    nameof(DeferredPendingEnqueueOrchestrator),
+                    new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId));
+
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage { Message = $"Scheduled pending drain orchestrator; instanceId={orchestrationInstanceId} lane={lane} seq={message.SequenceNumber}", RunId = runId },
+                    VerbosityLevel.INFO);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage
+                    {
+                        Message = $"Failed to schedule orchestrator for pending message; lane={lane} seq={message.SequenceNumber} deliveryCount={message.DeliveryCount} err={ex.Message}",
+                        RunId = runId
+                    },
+                    VerbosityLevel.INFO);
+
+                // If this is the last delivery attempt, set job to Error and dead-letter the message
+                if (message.DeliveryCount >= MaxDeliveryCount)
+                {
+                    await _loggingRepository.LogMessageAsync(
+                        new LogMessage
+                        {
+                            Message = $"Max delivery count reached; setting job to Error and dead-lettering message; lane={lane} seq={message.SequenceNumber}",
+                            RunId = runId
+                        },
+                        VerbosityLevel.INFO);
+
+                    await _messageSplitterService.UpdateJobStatusAsync(request.MembershipRequest.SyncJob.Id, SyncStatus.Error);
+                    await actions.DeadLetterMessageAsync(message, deadLetterReason: "MaxDeliveryCountExceeded", deadLetterErrorDescription: ex.Message);
+                    return;
+                }
+
+                // Rethrow - message is NOT deferred, Service Bus will retry
+                throw;
+            }
+
+            // Now defer the message. If this fails, the orchestrator will handle the "message not found" case
+            // gracefully by removing it from the index.
             try
             {
                 await actions.DeferMessageAsync(message);
@@ -80,15 +128,6 @@ namespace Hosts.MessageSplitter
                 // Rethrow so Service Bus trigger retries; deferral is required for drain-by-sequence.
                 throw;
             }
-
-            // Index + drain kick are done via an orchestrator to keep durable operations deterministic.
-            var orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
-                nameof(DeferredPendingEnqueueOrchestrator),
-                new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId));
-
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Scheduled pending drain orchestrator; instanceId={orchestrationInstanceId} lane={lane} seq={message.SequenceNumber}", RunId = runId },
-                VerbosityLevel.INFO);
         }
     }
 }
