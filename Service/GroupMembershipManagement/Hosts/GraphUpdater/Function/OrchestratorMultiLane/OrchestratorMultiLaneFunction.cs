@@ -604,8 +604,8 @@ namespace Hosts.GraphUpdater
                 JobId = jobId,
                 Status = syncStatus,
                 ThresholdViolations = thresholdViolations,
-                UsersAdded = usersAdded,
-                UsersRemoved = usersRemoved
+                UsersAdded = usersAdded ?? 0,
+                UsersRemoved = usersRemoved ?? 0
             };
         }
 

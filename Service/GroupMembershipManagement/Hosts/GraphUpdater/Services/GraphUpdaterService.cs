@@ -107,7 +107,7 @@ namespace Services
 
             });
         }
-        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded = null, int? usersRemoved = null)
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Set job status to {status}.", RunId = runId });
 

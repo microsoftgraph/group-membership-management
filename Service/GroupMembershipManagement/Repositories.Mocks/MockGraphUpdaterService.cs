@@ -76,7 +76,7 @@ namespace Repositories.Mocks
 
         }
 
-        public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded = null, int? usersRemoved = null)
+        public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved)
         {
             job.RunId = runId;
             job.Status = status.ToString();

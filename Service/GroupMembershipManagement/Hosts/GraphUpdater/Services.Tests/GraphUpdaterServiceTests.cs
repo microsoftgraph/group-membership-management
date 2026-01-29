@@ -170,7 +170,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId);
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId, null, null);
 
             Assert.AreEqual(SyncStatus.Idle.ToString(), job.Status);
             Assert.IsTrue(job.LastRunTime > lastRunTime);
@@ -211,7 +211,7 @@ namespace Services.Tests
 
             await mockSyncJobs.AddSyncJobAsync(job);
 
-            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, true, runId);
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, true, runId, null, null);
 
             Assert.AreEqual(SyncStatus.Idle.ToString(), job.Status);
             Assert.IsTrue(job.DryRunTimeStamp > lastRunTime);

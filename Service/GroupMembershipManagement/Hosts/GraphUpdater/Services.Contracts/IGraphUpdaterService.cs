@@ -15,7 +15,7 @@ namespace Services.Contracts
 		public Task<bool> GroupExistsAsync(Guid groupId, Guid runId);
 		public Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
 		public Task<SyncJob> GetSyncJobAsync(Guid syncJobId);
-		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded = null, int? usersRemoved = null);
+		public Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, bool isDryRun, Guid runId, int? usersAdded, int? usersRemoved);
 		public Task<string> GetGroupNameAsync(Guid groupId);
 		public Task<Guid> GetGroupIdAsync(SyncJob syncJob);
         public Task<(GraphUpdaterStatus Status, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)> AddUsersToGroupAsync(ICollection<AzureADUser> members, Guid targetGroupId, Guid runId, bool isInitialSync);
