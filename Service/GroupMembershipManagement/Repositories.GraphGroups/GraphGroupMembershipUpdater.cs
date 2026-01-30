@@ -440,6 +440,8 @@ namespace Repositories.GraphGroups
             // we're much more likely to hit the write quota, so default to the 2 minute and 30 second wait
             // https://docs.microsoft.com/en-us/graph/throttling#pattern
             TimeSpan waitFor = TimeSpan.FromSeconds(150);
+            if (wait == null) return waitFor;
+
             if (wait.Delta.HasValue) { waitFor = wait.Delta.Value; }
             if (wait.Date.HasValue) { waitFor = wait.Date.Value - DateTimeOffset.UtcNow; }
             return waitFor;
@@ -464,6 +466,7 @@ namespace Repositories.GraphGroups
         {
             var retryResponses = new List<RetryResponse>();
             bool beenThrottled = false;
+            bool beenConcurrencyViolated = false;
 
             var writesUsed = _graphGroupMetricTracker.GetMetric(nameof(Metric.WritesUsed));
             var writeRequests = _graphGroupMetricTracker.GetMetric(nameof(Metric.WriteRequests));
@@ -558,6 +561,37 @@ namespace Repositories.GraphGroups
                             HttpStatusCode = HttpStatusCode.NotFound
                         });
                     }
+                }
+                else if (status == HttpStatusCode.Conflict
+                    && !string.IsNullOrWhiteSpace(content)
+                    && content.Contains("Directory_ConcurrencyViolation", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!beenConcurrencyViolated)
+                    {
+                        var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter);
+
+                        await _loggingRepository.LogMessageAsync(new LogMessage
+                        {
+                            Message = $"Got 409 conflict due to concurrent updates. Waiting {throttleWait.TotalSeconds} seconds before retrying.",
+                            RunId = RunId
+                        }, VerbosityLevel.DEBUG);
+
+                        await Task.Delay(throttleWait);
+                        beenConcurrencyViolated = true;
+                    }
+
+                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    {
+                        Message = $"Got 409 conflict due to concurrent updates. Retrying request {kvp.Key}.",
+                        RunId = RunId
+                    }, VerbosityLevel.DEBUG);
+
+                    retryResponses.Add(new RetryResponse
+                    {
+                        RequestId = kvp.Key,
+                        ResponseCode = ResponseCode.IndividualRetry,
+                        HttpStatusCode = HttpStatusCode.Conflict
+                    });
                 }
                 else if (_isOkay.Contains(status)) 
                 { 
