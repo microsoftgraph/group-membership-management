@@ -5,7 +5,15 @@
     "dynamicConcurrencyEnabled": true,
     "snapshotPersistenceEnabled": true
   },
-"logging": {
+  "extensions": {
+    "durableTask": {
+      "maxConcurrentOrchestratorFunctions": 20,
+      "maxConcurrentActivityFunctions": 10,
+      "extendedSessionsEnabled": true,
+      "extendedSessionIdleTimeoutInSeconds": 30
+    }
+  },
+  "logging": {
     "applicationInsights": {
       "samplingSettings": {
         "isEnabled": true,
