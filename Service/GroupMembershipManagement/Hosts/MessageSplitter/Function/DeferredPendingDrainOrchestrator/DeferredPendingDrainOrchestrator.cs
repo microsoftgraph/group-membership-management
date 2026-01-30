@@ -193,10 +193,8 @@ namespace Hosts.MessageSplitter
                             new MarkDeferredPendingDispatchedRequest(item.SequenceNumber, received.OrchestrationInstanceId));
                     }
 
-                    // If no work was dispatched, release the lease.
-                    // If the message was not found, we conservatively keep the lease to avoid exceeding capacity
-                    // in the case where dispatch happened but index cleanup didn't.
-                    if (!received.Dispatched && leaseAcquiredForDispatch && !received.MessageNotFound)
+                    // If no work was dispatched, release the lease (including MessageNotFound).
+                    if (!received.Dispatched && leaseAcquiredForDispatch)
                     {
                         await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
                     }

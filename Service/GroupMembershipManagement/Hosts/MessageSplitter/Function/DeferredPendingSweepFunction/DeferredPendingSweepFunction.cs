@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Models;
 using Repositories.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MessageSplitter
@@ -71,13 +72,45 @@ namespace Hosts.MessageSplitter
 
             // Prune stale leases.
             var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
-            var pruned = await context.Entities.CallEntityAsync<int>(limiterEntityId, nameof(RunLimiter.Prune), utcNow);
+            var prunedLeases = await context.Entities.CallEntityAsync<int>(limiterEntityId, nameof(RunLimiter.Prune), utcNow);
+
+            // Prune old index entries
+            var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
+            const int maxIndexAgeMinutes = 60;
+            var prunedItems = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
+                (utcNow, maxIndexAgeMinutes));
+
+            // Set pruned jobs to Error status.
+            foreach (var item in prunedItems)
+            {
+                await context.CallActivityAsync(
+                    nameof(JobStatusUpdaterFunction),
+                    new JobStatusUpdaterRequest
+                    {
+                        SyncJob = new SyncJob { Id = item.JobId, RunId = item.RunId },
+                        Status = SyncStatus.Error
+                    });
+
+                await context.CallActivityAsync(
+                    nameof(LoggerFunction),
+                    new LoggerRequest
+                    {
+                        Message = new LogMessage
+                        {
+                            Message = $"DeferredPendingSweep: pruned stale index entry and set job to Error; seq={item.SequenceNumber} jobId={item.JobId} lane={lane}",
+                            RunId = item.RunId
+                        },
+                        Verbosity = VerbosityLevel.INFO
+                    });
+            }
 
             await context.CallActivityAsync(
                 nameof(LoggerFunction),
                 new LoggerRequest
                 {
-                    Message = new LogMessage { Message = $"DeferredPendingSweep: prunedExpiredLeases={pruned} lane={lane}" },
+                    Message = new LogMessage { Message = $"DeferredPendingSweep: prunedExpiredLeases={prunedLeases} prunedOldIndexItems={prunedItems.Count} lane={lane}" },
                     Verbosity = VerbosityLevel.INFO
                 });
 

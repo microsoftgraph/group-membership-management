@@ -5,5 +5,5 @@ using System;
 
 namespace Hosts.MessageSplitter
 {
-    public record AddDeferredPendingRequest(long SequenceNumber, Guid RunId, DateTimeOffset UtcNow);
+    public record AddDeferredPendingRequest(long SequenceNumber, Guid RunId, DateTimeOffset UtcNow, Guid JobId);
 }

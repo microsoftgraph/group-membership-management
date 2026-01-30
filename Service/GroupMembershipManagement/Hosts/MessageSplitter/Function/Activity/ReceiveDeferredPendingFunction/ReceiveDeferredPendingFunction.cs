@@ -41,13 +41,16 @@ namespace Hosts.MessageSplitter
             }
             catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessageNotFound)
             {
-                // The message is no longer available (expired/settled/moved). Remove from the index.
+                // This can legitimately happen if drain runs before the message is deferred.
+                // Only remove the index entry if we already dispatched the orchestration.
+                var shouldRemoveFromIndex = request.AlreadyDispatched;
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Deferred message not found (will remove index entry) seq={request.SequenceNumber}: {ex.Message}"
+                    Message = $"Deferred message not found (will {(shouldRemoveFromIndex ? "remove" : "retry")} index entry) seq={request.SequenceNumber}: {ex.Message}",
+                    RunId = request.RunId
                 }, VerbosityLevel.INFO);
 
-                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: true, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
+                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
             }
             catch (Exception ex)
             {
@@ -61,13 +64,16 @@ namespace Hosts.MessageSplitter
 
             if (message == null)
             {
-                // Not found (or no longer deferred). Remove from the index to prevent it living forever.
+                // This can happen if drain runs before the message is deferred.
+                // Only remove the index entry if we already dispatched the orchestration.
+                var shouldRemoveFromIndex = request.AlreadyDispatched;
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {
-                    Message = $"Deferred message not found (null) (will remove index entry) seq={request.SequenceNumber}",
+                    Message = $"Deferred message not found (null) (will {(shouldRemoveFromIndex ? "remove" : "retry")} index entry) seq={request.SequenceNumber}",
                     RunId = request.RunId
                 }, VerbosityLevel.INFO);
-                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: true, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
+
+                return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
             }
 
             try

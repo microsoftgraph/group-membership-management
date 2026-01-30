@@ -67,9 +67,10 @@ namespace Hosts.MessageSplitter
             string orchestrationInstanceId;
             try
             {
+                var jobId = request.MembershipRequest.SyncJob.Id;
                 orchestrationInstanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
                     nameof(DeferredPendingEnqueueOrchestrator),
-                    new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId));
+                    new DeferredPendingEnqueueRequest(lane, message.SequenceNumber, runId, jobId));
 
                 await _loggingRepository.LogMessageAsync(
                     new LogMessage { Message = $"Scheduled pending drain orchestrator; instanceId={orchestrationInstanceId} lane={lane} seq={message.SequenceNumber}", RunId = runId },

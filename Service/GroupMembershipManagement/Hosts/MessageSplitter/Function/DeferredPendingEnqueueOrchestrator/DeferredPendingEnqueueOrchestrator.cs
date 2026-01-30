@@ -37,7 +37,7 @@ namespace Hosts.MessageSplitter
             await context.Entities.CallEntityAsync(
                 indexEntityId,
                 nameof(DeferredPendingIndexEntity.Add),
-                new AddDeferredPendingRequest(request.SequenceNumber, request.RunId, utcNow));
+                new AddDeferredPendingRequest(request.SequenceNumber, request.RunId, utcNow, request.JobId));
 
             await context.CallActivityAsync(
                 nameof(LoggerFunction),

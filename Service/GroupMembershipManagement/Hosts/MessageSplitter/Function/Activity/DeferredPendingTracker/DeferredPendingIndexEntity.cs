@@ -27,7 +27,7 @@ namespace Hosts.MessageSplitter
                 return;
             }
 
-            State.Items.Add(new DeferredPendingItem(request.SequenceNumber, request.RunId, request.UtcNow));
+            State.Items.Add(new DeferredPendingItem(request.SequenceNumber, request.RunId, request.UtcNow, request.JobId));
         }
 
         public bool TryAcquireDrainLock(TryAcquireDrainLockRequest request)
@@ -159,19 +159,19 @@ namespace Hosts.MessageSplitter
             return State;
         }
 
-        public int PruneOlderThanMinutes((DateTimeOffset UtcNow, int MaxAgeMinutes) request)
+        public List<DeferredPendingItem> PruneOlderThanMinutes((DateTimeOffset UtcNow, int MaxAgeMinutes) request)
         {
             State ??= new DeferredPendingIndexState();
 
             if (State.Items.Count == 0)
             {
-                return 0;
+                return new List<DeferredPendingItem>();
             }
 
             var cutoff = request.UtcNow.AddMinutes(-request.MaxAgeMinutes);
-            var before = State.Items.Count;
+            var pruned = State.Items.Where(i => i.EnqueuedAtUtc < cutoff).ToList();
             State.Items = State.Items.Where(i => i.EnqueuedAtUtc >= cutoff).ToList();
-            return before - State.Items.Count;
+            return pruned;
         }
     }
 }

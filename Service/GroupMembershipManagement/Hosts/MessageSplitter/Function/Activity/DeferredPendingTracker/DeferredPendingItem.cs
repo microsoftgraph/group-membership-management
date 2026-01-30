@@ -5,7 +5,7 @@ using System;
 
 namespace Hosts.MessageSplitter
 {
-    public record DeferredPendingItem(long SequenceNumber, Guid RunId, DateTimeOffset EnqueuedAtUtc)
+    public record DeferredPendingItem(long SequenceNumber, Guid RunId, DateTimeOffset EnqueuedAtUtc, Guid JobId)
     {
         public DateTimeOffset? InProgressUntilUtc { get; set; }
 
