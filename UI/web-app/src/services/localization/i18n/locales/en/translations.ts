@@ -235,6 +235,7 @@ export const strings: IStrings = {
       thresholdViolations: 'Threshold Violations',
       sourceParts: 'Source Parts',
       membershipStatus: 'Membership status',
+      hiddenMembershipWarning: 'This job includes hidden membership group sources.',
       sync: 'Sync',
       enabled: 'Enabled',
       disabled: 'Disabled',
@@ -481,6 +482,7 @@ export const strings: IStrings = {
       objectId: 'Object ID',
       sourceParts: 'Source Parts',
       sourcePart: "Source Part",
+      hiddenMembershipGroup: 'This is a hidden membership group.',
       noThresholdSet: 'No threshold set',
       savingSyncJob: 'Saving...',
       updatingSyncJob: 'Updating...',
@@ -513,7 +515,8 @@ export const strings: IStrings = {
       expandAll: 'Expand all',
       collapseAll: 'Collapse all',
       allUsersInGroup: 'All Users in {0}',
-      allUsersInFallback: 'All Users in Group'
+      allUsersInFallback: 'All Users in Group',
+      hiddenMembershipConfirmationWarning: 'Your request contains a hidden visibility group. Please justify its usage.'
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',

@@ -56,5 +56,7 @@ namespace WebApi.Models.DTOs
         public string? LastModifiedOnBehalfOfDisplayName { get; set; }
         public string? LastModifiedOnBehalfOfObjectId { get; set; }
         public string? GroupSettings { get; set; }
+        public bool HasHiddenMembershipSources { get; set; }
+        public List<Guid> HiddenMembershipSourceIds { get; set; } = new();
     }
 }

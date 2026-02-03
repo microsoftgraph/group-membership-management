@@ -83,6 +83,22 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             flexDirection: "column",
             paddingLeft: 50
         },
+        hiddenMembershipWarningContainer: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 12,
+            padding: '6px 10px',
+            borderRadius: 4,
+            backgroundColor: theme.semanticColors.errorBackground
+        },
+        hiddenMembershipWarningIcon: {
+            color: theme.semanticColors.errorText
+        },
+        hiddenMembershipWarningText: {
+            color: theme.semanticColors.errorText,
+            fontWeight: 600
+        },
         clockIcon: {
             color: theme.palette.yellowDark,
         },

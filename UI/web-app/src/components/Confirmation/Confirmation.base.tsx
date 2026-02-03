@@ -17,7 +17,9 @@ import {
   Shimmer,
   Label,
   Dropdown,
-  IDropdownOption
+  IDropdownOption,
+  MessageBar,
+  MessageBarType
 } from '@fluentui/react';
 import { format } from 'react-string-format';
 import {
@@ -93,6 +95,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
   const jobDetails = useSelector(selectSelectedJobDetails);
   const lastModifiedOnBehalfOfUserProfile = useSelector(selectLastModifiedOnBehalfOfUserProfile);
   const groupOwners = useSelector(manageMembershipGroupOwners);
+  const hasHiddenMembershipSources = jobDetails?.hasHiddenMembershipSources ?? false;
   const lastModifiedOnBehalfOfUserProps: IPersonaSharedProps = {
     imageUrl: lastModifiedOnBehalfOfUserProfile?.photoUrl,
     text: lastModifiedOnBehalfOfUserProfile?.displayName
@@ -356,6 +359,14 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
                 placeholder={strings.ManageMembership.labels.businessJustificationPlaceholder}
                 data-testid="business-justification-textarea"
               />
+              {hasHiddenMembershipSources && (
+                <MessageBar
+                  messageBarType={MessageBarType.warning}
+                  isMultiline={false}
+                >
+                  {strings.ManageMembership.labels.hiddenMembershipConfirmationWarning}
+                </MessageBar>
+              )}
             </div>
             {isJobTenantWriter && (
             jobId && jobDetails && jobDetails?.status === SyncStatus.PendingReview && jobDetails.lastModifiedOnBehalfOfObjectId? (

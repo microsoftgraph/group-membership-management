@@ -9,6 +9,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using System.Text.Json;
 using WebApi.Models;
 using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 
@@ -78,6 +79,8 @@ namespace Services
             var targetChannelId = job.Channel?.ChannelId;
             var targetChannelName = job.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() ?
                     await _teamsChannelRepository.GetTeamsChannelNameAsync(new Models.Entities.AzureADTeamsChannel { ChannelId = job.Channel!.ChannelId }) : null;
+
+            var hiddenMembershipSourceIds = await GetHiddenMembershipSourceIdsAsync(job.Query);
                
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
@@ -150,12 +153,76 @@ namespace Services
                 LastModifiedByObjectId = lastModifiedByObjectId,
                 LastModifiedOnBehalfOfDisplayName = lastModifiedOnBehalfOfDisplayName,
                 LastModifiedOnBehalfOfObjectId = lastModifiedOnBehalfOfObjectId,
-                GroupSettings = groupSettings
+                GroupSettings = groupSettings,
+                HiddenMembershipSourceIds = hiddenMembershipSourceIds,
+                HasHiddenMembershipSources = hiddenMembershipSourceIds.Count > 0
             };
 
             response.Model = dto;
 
             return response;
+        }
+
+        private async Task<List<Guid>> GetHiddenMembershipSourceIdsAsync(string? query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return new List<Guid>();
+            }
+
+            try
+            {
+                using var json = JsonDocument.Parse(query);
+                if (json.RootElement.ValueKind != JsonValueKind.Array)
+                {
+                    return new List<Guid>();
+                }
+
+                var groupIds = new HashSet<Guid>();
+                foreach (var element in json.RootElement.EnumerateArray())
+                {
+                    if (!element.TryGetProperty("type", out var typeProperty))
+                    {
+                        continue;
+                    }
+
+                    var typeValue = typeProperty.GetString();
+                    if (!string.Equals(typeValue, MembershipTypes.GroupMembership.ToString(), StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    if (!element.TryGetProperty("source", out var sourceProperty))
+                    {
+                        continue;
+                    }
+
+                    var sourceValue = sourceProperty.GetString();
+                    if (Guid.TryParse(sourceValue, out var groupId))
+                    {
+                        groupIds.Add(groupId);
+                    }
+                }
+
+                if (groupIds.Count == 0)
+                {
+                    return new List<Guid>();
+                }
+
+                var groups = await _graphGroupRepository.GetGroupsAsync(groupIds.ToList());
+                return groups
+                    .Where(group => string.Equals(group.Visibility, "HiddenMembership", StringComparison.OrdinalIgnoreCase))
+                    .Select(group => group.ObjectId)
+                    .ToList();
+            }
+            catch (JsonException ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Failed to parse sync job query for hidden membership sources. {ex.GetBaseException()}"
+                });
+                return new List<Guid>();
+            }
         }
 
         private async Task<string> UpdateChangedOnBehalfOfObjectIdAsync(SyncJobChange res, string userIdentifier)

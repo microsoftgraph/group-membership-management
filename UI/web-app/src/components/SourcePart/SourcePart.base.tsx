@@ -12,7 +12,9 @@ import {
   IProcessedStyleSet,
   TextField,
   IPersonaProps,
-  Shimmer
+  Shimmer,
+  Icon,
+  Text
 } from '@fluentui/react';
 import { ActionButton, DefaultButton, IconButton } from '@fluentui/react/lib/Button';
 import { useTheme } from '@fluentui/react/lib/Theme';
@@ -33,6 +35,8 @@ import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectIsGeneratingHRTitle, selectIsGeneratingTitles, selectIsGeneratingGroupTitle } from '../../store/title.slice';
+import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
+import { selectSelectedJobDetails } from '../../store/jobs.slice';
 
 const getClassNames = classNamesFunction<SourcePartStyleProps, SourcePartStyles>();
 
@@ -69,6 +73,12 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
   const isGeneratingTitles = useSelector(selectIsGeneratingTitles);
   const isGeneratingHRTitle = useSelector(selectIsGeneratingHRTitle);
   const isGeneratingGroupTitle = useSelector(selectIsGeneratingGroupTitle);
+  const groupId = IsGroupMembershipSourcePartQuery(part.query) ? part.query.source : '';
+  const jobDetails = useSelector(selectSelectedJobDetails);
+  const hiddenMembershipSourceIds = jobDetails?.hiddenMembershipSourceIds ?? [];
+  const isHiddenMembership =
+    groupId.length > 0 &&
+    hiddenMembershipSourceIds.some((id) => id.toLowerCase() === groupId.toLowerCase());
 
   useEffect(() => {
     if (part.isNew) {
@@ -225,6 +235,14 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
             )}
             {!isEditButtonClicked && (part.title || props.title) && (
               <div className={classNames.generatedTitle}>: {part.title || props.title}</div>
+            )}
+            {isHiddenMembership && (
+              <div className={classNames.hiddenMembershipIndicator}>
+                <Icon iconName="Hide" className={classNames.hiddenMembershipIcon} />
+                <Text className={classNames.hiddenMembershipText}>
+                  {strings.ManageMembership.labels.hiddenMembershipGroup}
+                </Text>
+              </div>
             )}
             {isEditButtonClicked && (
               <div>

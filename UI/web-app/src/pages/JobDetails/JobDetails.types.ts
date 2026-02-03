@@ -26,6 +26,9 @@ export interface IJobDetailsStyles {
     membershipStatusMessage: IStyle;
     requestor: IStyle;
     clockIcon: IStyle;
+    hiddenMembershipWarningContainer: IStyle;
+    hiddenMembershipWarningIcon: IStyle;
+    hiddenMembershipWarningText: IStyle;
     membershipStatusActionButtons: IStyle;
     membershipStatusPendingLabel: IStyle;
     removeGMM: IStyle;

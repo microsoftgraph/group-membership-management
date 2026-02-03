@@ -410,6 +410,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
   const lastChange = jobChanges?.[0];
   const businessJustification = useSelector(manageMembershipBusinessJustification);
+  const hasHiddenMembershipSources = job?.hasHiddenMembershipSources ?? false;
   const [loadingJobChanges, setLoadingJobChanges] = useState(true);
   const [showRejectionDialog, setShowRejectionDialog] = useState(false);
   const [rejectionFeedback, setRejectionFeedback] = useState('');
@@ -528,7 +529,16 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   };
 
   return (
-    <div className={classNames.membershipStatusContainer}>
+    <div>
+      {hasHiddenMembershipSources && jobStatus === SyncStatus.PendingReview && (
+        <div className={classNames.hiddenMembershipWarningContainer}>
+          <Icon iconName="Hide" className={classNames.hiddenMembershipWarningIcon} />
+          <Text className={classNames.hiddenMembershipWarningText}>
+            {strings.JobDetails.labels.hiddenMembershipWarning}
+          </Text>
+        </div>
+      )}
+      <div className={classNames.membershipStatusContainer}>
       <div className={classNames.membershipStatusControls}>
         <label className={classNames.toggleLabel}>{strings.JobDetails.labels.sync}</label>
         <Toggle
@@ -668,6 +678,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         </div>
         )}
         </div>
+      </div>
       {/* Rejection Dialog */}
       <Dialog
         hidden={!showRejectionDialog}

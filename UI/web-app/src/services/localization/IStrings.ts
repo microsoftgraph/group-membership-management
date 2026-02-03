@@ -232,6 +232,7 @@ export type IStrings = {
       thresholdViolations: string;
       sourceParts: string;
       membershipStatus: string;
+      hiddenMembershipWarning: string;
       sync: string;
       enabled: string;
       disabled: string;
@@ -476,6 +477,7 @@ export type IStrings = {
       objectId: string;
       sourceParts: string;
       sourcePart: string;
+      hiddenMembershipGroup: string;
       noThresholdSet: string;
       savingSyncJob: string;
       updatingSyncJob: string;
@@ -509,6 +511,7 @@ export type IStrings = {
       collapseAll: string;
       allUsersInGroup: string;
       allUsersInFallback: string;
+      hiddenMembershipConfirmationWarning: string;
     },
     CreateGroup: {
       createNewGroup: string;

@@ -236,6 +236,7 @@ export const strings: IStrings = {
       thresholdViolations: 'Violaciones del límite',
       sourceParts: 'Partes de origen',
       membershipStatus: 'Estado de la membresía',
+      hiddenMembershipWarning: 'Este trabajo incluye orígenes de grupos con membresía oculta.',
       sync: 'Sync',
       enabled: 'Activo',
       disabled: 'Inactivo',
@@ -483,6 +484,7 @@ export const strings: IStrings = {
       objectId: 'ID del objeto',
       sourceParts: 'Partes de origen',
       sourcePart: 'Parte de origen',
+      hiddenMembershipGroup: 'Este es un grupo de membresía oculta.',
       noThresholdSet: 'No se estableció un límite',
       savingSyncJob: 'Guardando...',
       updatingSyncJob: 'Actualizando...',
@@ -515,7 +517,8 @@ export const strings: IStrings = {
       expandAll: 'Expandir todo',
       collapseAll: 'Contraer todo',
       allUsersInGroup: 'Todos los usuarios en {0}',
-      allUsersInFallback: 'Todos los usuarios en el grupo'
+      allUsersInFallback: 'Todos los usuarios en el grupo',
+      hiddenMembershipConfirmationWarning: 'Tu solicitud contiene un grupo de visibilidad oculta. Por favor justifica su uso.'
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',

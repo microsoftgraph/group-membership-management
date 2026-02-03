@@ -31,4 +31,6 @@ export type Job = {
   lastModifiedByObjectId?: string;
   lastModifiedOnBehalfOfDisplayName?: string;
   lastModifiedOnBehalfOfObjectId?: string;
+  hiddenMembershipSourceIds?: string[];
+  hasHiddenMembershipSources?: boolean;
 };

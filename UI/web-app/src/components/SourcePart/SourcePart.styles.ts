@@ -51,6 +51,20 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
         generatedTitle: {
             fontWeight: 400
         },
+        hiddenMembershipIndicator: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginLeft: 12
+        },
+        hiddenMembershipIcon: {
+            color: theme.semanticColors.errorText
+        },
+        hiddenMembershipText: {
+            color: theme.semanticColors.errorText,
+            fontSize: 12,
+            fontWeight: 600
+        },
         expandButton: {
             color: theme.semanticColors.bodyText,
             fontSize: 16,

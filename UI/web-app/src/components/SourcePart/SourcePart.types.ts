@@ -15,6 +15,9 @@ export type SourcePartStyles = {
   title: IStyle;
   existingTitle: IStyle;
   generatedTitle: IStyle;
+  hiddenMembershipIndicator: IStyle;
+  hiddenMembershipIcon: IStyle;
+  hiddenMembershipText: IStyle;
   expandButton: IStyle;
   content: IStyle;
   controls: IStyle;
