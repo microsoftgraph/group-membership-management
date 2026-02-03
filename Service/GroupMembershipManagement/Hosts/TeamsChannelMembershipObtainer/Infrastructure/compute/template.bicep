@@ -46,9 +46,6 @@ param maxInstanceCount int = 40
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 2048
 
-@description('Storage account container name.')
-param appPackageContainerName string = 'app-package-tcmo-${environmentAbbreviation}'
-
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
 
@@ -154,6 +151,16 @@ module storageAccountNameReader 'keyVaultReader.bicep' = {
   ]
 }
 
+module appPackageContainerNameReader 'keyVaultReader.bicep' = {
+  name: 'appPackageContainerNameReader-TeamsChannelUpdater'
+  params: {
+    value: dataKeyVault.getSecret('teamsChannelUpdaterAppPackageContainerProd')
+  }
+  dependsOn: [
+    dataKeyVault
+  ]
+}
+
 resource graphUAMI 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: userAssignedManagedIdentityNameReader.outputs.value
   scope: resourceGroup(dataKeyVaultResourceGroup)
@@ -187,7 +194,7 @@ module functionAppTemplate_TeamsChannelMembershipObtainer 'functionApp.bicep' = 
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     setRBACPermissions: setRBACPermissions
     storageAccountName: storageAccountNameReader.outputs.value
-    appPackageContainerName: appPackageContainerName
+    appPackageContainerName: appPackageContainerNameReader.outputs.value
     maxInstanceCount: maxInstanceCount
     instanceMemoryMB: instanceMemoryMB
   }
