@@ -317,6 +317,51 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetJobDetailsIncludesHiddenMembershipSourcesAsync()
+        {
+            var userId = Guid.NewGuid().ToString();
+            _jobEntity.DestinationOwners = new List<DestinationOwner>
+                {
+                    new DestinationOwner
+                    {
+                        ObjectId = Guid.Parse(userId)
+                    }
+                };
+
+            var hiddenGroupId = Guid.NewGuid();
+            var visibleGroupId = Guid.NewGuid();
+
+            _jobEntity.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{hiddenGroupId}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{visibleGroupId}\"}}]";
+
+            _graphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>()))
+                .ReturnsAsync(new List<AzureADGroup>
+                {
+                    new AzureADGroup { ObjectId = hiddenGroupId, Visibility = "HiddenMembership" },
+                    new AzureADGroup { ObjectId = visibleGroupId, Visibility = "Public" }
+                });
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_OWNER_WRITER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
+
+            var response = await _jobDetailsController.GetJobDetailsAsync(_jobEntity.Id);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            var job = result.Value as SyncJobDetails;
+
+            Assert.IsNotNull(job);
+            Assert.IsTrue(job.HasHiddenMembershipSources);
+            Assert.IsTrue(job.HiddenMembershipSourceIds.Contains(hiddenGroupId));
+            Assert.IsFalse(job.HiddenMembershipSourceIds.Contains(visibleGroupId));
+        }
+
+        [TestMethod]
         [DataRow(Roles.JOB_OWNER_WRITER)]
         [DataRow(Roles.JOB_TENANT_READER)]
         [DataRow("UserRole")]
