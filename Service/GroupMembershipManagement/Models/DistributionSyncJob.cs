@@ -14,6 +14,10 @@ namespace Models
         public int ThresholdPercentageForAdditions { get; set; }
         public int ThresholdPercentageForRemovals { get; set; }
 
+
+        // NEW PROPERTY: Controls threshold-based prioritization
+        public bool PrioritizeThresholdJobs { get; set; } = false;
+
         public DistributionSyncJob(SyncJob syncJob)
         {
             LastRunTime = syncJob.LastRunTime;
@@ -29,17 +33,21 @@ namespace Models
 
         public int CompareTo(DistributionSyncJob other)
         {
-            // Sort non-threshold jobs to the end
-            bool thisHasThreshold = ThresholdPercentageForAdditions != -1 && ThresholdPercentageForRemovals != -1;
-            bool otherHasThreshold = other.ThresholdPercentageForAdditions != -1 && other.ThresholdPercentageForRemovals != -1;
+            // Only apply threshold prioritization when explicitly enabled (e.g., pipeline runs)
+            if (PrioritizeThresholdJobs)
+            {
+                // Sort non-threshold jobs to the end
+                bool thisHasThreshold = ThresholdPercentageForAdditions != -1 && ThresholdPercentageForRemovals != -1;
+                bool otherHasThreshold = other.ThresholdPercentageForAdditions != -1 && other.ThresholdPercentageForRemovals != -1;
 
-            if (thisHasThreshold && !otherHasThreshold)
-            {
-                return -1;
-            }
-            else if (!thisHasThreshold && otherHasThreshold)
-            {
-                return 1;
+                if (thisHasThreshold && !otherHasThreshold)
+                {
+                    return -1;
+                }
+                else if (!thisHasThreshold && otherHasThreshold)
+                {
+                    return 1;
+                }
             }
 
             if (Status == other.Status || (Status != SyncStatus.Idle.ToString() && other.Status != SyncStatus.Idle.ToString()))

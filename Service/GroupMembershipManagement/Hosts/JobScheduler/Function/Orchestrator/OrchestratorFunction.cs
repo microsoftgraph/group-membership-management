@@ -36,9 +36,11 @@ namespace Hosts.JobScheduler
                 });
 
             var orchestratorRequest = context.GetInput<OrchestratorRequest>();
+            var prioritizeThresholdJobs = false;
             if(orchestratorRequest != null)
             {
                 _jobSchedulerConfig.StartTimeDelayMinutes = orchestratorRequest.StartTimeDelayMinutes;
+                prioritizeThresholdJobs = orchestratorRequest.PrioritizeThresholdJobs;
             }
 
             if(!_jobSchedulerConfig.ResetJobs && !_jobSchedulerConfig.DistributeJobs)
@@ -82,7 +84,8 @@ namespace Hosts.JobScheduler
                     {
                         JobsToDistribute = jobsToUpdate,
                         StartTimeDelayMinutes = _jobSchedulerConfig.StartTimeDelayMinutes,
-                        DelayBetweenSyncsSeconds = _jobSchedulerConfig.DelayBetweenSyncsSeconds
+                        DelayBetweenSyncsSeconds = _jobSchedulerConfig.DelayBetweenSyncsSeconds,
+                        PrioritizeThresholdJobs = prioritizeThresholdJobs
                     });
 
                 await context.CallActivityAsync(nameof(LoggerFunction),

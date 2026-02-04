@@ -36,11 +36,20 @@ namespace Hosts.JobScheduler
             var requestContent = await new StreamReader(req.Body).ReadToEndAsync();
             var requestBody = JsonSerializer.Deserialize<JsonElement>(requestContent);
             var delayForDeploymentInMinutes = requestBody.GetProperty("DelayForDeploymentInMinutes").GetInt32();
+            
+            // Parse PrioritizeThresholdJobs - defaults to false
+            // ADO pipeline deployments should explicitly set this to true to prioritize jobs with thresholds
+            var prioritizeThresholdJobs = false;
+            if (requestBody.TryGetProperty("PrioritizeThresholdJobs", out var prioritizeProperty))
+            {
+                prioritizeThresholdJobs = prioritizeProperty.GetBoolean();
+            }
 
             var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction),
                 new OrchestratorRequest
                 {
-                    StartTimeDelayMinutes = delayForDeploymentInMinutes
+                    StartTimeDelayMinutes = delayForDeploymentInMinutes,
+                    PrioritizeThresholdJobs = prioritizeThresholdJobs
                 });
 
             var response = starter.CreateCheckStatusResponse(req, instanceId);

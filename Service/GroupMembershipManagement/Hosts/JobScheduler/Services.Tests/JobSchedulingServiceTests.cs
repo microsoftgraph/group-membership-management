@@ -199,6 +199,114 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task ScheduleJobsWithThresholdPrioritization()
+        {
+            // Create jobs with and without thresholds
+            DateTime dateTimeNow = DateTime.UtcNow;
+            var jobs = new List<DistributionSyncJob>();
+            
+            // Jobs without thresholds (-1 means no threshold)
+            for (int i = 0; i < 3; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-1),
+                    ThresholdPercentageForAdditions = -1,
+                    ThresholdPercentageForRemovals = -1
+                });
+            }
+
+            // Jobs with thresholds
+            for (int i = 0; i < 2; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-1),
+                    ThresholdPercentageForAdditions = 50,
+                    ThresholdPercentageForRemovals = 50
+                });
+            }
+
+            // Distribute jobs WITH prioritization enabled
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(
+                jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, prioritizeThresholdJobs: true);
+
+            Assert.AreEqual(5, updatedJobs.Count);
+
+            // Sort by scheduled date to see the order
+            updatedJobs.Sort((a, b) => a.ScheduledDate.CompareTo(b.ScheduledDate));
+
+            // First 2 jobs should have thresholds (scheduled first)
+            Assert.IsTrue(updatedJobs[0].ThresholdPercentageForAdditions != -1 && updatedJobs[0].ThresholdPercentageForRemovals != -1);
+            Assert.IsTrue(updatedJobs[1].ThresholdPercentageForAdditions != -1 && updatedJobs[1].ThresholdPercentageForRemovals != -1);
+
+            // Last 3 jobs should NOT have thresholds (scheduled after)
+            Assert.IsTrue(updatedJobs[2].ThresholdPercentageForAdditions == -1 || updatedJobs[2].ThresholdPercentageForRemovals == -1);
+            Assert.IsTrue(updatedJobs[3].ThresholdPercentageForAdditions == -1 || updatedJobs[3].ThresholdPercentageForRemovals == -1);
+            Assert.IsTrue(updatedJobs[4].ThresholdPercentageForAdditions == -1 || updatedJobs[4].ThresholdPercentageForRemovals == -1);
+        }
+
+        [TestMethod]
+        public async Task ScheduleJobsWithoutThresholdPrioritization()
+        {
+            // Same jobs but WITHOUT prioritization - should use default sorting (Status, LastRunTime)
+            DateTime dateTimeNow = DateTime.UtcNow;
+            var jobs = new List<DistributionSyncJob>();
+
+            // Jobs without thresholds, but with earlier LastRunTime (should normally be scheduled first)
+            for (int i = 0; i < 2; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-10 - i), // Earlier last run time
+                    ThresholdPercentageForAdditions = -1,
+                    ThresholdPercentageForRemovals = -1
+                });
+            }
+
+            // Jobs with thresholds, but with more recent LastRunTime
+            for (int i = 0; i < 2; i++)
+            {
+                jobs.Add(new DistributionSyncJob
+                {
+                    Id = Guid.NewGuid(),
+                    Period = 1,
+                    ScheduledDate = dateTimeNow.AddDays(-1),
+                    Status = SyncStatus.Idle.ToString(),
+                    LastRunTime = dateTimeNow.AddDays(-1 - i), // More recent last run time
+                    ThresholdPercentageForAdditions = 50,
+                    ThresholdPercentageForRemovals = 50
+                });
+            }
+
+            // Distribute jobs WITHOUT prioritization (default behavior)
+            List<DistributionSyncJob> updatedJobs = await _jobSchedulingService.DistributeJobStartTimesAsync(
+                jobs, START_TIME_DELAY_MINUTES, BUFFER_SECONDS, prioritizeThresholdJobs: false);
+
+            Assert.AreEqual(4, updatedJobs.Count);
+
+            // Sort by scheduled date to see the order
+            updatedJobs.Sort((a, b) => a.ScheduledDate.CompareTo(b.ScheduledDate));
+
+            // Jobs with earlier LastRunTime should be scheduled first (regardless of threshold)
+            // The first two jobs should be the ones without thresholds (earlier LastRunTime)
+            Assert.IsTrue(updatedJobs[0].LastRunTime < updatedJobs[2].LastRunTime);
+            Assert.IsTrue(updatedJobs[1].LastRunTime < updatedJobs[2].LastRunTime);
+        }
+
+        [TestMethod]
         public async Task ScheduleJobsOneFromLogs_MaxMetric()
         {
             _jobSchedulerConfig.Setup(x => x.GetRunTimeFromLogs).Returns(true);
