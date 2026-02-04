@@ -516,7 +516,7 @@ export const strings: IStrings = {
       collapseAll: 'Collapse all',
       allUsersInGroup: 'All Users in {0}',
       allUsersInFallback: 'All Users in Group',
-      hiddenMembershipConfirmationWarning: 'Your request contains a hidden visibility group. Please justify its usage.'
+      hiddenMembershipConfirmationWarning: 'Your request includes hidden visibility group(s) as a source. Please provide the justification to prevent any delays in the approval process.'
     },
     CreateGroup: {
       createNewGroup: 'Create New Group',

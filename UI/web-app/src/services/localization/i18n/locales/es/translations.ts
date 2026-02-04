@@ -518,7 +518,7 @@ export const strings: IStrings = {
       collapseAll: 'Contraer todo',
       allUsersInGroup: 'Todos los usuarios en {0}',
       allUsersInFallback: 'Todos los usuarios en el grupo',
-      hiddenMembershipConfirmationWarning: 'Tu solicitud contiene un grupo de visibilidad oculta. Por favor justifica su uso.'
+      hiddenMembershipConfirmationWarning: 'Su solicitud incluye grupo(s) con visibilidad oculta como origen. Proporcione la justificación para evitar retrasos en el proceso de aprobación.',
     },
     CreateGroup: {
       createNewGroup: 'Crear un nuevo grupo',
