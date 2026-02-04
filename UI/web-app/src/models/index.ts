@@ -33,4 +33,5 @@ export * from './ServiceStatuses';
 export * from './Operations';
 export * from './GetServiceStatusResponse';
 export * from './SyncJobChange';
+export * from './SyncJobHistory';
 export * from './PostGroupResponse';

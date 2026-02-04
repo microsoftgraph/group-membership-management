@@ -52,6 +52,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<PostJobRequest, PostJobResponse>, PostJobHandler>();
             services.AddTransient<IRequestHandler<RemoveGMMRequest, RemoveGMMResponse>, RemoveGMMHandler>();
             services.AddTransient<IRequestHandler<GetJobChangesRequest, GetJobChangesResponse>, GetJobChangesHandler>();
+            services.AddTransient<IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse>, GetSyncJobHistoryHandler>();
 
             services.AddTransient<IRequestHandler<PostOperationRequest, PostOperationResponse>, PostOperationHandler>();
             services.AddTransient<IRequestHandler<GetServiceStatusRequest, GetServiceStatusResponse>, GetServiceStatusHandler>();

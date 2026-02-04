@@ -291,6 +291,18 @@ export type IStrings = {
       viewDetails: string;
       history: string;
       configurationPivotHeader: string;
+      syncPivotHeader: string;
+      runIdColumnLabel: string;
+      startTimeColumnLabel: string;
+      endTimeColumnLabel: string;
+      durationColumnLabel: string;
+      statusColumnLabel: string;
+      usersAddedColumnLabel: string;
+      usersRemovedColumnLabel: string;
+      thresholdViolationsColumnLabel: string;
+      updatedByFunctionColumnLabel: string;
+      createdAtColumnLabel: string;
+      updatedAtColumnLabel: string;
       onboardingRequest: string;
       onboardingAutoApproved: string;
       statusUpdate: string;

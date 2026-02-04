@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
 using Models.SyncJobChange;
+using Models.SyncJobHistory;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -25,13 +26,15 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<GetGroupRequest, GetGroupResponse> _getGroupRequestHandler;
         private readonly IRequestHandler<GetChannelRequest, GetChannelResponse> _getChannelRequestHandler;
         private readonly IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> _getJobChangesRequestHandler;
+        private readonly IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> _getSyncJobHistoryRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
                                     IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
                                     IRequestHandler<PatchJobRequest, PatchJobResponse> patchJobRequestHandler,
                                     IRequestHandler<GetGroupRequest, GetGroupResponse> getGroupRequestHandler,
                                     IRequestHandler<GetChannelRequest, GetChannelResponse> getChannelRequestHandler,
-                                    IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> getJobChangesRequestHandler)
+                                    IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> getJobChangesRequestHandler,
+                                    IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> getSyncJobHistoryRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
@@ -39,6 +42,7 @@ namespace WebApi.Controllers.v1.Jobs
             _getChannelRequestHandler = getChannelRequestHandler ?? throw new ArgumentNullException(nameof(getChannelRequestHandler));
             _patchJobRequestHandler = patchJobRequestHandler;
             _getJobChangesRequestHandler = getJobChangesRequestHandler ?? throw new ArgumentNullException(nameof(getJobChangesRequestHandler));
+            _getSyncJobHistoryRequestHandler = getSyncJobHistoryRequestHandler ?? throw new ArgumentNullException(nameof(getSyncJobHistoryRequestHandler));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -294,6 +298,22 @@ namespace WebApi.Controllers.v1.Jobs
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
         }
+
+        [Authorize(Roles = Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpGet("history/sync/{syncJobId}")]
+        public async Task<ActionResult<IEnumerable<SyncJobHistory>>> GetSyncJobHistoryAsync(Guid syncJobId)
+        {
+            var response = await _getSyncJobHistoryRequestHandler.ExecuteAsync(new GetSyncJobHistoryRequest(syncJobId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response.History),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
         private (string titlesValue, bool hasTitlesOp) ExtractAndRemoveTitles(List<PatchOperation> patchOperations)
         {
             var titlesOp = patchOperations?.FirstOrDefault(op => op.Path == "/Titles");

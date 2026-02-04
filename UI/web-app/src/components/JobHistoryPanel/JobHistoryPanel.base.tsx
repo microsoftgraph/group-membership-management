@@ -23,10 +23,12 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useState } from 'react';
-import { fetchJobChanges } from '../../store/jobDetails.api';
+import { fetchJobChanges, fetchSyncJobHistory } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
+import { SyncJobHistory } from '../../models/SyncJobHistory';
+import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -160,19 +162,150 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     ];
 
+    const syncHistoryColumns: IColumn[] = [
+        {
+            key: 'runId',
+            name: strings.JobDetails.Panel.runIdColumnLabel,
+            fieldName: 'runId',
+            minWidth: 100,
+            maxWidth: 150,
+            isResizable: true,
+            isMultiline: true,
+        },
+        {
+            key: 'startTime',
+            name: strings.JobDetails.Panel.startTimeColumnLabel,
+            fieldName: 'startTime',
+            minWidth: 100,
+            maxWidth: 150,
+            isResizable: true,
+            isMultiline: true,
+            onRender: (item: SyncJobHistory) => {
+                if (!item.startTime) return <span>-</span>;
+                const utcDate = item.startTime.endsWith('Z') ? item.startTime : `${item.startTime}Z`;
+                const utcDateObj = new Date(utcDate);
+                const localDate = utcDateObj.toLocaleDateString();
+                const localTime = utcDateObj.toLocaleTimeString();
+                return (
+                    <div className={classNames.dateTimeContainer}>
+                        <div className={classNames.dateText}>{localDate}</div>
+                        <div className={classNames.timeText}>{localTime}</div>
+                    </div>
+                );
+            }
+        },
+        {
+            key: 'endTime',
+            name: strings.JobDetails.Panel.endTimeColumnLabel,
+            fieldName: 'endTime',
+            minWidth: 100,
+            maxWidth: 150,
+            isResizable: true,
+            isMultiline: true,
+            onRender: (item: SyncJobHistory) => {
+                if (!item.endTime) return <span>-</span>;
+                const utcDate = item.endTime.endsWith('Z') ? item.endTime : `${item.endTime}Z`;
+                const utcDateObj = new Date(utcDate);
+                const localDate = utcDateObj.toLocaleDateString();
+                const localTime = utcDateObj.toLocaleTimeString();
+                return (
+                    <div className={classNames.dateTimeContainer}>
+                        <div className={classNames.dateText}>{localDate}</div>
+                        <div className={classNames.timeText}>{localTime}</div>
+                    </div>
+                );
+            }
+        },
+        {
+            key: 'duration',
+            name: strings.JobDetails.Panel.durationColumnLabel,
+            fieldName: 'duration',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+            onRender: (item: SyncJobHistory) => {
+                return <span>{item.duration ?? '-'}</span>;
+            }
+        },
+        {
+            key: 'status',
+            name: strings.JobDetails.Panel.statusColumnLabel,
+            fieldName: 'status',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+        },
+        {
+            key: 'usersAdded',
+            name: strings.JobDetails.Panel.usersAddedColumnLabel,
+            fieldName: 'usersAdded',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+            onRender: (item: SyncJobHistory) => {
+                return <span>{item.usersAdded ?? '-'}</span>;
+            }
+        },
+        {
+            key: 'usersRemoved',
+            name: strings.JobDetails.Panel.usersRemovedColumnLabel,
+            fieldName: 'usersRemoved',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+            onRender: (item: SyncJobHistory) => {
+                return <span>{item.usersRemoved ?? '-'}</span>;
+            }
+        },
+        {
+            key: 'thresholdViolations',
+            name: strings.JobDetails.Panel.thresholdViolationsColumnLabel,
+            fieldName: 'thresholdViolations',
+            minWidth: 100,
+            maxWidth: 150,
+            isResizable: true,
+            onRender: (item: SyncJobHistory) => {
+                return <span>{item.thresholdViolations ?? '-'}</span>;
+            }
+        },
+        {
+            key: 'updatedByFunction',
+            name: strings.JobDetails.Panel.updatedByFunctionColumnLabel,
+            fieldName: 'updatedByFunction',
+            minWidth: 120,
+            maxWidth: 200,
+            isResizable: true,
+            isMultiline: true,
+        }
+    ];
+
     const dispatch = useDispatch<AppDispatch>();
 
     const [detailsListItems, setDetailsListItems] = useState<SyncJobChange[]>([]);
+    const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState('');
 
     const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
+    const isJobTenantReader = useSelector(selectIsJobTenantReader);
+    const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+    const showSyncTab = isJobTenantReader || isJobTenantWriter;
 
     useEffect(() => {
         if (isOpen) {
             dispatch(fetchJobChanges({ syncJobId: jobId }));
+            if (showSyncTab) {
+                dispatch(fetchSyncJobHistory(jobId))
+                    .unwrap()
+                    .then((history) => {
+                        setSyncHistoryItems(history);
+                    })
+                    .catch((error) => {
+                        console.error('Failed to fetch sync job history:', error);
+                    });
+            }
         }
-    }, [isOpen, dispatch, jobId]);
+    }, [isOpen, dispatch, jobId, showSyncTab]);
 
     useEffect(() => {
         if (jobChanges) {
@@ -237,6 +370,22 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         selectionMode={0}
                     />
                 </PivotItem>
+                {showSyncTab && (
+                    <PivotItem
+                        headerText={strings.JobDetails.Panel.syncPivotHeader}
+                        headerButtonProps={{
+                            'data-order': 2,
+                            'data-title': strings.JobDetails.Panel.syncPivotHeader
+                        }}
+                    >
+                        <DetailsList
+                            setKey="syncHistorySet"
+                            columns={syncHistoryColumns}
+                            items={syncHistoryItems}
+                            selectionMode={0}
+                        />
+                    </PivotItem>
+                )}
             </Pivot>
             <Modal
                 isOpen={isModalOpen}

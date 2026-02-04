@@ -7,7 +7,7 @@ import { config } from '../authConfig';
 import { PatchJobResponse } from '../models/PatchJobResponse';
 import { ThunkConfig } from './store';
 import { TokenType } from '../services/auth';
-import { GetJobDetailsRequest, Job, RemoveGMMResponse, SyncJobChange } from '../models';
+import { GetJobDetailsRequest, Job, RemoveGMMResponse, SyncJobChange, SyncJobHistory } from '../models';
 import { PatchJobRequest } from '../models/PatchJobRequest';
 import { processJob } from '../utils/jobUtils';
 import { GetJobChangesRequest } from '../models/GetJobChangesRequest';
@@ -237,6 +237,35 @@ export const fetchJobChanges = createAsyncThunk<
       return response.items;
     } catch (error) {
       throw new Error('Failed to fetch job changes data!');
+    }
+  }
+);
+
+export const fetchSyncJobHistory = createAsyncThunk<
+  SyncJobHistory[],
+  string,
+  ThunkConfig
+>('jobs/fetchSyncJobHistory', async (syncJobId, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+
+    const options = {
+      method: 'GET',
+      headers
+    };
+
+    try {
+      const response = await fetch(`${config.getSyncJobHistory}/${encodeURIComponent(syncJobId)}`, options);
+      if (!response.ok) {
+        throw new Error('Failed to fetch sync job history data!');
+      }
+      return await response.json();
+    } catch (error) {
+      throw new Error('Failed to fetch sync job history data!');
     }
   }
 );

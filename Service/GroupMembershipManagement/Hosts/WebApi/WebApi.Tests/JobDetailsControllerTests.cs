@@ -10,6 +10,7 @@ using MockQueryable.Moq;
 using Models;
 using Models.Entities;
 using Models.SyncJobChange;
+using Models.SyncJobHistory;
 using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -48,12 +49,14 @@ namespace Services.Tests
         private GetChannelHandler _getChannelHandler = null!;
         private PatchJobHandler _patchJobHandler = null!;
         private GetJobChangesHandler _getJobChangesHandler = null!;
+        private GetSyncJobHistoryHandler _getSyncJobHistoryHandler = null!;
         private RemoveGMMHandler _removeGMMHandler = null!;
         private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IDatabaseGroupsRepository> _groupRepository = null!;
         private Mock<IDatabaseChannelsRepository> _channelRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
+        private Mock<ISyncJobHistoryRepository> _syncJobHistoryRepository = null!;
         private Mock<IDatabaseTitlesRepository> _titlesRepository = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
@@ -62,6 +65,7 @@ namespace Services.Tests
         private Mock<IThresholdConfig> _thresholdConfig = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
+        private List<SyncJobHistory> _syncJobHistoryEntries = null!;
 
         private PatchJobRequestDTO CreatePatchJobRequestDTO(List<PatchOperation> operations, string changeReason, string businessJustification)
         {
@@ -100,6 +104,7 @@ namespace Services.Tests
             _groupRepository = new Mock<IDatabaseGroupsRepository>();
             _channelRepository = new Mock<IDatabaseChannelsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
+            _syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();
@@ -179,6 +184,26 @@ namespace Services.Tests
                 TotalPages = 1
              };
 
+            _syncJobHistoryEntries = new List<SyncJobHistory>
+            {
+                new SyncJobHistory
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id,
+                    RunId = Guid.NewGuid(),
+                    StartTime = DateTime.UtcNow.AddMinutes(-15),
+                    EndTime = DateTime.UtcNow,
+                    Duration = 900,
+                    Status = SyncStatus.Idle.ToString(),
+                    UsersAdded = 2,
+                    UsersRemoved = 1,
+                    ThresholdViolations = 0,
+                    UpdatedByFunction = "GraphUpdater",
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-15),
+                    UpdatedAt = DateTime.UtcNow
+                }
+            };
+
             _titles = new List<Title>()
             {
                 new Title
@@ -202,6 +227,9 @@ namespace Services.Tests
 
             _syncJobChangeRepository.Setup(x => x.GetLastSyncJobChangeBySyncJobIdAsync(It.IsAny<Guid>()))
                                     .ReturnsAsync(() => _syncJobChange);
+
+            _syncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_jobEntity.Id, It.IsAny<int>(), It.IsAny<int>()))
+                                     .ReturnsAsync(() => _syncJobHistoryEntries);
 
             _groupRepository.Setup(x => x.GetGroupAsync(It.IsAny<Guid>()))
                               .ReturnsAsync(() => _group);
@@ -270,7 +298,10 @@ namespace Services.Tests
             _getJobChangesHandler = new GetJobChangesHandler(_loggingRepository.Object,
                                                             _syncJobChangeRepository.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
+            _getSyncJobHistoryHandler = new GetSyncJobHistoryHandler(_loggingRepository.Object,
+                                                                    _syncJobHistoryRepository.Object);
+
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler);
         }
 
         [TestMethod]
@@ -520,7 +551,7 @@ namespace Services.Tests
                                      _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler);
 
             var response = await _jobDetailsController.GetJobDetailsAsync(_jobEntity.Id);
             var result = response.Result as OkObjectResult;
@@ -569,7 +600,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -613,7 +644,7 @@ namespace Services.Tests
                                      _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler);
 
             var response = await _jobDetailsController.GetGroupDetailsAsync(Guid.NewGuid());
             var result = response.Result as OkObjectResult;
@@ -655,7 +686,7 @@ namespace Services.Tests
                                      _teamsChannelRepository.Object,
                                      _httpContextAccessor.Object);
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler);
 
             var response = await _jobDetailsController.GetChannelDetailsAsync(Guid.NewGuid(), string.Empty);
             var result = response.Result as OkObjectResult;
@@ -676,7 +707,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task EnableJobSuccessAsync(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -713,7 +744,7 @@ namespace Services.Tests
 
             _jobEntity.Status = SyncStatus.Idle.ToString();
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -775,7 +806,7 @@ namespace Services.Tests
                                     .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "false" });
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -807,7 +838,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_TENANT_WRITER)]
         public async Task EnableJobToBadStatusAsync(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -845,7 +876,7 @@ namespace Services.Tests
         public async Task EnablePendingReviewJobFailedAsync(string role)
         {
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -895,7 +926,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -944,7 +975,7 @@ namespace Services.Tests
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
             _jobEntity.LastRunTime = DateTime.UtcNow.AddHours(-1);
             _jobEntity.ThresholdViolations = 0;
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>
                 {
@@ -996,7 +1027,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1043,7 +1074,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1095,7 +1126,7 @@ namespace Services.Tests
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.CanReviewOwnSubmissions))
                 .ReturnsAsync(() => new Setting { SettingKey = SettingKey.CanReviewOwnSubmissions, SettingValue = "false" });
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1144,7 +1175,7 @@ namespace Services.Tests
             _graphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>()))
                 .ReturnsAsync((List<Guid> objectIds) => null);
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1193,7 +1224,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1226,7 +1257,7 @@ namespace Services.Tests
         public async Task UpdateJobSuccessAsync(string role)
         {
             _jobEntity.Status = SyncStatus.Idle.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1258,7 +1289,7 @@ namespace Services.Tests
         public async Task UpdatePendingReviewJobFailureAsync(string role)
         {
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1289,7 +1320,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenChangeReasonIsEmpty(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1319,7 +1350,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenSyncJobDoesNotExist(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1352,7 +1383,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenGroupIdNull(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1384,7 +1415,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhenNotGroupOwner(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1414,7 +1445,7 @@ namespace Services.Tests
         [DataRow(Roles.JOB_OWNER_WRITER)]
         public async Task PatchJobWhileJobInProgress(string role)
         {
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim> {
                     new Claim(ClaimTypes.Name, "user@domain.com"),
@@ -1451,7 +1482,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1474,7 +1505,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1500,7 +1531,7 @@ namespace Services.Tests
                     new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())});
 
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1526,7 +1557,7 @@ namespace Services.Tests
                         new Claim(ClaimTypes.Role, role)
                     });
 
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler)
             {
                 ControllerContext = CreateControllerContext(context)
             };
@@ -1556,7 +1587,7 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
             _removeGMMHandler = new RemoveGMMHandler(_loggingRepository.Object, _graphGroupRepository.Object, _syncJobRepository.Object);
-            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler,_getJobChangesHandler);
+            _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler);
 
             _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>())).ThrowsAsync(new Exception());
             var response = await _jobDetailsController.RemoveGMMAsync(Guid.NewGuid());
@@ -1601,6 +1632,36 @@ namespace Services.Tests
             Assert.AreEqual(1, responseChanges.TotalCount);
             Assert.AreEqual(1, responseChanges.Items.Count());
             Assert.AreEqual("Test", responseChanges.Items.First().ChangedByDisplayName);
+        }
+
+        [TestMethod]
+        [DataRow(Roles.JOB_TENANT_READER)]
+        [DataRow(Roles.JOB_TENANT_WRITER)]
+        public async Task GetSyncJobHistoryTestAsync(string role)
+        {
+            var userId = Guid.NewGuid().ToString();
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+
+            var history = result.Value as List<SyncJobHistory>;
+            Assert.IsNotNull(history);
+            Assert.AreEqual(1, history.Count);
+            Assert.AreEqual(_jobEntity.Id, history[0].SyncJobId);
+            Assert.AreEqual(SyncStatus.Idle.ToString(), history[0].Status);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)
