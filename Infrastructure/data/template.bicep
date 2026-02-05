@@ -950,92 +950,103 @@ module logAlertRuleTemplate 'logAlertRule.bicep' = {
   ]
 }
 
+var baseSecrets = [
+  {
+    name: 'storageAccountName'
+    value: storageAccountName
+  }
+  {
+    name: 'jobsStorageAccountName'
+    value: jobsStorageAccountName
+  }
+  {
+    name: 'membershipContainerName'
+    value: membershipContainerName
+  }
+  {
+    name: 'appInsightsAppId'
+    value: appInsightsTemplate.outputs.appId
+  }
+  {
+    name: 'serviceBusNamespace'
+    value: serviceBusName
+  }
+  {
+    name: 'serviceBusSyncJobTopic'
+    value: syncJobsTopicName
+  }
+  {
+    name: 'serviceBusMembershipUpdatersTopic'
+    value: 'membershipUpdaters'
+  }
+  {
+    name: 'serviceBusMessageSplitterTopic'
+    value: 'messageSplitter'
+  }
+  {
+    name: 'logAnalyticsCustomerId'
+    value: logAnalyticsTemplate.outputs.customerId
+  }
+  {
+    name: 'notifierProviderId'
+    value: notifierProviderId
+  }
+  {
+    name: 'oamEntraAppId'
+    value: oamEntraAppId
+  }
+  {
+    name: 'oamEntraAppScope'
+    value: oamEntraAppScope
+  }
+  {
+    name: 'serviceBusMembershipAggregatorQueue'
+    value: serviceBusMembershipAggregatorQueue
+  }
+  {
+    name: 'serviceBusNotificationsQueue'
+    value: serviceBusNotificationsQueue
+  }
+  {
+    name: 'serviceBusFailedNotificationsQueue'
+    value: serviceBusFailedNotificationsQueue
+  }
+  {
+    name: 'serviceBusSyncJobUpdaterQueue'
+    value: serviceBusSyncJobUpdaterQueue
+  }
+  {
+    name: 'serviceBusConfigurationQueue'
+    value: serviceBusConfigurationQueue
+  }
+  {
+    name: 'serviceBusFailedConfigurationQueue'
+    value: serviceBusFailedConfigurationQueue
+  }
+  {
+    name: 'graphUserAssignedManagedIdentityName'
+    value: graphUserAssignedManagedIdentityName
+  }
+  {
+    name: 'graphUserAssignedManagedIdentityClientId'
+    value: graphUserAssignedManagedIdentity.outputs.clientId
+  }
+]
+
+var openAISecrets = featureFlags.enableOpenAI ? [
+  {
+    name: 'openAIEndpoint'
+    value: openAIResources.outputs.openAIEndpoint
+  }
+] : []
+
+var allSecrets = union(baseSecrets, openAISecrets)
+
 module secretsTemplate 'keyVaultSecrets.bicep' = {
   name: 'secretsTemplate'
   params: {
     keyVaultName: keyVaultName
-    keyVaultParameters: [
-      {
-        name: 'storageAccountName'
-        value: storageAccountName
-      }
-      {
-        name: 'jobsStorageAccountName'
-        value: jobsStorageAccountName
-      }
-      {
-        name: 'membershipContainerName'
-        value: membershipContainerName
-      }
-      {
-        name: 'appInsightsAppId'
-        value: appInsightsTemplate.outputs.appId
-      }
-      {
-        name: 'serviceBusNamespace'
-        value: serviceBusName
-      }
-      {
-        name: 'serviceBusSyncJobTopic'
-        value: syncJobsTopicName
-      }
-      {
-        name: 'serviceBusMembershipUpdatersTopic'
-        value: 'membershipUpdaters'
-      }
-      {
-        name: 'serviceBusMessageSplitterTopic'
-        value: 'messageSplitter'
-      }
-      {
-        name: 'logAnalyticsCustomerId'
-        value: logAnalyticsTemplate.outputs.customerId
-      }
-      {
-        name: 'notifierProviderId'
-        value: notifierProviderId
-      }
-      {
-        name: 'oamEntraAppId'
-        value: oamEntraAppId
-      }
-      {
-        name: 'oamEntraAppScope'
-        value: oamEntraAppScope
-      }
-      {
-        name: 'serviceBusMembershipAggregatorQueue'
-        value: serviceBusMembershipAggregatorQueue
-      }
-      {
-        name: 'serviceBusNotificationsQueue'
-        value: serviceBusNotificationsQueue
-      }
-      {
-        name: 'serviceBusFailedNotificationsQueue'
-        value: serviceBusFailedNotificationsQueue
-      }
-      {
-        name: 'serviceBusSyncJobUpdaterQueue'
-        value: serviceBusSyncJobUpdaterQueue
-      }
-      {
-        name: 'serviceBusConfigurationQueue'
-        value: serviceBusConfigurationQueue
-      }
-      {
-        name: 'serviceBusFailedConfigurationQueue'
-        value: serviceBusFailedConfigurationQueue
-      }
-      {
-        name: 'graphUserAssignedManagedIdentityName'
-        value: graphUserAssignedManagedIdentityName
-      }
-      {
-        name: 'graphUserAssignedManagedIdentityClientId'
-        value: graphUserAssignedManagedIdentity.outputs.clientId
-      }
-    ]
+    keyVaultParameters: allSecrets
   }
   dependsOn: [
     dataKeyVaultTemplate
@@ -1045,6 +1056,7 @@ module secretsTemplate 'keyVaultSecrets.bicep' = {
     logAnalyticsTemplate
     appInsightsTemplate
     graphUserAssignedManagedIdentity
+    openAIResources
   ]
 }
 

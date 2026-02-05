@@ -110,3 +110,6 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
     gpt4oDeployment
   ]
 }
+
+output openAIEndpoint string = openAI.properties.endpoint
+
