@@ -1,4 +1,5 @@
 param location string
+param aiLocation string
 param environmentAbbreviation string
 param solutionAbbreviation string
 param notifierProviderId string
@@ -17,6 +18,9 @@ param notificationAlertThreshold int = 10
 param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
 param isTeamsChannelApplicationPermissionGranted bool = false
+param featureFlags object = {
+  enableOpenAI: false
+}
 param emailReceivers array = [
   {
     name: 'Example name'
@@ -426,5 +430,7 @@ module dataInfrastructureTemplate '../Infrastructure/data/template.bicep' = {
     notificationAlertThreshold: notificationAlertThreshold
     isProduction: isProduction
     availableMembershipUpdaters: availableMembershipUpdaters
+    aiLocation: aiLocation
+    featureFlags: featureFlags
   }
 }

@@ -640,6 +640,13 @@ param sqlAdministratorsGroupName string
 @description('Failed notifications alert threshold.')
 param notificationAlertThreshold int = 10
 
+@description('Location for the OpenAI resource.')
+param aiLocation string = location
+
+param featureFlags object = {
+  enableOpenAI: false
+}
+
 var syncJobsTopicName = 'syncJobs'
 
 module sqlServer 'sqlServer.bicep' = {
@@ -871,6 +878,20 @@ module appInsightsTemplate 'applicationInsights.bicep' = {
   }
   dependsOn: [
     dataKeyVaultTemplate
+    logAnalyticsTemplate
+  ]
+}
+
+module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
+  name: 'openAIResources'
+  params: {
+    aiLocation: aiLocation
+    openAIResourceName: '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-openai'
+    solutionAbbreviation: solutionAbbreviation
+    environmentAbbreviation: environmentAbbreviation
+    allowedIpAddresses: ''
+  }
+  dependsOn: [
     logAnalyticsTemplate
   ]
 }

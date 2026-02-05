@@ -67,13 +67,6 @@ param setRBACPermissions bool = false
 @description('Allowed origins for the SignalR service.')
 param signalrCORS array = ['https://microsoft.com']
 
-@description('Location for the OpenAI resource.')
-param aiLocation string
-
-@description('The name of the Azure OpenAI resource.')
-param openAIResourceName string = '${solutionAbbreviation}-compute-${environmentAbbreviation}-openai'
-
-
 param featureFlags object = {
   enableTeamsChannel: false
   enableOpenAI: false
@@ -367,16 +360,6 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
   }
 }
 
-module openAIResources 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
-  name: 'openAIResources'
-  params: {
-    aiLocation: aiLocation
-    openAIResourceName: openAIResourceName
-    solutionAbbreviation: solutionAbbreviation
-    environmentAbbreviation: environmentAbbreviation
-    allowedIpAddresses: featureFlags.enableOpenAI ? '${appService.outputs.outboundIpAddresses},${appService.outputs.possibleOutboundIpAddresses}' : ''
-  }
-}
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-WebApi'
   params: {
