@@ -672,7 +672,16 @@ const getOptions = (
   const getPickerSuggestions = async (
     filterText: string
   ): Promise<IPersonaProps[]> => {
-    return filterText && ownerPickerSuggestions ? ownerPickerSuggestions : [];
+    // Actively fetch suggestions so the picker shows results immediately
+    if (!filterText) return [];
+    try {
+      const action = await dispatch(getPeoplePickerSuggestions(filterText));
+      const payload = (action.payload as IPersonaProps[]) ?? [];
+      return payload;
+    } catch {
+      // Fallback to whatever is already in state
+      return ownerPickerSuggestions ?? [];
+    }
   };
 
   const handleOrgLeaderInputChange = (input: string): string => {

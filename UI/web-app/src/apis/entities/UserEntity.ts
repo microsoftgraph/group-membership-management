@@ -5,4 +5,6 @@ export type UserEntity = {
     displayName: string;
     mail: string;
     id: string;
+    userPrincipalName?: string;
+    mailNickname?: string;
 };

@@ -481,6 +481,75 @@ test.describe('Job Details Tests', () => {
     console.log('✅ Job History panel opened and rows detected.');
   });
 
+  test('People picker suggests for name and alias inputs (GraphApi)', async ({ page }) => {
+    test.setTimeout(60000);
+    const AUTHORIZED_SENDERS_LABEL = 'Authorized Senders';
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+    const aliasFromEnv = EMAIL && EMAIL.includes('@') ? `${EMAIL.split('@')[0]}@` : 'user@';
+
+    // Capture Graph /users responses to ensure no 400/unsupported errors
+    const badUserResponses: Array<{ url: string; status: number }> = [];
+    page.on('response', (resp) => {
+      try {
+        const u = resp.url();
+        if (/\/users(\?|$)/.test(u) && resp.request().method() === 'GET') {
+          const status = resp.status();
+          if (status >= 400) badUserResponses.push({ url: u, status });
+        }
+      } catch { /* ignore */ }
+    });
+
+    await page.goto(url);
+    await page.waitForTimeout(10000);
+
+    await page.getByRole('button', { name: 'Add' }).click();
+    await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+    await page.getByText('Create a new group').click();
+    await page.getByPlaceholder('Enter the name of the group').click();
+
+    const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
+    await page.getByPlaceholder('Enter the name of the group').fill(groupName);
+
+    // Minimal required fields to proceed
+    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
+    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('user');
+    const senderOptions = page.locator('[role="listbox"] [role="option"]');
+    await expect(senderOptions.first()).toBeVisible({ timeout: 10000 });
+    await senderOptions.first().click();
+
+    await page.getByRole('button', { name: 'Create group' }).click();
+    await page.waitForSelector('button:has-text("Next")');
+    const nextButton = page.getByRole('button', { name: 'Next' });
+    await expect(nextButton).toBeEnabled({ timeout: 30000 });
+    await nextButton.click();
+    await nextButton.click();
+
+    // Add HR source part and open Org leader picker
+    await page.getByRole('button', { name: 'Add Source Part' }).click();
+    await page.getByTestId('hr-include-org-choice').locator('label').filter({ hasText: 'Yes' }).click();
+    const orgLeaderInput = page.getByLabel('Provide Org. leader');
+    await expect(orgLeaderInput).toBeVisible({ timeout: 10000 });
+
+    // Scenario 1: single-token name (uses name prefix filter blended with search)
+    await orgLeaderInput.click();
+    // Use a generic token likely present in seeded tenants
+    await orgLeaderInput.fill('user');
+    const listbox = page.locator('[role="listbox"]');
+    const options = listbox.locator('[role="option"]');
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    expect(badUserResponses, 'Graph /users should not error for name search').toHaveLength(0);
+
+    // Scenario 2: backspace to shorter prefix (should still show via search)
+    await orgLeaderInput.press('Backspace'); // -> "use"
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    expect(badUserResponses, 'Graph /users should not error after backspace').toHaveLength(0);
+
+    // Scenario 3: alias with domain (prefix filter on mail/UPN) using env email if available
+    await orgLeaderInput.fill(aliasFromEnv);
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    expect(badUserResponses, 'Graph /users should not error for alias prefix').toHaveLength(0);
+  });
+
   // Helper: robustly select the first option from a labeled combobox/people picker
   // Returns a numeric id parsed from the option text if present (e.g., "User 22360" -> 22360)
   const selectComboOptionByLabel = async (page: Page, label: string, query: string): Promise<number | null> => {
