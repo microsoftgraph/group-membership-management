@@ -78,7 +78,7 @@ function Set-WebAPIAccessRoles {
 				-Scope $signalRResource.Id `
 				-RoleDefinitionName "SignalR App Server"
 
-			$openAIResource = Get-AzResource -ResourceGroupName $ComputeResourceGroupName -ResourceType "Microsoft.CognitiveServices/accounts" -Name "$ComputeResourceGroupName-openai" -ErrorAction SilentlyContinue
+			$openAIResource = Get-AzResource -ResourceGroupName $DataResourceGroupName -ResourceType "Microsoft.CognitiveServices/accounts" -Name "$DataResourceGroupName-openai" -ErrorAction SilentlyContinue
 			if ($null -ne $openAIResource) {
 				Set-RoleAssignment `
 				-ObjectId $webApiServicePrincipal.Id `
