@@ -169,6 +169,9 @@ resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = {
           allowedAudiences: [
             'api://${functionAuthAppClientId}'
           ]
+          defaultAuthorizationPolicy: {
+            allowedPrincipals: []
+          }
         }
       }
     }
