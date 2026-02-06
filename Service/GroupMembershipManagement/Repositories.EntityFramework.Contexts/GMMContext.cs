@@ -170,6 +170,8 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(h => h.UsersAdded);
                 entity.Property(h => h.UsersRemoved);
                 entity.Property(h => h.ThresholdViolations);
+                entity.Property(h => h.BeforeSyncUserCount);
+                entity.Property(h => h.AfterSyncUserCount);
                 entity.Property(h => h.UpdatedByFunction).HasMaxLength(255);
                 entity.Property(h => h.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(h => h.UpdatedAt)

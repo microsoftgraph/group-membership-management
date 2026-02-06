@@ -60,6 +60,16 @@ namespace Models.SyncJobHistory
         public int? ThresholdViolations { get; set; }
 
         /// <summary>
+        /// Gets or sets the user count before the sync operation
+        /// </summary>
+        public int? BeforeSyncUserCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets the user count after the sync operation
+        /// </summary>
+        public int? AfterSyncUserCount { get; set; }
+
+        /// <summary>
         /// Gets or sets the function that updated the job status
         /// </summary>
         public string UpdatedByFunction { get; set; }
