@@ -843,6 +843,199 @@ function Get-CommonParameters {
     return $commonParametersObject
 }
 
+function Set-FunctionAuthenticationAllowedIdentities {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId,
+        [Parameter(Mandatory = $false)]
+        [bool]$SkipAzureDataFactoryDeployment = $false,
+        [Parameter(Mandatory = $false)]
+        [string[]]$AdditionalAdfFunctionAppNames = @(),
+        [Parameter(Mandatory = $false)]
+        [string[]]$AdditionalWebApiFunctionAppNames = @()
+    )
+
+    Write-Host "`n" -NoNewline
+    Write-Host ("=" * 60) -ForegroundColor Cyan
+    Write-Host "  Setting Allowed Identities for Function Authentication" -ForegroundColor Cyan
+    Write-Host ("=" * 60) -ForegroundColor Cyan
+
+    $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+
+    # Get ADF Managed Identity Principal ID (if ADF is deployed)
+    $adfMSIPrincipalId = $null
+    if ($SkipAzureDataFactoryDeployment -eq $false) {
+        Write-Host "  Retrieving ADF Managed Identity..." -ForegroundColor Yellow
+        $adfResourceName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
+        $adfResource = Get-AzResource -ResourceGroupName $dataResourceGroup -ResourceType "Microsoft.DataFactory/factories" -Name $adfResourceName -ErrorAction SilentlyContinue
+        if ($null -ne $adfResource -and $null -ne $adfResource.Identity) {
+            $adfMSIPrincipalId = $adfResource.Identity.PrincipalId
+            if (-not [string]::IsNullOrWhiteSpace($adfMSIPrincipalId)) {
+                Write-Host "  ✓ ADF Managed Identity: $adfMSIPrincipalId" -ForegroundColor Green
+            }
+        }
+        else {
+            Write-Host "  ⚠ ADF resource not found or has no managed identity" -ForegroundColor Yellow
+        }
+    }
+    else {
+        Write-Host "  ⏭ Skipping ADF identity (ADF deployment was skipped)" -ForegroundColor Yellow
+    }
+
+    # Get WebAPI Managed Identity Principal ID
+    $webApiMSIPrincipalId = $null
+    $webApiResourceName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+    Write-Host "  Retrieving WebAPI Managed Identity..." -ForegroundColor Yellow
+    $webApiResource = Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiResourceName -ErrorAction SilentlyContinue
+    if ($null -ne $webApiResource -and $null -ne $webApiResource.Identity) {
+        $webApiMSIPrincipalId = $webApiResource.Identity.PrincipalId
+        if (-not [string]::IsNullOrWhiteSpace($webApiMSIPrincipalId)) {
+            Write-Host "  ✓ WebAPI Managed Identity: $webApiMSIPrincipalId" -ForegroundColor Green
+        }
+    }
+    else {
+        Write-Host "  ⚠ WebAPI resource not found or has no managed identity" -ForegroundColor Yellow
+    }
+
+    # Define function apps that need ADF access
+    $adfFunctionAppNames = @("AzureUserReader", "NonProdService")
+    $adfFunctionAppNames += $AdditionalAdfFunctionAppNames
+
+    # Define function apps that need WebAPI access
+    $webApiFunctionAppNames = @("JobScheduler")
+    $webApiFunctionAppNames += $AdditionalWebApiFunctionAppNames
+
+    
+
+    # Update function apps that need ADF access
+    if ([string]::IsNullOrWhiteSpace($adfMSIPrincipalId) -eq $false) {
+        Write-Host "`n  Updating function apps for ADF access..." -ForegroundColor Yellow
+        Update-FunctionAppAuthSettings -FunctionAppNames $adfFunctionAppNames `
+            -AllowedPrincipalIds @($adfMSIPrincipalId) `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SubscriptionId $SubscriptionId
+    }
+    else {
+        Write-Host "`n  ⚠ No ADF identities found. Skipping ADF function app updates." -ForegroundColor Yellow
+    }
+
+    # Update function apps that need WebAPI access
+    if ([string]::IsNullOrWhiteSpace($webApiMSIPrincipalId) -eq $false) {
+        Write-Host "`n  Updating function apps for WebAPI access..." -ForegroundColor Yellow
+        Update-FunctionAppAuthSettings -FunctionAppNames $webApiFunctionAppNames `
+            -AllowedPrincipalIds @($webApiMSIPrincipalId) `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SubscriptionId $SubscriptionId
+    }
+    else {
+        Write-Host "`n  ⚠ No WebAPI identities found. Skipping WebAPI function app updates." -ForegroundColor Yellow
+    }
+
+    Write-Host "`n" -NoNewline
+    Write-Host ("=" * 60) -ForegroundColor Green
+    Write-Host "  ✓ Function Authentication Identities Updated" -ForegroundColor Green
+    Write-Host ("=" * 60) -ForegroundColor Green
+    Write-Host ""
+}
+
+function Update-FunctionAppAuthSettings {
+    param (
+        [Parameter(Mandatory = $true)]
+        [string[]]$FunctionAppNames,
+        [Parameter(Mandatory = $true)]
+        [string[]]$AllowedPrincipalIds,
+        [Parameter(Mandatory = $true)]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [string]$SubscriptionId
+    )
+
+    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
+    $functionApps = @()
+    foreach ($shortName in $FunctionAppNames) {
+        $fullFunctionName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$shortName"
+        $app = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $fullFunctionName -ErrorAction SilentlyContinue
+        if ($null -ne $app) {
+            $functionApps += $app
+            Write-Host "  ✓ Found function app: $fullFunctionName" -ForegroundColor Green
+        }
+        else {
+            Write-Host "  ⚠ Function app not found: $fullFunctionName" -ForegroundColor Yellow
+        }
+    }
+
+    if ($null -eq $functionApps -or $functionApps.Count -eq 0) {
+        Write-Host "  ⚠ No Function Apps found." -ForegroundColor Yellow
+        return
+    }
+
+    $token = Get-BearerToken
+    $headers = @{
+        Authorization  = "Bearer $token"
+        'Content-Type' = 'application/json'
+    }
+
+    $functionIndex = 0
+    $totalFunctions = $functionApps.Count
+
+    foreach ($functionApp in $functionApps) {
+        $functionIndex++
+        $functionAppName = $functionApp.Name
+
+        Write-Host "  [$functionIndex/$totalFunctions] Updating: $functionAppName" -ForegroundColor Gray
+
+        try {
+            # Get current auth settings
+            $getUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup/providers/Microsoft.Web/sites/$functionAppName/config/authsettingsV2?api-version=2022-09-01"
+            $currentAuthSettings = Invoke-RestMethod -Uri $getUri -Method Get -Headers $headers
+
+            # Get existing allowed principals and merge with new ones
+            $existingIdentities = @()
+            if ($null -ne $currentAuthSettings.properties.identityProviders.azureActiveDirectory.validation.defaultAuthorizationPolicy.allowedPrincipals.identities) {
+                $existingIdentities = @($currentAuthSettings.properties.identityProviders.azureActiveDirectory.validation.defaultAuthorizationPolicy.allowedPrincipals.identities)
+            }
+
+            # Combine existing and new identities, then deduplicate
+            $combinedIdentities = ($existingIdentities + $AllowedPrincipalIds) | Select-Object -Unique
+
+            # Add allowedPrincipals.identities to the validation section
+            if ($null -eq $currentAuthSettings.properties.identityProviders.azureActiveDirectory.validation.defaultAuthorizationPolicy) {
+                $currentAuthSettings.properties.identityProviders.azureActiveDirectory.validation | Add-Member -NotePropertyName "defaultAuthorizationPolicy" -NotePropertyValue @{} -Force
+            }
+
+            $currentAuthSettings.properties.identityProviders.azureActiveDirectory.validation.defaultAuthorizationPolicy = @{
+                allowedPrincipals = @{
+                    identities = $combinedIdentities
+                }
+            }
+
+            # Update auth settings
+            $putUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup/providers/Microsoft.Web/sites/$functionAppName/config/authsettingsV2?api-version=2022-09-01"
+            $body = $currentAuthSettings | ConvertTo-Json -Depth 20
+
+            $null = Invoke-RestMethod -Uri $putUri -Method Put -Headers $Headers -Body $body
+
+            Write-Host "    ✓ Successfully updated $functionAppName" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "    ✗ Failed to update $($functionAppName): $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+
+    # Clear sensitive token from memory
+    $token = $null
+    $headers = $null
+}
+
 function Set-GMMResources {
     param (
         [Parameter(Mandatory = $true)]
@@ -980,6 +1173,12 @@ function Set-GMMResources {
     else {
         Write-Host "`nSkipping Azure Data Factory deployment as per configuration [skipAzureDataFactoryDeployment = $skipAzureDataFactoryDeployment]."
     }
+
+    Set-FunctionAuthenticationAllowedIdentities `
+        -SolutionAbbreviation $SolutionAbbreviation `
+        -EnvironmentAbbreviation $EnvironmentAbbreviation `
+        -SubscriptionId $SubscriptionId `
+        -SkipAzureDataFactoryDeployment $skipAzureDataFactoryDeployment
 
     Write-Host "`nResources deployed"
 }
