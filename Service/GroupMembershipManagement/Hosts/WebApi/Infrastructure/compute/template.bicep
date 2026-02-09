@@ -67,6 +67,9 @@ param setRBACPermissions bool = false
 @description('Allowed origins for the SignalR service.')
 param signalrCORS array = ['https://microsoft.com']
 
+@description('Location for the OpenAI resource.')
+param aiLocation string
+
 param featureFlags object = {
   enableTeamsChannel: false
   enableOpenAI: false
@@ -390,5 +393,18 @@ module appService 'appService.bicep' = {
   dependsOn: [
     servicePlanTemplate
     graphUAMI
+  ]
+}
+
+module openAINetworking 'openAIResources.bicep' = if (featureFlags.enableOpenAI) {
+  name: 'openAINetworkingTemplate-WebApi'
+  scope: resourceGroup(dataResourceGroup)
+  params: {
+    openAIResourceName: '${solutionAbbreviation}-data-${environmentAbbreviation}-openai'
+    aiLocation: aiLocation
+    allowedIpAddresses: '${appService.outputs.outboundIpAddresses},${appService.outputs.possibleOutboundIpAddresses}'
+  }
+  dependsOn: [
+    appService
   ]
 }

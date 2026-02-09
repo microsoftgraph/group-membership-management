@@ -670,6 +670,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     location: location
+    aiLocation: aiLocation
     prereqsResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
     adfPipeline: pipeline
