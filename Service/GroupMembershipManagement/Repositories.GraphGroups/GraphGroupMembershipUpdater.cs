@@ -23,6 +23,7 @@ namespace Repositories.GraphGroups
     {
         private const int GraphBatchLimit = 20;
         private readonly int _concurrentWriteRequests;
+        private readonly int _concurrentRemoveRequests;
 
         private static readonly HttpStatusCode[] _shouldRetry = new[]
             { HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout, HttpStatusCode.BadGateway, HttpStatusCode.InternalServerError };
@@ -48,6 +49,7 @@ namespace Repositories.GraphGroups
                                   : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
         {
             _concurrentWriteRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentWriteRequests;
+            _concurrentRemoveRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentRemoveRequests;
         }
 
 
@@ -57,7 +59,7 @@ namespace Repositories.GraphGroups
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
             // 5 seems to be the most without it starting to throw errors that have to be retried
-            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId);
+            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId, _concurrentWriteRequests);
         }
 
         private HttpRequestMessage MakeBulkAddRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -82,7 +84,7 @@ namespace Repositories.GraphGroups
             RemoveUsersFromGroup(IEnumerable<AzureADUser> users, AzureADGroup targetGroup)
         {
             // This, however, is the most we can send per delete batch, and it works pretty well.
-            return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit, targetGroup.ObjectId);
+            return BatchAndSend(users, b => MakeBulkRemoveRequest(b, targetGroup.ObjectId), 1, GraphBatchLimit, targetGroup.ObjectId, _concurrentRemoveRequests);
         }
 
         private HttpRequestMessage MakeBulkRemoveRequest(List<AzureADUser> batch, Guid targetGroup)
@@ -99,7 +101,7 @@ namespace Repositories.GraphGroups
         private string GetNewChunkId() => $"{Guid.NewGuid().ToString().Replace("-", string.Empty)}";
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount, List<AzureADUser> UsersNotFound, List<AzureADUser> UsersAlreadyExist)>
-            BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize, Guid targetGroupId)
+            BatchAndSend(IEnumerable<AzureADUser> users, MakeBulkRequest makeRequest, int requestMax, int batchSize, Guid targetGroupId, int concurrentRequests)
         {
             if (!users.Any()) { return (ResponseCode.Ok, 0, new List<AzureADUser>(), new List<AzureADUser>()); }
 
@@ -111,7 +113,7 @@ namespace Repositories.GraphGroups
                         Id = x[0].MembershipAction == MembershipAction.Add ? GetNewChunkId() : x[0].ObjectId.ToString()
                     }));
 
-            var responses = await Task.WhenAll(Enumerable.Range(0, _concurrentWriteRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
+            var responses = await Task.WhenAll(Enumerable.Range(0, concurrentRequests).Select(x => ProcessQueue(queuedBatches, makeRequest, x, batchSize, targetGroupId)));
             var status = responses.Any(x => x.ResponseCode == ResponseCode.GuestError) ?
                 ResponseCode.GuestError :
                 (responses.Any(x => x.ResponseCode == ResponseCode.Error) ?

@@ -71,9 +71,11 @@ namespace Hosts.GraphUpdater
                     {
                         var configuration = services.GetRequiredService<IConfiguration>();
                         var batchRequests = GetIntSetting(configuration, "concurrentWriteRequests", 10);
+                        var removeRequests = GetIntSetting(configuration, "concurrentRemoveRequests", 10);
                         return new GraphRepositorySettings
                         {
-                            ConcurrentWriteRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests
+                            ConcurrentWriteRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests,
+                            ConcurrentRemoveRequests = removeRequests <= 0 || removeRequests > 10 ? 10 : removeRequests
                         };
                     })
                     .AddScoped<ISyncJobHistoryRepository, SyncJobHistoryRepository>()

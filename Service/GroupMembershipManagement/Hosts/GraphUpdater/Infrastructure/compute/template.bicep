@@ -88,6 +88,11 @@ param featureFlags object = {
 @maxValue(10)
 param concurrentWriteRequests int = 1
 
+@description('Number of concurrent remove requests to the Graph API.')
+@minValue(1)
+@maxValue(10)
+param concurrentRemoveRequests int = 1
+
 var logAnalyticsCustomerId = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsCustomerId')
 var logAnalyticsPrimarySharedKey = resourceId(subscription().subscriptionId, dataKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'logAnalyticsPrimarySharedKey')
 var graphAppClientId = resourceId(subscription().subscriptionId, prereqsKeyVaultResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'graphAppClientId')
@@ -154,6 +159,7 @@ var appSettings = {
   triggerSchedule: triggerSchedule
   triggerDelay: triggerDelay
   concurrentWriteRequests: concurrentWriteRequests
+  concurrentRemoveRequests: concurrentRemoveRequests
   GraphUpdater__UpdateBatchSize: 400
   'AzureWebJobs.StarterFunction.Disabled': instanceIdentifier == '' ? 0 : 1
   'AzureWebJobs.StarterFunction_small.Disabled': instanceIdentifier == 'small' ? 0 : 1

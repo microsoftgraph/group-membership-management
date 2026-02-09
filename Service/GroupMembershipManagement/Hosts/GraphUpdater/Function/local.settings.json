@@ -29,6 +29,7 @@
     "triggerDelay": "0",
     "instanceIdentifier": "small|large",
     "concurrentWriteRequests": 1,
+    "concurrentRemoveRequests": 1,
     "GraphUpdater__UpdateBatchSize": 400,
     "serviceBusMessageSplitterTopic": ""
   }
