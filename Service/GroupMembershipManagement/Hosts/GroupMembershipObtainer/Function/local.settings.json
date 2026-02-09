@@ -4,6 +4,7 @@
     "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",
     "appConfigurationEndpoint": "",
