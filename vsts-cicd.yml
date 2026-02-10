@@ -105,6 +105,9 @@ stages:
       - function:
          name: 'MessageSplitter'
          coverageThreshold: 40
+      - function:
+         name: 'AutoApprover'
+         coverageThreshold: 0
 
   - template: yaml/build-release-package.yml
     parameters:

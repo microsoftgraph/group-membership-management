@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "logAnalyticsCustomerId": "",
+    "logAnalyticsPrimarySharedKey": "",
+    "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "ConnectionStrings__JobsContext": "",
+    "ConnectionStrings__JobsContextReadOnly": ""
+  }
+}
