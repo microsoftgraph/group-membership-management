@@ -535,6 +535,32 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
   ]
 }]
 
+// ----------------- AzureMaintenance
+module azureMaintenanceDataResources '../Service/GroupMembershipManagement/Hosts/AzureMaintenance/Infrastructure/data/template.bicep' = {
+  name: 'azureMaintenanceDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Hosts/AzureMaintenance/Infrastructure/compute/template.bicep' = {
+  name: 'azureMaintenanceComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    setRBACPermissions: setRBACPermissions
+  }
+  dependsOn: [
+    azureMaintenanceDataResources
+  ]
+}
+
 /// Functions Post Compute tasks
 module azureUserReaderPostCompute '../Service/GroupMembershipManagement/Hosts/AzureUserReader/Infrastructure/compute/postCompute.bicep' = {
   name: 'azureUserReaderPostCompute'
@@ -605,7 +631,6 @@ module notifierPostCompute '../Service/GroupMembershipManagement/Hosts/Notifier/
     messageSplitterComputeResources
   ]
 }
-
 
 // web api
 module webApiDataResources '../Service/GroupMembershipManagement/Hosts/WebApi/Infrastructure/data/template.bicep' = {
