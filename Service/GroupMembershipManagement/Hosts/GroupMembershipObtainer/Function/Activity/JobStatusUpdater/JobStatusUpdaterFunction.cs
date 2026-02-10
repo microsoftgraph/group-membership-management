@@ -24,7 +24,7 @@ namespace Hosts.GroupMembershipObtainer
             if (request.SyncJob != null)
             {
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-                await _membershipCalculator.UpdateSyncJobStatusAsync(request.SyncJob, request.Status);
+                await _membershipCalculator.UpdateSyncJobStatusAsync(request.SyncJob, request.Status, request.BeforeSyncUserCount);
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
             }
         }

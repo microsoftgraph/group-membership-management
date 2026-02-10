@@ -9,5 +9,6 @@ namespace Hosts.GroupMembershipObtainer
     {
         public SyncJob SyncJob { get; set; }
         public SyncStatus Status { get; set; }
+        public int? BeforeSyncUserCount { get; set; }
     }
 }

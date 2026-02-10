@@ -491,5 +491,147 @@ namespace Tests.FunctionApps
 
             Assert.AreEqual("GroupName", result);
         }
+
+        [TestMethod]
+        public async Task TracksBeforeSyncUserCountWhenReadingFromTargetGroup()
+        {
+            // Arrange
+            var targetGroupId = Guid.NewGuid();
+            var runId = Guid.NewGuid();
+            const int expectedUserCount = 150;
+
+            var mockBlobRepository = new Mock<IBlobStorageRepository>();
+            mockBlobRepository
+                .Setup(x => x.MergeAndStreamUserBlobsAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<AzureADGroup>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync(expectedUserCount);
+
+            var graphRepo = new MockGraphGroupRepository()
+            {
+                GroupsToUsers = new Dictionary<Guid, List<AzureADUser>>()
+            };
+
+            _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(new Group { GroupId = targetGroupId, SyncJobId = Guid.NewGuid() });
+
+            var calc = new SGMembershipCalculator(
+                graphRepo,
+                mockBlobRepository.Object,
+                _syncJobs,
+                _groupsRepository.Object,
+                _channelsRepository.Object,
+                _notificationsQueueRepository.Object,
+                _databaseDestinationAttributesRepository.Object,
+                new MockLoggingRepository(),
+                _dryRun,
+                _syncJobStatusService.Object);
+
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = runId,
+                MembershipType = "GroupMembership",
+                Status = SyncStatus.InProgress.ToString(),
+                Query = _querySample.GetQuery()
+            };
+
+            _syncJobs.Jobs.Add(syncJob);
+
+            // Act - Call with objectId == targetGroupId (reading from destination group itself)
+            var result = await calc.SendTransitiveAndDeltaMembershipAsync(syncJob, targetGroupId, 1, false);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(expectedUserCount, result.MemberCount);
+
+            // Verify UpdateSyncJobStatusAsync was called with the correct parameters
+            _syncJobStatusService.Verify(
+                x => x.UpdateJobStatusAsync(
+                    It.Is<SyncJob>(s => s.Id == syncJob.Id),
+                    SyncStatus.InProgress,
+                    It.Is<Models.SyncJobHistory.SyncJobHistory>(h =>
+                        h.BeforeSyncUserCount == expectedUserCount &&
+                        h.Status == SyncStatus.InProgress.ToString() &&
+                        h.UpdatedByFunction == "GroupMembershipObtainer"),
+                    "GroupMembershipObtainer"),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task DoesNotTrackBeforeSyncUserCountWhenReadingFromSourceGroup()
+        {
+            // Arrange
+            var targetGroupId = Guid.NewGuid();
+            var sourceGroupId = Guid.NewGuid(); // Different from target
+            var runId = Guid.NewGuid();
+            const int memberCount = 200;
+
+            var mockBlobRepository = new Mock<IBlobStorageRepository>();
+            mockBlobRepository
+                .Setup(x => x.MergeAndStreamUserBlobsAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<AzureADGroup>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<Guid>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync(memberCount);
+
+            var graphRepo = new MockGraphGroupRepository()
+            {
+                GroupsToUsers = new Dictionary<Guid, List<AzureADUser>>()
+            };
+
+            _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(new Group { GroupId = targetGroupId, SyncJobId = Guid.NewGuid() });
+
+            var calc = new SGMembershipCalculator(
+                graphRepo,
+                mockBlobRepository.Object,
+                _syncJobs,
+                _groupsRepository.Object,
+                _channelsRepository.Object,
+                _notificationsQueueRepository.Object,
+                _databaseDestinationAttributesRepository.Object,
+                new MockLoggingRepository(),
+                _dryRun,
+                _syncJobStatusService.Object);
+
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = runId,
+                MembershipType = "GroupMembership",
+                Status = SyncStatus.InProgress.ToString(),
+                Query = _querySample.GetQuery()
+            };
+
+            _syncJobs.Jobs.Add(syncJob);
+
+            // Act - Call with objectId != targetGroupId (reading from source group, not destination)
+            var result = await calc.SendTransitiveAndDeltaMembershipAsync(syncJob, sourceGroupId, 1, false);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(memberCount, result.MemberCount);
+
+            // Verify UpdateSyncJobStatusAsync was NOT called since source != destination
+            _syncJobStatusService.Verify(
+                x => x.UpdateJobStatusAsync(
+                    It.IsAny<SyncJob>(),
+                    It.IsAny<SyncStatus?>(),
+                    It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
+                    It.IsAny<string>()),
+                Times.Never);
+        }
     }
 }

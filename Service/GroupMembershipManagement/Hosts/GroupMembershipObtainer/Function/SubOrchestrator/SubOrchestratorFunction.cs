@@ -174,6 +174,18 @@ namespace Hosts.GroupMembershipObtainer
                                 var deltaLink = await GetInitialDeltaLinkUsers(context, deltaFileContent, request);
                                 var countOfUsersFromAADGroup = await GetUsersCountFunction(context, request.SourceGroup.ObjectId, request.RunId);
 
+                                // If we're reading from the target group itself, store the before sync user count during delta link call
+                                if (request.GroupId == request.SourceGroup.ObjectId)
+                                {
+                                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                                        new JobStatusUpdaterRequest
+                                        {
+                                            SyncJob = request.SyncJob,
+                                            Status = SyncStatus.InProgress,
+                                            BeforeSyncUserCount = countOfUsersFromAADGroup
+                                        });
+                                }
+
                                 var response = await ProcessCachedAndDeltaUsers(context, new ProcessCachedAndDeltaUsersRequest
                                 {
                                     RunId = request.RunId,

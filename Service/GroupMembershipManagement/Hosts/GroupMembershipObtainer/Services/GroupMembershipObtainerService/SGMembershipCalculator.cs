@@ -234,6 +234,12 @@ namespace Hosts.GroupMembershipObtainer
 
             }, VerbosityLevel.DEBUG);
 
+            // If we're reading from the target group itself, store the before sync user count during transitive/delta call
+            if (objectId == targetOfficeGroupId)
+            {
+                await UpdateSyncJobStatusAsync(syncJob, SyncStatus.InProgress, memberCount);
+            }
+
             return new GroupMembershipFileResult
             {
                 FilePath = fileName,
@@ -308,7 +314,7 @@ namespace Hosts.GroupMembershipObtainer
 
         }
 
-        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status)
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, int? beforeSyncUserCount = null)
         {
             var history = new SyncJobHistory
             {
@@ -317,7 +323,8 @@ namespace Hosts.GroupMembershipObtainer
                 Status = status.ToString(),
                 UpdatedByFunction = "GroupMembershipObtainer",
                 EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                BeforeSyncUserCount = beforeSyncUserCount
             };
 
             await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, "GroupMembershipObtainer");

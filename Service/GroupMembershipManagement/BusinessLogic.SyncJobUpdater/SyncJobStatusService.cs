@@ -68,6 +68,11 @@ namespace BusinessLogic.SyncJobUpdater
                 existingHistory.UpdatedByFunction = !string.IsNullOrEmpty(history.UpdatedByFunction) ? history.UpdatedByFunction : existingHistory.UpdatedByFunction;
                 existingHistory.UpdatedAt = DateTime.UtcNow;
 
+                if (history.BeforeSyncUserCount.HasValue)
+                {
+                    existingHistory.BeforeSyncUserCount = history.BeforeSyncUserCount;
+                }
+
                 if (history.StartTime.HasValue && !existingHistory.StartTime.HasValue)
                 {
                     existingHistory.StartTime = history.StartTime;
