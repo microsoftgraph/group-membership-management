@@ -37,7 +37,7 @@ namespace Services.Tests
             _requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault(GRAPH_API_V1_BASE_URL);
             _graphRepositorySettings = new Mock<IGraphRepositorySettings>();
 
-            _graphRepositorySettings.Setup(x => x.ConcurrentWriteRequests).Returns(10);
+            _graphRepositorySettings.Setup(x => x.ConcurrentAddRequests).Returns(10);
             _graphRepositorySettings.Setup(x => x.ConcurrentRemoveRequests).Returns(10);
 
             string requestUrl = null;
