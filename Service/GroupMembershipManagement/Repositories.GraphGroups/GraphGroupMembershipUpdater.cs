@@ -22,7 +22,7 @@ namespace Repositories.GraphGroups
     internal class GraphGroupMembershipUpdater : GraphGroupRepositoryBase
     {
         private const int GraphBatchLimit = 20;
-        private readonly int _concurrentWriteRequests;
+        private readonly int _concurrentAddRequests;
         private readonly int _concurrentRemoveRequests;
 
         private static readonly HttpStatusCode[] _shouldRetry = new[]
@@ -48,7 +48,7 @@ namespace Repositories.GraphGroups
                                   IGraphRepositorySettings graphRepositorySettings)
                                   : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
         {
-            _concurrentWriteRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentWriteRequests;
+            _concurrentAddRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentAddRequests;
             _concurrentRemoveRequests = graphRepositorySettings == null ? 10 : graphRepositorySettings.ConcurrentRemoveRequests;
         }
 
@@ -59,7 +59,7 @@ namespace Repositories.GraphGroups
             //You can, in theory, send batches of 20 requests of 20 group adds each
             // but Graph starts saying "Service Unavailable" for a bunch of them if you do that, so only send so many at once
             // 5 seems to be the most without it starting to throw errors that have to be retried
-            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId, _concurrentWriteRequests);
+            return BatchAndSend(users, b => MakeBulkAddRequest(b, targetGroup.ObjectId), GraphBatchLimit, 5, targetGroup.ObjectId, _concurrentAddRequests);
         }
 
         private HttpRequestMessage MakeBulkAddRequest(List<AzureADUser> batch, Guid targetGroup)

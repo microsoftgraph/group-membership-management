@@ -74,7 +74,7 @@ namespace Hosts.GraphUpdater
                         var removeRequests = GetIntSetting(configuration, "concurrentRemoveRequests", 10);
                         return new GraphRepositorySettings
                         {
-                            ConcurrentWriteRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests,
+                            ConcurrentAddRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests,
                             ConcurrentRemoveRequests = removeRequests <= 0 || removeRequests > 10 ? 10 : removeRequests
                         };
                     })

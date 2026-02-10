@@ -5,7 +5,7 @@ namespace Repositories.Contracts
 {
     public interface IGraphRepositorySettings
     {
-        public int ConcurrentWriteRequests { get; set; }
+        public int ConcurrentAddRequests { get; set; }
         public int ConcurrentRemoveRequests { get; set; }
     }
 }
