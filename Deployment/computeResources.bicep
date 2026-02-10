@@ -458,6 +458,35 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
   ]
 }
 
+// ----------------- AutoApprover
+module autoApproverDataResources '../Service/GroupMembershipManagement/Hosts/AutoApprover/Infrastructure/data/template.bicep' = {
+  name: 'autoApproverDataResourcesTemplate'
+  scope: resourceGroup(dataResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+  }
+}
+
+module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/AutoApprover/Infrastructure/compute/template.bicep' = {
+  name: 'autoApproverComputeResourcesTemplate'
+  scope: resourceGroup(computeResourceGroupName)
+  params: {
+    location: location
+    environmentAbbreviation: environmentAbbreviation
+    solutionAbbreviation: solutionAbbreviation
+    tenantId: tenantId
+    prereqsKeyVaultResourceGroup: prereqsResourceGroupName
+    dataResourceGroup: dataResourceGroupName
+    setRBACPermissions: setRBACPermissions
+    functionAuthAppClientId: functionAuthAppClientId
+  }
+  dependsOn: [
+    autoApproverDataResources
+  ]
+}
+
 // ----------------- JobScheduler
 module jobSchedulerDataResources '../Service/GroupMembershipManagement/Hosts/JobScheduler/Infrastructure/data/template.bicep' = {
   name: 'jobSchedulerDataResourcesTemplate'

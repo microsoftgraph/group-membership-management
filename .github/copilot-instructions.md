@@ -45,6 +45,7 @@ GMM automates Entra ID group membership synchronization at enterprise scale. The
 - **Notifier**: Sends notifications to group owners to notify them of changes in their sync.
 - **PlaceMembershipObtainer**: Obtains the users that are found in the result of a Graph users GET call based on and filters applied.
 - **SyncJobUpdater**: Updates sync job properties in a centralized function, including tracking logs as well.
+- **AutoApprover**: Processes auto-approval requests for configuration workflow.
 
 #### Web Application
 - **React SPA** located in `UI/web-app/`

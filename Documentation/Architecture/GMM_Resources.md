@@ -71,6 +71,7 @@ GMM uses Azure Functions for its microservices architecture. Functions are organ
 |--------------|---------|
 | **Notifier** | Sends email notifications to group owners |
 | **SyncJobUpdater** | Centralized function for updating sync job properties and tracking logs |
+| **AutoApprover** | Processes auto-approval requests for configuration workflow |
 | **DestinationAttributesUpdater** | Periodically updates SQL cache with destination group information |
 | **GroupOwnershipObtainer** | Obtains owners of destination groups managed by GMM |
 | **AzureUserReader** | Reads user information from Entra ID |
@@ -121,6 +122,7 @@ GMM uses Azure Service Bus for decoupled inter-service communication.
 | `membershipAggregator` | Aggregation job messages |
 | `notifications` | Notification delivery |
 | `syncJobUpdater` | Job status updates |
+| `serviceBusAutoApproverQueue` | Auto-approval workflow messages |
 
 ---
 

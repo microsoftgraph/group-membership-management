@@ -39,7 +39,10 @@ namespace Hosts.AutoApprover
                     
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
 
-                    services.AddScoped<IAutoApproverService, AutoApproverService>();
+                    if (CommonServices.GetBoolSettingBase(configuration, "AutoApprover:IsEnabled", false))
+                    {
+                        services.AddScoped<IAutoApproverService, AutoApproverService>();
+                    }
                 })
                 .Build();
 

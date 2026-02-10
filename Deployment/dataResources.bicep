@@ -202,6 +202,14 @@ var defaultAppConfigurationKeyData = [
     }
   }
   {
+    key: 'AutoApprover:IsEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'AutoApprover'
+    }
+  }
+  {
     key: 'NumberOfThresholdViolationsFollowUps'
     value: '3'
     contentType: 'integer'

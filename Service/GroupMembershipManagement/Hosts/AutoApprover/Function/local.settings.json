@@ -8,7 +8,9 @@
     "logAnalyticsPrimarySharedKey": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "gmmServiceBus__fullyQualifiedNamespace": "",
     "ConnectionStrings__JobsContext": "",
-    "ConnectionStrings__JobsContextReadOnly": ""
+    "ConnectionStrings__JobsContextReadOnly": "",
+    "serviceBusAutoApproverQueue": "autoApprover"
   }
 }

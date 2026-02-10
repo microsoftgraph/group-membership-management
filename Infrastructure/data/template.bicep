@@ -202,6 +202,9 @@ param serviceBusConfigurationQueue string = 'configuration'
 @description('Enter failed pending configuration service bus queue name')
 param serviceBusFailedConfigurationQueue string = 'failedConfiguration'
 
+@description('Enter auto approver service bus queue name')
+param serviceBusAutoApproverQueue string = 'autoApprover'
+
 @description('Available membership updaters')
 param availableMembershipUpdaters array = [
   {
@@ -347,6 +350,14 @@ param appConfigurationKeyData array = [
     contentType: 'boolean'
     tag: {
       tag1: 'DryRun'
+    }
+  }
+  {
+    key: 'AutoApprover:IsEnabled'
+    value: 'false'
+    contentType: 'boolean'
+    tag: {
+      tag1: 'AutoApprover'
     }
   }
   {
@@ -825,6 +836,20 @@ module failedConfigurationQueue 'serviceBusQueue.bicep' = {
   name: 'failedConfigurationQueue'
   params: {
     queueName: serviceBusFailedConfigurationQueue
+    serviceBusName: serviceBusName
+    requiresSession: false
+    maxDeliveryCount: 5
+  }
+  dependsOn: [
+    serviceBusTemplate
+    logAnalyticsTemplate
+  ]
+}
+
+module autoApproverQueue 'serviceBusQueue.bicep' = {
+  name: 'autoApproverQueue'
+  params: {
+    queueName: serviceBusAutoApproverQueue
     serviceBusName: serviceBusName
     requiresSession: false
     maxDeliveryCount: 5
