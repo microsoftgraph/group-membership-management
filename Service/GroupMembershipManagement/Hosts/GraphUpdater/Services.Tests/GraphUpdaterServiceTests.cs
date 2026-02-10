@@ -37,8 +37,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object,mockSyncJobHistoryRepository.Object);
 
             var groupId = Guid.NewGuid();
             var runId = Guid.NewGuid();
@@ -64,8 +65,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
 
 			var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.Idle.ToString(), LastRunTime = lastRunTime };
@@ -110,8 +112,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository(mockJobNotificationData);
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             await graphUpdaterService.SendEmailAsync(job, notificationMessageType, new string[0] { });
             Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
@@ -142,8 +145,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object); await graphUpdaterService.SendEmailAsync(job, notificationMessageType, new string[0] { });
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object); await graphUpdaterService.SendEmailAsync(job, notificationMessageType, new string[0] { });
             Assert.AreEqual(0, mockMail.SentEmails.Count);
 		}
 		[TestMethod]
@@ -161,8 +165,9 @@ namespace Services.Tests
 
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var lastSuccessfulStartTime = DateTime.UtcNow.AddMinutes(-30);
@@ -202,8 +207,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup,mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup,mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var runId = Guid.NewGuid();
             var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var lastSuccessfulStartTime = DateTime.UtcNow.AddMinutes(-30);
@@ -243,8 +249,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object); var lastRunTime = DateTime.UtcNow.AddDays(-1);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object); var lastRunTime = DateTime.UtcNow.AddDays(-1);
             var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), LastRunTime = lastRunTime };
 
             await mockSyncJobs.AddSyncJobAsync(job);
@@ -270,8 +277,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var groupName = "MyTestGroup";
             mockGraphGroup.Setup(x => x.GetGroupNameAsync(It.IsAny<Guid>())).ReturnsAsync(groupName);
 
@@ -316,8 +324,9 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var groupOwner = "owner@test.com";
             mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(true);
 
@@ -340,14 +349,306 @@ namespace Services.Tests
 			var mockJobNotification = new MockJobNotificationRepository();
             var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
 
-            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object);
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup.Object, mockMail, mailSenders, mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
             var groupOwner = "nonowner@test.com";
             mockGraphGroup.Setup(x => x.IsEmailRecipientOwnerOfGroupAsync(It.IsAny<String>(), It.IsAny<Guid>(), It.IsAny<bool>())).ReturnsAsync(false);
 
             var response = await graphUpdaterService.IsEmailRecipientOwnerOfGroupAsync(groupOwner, Guid.NewGuid());
 
             Assert.IsFalse(response);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusAsync_ShouldCalculateAfterSyncUserCount_WhenStatusIsIdleWithChanges()
+        {
+            // Arrange
+            var mockLogs = new MockLoggingRepository();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
+            var mockSyncJobs = new MockDatabaseSyncJobRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
+            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            var runId = Guid.NewGuid();
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), RunId = runId };
+            
+            // Setup existing history with BeforeSyncUserCount
+            var existingHistory = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                BeforeSyncUserCount = 100,
+                Status = SyncStatus.InProgress.ToString()
+            };
+            mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(runId)).ReturnsAsync(existingHistory);
+
+            await mockSyncJobs.AddSyncJobAsync(job);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+                mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
+                mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+
+            // Act
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId, usersAdded: 10, usersRemoved: 5);
+
+            // Assert
+            mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                It.IsAny<SyncJob>(),
+                SyncStatus.Idle,
+                It.Is<SyncJobHistory>(h => 
+                    h.AfterSyncUserCount == 105 && // 100 + 10 - 5
+                    h.UsersAdded == 10 &&
+                    h.UsersRemoved == 5),
+                It.IsAny<string?>()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusAsync_ShouldNotCalculateAfterSyncUserCount_WhenStatusIsNotIdle()
+        {
+            // Arrange
+            var mockLogs = new MockLoggingRepository();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
+            var mockSyncJobs = new MockDatabaseSyncJobRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
+            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            var runId = Guid.NewGuid();
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), RunId = runId };
+
+            await mockSyncJobs.AddSyncJobAsync(job);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+                mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
+                mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+
+            // Act
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.InProgress, false, runId, usersAdded: 10, usersRemoved: 5);
+
+            // Assert
+            mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                It.IsAny<SyncJob>(),
+                SyncStatus.InProgress,
+                It.Is<SyncJobHistory>(h => h.AfterSyncUserCount == null),
+                It.IsAny<string?>()),
+                Times.Once);
+
+            // Verify GetByRunIdAsync was never called since status is not Idle
+            mockSyncJobHistoryRepository.Verify(x => x.GetByRunIdAsync(It.IsAny<Guid>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusAsync_ShouldReturnNullAfterSyncUserCount_WhenBeforeSyncUserCountIsNull()
+        {
+            // Arrange
+            var mockLogs = new MockLoggingRepository();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
+            var mockSyncJobs = new MockDatabaseSyncJobRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
+            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            var runId = Guid.NewGuid();
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), RunId = runId };
+            
+            // Setup existing history WITHOUT BeforeSyncUserCount
+            var existingHistory = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                BeforeSyncUserCount = null, // NULL BeforeSyncUserCount
+                Status = SyncStatus.InProgress.ToString()
+            };
+            mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(runId)).ReturnsAsync(existingHistory);
+
+            await mockSyncJobs.AddSyncJobAsync(job);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+                mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
+                mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+
+            // Act
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId, usersAdded: 10, usersRemoved: 5);
+
+            // Assert
+            mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                It.IsAny<SyncJob>(),
+                SyncStatus.Idle,
+                It.Is<SyncJobHistory>(h => h.AfterSyncUserCount == null),
+                It.IsAny<string?>()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusAsync_ShouldKeepSameCount_WhenNoChangesOccur()
+        {
+            // Arrange
+            var mockLogs = new MockLoggingRepository();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
+            var mockSyncJobs = new MockDatabaseSyncJobRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
+            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            var runId = Guid.NewGuid();
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), RunId = runId };
+            
+            // Setup existing history with BeforeSyncUserCount
+            var existingHistory = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                BeforeSyncUserCount = 100,
+                Status = SyncStatus.InProgress.ToString()
+            };
+            mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(runId)).ReturnsAsync(existingHistory);
+
+            await mockSyncJobs.AddSyncJobAsync(job);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+                mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
+                mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+
+            // Act - No users added or removed
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId, usersAdded: 0, usersRemoved: 0);
+
+            // Assert - Count should stay the same
+            mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                It.IsAny<SyncJob>(),
+                SyncStatus.Idle,
+                It.Is<SyncJobHistory>(h => 
+                    h.AfterSyncUserCount == 100 && // Same as BeforeSyncUserCount
+                    h.UsersAdded == 0 &&
+                    h.UsersRemoved == 0),
+                It.IsAny<string?>()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusAsync_ShouldCalculateCorrectly_WithOnlyAdds()
+        {
+            // Arrange
+            var mockLogs = new MockLoggingRepository();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
+            var mockSyncJobs = new MockDatabaseSyncJobRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
+            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            var runId = Guid.NewGuid();
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), RunId = runId };
+            
+            var existingHistory = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                BeforeSyncUserCount = 50,
+                Status = SyncStatus.InProgress.ToString()
+            };
+            mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(runId)).ReturnsAsync(existingHistory);
+
+            await mockSyncJobs.AddSyncJobAsync(job);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+                mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
+                mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+
+            // Act - Only adds, no removes
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId, usersAdded: 25, usersRemoved: null);
+
+            // Assert
+            mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                It.IsAny<SyncJob>(),
+                SyncStatus.Idle,
+                It.Is<SyncJobHistory>(h => 
+                    h.AfterSyncUserCount == 75 && // 50 + 25
+                    h.UsersAdded == 25 &&
+                    h.UsersRemoved == null),
+                It.IsAny<string?>()),
+                Times.Once);
+        }
+
+        [TestMethod]
+        public async Task UpdateSyncJobStatusAsync_ShouldCalculateCorrectly_WithOnlyRemoves()
+        {
+            // Arrange
+            var mockLogs = new MockLoggingRepository();
+            var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
+            var mockGraphGroup = new MockGraphGroupRepository();
+            var mockMail = new MockMailRepository();
+            var mailSenders = new EmailSenderRecipient("sender@domain.com", "fake_pass", "recipient@domain.com");
+            var mockSyncJobs = new MockDatabaseSyncJobRepository();
+            var mockGroups = new MockDatabaseGroupsRepository();
+            var mockNotificationType = new MockNotificationTypesRepository();
+            var mockJobNotification = new MockJobNotificationRepository();
+            var mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var mockSyncJobStatusService = new Mock<ISyncJobStatusService>();
+            var mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            var runId = Guid.NewGuid();
+            var job = new SyncJob { Id = Guid.NewGuid(), Status = SyncStatus.InProgress.ToString(), RunId = runId };
+            
+            var existingHistory = new SyncJobHistory
+            {
+                SyncJobId = job.Id,
+                RunId = runId,
+                BeforeSyncUserCount = 80,
+                Status = SyncStatus.InProgress.ToString()
+            };
+            mockSyncJobHistoryRepository.Setup(x => x.GetByRunIdAsync(runId)).ReturnsAsync(existingHistory);
+
+            await mockSyncJobs.AddSyncJobAsync(job);
+
+            var graphUpdaterService = new GraphUpdaterService(mockLogs, telemetryClient, mockGraphGroup, mockMail, mailSenders, 
+                mockSyncJobs, mockGroups, mockNotificationType, mockJobNotification, mockServiceBusQueueRepository.Object, 
+                mockSyncJobStatusService.Object, mockSyncJobHistoryRepository.Object);
+
+            // Act - Only removes, no adds
+            await graphUpdaterService.UpdateSyncJobStatusAsync(job, SyncStatus.Idle, false, runId, usersAdded: null, usersRemoved: 30);
+
+            // Assert
+            mockSyncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+                It.IsAny<SyncJob>(),
+                SyncStatus.Idle,
+                It.Is<SyncJobHistory>(h => 
+                    h.AfterSyncUserCount == 50 && // 80 - 30
+                    h.UsersAdded == null &&
+                    h.UsersRemoved == 30),
+                It.IsAny<string?>()),
+                Times.Once);
         }
     }
 }

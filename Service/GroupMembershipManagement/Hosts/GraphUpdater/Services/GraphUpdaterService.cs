@@ -33,6 +33,7 @@ namespace Services
 		private readonly IJobNotificationsRepository _jobNotificationRepository;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
+        private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
         private Guid _runId;
         public Guid RunId
         {
@@ -55,7 +56,8 @@ namespace Services
                 INotificationTypesRepository notificationTypesRepository,
 			    IJobNotificationsRepository jobNotificationRepository,
                 IServiceBusQueueRepository serviceBusQueueRepository,
-            ISyncJobStatusService syncJobStatusService)
+            ISyncJobStatusService syncJobStatusService,
+            ISyncJobHistoryRepository syncJobHistoryRepository)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
@@ -68,6 +70,7 @@ namespace Services
 			_notificationTypesRepository = notificationTypesRepository ?? throw new ArgumentNullException(nameof(notificationTypesRepository));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(_serviceBusQueueRepository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
+            _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
         }
 
         public async Task<bool> GroupExistsAsync(Guid groupId, Guid runId)
@@ -129,6 +132,11 @@ namespace Services
             job.ScheduledDate = currentDate.AddHours(job.Period);
             job.RunId = runId;
 
+            // Calculate AfterSyncUserCount only when sync completes successfully
+            var afterSyncUserCount = status == SyncStatus.Idle 
+                ? await CalculateAfterSyncUserCountAsync(runId, usersAdded, usersRemoved)
+                : null;
+
             var history = new SyncJobHistory
             {
                 SyncJobId = job.Id,
@@ -139,7 +147,8 @@ namespace Services
                 UsersAdded = usersAdded,
                 UsersRemoved = usersRemoved,
                 EndTime = status != SyncStatus.InProgress ? currentDate : null,              
-                UpdatedAt = currentDate
+                UpdatedAt = currentDate,
+                AfterSyncUserCount = afterSyncUserCount
             };
 
             job.Status = status.ToString();
@@ -153,6 +162,29 @@ namespace Services
                                 : $"Syncing to {groupId} done.";
 
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = message, RunId = runId });
+        }
+
+        private async Task<int?> CalculateAfterSyncUserCountAsync(Guid runId, int? usersAdded, int? usersRemoved)
+        {
+            // Retrieve existing history to get BeforeSyncUserCount
+            var existingHistory = await _syncJobHistoryRepository.GetByRunIdAsync(runId);
+
+            if (existingHistory?.BeforeSyncUserCount.HasValue != true)
+            {
+                return null;
+            }
+
+            var usersAddedCount = usersAdded ?? 0;
+            var usersRemovedCount = usersRemoved ?? 0;
+
+            // Calculate only if there were actual changes
+            if (usersAddedCount > 0 || usersRemovedCount > 0)
+            {
+                return existingHistory.BeforeSyncUserCount.Value + usersAddedCount - usersRemovedCount;
+            }
+
+            // No changes, count remains the same
+            return existingHistory.BeforeSyncUserCount.Value;
         }
 
 

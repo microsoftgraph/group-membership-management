@@ -78,6 +78,11 @@ namespace BusinessLogic.SyncJobUpdater
                     existingHistory.StartTime = history.StartTime;
                 }
 
+                if (history.AfterSyncUserCount.HasValue)
+                {
+                    existingHistory.AfterSyncUserCount = history.AfterSyncUserCount;
+                }
+
                 if (existingHistory.StartTime.HasValue && existingHistory.EndTime.HasValue)
                 {
                     existingHistory.Duration = (int)(existingHistory.EndTime.Value - existingHistory.StartTime.Value).TotalSeconds;
