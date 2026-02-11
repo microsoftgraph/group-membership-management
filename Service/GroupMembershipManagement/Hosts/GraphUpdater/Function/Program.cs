@@ -70,11 +70,11 @@ namespace Hosts.GraphUpdater
                     .AddSingleton<IGraphRepositorySettings>(services =>
                     {
                         var configuration = services.GetRequiredService<IConfiguration>();
-                        var batchRequests = GetIntSetting(configuration, "concurrentWriteRequests", 10);
+                        var addRequests = GetIntSetting(configuration, "concurrentAddRequests", 10);
                         var removeRequests = GetIntSetting(configuration, "concurrentRemoveRequests", 10);
                         return new GraphRepositorySettings
                         {
-                            ConcurrentAddRequests = batchRequests <= 0 || batchRequests > 10 ? 10 : batchRequests,
+                            ConcurrentAddRequests = addRequests <= 0 || addRequests > 10 ? 10 : addRequests,
                             ConcurrentRemoveRequests = removeRequests <= 0 || removeRequests > 10 ? 10 : removeRequests
                         };
                     })

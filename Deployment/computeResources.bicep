@@ -40,7 +40,9 @@ param availableMessageSplitterSubscriptions array = [
 param storageAccountSecretName string = 'adfStorageAccountName'
 
 // GraphUpdater
-param concurrentWriteRequests int = 1
+param concurrentAddRequests int = 1
+param concurrentRemoveRequests int = 1
+
 
 // Used by: JobTrigger, DestinationAttributesUpdater, AzureUserReader, Notifier, JobScheduler, WebApi, NonProdService, GraphUpdater
 param featureFlags object = {
@@ -325,7 +327,8 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     instanceIdentifier: instance
-    concurrentWriteRequests: concurrentWriteRequests
+    concurrentAddRequests: concurrentAddRequests
+    concurrentRemoveRequests: concurrentRemoveRequests
   }
   dependsOn: [
     graphUpdaterDataResources

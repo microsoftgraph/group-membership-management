@@ -86,7 +86,7 @@ param featureFlags object = {
 @description('Number of concurrent write requests to the Graph API.')
 @minValue(1)
 @maxValue(10)
-param concurrentWriteRequests int = 1
+param concurrentAddRequests int = 1
 
 @description('Number of concurrent remove requests to the Graph API.')
 @minValue(1)
@@ -158,7 +158,7 @@ var appSettings = {
   instanceIdentifier: instanceIdentifier
   triggerSchedule: triggerSchedule
   triggerDelay: triggerDelay
-  concurrentWriteRequests: concurrentWriteRequests
+  concurrentAddRequests: concurrentAddRequests
   concurrentRemoveRequests: concurrentRemoveRequests
   GraphUpdater__UpdateBatchSize: 400
   'AzureWebJobs.StarterFunction.Disabled': instanceIdentifier == '' ? 0 : 1
