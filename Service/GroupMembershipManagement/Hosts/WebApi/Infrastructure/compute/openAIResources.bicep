@@ -26,11 +26,16 @@ resource openAINetworkUpdate 'Microsoft.CognitiveServices/accounts@2025-04-01-pr
     type: 'SystemAssigned'
   }
   properties: {
+    apiProperties: {}
+    customSubDomainName: toLower(openAIResourceName)
     networkAcls: {
       defaultAction: 'Deny'
       virtualNetworkRules: []
       ipRules: ipRules
     }
+    allowProjectManagement: false
     publicNetworkAccess: empty(allowedIpAddresses) ? 'Disabled' : 'Enabled'
+    disableLocalAuth: true
+    restrictOutboundNetworkAccess: true
   }
 }
