@@ -83,7 +83,7 @@ param featureFlags object = {
   skipListingFunctionAppKeys : false
 }
 
-@description('Number of concurrent write requests to the Graph API.')
+@description('Number of concurrent add requests to the Graph API.')
 @minValue(1)
 @maxValue(10)
 param concurrentAddRequests int = 1
