@@ -29,6 +29,7 @@ import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
+import { renderMultilineHeader } from '../../utils/stringUtils';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -236,6 +237,19 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isResizable: true,
         },
         {
+            key: 'beforeSyncUserCount',
+            name: strings.JobDetails.Panel.beforeSyncUserCountColumnLabel,
+            fieldName: 'beforeSyncUserCount',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+            isMultiline: true,
+            onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.beforeSyncUserCountColumnLabel),
+            onRender: (item: SyncJobHistory) => {
+                return <span>{item.beforeSyncUserCount ?? '-'}</span>;
+            }
+        },
+        {
             key: 'usersAdded',
             name: strings.JobDetails.Panel.usersAddedColumnLabel,
             fieldName: 'usersAdded',
@@ -255,6 +269,19 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isResizable: true,
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.usersRemoved ?? '-'}</span>;
+            }
+        },
+        {
+            key: 'afterSyncUserCount',
+            name: strings.JobDetails.Panel.afterSyncUserCountColumnLabel,
+            fieldName: 'afterSyncUserCount',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+            isMultiline: true,
+            onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.afterSyncUserCountColumnLabel),
+            onRender: (item: SyncJobHistory) => {
+                return <span>{item.afterSyncUserCount ?? '-'}</span>;
             }
         },
         {

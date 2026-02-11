@@ -297,8 +297,10 @@ export type IStrings = {
       endTimeColumnLabel: string;
       durationColumnLabel: string;
       statusColumnLabel: string;
+      beforeSyncUserCountColumnLabel: string;
       usersAddedColumnLabel: string;
       usersRemovedColumnLabel: string;
+      afterSyncUserCountColumnLabel: string;
       thresholdViolationsColumnLabel: string;
       updatedByFunctionColumnLabel: string;
       createdAtColumnLabel: string;

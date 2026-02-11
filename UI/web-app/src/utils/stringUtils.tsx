@@ -17,3 +17,13 @@ export function jsxFormat(template: string, ...components: ReactNode[]): ReactNo
     );
   };
 
+// Renders a header label with each word on a separate line if there are multiple words
+export function renderMultilineHeader(label: string): JSX.Element {
+    const words = label.trim().split(/\s+/).filter(word => word !== '');
+    return words.length > 1 ? (
+        <div style={{ lineHeight: '1.2' }}>
+            {words.map((word, index) => <div key={`${word}-${index}`}>{word}</div>)}
+        </div>
+    ) : <span>{label}</span>;
+};
+
