@@ -55,7 +55,7 @@ namespace Services
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            var jobs = await _syncJobRepository.GetSyncJobsAsync(false,
+            var jobs = await _syncJobRepository.GetSyncJobsAsync(true,
                 SyncStatus.CustomerPaused,
                 SyncStatus.DestinationGroupNotFound,
                 SyncStatus.MembershipDataNotFound,
