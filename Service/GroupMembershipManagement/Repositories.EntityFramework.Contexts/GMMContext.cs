@@ -176,11 +176,6 @@ namespace Repositories.EntityFramework.Contexts
                     .ValueGeneratedOnAddOrUpdate()
                     .HasDefaultValueSql("GETUTCDATE()");
 
-                entity.HasOne<SyncJob>()
-                       .WithMany()
-                       .HasForeignKey(h => h.SyncJobId)
-                       .OnDelete(DeleteBehavior.Cascade);
-
                 entity.HasIndex(h => h.SyncJobId);
                 entity.HasIndex(h => h.RunId).IsUnique();
                 entity.HasIndex(h => h.EndTime);
