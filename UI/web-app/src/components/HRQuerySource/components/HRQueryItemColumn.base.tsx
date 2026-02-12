@@ -306,9 +306,15 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
             return (
               <TextField
                 data-testid="hr-value-textfield"
-                value={items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'") ? items[index].value.slice(1,-1) : items[index].value}
+                value={
+                  items[index].value && items[index].value.startsWith("'") && items[index].value.endsWith("'")
+                    ? items[index].value.slice(1,-1)
+                    : (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && items[index].value && items[index].value.startsWith('(') && items[index].value.endsWith(')')
+                      ? items[index].value.slice(1,-1)
+                      : items[index].value
+                }
                 onChange={(event, newValue) => handleTAttributeValueChange(item.attribute, event, newValue!, index, item.equalityOperator, groupIndex, childIndex)}
-                onBlur={(event) => handleBlur(item.attribute, event, index, item.equalityOperator)}
+                onBlur={(event) => handleBlur(item.attribute, event, index, item.equalityOperator, groupIndex, childIndex)}
                 styles={{ fieldGroup: classNames.textField }}
                 validateOnLoad={false}
                 validateOnFocusOut={false}

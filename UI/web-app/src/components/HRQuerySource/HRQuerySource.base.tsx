@@ -439,11 +439,55 @@ const ensureInClauseFormat = (value?: string): string => {
     return '';
   }
 
-  if (trimmedValue.startsWith('(') && trimmedValue.endsWith(')')) {
-    return trimmedValue;
+  // Strip outer parentheses if present
+  let inner = trimmedValue;
+  if (inner.startsWith('(') && inner.endsWith(')')) {
+    inner = inner.slice(1, -1).trim();
   }
 
-  return `(${trimmedValue})`;
+  // Split by comma respecting quote boundaries
+  const parts: string[] = [];
+  let current = '';
+  let inQuote = false;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch === "'" && !inQuote) {
+      inQuote = true;
+      current += ch;
+    } else if (ch === "'" && inQuote) {
+      if (i + 1 < inner.length && inner[i + 1] === "'") {
+        current += "''";
+        i++;
+      } else {
+        inQuote = false;
+        current += ch;
+      }
+    } else if (ch === ',' && !inQuote) {
+      parts.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+
+  // Quote each value if not already quoted
+  const values = parts.map(t => {
+    if (!t) return '';
+    if (t.startsWith("'") && t.endsWith("'")) {
+      return t;
+    }
+    const escaped = t.replace(/'/g, "''");
+    return `'${escaped}'`;
+  }).filter(v => v !== '');
+
+  if (values.length === 0) {
+    return '';
+  }
+
+  return `(${values.join(', ')})`;
 };
 const getOptions = (
   attributes?: SqlMembershipAttribute[],
@@ -1339,16 +1383,12 @@ const getOptions = (
   const handleTAttributeValueChange = (attribute: string, event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue: string = '', index: number, operator?: string, groupIndex?: number, childIndex?: number) => {
     const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
     const selectedValue = newValue;
-    // Only format if NOT IN/NOT IN, or if it is IN/NOT IN but we are not typing freely (e.g. selection)
     let selectedValueAfterConversion = selectedValue;
     const normalizedOperator = operator?.toUpperCase();
-    
-    if (normalizedOperator === "IN" || normalizedOperator === "NOT IN") { 
-        if (selectedValue.trim().startsWith('(')) {
-             selectedValueAfterConversion = selectedValue;
-        } else {
-             selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), selectedAttribute?.type);
-        }
+
+    if (normalizedOperator === "IN" || normalizedOperator === "NOT IN") {
+        // Don't format during typing; handleBlur will wrap in parentheses when the user is done
+        selectedValueAfterConversion = selectedValue;
     } else {
         selectedValueAfterConversion = formatValueForOperator(selectedValue, operator?.toString(), selectedAttribute?.type);
     }
@@ -1372,8 +1412,20 @@ const getOptions = (
     }
   }
 
-  const handleBlur = (attribute: string, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number, operator?: string) => {
+  const handleBlur = (attribute: string, event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number, operator?: string, groupIndex?: number, childIndex?: number) => {
     if (groupingEnabled && index != null) {
+      const newValue = event.target.value.trim();
+      const selectedAttribute = attributes?.find(({ hasMapping, name }) => ((hasMapping && `${name}_Code` === attribute) || (!hasMapping && name === attribute)));
+      const formattedValue = formatValueForOperator(newValue, operator?.toString(), selectedAttribute?.type);
+      if (formattedValue !== items[index]?.value) {
+        const updatedItems = items.map((it, idx) => idx === index ? { ...it, value: formattedValue } : it);
+        setItems(updatedItems);
+        const updateParams: UpdateParam = {
+          property: "value",
+          newValue: formattedValue
+        };
+        updateGroupItem(updateParams, index, groupIndex, childIndex);
+      }
       return;
     }
     const newValue = event.target.value.trim();
