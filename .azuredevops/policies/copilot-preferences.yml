@@ -1,0 +1,14 @@
+# metadata
+name: Copilot build settings configuration
+description: Custom build settings for SWE Agent - validates C# compilation on affected projects
+
+# filters
+resource: repository
+
+# primitive configuration
+configuration:
+    copilotPreferences:
+        buildSettings:
+            buildPipeline:
+                id: 83451
+                projectName: "MicrosoftIT"
