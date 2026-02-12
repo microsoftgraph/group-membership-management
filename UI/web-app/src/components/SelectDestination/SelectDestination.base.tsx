@@ -58,9 +58,10 @@ const getClassNames = classNamesFunction<ISelectDestinationStyleProps, ISelectDe
 export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationProps> = (props) => {
   const { className, styles, selectedDestination, onDestinationTypeChange, onSearchDestinationChange, onSearchChannelChange, onGroupCreated } = props;
   const strings = useStrings();
+  const theme = useTheme();
   const classNames: IProcessedStyleSet<ISelectDestinationStyles> = getClassNames(styles, {
     className,
-    theme: useTheme(),
+    theme,
   });
 
   const destinationActionOptions: IChoiceGroupOption[] = [
@@ -201,7 +202,20 @@ export const SelectDestinationBase: React.FunctionComponent<ISelectDestinationPr
     root: {
       border: 'none',
       backgroundColor: 'transparent',
-      padding: '0px 0px',
+      padding: '0px 4px',
+      color: theme.palette.themePrimary,
+      textDecoration: 'underline',
+      minWidth: 'auto',
+    },
+    rootHovered: {
+      backgroundColor: 'transparent',
+      color: theme.palette.themeDarkAlt,
+      textDecoration: 'underline',
+    },
+    rootPressed: {
+      backgroundColor: 'transparent',
+      color: theme.palette.themeDark,
+      textDecoration: 'underline',
     },
   };
 
