@@ -221,6 +221,7 @@ namespace WebApi.Controllers.v1.OpenAI
 The title should describe which users match the filter.  
 
 Rules:
+- Height represents Manager Level (e.g., Height >= 5 means Manager Level 5+).
 - Use fewer than 8 words.
 - Focus only on what makes each filter unique.
 - If filters share many conditions, highlight just the difference.
@@ -251,13 +252,15 @@ Input: " + partsJson;
 
                 For example: CountryName = 'USA' AND ChildCount > 2
 
-                ATTRIBUTE is the Column Name in SQL table
+                ATTRIBUTE is the Column Name.
 
                 OPERATOR can be one of the following: =, <>, >, <, >=, <=, IN, NOT IN
 
                 VALUE is the value of the Column
 
                 AND/OR is the logical operator to combine multiple conditions. This can be either AND or OR. If there is only one condition, there is no AND/OR.
+
+                Note: Height represents Manager Level (e.g., Height >= 5 means Manager Level 5+).
 
                 Create a meaningful title that summarizes the filter conditions. For example, if the filter is 'CountryName = 'USA' AND ChildCount > 2', the title could be 'All users in USA with more than 2 children'.
 
