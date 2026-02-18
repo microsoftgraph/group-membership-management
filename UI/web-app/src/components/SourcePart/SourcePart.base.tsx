@@ -35,6 +35,7 @@ import { SqlMembershipSource } from '../../models';
 import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { selectIsGeneratingHRTitle, selectIsGeneratingTitles, selectIsGeneratingGroupTitle } from '../../store/title.slice';
+import { extractExclusionaryFromTitle, removeExclusionaryPrefix } from '../../utils/titleGenerator';
 import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSourcePart';
 import { selectSelectedJobDetails } from '../../store/jobs.slice';
 
@@ -203,6 +204,16 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
     setIsInclusionary(isInclusionarySelected);
     try {
+      const currentTitle = part.title || '';
+      let newTitle = currentTitle;
+      const currentlyHasExcludePrefix = extractExclusionaryFromTitle(currentTitle, strings.excludePrefix);
+
+      if (!isInclusionarySelected && !currentlyHasExcludePrefix) {
+        newTitle = `${strings.excludePrefix} ${currentTitle}`;
+      } else if (isInclusionarySelected && currentlyHasExcludePrefix) {
+        newTitle = removeExclusionaryPrefix(currentTitle, strings.excludePrefix);
+      }
+
       const updatedQuery: SourcePartQuery = {
         ...query,
         exclusionary: !isInclusionarySelected
@@ -210,7 +221,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
 
       const updatedSourcePart: ISourcePart = {
         id: partId,
-        title: part.title,
+        title: newTitle,
         query: updatedQuery,
         isExpanded: true,
         isNew: false
@@ -317,6 +328,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                 source={hrSourcePartSource}
                 title={part.title || props.title}
                 partId={partId}
+                exclusionary={part.query.exclusionary}
                 onSourceChange={handleSourceChange}
                 onEnableEdit={handleEnableEdit}
                 isEditable={isEditable}

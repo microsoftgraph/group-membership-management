@@ -10,6 +10,7 @@ import { HRSourcePartSource } from '../models/HRSourcePart';
 import { ISourcePart } from '../models/ISourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 import { combineHRTitleWithAICriteria, generateGroupTitle } from '../utils/titleGenerator';
+import { useStrings } from '../store/hooks';
 
 interface UseTitleProcessingProps {
   generatedTitlesYet: boolean;
@@ -31,6 +32,7 @@ export const useTitleProcessing = ({
   withSummarizedCriteriaString,
 }: UseTitleProcessingProps) => {
   const dispatch = useDispatch<AppDispatch>();
+  const strings = useStrings();
 
   useEffect(() => {
     if (generatedTitlesYet && jobWithNoTitles && sourceParts.length > 0) {
@@ -79,7 +81,8 @@ export const useTitleProcessing = ({
               ...part,
               title: generatedGroupPart?.title || generateGroupTitle(
                 undefined,
-                part.query.source as string
+                part.query.source as string,
+                part.query.exclusionary
               )
             };
           }
@@ -91,7 +94,9 @@ export const useTitleProcessing = ({
               generatedHRPart?.title || "",
               title?.title,
               isHRWithManager,
-              withSummarizedCriteriaString
+              withSummarizedCriteriaString,
+              part.query.exclusionary,
+              strings.excludePrefix
             )
           };
         });

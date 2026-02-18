@@ -130,8 +130,10 @@ export const fetchOrgLeaderDetailsAndGenerateHRTitle = createAsyncThunk<
     // Use the utility function to generate the title
     const newTitle = generateHRTitle({
       orgLeaderName,
-      depth: hrSource.manager?.depth
+      depth: hrSource.manager?.depth,
+      exclusionary: part.query.exclusionary
     }, {
+      excludePrefix: strings.excludePrefix,
       orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
       orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
       orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle
@@ -165,7 +167,9 @@ export const fetchGroupDetailsAndGenerateTitle = createAsyncThunk<
     const newTitle = generateGroupTitle(
       groupName,
       groupSource,
+      part.query.exclusionary,
       {
+        excludePrefix: strings.excludePrefix,
         allUsersInGroup: strings.ManageMembership.labels.allUsersInGroup,
         allUsersInFallback: strings.ManageMembership.labels.allUsersInFallback
       }

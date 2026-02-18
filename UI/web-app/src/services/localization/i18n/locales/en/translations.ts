@@ -563,6 +563,7 @@ export const strings: IStrings = {
     teamsVivaNotifications: 'I acknowledge that for Teams and Viva Engage members will be notified according to their platform\'s notification flow, which cannot be bypassed.',
     flatList: 'I acknowledge that M365 Groups do not support nesting and all members are included in a flat list.',
   },
+  excludePrefix: 'Exclude',
   copy: 'Copy',
   remove: 'Remove',
   delete: 'Delete',

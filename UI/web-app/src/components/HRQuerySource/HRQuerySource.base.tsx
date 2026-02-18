@@ -658,11 +658,11 @@ const getOptions = (
   const generateTitle = async () => {
     const hrTitle = source.manager?.id
       ? ((await dispatch(fetchOrgLeaderDetailsAndGenerateHRTitle({
-          part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: false } as SourcePartQuery, isNew: false, isExpanded: true },
+          part: { id: partId, title: props.title || '', query: { type: SourcePartType.HR, source, exclusionary: props.exclusionary || false } as SourcePartQuery, isNew: false, isExpanded: true },
           strings }))).payload as any)?.title || '' : '';
 
     const aiTitle = source.filter ? (await dispatch(getTitle(source.filter))).payload as string : '';
-    const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, !!source.manager?.id, strings.HROnboarding.withSummarizedCriteria);
+    const newTitle = combineHRTitleWithAICriteria(hrTitle, aiTitle, !!source.manager?.id, strings.HROnboarding.withSummarizedCriteria, props.exclusionary, strings.excludePrefix);
 
     onEnableEdit(true);
     onSourceChange(props.source, partId, newTitle);
@@ -708,6 +708,7 @@ const getOptions = (
         currentTitle,
         items[0].text as string,
         {
+          excludePrefix: strings.excludePrefix,
           orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
           orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
           orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle,
@@ -738,6 +739,7 @@ const getOptions = (
       currentTitle,
       newDepth,
       {
+        excludePrefix: strings.excludePrefix,
         orgLeaderTitle: strings.HROnboarding.orgLeaderTitle,
         orgLeaderSingleLevelTitle: strings.HROnboarding.orgLeaderSingleLevelTitle,
         orgLeaderMultipleLevelsTitle: strings.HROnboarding.orgLeaderMultipleLevelsTitle

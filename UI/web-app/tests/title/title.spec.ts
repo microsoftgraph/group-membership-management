@@ -26,7 +26,11 @@ test('Test Title Pattern Recognition', { tag: '@title' }, async ({ page }) => {
       const titlePatterns = [
         "Everyone in John Doe's org",
         "2 levels of direct reports of Jane Smith",
-        "Everyone in Tech Lead's org with the following summarized criteria: department equals IT"
+        "Everyone in Tech Lead's org with the following summarized criteria: department equals IT",
+        "Exclude Everyone in John Doe's org",
+        "Exclude 2 levels of direct reports of Jane Smith",
+        "Exclude All Users in Marketing",
+        "All Users in Sales"
       ];
 
       for (const pattern of titlePatterns) {
@@ -38,7 +42,7 @@ test('Test Title Pattern Recognition', { tag: '@title' }, async ({ page }) => {
         expect(inputValue).toBe(pattern);
       }
 
-      console.log('✅ Title pattern recognition tested');
+      console.log('✅ Title pattern recognition tested (including exclusionary patterns)');
     }
   } catch (error) {
     console.log('Title pattern test skipped - input field not found');
@@ -92,6 +96,13 @@ test('Title Generation - Complete Workflow Test', { tag: '@title' }, async ({ pa
   expect(firstTitle?.trim().length).toBeGreaterThan(2);
   console.log(`✅ First generated title: ${firstTitle}`);
   
+  // Check if any titles have the exclusionary prefix
+  const exclusionaryTitles = generatedTitles.filter({ hasText: /: Exclude / });
+  const exclusionaryCount = await exclusionaryTitles.count();
+  if (exclusionaryCount > 0) {
+    console.log(`✅ Found ${exclusionaryCount} exclusionary titles (with "Exclude" prefix)`);
+  }
+  
   // Also check for any text fields with title values (when in edit mode)
   const titleTextFields = page.locator('input[type="text"]').filter({ hasText: /.+/ });
   const textFieldCount = await titleTextFields.count();
@@ -100,6 +111,6 @@ test('Title Generation - Complete Workflow Test', { tag: '@title' }, async ({ pa
     console.log(`✅ Found ${textFieldCount} title text fields`);
   }
   
-  console.log(`✅ Summary: Shimmer: ${shimmerCount}, Generated Titles: ${generatedTitleCount}, Text Fields: ${textFieldCount}`);
-  console.log('✅ Complete title generation workflow test completed');
+  console.log(`✅ Summary: Shimmer: ${shimmerCount}, Generated Titles: ${generatedTitleCount}, Exclusionary: ${exclusionaryCount}, Text Fields: ${textFieldCount}`);
+  console.log('✅ Complete title generation workflow test completed (with exclusionary support)');
 });

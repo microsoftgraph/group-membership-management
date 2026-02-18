@@ -23,6 +23,7 @@ import { IsGroupMembershipSourcePartQuery } from '../../models/GroupMembershipSo
 import { useSelectedGroupById } from '../../store/groupPart.slice';
 import { selectIsJobWriter } from '../../store/roles.slice';
 import { searchGroups } from '../../store/groups.api';
+import { generateGroupTitle } from '../../utils/titleGenerator';
 
 export const getClassNames = classNamesFunction<GroupQuerySourceStyleProps, GroupQuerySourceStyles>();
 
@@ -87,7 +88,16 @@ export const GroupQuerySourceBase: React.FunctionComponent<GroupQuerySourceProps
   const handleGroupPickerChange = useCallback((items?: IPersonaProps[]): void => {
     if (items && items.length > 0) {
       setSelectedGroup(items);
-      const newTitle = "All Users in " + items[0].text;
+      const newTitle = generateGroupTitle(
+        items[0].text,
+        items[0].id,
+        part.query.exclusionary,
+        {
+          excludePrefix: strings.excludePrefix,
+          allUsersInGroup: strings.ManageMembership?.labels?.allUsersInGroup,
+          allUsersInFallback: strings.ManageMembership?.labels?.allUsersInFallback
+        }
+      );
       onSourceChange(items[0].id ?? '', newTitle);
     } else {
       setSelectedGroup([]);

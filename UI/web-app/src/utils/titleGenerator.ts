@@ -4,9 +4,11 @@
 export interface HRTitleGeneratorParams {
   orgLeaderName: string;
   depth?: number;
+  exclusionary?: boolean;
 }
 
 export interface HRTitleTemplates {
+  excludePrefix?: string;
   orgLeaderTitle?: string;
   orgLeaderSingleLevelTitle?: string;
   orgLeaderMultipleLevelsTitle?: string;
@@ -17,14 +19,16 @@ export interface HRTitleTemplates {
  * Generates a human-readable title for HR organizational queries based on leader name and depth
  * @param orgLeaderName - The name of the organizational leader
  * @param depth - The organizational depth (optional)
+ * @param exclusionary - Whether this is an exclusionary filter (optional)
  * @param templates - Optional localized templates for title formatting
  * @returns A formatted title string
  */
 export const generateHRTitle = (
-  { orgLeaderName, depth }: HRTitleGeneratorParams,
+  { orgLeaderName, depth, exclusionary }: HRTitleGeneratorParams,
   templates?: HRTitleTemplates
 ): string => {
   const defaultTemplates = {
+    excludePrefix: 'Exclude',
     orgLeaderTitle: `Everyone in {0}'s org`,
     orgLeaderSingleLevelTitle: `{0} level of direct reports of {1}`,
     orgLeaderMultipleLevelsTitle: `{0} levels of direct reports of {1}`
@@ -32,20 +36,25 @@ export const generateHRTitle = (
 
   const finalTemplates = { ...defaultTemplates, ...templates };
 
+  let title = '';
   if (depth && depth > 0) {
     const levels = (depth ?? 1) - 1;
     if (levels === 1) {
-      return finalTemplates.orgLeaderSingleLevelTitle
+      title = finalTemplates.orgLeaderSingleLevelTitle
         .replace('{0}', levels.toString())
         .replace('{1}', orgLeaderName);
     } else if (levels > 1) {
-      return finalTemplates.orgLeaderMultipleLevelsTitle
+      title = finalTemplates.orgLeaderMultipleLevelsTitle
         .replace('{0}', levels.toString())
         .replace('{1}', orgLeaderName);
+    } else {
+      title = finalTemplates.orgLeaderTitle.replace('{0}', orgLeaderName);
     }
+  } else {
+    title = finalTemplates.orgLeaderTitle.replace('{0}', orgLeaderName);
   }
 
-  return finalTemplates.orgLeaderTitle.replace('{0}', orgLeaderName);
+  return exclusionary ? `${finalTemplates.excludePrefix} ${title}` : title;
 };
 
 /**
@@ -85,6 +94,36 @@ export const extractDepthFromTitle = (title: string): number | undefined => {
 };
 
 /**
+ * Checks if a title has the exclusionary prefix
+ * @param title - The title string to check
+ * @param excludePrefix - The localized exclude prefix (defaults to English)
+ * @returns True if title starts with the exclude prefix
+ */
+export const extractExclusionaryFromTitle = (
+  title: string,
+  excludePrefix: string = "Exclude"
+): boolean => {
+  return title.trimStart().startsWith(excludePrefix + " ");
+};
+
+/**
+ * Removes the exclusionary prefix from a title if present
+ * @param title - The title string
+ * @param excludePrefix - The localized exclude prefix (defaults to English)
+ * @returns The title without the exclusionary prefix
+ */
+export const removeExclusionaryPrefix = (
+  title: string,
+  excludePrefix: string = "Exclude"
+): string => {
+  const trimmed = title.trimStart();
+  if (trimmed.startsWith(excludePrefix + " ")) {
+    return trimmed.substring(excludePrefix.length + 1);
+  }
+  return title;
+};
+
+/**
  * Extracts the criteria part from HR title (everything after the criteria separator)
  * @param title - The existing title string
  * @param criteriaSeparator - The localized criteria separator text (defaults to English)
@@ -116,15 +155,19 @@ export const updateHRTitleWithNewLeader = (
     return generateHRTitle({ orgLeaderName: newOrgLeaderName }, templates);
   }
 
-  // Extract depth and criteria from current title
-  const currentDepth = extractDepthFromTitle(currentTitle);
+  // Extract exclusionary state, depth and criteria from current title
+  const excludePrefix = templates?.excludePrefix || "Exclude";
+  const isExclusionary = extractExclusionaryFromTitle(currentTitle, excludePrefix);
+  const titleWithoutPrefix = removeExclusionaryPrefix(currentTitle, excludePrefix);
+  const currentDepth = extractDepthFromTitle(titleWithoutPrefix);
   const criteriaSeparator = templates?.withSummarizedCriteria || "with the following summarized criteria:";
-  const criteria = extractCriteriaFromTitle(currentTitle, criteriaSeparator);
+  const criteria = extractCriteriaFromTitle(titleWithoutPrefix, criteriaSeparator);
 
-  // Generate new title with the same depth structure
+  // Generate new title with the same depth structure and exclusionary state
   let newTitle = generateHRTitle({
     orgLeaderName: newOrgLeaderName,
-    depth: currentDepth
+    depth: currentDepth,
+    exclusionary: isExclusionary
   }, templates);
 
   // Append criteria if it exists
@@ -152,20 +195,24 @@ export const updateHRTitleWithNewDepth = (
     return currentTitle;
   }
 
-  // Extract leader name and criteria from current title
-  const currentLeaderName = extractOrgLeaderName(currentTitle);
+  // Extract exclusionary state, leader name and criteria from current title
+  const excludePrefix = templates?.excludePrefix || "Exclude";
+  const isExclusionary = extractExclusionaryFromTitle(currentTitle, excludePrefix);
+  const titleWithoutPrefix = removeExclusionaryPrefix(currentTitle, excludePrefix);
+  const currentLeaderName = extractOrgLeaderName(titleWithoutPrefix);
   const criteriaSeparator = templates?.withSummarizedCriteria || "with the following summarized criteria:";
-  const criteria = extractCriteriaFromTitle(currentTitle, criteriaSeparator);
+  const criteria = extractCriteriaFromTitle(titleWithoutPrefix, criteriaSeparator);
 
   if (!currentLeaderName) {
     // Can't update depth without knowing the leader name
     return currentTitle;
   }
 
-  // Generate new title with updated depth
+  // Generate new title with updated depth and preserved exclusionary state
   let newTitle = generateHRTitle({
     orgLeaderName: currentLeaderName,
-    depth: newDepth
+    depth: newDepth,
+    exclusionary: isExclusionary
   }, templates);
 
   // Append criteria if it exists
@@ -182,22 +229,26 @@ export const updateHRTitleWithNewDepth = (
  * @param aiTitle - The AI-generated title/criteria
  * @param isHRWithManager - Whether this is an HR part with a manager (organizational query)
  * @param criteriaSeparator - The localized criteria separator text
+ * @param exclusionary - Whether this is an exclusionary filter (optional)
+ * @param excludePrefix - The localized exclude prefix text (optional)
  * @returns The combined title following business rules
  */
 export const combineHRTitleWithAICriteria = (
   existingTitle: string,
   aiTitle: string | undefined,
   isHRWithManager: boolean,
-  criteriaSeparator: string = "with the following summarized criteria:"
+  criteriaSeparator: string = "with the following summarized criteria:",
+  exclusionary?: boolean,
+  excludePrefix: string = "Exclude"
 ): string => {
   // If no AI title available, return existing title
   if (!aiTitle) {
     return existingTitle;
   }
 
-  // If no existing title, use AI title only
+  // If no existing title, use AI title only (with exclusionary prefix if needed)
   if (!existingTitle || existingTitle === "") {
-    return aiTitle;
+    return exclusionary ? `${excludePrefix} ${aiTitle}` : aiTitle;
   }
 
   // If this is an HR part with manager and doesn't already have criteria
@@ -210,6 +261,7 @@ export const combineHRTitleWithAICriteria = (
 };
 
 export interface GroupTitleTemplates {
+  excludePrefix?: string;
   allUsersInGroup?: string;
   allUsersInFallback?: string;
 }
@@ -218,31 +270,37 @@ export interface GroupTitleTemplates {
  * Generates a human-readable title for group membership queries
  * @param groupName - The name of the group (from search results)
  * @param fallbackSource - The source ID to use if group name is not available
+ * @param exclusionary - Whether this is an exclusionary filter (optional)
  * @param templates - Optional localized templates for title formatting
  * @returns A formatted title string for group membership
  */
 export const generateGroupTitle = (
   groupName: string | undefined,
   fallbackSource?: string,
+  exclusionary?: boolean,
   templates?: GroupTitleTemplates
 ): string => {
   const defaultTemplates = {
+    excludePrefix: 'Exclude',
     allUsersInGroup: 'All Users in {0}',
     allUsersInFallback: 'All Users in Group'
   };
 
   const finalTemplates = { ...defaultTemplates, ...templates };
 
+  let title = '';
   // If we have a group name, use it in the standard format
   if (groupName && groupName.trim()) {
-    return finalTemplates.allUsersInGroup.replace('{0}', groupName);
+    title = finalTemplates.allUsersInGroup.replace('{0}', groupName);
   }
-
   // If no group name but we have a source, use it as fallback with same template
-  if (fallbackSource && fallbackSource.trim()) {
-    return finalTemplates.allUsersInGroup.replace('{0}', fallbackSource);
+  else if (fallbackSource && fallbackSource.trim()) {
+    title = finalTemplates.allUsersInGroup.replace('{0}', fallbackSource);
+  }
+  // Default fallback
+  else {
+    title = finalTemplates.allUsersInFallback;
   }
 
-  // Default fallback
-  return finalTemplates.allUsersInFallback;
+  return exclusionary ? `${finalTemplates.excludePrefix} ${title}` : title;
 };

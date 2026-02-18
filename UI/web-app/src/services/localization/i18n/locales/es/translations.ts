@@ -565,6 +565,7 @@ export const strings: IStrings = {
     teamsVivaNotifications: 'Entiendo que para Teams y Viva Engage, los miembros serán notificados de acuerdo con el flujo de notificaciones de su plataforma, que no se puede omitir.',
     flatList: 'Reconozco que los Grupos de M365 no admiten anidamiento y todos los miembros se incluyen en una lista plana.',
   },
+  excludePrefix: 'Excluir',
   copy: 'Copiar',
   remove: 'Eliminar',
   delete: 'Eliminar',

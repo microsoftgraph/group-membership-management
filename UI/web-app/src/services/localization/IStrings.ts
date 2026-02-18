@@ -544,6 +544,7 @@ export type IStrings = {
       welcomeMessageEnabledToolTip: string;
     }
   };
+  excludePrefix: string;
   copy: string;
   remove: string;
   delete: string;
