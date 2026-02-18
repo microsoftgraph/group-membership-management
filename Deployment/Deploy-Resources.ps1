@@ -1662,7 +1662,9 @@ function Set-GMMAppRegistrationsProgrammatically {
         [Parameter(Mandatory = $false)]
         [string]$DirectoryTenantId,
         [Parameter(Mandatory = $false)]
-        [boolean]$SaveToKeyVault = $false
+        [boolean]$SaveToKeyVault = $false,
+        [Parameter(Mandatory = $false)]
+        [switch]$SkipFunctionAuthApp
     )
 
     Write-Host "`n📝 Creating app registrations programmatically...`n" -ForegroundColor Cyan
@@ -1703,14 +1705,19 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SkipIfApplicationExists $false `
         -Clean $false
 
-    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1')
-    $functionAuthInformation = Set-FunctionAuthApplication `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -AppTenantId $DirectoryTenantId `
-        -SaveToKeyVault $SaveToKeyVault `
-        -SkipIfApplicationExists $false `
-        -Clean $false
+    if (-not $SkipFunctionAuthApp.IsPresent) {
+        . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1')
+        $functionAuthInformation = Set-FunctionAuthApplication `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -AppTenantId $DirectoryTenantId `
+            -SaveToKeyVault $SaveToKeyVault `
+            -SkipIfApplicationExists $false `
+            -Clean $false
+    }
+    else {
+        Write-Host "Skipping FunctionAuth app registration as per configuration." -ForegroundColor Yellow
+    }
 
     # determine which apps need admin consent
     $appInformationObjects = @(
