@@ -31,7 +31,8 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('glob', ['^10.3.10'], '10.5.0'),
     new PackageUpgradeStrategy('jws', ['^3.2.2'], '3.2.3'),
     new PackageUpgradeStrategy('node-forge', ['^1'], '1.3.2'),
-    new PackageUpgradeStrategy('axios', ['1.8.2'], '1.13.2'),
+    new PackageUpgradeStrategy('jsonpath', ['1.1.1', '^1.1.1', '~1.1.1'], '1.2.1'),
+    new PackageUpgradeStrategy('axios', ['1.8.2', '1.13.2', '^1.13.2', '~1.13.2'], '1.13.5'),
   ];
 
   const logger = new Logger(context);
