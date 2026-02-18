@@ -1072,8 +1072,6 @@ function Set-GMMResources {
     # strings
     $graphAppCertificateName        = Get-DefaultString -Value $ParameterHashtable['graphAppCertificateName'].value        -Default 'not-set'
     $teamsChannelAppCertificateName = Get-DefaultString -Value $ParameterHashtable['teamsChannelAppCertificateName'].value -Default 'not-set'
-    $tenantDomain                   = Get-DefaultString -Value $ParameterHashtable['tenantDomain'].value                   -Default 'not-set'
-    $sharepointDomain               = Get-DefaultString -Value $ParameterHashtable['sharepointDomain'].value               -Default 'not-set'
     $directoryTenantId              = Get-DefaultString -Value $ParameterHashtable['directoryTenantId'].value -Default $ParameterHashtable.tenantId.value
 
     $hostIpAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
@@ -1118,8 +1116,6 @@ function Set-GMMResources {
             -AppTenantId $directoryTenantId `
             -GraphAppCertificateName $graphAppCertificateName `
             -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
-            -TenantDomain $tenantDomain `
-            -SharepointDomain $sharepointDomain `
             -SkipPrivilegedDirectoryActions $ParameterHashtable.skipPrivilegedDirectoryActions.value `
             -IsClientSecretAuth $isClientSecretAuth
             
@@ -1766,11 +1762,7 @@ function Save-GMMAppRegistrationSecrets {
         [Parameter(Mandatory = $False)]
         [string] $GraphAppCertificateName,
         [Parameter(Mandatory = $False)]
-        [string] $TeamsChannelAppCertificateName,
-        [Parameter(Mandatory = $false)]
-        [string]$TenantDomain,
-        [Parameter(Mandatory = $false)]
-        [string]$SharepointDomain
+        [string] $TeamsChannelAppCertificateName
     )
 
     Write-Host "`n🔐 Saving App Registration Secrets to Key Vault" -ForegroundColor Cyan
@@ -1915,8 +1907,6 @@ function Save-GMMAppRegistrationSecrets {
         -AppTenantId $AppTenantId `
         -UIApplicationId $uiAppId `
         -CreateNewSecret $createNewSecrets `
-        -TenantDomain $TenantDomain `
-        -SharepointDomain $SharepointDomain `
         -AppSecret $uiSecret
 
     Write-Host "✅ UI Application secrets saved" -ForegroundColor Green
@@ -2471,7 +2461,7 @@ function Set-PublishUICode {
                             -VaultName $prereqsKeyVaultName `
                             -SecretName "webApiClientId" `
                             -AsPlainText
-    } 
+    }
     
     $appInsights = Get-AzApplicationInsights -ResourceGroupName $dataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $appInsightsConnectionString = $appInsights.ConnectionString

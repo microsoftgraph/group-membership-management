@@ -56,8 +56,6 @@ Set-UIAzureADApplication	-SubscriptionName "<subscription-name>" `
                             -EnvironmentAbbreviation "<environment-abbreviation>" `
                             -TenantId "<tenant-id>" `
                             -DevTenantId "<dev-tenant-id>" `
-                            -TenantDomain "<tenant-domain>" `
-                            -SharepointDomain "<sharepoint-domain>" `
                             -Clean $false `
                             -Verbose
 #>
@@ -75,12 +73,6 @@ function Set-UIAzureADApplication {
         [Guid] $KeyVaultTenantId,
 		[Parameter(Mandatory = $False)]
         [string] $SubscriptionName,
-		[AllowNull()]
-        [Parameter(Mandatory = $False)]
-        [string] $TenantDomain,
-		[AllowNull()]
-        [Parameter(Mandatory = $False)]
-        [string] $SharepointDomain,
         [Parameter(Mandatory = $False)]
         [boolean] $Clean = $False,
         [Parameter(Mandatory = $False)]
@@ -225,8 +217,6 @@ function Set-UIAzureADApplication {
 			-EnvironmentAbbreviation $EnvironmentAbbreviation `
 			-AppTenantId $AppTenantId `
 			-UIApplicationId $uiApp.AppId `
-			-TenantDomain $TenantDomain `
-			-SharepointDomain $SharepointDomain `
 			-CreateNewSecret $CreateNewSecret
 	}
 
@@ -252,12 +242,6 @@ function Set-UIKeyVaultSecrets {
         [Guid] $AppTenantId,
         [Parameter(Mandatory = $True)]
         [Guid] $UIApplicationId,
-		[AllowNull()]
-		[Parameter(Mandatory = $False)]
-		[string] $TenantDomain = $null,
-		[AllowNull()]
-		[Parameter(Mandatory = $False)]
-		[string] $SharepointDomain = $null,
         [Parameter(Mandatory = $False)]
         [boolean] $CreateNewSecret = $True,
 		[AllowNull()]
@@ -343,40 +327,6 @@ function Set-UIKeyVaultSecrets {
                         -SecretValue $uiTenantSecret
 
     Write-Host "$uiTenantSecretName added to vault for $uiAppDisplayName."
-
-    # Store tenantDomain in KeyVault
-    if($null -eq $TenantDomain) {
-        $TenantDomain = "not-set"
-    }
-    $tenantDomainSecretName = "tenantDomain"
-
-    Write-Host "Tenant Domain is $TenantDomain"
-    $tenantDomainSecret = New-Object System.Security.SecureString
-    $TenantDomain.ToString().ToCharArray() | ForEach-Object { $tenantDomainSecret.AppendChar($_) }
-
-    Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-                        -ResourceGroup $keyVault.ResourceGroupName `
-                        -SecretName $tenantDomainSecretName `
-                        -SecretValue $tenantDomainSecret
-
-    Write-Host "$tenantDomainSecretName added to vault for UI Group Links."
-
-    # Store sharepointDomain in KeyVault
-    if($null -eq $SharepointDomain) {
-        $SharepointDomain = "not-set"
-    }
-    $sharepointDomainSecretName = "sharepointDomain"
-
-    Write-Host "SharePoint Domain is $SharepointDomain"
-    $sharepointDomainSecret = New-Object System.Security.SecureString
-    $SharepointDomain.ToString().ToCharArray() | ForEach-Object { $sharepointDomainSecret.AppendChar($_) }
-
-    Set-KeyVaultSecretWithFirewallRetry -VaultName $keyVault.VaultName `
-                        -ResourceGroup $keyVault.ResourceGroupName `
-                        -SecretName $sharepointDomainSecretName `
-                        -SecretValue $sharepointDomainSecret
-
-    Write-Host "$sharepointDomainSecretName added to vault for UI Group Links."
 
     Write-Host "Set-UIAzureADApplication completed."
 }
