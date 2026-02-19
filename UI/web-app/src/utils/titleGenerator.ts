@@ -156,11 +156,11 @@ export const updateHRTitleWithNewLeader = (
   }
 
   // Extract exclusionary state, depth and criteria from current title
-  const excludePrefix = templates?.excludePrefix || "Exclude";
+  const excludePrefix = templates?.excludePrefix ?? "Exclude";
   const isExclusionary = extractExclusionaryFromTitle(currentTitle, excludePrefix);
   const titleWithoutPrefix = removeExclusionaryPrefix(currentTitle, excludePrefix);
   const currentDepth = extractDepthFromTitle(titleWithoutPrefix);
-  const criteriaSeparator = templates?.withSummarizedCriteria || "with the following summarized criteria:";
+  const criteriaSeparator = templates?.withSummarizedCriteria ?? "with the following summarized criteria:";
   const criteria = extractCriteriaFromTitle(titleWithoutPrefix, criteriaSeparator);
 
   // Generate new title with the same depth structure and exclusionary state
@@ -196,11 +196,11 @@ export const updateHRTitleWithNewDepth = (
   }
 
   // Extract exclusionary state, leader name and criteria from current title
-  const excludePrefix = templates?.excludePrefix || "Exclude";
+  const excludePrefix = templates?.excludePrefix ?? "Exclude";
   const isExclusionary = extractExclusionaryFromTitle(currentTitle, excludePrefix);
   const titleWithoutPrefix = removeExclusionaryPrefix(currentTitle, excludePrefix);
   const currentLeaderName = extractOrgLeaderName(titleWithoutPrefix);
-  const criteriaSeparator = templates?.withSummarizedCriteria || "with the following summarized criteria:";
+  const criteriaSeparator = templates?.withSummarizedCriteria ?? "with the following summarized criteria:";
   const criteria = extractCriteriaFromTitle(titleWithoutPrefix, criteriaSeparator);
 
   if (!currentLeaderName) {
