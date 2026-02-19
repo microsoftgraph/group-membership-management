@@ -14,7 +14,7 @@ param tenantId string
 param authenticationType string
 param isProduction bool = false
 param notificationAlertThreshold int = 10
-param skipMailNotifications bool
+param skipMailNotifications bool = false
 param isMailApplicationPermissionGranted bool = false
 param isTeamsChannelApplicationPermissionGranted bool = false
 param emailReceivers array = [
