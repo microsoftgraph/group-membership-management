@@ -42,6 +42,8 @@ namespace Hosts.AzureMaintenance
                                    Verbosity = VerbosityLevel.DEBUG
                                });
 
+            await context.CallActivityAsync<int>(nameof(PurgeOldHistoryFunction), null);
+
             if (_handleInactiveJobsConfig.HandleInactiveJobsEnabled)
             {
                 var inactiveSyncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(ReadSyncJobsFunction), null);

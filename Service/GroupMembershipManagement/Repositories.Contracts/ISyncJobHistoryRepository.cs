@@ -46,5 +46,12 @@ namespace Repositories.Contracts
         /// </summary>
         /// <param name="jobHistory">The job history entry to update</param>
         Task UpdateAsync(SyncJobHistory jobHistory);
+
+        /// <summary>
+        /// Deletes job history entries older than the specified date
+        /// </summary>
+        /// <param name="cutoffDate">The cutoff date. Entries with UpdatedAt before this date will be deleted.</param>
+        /// <returns>Number of records deleted</returns>
+        Task<int> DeleteOlderThanAsync(DateTime cutoffDate);
     }
 }

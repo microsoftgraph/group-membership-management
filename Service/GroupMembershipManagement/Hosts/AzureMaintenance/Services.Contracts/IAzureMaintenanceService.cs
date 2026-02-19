@@ -16,5 +16,6 @@ namespace Services.Contracts
         Task SendPurgingEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType);
         Task SendWarningEmailAsync(SyncJob job, NotificationMessageType notificationType);
         Task<List<SyncJob>> GetJobsApproachingPurgingAsync();
+        Task<int> PurgeOldHistoryAsync();
     }
 }

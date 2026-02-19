@@ -58,6 +58,24 @@ namespace Repositories.EntityFramework
             _writeContext.SyncJobHistory.Update(jobHistory);
             await _writeContext.SaveChangesAsync();
         }
+
+        public async Task<int> DeleteOlderThanAsync(DateTime cutoffDate)
+        {
+            try
+            {
+                var deletedCount = await _writeContext.SyncJobHistory
+                    .Where(h => h.UpdatedAt < cutoffDate)
+                    .ExecuteDeleteAsync();
+
+                return deletedCount;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to delete job history records with cutoff date: {cutoffDate:yyyy-MM-dd}",
+                    ex);
+            }
+        }
     }
 }
 

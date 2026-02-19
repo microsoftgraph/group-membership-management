@@ -54,6 +54,7 @@ namespace Hosts.AzureMaintenance
                         settings.NumberOfDaysBeforePurging = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforePurging", 30);
                         settings.NumberOfDaysBeforePurgingToSendWarning = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforePurgingToSendWarning", 7);
                         settings.NumberOfDaysBeforeDeletion = GetIntSetting(configuration, "AzureMaintenance:NumberOfDaysBeforeDeletion", 35);
+                        settings.JobHistoryRetentionDays = GetIntSetting(configuration, "AzureMaintenance:JobHistoryRetentionDays", 30);
                     });
                     services.AddSingleton<IHandleInactiveJobsConfig>(services =>
                     {
@@ -61,7 +62,8 @@ namespace Hosts.AzureMaintenance
                             services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.HandleInactiveJobsEnabled,
                             services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforePurging,
                             services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforePurgingToSendWarning,
-                            services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion);
+                            services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.NumberOfDaysBeforeDeletion,
+                            services.GetService<IOptions<HandleInactiveJobsConfig>>().Value.JobHistoryRetentionDays);
                     });
 
                     services.AddOptions<ThresholdNotificationConfig>().Configure<IConfiguration>((settings, configuration) =>
@@ -97,7 +99,8 @@ namespace Hosts.AzureMaintenance
                             services.GetService<IHandleInactiveJobsConfig>(),
                             services.GetService<INotificationRepository>(),
                             notificationsQueueRepository,
-                            services.GetService<ILoggingRepository>());
+                            services.GetService<ILoggingRepository>(),
+                            services.GetService<ISyncJobHistoryRepository>());
                     });
                 }).Build();
 

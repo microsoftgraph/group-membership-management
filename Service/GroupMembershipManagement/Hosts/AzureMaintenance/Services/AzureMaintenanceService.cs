@@ -30,6 +30,7 @@ namespace Services
         private readonly INotificationRepository _notificationRepository = null;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly ILoggingRepository _loggingRepository;
+        private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
 
         public AzureMaintenanceService(
             IDatabaseSyncJobsRepository syncJobRepository,
@@ -40,7 +41,8 @@ namespace Services
 			IHandleInactiveJobsConfig handleInactiveJobsConfig,
             INotificationRepository notificationRepository,
             IServiceBusQueueRepository notificationQueueRepository,
-            ILoggingRepository loggingRepository)
+            ILoggingRepository loggingRepository,
+            ISyncJobHistoryRepository syncJobHistoryRepository)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
@@ -51,6 +53,7 @@ namespace Services
 			_notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _notificationsQueueRepository = notificationQueueRepository ?? throw new ArgumentNullException(nameof(notificationQueueRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -284,6 +287,29 @@ namespace Services
             });
             
             return jobsNeedingWarning;
+        }
+
+        public async Task<int> PurgeOldHistoryAsync()
+        {
+            var retentionDays = _handleInactiveJobsConfig.JobHistoryRetentionDays > 0
+                ? _handleInactiveJobsConfig.JobHistoryRetentionDays
+                : 30;
+
+            var cutoffDate = DateTime.UtcNow.AddDays(-retentionDays);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Starting to purge job history older than {cutoffDate:yyyy-MM-dd}"
+            });
+
+            var deletedCount = await _syncJobHistoryRepository.DeleteOlderThanAsync(cutoffDate);
+
+            await _loggingRepository.LogMessageAsync(new LogMessage
+            {
+                Message = $"Purged {deletedCount} job history records older than {retentionDays} days"
+            });
+
+            return deletedCount;
         }
     }
 }

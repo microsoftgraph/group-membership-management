@@ -8,5 +8,6 @@ namespace Repositories.Contracts.InjectConfig
         public int NumberOfDaysBeforePurging { get; }
         public int NumberOfDaysBeforePurgingToSendWarning { get; }
         public int NumberOfDaysBeforeDeletion { get; }
+        public int JobHistoryRetentionDays { get; }
     }
 }

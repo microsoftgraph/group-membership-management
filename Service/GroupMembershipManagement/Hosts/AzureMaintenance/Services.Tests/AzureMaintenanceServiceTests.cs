@@ -91,7 +91,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             var backedUpJobs = await azureMaintenanceService.BackupInactiveJobsAsync(jobs);
             Assert.AreEqual(backedUpJobs.Count, jobs.Count);
@@ -150,7 +150,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             var countOfRemovedBackUps = await azureMaintenanceService.RemoveBackupsAsync();
             Assert.AreEqual(countOfRemovedBackUps, tables.Count);
@@ -211,7 +211,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             await azureMaintenanceService.RemoveInactiveJobsAsync(j);
             syncJobRepository.Verify(x => x.DeleteSyncJobsAsync(It.IsAny<IEnumerable<SyncJob>>()), Times.Once());
@@ -288,7 +288,7 @@ namespace Services.Tests
                                     handleInactiveJobsConfig.Object,
                                     notificationRepository.Object,
                                     notificationQueueRepository.Object,
-                                    loggerMock.Object);
+                                    loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             notificationRepository.Setup(x => x.GetThresholdNotificationBySyncJobIdAsync(It.IsAny<Guid>())).Returns(() => Task.FromResult(notification));
             await azureMaintenanceService.ExpireNotificationsAsync(j);
@@ -321,7 +321,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             await azureMaintenanceService.GetGroupNameAsync(Guid.NewGuid());
             graphGroupRepository.Verify(x => x.GetGroupNameAsync(It.IsAny<Guid>()), Times.Once());
@@ -372,7 +372,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             var jobs = await azureMaintenanceService.GetSyncJobsAsync();
             Assert.AreEqual(jobs.Count, 0);
@@ -454,7 +454,7 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             await azureMaintenanceService.SendPurgingEmailAsync(purgedJob, Models.Notifications.NotificationMessageType.InactiveSyncJobNotification);
             notificationQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once());
@@ -552,7 +552,7 @@ namespace Services.Tests
 
             // Configure the mock to return our test data
             syncJobRepository.Setup(x => x.GetSyncJobsAsync(It.IsAny<bool>(), It.IsAny<SyncStatus[]>())).ReturnsAsync(activeSyncJobs);
-            
+
             // Configure purging period to 30 days and warning period to 7 days
             handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurging).Returns(30);
             handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurgingToSendWarning).Returns(7);
@@ -565,17 +565,56 @@ namespace Services.Tests
                                                 handleInactiveJobsConfig.Object,
                                                 notificationRepository.Object,
                                                 notificationQueueRepository.Object,
-                                                loggerMock.Object);
+                                                loggerMock.Object, new Mock<ISyncJobHistoryRepository>().Object);
 
             var jobsApproachingPurging = await azureMaintenanceService.GetJobsApproachingPurgingAsync();
 
             // Should return only the job that has LastRunTime exactly matching the warning cutoff date
             Assert.AreEqual(1, jobsApproachingPurging.Count);
             Assert.AreEqual(jobNeedingWarning.Id, jobsApproachingPurging[0].Id);
-            
+
             syncJobRepository.Verify(x => x.GetSyncJobsAsync(It.IsAny<bool>(), It.IsAny<SyncStatus[]>()), Times.Once());
         }
 
+
+        [TestMethod]
+        public async Task TestPurgeOldHistory()
+        {
+            var loggerMock = new Mock<ILoggingRepository>();
+            loggerMock.Setup(x => x.LogMessageAsync(It.IsAny<LogMessage>(), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()))
+                      .Returns(Task.CompletedTask);
+
+            var syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var purgedSyncJobRepository = new Mock<IDatabasePurgedSyncJobsRepository>();
+            var graphGroupRepository = new Mock<IGraphGroupRepository>();
+            var handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            var notificationRepository = new Mock<INotificationRepository>();
+            var notificationQueueRepository = new Mock<IServiceBusQueueRepository>();
+            var syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
+
+            handleInactiveJobsConfig.Setup(x => x.JobHistoryRetentionDays).Returns(30);
+            syncJobHistoryRepository.Setup(x => x.DeleteOlderThanAsync(It.IsAny<DateTime>())).ReturnsAsync(15);
+
+            var azureMaintenanceService = new AzureMaintenanceService(
+                                                syncJobRepository.Object,
+                                                groupsRepository.Object,
+                                                channelsRepository.Object,
+                                                purgedSyncJobRepository.Object,
+                                                graphGroupRepository.Object,
+                                                handleInactiveJobsConfig.Object,
+                                                notificationRepository.Object,
+                                                notificationQueueRepository.Object,
+                                                loggerMock.Object,
+                                                syncJobHistoryRepository.Object);
+
+            var deletedCount = await azureMaintenanceService.PurgeOldHistoryAsync();
+
+            Assert.AreEqual(15, deletedCount);
+            syncJobHistoryRepository.Verify(x => x.DeleteOlderThanAsync(It.IsAny<DateTime>()), Times.Once());
+            loggerMock.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.Contains("Purged 15 job history records")), It.IsAny<VerbosityLevel>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+        }
         public IEnumerable<SyncJob> GetJobs(List<SyncJob> jobs)
         {
             List<SyncJob> j = jobs;
