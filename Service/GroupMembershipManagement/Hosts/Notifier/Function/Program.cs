@@ -59,6 +59,7 @@ namespace Hosts.Notifier
                         settings.NumberOfDaysBeforePurging = CommonServices.GetIntSettingBase(config, "AzureMaintenance:NumberOfDaysBeforePurging", 30);
                         settings.NumberOfDaysBeforePurgingToSendWarning = CommonServices.GetIntSettingBase(config, "AzureMaintenance:NumberOfDaysBeforePurgingToSendWarning", 7);
                         settings.NumberOfDaysBeforeDeletion = CommonServices.GetIntSettingBase(config, "AzureMaintenance:NumberOfDaysBeforeDeletion", 35);
+                        settings.JobHistoryRetentionDays = CommonServices.GetIntSettingBase(config, "AzureMaintenance:JobHistoryRetentionDays", 30);
                     });
 
                     services.AddSingleton<IHandleInactiveJobsConfig>(sp =>
@@ -68,7 +69,8 @@ namespace Hosts.Notifier
                             options.HandleInactiveJobsEnabled,
                             options.NumberOfDaysBeforePurging,
                             options.NumberOfDaysBeforePurgingToSendWarning,
-                            options.NumberOfDaysBeforeDeletion);
+                            options.NumberOfDaysBeforeDeletion,
+                            options.JobHistoryRetentionDays);
                     });
 
                     services.AddOptions<ThresholdNotificationServiceConfig>().Configure<IConfiguration>((settings, config) =>
