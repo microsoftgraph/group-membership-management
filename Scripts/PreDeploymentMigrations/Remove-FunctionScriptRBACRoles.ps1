@@ -193,10 +193,15 @@ function Remove-FunctionScriptRBACRoles {
 			$_.Scope -eq $keyVault.ResourceId
 		}
 
-		Process-RoleAssignments -ResourceName $keyVault.VaultName `
+		if ($webAppRoleAssignments -ne $null -and $webAppRoleAssignments.Count -gt 0 ) {
+			Process-RoleAssignments -ResourceName $keyVault.VaultName `
 			-ResourceId $keyVault.ResourceId `
 			-RoleAssignments $webAppRoleAssignments `
 			-SkipConfirmation:$SkipConfirmation
+		}
+		else {
+			Write-Host "  No role assignments found for function apps on this key vault." -ForegroundColor Green
+		}
 	}
 
 	# For each function app, we need to validate the storage account role assignments
@@ -232,10 +237,15 @@ function Remove-FunctionScriptRBACRoles {
 			$_.Scope -eq $functionStorageAccount.Id
 		}
 
-		Process-RoleAssignments -ResourceName $functionStorageAccount.StorageAccountName `
+		if ($storageFunctionRoleAssignments -ne $null -and $storageFunctionRoleAssignments.Count -ne 0) {
+			Process-RoleAssignments -ResourceName $functionStorageAccount.StorageAccountName `
 			-ResourceId $functionStorageAccount.Id `
 			-RoleAssignments $storageFunctionRoleAssignments `
 			-SkipConfirmation:$SkipConfirmation
+		}
+		else {
+			Write-Host "  No role assignments found for this function app on the storage account." -ForegroundColor Green
+		}
 	}
 
 	Write-Verbose "Remove-FunctionScriptRBACRoles completed."
