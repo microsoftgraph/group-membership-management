@@ -220,7 +220,7 @@ namespace Repositories.TeamsChannel
                     {
                         try
                         {
-                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId());
+                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(), QueryType.Other, GraphOperationType.Write);
                         }
                         finally
                         {
@@ -286,7 +286,7 @@ namespace Repositories.TeamsChannel
                     {
                         try
                         {
-                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId());
+                            await TrackResponseMetricsAsync(nativeResponse, ResolveRunId(), QueryType.Other, GraphOperationType.Write);
                         }
                         finally
                         {
@@ -763,7 +763,7 @@ namespace Repositories.TeamsChannel
             return RunId == Guid.Empty ? null : RunId;
         }
 
-        private async Task TrackResponseMetricsAsync(HttpResponseMessage response, Guid? runId)
+        private async Task TrackResponseMetricsAsync(HttpResponseMessage response, Guid? runId, QueryType queryType = QueryType.Other, GraphOperationType operationType = GraphOperationType.Read)
         {
             if (response == null)
             {
@@ -774,7 +774,7 @@ namespace Repositories.TeamsChannel
 
             if (headers != null)
             {
-                await _teamsChannelMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
+                await _teamsChannelMetricTracker.TrackMetricsAsync(headers, queryType, runId, operationType);
             }
         }
 

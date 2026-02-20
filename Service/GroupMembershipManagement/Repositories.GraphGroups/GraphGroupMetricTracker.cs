@@ -28,14 +28,14 @@ namespace Repositories.GraphGroups
             _loggingRepository = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task TrackMetricsAsync(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId)
+        public async Task TrackMetricsAsync(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId, GraphOperationType operationType = GraphOperationType.Read)
         {
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
                 const int deltaResourceUnitCost = 5;
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}", RunId = runId });
                 TrackResourceUnitsUsedByTypeEvent(deltaResourceUnitCost, queryType, runId);
-                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName).TrackValue(deltaResourceUnitCost);
+                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(deltaResourceUnitCost, operationType.ToString());
                 return;
             }
 
@@ -45,7 +45,7 @@ namespace Repositories.GraphGroups
                 return;
             }
 
-            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _loggingRepository, _telemetryClient);
+            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _loggingRepository, _telemetryClient, operationType);
 
             // Resource unit/throttle metrics already tracked within GraphTelemetryHelper.
         }

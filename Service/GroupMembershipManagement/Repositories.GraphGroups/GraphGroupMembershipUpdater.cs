@@ -481,7 +481,7 @@ namespace Repositories.GraphGroups
                 var content = await response.Content.ReadAsStringAsync();
 
                 var headers = response.Headers.ToDictionary(h => h.Key, h => h.Value);
-                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, RunId);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, RunId, GraphOperationType.Write);
 
                 await _loggingRepository.LogMessageAsync(new LogMessage
                 {

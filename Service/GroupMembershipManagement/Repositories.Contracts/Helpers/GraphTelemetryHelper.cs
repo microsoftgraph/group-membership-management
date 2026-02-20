@@ -19,7 +19,8 @@ namespace Repositories.Contracts.Helpers
                                                                               QueryType queryType,
                                                                               Guid? runId,
                                                                               ILoggingRepository loggingRepository,
-                                                                              TelemetryClient telemetryClient)
+                                                                              TelemetryClient telemetryClient,
+                                                                              GraphOperationType operationType = GraphOperationType.Read)
         {
             if (response == null || loggingRepository is null || telemetryClient is null)
             {
@@ -41,14 +42,15 @@ namespace Repositories.Contracts.Helpers
                 }
             }
 
-            return await TrackResourceUnitsAsync(headers, queryType, runId, loggingRepository, telemetryClient);
+            return await TrackResourceUnitsAsync(headers, queryType, runId, loggingRepository, telemetryClient, operationType);
         }
 
         public static async Task<GraphTelemetryResult> TrackResourceUnitsAsync(IDictionary<string, IEnumerable<string>> headers,
                                                                               QueryType queryType,
                                                                               Guid? runId,
                                                                               ILoggingRepository loggingRepository,
-                                                                              TelemetryClient telemetryClient)
+                                                                              TelemetryClient telemetryClient,
+                                                                              GraphOperationType operationType = GraphOperationType.Read)
         {
             if (headers == null || loggingRepository is null || telemetryClient is null)
             {
@@ -85,7 +87,7 @@ namespace Repositories.Contracts.Helpers
             });
 
             TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, runId);
-            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName).TrackValue(ruu.Value);
+            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(ruu.Value, operationType.ToString());
 
             var telemetryResult = new GraphTelemetryResult
             {

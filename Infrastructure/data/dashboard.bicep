@@ -3821,10 +3821,10 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customMetrics\n| where name in ("ResourceUnitsUsed")\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 10s)\n'
+                  Query: 'customMetrics\n| where name in ("ResourceUnitsUsed")\n| extend OperationType = tostring(customDimensions["OperationType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 10s), OperationType\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'ResourceUnitsUsed'
+                  PartTitle: 'Entra RUUs (Reads + Writes)'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -3836,7 +3836,12 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                         type: 'real'
                       }
                     ]
-                    splitBy: []
+                    splitBy: [
+                      {
+                        name: 'OperationType'
+                        type: 'string'
+                      }
+                    ]
                     aggregation: 'Sum'
                   }
                   LegendOptions: {
@@ -3846,7 +3851,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'ResourceUnitsUsed'
+                title: 'Entra RUUs (Reads + Writes)'
                 subtitle: ''
               }
             }
@@ -4063,7 +4068,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   Query: 'customEvents\n| where name == "ResourceUnitsUsedByType"\n| order by timestamp desc\n| project timestamp,\n    QueryType = tostring(customDimensions["QueryType"]),\n    ResourceUnitsUsed = toint(customDimensions["ResourceUnitsUsed"])\n| summarize sum(ResourceUnitsUsed) by bin(timestamp, 10s), QueryType\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
-                  PartTitle: 'ResourceUnitsUsedByType'
+                  PartTitle: 'Entra RUU by Access Pattern'
                   Dimensions: {
                     xAxis: {
                       name: 'timestamp'
@@ -4090,7 +4095,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
               }
               partHeader: {
-                title: 'ResourceUnitsUsedByType'
+                title: 'Entra RUU by Access Pattern'
                 subtitle: ''
               }
             }
