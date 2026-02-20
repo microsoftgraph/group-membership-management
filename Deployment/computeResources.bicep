@@ -575,6 +575,7 @@ module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Ho
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     setRBACPermissions: setRBACPermissions
+    functionAuthAppClientId: functionAuthAppClientId
   }
   dependsOn: [
     azureMaintenanceDataResources
