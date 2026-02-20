@@ -11,6 +11,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using Services.WebApi.Validators;
+using System.Data.SqlTypes;
 using System.Net;
 using System.Text.Json;
 using WebApi.Models.DTOs;
@@ -183,7 +184,9 @@ namespace Services.WebApi
                 }
 
                 // Set ThresholdViolations to N-1 when submission is approved, so notification is sent on next threshold hit
-                if (newStatus == SyncStatus.Idle.ToString())
+                // Skip this for initial syncs to avoid sending notifications on first run
+                var isInitialSync = syncJob.LastRunTime == SqlDateTime.MinValue.Value;
+                if (newStatus == SyncStatus.Idle.ToString() && !isInitialSync)
                 {
                     syncJob.ThresholdViolations = _thresholdConfig.NumberOfThresholdViolationsToNotify - 1;
                 }

@@ -897,6 +897,7 @@ namespace Services.Tests
                     };
                 });
             _jobEntity.Status = SyncStatus.PendingReview.ToString();
+            _jobEntity.LastRunTime = DateTime.UtcNow.AddHours(-1);
             _jobEntity.ThresholdViolations = 0;
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler)
             {

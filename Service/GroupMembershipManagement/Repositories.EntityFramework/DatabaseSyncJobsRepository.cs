@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.EntityFrameworkCore;
+using System.Data.SqlTypes;
 using Models;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
@@ -229,7 +230,7 @@ namespace Repositories.EntityFramework
                 if (job.Status == SyncStatus.PendingReview.ToString())
                 {
                     job.Status = SyncStatus.Idle.ToString();
-                    if (thresholdViolationsToSet.HasValue)
+                    if (thresholdViolationsToSet.HasValue && job.LastRunTime != SqlDateTime.MinValue.Value)
                     {
                         job.ThresholdViolations = thresholdViolationsToSet.Value;
                     }

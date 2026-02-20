@@ -11,6 +11,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.WebApi;
 using Services.WebApi.Contracts;
+using System.Data.SqlTypes;
 using System.Net;
 using WebApi.Models.DTOs;
 using SyncJob = Models.SyncJob;
@@ -224,6 +225,7 @@ namespace WebApi.Tests
         public async Task ReviewSubmission_WhenApproved_SetsThresholdViolationsToNotifyMinusOne()
         {
             // Arrange
+            _testSyncJob.LastRunTime = DateTime.UtcNow;
             var patchDocument = new JsonPatchDocument<SyncJobPatch>();
             patchDocument.Replace(x => x.Status, SyncStatus.Idle.ToString());
 
@@ -256,6 +258,45 @@ namespace WebApi.Tests
                     It.IsAny<SyncStatus?>()),
                 Times.Once,
                 "UpdateSyncJobsAsync should be called with ThresholdViolations set to N-1");
+        }
+
+        [TestMethod]
+        public async Task ReviewSubmission_WhenApproved_InitialSync_DoesNotSetThresholdViolationsToNotifyMinusOne()
+        {
+            // Arrange
+            _testSyncJob.LastRunTime = SqlDateTime.MinValue.Value;
+            _testSyncJob.ThresholdViolations = 0;
+
+            var patchDocument = new JsonPatchDocument<SyncJobPatch>();
+            patchDocument.Replace(x => x.Status, SyncStatus.Idle.ToString());
+
+            var request = new PatchJobRequest(
+                isAllowed: true,
+                userIdentity: Guid.NewGuid().ToString(),
+                syncJobId: _testSyncJob.Id,
+                patchDocument: patchDocument,
+                userDisplayName: "Reviewer",
+                changeReason: SyncJobChangeReason.SubmissionApproved.ToString(),
+                businessJustification: "Approved for testing",
+                canApproveJob: true
+            );
+
+            _mockThresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
+
+            // Act
+            var response = await _patchJobHandler.ExecuteAsync(request);
+
+            // Assert
+            Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
+
+            _mockSyncJobRepository.Verify(
+                x => x.UpdateSyncJobsAsync(
+                    It.Is<IEnumerable<SyncJob>>(jobs =>
+                        jobs.Count() == 1 &&
+                        jobs.First().ThresholdViolations == 0),
+                    It.IsAny<SyncStatus?>()),
+                Times.Once,
+                "UpdateSyncJobsAsync should not bump ThresholdViolations on initial sync");
         }
     }
 }
