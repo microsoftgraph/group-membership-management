@@ -2687,7 +2687,7 @@ function Deploy-Resources {
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
     }
 
-    if (-not $parameterHashtable.isInitialDeployment.value) {
+    if ($parameterHashtable.isInitialDeployment.value -ne $true) {
         Reset-Functions `
             -SolutionAbbreviation $solutionAbbreviation `
             -EnvironmentAbbreviation $environmentAbbreviation `
