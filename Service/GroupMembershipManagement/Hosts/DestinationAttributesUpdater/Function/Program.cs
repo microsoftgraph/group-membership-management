@@ -28,10 +28,6 @@ var host = new HostBuilder()
     {
         DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
         options.Connect(new Uri(appConfigEndpoint), credential)
-            .ConfigureKeyVault(kv =>
-            {
-                kv.SetCredential(new DefaultAzureCredential());
-            })
             .UseFeatureFlags();
     });
 })
