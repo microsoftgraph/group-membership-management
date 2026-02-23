@@ -13,6 +13,12 @@ param environmentAbbreviation string
 @description('Allowed IP addresses for the OpenAI resource (comma-separated).')
 param allowedIpAddresses string = ''
 
+@description('Content filter policy name for the OpenAI deployment.')
+param openAIContentFilterName string = 'DefaultV2'
+
+@description('Base policy name for the OpenAI content filter configuration.')
+param openAIContentFilterBasePolicyName string = 'Microsoft.DefaultV2'
+
 var ipAddressArray = empty(allowedIpAddresses) ? [] : split(allowedIpAddresses, ',')
 var trimmedIpArray = [for ip in ipAddressArray: trim(ip)]
 var uniqueIpArray = filter(trimmedIpArray, (ip, index) => indexOf(trimmedIpArray, ip) == index && !empty(ip))
@@ -61,6 +67,109 @@ resource defenderForAISettings 'Microsoft.CognitiveServices/accounts/defenderFor
   }
 }
 
+resource openAIContentFilterPolicy 'Microsoft.CognitiveServices/accounts/raiPolicies@2025-06-01' = {
+  parent: openAI
+  name: openAIContentFilterName
+  properties: {
+    basePolicyName: openAIContentFilterBasePolicyName
+    mode: 'Blocking'
+    contentFilters: [
+      {
+        name: 'hate'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Prompt'
+      }
+      {
+        name: 'hate'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Completion'
+      }
+      {
+        name: 'violence'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Prompt'
+      }
+      {
+        name: 'violence'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Completion'
+      }
+      {
+        name: 'sexual'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Prompt'
+      }
+      {
+        name: 'sexual'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Completion'
+      }
+      {
+        name: 'selfharm'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Prompt'
+      }
+      {
+        name: 'selfharm'
+        blocking: true
+        enabled: true
+        severityThreshold: 'Low'
+        source: 'Completion'
+      }
+      {
+        name: 'profanity'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'profanity'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+      {
+        name: 'jailbreak'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'indirect_attack'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'protected_material_text'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+      {
+        name: 'protected_material_code'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+    ]
+  }
+}
+
 resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
   parent: openAI
   name: 'gpt-4o'
@@ -70,6 +179,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
       name: 'gpt-4o'
       version: '2024-05-13'
     }
+    raiPolicyName: openAIContentFilterPolicy.name
   }
   sku: {
     name: 'standard'
