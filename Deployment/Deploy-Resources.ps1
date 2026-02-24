@@ -2629,14 +2629,28 @@ function Install-RequiredModules {
         [string]$ScriptsDirectory
     )
 
-    # Install Az modules
-    Write-Host "Installing/Importing required Az modules..."
+    Write-Host "`n" -NoNewline
+    Write-Host ("=" * 60) -ForegroundColor Cyan
+    Write-Host "  Installing Required PowerShell Modules" -ForegroundColor Cyan
+    Write-Host ("=" * 60) -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  ⏳ This process may take up to 10 minutes depending on" -ForegroundColor Yellow
+    Write-Host "     your network speed and whether modules are cached." -ForegroundColor Yellow
+
+    $totalSteps = 3
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # Step 1: Install Az modules
+    Write-Host "`n  [1/$totalSteps] " -ForegroundColor Magenta -NoNewline
+    Write-Host "Az Modules" -ForegroundColor White
+    Write-Host "          Installing/Importing..." -ForegroundColor Gray
     . ($ScriptsDirectory + '/Install-AzModuleIfNeeded.ps1')
     Install-AzModuleIfNeeded | Out-Null
-    Write-Host "Completed installation/import of required Az modules." -ForegroundColor Green
+    Write-Host "          ✓ Az modules ready" -ForegroundColor Green
 
-    # Install Microsoft Graph modules
-    Write-Host "Installing/Importing required Microsoft Graph PowerShell modules..."
+    # Step 2: Install Microsoft Graph modules
+    Write-Host "`n  [2/$totalSteps] " -ForegroundColor Magenta -NoNewline
+    Write-Host "Microsoft Graph Modules" -ForegroundColor White
     . ($ScriptsDirectory + '/Install-ModuleIfNeeded.ps1')
 		
     $requiredGraphModules = @(
@@ -2646,17 +2660,36 @@ function Install-RequiredModules {
         "Microsoft.Graph.Users"
     )
 
-    . ($ScriptsDirectory + '/Install-ModuleIfNeeded.ps1')
+    $moduleIndex = 0
+    $totalModules = $requiredGraphModules.Count
 
     foreach ($module in $requiredGraphModules) {
-        Install-ModuleIfNeeded -Name $module -Version "2.17.0" -Verbose
+        $moduleIndex++
+        $shortName = $module -replace '^Microsoft\.Graph\.', ''
+        Write-Host "          [$moduleIndex/$totalModules] Installing " -ForegroundColor Gray -NoNewline
+        Write-Host "$shortName" -ForegroundColor White -NoNewline
+        Write-Host " (v2.17.0)..." -ForegroundColor Gray
+        Install-ModuleIfNeeded -Name $module -Version "2.17.0" | Out-Null
+        Write-Host "                 ✓ $shortName ready" -ForegroundColor Green
     }
-    Write-Host "Completed installation/import of required Microsoft Graph PowerShell modules." -ForegroundColor Green
 
-    # Install MSIdentityTools module to get Azure IP ranges
-    Write-Host "Installing MSIdentityTools..."
-    Install-ModuleIfNeeded -Name MSIdentityTools -Version "2.0.52" -Verbose
-    Write-Host "Completed installation/import of MSIdentityTools Module." -ForegroundColor Green
+    # Step 3: Install MSIdentityTools
+    Write-Host "`n  [3/$totalSteps] " -ForegroundColor Magenta -NoNewline
+    Write-Host "MSIdentityTools" -ForegroundColor White
+    Write-Host "          Installing " -ForegroundColor Gray -NoNewline
+    Write-Host "MSIdentityTools" -ForegroundColor White -NoNewline
+    Write-Host " (v2.0.52)..." -ForegroundColor Gray
+    Install-ModuleIfNeeded -Name MSIdentityTools -Version "2.0.52" | Out-Null
+    Write-Host "          ✓ MSIdentityTools ready" -ForegroundColor Green
+
+    $stopwatch.Stop()
+    $elapsed = $stopwatch.Elapsed.ToString("mm\:ss")
+
+    Write-Host "`n" -NoNewline
+    Write-Host ("=" * 60) -ForegroundColor Green
+    Write-Host "  ✓ All required modules installed ($elapsed)" -ForegroundColor Green
+    Write-Host ("=" * 60) -ForegroundColor Green
+    Write-Host ""
 }
 
 function Initialize-ScriptDependencies {
@@ -2687,7 +2720,6 @@ function Initialize-ScriptDependencies {
     if ($SkipModuleInstallation -eq $true) {
         Write-Host "Skipping module installation as per configuration [SkipModuleInstallation = $($SkipModuleInstallation)]." -ForegroundColor Yellow
     } else {
-        Write-Host "Installing required PowerShell modules..."
         Install-RequiredModules -ScriptsDirectory $ScriptsDirectory
     }
 
