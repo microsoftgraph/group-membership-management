@@ -161,7 +161,12 @@ export const AdvancedQueryBase: React.FunctionComponent<IAdvancedQueryProps> = (
         disabled={!isJobWriter || !isEditable}
       />
       {validationMessage && (
-        <div className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}>
+        <div
+          className={validationMessage === strings.ManageMembership.labels.validQuery ? classNames.successMessage : classNames.errorMessage}
+          role={validationMessage === strings.ManageMembership.labels.validQuery ? undefined : 'alert'}
+          aria-live={validationMessage === strings.ManageMembership.labels.validQuery ? undefined : 'assertive'}
+          aria-atomic={validationMessage === strings.ManageMembership.labels.validQuery ? undefined : 'true'}
+        >
           {validationMessage}
         </div>
       )}

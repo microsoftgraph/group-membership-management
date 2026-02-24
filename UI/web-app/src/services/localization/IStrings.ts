@@ -107,6 +107,9 @@ export type IStrings = {
       addHyperlink: string;
       invalidUrl: string;
     },
+    InfoIcon: {
+      ariaLabel: string;
+    },
     GroupQuerySource: {
       searchGroupSuggestedText: string;
       noResultsFoundText: string;

@@ -27,7 +27,13 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       margin: 0,
       fontSize: 'inherit',
       fontStyle: 'inherit',
-      fontWeight: 'inherit'
+      fontWeight: 'inherit',
+      selectors: {
+        ':focus-visible': {
+          boxShadow: `0 0 0 2px ${theme.palette.white}`,
+          borderRadius: 4
+        }
+      }
     },
     appIcon: {
       boxSizing: 'border-box',
@@ -48,7 +54,14 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       ...theme.fonts.large,
       color: theme.palette.white,
       height: 48,
-      width: 48
+      width: 48,
+      borderRadius: 4,
+      selectors: {
+        ':focus-visible': {
+          boxShadow: `0 0 0 2px ${theme.palette.white}`,
+          borderRadius: 4
+        }
+      }
     },
     titleContainer: {
       display: 'flex',

@@ -111,6 +111,9 @@ export const strings: IStrings = {
       addHyperlink: "Agregar URL",
       invalidUrl: "URL inválida"
     },
+    InfoIcon: {
+      ariaLabel: "Información de {0}",
+    },
     GroupQuerySource: {
       searchGroupSuggestedText: "Grupos sugeridos",
       noResultsFoundText: "No se encontraron resultados",

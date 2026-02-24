@@ -122,6 +122,41 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
     const userTyping = isFocused && searchText.length > 0;
     const readOnly = !isJobWriter || !isEditable;
 
+    const handleRowArrowNavigation = (event: React.KeyboardEvent<HTMLElement>) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+      const target = event.target as HTMLElement | null;
+      if (!target) return;
+      const expanded = target.getAttribute('aria-expanded') === 'true';
+      if (expanded) return;
+
+      const row = target.closest('[role="row"]') ?? target.closest('.ms-DetailsRow');
+      if (!row) return;
+
+      const focusables = Array.from(
+        row.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => {
+        const isDisabled = element.hasAttribute('disabled') || element.getAttribute('aria-disabled') === 'true';
+        const isVisible = element.offsetParent !== null;
+        return !isDisabled && isVisible;
+      });
+
+      const activeElement = document.activeElement as HTMLElement | null;
+      const currentIndex = focusables.findIndex((element) => element === activeElement);
+      if (currentIndex === -1) return;
+
+      const nextIndex = event.key === 'ArrowRight' ? currentIndex + 1 : currentIndex - 1;
+      const nextElement = focusables[nextIndex];
+      if (!nextElement) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      nextElement.focus();
+    };
+
     switch (column?.key) {
       case 'upDown':
         return (
@@ -181,6 +216,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
             onChange={(event, option) =>
               handleEqualityOperatorChange(event, option, index, groupIndex, childIndex)
             }
+            onKeyDown={(event) => handleRowArrowNavigation(event as unknown as React.KeyboardEvent<HTMLElement>)}
             onRenderOption={onRenderOperatorOptions}
             allowFreeInput={false}
             useComboBoxAsMenuWidth={true}

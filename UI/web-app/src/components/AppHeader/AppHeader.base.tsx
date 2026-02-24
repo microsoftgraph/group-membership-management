@@ -88,7 +88,7 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
         <a href="/" className={classNames.mainButton} onClick={onLogoClicked}>
           <div className={classNames.titleContainer}>
             <div className={classNames.appIcon}>
-              <img src={logo} alt="Membership Management Icon" style={{ height: 32, width: 32 }} />
+              <img src={logo} aria-hidden="true" style={{ height: 32, width: 32 }} />
             </div>
             <div className={classNames.appTitle}>{strings.membershipManagement}</div>
           </div>

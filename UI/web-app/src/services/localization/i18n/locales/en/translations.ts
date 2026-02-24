@@ -110,6 +110,9 @@ export const strings: IStrings = {
       addHyperlink: "Add hyperlink",
       invalidUrl: "Invalid URL",
     },
+    InfoIcon: {
+      ariaLabel: "{0} info",
+    },
     GroupQuerySource: {
       searchGroupSuggestedText: "Suggested Groups",
       noResultsFoundText: "No results found",

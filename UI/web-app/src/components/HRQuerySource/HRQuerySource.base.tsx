@@ -2351,7 +2351,7 @@ const getOptions = (
        )}
 
 
-      <div className={classNames.error}>
+      <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
         {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && partId === orgLeaderDetails.partId && orgErrorMessage}
       </div>
       <br />
@@ -2490,7 +2490,7 @@ const getOptions = (
         ) : null
       }
 
-      <div className={classNames.error}>
+      <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
         {filterErrorMessage}
       </div>
     </div>

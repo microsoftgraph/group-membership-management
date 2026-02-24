@@ -344,7 +344,7 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
           {part.query.type === SourcePartType.PlaceMembership && (
             <AdvancedViewSourcePart key={SourcePartType.PlaceMembership} part={part} isEditable={isEditable} />
           )}
-          <div className={classNames.error}>
+          <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
             {errorMessage}
           </div>
           {part.query.type === SourcePartType.HR &&

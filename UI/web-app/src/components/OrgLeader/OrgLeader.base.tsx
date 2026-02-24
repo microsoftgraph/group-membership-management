@@ -71,7 +71,7 @@ export const OrgLeaderBase: React.FunctionComponent<OrgLeaderProps> = (
         pickerSuggestionsProps={{ className: classNames.suggestionItems }}
       />
       {showError && (
-        <div className={classNames.error}>
+        <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
           {`${strings.HROnboarding.orgLeader} ${strings.HROnboarding.orgLeaderMissingErrorMessage}`}
         </div>
       )}
