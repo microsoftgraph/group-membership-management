@@ -336,7 +336,12 @@ export const strings: IStrings = {
         notOwnerOfDestinationGroup: 'Se Requiere Permiso de Propietario del Grupo',
         securityGroupNotFound: 'Grupo de Origen No Encontrado',
         guestUsersNotSupported: 'Usuarios Invitados No Compatibles',
-      }
+      },
+      downloadAriaLabel: 'Descargar cambios de membresía para la ejecución {0}',
+      downloadError: 'Error al descargar los cambios de membresía.',
+      downloadColumnLabel: 'Descargar',
+      downloadLinkText: 'Descargar',
+      downloadingText: 'Descargando...',
     },
     notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
     openInAzure: 'Abrir en Azure',

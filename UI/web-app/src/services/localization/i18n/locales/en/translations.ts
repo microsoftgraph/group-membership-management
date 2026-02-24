@@ -334,7 +334,12 @@ export const strings: IStrings = {
         notOwnerOfDestinationGroup: 'Group Owner Permission Required',
         securityGroupNotFound: 'Source Group Not Found',
         guestUsersNotSupported: 'Guest Users Not Supported',
-      }
+      },
+      downloadAriaLabel: 'Download membership changes for run {0}',
+      downloadError: 'Failed to download membership changes.',
+      downloadColumnLabel: 'Download',
+      downloadLinkText: 'Download',
+      downloadingText: 'Downloading...',
     },
     openInAzure: 'Open in Azure',
     openInTeams: 'Open in Teams',

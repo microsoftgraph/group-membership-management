@@ -269,3 +269,37 @@ export const fetchSyncJobHistory = createAsyncThunk<
     }
   }
 );
+
+export const downloadMembershipChanges = createAsyncThunk<
+  void,
+  { syncJobId: string; runId: string },
+  ThunkConfig
+>('jobs/downloadMembershipChanges', async ({ syncJobId, runId }, { extra }) => {
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers({
+    'Authorization': `Bearer ${token}`,
+  });
+
+  const response = await fetch(config.downloadMembershipChanges(syncJobId, runId), {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to download membership changes.');
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `membership_changes_${runId}.zip`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    window.URL.revokeObjectURL(url);
+  }
+});

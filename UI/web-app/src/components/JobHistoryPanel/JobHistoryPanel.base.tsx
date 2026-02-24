@@ -15,6 +15,8 @@ import {
     IconButton,
     useTheme,
     TextField,
+    MessageBar,
+    MessageBarType,
 } from '@fluentui/react';
 import {
     IJobHistoryPanelProps, IJobHistoryPanelStyleProps, IJobHistoryPanelStyles,
@@ -23,14 +25,15 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useState } from 'react';
-import { fetchJobChanges, fetchSyncJobHistory } from '../../store/jobDetails.api';
+import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
-import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
+import { format } from 'react-string-format';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -44,8 +47,33 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const { className, styles, isOpen, dismissPanel, jobId } = props;
     const strings = useStrings();
     const theme = useTheme();
+    const dispatch = useDispatch<AppDispatch>();
 
     const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
+
+    const [downloadError, setDownloadError] = useState<string | null>(null);
+    const [downloadingRunIds, setDownloadingRunIds] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        setDownloadError(null);
+    }, [isOpen]);
+
+    const handleDownload = async (runId: string) => {
+        if (downloadingRunIds.has(runId)) return;
+        setDownloadError(null);
+        setDownloadingRunIds(prev => new Set(prev).add(runId));
+        try {
+            await dispatch(downloadMembershipChanges({ syncJobId: jobId, runId })).unwrap();
+        } catch {
+            setDownloadError(strings.JobDetails.Panel.downloadError);
+        } finally {
+            setDownloadingRunIds(prev => {
+                const next = new Set(prev);
+                next.delete(runId);
+                return next;
+            });
+        }
+    };
 
     const getChangeTypeColorClass = (changeReason: string): string => {
         switch (changeReason) {
@@ -166,6 +194,11 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }
         }
     ];
+
+    const isJobTenantReader = useSelector(selectIsJobTenantReader);
+    const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+    const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
+    const showDownloadColumn = isJobTenantReader || isJobTenantWriter || isSubmissionReviewer;
 
     const syncHistoryColumns: IColumn[] = [
         {
@@ -310,10 +343,27 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 200,
             isResizable: true,
             isMultiline: true,
-        }
+        },
+        ...(showDownloadColumn ? [{
+            key: 'download',
+            name: strings.JobDetails.Panel.downloadColumnLabel,
+            fieldName: 'download',
+            minWidth: 80,
+            maxWidth: 120,
+            isResizable: true,
+            onRender: (item: SyncJobHistory) => {
+                return (
+                    <Link
+                        onClick={() => handleDownload(item.runId)}
+                        disabled={downloadingRunIds.has(item.runId)}
+                        aria-label={format(strings.JobDetails.Panel.downloadAriaLabel, item.runId)}
+                    >
+                        {downloadingRunIds.has(item.runId) ? strings.JobDetails.Panel.downloadingText : strings.JobDetails.Panel.downloadLinkText}
+                    </Link>
+                );
+            }
+        }] : [])
     ];
-
-    const dispatch = useDispatch<AppDispatch>();
 
     const [detailsListItems, setDetailsListItems] = useState<SyncJobChange[]>([]);
     const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
@@ -321,8 +371,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [modalContent, setModalContent] = useState('');
 
     const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
-    const isJobTenantReader = useSelector(selectIsJobTenantReader);
-    const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
     const showSyncTab = isJobTenantReader || isJobTenantWriter;
 
     useEffect(() => {
@@ -412,6 +460,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             'data-title': strings.JobDetails.Panel.syncPivotHeader
                         }}
                     >
+                        {downloadError && (
+                            <MessageBar
+                                messageBarType={MessageBarType.error}
+                                onDismiss={() => setDownloadError(null)}
+                            >
+                                {downloadError}
+                            </MessageBar>
+                        )}
                         <DetailsList
                             setKey="syncHistorySet"
                             columns={syncHistoryColumns}

@@ -330,6 +330,11 @@ export type IStrings = {
         securityGroupNotFound: string;
         guestUsersNotSupported: string;
       };
+      downloadAriaLabel: string;
+      downloadError: string;
+      downloadColumnLabel: string;
+      downloadLinkText: string;
+      downloadingText: string;
     };
     notFound: string;
     openInAzure: string;
