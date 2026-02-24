@@ -1,5 +1,5 @@
 branches: 
-  - name: features/int
+  - name: stable
 comments:
   - markdown: |
       # Is your code accessible?
