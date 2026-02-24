@@ -23,6 +23,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Validators;
 using Microsoft.O365.ActionableMessages.Utilities;
 using Microsoft.OpenApi.Models;
+using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.DataFactory;
@@ -402,6 +403,13 @@ namespace WebApi
             builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
             builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
+            builder.Services.AddSingleton<IBlobStorageRepository>(sp =>
+            {
+                var configuration = sp.GetRequiredService<IConfiguration>();
+                var storageAccountName = configuration["Settings:membershipStorageAccountName"];
+                var containerName = configuration["Settings:membershipContainerName"];
+                return new BlobStorageRepository($"https://{storageAccountName}.blob.core.windows.net/{containerName}");
+            });
             builder.Services.AddScoped<IDatabaseGroupsRepository, DatabaseGroupsRepository>();
             builder.Services.AddScoped<IDatabaseChannelsRepository, DatabaseChannelsRepository>();
             builder.Services.AddScoped<ISyncJobChangeRepository, SyncJobChangeRepository>();

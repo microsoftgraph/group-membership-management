@@ -27,6 +27,7 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<GetChannelRequest, GetChannelResponse> _getChannelRequestHandler;
         private readonly IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> _getJobChangesRequestHandler;
         private readonly IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> _getSyncJobHistoryRequestHandler;
+        private readonly IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> _getMembershipDownloadRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
                                     IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
@@ -34,7 +35,8 @@ namespace WebApi.Controllers.v1.Jobs
                                     IRequestHandler<GetGroupRequest, GetGroupResponse> getGroupRequestHandler,
                                     IRequestHandler<GetChannelRequest, GetChannelResponse> getChannelRequestHandler,
                                     IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> getJobChangesRequestHandler,
-                                    IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> getSyncJobHistoryRequestHandler)
+                                    IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> getSyncJobHistoryRequestHandler,
+                                    IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> getMembershipDownloadRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
@@ -43,6 +45,7 @@ namespace WebApi.Controllers.v1.Jobs
             _patchJobRequestHandler = patchJobRequestHandler;
             _getJobChangesRequestHandler = getJobChangesRequestHandler ?? throw new ArgumentNullException(nameof(getJobChangesRequestHandler));
             _getSyncJobHistoryRequestHandler = getSyncJobHistoryRequestHandler ?? throw new ArgumentNullException(nameof(getSyncJobHistoryRequestHandler));
+            _getMembershipDownloadRequestHandler = getMembershipDownloadRequestHandler ?? throw new ArgumentNullException(nameof(getMembershipDownloadRequestHandler));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -308,6 +311,21 @@ namespace WebApi.Controllers.v1.Jobs
             return response.StatusCode switch
             {
                 System.Net.HttpStatusCode.OK => Ok(response.History),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
+        [Authorize(Roles = $"{Models.Roles.JOB_TENANT_READER},{Models.Roles.JOB_TENANT_WRITER},{Models.Roles.SUBMISSION_REVIEWER}")]
+        [HttpGet("history/sync/{syncJobId}/runs/{runId}/download")]
+        public async Task<ActionResult> DownloadMembershipAsync(Guid syncJobId, Guid runId)
+        {
+            var response = await _getMembershipDownloadRequestHandler.ExecuteAsync(new GetMembershipDownloadRequest(syncJobId, runId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => File(response.FileContent!, "application/zip", response.FileName),
                 System.Net.HttpStatusCode.NotFound => NotFound(),
                 System.Net.HttpStatusCode.Forbidden => Forbid(),
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
