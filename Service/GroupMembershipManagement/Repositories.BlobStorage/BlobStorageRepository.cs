@@ -394,6 +394,26 @@ namespace Repositories.BlobStorage
             return await Task.FromResult(result);
         }
 
+        public async Task<BlobResult> FindAggregatedFileByRunIdAsync(string groupId, string runId)
+        {
+            var prefix = $"{groupId}/";
+            var suffix = $"_{runId}_Aggregated.json";
+
+            await foreach (var blob in _containerClient.GetBlobsAsync(prefix: prefix))
+            {
+                if (blob.Name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new BlobResult
+                    {
+                        Path = blob.Name,
+                        BlobStatus = BlobStatus.Found,
+                    };
+                }
+            }
+
+            return new BlobResult { BlobStatus = BlobStatus.NotFound };
+        }
+
         public async Task<HashSet<Guid>> ExtractGroupMembershipSourceMembersAsync(string path)
         {
             var blobClient = _containerClient.GetBlobClient(path);

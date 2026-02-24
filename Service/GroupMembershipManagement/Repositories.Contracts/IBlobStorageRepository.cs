@@ -23,6 +23,7 @@ namespace Repositories.Contracts
         public IAsyncEnumerable<AzureADUser> StreamUsersFromBlobsAsync(string path);
         public Task DeleteBlobsAsync(string path);
         public Task<BlobResult> FindLatestFileAsync(string prefix);
+        public Task<BlobResult> FindAggregatedFileByRunIdAsync(string groupId, string runId);
         public Task<HashSet<T>> ReadValuesFromBlobAsync<T>(string path, System.Func<string, T> parseFunction);
 
         /// <summary>
