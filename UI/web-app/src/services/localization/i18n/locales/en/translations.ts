@@ -91,7 +91,10 @@ export const strings: IStrings = {
     withSummarizedCriteria: "with the following summarized criteria:",
     generateTitle: "Generate AI title",
     generatingTitleText: "Generating...",
-    multipleItemsSelected: "Multiple items selected"
+    multipleItemsSelected: "Multiple items selected",
+    selectionColumnAriaLabel: "Selection",
+    selectRowAriaLabel: "Select row",
+    comboBoxCaretAriaLabel: "Open options"
   },
   Components: {
     AppHeader: {

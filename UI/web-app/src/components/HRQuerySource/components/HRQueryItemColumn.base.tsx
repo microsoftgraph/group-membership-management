@@ -205,6 +205,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
               errorMessage: classNames.errorMessageStyles,
             }}
             ariaLabel={strings.HROnboarding.attribute}
+            iconButtonProps={{ 'aria-label': strings.HROnboarding.comboBoxCaretAriaLabel }}
           />
         );
       case 'equalityOperator':
@@ -224,6 +225,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
             disabled={isAttributeDisabled || !isJobWriter || !isEditable}
             styles={{ root: classNames.equalityOperator }}
             ariaLabel={strings.HROnboarding.equalityOperator}
+            iconButtonProps={{ 'aria-label': strings.HROnboarding.comboBoxCaretAriaLabel }}
           />
         );
       case 'value':
@@ -239,6 +241,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
               dropdownMaxWidth={500}
               disabled={isAttributeDisabled || !isJobWriter || !isEditable}
               title={strings.HROnboarding.attributeValue}
+              iconButtonProps={{ 'aria-label': strings.HROnboarding.comboBoxCaretAriaLabel }}
             />
           );
         }
@@ -327,6 +330,7 @@ export const HRQueryItemColumnBase: React.FunctionComponent<HRQueryItemColumnPro
                     (item.equalityOperator !== 'IN' && item.equalityOperator !== 'NOT IN' || selectedKeys.length === 1) && (!isJobWriter || !isEditable)
                 })()}
                 title={strings.HROnboarding.attributeValue}
+                iconButtonProps={{ 'aria-label': strings.HROnboarding.comboBoxCaretAriaLabel }}
                 calloutProps={{styles: { calloutMain: { height: '300px', overflowY: 'auto' }}}}
                 styles={
                   (item.equalityOperator === 'IN' || item.equalityOperator === 'NOT IN') && (!isJobWriter || !isEditable)

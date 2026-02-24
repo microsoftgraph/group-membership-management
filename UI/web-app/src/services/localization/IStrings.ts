@@ -89,6 +89,9 @@ export type IStrings = {
     generateTitle: string;
     generatingTitleText: string;
     multipleItemsSelected: string;
+    selectionColumnAriaLabel: string;
+    selectRowAriaLabel: string;
+    comboBoxCaretAriaLabel: string;
   },
   Components: {
     AppHeader: {

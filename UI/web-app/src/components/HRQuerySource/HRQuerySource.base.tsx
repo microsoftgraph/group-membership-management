@@ -2218,6 +2218,8 @@ const getOptions = (
         onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column, groupIndex, childIndex)}
         selection={selection}
         selectionPreservedOnEmptyClick={true}
+        ariaLabelForSelectionColumn={strings.HROnboarding.selectionColumnAriaLabel}
+        checkButtonAriaLabel={strings.HROnboarding.selectRowAriaLabel}
         layoutMode={DetailsListLayoutMode.justified}
       />
       <ActionButton
@@ -2470,6 +2472,8 @@ const getOptions = (
               selectionPreservedOnEmptyClick={true}
               selection={selection}
               onRenderItemColumn={(item, index, column) => onRenderItemColumn(items, item, index, column)}
+              ariaLabelForSelectionColumn={strings.HROnboarding.selectionColumnAriaLabel}
+              checkButtonAriaLabel={strings.HROnboarding.selectRowAriaLabel}
               layoutMode={DetailsListLayoutMode.justified}
               styles={{
                 root: classNames.detailsList
