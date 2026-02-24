@@ -718,6 +718,26 @@ module dataKeyVaultTemplate 'keyVault.bicep' = if (!isDataKVPresent) {
   }
 }
 
+// -----------------------------------------------
+// Data Key Vault Private Endpoint
+// -----------------------------------------------
+
+module dataKvPrivateEndpoint '../networking/privateEndpoint.bicep' = {
+  name: 'deploy-${keyVaultName}-pe'
+  scope: resourceGroup(networkingResourceGroupName)
+  params: {
+    name: '${keyVaultName}-pe'
+    location: location
+    subnetId: privateEndpointSubnetId
+    privateLinkServiceId: resourceId('Microsoft.KeyVault/vaults', keyVaultName)
+    groupIds: ['vault']
+    privateDnsZoneId: keyVaultPrivateDnsZoneId
+  }
+  dependsOn: [
+    dataKeyVaultTemplate
+  ]
+}
+
 module graphUserAssignedManagedIdentity 'userAssignedIdentity.bicep' = {
   name: 'graphUserAssignedManagedIdentity'
   params: {
