@@ -70,6 +70,14 @@ namespace Services
         {
             var tableName = await GetTableNameAsync();
             var columns = await GetColumnDetailsAsync(tableName);
+
+            if (columns.Count == 0)
+            {
+                var message = "Unable to retrieve SQL membership attributes. The ADF HR data table does not exist or has no columns.";
+                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
+                throw new InvalidOperationException(message);
+            }
+
             var attributes = columns.Select(column =>
             {
                 var codeSuffix = "_Code";

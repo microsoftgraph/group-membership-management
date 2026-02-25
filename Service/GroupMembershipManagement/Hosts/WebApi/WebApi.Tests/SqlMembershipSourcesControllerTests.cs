@@ -218,6 +218,25 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task TestExceptionWhenTableDoesNotExistAsync()
+        {
+            // Simulate the scenario where the table doesn't exist by returning 0 columns
+            _sqlMembershipRepository.Setup(x => x.GetColumnDetailsAsync(It.IsAny<string>())).ReturnsAsync(new List<(string Name, string Type)>());
+
+            var response = await _sqlMembershipSourcesController.GetDefaultSourceAttributesAsync();
+
+            Assert.IsNotNull(response);
+
+            var internalServerErrorResponse = response as StatusCodeResult;
+
+            Assert.IsNotNull(internalServerErrorResponse);
+            Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
+
+            // Verify that the database was not updated (destructive operation prevented)
+            _databaseSqlMembershipSourcesRepository.Verify(x => x.UpdateDefaultSourceAttributesAsync(It.IsAny<List<SqlMembershipAttribute>>()), Times.Never());
+        }
+
+        [TestMethod]
         public async Task GetDefaultSourceTest()
         {
             var response = await _sqlMembershipSourcesController.GetDefaultSourceAsync();
