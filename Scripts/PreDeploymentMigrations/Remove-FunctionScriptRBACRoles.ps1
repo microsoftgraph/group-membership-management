@@ -1,5 +1,8 @@
 $ErrorActionPreference = "Stop"
 
+$ScriptsDirectory = Split-Path $PSScriptRoot -Parent
+. ($ScriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
 <#
 .SYNOPSIS
 Removes RBAC role assignments for function scripts.
@@ -58,7 +61,9 @@ function Invoke-RoleAssignmentRemoval {
 		Write-Host "  🚀 Confirmation skipped - proceeding with removal automatically" -ForegroundColor Yellow
 	}
 
-	Remove-AzRoleAssignment -ObjectId $RoleAssignment.ObjectId -RoleDefinitionId $RoleAssignment.RoleDefinitionId -Scope $ResourceId
+	Invoke-WithRetry -OperationName "Remove role assignment for '$DisplayName' on '$ResourceName'" -Operation {
+		Remove-AzRoleAssignment -ObjectId $RoleAssignment.ObjectId -RoleDefinitionId $RoleAssignment.RoleDefinitionId -Scope $ResourceId
+	}
 	Write-Host "    ⚠️ Role assignment removed, will be recreated in bicep." -ForegroundColor Green
 }
 
@@ -167,7 +172,9 @@ function Remove-FunctionScriptRBACRoles {
 	Write-Verbose "Remove-FunctionScriptRBACRoles starting..."
 
 	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-	$allWebapps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName
+	$allWebapps = Invoke-WithRetry -OperationName "Get web apps from '$computeResourceGroupName'" -Operation {
+		Get-AzWebApp -ResourceGroupName $computeResourceGroupName
+	}
 
 	$dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$prereqsResourceGroupName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
@@ -176,8 +183,12 @@ function Remove-FunctionScriptRBACRoles {
 	$prereqsKeyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
 
 	# Start with iterating through key vaults to remove role assignments that weren't assigned by Bicep
-	$dataKeyVault = Get-AzKeyVault -ResourceGroupName $dataResourceGroupName -VaultName $dataKeyVaultName
-	$prereqsKeyVault = Get-AzKeyVault -ResourceGroupName $prereqsResourceGroupName -VaultName $prereqsKeyVaultName
+	$dataKeyVault = Invoke-WithRetry -OperationName "Get key vault '$dataKeyVaultName'" -Operation {
+		Get-AzKeyVault -ResourceGroupName $dataResourceGroupName -VaultName $dataKeyVaultName
+	}
+	$prereqsKeyVault = Invoke-WithRetry -OperationName "Get key vault '$prereqsKeyVaultName'" -Operation {
+		Get-AzKeyVault -ResourceGroupName $prereqsResourceGroupName -VaultName $prereqsKeyVaultName
+	}
 
     $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 	. ($ScriptsDirectory + '/PreDeploymentMigrations/Generate-BicepRoleAssignmentGuid.ps1')
@@ -186,7 +197,9 @@ function Remove-FunctionScriptRBACRoles {
 	foreach ($keyVault in @($dataKeyVault, $prereqsKeyVault)) {
 		Write-Host "Checking Key Vault: $($keyVault.VaultName)"
 
-		$roleAssignments = Get-AzRoleAssignment -Scope $keyVault.ResourceId
+		$roleAssignments = Invoke-WithRetry -OperationName "Get role assignments for key vault '$($keyVault.VaultName)'" -Operation {
+			Get-AzRoleAssignment -Scope $keyVault.ResourceId
+		}
 
 		$webAppRoleAssignments = $roleAssignments | Where-Object {
 			$allWebapps.Identity.PrincipalId -contains $_.ObjectId -and
@@ -220,8 +233,10 @@ function Remove-FunctionScriptRBACRoles {
 			$prefix = $prefix.Substring(0, 23)
 		}
 
-		$allFunctionStorageAccounts = Get-AzStorageAccount -ResourceGroupName $dataResourceGroupName |
-			Where-Object { $_.StorageAccountName -like "$prefix*" }
+		$allFunctionStorageAccounts = Invoke-WithRetry -OperationName "Get storage accounts with prefix '$prefix'" -Operation {
+			Get-AzStorageAccount -ResourceGroupName $dataResourceGroupName |
+				Where-Object { $_.StorageAccountName -like "$prefix*" }
+		}
 
 		if ($allFunctionStorageAccounts.Count -eq 0) {
 			Write-Warning "No storage account found starting with '$prefix'. Skipping..."
@@ -232,7 +247,9 @@ function Remove-FunctionScriptRBACRoles {
 
 		# Now check role assignments on the storage account
 		Write-Host "Checking Storage Account: $($functionStorageAccount.StorageAccountName)"
-		$storageRoleAssignments = Get-AzRoleAssignment -Scope $functionStorageAccount.Id -PrincipalId $functionApp.Identity.PrincipalId
+		$storageRoleAssignments = Invoke-WithRetry -OperationName "Get role assignments for storage '$($functionStorageAccount.StorageAccountName)'" -Operation {
+			Get-AzRoleAssignment -Scope $functionStorageAccount.Id -PrincipalId $functionApp.Identity.PrincipalId
+		}
 		$storageFunctionRoleAssignments = $storageRoleAssignments | Where-Object {
 			$_.Scope -eq $functionStorageAccount.Id
 		}

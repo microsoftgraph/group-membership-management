@@ -90,6 +90,7 @@ function Set-GraphCredentialsAzureADApplication {
 	}
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
 	if ($global:SkipModuleInstall -ne $true) {
 		. ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
@@ -102,8 +103,13 @@ function Set-GraphCredentialsAzureADApplication {
 	}
 
 	if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
-		Connect-AzAccount -Tenant $KeyVaultTenantId
-		Set-AzContext -SubscriptionName $SubscriptionName
+		Invoke-WithRetry -Operation {
+			Connect-AzAccount -Tenant $KeyVaultTenantId
+		} -OperationName "Connect to Azure tenant for Graph key vault"
+
+		Invoke-WithRetry -Operation {
+			Set-AzContext -SubscriptionName $SubscriptionName
+		} -OperationName "Set Azure subscription context for Graph key vault"
 	}
 
 	if ($global:SkipMsGraphLogin -ne $true) {
@@ -116,14 +122,18 @@ function Set-GraphCredentialsAzureADApplication {
         )
         
         # Connect to Microsoft Graph with required scopes for the target tenant
-        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+		Invoke-WithRetry -Operation {
+			Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+		} -OperationName "Connect to Microsoft Graph for Graph app setup"
         
         Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
     }
 
 	#region Delete Application / Service Principal if they already exist
     $graphAppDisplayName = "$SolutionAbbreviation-Graph-$EnvironmentAbbreviation"
-	$graphApps = Get-MgApplication -Filter "displayName eq '$graphAppDisplayName'"
+	$graphApps = Invoke-WithRetry -Operation {
+		Get-MgApplication -Filter "displayName eq '$graphAppDisplayName'"
+	} -OperationName "Lookup Graph app registration"
 	
 	# Validate that we don't have multiple applications with the same name
 	if($null -ne $graphApps -and $graphApps.Count -gt 1) {
@@ -171,17 +181,35 @@ function Set-GraphCredentialsAzureADApplication {
 			-EnvironmentAbbreviation $EnvironmentAbbreviation
 		
 		# Create application body for Microsoft Graph
-		$graphApp = New-MgApplication -BodyParameter $appCreationParameters
+		$graphApp = Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgApplication -Filter "displayName eq '$graphAppDisplayName'"
+			} `
+			-CreateOperation {
+				New-MgApplication -BodyParameter $appCreationParameters
+			} `
+			-OperationName "Create Azure AD app $graphAppDisplayName" `
+			-ExistsMessage "Azure AD app '$graphAppDisplayName' already exists. Skipping creation."
 		$updatedAPIPermissions = $true
 		
-		New-MgServicePrincipal -AppId $graphApp.AppId
+		Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgServicePrincipal -Filter "appId eq '$($graphApp.AppId)'"
+			} `
+			-CreateOperation {
+				New-MgServicePrincipal -AppId $graphApp.AppId
+			} `
+			-OperationName "Create service principal for $graphAppDisplayName" `
+			-ExistsMessage "Service principal for '$graphAppDisplayName' already exists. Skipping creation." | Out-Null
 
 		# Update with identifier URI
 		$updatedAppParameters = New-GraphCredentialsValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
 			-EnvironmentAbbreviation $EnvironmentAbbreviation `
 			-AppId $graphApp.AppId
 
-		Update-MgApplication -ApplicationId $graphApp.Id -BodyParameter $updatedAppParameters
+		Invoke-WithRetry -Operation {
+			Update-MgApplication -ApplicationId $graphApp.Id -BodyParameter $updatedAppParameters
+		} -OperationName "Update Graph app identifier uri"
 		Write-Host "Created Azure AD app $graphAppDisplayName"
 	}
 	else
@@ -198,7 +226,9 @@ function Set-GraphCredentialsAzureADApplication {
 		
 		if ($needsUpdate) {
 			Write-Host "App $graphAppDisplayName needs update. Updating..."
-			Update-MgApplication -ApplicationId $graphApp.Id -BodyParameter $expectedAppConfig
+			Invoke-WithRetry -Operation {
+				Update-MgApplication -ApplicationId $graphApp.Id -BodyParameter $expectedAppConfig
+			} -OperationName "Update Graph app configuration"
 			$updatedAPIPermissions = $true
 			Write-Host "Finished updating Azure AD app $graphAppDisplayName"
 		}
@@ -257,6 +287,7 @@ function Set-GraphAppKeyVaultSecrets {
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
     . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
@@ -274,15 +305,22 @@ function Set-GraphAppKeyVaultSecrets {
 			startDateTime = [System.DateTime]::Now
 			endDateTime = $endDate
 		}
-		$appObjectId = (Get-MgApplication -Filter "appId eq '$graphAppClientId'").Id
-	    $graphAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+		$appObjectId = (Invoke-WithRetry -Operation {
+			Get-MgApplication -Filter "appId eq '$graphAppClientId'"
+		} -OperationName "Get Graph app by app id for secret creation").Id
+
+	    $graphAppClientSecret = (Invoke-WithRetry -Operation {
+			Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential
+		} -OperationName "Create Graph app secret").SecretText
 		Write-Host "Created new application secret for app $graphAppClientId"
 	} else {
 		Write-Host "Skipping secret creation as CreateNewSecret is set to false"
 	}
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $keyVault = Get-AzKeyVault -VaultName $keyVaultName
+    $keyVault = Invoke-WithRetry -Operation {
+		Get-AzKeyVault -VaultName $keyVaultName
+	} -OperationName "Get prereqs key vault for Graph secrets"
 
     if($null -eq $keyVault)
 	{

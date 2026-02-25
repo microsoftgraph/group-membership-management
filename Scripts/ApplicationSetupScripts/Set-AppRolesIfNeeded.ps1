@@ -28,8 +28,10 @@ function Set-AppRolesIfNeeded {
     )
     Write-Host "`nSet-AppRolesIfNeeded starting...`n"
 
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
     if ($global:SkipModuleInstall -ne $true) {
-        $scriptsDirectory = Split-Path $PSScriptRoot -Parent
         . ($scriptsDirectory + '\Install-MSGraphIfNeeded.ps1')
         Install-MSGraphIfNeeded
     }
@@ -44,12 +46,16 @@ function Set-AppRolesIfNeeded {
         )
         
         # Connect to Microsoft Graph with required scopes for the target tenant
-        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        Invoke-WithRetry -Operation {
+            Connect-MgGraph -TenantId $TenantId -Scopes $requiredScopes
+        } -OperationName "Connect to Microsoft Graph for app roles setup"
         
-        Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
+        Write-Host "Successfully connected to Microsoft Graph for tenant $TenantId"
     }
 
-    $WebApiApp = Get-MgApplication -ApplicationId $WebApiObjectId
+    $WebApiApp = Invoke-WithRetry -Operation {
+        Get-MgApplication -ApplicationId $WebApiObjectId
+    } -OperationName "Get web api application for app roles"
     if (-not $WebApiApp) {
         Write-Error "Failed to retrieve the Azure AD application with Object Id: $WebApiObjectId"
         throw "Azure AD application not found."
@@ -194,7 +200,9 @@ function Set-AppRolesIfNeeded {
         }
 
         try {
-            Update-MgApplication -ApplicationId $WebApiObjectId -AppRoles $currentAppRoles
+            Invoke-WithRetry -Operation {
+                Update-MgApplication -ApplicationId $WebApiObjectId -AppRoles $currentAppRoles
+            } -OperationName "Disable deprecated app roles"
             Write-Host "Roles have been disabled as needed."
         }
         catch {
@@ -223,7 +231,9 @@ function Set-AppRolesIfNeeded {
 
     # Single update with all changes
     try {
-        Update-MgApplication -ApplicationId $WebApiObjectId -AppRoles $currentAppRoles
+        Invoke-WithRetry -Operation {
+            Update-MgApplication -ApplicationId $WebApiObjectId -AppRoles $currentAppRoles
+        } -OperationName "Apply app role updates"
         Write-Host "Application updated with new roles and removed obsolete roles."
     }
     catch {

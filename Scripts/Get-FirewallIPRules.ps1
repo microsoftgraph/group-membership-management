@@ -19,7 +19,10 @@ param (
 	}
 
     Write-Host "Retrieving Azure published IP ranges..." -ForegroundColor Yellow
-    $allIPRanges = Get-MsIdAzureIpRange -AllServiceTagsAndRegions
+    $allIPRanges = Invoke-WithRetry `
+        -Operation { Get-MsIdAzureIpRange -AllServiceTagsAndRegions } `
+        -OperationName "Retrieve Azure IP ranges" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     Write-Host "Retrieved Azure published IP ranges..." -ForegroundColor Yellow
 
     $azureSubnetProperties = $allIPRanges.values.properties

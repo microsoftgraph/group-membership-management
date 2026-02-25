@@ -59,14 +59,25 @@ function Assert-MicrosoftGraphPermissions {
     }
 
     Write-Host "`nChecking required directory roles..." -ForegroundColor Cyan
-    $user = Get-MgUser -UserId $context.Account
-    $userRoles = Get-MgUserMemberOf -UserId $user.Id | Where-Object {
-        $_.AdditionalProperties.'@odata.type' -eq "#microsoft.graph.directoryRole"
-    }
+    $user = Invoke-WithRetry `
+        -Operation { Get-MgUser -UserId $context.Account } `
+        -OperationName "Get Microsoft Graph user" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    $userRoles = Invoke-WithRetry `
+        -Operation {
+            Get-MgUserMemberOf -UserId $user.Id | Where-Object {
+                $_.AdditionalProperties.'@odata.type' -eq "#microsoft.graph.directoryRole"
+            }
+        } `
+        -OperationName "Get user role memberships" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
 
     $userRoleNames = @()
     foreach ($role in $userRoles) {
-        $roleDetail = Get-MgDirectoryRole -DirectoryRoleId $role.Id
+        $roleDetail = Invoke-WithRetry `
+            -Operation { Get-MgDirectoryRole -DirectoryRoleId $role.Id } `
+            -OperationName "Get directory role '$($role.Id)'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         $userRoleNames += $roleDetail.DisplayName
     }
 

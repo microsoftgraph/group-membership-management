@@ -37,7 +37,10 @@ function Set-StorageAccountContainerManagedIdentityRoles
 	)
 
 	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-	$functionApps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
+	$functionApps = Invoke-WithRetry `
+		-Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name } `
+		-OperationName "Get web apps in $computeResourceGroupName" `
+		-MaxAttempts 3 -BaseDelaySeconds 2
 
 	foreach ($functionAppName in $functionApps)
 	{
@@ -50,7 +53,10 @@ function Set-StorageAccountContainerManagedIdentityRoles
 			$resourceGroupName = $DataResourceGroupName
 		}
 
-		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
+		$appServicePrincipal = Invoke-WithRetry `
+			-Operation { Get-AzADServicePrincipal -DisplayName $functionAppName } `
+			-OperationName "Get service principal '$functionAppName'" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 
 		# Grant the app service access to the storage account blobs
 		if ($appServicePrincipal)
@@ -65,8 +71,13 @@ function Set-StorageAccountContainerManagedIdentityRoles
 				$prefix = $prefix.Substring(0, 23)
 			}
 
-            $allFunctionStorageAccounts = Get-AzStorageAccount -ResourceGroupName $resourceGroupName |
-                Where-Object { $_.StorageAccountName -like "$prefix*" }
+            $allFunctionStorageAccounts = Invoke-WithRetry `
+                -Operation {
+                    Get-AzStorageAccount -ResourceGroupName $resourceGroupName |
+                        Where-Object { $_.StorageAccountName -like "$prefix*" }
+                } `
+                -OperationName "Get storage accounts for '$functionAppName'" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
 
             if ($allFunctionStorageAccounts.Count -eq 0) {
                 Write-Warning "No storage account found starting with '$prefix'. Skipping..."
@@ -115,38 +126,35 @@ function Set-StorageAccountContainerManagedIdentityRoles
 
             foreach($role in $functionStorageAccountRoles)
             {
-                if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role)) {
-                    $assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role;
-                    if ($assignment) {
-                        Write-Host "Added role assignment $role to $functionAppName with scope $functionStorageAccountId.";
-                    }
-                    else {
-                        Write-Host "Failed to add role assignment $role to $functionAppName with scope $functionStorageAccountId. Please double check that you have permission to perform this operation";
-                    }
-                }
-                else {
-                    Write-Host "$functionAppName already has role $role with scope $functionStorageAccountId.";
-                }
+                Invoke-WithCreateRetry `
+                    -GetExistingOperation { Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role } `
+                    -CreateOperation {
+                        New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $functionStorageAccount.Id -RoleDefinitionName $role
+                        Write-Host "Added role assignment $role to $functionAppName with scope $functionStorageAccountId."
+                    } `
+                    -OperationName "Assign $role to $functionAppName" `
+                    -MaxAttempts 3 -BaseDelaySeconds 2 `
+                    -ExistsMessage "Role '$role' is already assigned to '$functionAppName'. Skipping."
             }
 
-			$jobsStorageAccount = Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "jobs$EnvironmentAbbreviation*" }
+			$jobsStorageAccount = Invoke-WithRetry `
+			-Operation { Get-AzStorageAccount -ResourceGroupName $resourceGroupName | Where-Object { $_.StorageAccountName -like "jobs$EnvironmentAbbreviation*" } } `
+			-OperationName "Get jobs storage account" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 			$jobsStorageAccountId = $jobsStorageAccount.Id
 			$jobsStorageAccountRoles = @("Storage Blob Data Contributor")
 
 			foreach($role in $jobsStorageAccountRoles)
 			{
-				if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $jobsStorageAccount.Id -RoleDefinitionName $role)) {
-					$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $jobsStorageAccount.Id -RoleDefinitionName $role;
-					if ($assignment) {
-						Write-Host "Added role assignment $role to $functionAppName with scope $jobsStorageAccountId.";
-					}
-					else {
-						Write-Host "$functionAppName already has role $role with scope $jobsStorageAccountId.";
-					}
-				}
-				else {
-					Write-Host "$functionAppName already has role $role with scope $jobsStorageAccountId.";
-				}
+				Invoke-WithCreateRetry `
+					-GetExistingOperation { Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $jobsStorageAccount.Id -RoleDefinitionName $role } `
+					-CreateOperation {
+						New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $jobsStorageAccount.Id -RoleDefinitionName $role
+						Write-Host "Added role assignment $role to $functionAppName with scope $jobsStorageAccountId."
+					} `
+					-OperationName "Assign $role to $functionAppName (jobs)" `
+					-MaxAttempts 3 -BaseDelaySeconds 2 `
+					-ExistsMessage "Role '$role' is already assigned to '$functionAppName' on jobs storage. Skipping."
 			}
 		}
 		elseif ($null -eq $appServicePrincipal) {
@@ -156,35 +164,45 @@ function Set-StorageAccountContainerManagedIdentityRoles
 	}
 
 	$webApiRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
-	$webApi = Get-AzWebApp -ResourceGroupName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation" -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+	$webApi = Invoke-WithRetry `
+		-Operation { Get-AzWebApp -ResourceGroupName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation" -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi" } `
+		-OperationName "Get WebAPI app" `
+		-MaxAttempts 3 -BaseDelaySeconds 2
 	$webApiSP = $webApi.Identity.PrincipalId
 	$dataRG = Get-AzResourceGroup -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
 	$dataRGResourceId = $dataRG.ResourceId
 
 	foreach($role in $webApiRoles)
 	{
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $role)) {
-			New-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $role;
-			Write-Host "Added role assignment $role to $($webApi.Name) with scope $dataRGResourceId.";
-		}
-		else {
-			Write-Host "$($webApi.Name) can already $role with scope $dataRGResourceId.";
-		}
+		Invoke-WithCreateRetry `
+			-GetExistingOperation { Get-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $role } `
+			-CreateOperation {
+				New-AzRoleAssignment -ObjectId $webApiSP -Scope $dataRGResourceId -RoleDefinitionName $role
+				Write-Host "Added role assignment $role to $($webApi.Name) with scope $dataRGResourceId."
+			} `
+			-OperationName "Assign $role to WebAPI" `
+			-MaxAttempts 3 -BaseDelaySeconds 2 `
+			-ExistsMessage "Role '$role' is already assigned to WebAPI '$($webApi.Name)'. Skipping."
 	}
 
 	$serviceConnectionName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
-	$serviceConnectionPrincipal = Get-AzADServicePrincipal -DisplayName $serviceConnectionName
+	$serviceConnectionPrincipal = Invoke-WithRetry `
+		-Operation { Get-AzADServicePrincipal -DisplayName $serviceConnectionName } `
+		-OperationName "Get service connection principal" `
+		-MaxAttempts 3 -BaseDelaySeconds 2
 	if ($serviceConnectionPrincipal) {
 		$serviceConnectionRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
 		foreach($role in $serviceConnectionRoles)
 		{
-			if ($null -eq (Get-AzRoleAssignment -ObjectId $serviceConnectionPrincipal.Id -Scope $jobsStorageAccountId -RoleDefinitionName $role)) {
-				New-AzRoleAssignment -ObjectId $serviceConnectionPrincipal.Id -Scope $jobsStorageAccountId -RoleDefinitionName $role;
-				Write-Host "Added role assignment $role to $($serviceConnectionName) with scope $jobsStorageAccountId.";
-			}
-			else {
-				Write-Host "$($serviceConnectionName) can already $role with scope $jobsStorageAccountId.";
-			}
+			Invoke-WithCreateRetry `
+				-GetExistingOperation { Get-AzRoleAssignment -ObjectId $serviceConnectionPrincipal.Id -Scope $jobsStorageAccountId -RoleDefinitionName $role } `
+				-CreateOperation {
+					New-AzRoleAssignment -ObjectId $serviceConnectionPrincipal.Id -Scope $jobsStorageAccountId -RoleDefinitionName $role
+					Write-Host "Added role assignment $role to $($serviceConnectionName) with scope $jobsStorageAccountId."
+				} `
+				-OperationName "Assign $role to service connection" `
+				-MaxAttempts 3 -BaseDelaySeconds 2 `
+				-ExistsMessage "Role '$role' is already assigned to service connection '$serviceConnectionName'. Skipping."
 		}
 	}
 	else {

@@ -8,6 +8,9 @@ if ($Global:SuppressAzureWarnings) {
     $WarningPreference = "SilentlyContinue"
 }
 
+$ScriptsDirectory = Split-Path $PSScriptRoot -Parent
+. ($ScriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
 <#
 .SYNOPSIS
 Automatically detects and migrates Azure Functions from Consumption (Y1) to Flex Consumption (FC1) plans.
@@ -472,9 +475,13 @@ function Remove-FunctionAppAndServicePlan {
     }
     try {
         Write-Host "    🗑️  Removing function app: $FunctionName..." -ForegroundColor Yellow
-        Remove-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $FunctionName -Force -ErrorAction Stop
+        Invoke-WithRetry -OperationName "Remove function app '$FunctionName'" -Operation {
+            Remove-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $FunctionName -Force -ErrorAction Stop
+        }
         Write-Host "    🗑️  Removing service plan: $ServicePlanName..." -ForegroundColor Yellow
-        Remove-AzAppServicePlan -ResourceGroupName $ResourceGroupName -Name $ServicePlanName -Force -ErrorAction Stop
+        Invoke-WithRetry -OperationName "Remove service plan '$ServicePlanName'" -Operation {
+            Remove-AzAppServicePlan -ResourceGroupName $ResourceGroupName -Name $ServicePlanName -Force -ErrorAction Stop
+        }
         Write-Host "    ✅ Successfully removed resources" -ForegroundColor Green
     }
     catch {
@@ -520,8 +527,10 @@ function Set-UpdateSqlServerFirewallRule {
         # Add firewall rule for this IP
         try {
             Write-Host "    🔥 Adding SQL firewall rule for this location..." -ForegroundColor Yellow
-            New-AzSqlServerFirewallRule -ResourceGroupName $ResourceGroupName -ServerName $SqlServerName `
-                -FirewallRuleName $ruleName -StartIpAddress $publicIp -EndIpAddress $publicIp -ErrorAction Stop | Out-Null
+            Invoke-WithRetry -OperationName "Add SQL firewall rule '$ruleName'" -Operation {
+                New-AzSqlServerFirewallRule -ResourceGroupName $ResourceGroupName -ServerName $SqlServerName `
+                    -FirewallRuleName $ruleName -StartIpAddress $publicIp -EndIpAddress $publicIp -ErrorAction Stop | Out-Null
+            }
             Write-Host "    ✅ Firewall rule '$ruleName' added successfully" -ForegroundColor Green
             Write-Host "    💡 This rule will persist for future migrations from this location" -ForegroundColor Gray
             return $true

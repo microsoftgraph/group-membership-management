@@ -38,6 +38,9 @@ function Set-KeyVaultAccessRoles {
 		[string] $ErrorActionPreference = $Stop
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
 	Write-Host "Granting app service access to keyvaults";
 
 	if ([string]::IsNullOrEmpty($ComputeResourceGroupName)) {
@@ -52,12 +55,22 @@ function Set-KeyVaultAccessRoles {
 		$PrereqsResourceGroupName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation";
 	}
 
-	$prereqsKeyVault = Get-AzKeyVault -ResourceGroupName $PrereqsResourceGroupName -Name "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-	$dataKeyVault = Get-AzKeyVault -ResourceGroupName $DataResourceGroupName -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-	$functionApps = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName
+	$prereqsKeyVault = Invoke-WithRetry -Operation {
+		Get-AzKeyVault -ResourceGroupName $PrereqsResourceGroupName -Name "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+	} -OperationName "Get prereqs key vault"
+
+	$dataKeyVault = Invoke-WithRetry -Operation {
+		Get-AzKeyVault -ResourceGroupName $DataResourceGroupName -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+	} -OperationName "Get data key vault"
+
+	$functionApps = Invoke-WithRetry -Operation {
+		Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName
+	} -OperationName "List web apps for key vault role assignment"
 
 	$serviceConnectionName = "$SolutionAbbreviation-serviceconnection-$EnvironmentAbbreviation"
-	$serviceConnectionPrincipal = Get-AzADServicePrincipal -DisplayName $serviceConnectionName
+	$serviceConnectionPrincipal = Invoke-WithRetry -Operation {
+		Get-AzADServicePrincipal -DisplayName $serviceConnectionName
+	} -OperationName "Get service connection service principal"
 	if ($serviceConnectionPrincipal) {
 		# prereqs keyvault
 		Set-KVRoleAssignment `
@@ -83,7 +96,9 @@ function Set-KeyVaultAccessRoles {
 	foreach ($functionApp in $functionApps) {
 		$functionAppName = $functionApp.Name
 
-		$functionServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
+		$functionServicePrincipal = Invoke-WithRetry -Operation {
+			Get-AzADServicePrincipal -DisplayName $functionAppName
+		} -OperationName "Get function app service principal [$functionAppName]"
 
 		# Grant the app service access to the keyvaults
 		if ($functionServicePrincipal) {
@@ -109,9 +124,13 @@ function Set-KeyVaultAccessRoles {
 	}
 
 	# Grant the Web API access to the keyvaults
-	$webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$ComputeResourceGroupName-webapi"
+	$webApi = Invoke-WithRetry -Operation {
+		Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$ComputeResourceGroupName-webapi"
+	} -OperationName "Get web api app for key vault roles"
 	if ($webApi) {
-		$webApiServicePrincipal = Get-AzADServicePrincipal -DisplayName $webApi.Name
+		$webApiServicePrincipal = Invoke-WithRetry -Operation {
+			Get-AzADServicePrincipal -DisplayName $webApi.Name
+		} -OperationName "Get web api service principal"
 
 		if ($webApiServicePrincipal) {
 			# prereqs keyvault
@@ -136,7 +155,9 @@ function Set-KeyVaultAccessRoles {
 	}
 
 	# Grant the Data Factories access to the keyvaults
-	$dataFactories = Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroupName
+	$dataFactories = Invoke-WithRetry -Operation {
+		Get-AzDataFactoryV2 -ResourceGroupName $DataResourceGroupName
+	} -OperationName "List data factories for key vault roles"
 	foreach ($dataFactory in $dataFactories) {
 		$dataFactoryName = $dataFactory.DataFactoryName
 		$dataFactoryServicePrincipal = $dataFactory.Identity.PrincipalId
@@ -174,9 +195,21 @@ function Set-KVRoleAssignment {
 		[string] $KeyVaultName
 	)
 
-	if ($null -eq (Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName)) {
-		New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName;
-		Write-Host "Added role $RoleDefinitionName to $DisplayName on the $KeyVaultName keyvault.";
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
+	$roleAssignment = Invoke-WithCreateRetry `
+		-GetExistingOperation {
+			Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName -ErrorAction SilentlyContinue
+		} `
+		-CreateOperation {
+			New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName
+		} `
+		-OperationName "Assign $RoleDefinitionName to $DisplayName" `
+		-ExistsMessage "Role '$RoleDefinitionName' is already assigned to '$DisplayName' on '$KeyVaultName'. Skipping."
+
+	if ($null -ne $roleAssignment) {
+		Write-Host "Added or confirmed role $RoleDefinitionName for $DisplayName on the $KeyVaultName keyvault.";
 	}
 	else {
 		Write-Host "$DisplayName already has  $RoleDefinitionName role on $KeyVaultName.";

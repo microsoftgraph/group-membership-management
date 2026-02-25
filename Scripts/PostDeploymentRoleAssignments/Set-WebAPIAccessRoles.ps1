@@ -46,10 +46,16 @@ function Set-WebAPIAccessRoles {
 	}
 
 	$currentSubscription = (Get-AzContext).Subscription
-	$webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$ComputeResourceGroupName-webapi"
+	$webApi = Invoke-WithRetry `
+		-Operation { Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$ComputeResourceGroupName-webapi" } `
+		-OperationName "Get WebAPI app" `
+		-MaxAttempts 3 -BaseDelaySeconds 2
 
 	if ($webApi) {
-		$webApiServicePrincipal = Get-AzADServicePrincipal -DisplayName $webApi.Name
+		$webApiServicePrincipal = Invoke-WithRetry `
+			-Operation { Get-AzADServicePrincipal -DisplayName $webApi.Name } `
+			-OperationName "Get WebAPI service principal" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 
 		if ($webApiServicePrincipal) {
 
@@ -71,14 +77,20 @@ function Set-WebAPIAccessRoles {
 				-Scope "/subscriptions/$($currentSubscription.Id)/resourceGroups/$ComputeResourceGroupName" `
 				-RoleDefinitionName "Reader"
 
-			$signalRResource = Get-AzResource -ResourceGroupName $ComputeResourceGroupName -ResourceType "Microsoft.SignalRService/SignalR" -Name "$ComputeResourceGroupName-signalr"
+			$signalRResource = Invoke-WithRetry `
+			-Operation { Get-AzResource -ResourceGroupName $ComputeResourceGroupName -ResourceType "Microsoft.SignalRService/SignalR" -Name "$ComputeResourceGroupName-signalr" } `
+			-OperationName "Get SignalR resource" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 			Set-RoleAssignment `
 				-ObjectId $webApiServicePrincipal.Id `
 				-DisplayName $webApi.Name `
 				-Scope $signalRResource.Id `
 				-RoleDefinitionName "SignalR App Server"
 
-			$openAIResource = Get-AzResource -ResourceGroupName $DataResourceGroupName -ResourceType "Microsoft.CognitiveServices/accounts" -Name "$DataResourceGroupName-openai" -ErrorAction SilentlyContinue
+			$openAIResource = Invoke-WithRetry `
+			-Operation { Get-AzResource -ResourceGroupName $DataResourceGroupName -ResourceType "Microsoft.CognitiveServices/accounts" -Name "$DataResourceGroupName-openai" -ErrorAction SilentlyContinue } `
+			-OperationName "Get OpenAI resource" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 			if ($null -ne $openAIResource) {
 				Set-RoleAssignment `
 				-ObjectId $webApiServicePrincipal.Id `
@@ -109,7 +121,10 @@ function Set-RoleAssignment {
 	)
 
 	if ($null -eq (Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName)) {
-		New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName;
+		Invoke-WithRetry `
+			-Operation { New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName } `
+			-OperationName "Assign $RoleDefinitionName to $DisplayName" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 		Write-Host "Added role $RoleDefinitionName to $DisplayName to $Scope.";
 	}
 	else {

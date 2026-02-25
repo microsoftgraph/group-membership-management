@@ -122,6 +122,7 @@ function Set-UserManagedIdentityPermissions {
 	}
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
 	if ($global:SkipModuleInstall -ne $true) {
 		Write-Host "Installing required modules for User Managed Identity permissions setup..."
@@ -146,7 +147,9 @@ function Set-UserManagedIdentityPermissions {
 		Disconnect-MgGraph -ErrorAction SilentlyContinue 
 		
 		# Connect to Microsoft Graph with required scopes for the target tenant
-		Connect-MgGraph -TenantId $TenantId -Scopes "Directory.ReadWrite.All"
+		Invoke-WithRetry -Operation {
+			Connect-MgGraph -TenantId $TenantId -Scopes "Directory.ReadWrite.All"
+		} -OperationName "Connect to Microsoft Graph for UAMI permissions"
 		
 		# Verify connection to correct tenant
 		$newContext = Get-MgContext
@@ -159,10 +162,17 @@ function Set-UserManagedIdentityPermissions {
 
 	# Get the User Assigned Managed Identity and Graph Service Principal
 	$uamiName = "$SolutionAbbreviation-identity-$EnvironmentAbbreviation-Graph"
-	$uamiSPN = Get-MgServicePrincipal -Filter "displayName eq '$uamiName'"
-	$graphApiSPN = Get-MgServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'"
+	$uamiSPN = Invoke-WithRetry -Operation {
+		Get-MgServicePrincipal -Filter "displayName eq '$uamiName'"
+	} -OperationName "Get user managed identity service principal"
 
-	$currentAppRoleAssignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id
+	$graphApiSPN = Invoke-WithRetry -Operation {
+		Get-MgServicePrincipal -Filter "AppId eq '00000003-0000-0000-c000-000000000000'"
+	} -OperationName "Get Microsoft Graph service principal"
+
+	$currentAppRoleAssignments = Invoke-WithRetry -Operation {
+		Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id
+	} -OperationName "Get current app role assignments for UAMI"
 	$appRoles = @("GroupMember.Read.All", "Member.Read.Hidden", "User.Read.All")
 	foreach ($appRoleName in $appRoles) {
 
@@ -180,7 +190,15 @@ function Set-UserManagedIdentityPermissions {
 			AppRoleId   = $appRole.Id
 		}
 
-		New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id -BodyParameter $bodyParam
+		Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id | Where-Object { $_.AppRoleId -eq $appRole.Id }
+			} `
+			-CreateOperation {
+				New-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $uamiSPN.Id -BodyParameter $bodyParam
+			} `
+			-OperationName "Assign app role '$appRoleName' to $uamiName" `
+			-ExistsMessage "App role '$appRoleName' is already assigned to '$uamiName'. Skipping." | Out-Null
  	}
 
 	# Disconnect from Microsoft Graph before returning

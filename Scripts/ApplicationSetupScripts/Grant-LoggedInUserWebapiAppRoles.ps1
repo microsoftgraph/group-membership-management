@@ -28,6 +28,9 @@ function Grant-LoggedInUserWebapiAppRoles {
         [string] $EnvironmentAbbreviation
     )
 
+    $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
     Write-Host "`nGrant-LoggedInUserWebapiAppRoles starting...`n"
 
     # Get current user and tenant from Microsoft Graph
@@ -111,44 +114,28 @@ function Grant-LoggedInUserWebapiAppRoles {
             }
         }
         else {
-            # Assign role with retry logic
-            $assigned = $false
-            $maxAttempts = 3
-            $baseDelay = 2
+            Write-Host "Assigning role '$roleValue' to user..."
 
-            for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-                try {
-                    Write-Host "Assigning role '$roleValue' to user (Attempt $attempt/$maxAttempts)..."
-                    
-                    $bodyParam = @{
-                        PrincipalId = $currentUser.Id
-                        ResourceId  = $servicePrincipal.Id
-                        AppRoleId   = $roleId
-                    }
-
-                    New-MgUserAppRoleAssignment -UserId $currentUser.Id -BodyParameter $bodyParam | Out-Null
-
-                    Write-Host "Successfully assigned role '$roleValue'." -ForegroundColor Green
-                    $assigned = $true
-                    break
-                }
-                catch {
-                    if ($attempt -lt $maxAttempts) {
-                        $delay = [Math]::Pow(2, $attempt - 1) * $baseDelay
-                        Write-Verbose "Failed to assign role '$roleValue': $($_.Exception.Message). Retrying in $delay seconds..."
-                        Start-Sleep -Seconds $delay
-                    }
-                    else {
-                        throw "Failed to assign role '$roleValue' after $maxAttempts attempts: $($_.Exception.Message)"
-                    }
-                }
+            $bodyParam = @{
+                PrincipalId = $currentUser.Id
+                ResourceId  = $servicePrincipal.Id
+                AppRoleId   = $roleId
             }
 
-            if ($assigned) {
-                $roleStatuses += [PSCustomObject]@{
-                    RoleValue = $roleValue
-                    Status    = "Assigned"
-                }
+            Invoke-WithCreateRetry `
+                -GetExistingOperation {
+                    Get-MgUserAppRoleAssignment -UserId $currentUser.Id -Filter "resourceId eq $($servicePrincipal.Id)" | Where-Object { $_.AppRoleId -eq $roleId }
+                } `
+                -CreateOperation {
+                    New-MgUserAppRoleAssignment -UserId $currentUser.Id -BodyParameter $bodyParam
+                } `
+                -OperationName "Assign app role '$roleValue' to user" `
+                -ExistsMessage "App role '$roleValue' is already assigned to the current user. Skipping." | Out-Null
+
+            Write-Host "Successfully assigned role '$roleValue'." -ForegroundColor Green
+            $roleStatuses += [PSCustomObject]@{
+                RoleValue = $roleValue
+                Status    = "Assigned"
             }
         }
     }

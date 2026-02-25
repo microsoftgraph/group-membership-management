@@ -44,43 +44,10 @@ Deploy-Resources -parameterFileName "<FILE_NAME>"
 
 #>
 
-$maxRetries = 6
+$maxRetriesForDeploymentOperations = 10
 
-function Retry-Operation {
-    param(
-        [Parameter(Mandatory = $true)]
-        [ScriptBlock]$Operation,
-        [Parameter(ValueFromRemainingArguments = $true)]
-        $params,
-        [Parameter(Mandatory = $true)]
-        [string]$OperationName
-    )
-
-    # Initialize the retry counter
-    $retryCount = 0
-
-    do {
-        try {
-            & $Operation @params
-            break
-        }
-        catch {
-
-            Write-Warning $_.Exception.Message
-
-            $retryCount++
-            
-            if ($retryCount -ge $maxRetries) {
-                Write-Warning "'$OperationName' failed on retry attempt ($retryCount/$maxRetries). No more retries remaining."
-                throw
-            }
-
-            $retryWaitSeconds = 20 * $retryCount
-            Write-Warning "'$OperationName' failed, retrying again in $retryWaitSeconds seconds... Retry attempt ($retryCount/$maxRetries)"
-            Start-Sleep -Seconds $retryWaitSeconds
-        }
-    } while ($true)
-}
+$sharedScriptsDirectory = Join-Path $PSScriptRoot "../Scripts"
+. (Join-Path $sharedScriptsDirectory 'ReusableModules/Invoke-WithRetry.ps1')
 
 function Set-PostDeploymentUpdates {
     [CmdletBinding()]
@@ -174,11 +141,17 @@ function Set-Subscription {
 function Set-ResourceProviders {
     foreach ($namespace in @("Microsoft.ServiceBus", "Microsoft.Insights", "Microsoft.OperationalInsights", "Microsoft.AlertsManagement", "Microsoft.Storage", "Microsoft.AppConfiguration", "Microsoft.Sql", "Microsoft.Web", "Microsoft.DataFactory", "Microsoft.SignalRService")) {
         Write-Host "Checking if the resource provider $namespace is registered..."
-        $provider = Get-AzResourceProvider -ProviderNamespace $namespace
+        $provider = Invoke-WithRetry `
+            -Operation { Get-AzResourceProvider -ProviderNamespace $namespace } `
+            -OperationName "Get resource provider $namespace" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
 
         if ($provider.Where({ $_.RegistrationState -ne "Registered" }).Count -gt 0) {
             Write-Host "$namespace is not registered. Registering..."
-            Register-AzResourceProvider -ProviderNamespace $namespace
+            Invoke-WithRetry `
+                -Operation { Register-AzResourceProvider -ProviderNamespace $namespace } `
+                -OperationName "Register resource provider $namespace" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
         }
 
         Write-Host "$namespace is registered."
@@ -271,13 +244,15 @@ function Set-KeyVaultRole {
         [string] $KeyVaultName
     )
 
-    if ($null -eq (Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName)) {
-        New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName;
-        Write-Host "Added role $RoleDefinitionName to $ObjectId on the $KeyVaultName keyvault.";
-    }
-    else {
-        Write-Host "$ObjectId already has  $RoleDefinitionName role on $KeyVaultName.";
-    }
+    Invoke-WithCreateRetry `
+        -GetExistingOperation { Get-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName } `
+        -CreateOperation {
+            New-AzRoleAssignment -ObjectId $ObjectId -Scope $Scope -RoleDefinitionName $RoleDefinitionName
+            Write-Host "Added role $RoleDefinitionName to $ObjectId on the $KeyVaultName keyvault."
+        } `
+        -OperationName "Assign $RoleDefinitionName on $KeyVaultName" `
+        -MaxAttempts 3 -BaseDelaySeconds 2 `
+        -ExistsMessage "Role '$RoleDefinitionName' is already assigned on '$KeyVaultName'. Skipping."
 }
 
 function Set-AdminKeyVaultRoles {
@@ -290,10 +265,12 @@ function Set-AdminKeyVaultRoles {
         [Parameter(Mandatory = $True)]
         [string] $ResourceGroupName
     )
-    $keyVault = `
-        Get-AzKeyVault `
-        -ResourceGroupName $ResourceGroupName `
-        -Name $KeyVaultName
+    $keyVault = Invoke-WithRetry `
+        -Operation {
+            Get-AzKeyVault -ResourceGroupName $ResourceGroupName -Name $KeyVaultName
+        } `
+        -OperationName "Get KeyVault '$KeyVaultName'" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
 
     Set-KeyVaultRole `
         -ObjectId $UserObjectId `
@@ -313,7 +290,10 @@ function Get-BearerToken {
         [string]$Resource = "https://management.azure.com/"
     )
 
-    $token = (Get-AzAccessToken -ResourceUrl $Resource).Token
+    $token = (Invoke-WithRetry `
+        -Operation { Get-AzAccessToken -ResourceUrl $Resource } `
+        -OperationName "Get Azure access token" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).Token
 
     if ($token -is [System.Security.SecureString]) {
         $ptr = [Runtime.InteropServices.Marshal]::SecureStringToGlobalAllocUnicode($token)
@@ -484,17 +464,19 @@ function Set-ResourceGroups {
     
     Write-Host "`nCreating resource groups:"
     $templateFilePath = "$ResourceGroupTemplateDirectoryPath/resourceGroups.json"
-    Retry-Operation `
-        -Operation ${function:Start-ResourceDeployment} `
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -SubscriptionId $SubscriptionId `
+                -Location $Location `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $AdditionalParameters `
+                -IsResourceGroupCreation $true
+        } `
         -OperationName "Create Resource Groups" `
-        -params @{
-        SubscriptionId          = $SubscriptionId
-        Location                = $Location
-        TemplateFilePath        = $templateFilePath
-        ParameterHashtable      = $ParameterHashtable
-        AdditionalParameters    = $AdditionalParameters
-        IsResourceGroupCreation = $true
-    }
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
 }
 
 function Set-PrereqResources {
@@ -518,20 +500,25 @@ function Set-PrereqResources {
     Write-Host "`nCreating prereqs resources"
     $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
     $templateFilePath = "$PrereqsTemplateDirectoryPath/prereqResources.json"
-    Retry-Operation `
-        -Operation ${function:Start-ResourceDeployment} `
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -ResourceGroupName $prereqsResourceGroup `
+                -SubscriptionId $SubscriptionId `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $AdditionalParameters
+        } `
         -OperationName "Create prereqs resources" `
-        -params @{
-        ResourceGroupName       = $prereqsResourceGroup
-        SubscriptionId          = $SubscriptionId
-        TemplateFilePath        = $templateFilePath
-        ParameterHashtable      = $ParameterHashtable
-        AdditionalParameters    = $AdditionalParameters
-    }
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
 
     # grant permissions to prereqs key vault
     if ($SetRBACPermissions -eq $true) {
-        $currentUser = Get-AzADUser -SignedIn
+        $currentUser = Invoke-WithRetry `
+            -Operation { Get-AzADUser -SignedIn } `
+            -OperationName "Get current AD user" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         Set-AdminKeyVaultRoles `
             -UserObjectId $currentUser.Id `
             -KeyVaultName "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation" `
@@ -560,20 +547,25 @@ function Set-DataResources {
     Write-Host "`nCreating data resources"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $templateFilePath = "$DataTemplateDirectoryPath/dataResources.json"
-    Retry-Operation `
-        -Operation ${function:Start-ResourceDeployment} `
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -ResourceGroupName $dataResourceGroup `
+                -SubscriptionId $SubscriptionId `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $AdditionalParameters
+        } `
         -OperationName "Create data resources" `
-        -params @{
-        ResourceGroupName       = $dataResourceGroup
-        SubscriptionId          = $SubscriptionId
-        TemplateFilePath        = $templateFilePath
-        ParameterHashtable      = $ParameterHashtable
-        AdditionalParameters    = $AdditionalParameters
-    }
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
 
     # grant permissions to data key vault
     if ($setRBACPermissions -eq $true) {
-        $currentUser = Get-AzADUser -SignedIn
+        $currentUser = Invoke-WithRetry `
+            -Operation { Get-AzADUser -SignedIn } `
+            -OperationName "Get current AD user" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         Set-AdminKeyVaultRoles `
             -UserObjectId $currentUser.Id `
             -KeyVaultName "$SolutionAbbreviation-data-$EnvironmentAbbreviation" `
@@ -622,16 +614,18 @@ function Set-ComputeResources {
     Write-Host "`nCreating compute resources"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
     $templateFilePath = "$ComputeTemplateDirectoryPath/computeResources.json"
-    Retry-Operation `
-        -Operation ${function:Start-ResourceDeployment} `
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -ResourceGroupName $computeResourceGroup `
+                -SubscriptionId $SubscriptionId `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $AdditionalParameters
+        } `
         -OperationName "Create compute resources" `
-        -params @{
-        ResourceGroupName       = $computeResourceGroup
-        SubscriptionId          = $SubscriptionId
-        TemplateFilePath        = $templateFilePath
-        ParameterHashtable      = $ParameterHashtable
-        AdditionalParameters    = $AdditionalParameters
-    }
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
 }
 
 function Set-ADFResources {
@@ -675,16 +669,18 @@ function Set-ADFResources {
     # Deploy ADF resources
     Write-Host "`nCreating ADF resources"
     $templateFilePath = "$ADFTemplateDirectoryPath/adfHRResources.json"
-    Retry-Operation `
-        -Operation ${function:Start-ResourceDeployment} `
+    Invoke-WithRetry `
+        -Operation {
+            Start-ResourceDeployment `
+                -ResourceGroupName $dataResourceGroup `
+                -SubscriptionId $SubscriptionId `
+                -TemplateFilePath $templateFilePath `
+                -ParameterHashtable $ParameterHashtable `
+                -AdditionalParameters $AdditionalParameters
+        } `
         -OperationName "Create ADF resources" `
-        -params @{
-        ResourceGroupName       = $dataResourceGroup
-        SubscriptionId          = $SubscriptionId
-        TemplateFilePath        = $templateFilePath
-        ParameterHashtable      = $ParameterHashtable
-        AdditionalParameters    = $AdditionalParameters
-    }
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
 }
 
 function Reset-Functions {
@@ -708,7 +704,10 @@ function Reset-Functions {
     Write-Host $computeResourceGroup -ForegroundColor Yellow
 
     # Get all Function Apps in the compute resource group
-    $functionApps = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup
+    $functionApps = Invoke-WithRetry `
+        -Operation { Get-AzFunctionApp -ResourceGroupName $computeResourceGroup } `
+        -OperationName "Get function apps for reset" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
 
     if ($null -eq $functionApps -or $functionApps.Count -eq 0) {
         Write-Host "  No Function Apps found in resource group '$computeResourceGroup'." -ForegroundColor DarkYellow
@@ -872,7 +871,10 @@ function Set-FunctionAuthenticationAllowedIdentities {
     if ($SkipAzureDataFactoryDeployment -eq $false) {
         Write-Host "  Retrieving ADF Managed Identity..." -ForegroundColor Yellow
         $adfResourceName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
-        $adfResource = Get-AzResource -ResourceGroupName $dataResourceGroup -ResourceType "Microsoft.DataFactory/factories" -Name $adfResourceName -ErrorAction SilentlyContinue
+        $adfResource = Invoke-WithRetry `
+            -Operation { Get-AzResource -ResourceGroupName $dataResourceGroup -ResourceType "Microsoft.DataFactory/factories" -Name $adfResourceName -ErrorAction SilentlyContinue } `
+            -OperationName "Get ADF resource" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         if ($null -ne $adfResource -and $null -ne $adfResource.Identity) {
             $adfMSIPrincipalId = $adfResource.Identity.PrincipalId
             if (-not [string]::IsNullOrWhiteSpace($adfMSIPrincipalId)) {
@@ -891,7 +893,10 @@ function Set-FunctionAuthenticationAllowedIdentities {
     $webApiMSIPrincipalId = $null
     $webApiResourceName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
     Write-Host "  Retrieving WebAPI Managed Identity..." -ForegroundColor Yellow
-    $webApiResource = Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiResourceName -ErrorAction SilentlyContinue
+    $webApiResource = Invoke-WithRetry `
+        -Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiResourceName -ErrorAction SilentlyContinue } `
+        -OperationName "Get WebAPI resource" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     if ($null -ne $webApiResource -and $null -ne $webApiResource.Identity) {
         $webApiMSIPrincipalId = $webApiResource.Identity.PrincipalId
         if (-not [string]::IsNullOrWhiteSpace($webApiMSIPrincipalId)) {
@@ -963,7 +968,10 @@ function Update-FunctionAppAuthSettings {
     $functionApps = @()
     foreach ($shortName in $FunctionAppNames) {
         $fullFunctionName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$shortName"
-        $app = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $fullFunctionName -ErrorAction SilentlyContinue
+        $app = Invoke-WithRetry `
+            -Operation { Get-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $fullFunctionName -ErrorAction SilentlyContinue } `
+            -OperationName "Get function app '$fullFunctionName'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         if ($null -ne $app) {
             $functionApps += $app
             Write-Host "  ✓ Found function app: $fullFunctionName" -ForegroundColor Green
@@ -996,7 +1004,10 @@ function Update-FunctionAppAuthSettings {
         try {
             # Get current auth settings
             $getUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup/providers/Microsoft.Web/sites/$functionAppName/config/authsettingsV2?api-version=2022-09-01"
-            $currentAuthSettings = Invoke-RestMethod -Uri $getUri -Method Get -Headers $headers
+            $currentAuthSettings = Invoke-WithRetry `
+                -Operation { Invoke-RestMethod -Uri $getUri -Method Get -Headers $headers } `
+                -OperationName "Get auth settings for $functionAppName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
 
             # Get existing allowed principals and merge with new ones
             $existingIdentities = @()
@@ -1022,7 +1033,10 @@ function Update-FunctionAppAuthSettings {
             $putUri = "https://management.azure.com/subscriptions/$SubscriptionId/resourceGroups/$computeResourceGroup/providers/Microsoft.Web/sites/$functionAppName/config/authsettingsV2?api-version=2022-09-01"
             $body = $currentAuthSettings | ConvertTo-Json -Depth 20
 
-            $null = Invoke-RestMethod -Uri $putUri -Method Put -Headers $Headers -Body $body
+            $null = Invoke-WithRetry `
+                -Operation { Invoke-RestMethod -Uri $putUri -Method Put -Headers $Headers -Body $body } `
+                -OperationName "Update auth settings for $functionAppName" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
 
             Write-Host "    ✓ Successfully updated $functionAppName" -ForegroundColor Green
         }
@@ -1074,7 +1088,10 @@ function Set-GMMResources {
     $teamsChannelAppCertificateName = Get-DefaultString -Value $ParameterHashtable['teamsChannelAppCertificateName'].value -Default 'not-set'
     $directoryTenantId              = Get-DefaultString -Value $ParameterHashtable['directoryTenantId'].value -Default $ParameterHashtable.tenantId.value
 
-    $hostIpAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    $hostIpAddress = (Invoke-WithRetry `
+        -Operation { Invoke-WebRequest -uri "https://api.ipify.org/" } `
+        -OperationName "Get host IP address" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).Content
     $ipAddressesToWhiteList = $ipRangesToWhiteList + @($hostIpAddress)
     
     # deploy resource groups
@@ -1192,23 +1209,22 @@ function Set-SqlServerFirewallRule {
     Write-Host "`nSetting SQL Server firewall rule"
     $dataResourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $sqlServerName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $ipAddress = (Invoke-WebRequest -uri "https://api.ipify.org/").Content
+    $ipAddress = (Invoke-WithRetry `
+        -Operation { Invoke-WebRequest -uri "https://api.ipify.org/" } `
+        -OperationName "Get host IP address" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).Content
     $sqlIPRuleName = "DeploymentScript_Client_IP_Address-$ipAddress"
-    $sqlIPRule = Get-AzSqlServerFirewallRule `
-        -FirewallRuleName $sqlIPRuleName `
-        -ResourceGroupName $dataResourceGroupName `
-        -ServerName $sqlServerName `
-        -ErrorAction SilentlyContinue
-
-    if ($null -eq $sqlIPRule) {
-        Write-Host "Adding firewall rule for SQL Server"
-        New-AzSqlServerFirewallRule `
-            -ResourceGroupName $dataResourceGroupName `
-            -ServerName $sqlServerName `
-            -FirewallRuleName $sqlIPRuleName `
-            -StartIpAddress $ipAddress `
-            -EndIpAddress $ipAddress
-    }
+    Invoke-WithCreateRetry `
+        -GetExistingOperation {
+            Get-AzSqlServerFirewallRule -FirewallRuleName $sqlIPRuleName -ResourceGroupName $dataResourceGroupName -ServerName $sqlServerName -ErrorAction SilentlyContinue
+        } `
+        -CreateOperation {
+            New-AzSqlServerFirewallRule -ResourceGroupName $dataResourceGroupName -ServerName $sqlServerName -FirewallRuleName $sqlIPRuleName -StartIpAddress $ipAddress -EndIpAddress $ipAddress
+            Write-Host "Added firewall rule for SQL Server"
+        } `
+        -OperationName "Create SQL firewall rule" `
+        -MaxAttempts 3 -BaseDelaySeconds 2 `
+        -ExistsMessage "SQL firewall rule '$sqlIPRuleName' already exists on '$sqlServerName'. Skipping."
 }
 
 function Set-SQLServerPermissions {
@@ -1261,7 +1277,10 @@ function Set-SQLServerPermissions {
     Write-Host "Permissions granted to SQL database for $($context.Account.Id)" -ForegroundColor Green
 
     # Set the permissions for the function apps.
-    $functionApps = Get-AzResource -ResourceGroupName $computeResourceGroup -ResourceType "Microsoft.Web/sites"
+    $functionApps = Invoke-WithRetry `
+        -Operation { Get-AzResource -ResourceGroupName $computeResourceGroup -ResourceType "Microsoft.Web/sites" } `
+        -OperationName "Get function apps for SQL permissions" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     
     foreach ($functionApp in $functionApps) {
 
@@ -1297,7 +1316,10 @@ function Set-SQLServerPermissions {
 
     # ADF Permissions
     $dataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
-    $dataFactory = Get-AzDataFactoryV2 -ResourceGroupName $dataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue
+    $dataFactory = Invoke-WithRetry `
+        -Operation { Get-AzDataFactoryV2 -ResourceGroupName $dataResourceGroup -Name $dataFactoryName -ErrorAction SilentlyContinue } `
+        -OperationName "Get Data Factory" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $functionAppsADF = $functionApps | Where-Object { $_.Name -match "-webapi" -or $_.Name -match "-SqlMembershipObtainer" }
 
     if ($null -ne $dataFactory) {
@@ -1404,7 +1426,10 @@ function Set-FunctionAppCode {
     # publish function apps code
     Write-Host "`nPublishing function apps code"
 
-    $functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroup
+    $functionApps = Invoke-WithRetry `
+        -Operation { Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroup } `
+        -OperationName "Get function apps for code deploy" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
 
         Write-Host "Publishing code for function app $($functionApp.Name)"
@@ -1417,24 +1442,29 @@ function Set-FunctionAppCode {
             continue
         }
 
-        $publishCodeOperation = {
-            Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $functionApp.Name -ArchivePath $packageFile -Force
-        }
-
-        Retry-Operation `
-            -Operation $publishCodeOperation `
-            -OperationName "Deploying code for $($functionApp.Name)"
+        Invoke-WithRetry `
+            -Operation {
+                Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $functionApp.Name -ArchivePath $packageFile -Force
+            } `
+            -OperationName "Deploying code for $($functionApp.Name)" `
+            -MaxAttempts $maxRetriesForDeploymentOperations `
+            -BaseDelaySeconds 2
 
         Write-Host "Successfully published code for function app $($functionApp.Name)`n" -ForegroundColor Green
 
         if ($functionApp.Kind -eq "functionapp") {
             Write-Host "Function app $($functionApp.Name) is on Comsumption. Setting functionAppScaleLimit = 1..."
-            Set-AzResource -ResourceGroupName $ComputeResourceGroup `
-                -ResourceType "Microsoft.Web/sites" `
-                -ResourceName "$($functionApp.Name)/config/web" `
-                -ApiVersion "2022-03-01" `
-                -Properties @{ functionAppScaleLimit = 1 } `
-                -Force
+            Invoke-WithRetry `
+                -Operation {
+                    Set-AzResource -ResourceGroupName $ComputeResourceGroup `
+                        -ResourceType "Microsoft.Web/sites" `
+                        -ResourceName "$($functionApp.Name)/config/web" `
+                        -ApiVersion "2022-03-01" `
+                        -Properties @{ functionAppScaleLimit = 1 } `
+                        -Force
+                } `
+                -OperationName "Set scale limit for $($functionApp.Name)" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
             Write-Host "Successfully set functionAppScaleLimit for $($functionApp.Name)`n" -ForegroundColor Green
         }
         
@@ -1442,16 +1472,19 @@ function Set-FunctionAppCode {
 
     # publish web api code
     Write-Host "`nPublishing code for webapi app $ComputeResourceGroup-webapi"
-    $webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name "$ComputeResourceGroup-webapi"
+    $webApi = Invoke-WithRetry `
+        -Operation { Get-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name "$ComputeResourceGroup-webapi" } `
+        -OperationName "Get WebAPI app for code deploy" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $webApiName = $webApi.Name.Split("-")[3]
 
-    $publishWebAPICodeOperation = {
-        Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $webApi.Name -ArchivePath "$WebApiPackagesDirectory/$webApiName.zip" -Force
-    }
-
-    Retry-Operation `
-        -Operation $publishWebAPICodeOperation `
-        -OperationName "Deploying code for $($webApi.Name)"
+    Invoke-WithRetry `
+        -Operation {
+            Publish-AzWebApp -ResourceGroupName $ComputeResourceGroup -Name $webApi.Name -ArchivePath "$WebApiPackagesDirectory/$webApiName.zip" -Force
+        } `
+        -OperationName "Deploying code for $($webApi.Name)" `
+        -MaxAttempts $maxRetriesForDeploymentOperations `
+        -BaseDelaySeconds 2
     
     Write-Host "Successfully published code for web api app $($webApi.Name)`n" -ForegroundColor Green
 }
@@ -1476,13 +1509,19 @@ function Set-KeyVaultFirewallRules {
     $newIpRules += $ipAddresses
 
     foreach ($resourceGroup in $ResourceGroups) {
-        $keyVaults = Get-AzKeyVault -ResourceGroupName $resourceGroup
+        $keyVaults = Invoke-WithRetry `
+            -Operation { Get-AzKeyVault -ResourceGroupName $resourceGroup } `
+            -OperationName "Get key vaults in $resourceGroup" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         foreach ($keyVault in $keyVaults) {
             $keyVaultName = $keyVault.VaultName
             $keyVaultResourceGroup = $keyVault.ResourceGroupName
 
             Write-Host "Fetching existing rules for $keyVaultName"
-            $detailedKeyVault = Get-AzKeyVault -Name $keyVaultName -ResourceGroupName $keyVaultResourceGroup
+            $detailedKeyVault = Invoke-WithRetry `
+                -Operation { Get-AzKeyVault -Name $keyVaultName -ResourceGroupName $keyVaultResourceGroup } `
+                -OperationName "Get key vault details '$keyVaultName'" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
             $existingRules = $detailedKeyVault.NetworkAcls.IpAddressRanges
 
             # Extract current IP rules
@@ -1493,12 +1532,17 @@ function Set-KeyVaultFirewallRules {
 
             Write-Host "Applying updated firewall rules to $keyVaultName"
 
-            Update-AzKeyVaultNetworkRuleSet `
-                -VaultName $keyVaultName `
-                -ResourceGroupName $keyVaultResourceGroup `
-                -Bypass AzureServices `
-                -DefaultAction Deny `
-                -IpAddressRange $combinedIpRules
+            Invoke-WithRetry `
+                -Operation {
+                    Update-AzKeyVaultNetworkRuleSet `
+                        -VaultName $keyVaultName `
+                        -ResourceGroupName $keyVaultResourceGroup `
+                        -Bypass AzureServices `
+                        -DefaultAction Deny `
+                        -IpAddressRange $combinedIpRules
+                } `
+                -OperationName "Update firewall rules for '$keyVaultName'" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
         }
     }
 }
@@ -1517,10 +1561,16 @@ function Stop-FunctionApps {
     # stop function apps
     Write-Host "`nStopping function apps"
 
-    $functionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName
+    $functionApps = Invoke-WithRetry `
+        -Operation { Get-AzFunctionApp -ResourceGroupName $ResourceGroupName } `
+        -OperationName "Get function apps to stop" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
         Write-Host "Stopping function app $($functionApp.Name)"
-        Stop-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name -Force
+        Invoke-WithRetry `
+            -Operation { Stop-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name -Force } `
+            -OperationName "Stop $($functionApp.Name)" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
     }
 }
 
@@ -1540,14 +1590,20 @@ function Start-FunctionApps {
     # start function apps
     Write-Host "`nStarting function apps"
 
-    $functionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName
+    $functionApps = Invoke-WithRetry `
+        -Operation { Get-AzFunctionApp -ResourceGroupName $ResourceGroupName } `
+        -OperationName "Get function apps to start" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
         if ($SkipJobTrigger -eq $true -and $functionApp.Name -match "JobTrigger") {
             Write-Host "Skipping start of job trigger function app $($functionApp.Name)"
             continue
         }
         Write-Host "Starting function app $($functionApp.Name)"
-        Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name
+        Invoke-WithRetry `
+            -Operation { Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
+            -OperationName "Start $($functionApp.Name)" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
     }
 }
 
@@ -1558,10 +1614,16 @@ function Update-AppSettingsVersion {
     )
 
     Write-Host "`nChecking function app settings"
-    $functionApps = Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName
+    $functionApps = Invoke-WithRetry `
+        -Operation { Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName } `
+        -OperationName "Get function apps for settings update" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($function in $functionApps) {
 
-        $settings = Get-AzFunctionAppSetting -ResourceGroupName $ComputeResourceGroupName -Name $function.Name
+        $settings = Invoke-WithRetry `
+            -Operation { Get-AzFunctionAppSetting -ResourceGroupName $ComputeResourceGroupName -Name $function.Name } `
+            -OperationName "Get settings for $($function.Name)" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         foreach ($key in $settings.Keys) {
             if (-not ($settings[$key].Contains("Microsoft.KeyVault"))) {
                 continue
@@ -1573,13 +1635,19 @@ function Update-AppSettingsVersion {
             if ($latestSecretVersion.Version -ne $kvReference.Version) {
                 Write-Host "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
                 $updatedVersion = $settings[$key] -replace $kvReference.Version, $latestSecretVersion.Version
-                $updatedSettings = Update-AzFunctionAppSetting -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion }
+                $updatedSettings = Invoke-WithRetry `
+                    -Operation { Update-AzFunctionAppSetting -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion } } `
+                    -OperationName "Update setting for $($function.Name)" `
+                    -MaxAttempts 3 -BaseDelaySeconds 2
             }
         }
     }
 
     Write-Host "`nChecking web app settings"
-    $webApps = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName | Where-Object { $_.Kind -eq "app" }
+    $webApps = Invoke-WithRetry `
+        -Operation { Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName | Where-Object { $_.Kind -eq "app" } } `
+        -OperationName "Get web apps for settings update" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($webApp in $webApps) {
 
         $hasUpdates = $false
@@ -1619,7 +1687,10 @@ function Update-AppSettingsVersion {
                 $updatedSettings[$setting.Name] = $setting.Value
             }
 
-            Set-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name $webApp.Name -AppSettings $updatedSettings
+            Invoke-WithRetry `
+                -Operation { Set-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name $webApp.Name -AppSettings $updatedSettings } `
+                -OperationName "Update web app settings for $($webApp.Name)" `
+                -MaxAttempts 3 -BaseDelaySeconds 2
         }
 
     }
@@ -1780,35 +1851,50 @@ function Save-GMMAppRegistrationSecrets {
     # Retrieve Application IDs
     Write-Host "`n📋 Retrieving App Registration IDs..." -ForegroundColor Yellow
     
-    $uiAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'").AppId
+    $uiAppId = (Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'" } `
+        -OperationName "Get UI app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).AppId
     if (-not $uiAppId) {
         Write-Error "UI Application '$SolutionAbbreviation-ui-$EnvironmentAbbreviation' not found"
         return
     }
     Write-Host "  ✓ UI App ID: $uiAppId" -ForegroundColor Gray
 
-    $webApiAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'").AppId
+    $webApiAppId = (Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'" } `
+        -OperationName "Get WebAPI app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).AppId
     if (-not $webApiAppId) {
         Write-Error "WebAPI Application '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation' not found"
         return
     }
     Write-Host "  ✓ WebAPI App ID: $webApiAppId" -ForegroundColor Gray
 
-    $graphAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'").AppId
+    $graphAppId = (Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'" } `
+        -OperationName "Get Graph app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).AppId
     if (-not $graphAppId) {
         Write-Error "Graph Application '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation' not found"
         return
     }
     Write-Host "  ✓ Graph App ID: $graphAppId" -ForegroundColor Gray
 
-    $teamsChannelAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'").AppId
+    $teamsChannelAppId = (Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'" } `
+        -OperationName "Get Teams Channel app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).AppId
     if (-not $teamsChannelAppId) {
         Write-Error "Teams Channel Application '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation' not found"
         return
     }
     Write-Host "  ✓ Teams Channel App ID: $teamsChannelAppId" -ForegroundColor Gray
 
-    $functionAuthAppId = (Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'").AppId
+    $functionAuthAppId = (Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'" } `
+        -OperationName "Get FunctionAuth app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2).AppId
     if (-not $functionAuthAppId) {
         Write-Error "FunctionAuth Application '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation' not found"
         return
@@ -2153,11 +2239,26 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "✅ All app registrations validated successfully!`n" -ForegroundColor Green
 
     # Retrieve application details to check for admin consent requirements
-    $uiApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'"
-    $webApiApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'"
-    $graphApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'"
-    $teamsChannelApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'"
-    $functionAuthApp = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'"
+    $uiApp = Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-ui-$EnvironmentAbbreviation'" } `
+        -OperationName "Get UI app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    $webApiApp = Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'" } `
+        -OperationName "Get WebAPI app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    $graphApp = Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-Graph-$EnvironmentAbbreviation'" } `
+        -OperationName "Get Graph app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    $teamsChannelApp = Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation'" } `
+        -OperationName "Get Teams Channel app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    $functionAuthApp = Invoke-WithRetry `
+        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'" } `
+        -OperationName "Get FunctionAuth app registration" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
 
     # Check which apps need admin consent based on their required resource access
     $appsThatNeedAdminConsent = @()
@@ -2303,7 +2404,10 @@ function Set-ConfigureWebApps {
     $allowedOrigins = @()
 
     try {
-        $customDomain = Get-AzStaticWebAppCustomDomain -Name $uiWebAppName -ResourceGroupName $computeResourceGroup
+        $customDomain = Invoke-WithRetry `
+            -Operation { Get-AzStaticWebAppCustomDomain -Name $uiWebAppName -ResourceGroupName $computeResourceGroup } `
+            -OperationName "Get static web app custom domain" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         if (-not [string]::IsNullOrEmpty($customDomain)) {
             $allowedOrigins += "https://$($customDomain.DomainName)"
         }
@@ -2312,7 +2416,10 @@ function Set-ConfigureWebApps {
         Write-Output "No custom domain associated with this web app."
     }
 
-    $staticWebApp = Get-AzStaticWebApp -Name $uiWebAppName -ResourceGroupName $computeResourceGroup
+    $staticWebApp = Invoke-WithRetry `
+        -Operation { Get-AzStaticWebApp -Name $uiWebAppName -ResourceGroupName $computeResourceGroup } `
+        -OperationName "Get static web app" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $allowedOrigins += "https://$($staticWebApp.DefaultHostname)"
 
     # Set CORS for SignalR service
@@ -2328,7 +2435,10 @@ function Set-ConfigureWebApps {
         Write-Output "Unable to update SignalR service CORS settings."
     }
 
-    $webApi = Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiName
+    $webApi = Invoke-WithRetry `
+        -Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroup -Name $webApiName } `
+        -OperationName "Get WebAPI for CORS" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $currentCORs = $webApi.SiteConfig.Cors.AllowedOrigins
     $newCORs = @()
 
@@ -2355,12 +2465,18 @@ function Set-ConfigureWebApps {
             ResourceGroupName = $computeResourceGroup
         }
 
-        $webApiResource = Get-AzResource @apiResourceParams
+        $webApiResource = Invoke-WithRetry `
+            -Operation { Get-AzResource @apiResourceParams } `
+            -OperationName "Get WebAPI resource for CORS" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         $webApiResource.Properties.siteConfig.cors = @{
             allowedOrigins = $newCORs
         }
 
-        $webApiResource | Set-AzResource -Force
+        Invoke-WithRetry `
+            -Operation { $webApiResource | Set-AzResource -Force } `
+            -OperationName "Update WebAPI CORS settings" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
 
         Write-Host "✅ WebAPI CORS settings updated successfully" -ForegroundColor Green
     }
@@ -2470,7 +2586,10 @@ function Set-PublishUICode {
                             -AsPlainText
     }
     
-    $appInsights = Get-AzApplicationInsights -ResourceGroupName $dataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+    $appInsights = Invoke-WithRetry `
+        -Operation { Get-AzApplicationInsights -ResourceGroupName $dataResourceGroup  -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation" } `
+        -OperationName "Get Application Insights" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $appInsightsConnectionString = $appInsights.ConnectionString
 
     $buildVersionFilePath = "$WebAppDirectory/buildVersion.txt"
@@ -2499,7 +2618,10 @@ function Set-PublishUICode {
 
     # Get the web app deployment token
     $webAppName = "$SolutionAbbreviation-ui"
-    $webAppSecrets = (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $computeResourceGroup).Property | ConvertFrom-Json
+    $webAppSecrets = Invoke-WithRetry `
+        -Operation { (Get-AzStaticWebAppSecret -name $webAppName -ResourceGroupName $computeResourceGroup).Property | ConvertFrom-Json } `
+        -OperationName "Get static web app secrets" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $webAppDeploymentToken = $webAppSecrets.apiKey
 
     swa build
@@ -2652,7 +2774,7 @@ function Install-RequiredModules {
     Write-Host "`n  [2/$totalSteps] " -ForegroundColor Magenta -NoNewline
     Write-Host "Microsoft Graph Modules" -ForegroundColor White
     . ($ScriptsDirectory + '/Install-ModuleIfNeeded.ps1')
-		
+
     $requiredGraphModules = @(
         "Microsoft.Graph.Authentication",
         "Microsoft.Graph.Applications",
@@ -2908,11 +3030,18 @@ function Deploy-Resources {
 
     if(!$isInitialDeployment) {
         
-        $jobTrigger = Get-AzFunctionApp -ResourceGroupName $computeResourceGroup `
-                                        -Name "$computeResourceGroup-JobTrigger"
+        $jobTrigger = Invoke-WithRetry `
+            -Operation {
+                Get-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name "$computeResourceGroup-JobTrigger"
+            } `
+            -OperationName "Get JobTrigger function app" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
 
         Write-Host "`nStopping JobTrigger function app to prevent interference with deployment..."
-        Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force
+        Invoke-WithRetry `
+            -Operation { Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force } `
+            -OperationName "Stop JobTrigger" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         Write-Host "JobTrigger function app stopped." -ForegroundColor Green
 
         . "$scriptsDirectory/Reset-GMM.ps1" #  Import helper functions
@@ -3093,7 +3222,10 @@ function Deploy-Resources {
     Write-Host "==========================================================" -ForegroundColor Yellow
 
 
-    $staticWebApp = Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup
+    $staticWebApp = Invoke-WithRetry `
+        -Operation { Get-AzStaticWebApp -Name "$SolutionAbbreviation-ui" -ResourceGroupName $computeResourceGroup } `
+        -OperationName "Get static web app URL" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     if ($null -ne $staticWebApp) {
         Write-Host "`nhttps://$($staticWebApp.DefaultHostname)`n" -ForegroundColor Cyan
     }

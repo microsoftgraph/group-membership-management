@@ -52,27 +52,28 @@ function Set-LogAnalyticsReaderRole
 
 		$functionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 
-		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
+		$appServicePrincipal = Invoke-WithRetry `
+			-Operation { Get-AzADServicePrincipal -DisplayName $functionAppName } `
+			-OperationName "Get service principal '$functionAppName'" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 
 		# Grant the app service access to the Log Analytics resource logs
 		if ($appServicePrincipal)
 		{
-			$logAnalyticsObject = Get-AzOperationalInsightsWorkspace -ResourceGroupName $resourceGroupName -Name $logAnalyticsWorkspaceResourceName;
+			$logAnalyticsObject = Invoke-WithRetry `
+				-Operation { Get-AzOperationalInsightsWorkspace -ResourceGroupName $resourceGroupName -Name $logAnalyticsWorkspaceResourceName } `
+				-OperationName "Get Log Analytics workspace" `
+				-MaxAttempts 3 -BaseDelaySeconds 2
 
-			if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $logAnalyticsObject.ResourceId))
-			{
-				$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $logAnalyticsObject.ResourceId -RoleDefinitionName "Log Analytics Reader";
-				if ($assignment) {
-					Write-Host "Added role assignment to allow $functionAppName to access on the $logAnalyticsWorkspaceResourceName logs.";
-				}
-				else {
-					Write-Host "Failed to add role assignment to allow $functionAppName to access on the $logAnalyticsWorkspaceResourceName logs. Please double check that you have permission to perform this operation";
-				}
-			}
-			else
-			{
-				Write-Host "$functionAppName already has access to $logAnalyticsWorkspaceResourceName logs.";
-			}
+			Invoke-WithCreateRetry `
+				-GetExistingOperation { Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $logAnalyticsObject.ResourceId } `
+				-CreateOperation {
+					New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $logAnalyticsObject.ResourceId -RoleDefinitionName "Log Analytics Reader"
+					Write-Host "Added role assignment to allow $functionAppName to access on the $logAnalyticsWorkspaceResourceName logs."
+				} `
+				-OperationName "Assign Log Analytics Reader to $functionAppName" `
+				-MaxAttempts 3 -BaseDelaySeconds 2 `
+				-ExistsMessage "Log Analytics Reader role is already assigned to '$functionAppName'. Skipping."
 		}
 		elseif ($null -eq $appServicePrincipal) {
 			Write-Host "Function $functionAppName was not found!"

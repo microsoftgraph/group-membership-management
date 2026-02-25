@@ -99,6 +99,7 @@ function Set-WebApiAzureADApplication {
 	}
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
 	if ($global:SkipModuleInstall -ne $true) {
 	    . ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
@@ -111,8 +112,13 @@ function Set-WebApiAzureADApplication {
 	}
 
 	if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
-	    Connect-AzAccount -Tenant $KeyVaultTenantId
-		Set-AzContext -SubscriptionName $SubscriptionName
+	    Invoke-WithRetry -Operation {
+			Connect-AzAccount -Tenant $KeyVaultTenantId
+		} -OperationName "Connect to Azure tenant for key vault"
+
+		Invoke-WithRetry -Operation {
+			Set-AzContext -SubscriptionName $SubscriptionName
+		} -OperationName "Set Azure subscription context for key vault"
 	}
 
 	if ($global:SkipMsGraphLogin -ne $true) {
@@ -125,14 +131,18 @@ function Set-WebApiAzureADApplication {
         )
         
         # Connect to Microsoft Graph with required scopes for the target tenant
-        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+		Invoke-WithRetry -Operation {
+			Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+		} -OperationName "Connect to Microsoft Graph for app setup"
         
         Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
     }
 
 	#region Delete Application / Service Principal if they already exist
 	$webApiAppDisplayName = "$SolutionAbbreviation-webapi-$EnvironmentAbbreviation"
-	$webApiApps = Get-MgApplication -Filter "displayName eq '$webApiAppDisplayName'"
+	$webApiApps = Invoke-WithRetry -Operation {
+		Get-MgApplication -Filter "displayName eq '$webApiAppDisplayName'"
+	} -OperationName "Lookup Web API app registration"
 	
     
 	# Validate that we don't have multiple applications with the same name
@@ -172,7 +182,9 @@ function Set-WebApiAzureADApplication {
 
 	# Pre-authorize UI app if it exists
 	$uiAppName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
-	$uiApps = Get-MgApplication -Filter "displayName eq '$uiAppName'"
+	$uiApps = Invoke-WithRetry -Operation {
+		Get-MgApplication -Filter "displayName eq '$uiAppName'"
+	} -OperationName "Lookup UI app registration"
 	$uiApp = if ($null -ne $uiApps -and $uiApps.Count -eq 1) { $uiApps } else { $null }
 
 	# Alert users in the event of missing UI app
@@ -196,11 +208,27 @@ function Set-WebApiAzureADApplication {
 			-UiAppId $uiApp.AppId
 
 		# Create application body for Microsoft Graph
-		$webApiApp = New-MgApplication -BodyParameter $appCreationParameters
+		$webApiApp = Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgApplication -Filter "displayName eq '$webApiAppDisplayName'"
+			} `
+			-CreateOperation {
+				New-MgApplication -BodyParameter $appCreationParameters
+			} `
+			-OperationName "Create Azure AD app $webApiAppDisplayName" `
+			-ExistsMessage "Azure AD app '$webApiAppDisplayName' already exists. Skipping creation."
 		
 		$updatedAPIPermissions = $true
         
-		New-MgServicePrincipal -AppId $webApiApp.AppId
+		Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgServicePrincipal -Filter "appId eq '$($webApiApp.AppId)'"
+			} `
+			-CreateOperation {
+				New-MgServicePrincipal -AppId $webApiApp.AppId
+			} `
+			-OperationName "Create service principal for $webApiAppDisplayName" `
+			-ExistsMessage "Service principal for '$webApiAppDisplayName' already exists. Skipping creation." | Out-Null
 
 		$permissionScopeId = ($webApiApp.Api.Oauth2PermissionScopes | Where-Object { $_.AdminConsentDisplayName -eq "WebAPI user impersonation" }).Id
 
@@ -211,7 +239,9 @@ function Set-WebApiAzureADApplication {
 			-AppId $webApiApp.AppId `
 			-PermissionScopeId $permissionScopeId
 
-		Update-MgApplication -ApplicationId $webApiApp.Id -BodyParameter $updatedAppParameters
+		Invoke-WithRetry -Operation {
+			Update-MgApplication -ApplicationId $webApiApp.Id -BodyParameter $updatedAppParameters
+		} -OperationName "Update Web API app identifier uri"
 		Write-Host "Created Azure AD app $webApiAppDisplayName"
 	}
 	else {
@@ -239,7 +269,9 @@ function Set-WebApiAzureADApplication {
 
 		if ($needsUpdate) {
 			Write-Host "App $webApiAppDisplayName needs update. Updating..."
-			Update-MgApplication -ApplicationId $webApiApp.Id -BodyParameter $expectedAppConfig
+			Invoke-WithRetry -Operation {
+				Update-MgApplication -ApplicationId $webApiApp.Id -BodyParameter $expectedAppConfig
+			} -OperationName "Update Azure AD app configuration for $webApiAppDisplayName"
 			$updatedAPIPermissions = $true
 			Write-Host "Finished updating Azure AD app $webApiAppDisplayName"
 		}
@@ -307,6 +339,7 @@ function Set-WebAPIKeyVaultSecrets {
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
 	. ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
@@ -324,8 +357,13 @@ function Set-WebAPIKeyVaultSecrets {
 			startDateTime = [System.DateTime]::Now
 			endDateTime   = $endDate
 		}
-		$appObjectId = (Get-MgApplication -Filter "appId eq '$webApiAppClientId'").Id
-		$webApiAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+		$appObjectId = (Invoke-WithRetry -Operation {
+			Get-MgApplication -Filter "appId eq '$webApiAppClientId'"
+		} -OperationName "Get web api app by app id for secret creation").Id
+
+		$webApiAppClientSecret = (Invoke-WithRetry -Operation {
+			Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential
+		} -OperationName "Create web api app secret").SecretText
 		Write-Host "Created new application secret for app $webApiAppClientId"
 	}
 	else {
@@ -333,7 +371,9 @@ function Set-WebAPIKeyVaultSecrets {
 	}
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-	$keyVault = Get-AzKeyVault -VaultName $keyVaultName
+	$keyVault = Invoke-WithRetry -Operation {
+		Get-AzKeyVault -VaultName $keyVaultName
+	} -OperationName "Get prereqs key vault for web api secrets"
 
 	if ($null -eq $keyVault) {
 		throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."

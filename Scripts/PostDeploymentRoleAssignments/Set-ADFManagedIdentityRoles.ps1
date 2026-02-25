@@ -38,7 +38,10 @@ function Set-ADFManagedIdentityRoles
     $appServices = @("webapi")
     $azureDataFactoryName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation-adf"
     $servicePrincipals = @()
-    $azureDataFactoryObject = Get-AzResource -Name $azureDataFactoryName -ResourceType "Microsoft.DataFactory/factories"
+    $azureDataFactoryObject = Invoke-WithRetry `
+        -Operation { Get-AzResource -Name $azureDataFactoryName -ResourceType "Microsoft.DataFactory/factories" } `
+        -OperationName "Get ADF resource '$azureDataFactoryName'" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
 
     if ($null -eq $azureDataFactoryObject)
     {
@@ -48,7 +51,10 @@ function Set-ADFManagedIdentityRoles
 
     foreach ($name in $UserPrincipalNames)
     {
-        $userPrincipal = Get-AzADUser -UserPrincipalName $name
+        $userPrincipal = Invoke-WithRetry `
+            -Operation { Get-AzADUser -UserPrincipalName $name } `
+            -OperationName "Get AD user '$name'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
 
 		if ($userPrincipal)
 		{
@@ -63,7 +69,10 @@ function Set-ADFManagedIdentityRoles
 	{
     	$functionAppName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$functionApp"
 
-        $servicePrincipal = Get-AzADServicePrincipal -DisplayName $functionAppName;
+        $servicePrincipal = Invoke-WithRetry `
+            -Operation { Get-AzADServicePrincipal -DisplayName $functionAppName } `
+            -OperationName "Get service principal '$functionAppName'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
 
         if ($servicePrincipal)
         {
@@ -77,7 +86,10 @@ function Set-ADFManagedIdentityRoles
 
     foreach ($appService in $appServices)
 	{
-		$servicePrincipal = Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$appService"
+		$servicePrincipal = Invoke-WithRetry `
+		    -Operation { Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$appService" } `
+		    -OperationName "Get service principal '$appService'" `
+		    -MaxAttempts 3 -BaseDelaySeconds 2
 
         if ($servicePrincipal)
         {
@@ -92,26 +104,27 @@ function Set-ADFManagedIdentityRoles
     {
         $servicePrincipalName = $servicePrincipal.DisplayName
 
-        if ($null -eq (Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id))
-        {
-            $assignment = New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id -RoleDefinitionName "Data Factory Contributor";
-            if ($assignment) {
-                Write-Host "Added role assignment to allow $servicePrincipalName to access the $azureDataFactoryName ADF resource.";
-            }
-            else {
-                Write-Host "Failed to add role assignment to allow $servicePrincipalName to access the $azureDataFactoryName ADF resource. Please double check that you have permission to perform this operation";
-            }
-        }
-        else
-        {
-            Write-Host "$servicePrincipalName already has access to the $azureDataFactoryName ADF resource.";
-        }
+        Invoke-WithCreateRetry `
+            -GetExistingOperation { Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id } `
+            -CreateOperation {
+                New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $azureDataFactoryObject.Id -RoleDefinitionName "Data Factory Contributor"
+                Write-Host "Added role assignment to allow $servicePrincipalName to access the $azureDataFactoryName ADF resource."
+            } `
+            -OperationName "Assign Data Factory Contributor to $servicePrincipalName" `
+            -MaxAttempts 3 -BaseDelaySeconds 2 `
+            -ExistsMessage "Data Factory Contributor role is already assigned to '$servicePrincipalName'. Skipping."
     }
 
     Write-Host "Grant ADF identity access to the storage account";
     # Define the Key Vault name and the secret name
-    $azureUserReaderPrincipal = Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-AzureUserReader";
-    $dataFactoryPrincipal = Get-AzADServicePrincipal -DisplayName $azureDataFactoryName;
+    $azureUserReaderPrincipal = Invoke-WithRetry `
+        -Operation { Get-AzADServicePrincipal -DisplayName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-AzureUserReader" } `
+        -OperationName "Get AzureUserReader principal" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
+    $dataFactoryPrincipal = Invoke-WithRetry `
+        -Operation { Get-AzADServicePrincipal -DisplayName $azureDataFactoryName } `
+        -OperationName "Get ADF principal" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $servicePrincipalsToBeGrantedStorageRoles = @($dataFactoryPrincipal, $azureUserReaderPrincipal)
     $dataRGName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
     $dataKeyVaultName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
@@ -125,7 +138,10 @@ function Set-ADFManagedIdentityRoles
             continue;
         }
 
-        $adfStorageAccount = Get-AzStorageAccount -ResourceGroupName $dataRGName -Name $storageAccountName
+        $adfStorageAccount = Invoke-WithRetry `
+            -Operation { Get-AzStorageAccount -ResourceGroupName $dataRGName -Name $storageAccountName } `
+            -OperationName "Get storage account '$storageAccountName'" `
+            -MaxAttempts 3 -BaseDelaySeconds 2
         $storageAccountRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
 
         foreach ($servicePrincipal in $servicePrincipalsToBeGrantedStorageRoles)
@@ -134,18 +150,15 @@ function Set-ADFManagedIdentityRoles
 
             foreach($role in $storageAccountRoles)
             {
-                if ($null -eq (Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $adfStorageAccount.Id -RoleDefinitionName $role)) {
-                    $assignment = New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $adfStorageAccount.Id -RoleDefinitionName $role;
-                    if ($assignment) {
-                        Write-Host "Added role assignment $role to $servicePrincipalName with scope $storageAccountName.";
-                    }
-                    else {
-                        Write-Host "Failed to add role assignment $role to $servicePrincipalName with scope $storageAccountName. Please double check that you have permission to perform this operation";
-                    }
-                }
-                else {
-                    Write-Host "$servicePrincipalName already has role $role with scope $storageAccountName.";
-                }
+                Invoke-WithCreateRetry `
+                    -GetExistingOperation { Get-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $adfStorageAccount.Id -RoleDefinitionName $role } `
+                    -CreateOperation {
+                        New-AzRoleAssignment -ObjectId $servicePrincipal.Id -Scope $adfStorageAccount.Id -RoleDefinitionName $role
+                        Write-Host "Added role assignment $role to $servicePrincipalName with scope $storageAccountName."
+                    } `
+                    -OperationName "Assign $role to $servicePrincipalName" `
+                    -MaxAttempts 3 -BaseDelaySeconds 2 `
+                    -ExistsMessage "Role '$role' is already assigned to '$servicePrincipalName' on storage account '$storageAccountName'. Skipping."
             }
         }
     }

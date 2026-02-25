@@ -87,6 +87,7 @@ function Set-FunctionAuthApplication {
 	}
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
 	if ($global:SkipModuleInstall -ne $true) {
 		. ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
@@ -99,8 +100,13 @@ function Set-FunctionAuthApplication {
 	}
 
 	if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
-		Connect-AzAccount -Tenant $KeyVaultTenantId
-		Set-AzContext -SubscriptionName $SubscriptionName
+		Invoke-WithRetry -Operation {
+			Connect-AzAccount -Tenant $KeyVaultTenantId
+		} -OperationName "Connect to Azure tenant for FunctionAuth key vault"
+
+		Invoke-WithRetry -Operation {
+			Set-AzContext -SubscriptionName $SubscriptionName
+		} -OperationName "Set Azure subscription context for FunctionAuth key vault"
 	}
 
 	if ($global:SkipMsGraphLogin -ne $true) {
@@ -113,14 +119,18 @@ function Set-FunctionAuthApplication {
 		)
 		
 		# Connect to Microsoft Graph with required scopes for the target tenant
-		Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+		Invoke-WithRetry -Operation {
+			Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+		} -OperationName "Connect to Microsoft Graph for FunctionAuth app setup"
 		
 		Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
 	}
 
 	#region Delete Application / Service Principal if they already exist
 	$functionAuthAppDisplayName = "$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation"
-	$functionAuthApps = Get-MgApplication -Filter "displayName eq '$functionAuthAppDisplayName'"
+	$functionAuthApps = Invoke-WithRetry -Operation {
+		Get-MgApplication -Filter "displayName eq '$functionAuthAppDisplayName'"
+	} -OperationName "Lookup FunctionAuth app registration"
 	
 	# Validate that we don't have multiple applications with the same name
 	if ($null -ne $functionAuthApps -and $functionAuthApps.Count -gt 1) {
@@ -160,10 +170,26 @@ function Set-FunctionAuthApplication {
 			-EnvironmentAbbreviation $EnvironmentAbbreviation
 
 		# Create application body for Microsoft Graph
-		$functionAuthApp = New-MgApplication -BodyParameter $appCreationParameters
+		$functionAuthApp = Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgApplication -Filter "displayName eq '$functionAuthAppDisplayName'"
+			} `
+			-CreateOperation {
+				New-MgApplication -BodyParameter $appCreationParameters
+			} `
+			-OperationName "Create Azure AD app $functionAuthAppDisplayName" `
+			-ExistsMessage "Azure AD app '$functionAuthAppDisplayName' already exists. Skipping creation."
 		$updatedAPIPermissions = $true
 		
-		New-MgServicePrincipal -AppId $functionAuthApp.AppId
+		Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-MgServicePrincipal -Filter "appId eq '$($functionAuthApp.AppId)'"
+			} `
+			-CreateOperation {
+				New-MgServicePrincipal -AppId $functionAuthApp.AppId
+			} `
+			-OperationName "Create service principal for $functionAuthAppDisplayName" `
+			-ExistsMessage "Service principal for '$functionAuthAppDisplayName' already exists. Skipping creation." | Out-Null
 
 		$permissionScopeId = ($functionAuthApp.Api.Oauth2PermissionScopes | Where-Object { $_.AdminConsentDisplayName -eq "FunctionAuth client impersonation" }).Id
 
@@ -173,7 +199,9 @@ function Set-FunctionAuthApplication {
 			-AppId $functionAuthApp.AppId `
 			-PermissionScopeId $permissionScopeId
 
-		Update-MgApplication -ApplicationId $functionAuthApp.Id -BodyParameter $updatedAppParameters
+		Invoke-WithRetry -Operation {
+			Update-MgApplication -ApplicationId $functionAuthApp.Id -BodyParameter $updatedAppParameters
+		} -OperationName "Update FunctionAuth app identifier uri"
 		Write-Host "Created Azure AD app $functionAuthAppDisplayName"
 	}
 	else {
@@ -200,7 +228,9 @@ function Set-FunctionAuthApplication {
 
 		if ($needsUpdate) {
 			Write-Host "App $functionAuthAppDisplayName needs update. Updating..."
-			Update-MgApplication -ApplicationId $functionAuthApp.Id -BodyParameter $expectedAppConfig
+			Invoke-WithRetry -Operation {
+				Update-MgApplication -ApplicationId $functionAuthApp.Id -BodyParameter $expectedAppConfig
+			} -OperationName "Update FunctionAuth app configuration"
 			$updatedAPIPermissions = $true
 			Write-Host "Finished updating Azure AD app $functionAuthAppDisplayName"
 		}
@@ -251,13 +281,16 @@ function Set-FunctionAuthKeyVaultSecrets {
 	)
 
 	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
 	. ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
 	$functionAuthAppDisplayName = "$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation"
 
 	$keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-	$keyVault = Get-AzKeyVault -VaultName $keyVaultName
+	$keyVault = Invoke-WithRetry -Operation {
+		Get-AzKeyVault -VaultName $keyVaultName
+	} -OperationName "Get prereqs key vault for FunctionAuth secrets"
 
 	if ($null -eq $keyVault) {
 		throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."

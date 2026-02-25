@@ -126,16 +126,24 @@ function Assert-RbacPermissionsForDeployment {
     
     # Get current user
     $currentUserUpn = (Get-AzContext).Account.Id
-    $currentUser = Get-AzADUser -UserPrincipalName $currentUserUpn
+    $currentUser = Invoke-WithRetry `
+        -Operation { Get-AzADUser -UserPrincipalName $currentUserUpn } `
+        -OperationName "Get current Azure AD user" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     $objectId = $currentUser.Id
 
     Write-Host "Validating permissions for user: $($currentUser.UserPrincipalName)" -ForegroundColor Yellow
     
     # Get all role assignments within the subscription
     Write-Host "Retrieving role assignments..." -NoNewline
-    $allAssignments = Get-AzRoleAssignment -ObjectId $objectId | Where-Object {
-        $_.Scope -like "$scopePrefix*"
-    }
+    $allAssignments = Invoke-WithRetry `
+        -Operation {
+            Get-AzRoleAssignment -ObjectId $objectId | Where-Object {
+                $_.Scope -like "$scopePrefix*"
+            }
+        } `
+        -OperationName "Get role assignments" `
+        -MaxAttempts 3 -BaseDelaySeconds 2
     Write-Host "Completed retrieval of role assignments!" -ForegroundColor Green
 
     if (-not $allAssignments) {
@@ -191,7 +199,10 @@ function Assert-RbacPermissionsForDeployment {
             foreach ($assignment in $allAssignments) {
                 # Scope inheritance: if assignment scope is equal to or a parent of the target scope
                 if ($targetScope -like "$($assignment.Scope)*") {
-                    $roleDef = Get-AzRoleDefinition -Id $assignment.RoleDefinitionId
+                    $roleDef = Invoke-WithRetry `
+                        -Operation { Get-AzRoleDefinition -Id $assignment.RoleDefinitionId } `
+                        -OperationName "Get role definition '$($assignment.RoleDefinitionName)'" `
+                        -MaxAttempts 3 -BaseDelaySeconds 2
 
                     if (Test-Permission -required $requiredPermission -actions $roleDef.Actions -notActions $roleDef.NotActions) {
                         $permissionFound = $true
@@ -221,7 +232,10 @@ function Assert-RbacPermissionsForDeployment {
 
             foreach ($assignment in $allAssignments) {
                 if ($targetScope -like "$($assignment.Scope)*") {
-                    $roleDef = Get-AzRoleDefinition -Id $assignment.RoleDefinitionId
+                    $roleDef = Invoke-WithRetry `
+                        -Operation { Get-AzRoleDefinition -Id $assignment.RoleDefinitionId } `
+                        -OperationName "Get role definition '$($assignment.RoleDefinitionName)'" `
+                        -MaxAttempts 3 -BaseDelaySeconds 2
 
                     if (Test-Permission -required $requiredDataAction -actions $roleDef.DataActions -notActions $roleDef.NotDataActions) {
                         $permissionFound = $true

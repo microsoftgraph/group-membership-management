@@ -36,7 +36,10 @@ function Set-AppConfigurationManagedIdentityRoles
 	)
 
 	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-	$apps = Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name
+	$apps = Invoke-WithRetry `
+		-Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name } `
+		-OperationName "Get web apps in $computeResourceGroupName" `
+		-MaxAttempts 3 -BaseDelaySeconds 2
 
 	$resourceGroupName = "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
 	if($DataResourceGroupName)
@@ -45,33 +48,33 @@ function Set-AppConfigurationManagedIdentityRoles
 	}
 
 	$appConfigName = "$SolutionAbbreviation-appConfig-$EnvironmentAbbreviation"
-	$appConfigObject = Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName;
+	$appConfigObject = Invoke-WithRetry `
+		-Operation { Get-AzAppConfigurationStore -ResourceGroupName $resourceGroupName -Name $appConfigName } `
+		-OperationName "Get App Configuration '$appConfigName'" `
+		-MaxAttempts 3 -BaseDelaySeconds 2
 
 	foreach ($appName in $apps)
 	{
 		Write-Host "Granting app service access to app configuration";
 		Write-Host "FunctionAppName: $appName"
 
-		$appServicePrincipal = Get-AzADServicePrincipal -DisplayName $appName;
+		$appServicePrincipal = Invoke-WithRetry `
+			-Operation { Get-AzADServicePrincipal -DisplayName $appName } `
+			-OperationName "Get service principal '$appName'" `
+			-MaxAttempts 3 -BaseDelaySeconds 2
 
 		# Grant the app service access to the app configuration
 		if ($appServicePrincipal)
 		{
-
-			if ($null -eq (Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader"))
-			{
-				$assignment = New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader";
-				if ($assignment) {
-					Write-Host "Added role assignment to allow $appName to read from the $appConfigName app configuration.";
-				}
-				else {
-					Write-Host "Failed to add role assignment to allow $appName to read from the $appConfigName app configuration. Please double check that you have permission to perform this operation";
-				}
-			}
-			else
-			{
-				Write-Host "$appName can already read keys from the $appConfigName app configuration.";
-			}
+			Invoke-WithCreateRetry `
+				-GetExistingOperation { Get-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader" } `
+				-CreateOperation {
+					New-AzRoleAssignment -ObjectId $appServicePrincipal.Id -Scope $appConfigObject.Id -RoleDefinitionName "App Configuration Data Reader"
+					Write-Host "Added role assignment to allow $appName to read from the $appConfigName app configuration."
+				} `
+				-OperationName "Assign App Config Reader to $appName" `
+				-MaxAttempts 3 -BaseDelaySeconds 2 `
+				-ExistsMessage "App Configuration Reader role is already assigned to '$appName'. Skipping."
 		} elseif ($null -eq $appServicePrincipal) {
 			Write-Host "App $appName was not found!"
 		}

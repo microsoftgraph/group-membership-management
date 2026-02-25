@@ -41,6 +41,9 @@ function Set-ServiceBusManagedIdentityRoles {
 		[string] $ErrorActionPreference = $Stop
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
 	Write-Host "Granting app service access to service bus queue and/or topic";
 
 	if ([string]::IsNullOrEmpty($DataResourceGroupName)) {
@@ -51,50 +54,70 @@ function Set-ServiceBusManagedIdentityRoles {
 		$ComputeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation";
 	}
 
-	$serviceBusNamespace = Get-AzServiceBusNamespace `
-		-ResourceGroupName $DataResourceGroupName `
-		-Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation";
+	$serviceBusNamespace = Invoke-WithRetry -Operation {
+		Get-AzServiceBusNamespace `
+			-ResourceGroupName $DataResourceGroupName `
+			-Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
+	} -OperationName "Get service bus namespace"
 
-	$functionApps = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName
+	$functionApps = Invoke-WithRetry -Operation {
+		Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName
+	} -OperationName "List web apps for service bus role assignment"
 
 	foreach ($functionApp in $functionApps) {
-		$functionServicePrincipal = Get-AzADServicePrincipal -DisplayName $functionApp.Name
+		$functionServicePrincipal = Invoke-WithRetry -Operation {
+			Get-AzADServicePrincipal -DisplayName $functionApp.Name
+		} -OperationName "Get function app service principal [$($functionApp.Name)]"
 
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender")) {
-			New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender";
-			Write-Host "Added role assignment to allow $($functionApp.Name) to send on the $($serviceBusNamespace.Name) namespace.";
-		}
-		else {
-			Write-Host "$($functionApp.Name) can already send messages to the $($serviceBusNamespace.Name) queue.";
-		}
+		Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender" -ErrorAction SilentlyContinue
+			} `
+			-CreateOperation {
+				New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender"
+			} `
+			-OperationName "Assign Service Bus Data Sender for $($functionApp.Name)" `
+			-ExistsMessage "Service Bus Data Sender role is already assigned to '$($functionApp.Name)'. Skipping." | Out-Null
 
-		if ($null -eq (Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver")) {
-			New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver";
-			Write-Host "Added role assignment to allow $($functionApp.Name) to receive on the $($serviceBusNamespace.Name) namespace.";
-		}
-		else {
-			Write-Host "$($functionApp.Name) can already receive messages from the $($serviceBusNamespace.Name) queue.";
-		}
+		Invoke-WithCreateRetry `
+			-GetExistingOperation {
+				Get-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver" -ErrorAction SilentlyContinue
+			} `
+			-CreateOperation {
+				New-AzRoleAssignment -ObjectId $functionServicePrincipal.Id -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver"
+			} `
+			-OperationName "Assign Service Bus Data Receiver for $($functionApp.Name)" `
+			-ExistsMessage "Service Bus Data Receiver role is already assigned to '$($functionApp.Name)'. Skipping." | Out-Null
+
+		Write-Host "$($functionApp.Name) can send/receive messages on the $($serviceBusNamespace.Name) namespace."
 	}
 
-	$webApi = Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+	$webApi = Invoke-WithRetry -Operation {
+		Get-AzWebApp -ResourceGroupName $ComputeResourceGroupName -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
+	} -OperationName "Get web api app for service bus role assignment"
 	$webApiSP = $webApi.Identity.PrincipalId
 
-	if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender")) {
-		New-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender";
-		Write-Host "Added role assignment to allow $($webApi.Name) to send on the $($serviceBusNamespace.Name) namespace.";
-	}
-	else {
-		Write-Host "$($webApi.Name) can already send messages to the $($serviceBusNamespace.Name) queue.";
-	}
+	Invoke-WithCreateRetry `
+		-GetExistingOperation {
+			Get-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender" -ErrorAction SilentlyContinue
+		} `
+		-CreateOperation {
+			New-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Sender"
+		} `
+		-OperationName "Assign Service Bus Data Sender for $($webApi.Name)" `
+		-ExistsMessage "Service Bus Data Sender role is already assigned to '$($webApi.Name)'. Skipping." | Out-Null
 
-	if ($null -eq (Get-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver")) {
-		New-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver";
-		Write-Host "Added role assignment to allow $($webApi.Name) to receive on the $($serviceBusNamespace.Name) namespace.";
-	}
-	else {
-		Write-Host "$($webApi.Name) can already receive messages from the $($serviceBusNamespace.Name) queue.";
-	}
+	Invoke-WithCreateRetry `
+		-GetExistingOperation {
+			Get-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver" -ErrorAction SilentlyContinue
+		} `
+		-CreateOperation {
+			New-AzRoleAssignment -ObjectId $webApiSP -Scope $serviceBusNamespace.Id -RoleDefinitionName "Azure Service Bus Data Receiver"
+		} `
+		-OperationName "Assign Service Bus Data Receiver for $($webApi.Name)" `
+		-ExistsMessage "Service Bus Data Receiver role is already assigned to '$($webApi.Name)'. Skipping." | Out-Null
+
+	Write-Host "$($webApi.Name) can send/receive messages on the $($serviceBusNamespace.Name) namespace."
 
 	Write-Host "Done.";
 }

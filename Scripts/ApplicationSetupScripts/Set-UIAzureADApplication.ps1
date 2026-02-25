@@ -97,6 +97,7 @@ function Set-UIAzureADApplication {
 	}
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
     if ($global:SkipModuleInstall -ne $true) {
         . ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
@@ -109,8 +110,13 @@ function Set-UIAzureADApplication {
     }
 
     if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
-        Connect-AzAccount -Tenant $KeyVaultTenantId
-		Set-AzContext -SubscriptionName $SubscriptionName
+        Invoke-WithRetry -Operation {
+            Connect-AzAccount -Tenant $KeyVaultTenantId
+        } -OperationName "Connect to Azure tenant for UI key vault"
+
+		Invoke-WithRetry -Operation {
+			Set-AzContext -SubscriptionName $SubscriptionName
+		} -OperationName "Set Azure subscription context for UI key vault"
     }
 
     if ($global:SkipMsGraphLogin -ne $true) {
@@ -123,14 +129,18 @@ function Set-UIAzureADApplication {
         )
         
         # Connect to Microsoft Graph with required scopes for the target tenant
-        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        Invoke-WithRetry -Operation {
+            Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        } -OperationName "Connect to Microsoft Graph for UI app setup"
         
         Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
     }
 
     #region Delete Application / Service Principal if they already exist
     $uiAppDisplayName = "$SolutionAbbreviation-ui-$EnvironmentAbbreviation"
-    $uiApps = Get-MgApplication -Filter "displayName eq '$uiAppDisplayName'"
+    $uiApps = Invoke-WithRetry -Operation {
+        Get-MgApplication -Filter "displayName eq '$uiAppDisplayName'"
+    } -OperationName "Lookup UI app registration"
     
     # Validate that we don't have multiple applications with the same name
     if($null -ne $uiApps -and $uiApps.Count -gt 1) {
@@ -170,17 +180,35 @@ function Set-UIAzureADApplication {
             -EnvironmentAbbreviation $EnvironmentAbbreviation
 
         # Create application body for Microsoft Graph
-        $uiApp = New-MgApplication -BodyParameter $appCreationParameters
+        $uiApp = Invoke-WithCreateRetry `
+            -GetExistingOperation {
+                Get-MgApplication -Filter "displayName eq '$uiAppDisplayName'"
+            } `
+            -CreateOperation {
+                New-MgApplication -BodyParameter $appCreationParameters
+            } `
+            -OperationName "Create Azure AD app $uiAppDisplayName" `
+            -ExistsMessage "Azure AD app '$uiAppDisplayName' already exists. Skipping creation."
         $updatedAPIPermissions = $true
         
-        New-MgServicePrincipal -AppId $uiApp.AppId
+        Invoke-WithCreateRetry `
+            -GetExistingOperation {
+                Get-MgServicePrincipal -Filter "appId eq '$($uiApp.AppId)'"
+            } `
+            -CreateOperation {
+                New-MgServicePrincipal -AppId $uiApp.AppId
+            } `
+            -OperationName "Create service principal for $uiAppDisplayName" `
+            -ExistsMessage "Service principal for '$uiAppDisplayName' already exists. Skipping creation." | Out-Null
 
         # Update with identifier URI
         $updatedAppParameters = New-UIValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -AppId $uiApp.AppId
 
-        Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $updatedAppParameters
+        Invoke-WithRetry -Operation {
+            Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $updatedAppParameters
+        } -OperationName "Update UI app identifier uri"
         Write-Host "Created Azure AD app $uiAppDisplayName"
     }
     else {
@@ -196,7 +224,9 @@ function Set-UIAzureADApplication {
 		
         if ($needsUpdate) {
             Write-Host "App $uiAppDisplayName needs update. Updating..."
-            Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $expectedAppConfig
+            Invoke-WithRetry -Operation {
+                Update-MgApplication -ApplicationId $uiApp.Id -BodyParameter $expectedAppConfig
+            } -OperationName "Update UI app configuration"
             $updatedAPIPermissions = $true
             Write-Host "Finished updating Azure AD app $uiAppDisplayName"
         }
@@ -252,6 +282,7 @@ function Set-UIKeyVaultSecrets {
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
     . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
     # These need to go into the key vault
@@ -268,15 +299,22 @@ function Set-UIKeyVaultSecrets {
             startDateTime = [System.DateTime]::Now
             endDateTime = $endDate
         }
-        $appObjectId = (Get-MgApplication -Filter "appId eq '$uiAppClientId'").Id
-        $uiAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+        $appObjectId = (Invoke-WithRetry -Operation {
+            Get-MgApplication -Filter "appId eq '$uiAppClientId'"
+        } -OperationName "Get UI app by app id for secret creation").Id
+
+        $uiAppClientSecret = (Invoke-WithRetry -Operation {
+            Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential
+        } -OperationName "Create UI app secret").SecretText
         Write-Host "Created new application secret for app $uiAppClientId"
     } else {
         Write-Host "Skipping secret creation as CreateNewSecret is set to false"
     }
 
     $keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $keyVault = Get-AzKeyVault -VaultName $keyVaultName
+    $keyVault = Invoke-WithRetry -Operation {
+        Get-AzKeyVault -VaultName $keyVaultName
+    } -OperationName "Get prereqs key vault for UI secrets"
 
     if ($null -eq $keyVault) {
         throw "The KeyVault Group ($keyVaultName) does not exist. Unable to continue."

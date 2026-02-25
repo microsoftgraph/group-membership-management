@@ -53,47 +53,8 @@ function Get-WarningAction {
     }
 }
 
-function Invoke-WithRetry {
-    param(
-        [scriptblock]$ScriptBlock,
-        [string]$Operation,
-        [int]$MaxRetries = 3,
-        [int]$DelaySeconds = 5
-    )
-
-    $attempt = 1
-    while ($attempt -le $MaxRetries) {
-        try {
-            Write-Host "    🔄 $Operation (attempt $attempt/$MaxRetries)..." -ForegroundColor Gray
-            & $ScriptBlock
-            return # Success, exit the retry loop
-        }
-        catch {
-            $errorMessage = $_.Exception.Message
-
-            if ($attempt -eq $MaxRetries) {
-                Write-Host "    ❌ $Operation failed after $MaxRetries attempts" -ForegroundColor Red
-                throw $_
-            }
-
-            # Check if it's a retryable error
-            $isRetryable = $errorMessage -match "GatewayTimeout|ServiceUnavailable|InternalServerError|TooManyRequests|Throttled" -or
-                          $errorMessage -match "timeout|temporarily unavailable|try again"
-
-            if ($isRetryable) {
-                Write-Host "    ⚠️  $Operation failed (attempt $attempt/$MaxRetries): $errorMessage" -ForegroundColor Yellow
-                Write-Host "    ⏳ Waiting $DelaySeconds seconds before retry..." -ForegroundColor Gray
-                Start-Sleep -Seconds $DelaySeconds
-                $attempt++
-                $DelaySeconds = [Math]::Min($DelaySeconds * 2, 60) # Exponential backoff, max 60 seconds
-            }
-            else {
-                Write-Host "    ❌ $Operation failed with non-retryable error: $errorMessage" -ForegroundColor Red
-                throw $_
-            }
-        }
-    }
-}
+$ScriptsDirectory = Split-Path $PSScriptRoot -Parent
+. ($ScriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
 function Get-TeamsChannelUpdaterSubscriptions {
     param(
@@ -240,9 +201,9 @@ function Remove-ServiceBusSubscriptions {
                     $subscription = Get-AzServiceBusSubscription -ResourceGroupName $ResourceGroupName -NamespaceName $NamespaceName -TopicName $topicName -SubscriptionName $subscriptionName -ErrorAction SilentlyContinue
                     if ($subscription) {
                         Write-Host "    🗑️  Removing Service Bus subscription: $subscriptionName from topic $topicName..." -ForegroundColor Yellow
-                        Invoke-WithRetry -ScriptBlock {
+                        Invoke-WithRetry -Operation {
                             Remove-AzServiceBusSubscription -ResourceGroupName $ResourceGroupName -NamespaceName $NamespaceName -TopicName $topicName -SubscriptionName $subscriptionName -ErrorAction Stop
-                        } -Operation "Remove Service Bus subscription '$subscriptionName'"
+                        } -OperationName "Remove Service Bus subscription '$subscriptionName'"
                         Write-Host "    ✅ Successfully removed Service Bus subscription" -ForegroundColor Green
                     }
                     else {
@@ -275,9 +236,9 @@ function Remove-StorageAccount {
         $storageAccount = Get-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName -ErrorAction SilentlyContinue
         if ($storageAccount) {
             Write-Host "    🗑️  Removing storage account: $StorageAccountName..." -ForegroundColor Yellow
-            Invoke-WithRetry -ScriptBlock {
+            Invoke-WithRetry -Operation {
                 Remove-AzStorageAccount -ResourceGroupName $ResourceGroupName -Name $StorageAccountName -Force -ErrorAction Stop
-            } -Operation "Remove storage account '$StorageAccountName'"
+            } -OperationName "Remove storage account '$StorageAccountName'"
             Write-Host "    ✅ Successfully removed storage account" -ForegroundColor Green
         }
         else {
@@ -347,7 +308,7 @@ function Remove-FunctionAppResources {
     }
     try {
         # Remove function app with retry
-        Invoke-WithRetry -Operation "Removing function app: $FunctionName" -ScriptBlock {
+        Invoke-WithRetry -OperationName "Removing function app: $FunctionName" -Operation {
             Remove-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName -Name $FunctionName -Force -ErrorAction Stop
         }
 
@@ -357,7 +318,7 @@ function Remove-FunctionAppResources {
             }
             else {
                 # Remove service plan with retry
-                Invoke-WithRetry -Operation "Removing service plan: $ServicePlanName" -ScriptBlock {
+                Invoke-WithRetry -OperationName "Removing service plan: $ServicePlanName" -Operation {
                     Remove-AzAppServicePlan -ResourceGroupName $ComputeResourceGroupName -Name $ServicePlanName -Force -ErrorAction Stop
                 }
             }

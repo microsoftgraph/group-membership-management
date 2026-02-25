@@ -98,6 +98,7 @@ function Set-TeamsChannelAzureADApplication {
 	}
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
     if ($global:SkipModuleInstall -ne $true) {
         . ($scriptsDirectory + '/Install-MSGraphIfNeeded.ps1')
@@ -110,8 +111,13 @@ function Set-TeamsChannelAzureADApplication {
     }
 
     if ($global:SkipAzLogin -ne $true -and $SaveToKeyVault -eq $true) {
-        Connect-AzAccount -Tenant $KeyVaultTenantId
-		Set-AzContext -SubscriptionName $SubscriptionName
+        Invoke-WithRetry -Operation {
+            Connect-AzAccount -Tenant $KeyVaultTenantId
+        } -OperationName "Connect to Azure tenant for TeamsChannel key vault"
+
+		Invoke-WithRetry -Operation {
+			Set-AzContext -SubscriptionName $SubscriptionName
+		} -OperationName "Set Azure subscription context for TeamsChannel key vault"
     }
 
     if ($global:SkipMsGraphLogin -ne $true) {
@@ -124,14 +130,18 @@ function Set-TeamsChannelAzureADApplication {
         )
         
         # Connect to Microsoft Graph with required scopes for the target tenant
-        Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        Invoke-WithRetry -Operation {
+            Connect-MgGraph -TenantId $AppTenantId -Scopes $requiredScopes
+        } -OperationName "Connect to Microsoft Graph for TeamsChannel app setup"
         
         Write-Host "Successfully connected to Microsoft Graph for tenant $AppTenantId"
     }
 
     #region Delete Application / Service Principal if they already exist
     $teamsChannelAppDisplayName = "$SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation"
-    $teamsChannelApps = Get-MgApplication -Filter "displayName eq '$teamsChannelAppDisplayName'"
+    $teamsChannelApps = Invoke-WithRetry -Operation {
+        Get-MgApplication -Filter "displayName eq '$teamsChannelAppDisplayName'"
+    } -OperationName "Lookup TeamsChannel app registration"
     
     # Validate that we don't have multiple applications with the same name
     if($null -ne $teamsChannelApps -and $teamsChannelApps.Count -gt 1) {
@@ -179,17 +189,35 @@ function Set-TeamsChannelAzureADApplication {
             -EnvironmentAbbreviation $EnvironmentAbbreviation
 
         # Create application body for Microsoft Graph
-        $teamsChannelApp = New-MgApplication -BodyParameter $appCreationParameters
+        $teamsChannelApp = Invoke-WithCreateRetry `
+            -GetExistingOperation {
+                Get-MgApplication -Filter "displayName eq '$teamsChannelAppDisplayName'"
+            } `
+            -CreateOperation {
+                New-MgApplication -BodyParameter $appCreationParameters
+            } `
+            -OperationName "Create Azure AD app $teamsChannelAppDisplayName" `
+            -ExistsMessage "Azure AD app '$teamsChannelAppDisplayName' already exists. Skipping creation."
         $updatedAPIPermissions = $true
         
-        New-MgServicePrincipal -AppId $teamsChannelApp.AppId
+        Invoke-WithCreateRetry `
+            -GetExistingOperation {
+                Get-MgServicePrincipal -Filter "appId eq '$($teamsChannelApp.AppId)'"
+            } `
+            -CreateOperation {
+                New-MgServicePrincipal -AppId $teamsChannelApp.AppId
+            } `
+            -OperationName "Create service principal for $teamsChannelAppDisplayName" `
+            -ExistsMessage "Service principal for '$teamsChannelAppDisplayName' already exists. Skipping creation." | Out-Null
 
         # Update with identifier URI
         $updatedAppParameters = New-TeamsChannelValidationConfiguration -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -AppId $teamsChannelApp.AppId
 
-        Update-MgApplication -ApplicationId $teamsChannelApp.Id -BodyParameter $updatedAppParameters
+        Invoke-WithRetry -Operation {
+            Update-MgApplication -ApplicationId $teamsChannelApp.Id -BodyParameter $updatedAppParameters
+        } -OperationName "Update TeamsChannel app identifier uri"
         Write-Host "Created Azure AD app $teamsChannelAppDisplayName"
     }
     else
@@ -206,7 +234,9 @@ function Set-TeamsChannelAzureADApplication {
 		
         if ($needsUpdate) {
             Write-Host "App $teamsChannelAppDisplayName needs update. Updating..."
-            Update-MgApplication -ApplicationId $teamsChannelApp.Id -BodyParameter $expectedAppConfig
+            Invoke-WithRetry -Operation {
+                Update-MgApplication -ApplicationId $teamsChannelApp.Id -BodyParameter $expectedAppConfig
+            } -OperationName "Update TeamsChannel app configuration"
             $updatedAPIPermissions = $true
             Write-Host "Finished updating Azure AD app $teamsChannelAppDisplayName"
         }
@@ -265,7 +295,9 @@ function New-TeamsChannelValidationConfiguration {
 	$replyUrls += "http://localhost"
 	
 	# Get Microsoft Graph service principal to retrieve current permission IDs
-	$mgGraphServicePrincipal = Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
+    $mgGraphServicePrincipal = Invoke-WithRetry -Operation {
+        Get-MgServicePrincipal -Filter "appId eq '00000003-0000-0000-c000-000000000000'"
+    } -OperationName "Get Microsoft Graph service principal for TeamsChannel config"
 	
 	$delegatedPermissions = $mgGraphServicePrincipal.Oauth2PermissionScopes `
 		| Where-Object { ($_.Value -eq "ChannelMember.ReadWrite.All") -or ($_.Value -eq "Channel.ReadBasic.All") } `
@@ -322,6 +354,7 @@ function Set-TeamsChannelAppKeyVaultSecrets {
     )
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
+    . ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
     . ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
     . ($scriptsDirectory + '/ReusableModules/Set-KeyVaultSecretWithFirewallRetry.ps1')
 
@@ -339,15 +372,22 @@ function Set-TeamsChannelAppKeyVaultSecrets {
             startDateTime = [System.DateTime]::Now
             endDateTime = $endDate
         }
-        $appObjectId = (Get-MgApplication -Filter "appId eq '$teamsChannelAppClientId'").Id
-        $teamsChannelAppClientSecret = (Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential).SecretText
+        $appObjectId = (Invoke-WithRetry -Operation {
+            Get-MgApplication -Filter "appId eq '$teamsChannelAppClientId'"
+        } -OperationName "Get TeamsChannel app by app id for secret creation").Id
+
+        $teamsChannelAppClientSecret = (Invoke-WithRetry -Operation {
+            Add-MgApplicationPassword -ApplicationId $appObjectId -PasswordCredential $passwordCredential
+        } -OperationName "Create TeamsChannel app secret").SecretText
         Write-Host "Created new application secret for app $teamsChannelAppClientId"
     } else {
         Write-Host "Skipping secret creation as CreateNewSecret is set to false"
     }
 
     $keyVaultName = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $keyVault = Get-AzKeyVault -VaultName $keyVaultName
+    $keyVault = Invoke-WithRetry -Operation {
+        Get-AzKeyVault -VaultName $keyVaultName
+    } -OperationName "Get prereqs key vault for TeamsChannel secrets"
 
     if($null -eq $keyVault)
     {
