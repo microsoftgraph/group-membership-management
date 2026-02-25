@@ -320,6 +320,16 @@ export const strings: IStrings = {
       submissionRejected: 'Solicitud rechazada',
       businessJustification: 'Justificación del cambio',
       groupSettings: 'Configuración del grupo',
+      RunHistoryStatus: {
+        idle: 'Completado',
+        failed: 'Fallido',
+        thresholdExceeded: 'Umbral Excedido',
+        membershipDataNotFound: 'No se Encontraron Usuarios en la Fuente',
+        destinationGroupNotFound: 'Grupo de Destino No Encontrado',
+        notOwnerOfDestinationGroup: 'Se Requiere Permiso de Propietario del Grupo',
+        securityGroupNotFound: 'Grupo de Origen No Encontrado',
+        guestUsersNotSupported: 'Usuarios Invitados No Compatibles',
+      }
     },
     notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
     openInAzure: 'Abrir en Azure',

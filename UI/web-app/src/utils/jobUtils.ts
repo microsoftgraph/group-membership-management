@@ -3,7 +3,7 @@
 
 import { format } from '@fluentui/react/lib/Utilities';
 import { Job } from '../models/Job';
-import { ActionRequired, SyncStatus } from '../models/Status';
+import { ActionRequired, RunHistoryStatus, SyncStatus } from '../models/Status';
 import { formatLastRunTime, formatNextRunTime } from './dateUtils';
 import { strings } from '../services/localization/i18n/locales/en/translations';
 
@@ -77,4 +77,37 @@ export function debounce<T extends (...args: any[]) => void>(func: T, wait: numb
     clearTimeout(timeout);
     timeout = setTimeout(() => func.apply(this, args), wait);
   };
+};
+
+// Get the display text for a sync job history status
+export const getStatusDisplayText = (status: string): string => {
+  const statusStrings = strings.JobDetails.Panel.RunHistoryStatus;
+  switch (status) {
+    case RunHistoryStatus.Idle:
+      return statusStrings.idle;
+    case RunHistoryStatus.Error:
+    case RunHistoryStatus.ErroredDueToStuckInProgress:
+    case RunHistoryStatus.QueryNotValid:
+    case RunHistoryStatus.DestinationQueryNotValid:
+    case RunHistoryStatus.FileNotFound:
+    case RunHistoryStatus.FilePathNotValid:
+    case RunHistoryStatus.SchemaError:
+    case RunHistoryStatus.TransientError:
+      return statusStrings.failed;
+    case RunHistoryStatus.DestinationGroupNotFound:
+      return statusStrings.destinationGroupNotFound;
+    case RunHistoryStatus.SecurityGroupNotFound:
+      return statusStrings.securityGroupNotFound;
+    case RunHistoryStatus.MembershipDataNotFound:
+      return statusStrings.membershipDataNotFound;
+    case RunHistoryStatus.NotOwnerOfDestinationGroup:
+      return statusStrings.notOwnerOfDestinationGroup;
+    case RunHistoryStatus.GuestUsersCannotBeAddedToUnifiedGroup:
+      return statusStrings.guestUsersNotSupported;
+    case RunHistoryStatus.ThresholdExceeded:
+      return statusStrings.thresholdExceeded;
+    default:
+      // Return unknown statuses as-is for runtime safety
+      return status;
+  }
 };

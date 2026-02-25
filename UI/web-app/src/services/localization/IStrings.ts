@@ -313,6 +313,16 @@ export type IStrings = {
       submissionRejected: string;
       businessJustification: string;
       groupSettings: string;
+      RunHistoryStatus: {
+        idle: string;
+        failed: string;
+        thresholdExceeded: string;
+        membershipDataNotFound: string;
+        destinationGroupNotFound: string;
+        notOwnerOfDestinationGroup: string;
+        securityGroupNotFound: string;
+        guestUsersNotSupported: string;
+      };
     };
     notFound: string;
     openInAzure: string;

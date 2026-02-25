@@ -28,3 +28,21 @@ export enum ActionRequired {
   PendingConfiguration = 'Pending Configuration',
   SubmissionRejected = 'Submission Rejected',
 };
+
+export enum RunHistoryStatus {
+  Idle = 'Idle',
+  Error = 'Error',
+  ErroredDueToStuckInProgress = 'ErroredDueToStuckInProgress',
+  QueryNotValid = 'QueryNotValid',
+  DestinationQueryNotValid = 'DestinationQueryNotValid',
+  FileNotFound = 'FileNotFound',
+  FilePathNotValid = 'FilePathNotValid',
+  SchemaError = 'SchemaError',
+  TransientError = 'TransientError',
+  DestinationGroupNotFound = 'DestinationGroupNotFound',
+  SecurityGroupNotFound = 'SecurityGroupNotFound',
+  MembershipDataNotFound = 'MembershipDataNotFound',
+  NotOwnerOfDestinationGroup = 'NotOwnerOfDestinationGroup',
+  GuestUsersCannotBeAddedToUnifiedGroup = 'GuestUsersCannotBeAddedToUnifiedGroup',
+  ThresholdExceeded = 'ThresholdExceeded'
+};

@@ -317,7 +317,17 @@ export const strings: IStrings = {
       submissionApproved: 'Submission Approved',
       submissionRejected: 'Submission Rejected',
       businessJustification: 'Business Justification',
-      groupSettings: 'Group Settings'
+      groupSettings: 'Group Settings',
+      RunHistoryStatus: {
+        idle: 'Completed',
+        failed: 'Failed',
+        thresholdExceeded: 'Threshold Exceeded',
+        membershipDataNotFound: 'No Users Found In Source',
+        destinationGroupNotFound: 'Destination Group Not Found',
+        notOwnerOfDestinationGroup: 'Group Owner Permission Required',
+        securityGroupNotFound: 'Source Group Not Found',
+        guestUsersNotSupported: 'Guest Users Not Supported',
+      }
     },
     openInAzure: 'Open in Azure',
     openInTeams: 'Open in Teams',

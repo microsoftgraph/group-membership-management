@@ -30,6 +30,7 @@ import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
+import { getStatusDisplayText } from '../../utils/jobUtils';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -232,9 +233,12 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             key: 'status',
             name: strings.JobDetails.Panel.statusColumnLabel,
             fieldName: 'status',
-            minWidth: 80,
-            maxWidth: 120,
+            minWidth: 200,
+            maxWidth: 300,
             isResizable: true,
+            onRender: (item: SyncJobHistory) => {
+                return <span>{getStatusDisplayText(item.status)}</span>;
+            }
         },
         {
             key: 'beforeSyncUserCount',
