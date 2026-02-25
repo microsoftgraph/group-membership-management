@@ -113,6 +113,12 @@ resource primaryDatabase 'Microsoft.Sql/servers/databases@2021-02-01-preview' = 
     family: sqlSkuFamily
     capacity: sqlSkuCapacity
   }
+  dependsOn: [
+    sqlServer::aadAuthentication
+    sqlServer::sqlServerFirewall
+    sqlServer::masterDataBase
+    sqlServer::auditingSettings
+  ]
 }
 
 resource longTermBackup 'Microsoft.Sql/servers/databases/backupLongTermRetentionPolicies@2022-05-01-preview' = {
@@ -206,6 +212,10 @@ resource readReplicaDb 'Microsoft.Sql/servers/databases@2021-11-01-preview' = {
     isLedgerOn: false
     sourceDatabaseId: primaryDatabase.id
   }
+  dependsOn: [
+    replicaSqlServer::aadAuthentication
+    replicaSqlServer::sqlServerFirewall
+  ]
 }
 
 // conditional resources
