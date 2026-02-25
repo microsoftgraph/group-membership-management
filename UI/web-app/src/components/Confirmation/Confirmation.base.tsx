@@ -327,6 +327,7 @@ export const ConfirmationBase: React.FunctionComponent<IConfirmationProps> = (pr
               <Stack enableScopedSelectors tokens={{ childrenGap: 30 }}>
                 <Stack.Item align="stretch" grow>
                   <TextField
+                    label={strings.ManageMembership.labels.query}
                     value={displayQuery}
                     readOnly
                     multiline
