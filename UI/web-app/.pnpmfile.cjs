@@ -33,6 +33,23 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('node-forge', ['^1'], '1.3.2'),
     new PackageUpgradeStrategy('jsonpath', ['1.1.1', '^1.1.1', '~1.1.1'], '1.2.1'),
     new PackageUpgradeStrategy('axios', ['1.8.2', '1.13.2', '^1.13.2', '~1.13.2'], '1.13.5'),
+    new PackageUpgradeStrategy('minimatch', [
+      '3.1.2', '^3.1.2', '~3.1.2',
+      '3.1.0', '^3.1.0', '~3.1.0',
+      '3.0.0', '^3.0.0', '~3.0.0',
+      '3', '^3', '~3'
+    ], '3.1.3'),
+    new PackageUpgradeStrategy('minimatch', [
+      '5.1.6', '^5.1.6', '~5.1.6',
+      '5.1.0', '^5.1.0', '~5.1.0',
+      '5.0.0', '^5.0.0', '~5.0.0',
+      '5', '^5', '~5'
+    ], '5.1.7'),
+    new PackageUpgradeStrategy('minimatch', [
+      '9.0.5', '^9.0.5', '~9.0.5',
+      '9.0.0', '^9.0.0', '~9.0.0',
+      '9', '^9', '~9'
+    ], '9.0.6'),
   ];
 
   const logger = new Logger(context);
