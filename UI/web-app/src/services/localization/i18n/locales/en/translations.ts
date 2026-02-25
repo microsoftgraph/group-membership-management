@@ -322,6 +322,7 @@ export const strings: IStrings = {
       update: 'Sync Update Request',
       submissionApproved: 'Submission Approved',
       submissionRejected: 'Submission Rejected',
+      ignoreThresholdOnce: 'Ignore Threshold Once',
       businessJustification: 'Business Justification',
       groupSettings: 'Group Settings',
       RunHistoryStatus: {

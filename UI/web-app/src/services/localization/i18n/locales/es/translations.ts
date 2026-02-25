@@ -324,6 +324,7 @@ export const strings: IStrings = {
       update: 'Solicitud de Actualización de sincronización',
       submissionApproved: 'Solicitud aprobada',
       submissionRejected: 'Solicitud rechazada',
+      ignoreThresholdOnce: 'Ignorar umbral una vez',
       businessJustification: 'Justificación del cambio',
       groupSettings: 'Configuración del grupo',
       RunHistoryStatus: {

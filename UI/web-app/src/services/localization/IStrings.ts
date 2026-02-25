@@ -317,6 +317,7 @@ export type IStrings = {
       update: string;
       submissionApproved: string;
       submissionRejected: string;
+      ignoreThresholdOnce: string;
       businessJustification: string;
       groupSettings: string;
       RunHistoryStatus: {

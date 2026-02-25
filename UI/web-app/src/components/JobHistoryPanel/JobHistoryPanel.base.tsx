@@ -57,6 +57,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             case SyncJobChangeReason.Onboarding:
             case SyncJobChangeReason.Update:
             case SyncJobChangeReason.StatusUpdate:
+            case SyncJobChangeReason.IgnoreThresholdOnce:
                 return classNames.changeTypeUpdate;
             case SyncJobChangeReason.GroupSettings:
                 return classNames.changeTypeGroupSettings;
@@ -81,6 +82,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 return strings.JobDetails.Panel.submissionRejected;
             case SyncJobChangeReason.GroupSettings:
                 return strings.JobDetails.Panel.groupSettings;
+            case SyncJobChangeReason.IgnoreThresholdOnce:
+                return strings.JobDetails.Panel.ignoreThresholdOnce;
             default:
                 return changeReason;
         }

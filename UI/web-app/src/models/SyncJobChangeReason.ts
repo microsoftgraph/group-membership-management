@@ -8,5 +8,6 @@ export const enum SyncJobChangeReason {
     Update = 'Update',
     SubmissionApproved = 'SubmissionApproved',
     SubmissionRejected = 'SubmissionRejected',
+    IgnoreThresholdOnce = 'IgnoreThresholdOnce',
     GroupSettings = 'GroupSettings'
-};
+}
