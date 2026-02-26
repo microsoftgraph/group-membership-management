@@ -155,7 +155,7 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		}
 	}
 
-	$webApiRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor")
+	$webApiRoles = @("Storage Queue Data Contributor","Storage Table Data Contributor","Storage Blob Data Contributor")
 	$webApi = Get-AzWebApp -ResourceGroupName "$SolutionAbbreviation-compute-$EnvironmentAbbreviation" -Name "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-webapi"
 	$webApiSP = $webApi.Identity.PrincipalId
 	$dataRG = Get-AzResourceGroup -Name "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
