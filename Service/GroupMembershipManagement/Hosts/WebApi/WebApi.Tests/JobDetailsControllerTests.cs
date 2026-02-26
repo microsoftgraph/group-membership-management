@@ -1664,6 +1664,80 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.Idle.ToString(), history[0].Status);
         }
 
+        [TestMethod]
+        public async Task GetSyncJobHistory_ExcludesInProgressRecords()
+        {
+            // Arrange
+            var userId = Guid.NewGuid().ToString();
+            var completedHistories = new List<SyncJobHistory>
+            {
+                new SyncJobHistory
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id,
+                    RunId = Guid.NewGuid(),
+                    StartTime = DateTime.UtcNow.AddMinutes(-30),
+                    EndTime = DateTime.UtcNow.AddMinutes(-15),
+                    Duration = 900,
+                    Status = SyncStatus.Idle.ToString(),
+                    UsersAdded = 5,
+                    UsersRemoved = 2,
+                    UpdatedByFunction = "GraphUpdater",
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-30),
+                    UpdatedAt = DateTime.UtcNow.AddMinutes(-15)
+                },
+                new SyncJobHistory
+                {
+                    Id = Guid.NewGuid(),
+                    SyncJobId = _jobEntity.Id,
+                    RunId = Guid.NewGuid(),
+                    StartTime = DateTime.UtcNow.AddHours(-2),
+                    EndTime = DateTime.UtcNow.AddHours(-1),
+                    Duration = 3600,
+                    Status = SyncStatus.Error.ToString(),
+                    UsersAdded = 0,
+                    UsersRemoved = 0,
+                    UpdatedByFunction = "GraphUpdater",
+                    CreatedAt = DateTime.UtcNow.AddHours(-2),
+                    UpdatedAt = DateTime.UtcNow.AddHours(-1)
+                }
+            };
+
+            _syncJobHistoryRepository.Setup(x => x.GetBySyncJobIdAsync(_jobEntity.Id, It.IsAny<int>(), It.IsAny<int>()))
+                                     .ReturnsAsync(completedHistories);
+
+            var context = CreateHttpContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                    new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", userId)
+                });
+
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            // Act
+            var response = await _jobDetailsController.GetSyncJobHistoryAsync(_jobEntity.Id);
+            var result = response.Result as OkObjectResult;
+
+            // Assert
+            Assert.IsNotNull(response);
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+
+            var history = result.Value as List<SyncJobHistory>;
+            Assert.IsNotNull(history);
+            Assert.AreEqual(2, history.Count);
+            
+            // Verify no InProgress status in returned records
+            Assert.IsFalse(history.Any(h => h.Status == SyncStatus.InProgress.ToString()), 
+                "History should not contain any InProgress records");
+            
+            // Verify only Idle and Error statuses are returned
+            Assert.IsTrue(history.All(h => h.Status == SyncStatus.Idle.ToString() || 
+                                          h.Status == SyncStatus.Error.ToString()),
+                "History should only contain Idle and Error sync records");
+        }
+
         private ControllerContext CreateControllerContext(HttpContext httpContext)
         {
             return new ControllerContext { HttpContext = httpContext };

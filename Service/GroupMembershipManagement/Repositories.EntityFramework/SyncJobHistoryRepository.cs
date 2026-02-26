@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.EntityFrameworkCore;
+using Models;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
 using Repositories.EntityFramework.Contexts;
@@ -29,8 +30,9 @@ namespace Repositories.EntityFramework
 
         public async Task<List<SyncJobHistory>> GetBySyncJobIdAsync(Guid syncJobId, int pageSize = 50, int pageNumber = 1)
         {
+            // Exclude InProgress records - UI should only show completed sync results
             return await _readContext.SyncJobHistory
-                .Where(h => h.SyncJobId == syncJobId)
+                .Where(h => h.SyncJobId == syncJobId && h.Status != SyncStatus.InProgress.ToString())
                 .OrderByDescending(h => h.UpdatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
