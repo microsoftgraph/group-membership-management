@@ -193,7 +193,6 @@ namespace Services
                     Message = $"Starting job."
                 });
 
-                job.LastRunTime = now;
                 job.LastSuccessfulStartTime = now;
             }
 
