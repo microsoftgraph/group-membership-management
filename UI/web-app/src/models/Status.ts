@@ -19,13 +19,13 @@ export enum SyncStatus {
 export enum ActionRequired {
   ThresholdExceeded = 'Threshold Exceeded',
   Paused = 'Paused',
-  DeveloperPaused = 'Developer Paused',
-  MembershipDataNotFound = 'No users in the source',
+  DeveloperPaused = 'System Paused',
+  MembershipDataNotFound = 'No Users Found In Source',
   DestinationGroupNotFound = 'Destination Group Not Found',
-  NotOwnerOfDestinationGroup = 'Not Owner Of Destination Group',
-  SecurityGroupNotFound = 'Security Group Not Found',
+  NotOwnerOfDestinationGroup = 'Group Owner Permission Required',
+  SecurityGroupNotFound = 'Source Group Not Found',
   PendingReview = 'Pending Review',
-  PendingConfiguration = 'Pending Configuration',
+  PendingConfiguration = 'System Configuration in Progress',
   SubmissionRejected = 'Submission Rejected',
 };
 
