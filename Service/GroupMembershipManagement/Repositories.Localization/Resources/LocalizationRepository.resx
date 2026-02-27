@@ -1275,7 +1275,7 @@ Nested groups detected:
 **What you need to do**
 
 To continue using GMM to manage this group:
-1. **Remove the nested groups** listed above from {1} via Entra ID
+1. **Remove the nested groups** listed above from {1} via [Entra ID](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{0})
 2. Go to the **GMM UI** and **re-enable membership sync**
 
 Once the nested groups are removed and group sync re-enabled, GMM will resume managing membership based on your configured rules.
