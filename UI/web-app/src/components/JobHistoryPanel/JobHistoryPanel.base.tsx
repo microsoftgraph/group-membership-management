@@ -26,7 +26,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useState } from 'react';
 import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges } from '../../store/jobDetails.api';
-import { selectSelectedJobChanges } from '../../store/jobs.slice';
+import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
@@ -48,6 +48,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const strings = useStrings();
     const theme = useTheme();
     const dispatch = useDispatch<AppDispatch>();
+    const selectedJob = useSelector(selectSelectedJobDetails);
 
     const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
 
@@ -63,7 +64,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setDownloadError(null);
         setDownloadingRunIds(prev => new Set(prev).add(runId));
         try {
-            await dispatch(downloadMembershipChanges({ syncJobId: jobId, runId })).unwrap();
+            await dispatch(downloadMembershipChanges({ syncJobId: jobId, runId, targetGroupId: selectedJob?.targetGroupId ?? '' })).unwrap();
         } catch {
             setDownloadError(strings.JobDetails.Panel.downloadError);
         } finally {

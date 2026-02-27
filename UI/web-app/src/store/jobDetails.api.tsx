@@ -272,9 +272,9 @@ export const fetchSyncJobHistory = createAsyncThunk<
 
 export const downloadMembershipChanges = createAsyncThunk<
   void,
-  { syncJobId: string; runId: string },
+  { syncJobId: string; runId: string; targetGroupId: string },
   ThunkConfig
->('jobs/downloadMembershipChanges', async ({ syncJobId, runId }, { extra }) => {
+>('jobs/downloadMembershipChanges', async ({ syncJobId, runId, targetGroupId }, { extra }) => {
   const { authenticationService } = extra.services;
   const token = await authenticationService.getTokenAsync(TokenType.GMM);
   const headers = new Headers({
@@ -295,7 +295,7 @@ export const downloadMembershipChanges = createAsyncThunk<
   try {
     const link = document.createElement('a');
     link.href = url;
-    link.download = `membership_changes_${runId}.zip`;
+    link.download = `membership_changes_${targetGroupId}_${runId}.zip`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

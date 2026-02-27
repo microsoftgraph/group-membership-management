@@ -62,7 +62,7 @@ namespace WebApi.Tests
             // Assert
             Assert.AreEqual(HttpStatusCode.OK, response.StatusCode);
             Assert.IsNotNull(response.FileContent);
-            Assert.AreEqual($"membership_changes_{_runId}.zip", response.FileName);
+            Assert.AreEqual($"membership_changes_{_targetGroupId}_{_runId}.zip", response.FileName);
             Assert.IsTrue(response.FileContent!.Length > 0);
 
             var extractedJson = ExtractJsonFromZip(response.FileContent);

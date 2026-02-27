@@ -58,10 +58,10 @@ namespace Services
 
                 var membershipJson = TryDecompress(fileContent.Content);
                 var jsonBytes = System.Text.Encoding.UTF8.GetBytes(membershipJson);
-                var zipBytes = CreateZipArchive(jsonBytes, request.RunId);
+                var zipBytes = CreateZipArchive(jsonBytes, groupId, request.RunId);
 
                 response.FileContent = zipBytes;
-                response.FileName = $"membership_changes_{request.RunId}.zip";
+                response.FileName = $"membership_changes_{groupId}_{request.RunId}.zip";
                 response.StatusCode = HttpStatusCode.OK;
             }
             catch (Exception ex)
@@ -88,12 +88,12 @@ namespace Services
             }
         }
 
-        private static byte[] CreateZipArchive(byte[] jsonBytes, Guid runId)
+        private static byte[] CreateZipArchive(byte[] jsonBytes, string groupId, Guid runId)
         {
             using var memoryStream = new MemoryStream();
             using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
             {
-                var jsonEntry = archive.CreateEntry($"membership_changes_{runId}.json", CompressionLevel.Optimal);
+                var jsonEntry = archive.CreateEntry($"membership_changes_{groupId}_{runId}.json", CompressionLevel.Optimal);
                 using (var entryStream = jsonEntry.Open())
                 {
                     entryStream.Write(jsonBytes, 0, jsonBytes.Length);
