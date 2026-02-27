@@ -73,7 +73,7 @@ namespace Services
 
             if (columns.Count == 0)
             {
-                var message = "Unable to retrieve SQL membership attributes. The ADF HR data table does not exist or has no columns.";
+                var message = $"Unable to retrieve SQL membership attributes. The ADF HR data table '{tableName}' does not exist or has no columns.";
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
                 throw new InvalidOperationException(message);
             }
