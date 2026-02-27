@@ -352,6 +352,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 120,
             isResizable: true,
             onRender: (item: SyncJobHistory) => {
+                const hasChanges = (item.usersAdded ?? 0) > 0 || (item.usersRemoved ?? 0) > 0;
+                if (!hasChanges) return null;
                 return (
                     <Link
                         onClick={() => handleDownload(item.runId)}
