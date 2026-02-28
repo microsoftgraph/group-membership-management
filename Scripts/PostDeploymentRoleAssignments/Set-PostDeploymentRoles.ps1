@@ -18,6 +18,7 @@ Parameter description
 .EXAMPLE
 Set-PostDeploymentRoles -SolutionAbbreviation "<solutionAbbreviation>" `
                         -EnvironmentAbbreviation "<environmentAbbreviation>" `
+                        -UamiTenantId "<TenantId>" `
 						-Verbose
 #>
 
