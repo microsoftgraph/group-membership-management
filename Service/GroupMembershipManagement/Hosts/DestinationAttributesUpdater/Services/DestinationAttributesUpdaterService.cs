@@ -50,11 +50,6 @@ namespace Services
                 if (destinationType == "GroupMembership")
                 {
                     var group = job.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(job.Id);
-                    if (group == null)
-                    {
-                        continue;
-                    }
-                    
                     destination = new DestinationObject
                     {
                         Type = job.MembershipType.ToString(),
@@ -65,11 +60,6 @@ namespace Services
                 else if (destinationType == "TeamsChannelMembership")
                 {
                     var channel = job.Channel ?? await _databaseChannelsRepository.GetChannelUsingSyncJobIdAsync(job.Id);
-                    if (channel == null)
-                    {
-                        continue;
-                    }
-                    
                     destination = new DestinationObject
                     {
                         Type = job.MembershipType.ToString(),
@@ -97,11 +87,7 @@ namespace Services
         {
             
             var destinationAttributesList = new List<DestinationAttributes>();
-            
-            // Filter out null or empty destination strings before attempting to deserialize
-            var validDestinations = destinations.Where(d => !string.IsNullOrWhiteSpace(d.Destination)).ToList();
-            
-            List<(DestinationObject? Destination, Guid JobId)> destinationObjectsMap = validDestinations
+            List<(DestinationObject? Destination, Guid JobId)> destinationObjectsMap = destinations
                 .Select(d => (JsonSerializer.Deserialize<DestinationObject>(d.Destination, _destinationObjectSerializerOptions), d.JobId))
                 .ToList();
             

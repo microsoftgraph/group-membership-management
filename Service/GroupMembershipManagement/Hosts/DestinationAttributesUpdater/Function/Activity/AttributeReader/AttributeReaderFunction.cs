@@ -29,6 +29,8 @@ namespace Hosts.DestinationAttributesUpdater
 
             var destinationAttributes = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(request.Destinations, request.DestinationType);
 
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeReaderFunction)} retrieved {destinationAttributes?.Count ?? 0} destination attributes for type {request.DestinationType}" }, VerbosityLevel.DEBUG);
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
 
             return destinationAttributes;

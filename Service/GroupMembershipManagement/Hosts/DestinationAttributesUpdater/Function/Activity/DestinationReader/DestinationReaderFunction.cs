@@ -29,6 +29,8 @@ namespace Hosts.DestinationAttributesUpdater
 
             var destinations = await _destinationAttributeUpdater.GetDestinationsAsync(destinationType);
 
+            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationReaderFunction)} retrieved {destinations?.Count ?? 0} destinations for type {destinationType}"}, VerbosityLevel.DEBUG);
+
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationReaderFunction)} function completed"}, VerbosityLevel.DEBUG);
             
             return destinations;
