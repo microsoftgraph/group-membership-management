@@ -28,6 +28,9 @@ import {
       },
       pagingBar: {
         visibility: showPagingBar ? 'visible' : 'hidden'
+      },
+      themeToggle: {
+        padding: '20px 36px',
       }
     };
   };
