@@ -102,6 +102,10 @@ export const strings: IStrings = {
       settings: 'Settings',
       reviewDisclaimer: 'Review disclaimer',
     },
+    AppFooter: {
+      switchToLightMode: 'Switch to light mode',
+      switchToDarkMode: 'Switch to dark mode',
+    },
     Banner: {
       bannerMessageStart: "Need help? ",
       clickHere: "Click here",

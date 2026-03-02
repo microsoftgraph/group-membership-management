@@ -99,6 +99,10 @@ export type IStrings = {
       settings: string;
       reviewDisclaimer: string;
     },
+    AppFooter: {
+      switchToLightMode: string;
+      switchToDarkMode: string;
+    },
     Banner: {
       bannerMessageStart: string;
       clickHere: string;

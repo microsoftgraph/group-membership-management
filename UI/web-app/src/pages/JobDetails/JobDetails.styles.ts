@@ -5,9 +5,15 @@ import {
     type IJobDetailsStyleProps,
     type IJobDetailsStyles,
 } from './JobDetails.types';
+import { NeutralColors } from '@fluentui/react';
 
 export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
     const { className, theme } = props;
+    const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
+    const statusTextColor = theme.semanticColors.bodyText;
+    const enabledTextColor = isDarkMode ? NeutralColors.white : statusTextColor;
+    const enabledBackgroundColor = isDarkMode ? theme.palette.greenDark : theme.semanticColors.successBackground;
+    const disabledBackgroundColor = theme.semanticColors.disabledBackground;
 
     return {
         root: [{
@@ -46,24 +52,26 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
             paddingRight: 10
         },
         jobEnabled: {
-            color: theme.palette.black,
-            backgroundColor: theme.semanticColors.successBackground,
+            color: enabledTextColor,
+            backgroundColor: enabledBackgroundColor,
             borderRadius: 50,
             textAlign: 'center',
             height: 20,
             paddingLeft: 5,
             paddingRight: 5,
-            marginLeft: 15
+            marginLeft: 15,
+            fontWeight: 600
         },
         jobDisabled: {
-            color: theme.palette.black,
-            backgroundColor: theme.palette.themeLighterAlt,
+            color: statusTextColor,
+            backgroundColor: disabledBackgroundColor,
             borderRadius: 50,
             textAlign: 'center',
             height: 20,
             paddingLeft: 5,
             paddingRight: 5,
-            marginLeft: 15
+            marginLeft: 15,
+            fontWeight: 600
         },
         membershipStatusContainer: {
             display: "flex",

@@ -13,6 +13,7 @@ import {
     footer: IStyle;
     privacyPolicy: IStyle;
     pagingBar: IStyle;
+    rightControls: IStyle;
     themeToggle: IStyle;
   }
 

@@ -102,6 +102,10 @@ export const strings: IStrings = {
       settings: 'Configuración',
       reviewDisclaimer: 'Revisar aviso'
     },
+    AppFooter: {
+      switchToLightMode: 'Cambiar al modo claro',
+      switchToDarkMode: 'Cambiar al modo oscuro',
+    },
     Banner:{
       bannerMessageStart:
       '¿Necesitas ayuda? Haz click aquí para aprender más sobre como Membership Management funciona en tu organización.',

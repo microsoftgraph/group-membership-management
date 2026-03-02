@@ -5,33 +5,41 @@ import {
   type IJobsListStyleProps,
   type IJobsListStyles,
 } from './JobsList.types';
+import { NeutralColors } from '@fluentui/react';
 
 export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
   const { className, theme } = props;
+  const isDarkMode = theme.palette.white.toLowerCase() === NeutralColors.gray220;
+  const statusTextColor = theme.semanticColors.bodyText;
+  const enabledTextColor = isDarkMode ? NeutralColors.white : statusTextColor;
+  const enabledBackgroundColor = isDarkMode ? theme.palette.greenDark : theme.semanticColors.successBackground;
+  const disabledBackgroundColor = theme.semanticColors.disabledBackground;
 
   return {
     root: [{
       margin: '0px 36px 12px 36px'
     }, className],
     enabled: {
-      color: theme.palette.black,
-      backgroundColor: theme.semanticColors.successBackground,
+      color: enabledTextColor,
+      backgroundColor: enabledBackgroundColor,
       borderRadius: 50,
       textAlign: 'center',
       height: 20,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      fontWeight: 600
     },
     disabled: {
-      color: theme.palette.black,
-      backgroundColor: theme.palette.themeLighterAlt,
+      color: statusTextColor,
+      backgroundColor: disabledBackgroundColor,
       borderRadius: 50,
       textAlign: 'center',
       height: 20,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      fontWeight: 600
     },
     actionRequiredIcon: {
       color: theme.semanticColors.errorIcon,
@@ -101,9 +109,12 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
       verticalAlign: 'middle'
     },
     chooseFileButton: {
-      color: "#0078d4",
+      color: theme.semanticColors.link,
       cursor: "pointer",
-      textDecoration: "underline"
+      textDecoration: "underline",
+      ':hover': {
+        color: theme.semanticColors.linkHovered,
+      }
     },
     jobsHeader: {
       display: 'flex',
