@@ -9,6 +9,7 @@ module.exports = {
 function readPackage(packageJson, context) {
 
   const dependencyChanges = [
+    new PackageUpgradeStrategy('serialize-javascript', ['4.0.0', '^4.0.0', '~4.0.0', '6.0.2', '^6.0.2', '~6.0.2', '6.0.1', '^6.0.1', '~6.0.1', '6.0.0', '^6.0.0', '~6.0.0'], '7.0.3'),
     new PackageUpgradeStrategy('cookie', ['0.4.2', '^0.4.2', '~0.4.2'], '0.7.2'),
     new PackageUpgradeStrategy('js-yaml', ['3.14.1', '^3.14.1', '~3.14.1'], '4.1.1'),
     new PackageUpgradeStrategy('js-yaml', ['4.1.0', '^4.1.0', '~4.1.0'], '4.1.1'),
@@ -25,7 +26,7 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('semver', ['>=7.0.0 <7.5.2', '<5.7.2'], '7.5.2'),
     new PackageUpgradeStrategy('body-parser', ['<1.20.3'], '1.20.3'),
     new PackageUpgradeStrategy('path-to-regexp', ['<0.1.10'], '0.1.10'),
-    new PackageUpgradeStrategy('rollup', ['<2.79.2'], '2.79.2'),
+    new PackageUpgradeStrategy('rollup', ['<4.28.1'], '4.28.1'),
     new PackageUpgradeStrategy('http-proxy-middleware', ['<2.0.7'], '2.0.7'),
     new PackageUpgradeStrategy('form-data', ['<4.0.2'], '4.0.4'),
     new PackageUpgradeStrategy('glob', ['^10.3.10'], '10.5.0'),
@@ -37,19 +38,26 @@ function readPackage(packageJson, context) {
       '3.1.2', '^3.1.2', '~3.1.2',
       '3.1.0', '^3.1.0', '~3.1.0',
       '3.0.0', '^3.0.0', '~3.0.0',
-      '3', '^3', '~3'
-    ], '3.1.3'),
+      '3', '^3', '~3',
+      '3.1.3', '^3.1.3', '~3.1.3',
+      '3.1.4', '^3.1.4', '~3.1.4'
+    ], '3.1.5'),
     new PackageUpgradeStrategy('minimatch', [
       '5.1.6', '^5.1.6', '~5.1.6',
       '5.1.0', '^5.1.0', '~5.1.0',
       '5.0.0', '^5.0.0', '~5.0.0',
-      '5', '^5', '~5'
-    ], '5.1.7'),
+      '5', '^5', '~5',
+      '5.1.7', '^5.1.7', '~5.1.7',
+      '5.1.8', '^5.1.8', '~5.1.8'
+    ], '5.1.9'),
     new PackageUpgradeStrategy('minimatch', [
       '9.0.5', '^9.0.5', '~9.0.5',
       '9.0.0', '^9.0.0', '~9.0.0',
-      '9', '^9', '~9'
-    ], '9.0.6'),
+      '9', '^9', '~9',
+      '9.0.6', '^9.0.6', '~9.0.6',
+      '9.0.7', '^9.0.7', '~9.0.7',
+      '9.0.8', '^9.0.8', '~9.0.8'
+    ], '9.0.9'),
   ];
 
   const logger = new Logger(context);
