@@ -1057,6 +1057,10 @@ var baseSecrets = [
     value: serviceBusFailedConfigurationQueue
   }
   {
+    name: 'serviceBusAutoApproverQueue'
+    value: serviceBusAutoApproverQueue
+  }
+  {
     name: 'graphUserAssignedManagedIdentityName'
     value: graphUserAssignedManagedIdentityName
   }
