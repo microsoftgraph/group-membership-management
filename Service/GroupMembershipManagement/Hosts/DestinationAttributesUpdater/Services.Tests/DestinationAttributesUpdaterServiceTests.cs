@@ -84,7 +84,7 @@ namespace Services.Tests
             _mockGraphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = destination.Value.ObjectId, Name = "name", Email = "email" } });
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { destination.Value.ObjectId, new List<Guid> { owner } } });
 
-            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
+            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<DestinationInfo> { new DestinationInfo { Destination = serializedDestination, JobId = tableId } }, GroupMembership);
 
             var attributes = response.First();
             Assert.AreEqual(attributes.Id, tableId);
@@ -112,7 +112,7 @@ namespace Services.Tests
             _mockGraphGroupRepository.Setup(x => x.GetGroupsAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new List<AzureADGroup> { new AzureADGroup { ObjectId = Guid.NewGuid(), Name = "name", Email = "email" } });
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { Guid.NewGuid(), new List<Guid> { owner } } });
 
-            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, GroupMembership);
+            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<DestinationInfo> { new DestinationInfo { Destination = serializedDestination, JobId = tableId } }, GroupMembership);
 
             var attributes = response.First();
             Assert.AreEqual(attributes.Id, tableId);
@@ -141,7 +141,7 @@ namespace Services.Tests
             _mockGraphGroupRepository.Setup(x => x.GetDestinationOwnersAsync(It.IsAny<List<Guid>>())).ReturnsAsync(new Dictionary<Guid, List<Guid>>() { { Guid.NewGuid(), new List<Guid> { owner } } });
             _mockTeamsChannelRepository.Setup(x => x.GetTeamsChannelEmailsAsync(It.IsAny<List<AzureADTeamsChannel>>())).ReturnsAsync(new Dictionary<string, string>() { { Guid.NewGuid().ToString(), "email" } });
 
-            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<(string Destination, Guid TableId)> { (serializedDestination, tableId) }, TeamsChannelMembership);
+            var response = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(new List<DestinationInfo> { new DestinationInfo { Destination = serializedDestination, JobId = tableId } }, TeamsChannelMembership);
 
             var attributes = response.First();
             Assert.AreEqual(attributes.Id, tableId);

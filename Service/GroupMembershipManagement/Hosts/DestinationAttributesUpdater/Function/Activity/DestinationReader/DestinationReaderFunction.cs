@@ -23,7 +23,7 @@ namespace Hosts.DestinationAttributesUpdater
         }
 
         [Function(nameof(DestinationReaderFunction))]
-        public async Task<List<(string Destination, Guid TableId)>> GetDestinationsAsync([ActivityTrigger] string destinationType)
+        public async Task<List<DestinationInfo>> GetDestinationsAsync([ActivityTrigger] string destinationType)
         {
             await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationReaderFunction)} function started"}, VerbosityLevel.DEBUG);
 

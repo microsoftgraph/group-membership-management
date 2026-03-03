@@ -7,8 +7,8 @@ namespace Services.Contracts
 {
     public interface IDestinationAttributesUpdaterService
     {
-        Task<List<(string Destination, Guid JobId)>> GetDestinationsAsync(string destinationType);
-        Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<(string Destination, Guid JobId)> destinations, string destinationType);
+        Task<List<DestinationInfo>> GetDestinationsAsync(string destinationType);
+        Task<List<DestinationAttributes>> GetBulkDestinationAttributesAsync(List<DestinationInfo> destinations, string destinationType);
         Task UpdateAttributes(DestinationAttributes destinationAttributes);
     }
 }
