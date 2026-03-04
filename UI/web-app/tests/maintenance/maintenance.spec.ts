@@ -1,14 +1,29 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
+import { setupMockPage } from '../mocks/setupMockPage';
 
-test.use({ storageState: 'tests/storageState.json' });
+const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || 'http://localhost:3000';
+const isMockMode = process.env.PLAYWRIGHT_USE_MOCK_API !== 'false';
 
-const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
+test.beforeEach(async ({ page }) => {
+  await setupMockPage(page);
+});
+
+async function clickFirstVisible(page: Page, selectors: Array<{ role: 'button' | 'tab'; name: string | RegExp }>) {
+  for (const selector of selectors) {
+    const locator = page.getByRole(selector.role, { name: selector.name });
+    if (await locator.count()) {
+      await locator.first().click();
+      return;
+    }
+  }
+  throw new Error(`Could not find any selector: ${selectors.map((s) => `${s.role}:${String(s.name)}`).join(', ')}`);
+}
 
 test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' }, async ({ page }) => {
-  test.setTimeout(10 * 60 * 1000); // Increased test timeout to 10 minutes
+  test.setTimeout(isMockMode ? 2 * 60 * 1000 : 10 * 60 * 1000);
   
   console.log('🚨 WARNING: Starting maintenance reset - this will disable the API for other tests');
   console.log('🚨 This test should run LAST to avoid interfering with other tests');
@@ -18,24 +33,24 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
   await page.waitForTimeout(5000);
 
   await expect(page.locator('#manage-membership-button')).toBeVisible();
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await page.getByRole('tab', { name: 'General General' }).click();
-  await page.getByRole('tab', { name: 'Operations Operations' }).click();
+  await clickFirstVisible(page, [{ role: 'button', name: 'Settings' }]);
+  await clickFirstVisible(page, [{ role: 'tab', name: /General/i }]);
+  await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
   await page.getByRole('button', { name: 'Reset GMM' }).click();
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(page.getByText('This application is currently')).toBeVisible();
-  await page.getByRole('button', { name: 'Settings' }).click();
-  await expect(page.locator('div').filter({ hasText: /^Admin Center$/ }).first()).toBeVisible();  await page.getByRole('tab', { name: 'Operations Operations' }).click();  // wait for the reset operation to complete, at which point the reset gmm button will be enabled, refreshing every 30 seconds up to 10 times
+  await clickFirstVisible(page, [{ role: 'button', name: 'Settings' }]);
+  await expect(page.locator('div').filter({ hasText: /^Admin Center$/ }).first()).toBeVisible();
+  await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
 
   let attempts = 0;
-  const maxAttempts = 10;
-  const refreshInterval = 60000; // 1 minute in milliseconds
+  const maxAttempts = isMockMode ? 3 : 10;
+  const refreshInterval = isMockMode ? 2000 : 60000;
   let isButtonEnabled = false;
   
   while (!isButtonEnabled && attempts < maxAttempts) {    
     try {
-      // Check if button is enabled with a shorter timeout to avoid hanging
-      isButtonEnabled = await page.getByRole('button', { name: 'Reset GMM' }).isEnabled({ timeout: 2000 });
+      isButtonEnabled = await page.getByRole('button', { name: 'Reset GMM' }).isEnabled({ timeout: isMockMode ? 1000 : 2000 });
     } catch (error) {
       // If the button is not found or not enabled within the timeout, continue with the loop
       isButtonEnabled = false;
@@ -49,15 +64,15 @@ test('Maintenance - Reset GMM (WARNING: Disables API)', { tag: '@maintenance' },
     }
     
     attempts++;
-    console.log(`Attempt ${attempts}/${maxAttempts}: Button not enabled, waiting 1 minute...`);
+    console.log(`Attempt ${attempts}/${maxAttempts}: Button not enabled, waiting ${refreshInterval} ms...`);
     
     if (attempts < maxAttempts) {
       await page.waitForTimeout(refreshInterval);
       await page.reload();
       
       // Navigate back to the operations tab after refresh
-      await page.getByRole('button', { name: 'Settings' }).click();
-      await page.getByRole('tab', { name: 'Operations Operations' }).click();
+      await clickFirstVisible(page, [{ role: 'button', name: 'Settings' }]);
+      await clickFirstVisible(page, [{ role: 'tab', name: /Operations/i }]);
       await page.waitForTimeout(5000);
     }
   }

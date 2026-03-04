@@ -119,6 +119,34 @@ Serves the built app locally for verification.
 
 Runs ESLint on all files in the project according to the configuration in `eslint.config.mjs`.
 
+## Playwright UI-only tests (no WebApi/auth)
+
+Run these when you only want to validate UI behavior and avoid dependencies on WebApi, sign-in, or 2FA.
+
+### Default behavior
+
+- `playwright.config.ts` now defaults to mock mode (`PLAYWRIGHT_USE_MOCK_API=true` unless explicitly set to `false`).
+- In mock mode, Playwright:
+    - Skips `tests/auth/auth-setup.ts`
+    - Starts the web app with `REACT_APP_PLAYWRIGHT_MOCK_MODE=true`
+    - Uses mocked network handlers from `tests/mocks/mockApi.ts`
+    - Runs the UI mock project targeting `tests/home/home.spec.ts`
+
+### Run in PowerShell
+
+```powershell
+Set-Location "c:\Users\abgonz\workspace\Public-GMM\UI\web-app"
+pnpm exec playwright test
+```
+
+### Force real integration mode (existing sign-in flow)
+
+```powershell
+Set-Location "c:\Users\abgonz\workspace\Public-GMM\UI\web-app"
+$env:PLAYWRIGHT_USE_MOCK_API = 'false'
+pnpm exec playwright test
+```
+
 ## Learn More
 
 - [Vite Documentation](https://vite.dev/guide/)

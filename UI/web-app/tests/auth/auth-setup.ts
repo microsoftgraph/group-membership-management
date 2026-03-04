@@ -8,6 +8,11 @@ const PASSWORD = process.env.INTEGRATION_TEST_PASSWORD || '';
 const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
 
 async function globalSetup(config: FullConfig) {
+  if (process.env.PLAYWRIGHT_USE_MOCK_API !== 'false') {
+    console.log('🧪 PLAYWRIGHT_USE_MOCK_API is enabled; skipping auth setup.');
+    return;
+  }
+
   if (!EMAIL || !PASSWORD || !DOMAIN) {
     console.error('❌ Environment variables for email, password, or domain are not set.');
     process.exit(1);

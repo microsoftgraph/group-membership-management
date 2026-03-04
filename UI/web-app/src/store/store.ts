@@ -25,20 +25,23 @@ import { LocalizationService } from '../services/localization';
 import { ApiOptions, Apis, GraphApi } from '../apis';
 import { GMMApi } from '../apis/GMMApi';
 import { localStorageMiddleware } from './localStorage.middleware';
+import { OfflineAuthenticationService } from '../testing/OfflineAuthenticationService';
+
+const isPlaywrightMockMode = process.env.REACT_APP_PLAYWRIGHT_MOCK_MODE === 'true';
 
 // use OfflineAuthenticationService for offline development.
 const services: Services = {
-  authenticationService: new MsalAuthenticationService(),
+  authenticationService: isPlaywrightMockMode ? new OfflineAuthenticationService() : new MsalAuthenticationService(),
   localizationService: new LocalizationService(),
 };
 
 const gmmApiOptions: ApiOptions = {
-  baseUrl: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1`,
+  baseUrl: isPlaywrightMockMode ? '/api/v1' : `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1`,
   getTokenAsync: async () => await services.authenticationService.getTokenAsync(TokenType.GMM),
 };
 
 const graphApiOptions: ApiOptions = {
-  baseUrl: 'https://graph.microsoft.com/v1.0',
+  baseUrl: isPlaywrightMockMode ? '/graph/v1.0' : 'https://graph.microsoft.com/v1.0',
   getTokenAsync: async () => await services.authenticationService.getTokenAsync(TokenType.Graph),
 };
 

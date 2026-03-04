@@ -3,10 +3,13 @@
 
 import { test, expect } from '@playwright/test';
 import { SettingKey, SettingKeyMap } from '../../src/models';
+import { setupMockPage } from '../mocks/setupMockPage';
 
-test.use({ storageState: 'tests/storageState.json' });
+const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || 'http://localhost:3000';
 
-const DOMAIN = process.env.INTEGRATION_TEST_DOMAIN || '';
+test.beforeEach(async ({ page }) => {
+  await setupMockPage(page, { disclaimerSubmitted: false });
+});
 
 // Configure retries for admin tests since they deal with settings that might have timing issues
 test.describe('Admin Tests', () => {
@@ -20,14 +23,10 @@ test.describe('Admin Tests', () => {
     console.log('✅ Admin test completed successfully.');
   });
 
-  test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ browser }) => {
+  test('Initial disclaimer displays on first load', { tag: '@setup' }, async ({ page }) => {
     test.setTimeout(120000); // 2 minutes timeout for setup tests
 
-    // Create a fresh context with authentication but clear localStorage
-    const context = await browser.newContext({ storageState: 'tests/storageState.json' });
-    const page = await context.newPage();
-
-    try {
+    {
       const url = DOMAIN.startsWith('http') ? DOMAIN : `https://${DOMAIN}`;
 
       // Navigate to admin to enable disclaimer
@@ -126,8 +125,6 @@ test.describe('Admin Tests', () => {
       }
 
       console.log('✅ Disclaimer test completed successfully.');
-    } finally {
-      await context.close();
     }
   });
 
