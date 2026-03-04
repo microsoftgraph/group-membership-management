@@ -5,6 +5,8 @@ import i18next, { CustomTypeOptions, i18n } from 'i18next';
 
 import { ILocalizationService } from './ILocalizationService';
 import { IStrings } from './IStrings';
+import { strings as enStrings } from './i18n/locales/en/translations';
+import { strings as esStrings } from './i18n/locales/es/translations';
 
 export class LocalizationService implements ILocalizationService {
   private _i18n: i18n = i18next;
@@ -15,10 +17,10 @@ export class LocalizationService implements ILocalizationService {
       lng: 'en',
       resources: {
         en: {
-          translations: require('./i18n/locales/en/translations').strings,
+          translations: enStrings,
         },
         es: {
-          translations: require('./i18n/locales/es/translations').strings,
+          translations: esStrings,
         },
       },
       ns: ['translations'],

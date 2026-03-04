@@ -35,6 +35,9 @@ function readPackage(packageJson, context) {
     new PackageUpgradeStrategy('node-forge', ['^1'], '1.3.2'),
     new PackageUpgradeStrategy('jsonpath', ['1.1.1', '^1.1.1', '~1.1.1'], '1.2.1'),
     new PackageUpgradeStrategy('axios', ['1.8.2', '1.13.2', '^1.13.2', '~1.13.2'], '1.13.5'),
+    new PackageUpgradeStrategy('ajv', ['8.17.1', '^8.17.1', '~8.17.1'], '8.18.0'),
+    new PackageUpgradeStrategy('lodash', ['4.17.21', '^4.17.21', '~4.17.21'], '4.17.23'),
+    new PackageUpgradeStrategy('esbuild', ['0.21.5', '^0.21.5', '~0.21.5'], '0.25.0'),
     new PackageUpgradeStrategy('minimatch', [
       '3.1.2', '^3.1.2', '~3.1.2',
       '3.1.0', '^3.1.0', '~3.1.0',
