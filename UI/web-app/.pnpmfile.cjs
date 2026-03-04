@@ -9,6 +9,7 @@ module.exports = {
 function readPackage(packageJson, context) {
 
   const dependencyChanges = [
+    new PackageUpgradeStrategy('underscore', ['1.13.6', '^1.13.6', '~1.13.6'], '1.13.8'),
     new PackageUpgradeStrategy('serialize-javascript', ['4.0.0', '^4.0.0', '~4.0.0', '6.0.2', '^6.0.2', '~6.0.2', '6.0.1', '^6.0.1', '~6.0.1', '6.0.0', '^6.0.0', '~6.0.0'], '7.0.3'),
     new PackageUpgradeStrategy('cookie', ['0.4.2', '^0.4.2', '~0.4.2'], '0.7.2'),
     new PackageUpgradeStrategy('js-yaml', ['3.14.1', '^3.14.1', '~3.14.1'], '4.1.1'),
