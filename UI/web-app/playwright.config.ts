@@ -6,11 +6,13 @@ import fs from 'fs';
 
 const useMockApi = process.env.PLAYWRIGHT_USE_MOCK_API !== 'false';
 const useStorage = fs.existsSync('tests/storageState.json');
+const testTimeoutMs = Number(process.env.PLAYWRIGHT_TEST_TIMEOUT_MS ?? 30000);
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
   testDir: './tests',
+  timeout: testTimeoutMs,
   globalSetup: useMockApi ? undefined : require.resolve('./tests/auth/auth-setup.ts'),
   globalTeardown: require.resolve('./tests/global-teardown.ts'),
   fullyParallel: false,

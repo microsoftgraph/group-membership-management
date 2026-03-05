@@ -10,6 +10,8 @@ type SettingRecord = {
   settingValue: string;
 };
 
+type MockJobItem = (typeof mockJobsPage)['items'][number];
+
 const defaultSettings: SettingRecord[] = [
   { settingKey: 0, settingValue: 'https://contoso.example/dashboard' },
   { settingKey: 1, settingValue: 'https://contoso.example/outlook-warning' },
@@ -23,6 +25,8 @@ const defaultSettings: SettingRecord[] = [
   { settingKey: 9, settingValue: 'false' },
   { settingKey: 10, settingValue: 'true' },
 ];
+
+const mockSupportEmail = 'gmm-support@contoso.com';
 
 const settingKeyByName: Record<string, number> = {
   DashboardUrl: 0,
@@ -172,6 +176,42 @@ const mockSqlSource = {
 
 const mockSqlAttributes = [
   {
+    name: 'EmployeeType',
+    customLabel: 'EmployeeType',
+    type: 'string',
+    hasMapping: true,
+    values: [],
+    description: 'Employee type attribute',
+    enabled: true,
+  },
+  {
+    name: 'SupervisorInd',
+    customLabel: 'SupervisorInd',
+    type: 'bit',
+    hasMapping: false,
+    values: [],
+    description: 'Supervisor indicator attribute',
+    enabled: true,
+  },
+  {
+    name: 'PayScaleStockLevelNbr',
+    customLabel: 'PayScaleStockLevelNbr',
+    type: 'int',
+    hasMapping: false,
+    values: [],
+    description: 'Pay scale stock level number',
+    enabled: true,
+  },
+  {
+    name: 'CostCenterCode',
+    customLabel: 'CostCenterCode',
+    type: 'string',
+    hasMapping: false,
+    values: [],
+    description: 'Cost center code attribute',
+    enabled: true,
+  },
+  {
     name: 'department',
     customLabel: 'Department',
     type: 'string',
@@ -181,6 +221,23 @@ const mockSqlAttributes = [
     enabled: true,
   },
 ];
+
+const mockAttributeMappingsByAttribute: Record<string, Array<{ description: string; code: string }>> = {
+  EmployeeType: [
+    { description: 'FTE', code: 'FTE' },
+    { description: 'Intern', code: 'Intern' },
+    { description: 'Vendor', code: 'Vendor' },
+  ],
+};
+
+const mockAttributeValuesByAttribute: Record<string, string[]> = {
+  department: ['IT', 'HR', 'Marketing'],
+  EmployeeType: ['FTE', 'Intern', 'Vendor'],
+  EmployeeType_Code: ['FTE', 'Intern', 'Vendor'],
+  SupervisorInd: ['Yes', 'No'],
+  PayScaleStockLevelNbr: ['65', '70', '75'],
+  CostCenterCode: [],
+};
 
 async function fulfillJson(route: Route, payload: JsonValue, status = 200) {
   await route.fulfill({
@@ -215,8 +272,31 @@ function getJobDetailsById(syncJobId: string) {
 
 export async function registerMockApiRoutes(page: Page): Promise<void> {
   const settingsState = defaultSettings.map((setting) => ({ ...setting }));
+  const jobsState: MockJobItem[] = mockJobsPage.items.map((job) => ({ ...job }));
+  const groupNamesById = new Map<string, string>();
+  let lastCreatedGroupId = 'group-created-001';
+  let lastCreatedGroupName = 'pw-created-group';
+  let createdGroupCounter = 1;
+  let createdJobCounter = 3;
   let serviceStatus = 0;
   let resetStatusPollCount = 0;
+
+  const getJobDetailsFromState = (syncJobId: string) => {
+    const found = jobsState.find((job) => job.syncJobId === syncJobId);
+    if (found) {
+      return {
+        ...found,
+        targetGroupName: found.targetGroupName ?? 'Mock Destination',
+        targetGroupId: found.targetGroupId || 'group-001',
+        lastModifiedByDisplayName: 'Playwright User',
+        lastModifiedByObjectId: 'mock-user-id',
+        lastModifiedOnBehalfOfDisplayName: 'playwright@contoso.com',
+        lastModifiedOnBehalfOfObjectId: 'mock-user-id',
+      };
+    }
+
+    return getJobDetailsById(syncJobId);
+  };
 
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
@@ -272,6 +352,15 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
       return;
     }
 
+    if (method === 'GET' && path.endsWith('/api/v1/settings/supportEmail')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/plain',
+        body: mockSupportEmail,
+      });
+      return;
+    }
+
     if (method === 'GET' && /\/api\/v1\/settings\/?$/.test(path) && requestUrl.searchParams.get('key')) {
       const keyName = requestUrl.searchParams.get('key') || '';
       const settingKey = resolveSettingKey(keyName);
@@ -311,17 +400,56 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     }
 
     if (method === 'GET' && /\/api\/v1\/jobs\/?$/.test(path)) {
-      await fulfillJson(route, mockJobsPage);
+      await fulfillJson(route, {
+        ...mockJobsPage,
+        items: jobsState,
+        totalItems: jobsState.length,
+      });
       return;
     }
 
     if (method === 'POST' && /\/api\/v1\/jobs\/?$/.test(path)) {
-      await fulfillJson(route, { ok: true, status: 200, responseData: 'mockjob003' }, 200);
+      const body = (request.postDataJSON() as Record<string, unknown>) ?? {};
+      const syncJobId = `mockjob${String(createdJobCounter).padStart(3, '0')}`;
+      createdJobCounter += 1;
+
+      const destination = (body['destination'] as string) || lastCreatedGroupId;
+      const targetGroupName = groupNamesById.get(destination) || lastCreatedGroupName;
+      const now = new Date().toISOString();
+      const queryValue = typeof body['query'] === 'string' ? (body['query'] as string) : JSON.stringify(body['query'] ?? []);
+
+      jobsState.unshift({
+        syncJobId,
+        targetGroupId: destination,
+        targetChannelId: '',
+        targetDestinationType: 'GroupMembership',
+        targetGroupName,
+        targetChannelName: '',
+        targetGroupEmail: `${targetGroupName.toLowerCase().replace(/\s+/g, '-') || 'mock-group'}@contoso.com`,
+        startDate: now,
+        lastSuccessfulStartTime: now,
+        lastSuccessfulRunTime: now,
+        query: queryValue,
+        titles: [{ partId: `part-${syncJobId}`, name: ': Mock HR Query' }],
+        actionRequired: '',
+        enabledOrNot: true,
+        status: 'PendingReview',
+        period: Number(body['period']) || 6,
+        arrow: '',
+        estimatedNextRunTime: now,
+        lastModifiedTime: now,
+        thresholdPercentageForAdditions: Number(body['thresholdPercentageForAdditions']) || 20,
+        thresholdPercentageForRemovals: Number(body['thresholdPercentageForRemovals']) || 20,
+        endpoints: [],
+        requestor: (body['requestor'] as string) || 'playwright@contoso.com',
+      });
+
+      await fulfillJson(route, { ok: true, status: 200, responseData: syncJobId }, 200);
       return;
     }
 
     if (method === 'POST' && path.endsWith('/api/v1/jobs/bulkDownload')) {
-      await fulfillJson(route, mockJobsPage.items);
+      await fulfillJson(route, jobsState);
       return;
     }
 
@@ -347,12 +475,14 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
 
     if (method === 'GET' && jobDetailsMatch) {
       const syncJobId = decodeURIComponent(jobDetailsMatch[1]);
-      await fulfillJson(route, getJobDetailsById(syncJobId));
+      await fulfillJson(route, getJobDetailsFromState(syncJobId));
       return;
     }
 
     if (method === 'GET' && groupDetailsMatch) {
-      await fulfillJson(route, getJobDetailsById('mockjob002'));
+      const groupId = decodeURIComponent(groupDetailsMatch[1]);
+      const found = jobsState.find((job) => job.targetGroupId === groupId);
+      await fulfillJson(route, found ? getJobDetailsFromState(found.syncJobId) : getJobDetailsById('mockjob002'));
       return;
     }
 
@@ -425,9 +555,17 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     }
 
     if (method === 'POST' && path.endsWith('/api/v1/destinations/groups')) {
+      const body = (request.postDataJSON() as Record<string, unknown>) ?? {};
+      const groupName = (body['groupName'] as string) || `pw-created-group-${createdGroupCounter}`;
+      const groupId = `group-created-${String(createdGroupCounter).padStart(3, '0')}`;
+      createdGroupCounter += 1;
+      lastCreatedGroupId = groupId;
+      lastCreatedGroupName = groupName;
+      groupNamesById.set(groupId, groupName);
+
       await fulfillJson(route, {
-        groupId: 'group-created-001',
-        groupName: 'pw-created-group',
+        groupId,
+        groupName,
         errorCode: null,
       });
       return;
@@ -499,13 +637,17 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
       return;
     }
 
-    if (method === 'GET' && path.endsWith('/api/v1/sqlMembershipSources/attributeValues/department')) {
-      await fulfillJson(route, ['IT', 'HR', 'Marketing']);
+    const attributeValuesMatch = path.match(/\/api\/v1\/sqlMembershipSources\/attributeValues\/([^\/]+)$/);
+    if (method === 'GET' && attributeValuesMatch) {
+      const attributeName = decodeURIComponent(attributeValuesMatch[1]);
+      await fulfillJson(route, mockAttributeValuesByAttribute[attributeName] ?? []);
       return;
     }
 
-    if (method === 'GET' && /\/api\/v1\/sqlMembershipSources\/attributeMappings\/.+$/.test(path)) {
-      await fulfillJson(route, []);
+    const attributeMappingsMatch = path.match(/\/api\/v1\/sqlMembershipSources\/attributeMappings\/([^\/]+)$/);
+    if (method === 'GET' && attributeMappingsMatch) {
+      const attributeName = decodeURIComponent(attributeMappingsMatch[1]);
+      await fulfillJson(route, mockAttributeMappingsByAttribute[attributeName] ?? []);
       return;
     }
 
@@ -540,7 +682,7 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
       await route.fulfill({
         status: 200,
         contentType: 'image/png',
-        body: Buffer.from(tinyPngBase64, 'base64'),
+        body: tinyPngBase64,
       });
       return;
     }

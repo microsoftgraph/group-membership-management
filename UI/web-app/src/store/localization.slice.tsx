@@ -32,5 +32,6 @@ export const localizationSlice = createSlice({
   },
 });
 
-export const selectStrings = (state: RootState) => state.localization.strings;
+export const selectStrings = (state: RootState) =>
+  state.localization?.strings ?? defaultStrings;
 export default localizationSlice.reducer;
