@@ -24,7 +24,7 @@ import {
 import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
@@ -54,6 +54,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [downloadingRunIds, setDownloadingRunIds] = useState<Set<string>>(new Set());
+    const [sortedColumn, setSortedColumn] = useState<string>('startTime');
+    const [isSortedDescending, setIsSortedDescending] = useState<boolean>(true);
 
     useEffect(() => {
         setDownloadError(null);
@@ -196,6 +198,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     ];
 
+    const handleColumnHeaderClick = (event?: React.MouseEvent<HTMLElement>, column?: IColumn): void => {
+        if (!column) return;
+        
+        const newIsSortedDescending = sortedColumn === column.key ? !isSortedDescending : true;
+        setSortedColumn(column.key);
+        setIsSortedDescending(newIsSortedDescending);
+    };
+
     const isJobTenantReader = useSelector(selectIsJobTenantReader);
     const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
     const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
@@ -210,6 +220,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 150,
             isResizable: true,
             isMultiline: true,
+            isSorted: sortedColumn === 'runId',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
         },
         {
             key: 'startTime',
@@ -219,6 +232,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 150,
             isResizable: true,
             isMultiline: true,
+            isSorted: sortedColumn === 'startTime',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRender: (item: SyncJobHistory) => {
                 if (!item.startTime) return <span>-</span>;
                 const utcDate = item.startTime.endsWith('Z') ? item.startTime : `${item.startTime}Z`;
@@ -241,6 +257,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 150,
             isResizable: true,
             isMultiline: true,
+            isSorted: sortedColumn === 'endTime',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRender: (item: SyncJobHistory) => {
                 if (!item.endTime) return <span>-</span>;
                 const utcDate = item.endTime.endsWith('Z') ? item.endTime : `${item.endTime}Z`;
@@ -262,6 +281,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             minWidth: 80,
             maxWidth: 120,
             isResizable: true,
+            isSorted: sortedColumn === 'duration',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.duration ?? '-'}</span>;
             }
@@ -285,6 +307,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 120,
             isResizable: true,
             isMultiline: true,
+            isSorted: sortedColumn === 'beforeSyncUserCount',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.beforeSyncUserCountColumnLabel),
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.beforeSyncUserCount ?? '-'}</span>;
@@ -297,6 +322,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             minWidth: 80,
             maxWidth: 120,
             isResizable: true,
+            isSorted: sortedColumn === 'usersAdded',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.usersAdded ?? '-'}</span>;
             }
@@ -308,6 +336,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             minWidth: 80,
             maxWidth: 120,
             isResizable: true,
+            isSorted: sortedColumn === 'usersRemoved',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.usersRemoved ?? '-'}</span>;
             }
@@ -320,6 +351,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 120,
             isResizable: true,
             isMultiline: true,
+            isSorted: sortedColumn === 'afterSyncUserCount',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.afterSyncUserCountColumnLabel),
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.afterSyncUserCount ?? '-'}</span>;
@@ -332,6 +366,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             minWidth: 100,
             maxWidth: 150,
             isResizable: true,
+            isSorted: sortedColumn === 'thresholdViolations',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.thresholdViolations ?? '-'}</span>;
             }
@@ -344,6 +381,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 200,
             isResizable: true,
             isMultiline: true,
+            isSorted: sortedColumn === 'updatedByFunction',
+            isSortedDescending: isSortedDescending,
+            onColumnClick: handleColumnHeaderClick,
         },
         ...(showDownloadColumn ? [{
             key: 'download',
@@ -372,6 +412,77 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState('');
+
+    const getUtcTimestampMillis = (dateTime?: string | null): number => {
+        if (!dateTime) return 0;
+        const utcDateTime = dateTime.endsWith('Z') ? dateTime : `${dateTime}Z`;
+        const millis = new Date(utcDateTime).getTime();
+        return Number.isNaN(millis) ? 0 : millis;
+    };
+
+    const sortedSyncHistoryItems = useMemo(() => {
+        const items = [...syncHistoryItems];
+        
+        items.sort((a: SyncJobHistory, b: SyncJobHistory) => {
+            let aValue: number | string;
+            let bValue: number | string;
+
+            switch (sortedColumn) {
+                case 'runId':
+                    aValue = a.runId || '';
+                    bValue = b.runId || '';
+                    break;
+                case 'startTime':
+                    aValue = getUtcTimestampMillis(a.startTime);
+                    bValue = getUtcTimestampMillis(b.startTime);
+                    break;
+                case 'endTime':
+                    aValue = getUtcTimestampMillis(a.endTime);
+                    bValue = getUtcTimestampMillis(b.endTime);
+                    break;
+                case 'duration':
+                    aValue = a.duration ?? 0;
+                    bValue = b.duration ?? 0;
+                    break;
+                case 'beforeSyncUserCount':
+                    aValue = a.beforeSyncUserCount ?? 0;
+                    bValue = b.beforeSyncUserCount ?? 0;
+                    break;
+                case 'usersAdded':
+                    aValue = a.usersAdded ?? 0;
+                    bValue = b.usersAdded ?? 0;
+                    break;
+                case 'usersRemoved':
+                    aValue = a.usersRemoved ?? 0;
+                    bValue = b.usersRemoved ?? 0;
+                    break;
+                case 'afterSyncUserCount':
+                    aValue = a.afterSyncUserCount ?? 0;
+                    bValue = b.afterSyncUserCount ?? 0;
+                    break;
+                case 'thresholdViolations':
+                    aValue = a.thresholdViolations ?? 0;
+                    bValue = b.thresholdViolations ?? 0;
+                    break;
+                case 'updatedByFunction':
+                    aValue = a.updatedByFunction || '';
+                    bValue = b.updatedByFunction || '';
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (aValue < bValue) {
+                return isSortedDescending ? 1 : -1;
+            }
+            if (aValue > bValue) {
+                return isSortedDescending ? -1 : 1;
+            }
+            return 0;
+        });
+
+        return items;
+    }, [syncHistoryItems, sortedColumn, isSortedDescending]);
 
     const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
     const showSyncTab = isJobTenantReader || isJobTenantWriter;
@@ -474,7 +585,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         <DetailsList
                             setKey="syncHistorySet"
                             columns={syncHistoryColumns}
-                            items={syncHistoryItems}
+                            items={sortedSyncHistoryItems}
                             selectionMode={0}
                         />
                     </PivotItem>
