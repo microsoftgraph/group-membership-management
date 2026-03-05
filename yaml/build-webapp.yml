@@ -97,6 +97,27 @@ stages:
           Set-Content -Path $versionFileName -Value $appVersion
         pwsh: true
 
+    - task: NodeTool@0
+      displayName: 'Use Node.js 20.x'
+      inputs:
+        versionSpec: '20.x'
+
+    - task: PowerShell@2
+      displayName: 'Run Playwright tests (ui-mock)'
+      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+      inputs:
+        targetType: inline
+        workingDirectory: '$(build.artifactstagingdirectory)/webapp_package/web-app'
+        script: |
+          npm install -g pnpm
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install chromium
+
+          $env:PLAYWRIGHT_USE_MOCK_API = 'true'
+          $env:PLAYWRIGHT_TEST_TIMEOUT_MS = '20000'
+          pnpm exec playwright test --project=ui-mock
+        pwsh: true
+
     - task: CopyFiles@2
       displayName: 'Copy GmmUI webapp arm templates'
       inputs:
