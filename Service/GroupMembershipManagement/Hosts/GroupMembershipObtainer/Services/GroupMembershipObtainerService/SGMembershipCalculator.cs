@@ -316,18 +316,22 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, int? beforeSyncUserCount = null)
         {
-            var history = new SyncJobHistory
+            var syncJob = await _databaseSyncJobsRepository.GetSyncJobAsync(job.Id);
+            if (syncJob != null)
             {
-                SyncJobId = job.Id,
-                RunId = job.RunId ?? Guid.Empty,
-                Status = status.ToString(),
-                UpdatedByFunction = "GroupMembershipObtainer",
-                EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
-                UpdatedAt = DateTime.UtcNow,
-                BeforeSyncUserCount = beforeSyncUserCount
-            };
+                var history = new SyncJobHistory
+                {
+                    SyncJobId = syncJob.Id,
+                    RunId = syncJob.RunId ?? Guid.Empty,
+                    Status = status.ToString(),
+                    UpdatedByFunction = "GroupMembershipObtainer",
+                    EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
+                    UpdatedAt = DateTime.UtcNow,
+                    BeforeSyncUserCount = beforeSyncUserCount
+                };
 
-            await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, "GroupMembershipObtainer");
+                await _syncJobStatusService.UpdateJobStatusAsync(syncJob, status, history, "GroupMembershipObtainer");
+            }
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)

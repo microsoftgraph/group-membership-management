@@ -82,6 +82,10 @@ namespace Tests.Services
                 Period = 6
             };
 
+            // Setup mock to return the sync job when GetSyncJobAsync is called
+            _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
+                .ReturnsAsync((Guid id) => id == syncJob.Id ? syncJob : null);
+
             var group = new Group
             {
                 SyncJobId = syncJob.Id,
