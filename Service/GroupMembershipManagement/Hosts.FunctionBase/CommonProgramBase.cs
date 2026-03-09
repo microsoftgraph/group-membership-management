@@ -164,12 +164,24 @@ namespace Hosts.FunctionBase
                 return new ThresholdNotificationConfig(creds.Value.IsThresholdNotificationEnabled);
             });
 
+            services.AddOptions<TelemetryInitializerConfig>().Configure<IConfiguration>((settings, config) =>
+            {
+                config.GetSection("Settings:TelemetryInitializer").Bind(settings);
+            });
+            services.AddSingleton(services =>
+            {
+                var config = services.GetRequiredService<IOptions<TelemetryInitializerConfig>>();
+                return config.Value;
+            });
+
             services.AddApplicationInsightsTelemetryWorkerService(options =>
             {
                 options.InstrumentationKey = GetValueOrThrowBase(configuration, "APPINSIGHTS_INSTRUMENTATIONKEY");
             });
 
             services.AddSingleton<ITelemetryInitializer>(sp => new ConstantOperationNameInitializer(functionName));
+            services.AddSingleton<ITelemetryInitializer, TelemetryInitializer>();
+            services.AddApplicationInsightsTelemetryProcessor<TelemetryProcessor>();
 
             services.AddSingleton(services =>
             {

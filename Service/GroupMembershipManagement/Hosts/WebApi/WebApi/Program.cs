@@ -253,7 +253,18 @@ namespace WebApi
             builder.Services.AddCors();
 
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
+            builder.Services.AddOptions<TelemetryInitializerConfig>().Configure<IConfiguration>((settings, configuration) =>
+            {
+                configuration.GetSection("Settings:TelemetryInitializer").Bind(settings);
+            });
+            builder.Services.AddSingleton(services =>
+            {
+                var config = services.GetRequiredService<IOptions<TelemetryInitializerConfig>>();
+                return config.Value;
+            });
             builder.Services.AddApplicationInsightsTelemetry();
+            builder.Services.AddSingleton<ITelemetryInitializer, TelemetryInitializer>();
+            builder.Services.AddApplicationInsightsTelemetryProcessor<TelemetryProcessor>();
 
             builder.Services.InjectMessageHandlers();
 
