@@ -338,10 +338,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     index?: number,
     ev?: Event
   ): void => {
-    if (item.targetGroupName === null && item.status !== SyncStatus.DestinationGroupNotFound) {
-      navigate('/NotFound', { replace: true, state: { item: item} });
-    }
-    else if (item && item.syncJobId) {
+    if (item && item.syncJobId) {
       navigate(`/JobDetails/${item.syncJobId}`);
     }
     const selectedItems = selectionRef.current.getSelection();

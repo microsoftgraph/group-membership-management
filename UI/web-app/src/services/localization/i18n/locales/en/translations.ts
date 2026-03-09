@@ -359,7 +359,7 @@ export const strings: IStrings = {
     openInTeams: 'Open in Teams',
     viewDetails: 'View Details',
     editButton: 'Edit',
-    notFound: 'Membership syncs for group with object Id {0} are now disabled because the group no longer exists.',
+    notFound: 'Membership syncs for group with object Id {0} are now disabled because the group no longer exists. This job will be automatically purged after a period of inactivity. To remove GMM management immediately, use the "Remove GMM Management" button below.',
   },
   JobsList: {
     listOfMemberships: 'Managed memberships',

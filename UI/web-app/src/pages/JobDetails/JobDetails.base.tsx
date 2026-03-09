@@ -218,6 +218,13 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   }, [dispatch, jobId, groupId, channelId]);
 
+  // Redirect to NotFound if job fetch fails (job doesn't exist)
+  useEffect(() => {
+    if (error && !selectedJob && !jobLoading) {
+      navigate('/NotFound', { replace: true });
+    }
+  }, [error, selectedJob, jobLoading, navigate]);
+
 
   return (
     <Page>
