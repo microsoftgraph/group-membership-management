@@ -44,7 +44,7 @@ namespace BusinessLogic.SyncJobUpdater
                     RunId = job.RunId ?? Guid.Empty,
                     Status = status.Value.ToString(),
                     UpdatedByFunction = functionName,
-                    StartTime = job.LastRunTime,
+                    StartTime = job.LastSuccessfulStartTime,
                     CreatedAt = now,
                     UpdatedAt = now
                 };

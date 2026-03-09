@@ -79,7 +79,7 @@ namespace Services.Tests
                     history.RunId == _job.RunId &&
                     history.Status == status.ToString() &&
                     history.UpdatedByFunction == functionName &&
-                    history.StartTime == _job.LastRunTime &&
+                    history.StartTime == _job.LastSuccessfulStartTime &&
                     history.CreatedAt != default &&
                     history.UpdatedAt != default)))
                 .Returns(Task.CompletedTask)
