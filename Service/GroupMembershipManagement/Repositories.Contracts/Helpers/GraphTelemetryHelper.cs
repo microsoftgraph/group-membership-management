@@ -2,9 +2,9 @@
 // Licensed under the MIT license.
 
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts.Constants;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,11 +18,11 @@ namespace Repositories.Contracts.Helpers
         public static async Task<GraphTelemetryResult> TrackResourceUnitsAsync(HttpResponseMessage response,
                                                                               QueryType queryType,
                                                                               Guid? runId,
-                                                                              ILoggingRepository loggingRepository,
+                                                                              ILogger logger,
                                                                               TelemetryClient telemetryClient,
                                                                               GraphOperationType operationType = GraphOperationType.Read)
         {
-            if (response == null || loggingRepository is null || telemetryClient is null)
+            if (response == null || logger is null || telemetryClient is null)
             {
                 return new GraphTelemetryResult();
             }
@@ -42,28 +42,24 @@ namespace Repositories.Contracts.Helpers
                 }
             }
 
-            return await TrackResourceUnitsAsync(headers, queryType, runId, loggingRepository, telemetryClient, operationType);
+            return await TrackResourceUnitsAsync(headers, queryType, runId, logger, telemetryClient, operationType);
         }
 
         public static async Task<GraphTelemetryResult> TrackResourceUnitsAsync(IDictionary<string, IEnumerable<string>> headers,
                                                                               QueryType queryType,
                                                                               Guid? runId,
-                                                                              ILoggingRepository loggingRepository,
+                                                                              ILogger logger,
                                                                               TelemetryClient telemetryClient,
                                                                               GraphOperationType operationType = GraphOperationType.Read)
         {
-            if (headers == null || loggingRepository is null || telemetryClient is null)
+            if (headers == null || logger is null || telemetryClient is null)
             {
                 return new GraphTelemetryResult();
             }
 
             if (!headers.TryGetValue(GraphResponseHeaders.ResourceUnit, out var resourceValues))
             {
-                await loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available"
-                });
+                logger.LogInformation("Resource unit cost of {QueryType} is not available for RunId {RunId}", queryType, runId);
 
                 return new GraphTelemetryResult();
             }
@@ -71,20 +67,12 @@ namespace Repositories.Contracts.Helpers
             var ruu = ParseFirstInt(resourceValues);
             if (!ruu.HasValue)
             {
-                await loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Unable to parse resource unit cost of {Enum.GetName(typeof(QueryType), queryType)}"
-                });
+                logger.LogWarning("Unable to parse resource unit cost of {QueryType} for RunId {RunId}", queryType, runId);
 
                 return new GraphTelemetryResult();
             }
 
-            await loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {ruu.Value}"
-            });
+            logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed} for RunId {RunId}", queryType, ruu.Value, runId);
 
             TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, runId);
             telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(ruu.Value, operationType.ToString());
