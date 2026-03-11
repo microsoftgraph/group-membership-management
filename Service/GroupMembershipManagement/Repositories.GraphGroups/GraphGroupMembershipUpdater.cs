@@ -276,7 +276,7 @@ namespace Repositories.GraphGroups
                 // but if a chunk has already been queued five times or so, drop it on the floor so we don't go forever
                 // in the future, log the exception and which ones get dropped.
 
-                _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, ex.GetBaseException().ToString(), ex);
+                _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, "Unexpected Graph ServiceException during batch membership update. Requeueing eligible chunks.", ex);
 
                 foreach (var chunk in toSend)
                 {
@@ -403,7 +403,7 @@ namespace Repositories.GraphGroups
             }
             catch (ServiceException ex)
             {
-                _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, ex.GetBaseException().ToString(), ex);
+                _graphGroupMembershipUpdaterLogger.LogErrorWithRunId(RunId, "Graph ServiceException while posting batch request.", ex);
 
                 throw;
             }

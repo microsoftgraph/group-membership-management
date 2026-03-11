@@ -404,7 +404,7 @@ namespace Repositories.GraphAzureADUsers
                                currentLimit = timeOutRetryLimit;
                            }
 
-                            _logger.LogWarningWithRunId(runId, $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.\n{ex}", ex);
+                            _logger.LogWarningWithRunId(runId, $"Got a transient exception. Retrying. This was try {retryIndex} out of {currentLimit}.", ex);
                        }
                     );
 

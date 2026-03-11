@@ -11,7 +11,7 @@ namespace Repositories.Contracts.Helpers
     {
         public static IDisposable BeginRunIdScope(this ILogger logger, Guid? runId)
         {
-            if (logger is null || !runId.HasValue)
+            if (!runId.HasValue)
             {
                 return null;
             }
