@@ -30,6 +30,26 @@ stages:
       - checkout: ${{ parameters.repoToCheckout }}
         path: ${{ parameters.checkoutPath }}
 
+    - task: UseNode@1
+      displayName: 'Use Node.js 23.1.0'
+      inputs:
+        version: '23.1.0'
+
+    - task: PowerShell@2
+      displayName: 'Run pnpm audit'
+      inputs:
+        targetType: inline
+        workingDirectory: 'UI/web-app'
+        script: |
+          npm install -g corepack@latest
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm --version
+          pnpm install --frozen-lockfile
+          pnpm audit --audit-level=moderate
+        pwsh: true
+      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+
     - task: CopyFiles@2
       displayName: 'Copy GmmUI webapp package'
       inputs:
