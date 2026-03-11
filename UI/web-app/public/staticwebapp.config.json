@@ -5,19 +5,7 @@
       "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/static/js/*",
-      "headers": {
-        "cache-control": "must-revalidate, max-age=15770000"
-      }
-    },
-    {
-      "route": "/static/css/*",
-      "headers": {
-        "cache-control": "must-revalidate, max-age=15770000"
-      }
-    },
-    {
-      "route": "/static/media/*",
+      "route": "/assets/*",
       "headers": {
         "cache-control": "must-revalidate, max-age=15770000"
       }
@@ -85,7 +73,7 @@
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
-      "/static/*",
+      "/assets/*",
       "/manifest.json",
       "/*.png",
       "/*.ico",
