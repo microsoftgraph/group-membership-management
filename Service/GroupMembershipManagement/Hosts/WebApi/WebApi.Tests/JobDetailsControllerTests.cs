@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.JsonPatch.Operations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph.Models;
 using MockQueryable.Moq;
 using Models;
@@ -15,6 +16,7 @@ using Moq;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.EntityFramework;
+using Services.Contracts;
 using Services.Messages.Responses;
 using Services.Messages.Requests;
 using Services.WebApi;
@@ -1742,6 +1744,86 @@ namespace Services.Tests
             Assert.IsTrue(history.All(h => h.Status == SyncStatus.Idle.ToString() || 
                                           h.Status == SyncStatus.Error.ToString()),
                 "History should only contain Idle and Error sync records");
+        }
+
+        [TestMethod]
+        public async Task SearchSyncJobHistoryByUser_ReturnsOk_WhenHandlerReturnsOk()
+        {
+            var syncJobId = Guid.NewGuid();
+            var userObjectId = Guid.NewGuid();
+            var requestId = Guid.NewGuid().ToString();
+
+            var expectedResponse = new SearchSyncHistoryByUserResponse
+            {
+                StatusCode = HttpStatusCode.OK,
+                MatchingRunIds = new List<Guid> { Guid.NewGuid() },
+                CheckedCurrentGroupMembership = false,
+                UserInCurrentGroup = false
+            };
+
+            var searchHandlerMock = new Mock<IRequestHandler<SearchSyncHistoryByUserRequest, SearchSyncHistoryByUserResponse>>();
+            searchHandlerMock
+                .Setup(x => x.ExecuteAsync(It.IsAny<SearchSyncHistoryByUserRequest>()))
+                .ReturnsAsync(expectedResponse);
+
+            var services = new ServiceCollection();
+            services.AddSingleton(searchHandlerMock.Object);
+            var provider = services.BuildServiceProvider();
+
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            context.RequestServices = provider;
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.SearchSyncJobHistoryByUserAsync(syncJobId, userObjectId, requestId);
+            var result = response.Result as OkObjectResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+            Assert.AreSame(expectedResponse, result.Value);
+
+            searchHandlerMock.Verify(x => x.ExecuteAsync(It.Is<SearchSyncHistoryByUserRequest>(r =>
+                r.SyncJobId == syncJobId &&
+                r.UserObjectId == userObjectId &&
+                r.RequestId == requestId)), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task SearchSyncJobHistoryByUser_ReturnsNotFound_WhenHandlerReturnsNotFound()
+        {
+            var syncJobId = Guid.NewGuid();
+            var userObjectId = Guid.NewGuid();
+
+            var searchHandlerMock = new Mock<IRequestHandler<SearchSyncHistoryByUserRequest, SearchSyncHistoryByUserResponse>>();
+            searchHandlerMock
+                .Setup(x => x.ExecuteAsync(It.IsAny<SearchSyncHistoryByUserRequest>()))
+                .ReturnsAsync(new SearchSyncHistoryByUserResponse
+                {
+                    StatusCode = HttpStatusCode.NotFound
+                });
+
+            var services = new ServiceCollection();
+            services.AddSingleton(searchHandlerMock.Object);
+            var provider = services.BuildServiceProvider();
+
+            var context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_READER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+            context.RequestServices = provider;
+            _jobDetailsController.ControllerContext = CreateControllerContext(context);
+
+            var response = await _jobDetailsController.SearchSyncJobHistoryByUserAsync(syncJobId, userObjectId);
+            var result = response.Result as NotFoundResult;
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual((int)HttpStatusCode.NotFound, result.StatusCode);
         }
 
         private ControllerContext CreateControllerContext(HttpContext httpContext)

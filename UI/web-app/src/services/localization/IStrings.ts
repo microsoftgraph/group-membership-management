@@ -335,6 +335,16 @@ export type IStrings = {
       downloadColumnLabel: string;
       downloadLinkText: string;
       downloadingText: string;
+      statusFilterLabel: string;
+      statusFilterAllOption: string;
+      searchUserLabel: string;
+      searchUserPlaceholder: string;
+      searchUserNoResults: string;
+      searchUserLoading: string;
+      searchUserError: string;
+      searchUserProgressUnavailableMessage: string;
+      userAddedPriorToHistoryMessage: string;
+      userNeverInGroupOrRemovedPriorToHistoryMessage: string;
     };
     notFound: string;
     openInAzure: string;

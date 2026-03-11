@@ -22,6 +22,15 @@ export interface IJobHistoryPanelStyles {
     changeTypeUpdate: IStyle;
     changeTypeGroupSettings: IStyle;
     changeTypeDefault: IStyle;
+    syncFiltersContainer: IStyle;
+    statusFilter: IStyle;
+    userSearchField: IStyle;
+    userSearchLabel: IStyle;
+    userSearchInputShell: IStyle;
+    userSearchPicker: IStyle;
+    userSearchPickerText: IStyle;
+    userSearchPickerItemsWrapper: IStyle;
+    userSearchIcon: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

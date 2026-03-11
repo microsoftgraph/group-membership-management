@@ -34,4 +34,6 @@ export * from './Operations';
 export * from './GetServiceStatusResponse';
 export * from './SyncJobChange';
 export * from './SyncJobHistory';
+export * from './SearchSyncHistoryByUserResult';
+export * from './SyncHistorySearchProgressUpdate';
 export * from './PostGroupResponse';

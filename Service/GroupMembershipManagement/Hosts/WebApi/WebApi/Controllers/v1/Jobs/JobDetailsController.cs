@@ -317,6 +317,22 @@ namespace WebApi.Controllers.v1.Jobs
             };
         }
 
+        [Authorize(Roles = Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpGet("history/sync/{syncJobId}/search-user/{userObjectId}")]
+        public async Task<ActionResult<SearchSyncHistoryByUserResponse>> SearchSyncJobHistoryByUserAsync(Guid syncJobId, Guid userObjectId, [FromQuery] string? requestId = null)
+        {
+            var handler = HttpContext.RequestServices.GetRequiredService<IRequestHandler<SearchSyncHistoryByUserRequest, SearchSyncHistoryByUserResponse>>();
+            var response = await handler.ExecuteAsync(new SearchSyncHistoryByUserRequest(syncJobId, userObjectId, requestId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
+                System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
         [Authorize(Roles = $"{Models.Roles.JOB_TENANT_READER},{Models.Roles.JOB_TENANT_WRITER},{Models.Roles.SUBMISSION_REVIEWER}")]
         [HttpGet("history/sync/{syncJobId}/runs/{runId}/download")]
         public async Task<ActionResult> DownloadMembershipAsync(Guid syncJobId, Guid runId)

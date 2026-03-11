@@ -13,27 +13,38 @@ import {
     Link,
     Modal,
     IconButton,
+    Icon,
+    Label,
     useTheme,
     TextField,
     MessageBar,
     MessageBarType,
+    Dropdown,
+    IDropdownOption,
+    NormalPeoplePicker,
+    Spinner,
+    SpinnerSize,
 } from '@fluentui/react';
+import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import {
     IJobHistoryPanelProps, IJobHistoryPanelStyleProps, IJobHistoryPanelStyles,
 } from './JobHistoryPanel.types';
 import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect, useState, useMemo } from 'react';
-import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges } from '../../store/jobDetails.api';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges, searchSyncHistoryByUser } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
+import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchProgressUpdate';
 import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { format } from 'react-string-format';
+import { getPeoplePickerSuggestions } from '../../store/jobs.api';
+import { SignalRSyncHistorySearchService } from '../../services/signalR/SignalRSyncHistorySearchService';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -56,10 +67,201 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [downloadingRunIds, setDownloadingRunIds] = useState<Set<string>>(new Set());
     const [sortedColumn, setSortedColumn] = useState<string>('startTime');
     const [isSortedDescending, setIsSortedDescending] = useState<boolean>(true);
+    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [selectedUser, setSelectedUser] = useState<IPersonaProps[]>([]);
+    const [matchingRunIds, setMatchingRunIds] = useState<Set<string> | null>(null);
+    const [isUserSearchLoading, setIsUserSearchLoading] = useState(false);
+    const [userSearchError, setUserSearchError] = useState<string | null>(null);
+    const [userSearchInfo, setUserSearchInfo] = useState<string | null>(null);
+    const [showProgressUnavailableMessage, setShowProgressUnavailableMessage] = useState(false);
+    const [searchProgressText, setSearchProgressText] = useState<string | null>(null);
+
+    const syncHistorySearchSignalRServiceRef = useRef<SignalRSyncHistorySearchService>(new SignalRSyncHistorySearchService());
+    const activeSearchRequestIdRef = useRef<string | null>(null);
+    const isSignalRProgressDisabledRef = useRef(false);
+
+    const buildRequestId = (): string => {
+        if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return crypto.randomUUID();
+        }
+
+        return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    };
+
+    const updateProgressText = (progress: SyncHistorySearchProgressUpdate) => {
+        setSearchProgressText(`${strings.JobDetails.Panel.searchUserLoading} (${progress.processedRuns}/${progress.totalRuns})`);
+    };
+
+    useEffect(() => {
+        const signalRService = syncHistorySearchSignalRServiceRef.current;
+        signalRService.onProgress = (update: SyncHistorySearchProgressUpdate) => {
+            if (!activeSearchRequestIdRef.current || update.requestId !== activeSearchRequestIdRef.current) {
+                return;
+            }
+
+            updateProgressText(update);
+        };
+
+        return () => {
+            signalRService.onProgress = null;
+            signalRService.stopConnection();
+        };
+    }, [strings.JobDetails.Panel.searchUserLoading]);
+
+    useEffect(() => {
+        if (!showProgressUnavailableMessage || !isUserSearchLoading) {
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setShowProgressUnavailableMessage(false);
+        }, 5000);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [showProgressUnavailableMessage, isUserSearchLoading]);
 
     useEffect(() => {
         setDownloadError(null);
+        setStatusFilter('all');
+        setSelectedUser([]);
+        setMatchingRunIds(null);
+        setIsUserSearchLoading(false);
+        setUserSearchError(null);
+        setUserSearchInfo(null);
+        setShowProgressUnavailableMessage(false);
+        setSearchProgressText(null);
+        activeSearchRequestIdRef.current = null;
     }, [isOpen]);
+
+    const getSelectedUserObjectId = (): string | null => {
+        if (selectedUser.length === 0) return null;
+        const persona = selectedUser[0];
+        if (typeof persona.id === 'string' && persona.id.trim() !== '') {
+            return persona.id;
+        }
+
+        if (typeof persona.key === 'string' && persona.key.trim() !== '') {
+            return persona.key;
+        }
+
+        return null;
+    };
+
+    const removeDuplicates = (personas: IPersonaProps[], possibleDupes: IPersonaProps[]) => {
+        return personas.filter(persona => !possibleDupes.some(item => item.id === persona.id));
+    };
+
+    const getPickerSuggestions = async (
+        filterText: string,
+        currentPersonas: IPersonaProps[] | undefined
+    ): Promise<IPersonaProps[]> => {
+        if (!filterText || filterText.trim() === '') {
+            return [];
+        }
+
+        const users = await dispatch(getPeoplePickerSuggestions(filterText)).unwrap();
+
+        const personas = users.map((user) => {
+            return {
+                key: user.id,
+                id: user.id,
+                text: user.text,
+                secondaryText: user.secondaryText,
+            };
+        });
+
+        return removeDuplicates(personas, currentPersonas || []);
+    };
+
+    const searchHistoryForUser = async (userObjectId: string) => {
+        setUserSearchError(null);
+        setUserSearchInfo(null);
+        setShowProgressUnavailableMessage(false);
+        setIsUserSearchLoading(true);
+        setSearchProgressText(strings.JobDetails.Panel.searchUserLoading);
+
+        const requestId = buildRequestId();
+        const signalRService = syncHistorySearchSignalRServiceRef.current;
+        let signalRSubscribedRequestId: string | null = null;
+        let useSignalRProgress = false;
+
+        try {
+            if (!isSignalRProgressDisabledRef.current) {
+                try {
+                    await signalRService.startConnection();
+                    if (activeSearchRequestIdRef.current) {
+                        await signalRService.unsubscribe(activeSearchRequestIdRef.current);
+                    }
+                    activeSearchRequestIdRef.current = requestId;
+                    await signalRService.subscribe(requestId);
+                    signalRSubscribedRequestId = requestId;
+                    useSignalRProgress = true;
+                } catch {
+                    isSignalRProgressDisabledRef.current = true;
+                    activeSearchRequestIdRef.current = null;
+                    setShowProgressUnavailableMessage(true);
+                }
+            }
+
+            const result = await dispatch(searchSyncHistoryByUser({
+                syncJobId: jobId,
+                userObjectId,
+                requestId: useSignalRProgress ? requestId : undefined,
+            })).unwrap();
+            setMatchingRunIds(new Set(result.matchingRunIds));
+
+            if (result.matchingRunIds.length === 0 && result.checkedCurrentGroupMembership) {
+                if (result.userInCurrentGroup) {
+                    setUserSearchInfo(strings.JobDetails.Panel.userAddedPriorToHistoryMessage);
+                } else {
+                    setUserSearchInfo(strings.JobDetails.Panel.userNeverInGroupOrRemovedPriorToHistoryMessage);
+                }
+            }
+        } catch {
+            setMatchingRunIds(new Set());
+            setUserSearchError(strings.JobDetails.Panel.searchUserError);
+        } finally {
+            setIsUserSearchLoading(false);
+            setSearchProgressText(null);
+            if (signalRSubscribedRequestId) {
+                await signalRService.unsubscribe(signalRSubscribedRequestId);
+            }
+            activeSearchRequestIdRef.current = null;
+        }
+    };
+
+    const onSelectedUserChanged = (items?: IPersonaProps[]) => {
+        const users = items ?? [];
+        setSelectedUser(users);
+        setUserSearchError(null);
+        setUserSearchInfo(null);
+        setShowProgressUnavailableMessage(false);
+
+        if (users.length === 0) {
+            setMatchingRunIds(null);
+            setIsUserSearchLoading(false);
+            setSearchProgressText(null);
+            activeSearchRequestIdRef.current = null;
+            return;
+        }
+
+        const selectedObjectId =
+            typeof users[0].id === 'string' && users[0].id.trim() !== ''
+                ? users[0].id
+                : typeof users[0].key === 'string' && users[0].key.trim() !== ''
+                    ? users[0].key
+                    : null;
+
+        if (!selectedObjectId) {
+            setMatchingRunIds(new Set());
+            setUserSearchError(strings.JobDetails.Panel.searchUserError);
+            return;
+        }
+
+        searchHistoryForUser(selectedObjectId);
+    };
 
     const handleDownload = async (runId: string) => {
         if (downloadingRunIds.has(runId)) return;
@@ -487,6 +689,22 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
     const showSyncTab = isJobTenantReader || isJobTenantWriter;
 
+    const statusOptions: IDropdownOption[] = [
+        { key: 'all', text: strings.JobDetails.Panel.statusFilterAllOption },
+        ...Array.from(new Set(syncHistoryItems.map((item) => item.status))).map((status) => ({
+            key: status,
+            text: getStatusDisplayText(status),
+        })),
+    ];
+
+    const syncHistoryItemsFilteredByStatus = statusFilter === 'all'
+        ? sortedSyncHistoryItems
+        : sortedSyncHistoryItems.filter((item) => item.status === statusFilter);
+
+    const filteredSyncHistoryItems = matchingRunIds === null
+        ? syncHistoryItemsFilteredByStatus
+        : syncHistoryItemsFilteredByStatus.filter((item) => matchingRunIds.has(item.runId));
+
     useEffect(() => {
         if (isOpen) {
             dispatch(fetchJobChanges({ syncJobId: jobId }));
@@ -495,6 +713,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     .unwrap()
                     .then((history) => {
                         setSyncHistoryItems(history);
+                        const selectedObjectId = getSelectedUserObjectId();
+                        if (selectedObjectId) {
+                            searchHistoryForUser(selectedObjectId);
+                        }
                     })
                     .catch((error) => {
                         console.error('Failed to fetch sync job history:', error);
@@ -582,10 +804,54 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                                 {downloadError}
                             </MessageBar>
                         )}
+                        <div className={classNames.syncFiltersContainer}>
+                            <Dropdown
+                                className={classNames.statusFilter}
+                                label={strings.JobDetails.Panel.statusFilterLabel}
+                                selectedKey={statusFilter}
+                                options={statusOptions}
+                                onChange={(_, option) => setStatusFilter((option?.key as string) ?? 'all')}
+                            />
+                            <div className={classNames.userSearchField}>
+                                <Label className={classNames.userSearchLabel}>{strings.JobDetails.Panel.searchUserLabel}</Label>
+                                <NormalPeoplePicker
+                                        aria-label={strings.JobDetails.Panel.searchUserLabel}
+                                        className={classNames.userSearchPicker}
+                                        onResolveSuggestions={getPickerSuggestions}
+                                        onChange={onSelectedUserChanged}
+                                        selectedItems={selectedUser}
+                                        itemLimit={1}
+                                        resolveDelay={300}
+                                        inputProps={{ placeholder: strings.JobDetails.Panel.searchUserPlaceholder }}
+                                        pickerSuggestionsProps={{ noResultsFoundText: strings.JobDetails.Panel.searchUserNoResults }}
+                                    />
+                            </div>
+                        </div>
+                        {isUserSearchLoading && (
+                            <Spinner label={searchProgressText ?? strings.JobDetails.Panel.searchUserLoading} size={SpinnerSize.small} />
+                        )}
+                        {showProgressUnavailableMessage && isUserSearchLoading && (
+                            <MessageBar messageBarType={MessageBarType.info}>
+                                {strings.JobDetails.Panel.searchUserProgressUnavailableMessage}
+                            </MessageBar>
+                        )}
+                        {userSearchError && (
+                            <MessageBar
+                                messageBarType={MessageBarType.error}
+                                onDismiss={() => setUserSearchError(null)}
+                            >
+                                {userSearchError}
+                            </MessageBar>
+                        )}
+                        {userSearchInfo && !isUserSearchLoading && (
+                            <MessageBar messageBarType={MessageBarType.info}>
+                                {userSearchInfo}
+                            </MessageBar>
+                        )}
                         <DetailsList
                             setKey="syncHistorySet"
                             columns={syncHistoryColumns}
-                            items={sortedSyncHistoryItems}
+                            items={filteredSyncHistoryItems}
                             selectionMode={0}
                         />
                     </PivotItem>

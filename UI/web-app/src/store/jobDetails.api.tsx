@@ -13,6 +13,7 @@ import { processJob } from '../utils/jobUtils';
 import { GetJobChangesRequest } from '../models/GetJobChangesRequest';
 import { GetChannelRequest } from '../models/GetChannelRequest';
 import { SyncJobChangeReason } from '../models/SyncJobChangeReason';
+import { SearchSyncHistoryByUserResult } from '../models/SearchSyncHistoryByUserResult';
 
 export const fetchJobDetails = createAsyncThunk<
   Job,
@@ -267,6 +268,36 @@ export const fetchSyncJobHistory = createAsyncThunk<
     } catch (error) {
       throw new Error('Failed to fetch sync job history data!');
     }
+  }
+);
+
+export const searchSyncHistoryByUser = createAsyncThunk<
+  SearchSyncHistoryByUserResult,
+  { syncJobId: string; userObjectId: string; requestId?: string },
+  ThunkConfig
+>('jobs/searchSyncHistoryByUser', async ({ syncJobId, userObjectId, requestId }, { extra }) => {
+    const { authenticationService } = extra.services;
+    const token = await authenticationService.getTokenAsync(TokenType.GMM);
+    const headers = new Headers({
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    });
+
+    const url = new URL(config.searchSyncHistoryUser(encodeURIComponent(syncJobId), encodeURIComponent(userObjectId)));
+    if (requestId) {
+      url.searchParams.set('requestId', requestId);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to search sync job history by user.');
+    }
+
+    return await response.json();
   }
 );
 

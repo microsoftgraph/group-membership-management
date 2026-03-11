@@ -58,6 +58,25 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         changeTypeDefault: {
             backgroundColor: theme.palette.neutralSecondary,
         },
+        syncFiltersContainer: {
+            display: 'grid',
+            gridTemplateColumns: '220px 1fr',
+            gap: '12px',
+            alignItems: 'start',
+            marginBottom: '12px',
+        },
+        statusFilter: {
+            minWidth: '220px',
+        },
+        userSearchField: {
+            width: '100%',
+        },
+        userSearchLabel: {
+            display: 'block',
+        },
+        userSearchPicker: {
+            width: '100%',
+        },
     };
 };
 
