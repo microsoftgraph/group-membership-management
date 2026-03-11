@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Models;
 using Repositories.Contracts;
@@ -17,15 +18,15 @@ namespace Repositories.GraphGroups
     {
         private readonly GraphServiceClient _graphServiceClient;
         private readonly TelemetryClient _telemetryClient;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GraphGroupMetricTracker> _logger;
 
         public GraphGroupMetricTracker(GraphServiceClient graphServiceClient,
                                        TelemetryClient telemetryClient,
-                                       ILoggingRepository logger)
+                                       ILogger<GraphGroupMetricTracker> logger)
         {
             _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _loggingRepository = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task TrackMetricsAsync(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId, GraphOperationType operationType = GraphOperationType.Read)
@@ -33,7 +34,7 @@ namespace Repositories.GraphGroups
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
                 const int deltaResourceUnitCost = 5;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}", RunId = runId });
+                _logger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}");
                 TrackResourceUnitsUsedByTypeEvent(deltaResourceUnitCost, queryType, runId);
                 _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(deltaResourceUnitCost, operationType.ToString());
                 return;
@@ -41,11 +42,11 @@ namespace Repositories.GraphGroups
 
             if (headers == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = runId });
+                _logger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available");
                 return;
             }
 
-            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _loggingRepository, _telemetryClient, operationType);
+            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _logger, _telemetryClient, operationType);
 
             // Resource unit/throttle metrics already tracked within GraphTelemetryHelper.
         }
@@ -60,7 +61,7 @@ namespace Repositories.GraphGroups
             GraphTelemetryHelper.TrackResourceUnitsUsedByTypeEvent(_telemetryClient, ruu, queryType, runId);
         }
 
-        public async Task TrackRequestAsync(IDictionary<string, IEnumerable<string>> headers, Guid groupId, QueryType queryType, Guid? runId)
+        public Task TrackRequestAsync(IDictionary<string, IEnumerable<string>> headers, Guid groupId, QueryType queryType, Guid? runId)
         {
             string requestId = string.Empty;
             string clientRequestId = string.Empty;
@@ -87,12 +88,8 @@ namespace Repositories.GraphGroups
                 dateValue = date.FirstOrDefault();
             }
 
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage
-                {
-                    Message = $"Group Id - {groupId}, QueryType - {queryType}, Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}",
-                    RunId = runId
-                });
+            _logger.LogInformationWithRunId(runId, $"Group Id - {groupId}, QueryType - {queryType}, Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}");
+            return Task.CompletedTask;
         }
     }
 }

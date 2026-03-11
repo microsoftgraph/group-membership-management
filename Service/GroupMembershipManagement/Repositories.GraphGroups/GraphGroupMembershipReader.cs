@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -8,6 +9,7 @@ using Microsoft.Kiota.Abstractions;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.Constants;
+using Repositories.Contracts.Helpers;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
@@ -25,11 +27,15 @@ namespace Repositories.GraphGroups
 {
     internal class GraphGroupMembershipReader : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphGroupMembershipReader> _graphGroupMembershipReaderLogger;
+
         public GraphGroupMembershipReader(GraphServiceClient graphServiceClient,
-                                          ILoggingRepository loggingRepository,
-                                          GraphGroupMetricTracker graphGroupMetricTracker)
-                                          : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                                          GraphGroupMetricTracker graphGroupMetricTracker,
+                                          ILogger<GraphGroupMembershipReader> graphGroupMembershipReaderLogger)
+                                          : base(graphServiceClient, graphGroupMembershipReaderLogger, graphGroupMetricTracker)
+        {
+            _graphGroupMembershipReaderLogger = graphGroupMembershipReaderLogger ?? throw new ArgumentNullException(nameof(graphGroupMembershipReaderLogger));
+        }
 
         public async Task<List<AzureADUser>> GetUsersInGroupTransitivelyAsync(Guid groupId, Guid? runId)
         {
@@ -52,21 +58,13 @@ namespace Repositories.GraphGroups
                 }
 
                 var nonUserGraphObjectsSummary = string.Join(Environment.NewLine, nonUserGraphObjects.Select(x => $"{x.Value}: {x.Key}"));
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"From group {groupId}, read {transitiveMembers.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n"
-                });
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, read {transitiveMembers.Count} users, and the following other directory objects:\n{nonUserGraphObjectsSummary}\n");
 
                 return transitiveMembers;
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -87,11 +85,7 @@ namespace Repositories.GraphGroups
 
             var count = await GetGroupDirectoryObjectMembersCount(request, runId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"From group {groupId}, transitive count of nested groups: {count}\n"
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, transitive count of nested groups: {count}\n");
 
             return count;
         }
@@ -111,11 +105,7 @@ namespace Repositories.GraphGroups
 
             var count = await GetGroupDirectoryObjectMembersCount(request, runId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"From group {groupId}, transitive user count {count}\n"
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From group {groupId}, transitive user count {count}\n");
 
             return count;
         }
@@ -189,11 +179,7 @@ namespace Repositories.GraphGroups
             }
             catch (ServiceException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, "Unable to retrieve group members.\n" + ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -204,7 +190,7 @@ namespace Repositories.GraphGroups
             var groups = new List<AzureADGroup>();
             try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading direct group-type members of group {groupId}." });
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"Reading direct group-type members of group {groupId}.");
 
                 var nativeResponseHandler = new NativeResponseHandler();
 
@@ -289,12 +275,12 @@ namespace Repositories.GraphGroups
                     nextLink = nextResponse?.OdataNextLink;
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Retrieved {groups.Count} direct group-type members of {groupId}." });
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"Retrieved {groups.Count} direct group-type members of {groupId}.");
                 return groups;
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { RunId = runId, Message = ex.GetBaseException().ToString() });
+                _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
                 throw;
             }
         }
@@ -360,11 +346,7 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"From first page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
-                RunId = runId
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From first page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
 
             return response;
         }
@@ -418,11 +400,7 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"From subsequent page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
-                RunId = runId
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From subsequent page of transitive members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
 
             return response;
         }
@@ -467,11 +445,7 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"From first page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
-                RunId = runId
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From first page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
 
             return response;
         }
@@ -525,22 +499,14 @@ namespace Repositories.GraphGroups
                 return nativeResponse;
             });
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"From subsequent page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}",
-                RunId = runId
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"From subsequent page of members for group {groupId}, member count {response.Response?.Value?.Count ?? -1} GraphRequestId: {requestId} ClientRequestId: {clientRequestId}");
 
             return response;
         }
 
         public async Task<bool> IsEmailRecipientMemberOfGroupAsync(string userIdentifier, Guid groupObjectId, Guid? runId)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Checking on user existence to determine if it is a member of group {groupObjectId}."
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"Checking on user existence to determine if it is a member of group {groupObjectId}.");
 
             SetCustomActivityProperty("RunId", Convert.ToString(runId));
 
@@ -550,11 +516,7 @@ namespace Repositories.GraphGroups
 
             if (!identifierIsObjectId)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Getting user information."
-                });
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, "Getting user information.");
 
                 User user = null;
                 var nativeResponseHandler = new NativeResponseHandler();
@@ -583,11 +545,7 @@ namespace Repositories.GraphGroups
 
                         if (userByMailResponse.Value.Count == 0)
                         {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
-                            {
-                                RunId = runId,
-                                Message = $"No user was found when checking for user."
-                            });
+                            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, "No user was found when checking for user.");
 
                             return false;
                         }
@@ -602,30 +560,18 @@ namespace Repositories.GraphGroups
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = ex.GetBaseException().ToString(),
-                        RunId = runId
-                    });
+                    _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                     throw;
                 }
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"User identifier is already an object id. No Graph call required."
-                });
+                _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, "User identifier is already an object id. No Graph call required.");
             }
 
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Checking if email recipient is a member of the group {groupObjectId}."
-            });
+            _graphGroupMembershipReaderLogger.LogInformationWithRunId(runId, $"Checking if email recipient is a member of the group {groupObjectId}.");
 
             return await IsGroupMemberAsync($"id eq '{userId}'", groupObjectId, runId);
         }
@@ -661,11 +607,7 @@ namespace Repositories.GraphGroups
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupMembershipReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }

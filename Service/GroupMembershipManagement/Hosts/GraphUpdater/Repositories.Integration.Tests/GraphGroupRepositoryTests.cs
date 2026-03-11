@@ -3,18 +3,17 @@
 using Azure.Identity;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
-using Repositories.Contracts;
 using Repositories.GraphGroups;
 using Repositories.MembershipDifference;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using Group = Microsoft.Graph.Models.Group;
@@ -268,7 +267,7 @@ namespace Repositories.Integration.Tests
             var authProvider = new InteractiveBrowserCredential(interactiveBrowserCredentialOptions);
 
             _graphServiceClient = new GraphServiceClient(authProvider);
-            _groupRepo = new GraphGroupRepository(_graphServiceClient, new TelemetryClient(new TelemetryConfiguration()), new MockLogger());
+            _groupRepo = new GraphGroupRepository(_graphServiceClient, new TelemetryClient(new TelemetryConfiguration()), NullLoggerFactory.Instance);
 
 
             await DeleteOldObjects("microsoft.graph.group");
@@ -489,36 +488,6 @@ namespace Repositories.Integration.Tests
             }
         }
 
-        private class MockLogger : ILoggingRepository
-        {
-            public Dictionary<Guid, LogProperties> SyncJobProperties { get; set; }
-            public bool DryRun { get; set; }
-
-            public Task LogMessageAsync(LogMessage logMessage, VerbosityLevel verbosityLevel = VerbosityLevel.INFO, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
-            {
-                return Task.CompletedTask;
-            }
-
-            public Task LogPIIMessageAsync(LogMessage logMessage, [CallerMemberName] string caller = "", [CallerFilePath] string file = "")
-            {
-                return Task.CompletedTask;
-            }
-
-            public void RemoveSyncJobProperties(Guid key)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void SetSyncJobProperties(Guid key, Dictionary<string, string> properties)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void UpsertSyncJobProperties(Guid key, Dictionary<string, string> properties)
-            {
-                throw new NotImplementedException();
-            }
-        }
 
     }
 }

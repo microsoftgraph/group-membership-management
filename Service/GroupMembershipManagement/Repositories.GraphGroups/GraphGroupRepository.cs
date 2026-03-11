@@ -1,10 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Graph;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +17,7 @@ namespace Repositories.GraphGroups
 {
     public class GraphGroupRepository : IGraphGroupRepository
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GraphGroupRepository> _graphGroupRepositoryLogger;
         private readonly GraphGroupInformationRepository _graphGroupInformationReader;
         private readonly GraphGroupOwnerReader _graphGroupOwnerReader;
         private readonly GraphUserReader _graphUserReader;
@@ -26,29 +29,55 @@ namespace Repositories.GraphGroups
         public Guid RunId { get; set; }
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
-                            TelemetryClient telemetryClient,
-                            ILoggingRepository loggingRepository)
-        : this(graphServiceClient, telemetryClient, loggingRepository, null)
-            {
-            }
+                                    TelemetryClient telemetryClient,
+                                    ILoggerFactory loggerFactory = null)
+            : this(graphServiceClient, telemetryClient, null, loggerFactory)
+        {
+        }
 
         public GraphGroupRepository(GraphServiceClient graphServiceClient,
                                     TelemetryClient telemetryClient,
-                                    ILoggingRepository loggingRepository,
-                                    IGraphRepositorySettings graphRepositorySettings)
+                                    IGraphRepositorySettings graphRepositorySettings,
+                                    ILoggerFactory loggerFactory = null)
         {
             if (graphServiceClient == null) throw new ArgumentNullException(nameof(graphServiceClient));
             _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _graphGroupRepositoryLogger = loggerFactory?.CreateLogger<GraphGroupRepository>() ?? NullLogger<GraphGroupRepository>.Instance;
 
-            var graphGroupMetricTracker = new GraphGroupMetricTracker(graphServiceClient, telemetryClient, loggingRepository);
-            _graphGroupInformationReader = new GraphGroupInformationRepository(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphGroupOwnerReader = new GraphGroupOwnerReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphUserReader = new GraphUserReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphGroupMembershipReader = new GraphGroupMembershipReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(graphServiceClient, loggingRepository, graphGroupMetricTracker, graphRepositorySettings);
-            _graphGroupDeltaReader = new GraphGroupDeltaReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
-            _graphGroupPlacesReader = new GraphGroupPlacesReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
+            var graphGroupMetricTracker = new GraphGroupMetricTracker(
+                graphServiceClient,
+                telemetryClient,
+                loggerFactory?.CreateLogger<GraphGroupMetricTracker>() ?? NullLogger<GraphGroupMetricTracker>.Instance);
+            _graphGroupInformationReader = new GraphGroupInformationRepository(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                loggerFactory?.CreateLogger<GraphGroupInformationRepository>() ?? NullLogger<GraphGroupInformationRepository>.Instance);
+            _graphGroupOwnerReader = new GraphGroupOwnerReader(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                loggerFactory?.CreateLogger<GraphGroupOwnerReader>() ?? NullLogger<GraphGroupOwnerReader>.Instance);
+            _graphUserReader = new GraphUserReader(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                loggerFactory?.CreateLogger<GraphUserReader>() ?? NullLogger<GraphUserReader>.Instance);
+            _graphGroupMembershipReader = new GraphGroupMembershipReader(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                loggerFactory?.CreateLogger<GraphGroupMembershipReader>() ?? NullLogger<GraphGroupMembershipReader>.Instance);
+            _graphGroupMembershipUpdater = new GraphGroupMembershipUpdater(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                graphRepositorySettings,
+                loggerFactory?.CreateLogger<GraphGroupMembershipUpdater>() ?? NullLogger<GraphGroupMembershipUpdater>.Instance);
+            _graphGroupDeltaReader = new GraphGroupDeltaReader(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                loggerFactory?.CreateLogger<GraphGroupDeltaReader>() ?? NullLogger<GraphGroupDeltaReader>.Instance);
+            _graphGroupPlacesReader = new GraphGroupPlacesReader(
+                graphServiceClient,
+                graphGroupMetricTracker,
+                loggerFactory?.CreateLogger<GraphGroupPlacesReader>() ?? NullLogger<GraphGroupPlacesReader>.Instance,
+                loggerFactory?.CreateLogger<GraphUserReader>() ?? NullLogger<GraphUserReader>.Instance);
         }
 
         public async Task<bool> GroupExists(Guid objectId)
@@ -229,11 +258,7 @@ namespace Repositories.GraphGroups
         {
             var (usersToAdd, usersToRemove, nextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetFirstDeltaLinkUsersPageAsync(groupId, deltaLink, RunId, numberOfPages);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of users from first page using delta link - {usersToAdd.Count + usersToRemove.Count}",
-                RunId = RunId
-            });
+            _graphGroupRepositoryLogger.LogInformationWithRunId(RunId, $"Number of users from first page using delta link - {usersToAdd.Count + usersToRemove.Count}");
 
             return (usersToAdd, usersToRemove, nextPageUrl, deltaUrl);
         }
@@ -243,11 +268,7 @@ namespace Repositories.GraphGroups
         {
             var (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl) = await _graphGroupDeltaReader.GetNextDeltaLinkUsersPagesAsync(groupId, nextPageUrl, RunId, numberOfPages);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Number of users from next page using delta link - {usersToAdd.Count + usersToRemove.Count}",
-                RunId = RunId
-            });
+            _graphGroupRepositoryLogger.LogInformationWithRunId(RunId, $"Number of users from next page using delta link - {usersToAdd.Count + usersToRemove.Count}");
 
             return (usersToAdd, usersToRemove, newNextPageUrl, deltaUrl);
         }

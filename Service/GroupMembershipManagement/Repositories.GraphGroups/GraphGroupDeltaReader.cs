@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -21,12 +23,15 @@ namespace Repositories.GraphGroups
 {
     internal class GraphGroupDeltaReader : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphGroupDeltaReader> _graphGroupDeltaReaderLogger;
 
         public GraphGroupDeltaReader(GraphServiceClient graphServiceClient,
-                                    ILoggingRepository loggingRepository,
-                                    GraphGroupMetricTracker graphGroupMetricTracker)
-                                    : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                                     GraphGroupMetricTracker graphGroupMetricTracker,
+                                     ILogger<GraphGroupDeltaReader> graphGroupDeltaReaderLogger)
+                                     : base(graphServiceClient, graphGroupDeltaReaderLogger, graphGroupMetricTracker)
+        {
+            _graphGroupDeltaReaderLogger = graphGroupDeltaReaderLogger ?? throw new ArgumentNullException(nameof(graphGroupDeltaReaderLogger));
+        }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl, string deltaUrl)> GetFirstDeltaUsersPageAsync(Guid groupId, Guid? runId, int numberOfPages)
         {
@@ -45,7 +50,7 @@ namespace Repositories.GraphGroups
 
                 var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from first page using delta - {users.Count}", RunId = runId });
+                _graphGroupDeltaReaderLogger.LogInformationWithRunId(runId, $"Number of users from first page using delta - {users.Count}");
 
                 allUsers.AddRange(users);
                 nextLink = deltaResponse.Response.OdataNextLink;
@@ -76,7 +81,7 @@ namespace Repositories.GraphGroups
 
                 var users = ExtractDeltaMembers(deltaResponse.Response.Value.FirstOrDefault());
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using delta - {users.Count}", RunId = runId });
+                _graphGroupDeltaReaderLogger.LogInformationWithRunId(runId, $"Number of users from next page using delta - {users.Count}");
 
                 allUsers.AddRange(users);
 
@@ -137,7 +142,7 @@ namespace Repositories.GraphGroups
 
                 var users = ExtractDeltaMembers(deltaLinkResponse.Response.Value.FirstOrDefault(), includeMembersToRemove: true);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Number of users from next page using deltaLink - {users.Count}", RunId = runId });
+                _graphGroupDeltaReaderLogger.LogInformationWithRunId(runId, $"Number of users from next page using deltaLink - {users.Count}");
 
                 usersToAdd.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Add).ToList());
                 usersToRemove.AddRange(users.Where(x => x.MembershipAction == MembershipAction.Remove).ToList());

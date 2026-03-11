@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -9,6 +10,7 @@ using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -22,11 +24,15 @@ namespace Repositories.GraphGroups
 {
     internal class GraphGroupInformationRepository : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphGroupInformationRepository> _graphGroupInformationRepositoryLogger;
+
         public GraphGroupInformationRepository(GraphServiceClient graphServiceClient,
-                                  ILoggingRepository loggingRepository,
-                                  GraphGroupMetricTracker graphGroupMetricTracker)
-                                  : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                                              GraphGroupMetricTracker graphGroupMetricTracker,
+                                              ILogger<GraphGroupInformationRepository> graphGroupInformationRepositoryLogger)
+                                              : base(graphServiceClient, graphGroupInformationRepositoryLogger, graphGroupMetricTracker)
+        {
+            _graphGroupInformationRepositoryLogger = graphGroupInformationRepositoryLogger ?? throw new ArgumentNullException(nameof(graphGroupInformationRepositoryLogger));
+        }
 
         private int MaxGroupResultCount { get; set; } = 25;
 
@@ -72,21 +78,13 @@ namespace Repositories.GraphGroups
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -131,21 +129,13 @@ namespace Repositories.GraphGroups
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -187,11 +177,7 @@ namespace Repositories.GraphGroups
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -217,11 +203,7 @@ namespace Repositories.GraphGroups
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 return null;
             }
@@ -256,11 +238,7 @@ namespace Repositories.GraphGroups
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return string.Empty;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -340,11 +318,7 @@ namespace Repositories.GraphGroups
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return string.Empty;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -509,11 +483,7 @@ namespace Repositories.GraphGroups
             }
             catch (ApiException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
             }
 
             try
@@ -552,11 +522,7 @@ namespace Repositories.GraphGroups
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
             }
 
             return endpoints;
@@ -608,17 +574,13 @@ namespace Repositories.GraphGroups
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception e)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error creating group: {e}", e);
             }
         }
 
@@ -703,22 +665,19 @@ namespace Repositories.GraphGroups
                 }
                 else
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group" });
+                    _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, "Error creating group");
                     return null;
                 }
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception e)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error creating group: {e}" });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error creating group: {e}", e);
                 return null;
             }
         }
@@ -791,21 +750,13 @@ namespace Repositories.GraphGroups
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve group types\n{ex.GetBaseException()}",
-                    RunId = runId
-                });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, $"Unable to retrieve group types\n{ex.GetBaseException()}", ex);
             }
 
             return groups;
@@ -867,7 +818,7 @@ namespace Repositories.GraphGroups
             }
             catch (Exception e)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error searching for groups: {e}" });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error searching for groups: {e}", e);
                 throw;
             }
         }
@@ -917,7 +868,7 @@ namespace Repositories.GraphGroups
             }
             catch (Exception e)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error searching for groups: {e}" });
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error searching for groups: {e}", e);
                 throw;
             }
         }
@@ -942,7 +893,7 @@ namespace Repositories.GraphGroups
                 }
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Fetched {groupNames.Count} group names." });
+            _graphGroupInformationRepositoryLogger.LogInformationWithRunId(null, $"Fetched {groupNames.Count} group names.");
 
             return groupNames;
         }

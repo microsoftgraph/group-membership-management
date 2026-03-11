@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -21,13 +23,16 @@ namespace Repositories.GraphGroups
     internal class GraphGroupPlacesReader : GraphGroupRepositoryBase
     {
         private readonly GraphUserReader _graphUserReader;
+        private readonly ILogger<GraphGroupPlacesReader> _graphGroupPlacesReaderLogger;
 
         public GraphGroupPlacesReader(GraphServiceClient graphServiceClient,
-                            ILoggingRepository loggingRepository,
-                            GraphGroupMetricTracker graphGroupMetricTracker)
-                            : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
+                                      GraphGroupMetricTracker graphGroupMetricTracker,
+                                      ILogger<GraphGroupPlacesReader> graphGroupPlacesReaderLogger,
+                                      ILogger<GraphUserReader> graphUserReaderLogger)
+                                      : base(graphServiceClient, graphGroupPlacesReaderLogger, graphGroupMetricTracker)
         {
-            _graphUserReader = new GraphUserReader(graphServiceClient, loggingRepository, graphGroupMetricTracker);
+            _graphGroupPlacesReaderLogger = graphGroupPlacesReaderLogger ?? throw new ArgumentNullException(nameof(graphGroupPlacesReaderLogger));
+            _graphUserReader = new GraphUserReader(graphServiceClient, graphGroupMetricTracker, graphUserReaderLogger);
         }
 
         public async Task<(List<AzureADUser> users, string nextPageUrl)> GetRoomsPageAsync(string url, int top, int skip, Guid? runId)
@@ -173,11 +178,7 @@ namespace Repositories.GraphGroups
             if (!nativeResponse.IsSuccessStatusCode)
             {
                 var errorContent = await nativeResponse.Content.ReadAsStringAsync();
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Failed to retrieve place information from Microsoft Graph. StatusCode {(int)nativeResponse.StatusCode} - {nativeResponse.StatusCode}. Response: {errorContent}",
-                    RunId = runId
-                });
+                _graphGroupPlacesReaderLogger.LogErrorWithRunId(runId, $"Failed to retrieve place information from Microsoft Graph. StatusCode {(int)nativeResponse.StatusCode} - {nativeResponse.StatusCode}. Response: {errorContent}");
 
                 nativeResponse.EnsureSuccessStatusCode();
             }

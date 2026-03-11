@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Abstractions.Serialization;
@@ -147,21 +148,17 @@ namespace Services.Tests
                             });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
             var targetGroup = new AzureADGroup { ObjectId = Guid.Empty };
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
             var response = await graphGroupRepository.AddUsersToGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
             {
                 var message = $"Adding {userId} failed as this resource does not exists.";
-                logger.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(x => x.Message == message),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()), Times.Exactly(1));
+                Assert.AreEqual(1, loggerFactory.Entries.Count(x => x.Message == message));
             }
 
             Assert.AreEqual(usersNotFoundIds.Count, response.UsersNotFound.Count);
@@ -171,7 +168,7 @@ namespace Services.Tests
         public async Task RemoveUsersIgnoreNotFoundFromGroup()
         {
             var userIdRegexPattern = new Regex("members/(?<userId>.*?)/");
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
 
@@ -244,17 +241,13 @@ namespace Services.Tests
                             });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
             var response = await graphGroupRepository.RemoveUsersFromGroup(users, targetGroup);
 
             foreach (var userId in usersNotFoundIds)
             {
                 var message = $"Removing {userId} failed as this resource does not exists.";
-                logger.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(x => x.Message == message),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()), Times.Exactly(1));
+                Assert.AreEqual(1, loggerFactory.Entries.Count(x => x.Message == message));
             }
 
             Assert.AreEqual(usersNotFoundIds.Count, response.UsersNotFound.Count);
@@ -342,10 +335,10 @@ namespace Services.Tests
                 });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
 
             var usersToAdd = new List<AzureADUser>();
             Enumerable.Range(0, numberOfUsers)
@@ -366,11 +359,7 @@ namespace Services.Tests
 
             var response = await graphGroupRepository.AddUsersToGroup(usersToAdd, new AzureADGroup { ObjectId = Guid.NewGuid() });
 
-            logger.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(x => x.Message.EndsWith("already exists")),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()), Times.Exactly(usersThatAlreadyExist.Count));
+            Assert.AreEqual(usersThatAlreadyExist.Count, loggerFactory.Entries.Count(x => x.Message.EndsWith("already exists", StringComparison.Ordinal)));
 
             Assert.AreEqual(usersThatAlreadyExist.Count, response.UsersAlreadyExist.Count);
         }
@@ -459,10 +448,10 @@ namespace Services.Tests
                 });
 
             var graphServiceClient = new Mock<GraphServiceClient>(_requestAdapter.Object, GRAPH_API_V1_BASE_URL);
-            var logger = new Mock<ILoggingRepository>();
+            var loggerFactory = new TestLoggerFactory();
             var telemetryConfiguration = new TelemetryConfiguration("instrumentationkey");
             var telemetryClient = new TelemetryClient(telemetryConfiguration);
-            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, logger.Object, _graphRepositorySettings.Object);
+            var graphGroupRepository = new GraphGroupRepository(graphServiceClient.Object, telemetryClient, _graphRepositorySettings.Object, loggerFactory);
             var usersToAdd = new List<AzureADUser>();
 
             Enumerable.Range(0, numberOfUsers)
@@ -486,11 +475,63 @@ namespace Services.Tests
             foreach (var guestUser in guestUsers)
             {
                 var message = $"{guestUser} was not added because it is a guest user and the destination does not allow guest users";
-                logger.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(x => x.Message == message),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()), Times.Exactly(1));
+                Assert.AreEqual(1, loggerFactory.Entries.Count(x => x.Message == message));
+            }
+        }
+
+        private sealed class TestLoggerFactory : ILoggerFactory
+        {
+            public List<TestLogEntry> Entries { get; } = new();
+
+            public void AddProvider(ILoggerProvider provider)
+            {
+            }
+
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new TestLogger(categoryName, Entries);
+            }
+
+            public void Dispose()
+            {
+            }
+        }
+
+        private sealed class TestLogger : ILogger
+        {
+            private readonly string _categoryName;
+            private readonly List<TestLogEntry> _entries;
+
+            public TestLogger(string categoryName, List<TestLogEntry> entries)
+            {
+                _categoryName = categoryName;
+                _entries = entries;
+            }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                return NullScope.Instance;
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+            {
+                return true;
+            }
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            {
+                _entries.Add(new TestLogEntry(_categoryName, logLevel, formatter(state, exception)));
+            }
+        }
+
+        private sealed record TestLogEntry(string CategoryName, LogLevel LogLevel, string Message);
+
+        private sealed class NullScope : IDisposable
+        {
+            public static NullScope Instance { get; } = new();
+
+            public void Dispose()
+            {
             }
         }
 

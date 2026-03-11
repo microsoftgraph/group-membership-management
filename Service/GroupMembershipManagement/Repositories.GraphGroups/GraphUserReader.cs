@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
 using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -18,11 +20,15 @@ namespace Repositories.GraphGroups
 {
     internal class GraphUserReader : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphUserReader> _graphUserReaderLogger;
+
         public GraphUserReader(GraphServiceClient graphServiceClient,
-                                          ILoggingRepository loggingRepository,
-                                          GraphGroupMetricTracker graphGroupMetricTracker)
-                                          : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                               GraphGroupMetricTracker graphGroupMetricTracker,
+                               ILogger<GraphUserReader> graphUserReaderLogger)
+                               : base(graphServiceClient, graphUserReaderLogger, graphGroupMetricTracker)
+        {
+            _graphUserReaderLogger = graphUserReaderLogger ?? throw new ArgumentNullException(nameof(graphUserReaderLogger));
+        }
 
         public async Task<List<AzureADUser>> GetTenantUsersAsync(int userCount, Guid? runId)
         {
@@ -88,11 +94,7 @@ namespace Repositories.GraphGroups
 
             catch (Exception exception)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserByUpnOrIdAsync)}, UserIdentifier: {userIdentifier}"
-                });
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {exception}, FailedMethod: {nameof(GetUserByUpnOrIdAsync)}, UserIdentifier: {userIdentifier}", exception);
             }
 
             return userDetails;
@@ -138,11 +140,7 @@ namespace Repositories.GraphGroups
             }
             catch (Exception exception)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Exception: {exception}, FailedMethod: {nameof(GetUserWithOnPremisesImmutableIdAsync)}, UserIdentifier: {userIdentifier}"
-                });
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {exception}, FailedMethod: {nameof(GetUserWithOnPremisesImmutableIdAsync)}, UserIdentifier: {userIdentifier}", exception);
             }
 
             return userDetails;
@@ -198,11 +196,7 @@ namespace Repositories.GraphGroups
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Exception: {nameof(GetObjectIdFromServicePrincipalAsync)} failed with error {ex.Message}"
-                });
+                _graphUserReaderLogger.LogErrorWithRunId(runId, $"Exception: {nameof(GetObjectIdFromServicePrincipalAsync)} failed with error {ex.Message}", ex);
                 return Guid.Empty;
             }
         }

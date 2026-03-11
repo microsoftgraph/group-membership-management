@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Azure;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -8,6 +9,7 @@ using Microsoft.Kiota.Abstractions;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -22,11 +24,15 @@ namespace Repositories.GraphGroups
 {
     internal class GraphGroupOwnerReader : GraphGroupRepositoryBase
     {
+        private readonly ILogger<GraphGroupOwnerReader> _graphGroupOwnerReaderLogger;
+
         public GraphGroupOwnerReader(GraphServiceClient graphServiceClient,
-                                      ILoggingRepository loggingRepository,
-                                      GraphGroupMetricTracker graphGroupMetricTracker)
-                                      : base(graphServiceClient, loggingRepository, graphGroupMetricTracker)
-        { }
+                                     GraphGroupMetricTracker graphGroupMetricTracker,
+                                     ILogger<GraphGroupOwnerReader> graphGroupOwnerReaderLogger)
+                                     : base(graphServiceClient, graphGroupOwnerReaderLogger, graphGroupMetricTracker)
+        {
+            _graphGroupOwnerReaderLogger = graphGroupOwnerReaderLogger ?? throw new ArgumentNullException(nameof(graphGroupOwnerReaderLogger));
+        }
 
         public async Task<bool> IsAppIDOwnerOfGroupAsync(string appId, Guid groupObjectId, Guid? runId)
         {
@@ -64,11 +70,7 @@ namespace Repositories.GraphGroups
 
                 await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}."
-                });
+                _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Checking if app ID {appId} (service principal with object ID {servicePrincipal.Id}) owns the group {groupObjectId}.");
 
                 return await IsGroupOwnerAsync($"id eq '{servicePrincipal.Id}'", groupObjectId, runId);
             }
@@ -83,11 +85,7 @@ namespace Repositories.GraphGroups
 
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid? runId, int top = 0)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Getting owners of group {groupObjectId}."
-            });
+            _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Getting owners of group {groupObjectId}.");
 
             var owners = new List<User>();
 
@@ -114,11 +112,7 @@ namespace Repositories.GraphGroups
                     owners.AddRange(groupOwnersResponse.Value.OfType<User>());
                     await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        RunId = runId,
-                        Message = $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}."
-                    });
+                    _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}.");
 
                     return owners.Select(x => new AzureADUser
                     {
@@ -129,22 +123,14 @@ namespace Repositories.GraphGroups
                     .ToList();
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Failed to retrieve owners of group {groupObjectId}. StatusCode {nativeResponse.StatusCode}"
-                });
+                _graphGroupOwnerReaderLogger.LogWarningWithRunId(runId, $"Failed to retrieve owners of group {groupObjectId}. StatusCode {nativeResponse.StatusCode}");
 
                 return new List<AzureADUser>();
 
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupOwnerReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -152,11 +138,7 @@ namespace Repositories.GraphGroups
 
         public async Task<bool> IsEmailRecipientOwnerOfGroupAsync(string userIdentifier, Guid groupObjectId, Guid? runId)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Checking on user existence for user identifier to determine if it is an owner of group {groupObjectId}."
-            });
+            _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Checking on user existence for user identifier to determine if it is an owner of group {groupObjectId}.");
 
             Guid userId;
 
@@ -164,11 +146,7 @@ namespace Repositories.GraphGroups
 
             if (!identifierIsObjectId)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Getting user information for email."
-                });
+                _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, "Getting user information for email.");
 
                 User user = null;
                 var nativeResponseHandler = new NativeResponseHandler();
@@ -191,11 +169,7 @@ namespace Repositories.GraphGroups
 
                         if (userByMailResponse.Value.Count == 0)
                         {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
-                            {
-                                RunId = runId,
-                                Message = $"No user was found when checking for user with email."
-                            });
+                            _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, "No user was found when checking for user with email.");
 
                             return false;
                         }
@@ -211,29 +185,17 @@ namespace Repositories.GraphGroups
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = ex.GetBaseException().ToString(),
-                        RunId = runId
-                    });
+                    _graphGroupOwnerReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                     throw;
                 }
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"User identifier is already an object id."
-                });
+                _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, "User identifier is already an object id.");
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Checking if email recipient owns the group {groupObjectId}."
-            });
+            _graphGroupOwnerReaderLogger.LogInformationWithRunId(runId, $"Checking if email recipient owns the group {groupObjectId}.");
 
             return await IsGroupOwnerAsync($"id eq '{userId}'", groupObjectId, runId);
 
@@ -270,11 +232,7 @@ namespace Repositories.GraphGroups
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _graphGroupOwnerReaderLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
