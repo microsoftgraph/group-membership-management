@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -10,6 +12,7 @@ using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
 using Models;
 using Models.Entities;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.GraphGroups;
 using System;
 using System.Collections.Generic;
@@ -24,19 +27,24 @@ namespace Repositories.TeamsChannel
 {
     public class TeamsChannelRepository : ITeamsChannelRepository
     {
-        private readonly ILoggingRepository _loggingRepository;
         private readonly GraphServiceClient _graphServiceClient;
+        private readonly ILogger<TeamsChannelRepository> _teamsChannelRepositoryLogger;
         private readonly TeamsChannelMetricTracker _teamsChannelMetricTracker;
 
         public Guid RunId { get; set; }
 
-        public TeamsChannelRepository(ILoggingRepository loggingRepository,
-            GraphServiceClient graphServiceClient,
-            TelemetryClient telemetryClient)
+        public TeamsChannelRepository(GraphServiceClient graphServiceClient,
+                                      TelemetryClient telemetryClient,
+                                      ILogger<TeamsChannelRepository> teamsChannelRepositoryLogger,
+                                      ILoggerFactory loggerFactory = null)
         {
             _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _teamsChannelMetricTracker = new TeamsChannelMetricTracker(graphServiceClient, telemetryClient, loggingRepository);
+            _ = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
+            _teamsChannelRepositoryLogger = teamsChannelRepositoryLogger ?? throw new ArgumentNullException(nameof(teamsChannelRepositoryLogger));
+            _teamsChannelMetricTracker = new TeamsChannelMetricTracker(
+                graphServiceClient,
+                telemetryClient,
+                loggerFactory?.CreateLogger<TeamsChannelMetricTracker>() ?? NullLogger<TeamsChannelMetricTracker>.Instance);
         }
 
         public async Task<List<AzureADTeamsUser>> ReadUsersFromChannelAsync(AzureADTeamsChannel teamsChannel, Guid? runId, string? query = null, bool excludeOwners = true)
@@ -44,7 +52,7 @@ namespace Repositories.TeamsChannel
             var groupId = teamsChannel.ObjectId;
             var channelId = teamsChannel.ChannelId;
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reading Teams users from group {groupId}, channel {channelId}." });
+            _teamsChannelRepositoryLogger.LogInformation($"Reading Teams users from group {groupId}, channel {channelId}.");
 
             var toReturn = new List<AzureADTeamsUser>();
 
@@ -80,7 +88,7 @@ namespace Repositories.TeamsChannel
 
                 if (membersPage?.Value != null)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                    _teamsChannelRepositoryLogger.LogInformation($"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}.");
                     // x! uses the "null forgiving operator" to fix the nullable/non-nullable type mismatch https://stackoverflow.com/a/54724546
                     // it's fine here because the where clause guarantees there's no nulls.
                     toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
@@ -121,21 +129,21 @@ namespace Repositories.TeamsChannel
                     if (membersPage?.Value != null)
                     {
                         toReturn.AddRange(membersPage.Value.Select((member) => ToTeamsUser(member, excludeOwners)).Where(x => x != null).Select(x => x!));
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}." });
+                        _teamsChannelRepositoryLogger.LogInformation($"Read {membersPage.Value.Count} Teams users from group {groupId}, channel {channelId}.");
                     }
 
                     nextLink = membersPage?.OdataNextLink;
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}." });
+                _teamsChannelRepositoryLogger.LogInformation($"Read a total of {toReturn.Count} Teams users from group {groupId}, channel {channelId}.");
 
                 return toReturn;
 
             }
             catch (ODataError e)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
+                _teamsChannelRepositoryLogger.LogError($"Exception code:  {e.Error.Code}");
+                _teamsChannelRepositoryLogger.LogError($"Exception Message:  {e.Error.Message}");
                 throw;
             }
             
@@ -145,7 +153,7 @@ namespace Repositories.TeamsChannel
         {
             try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}." });
+                _teamsChannelRepositoryLogger.LogInformation($"Reading metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}.");
 
                 var nativeResponseHandler = new NativeResponseHandler();
 
@@ -172,7 +180,7 @@ namespace Repositories.TeamsChannel
 
                     var channelData = await DeserializeResponseAsync(nativeResponse, Channel.CreateFromDiscriminatorValue);
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData?.MembershipType}." });
+                    _teamsChannelRepositoryLogger.LogInformation($"Read metadata about group {teamsChannel.ObjectId}, channel {teamsChannel.ChannelId}. MembershipType is {channelData?.MembershipType}.");
 
                     return channelData?.MembershipType?.ToString() ?? string.Empty;
                 }
@@ -183,8 +191,8 @@ namespace Repositories.TeamsChannel
             }
             catch (ODataError e)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
+                _teamsChannelRepositoryLogger.LogError($"Exception code:  {e.Error.Code}");
+                _teamsChannelRepositoryLogger.LogError($"Exception Message:  {e.Error.Message}");
                 throw;
             }
 
@@ -234,12 +242,12 @@ namespace Repositories.TeamsChannel
                 {
                     if (e.Error.Code == HttpStatusCode.BadRequest.ToString() && e.Error.Message!.Contains("Externally authenticated users and guest users are not allowed in shared channels"))
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Guest user cannot be added to channel, continuing sync. Exception Message:  {e.Error.Message}" });
+                        _teamsChannelRepositoryLogger.LogInformation($"Guest user cannot be added to channel, continuing sync. Exception Message:  {e.Error.Message}");
                     }
 
                     if (e.Error.Code == "NotFound" && e.Error.Message!.Contains("Unable to resolve the recipient."))
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"User not found with Object Id: {member.ObjectId}, sync will fail. Exception Message:  {e.Error.Message}" });
+                        _teamsChannelRepositoryLogger.LogInformation($"User not found with Object Id: {member.ObjectId}, sync will fail. Exception Message:  {e.Error.Message}");
                         usersNotFound.Add(member);
 
                         continue;
@@ -247,14 +255,14 @@ namespace Repositories.TeamsChannel
 
                     if (e.Error.Code == "UnknownError" || e.Error.Code == HttpStatusCode.BadGateway.ToString())
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An unknown error occurred for user {member.ObjectId}, but continuing sync. Exception Message:  {e.Error.Message}" });
+                        _teamsChannelRepositoryLogger.LogInformation($"An unknown error occurred for user {member.ObjectId}, but continuing sync. Exception Message:  {e.Error.Message}");
                         usersToRetry.Add(member);
 
                         continue;
                     }
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
+                    _teamsChannelRepositoryLogger.LogError($"Exception code:  {e.Error.Code}");
+                    _teamsChannelRepositoryLogger.LogError($"Exception Message:  {e.Error.Message}");
 
                     throw;
                 }
@@ -301,13 +309,12 @@ namespace Repositories.TeamsChannel
                     if(e.Error.Code == HttpStatusCode.BadRequest.ToString() && e.Error.Message!.Contains("Invalid id"))
                     {
                         usersNotFound.Add(member);
-                        await _loggingRepository.LogMessageAsync(new LogMessage {
-                            Message = $"An invalid id was found for user with object id '{member.ObjectId}' and conversation id '{member.ConversationMemberId}', but continuing sync. Exception Message: {e.Error.Message}" });
+                        _teamsChannelRepositoryLogger.LogInformation($"An invalid id was found for user with object id '{member.ObjectId}' and conversation id '{member.ConversationMemberId}', but continuing sync. Exception Message: {e.Error.Message}");
                         continue;
                     }
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception code:  {e.Error.Code}" });
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exception Message:  {e.Error.Message}" });
+                    _teamsChannelRepositoryLogger.LogError($"Exception code:  {e.Error.Code}");
+                    _teamsChannelRepositoryLogger.LogError($"Exception Message:  {e.Error.Message}");
                     throw;
                 }
             }
@@ -356,22 +363,14 @@ namespace Repositories.TeamsChannel
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return string.Empty;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _teamsChannelRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
         }
         public async Task<List<AzureADUser>> GetGroupOwnersAsync(Guid groupObjectId, Guid runId, int top = 0)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Getting owners of group {groupObjectId}."
-            });
+            _teamsChannelRepositoryLogger.LogInformationWithRunId(runId, $"Getting owners of group {groupObjectId}.");
 
             var owners = new List<User>();
 
@@ -398,11 +397,7 @@ namespace Repositories.TeamsChannel
                     owners.AddRange(groupOwnersResponse.Value.OfType<User>());
                     await _teamsChannelMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId);
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        RunId = runId,
-                        Message = $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}."
-                    });
+                    _teamsChannelRepositoryLogger.LogInformationWithRunId(runId, $"Retrieved{(top > 0 ? " top " : " ")}{owners.Count} owners of group {groupObjectId}.");
 
                     return owners.Select(x => new AzureADUser
                     {
@@ -412,22 +407,14 @@ namespace Repositories.TeamsChannel
                     .ToList();
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Failed to retrieve owners of group {groupObjectId}. StatusCode {nativeResponse.StatusCode}"
-                });
+                _teamsChannelRepositoryLogger.LogInformationWithRunId(runId, $"Failed to retrieve owners of group {groupObjectId}. StatusCode {nativeResponse.StatusCode}");
 
                 return new List<AzureADUser>();
 
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _teamsChannelRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
@@ -540,10 +527,7 @@ namespace Repositories.TeamsChannel
             }
             catch (ODataError ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString()
-                });
+                _teamsChannelRepositoryLogger.LogError(ex.GetBaseException().ToString());
 
                 throw;
             }
@@ -733,21 +717,13 @@ namespace Repositories.TeamsChannel
                 if (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _teamsChannelRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = ex.GetBaseException().ToString(),
-                    RunId = runId
-                });
+                _teamsChannelRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }

@@ -10,6 +10,7 @@ using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
@@ -89,7 +90,6 @@ namespace Hosts.JobTrigger
                             return new DisabledTeamsChannelRepository();
                         }
 
-                        var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                         var telemetryClient = services.GetRequiredService<TelemetryClient>();
 
                         var teamsGraphCredentials = services.GetService<IOptionsSnapshot<GraphCredentials>>().Get("TeamsGraphCredentials");
@@ -111,7 +111,10 @@ namespace Hosts.JobTrigger
                         }
                         var graphServiceClient = new GraphServiceClient(graphTokenCredential);
 
-                        return new TeamsChannelRepository(loggingRepository, graphServiceClient, telemetryClient);
+                        var teamsChannelRepositoryLogger = services.GetRequiredService<ILogger<TeamsChannelRepository>>();
+                        var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+
+                        return new TeamsChannelRepository(graphServiceClient, telemetryClient, teamsChannelRepositoryLogger, loggerFactory);
                     });
 
                     services.AddSingleton<IServiceBusTopicsRepository>(services =>

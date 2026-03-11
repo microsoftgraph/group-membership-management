@@ -357,9 +357,10 @@ namespace WebApi
                 }
 
                 var graphClient = new GraphServiceClient(teamsTokenCredential);
-                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
                 var telemetryClient = services.GetRequiredService<TelemetryClient>();
-                return new TeamsChannelRepository(loggingRepository, graphClient, telemetryClient);
+                var teamsChannelRepositoryLogger = services.GetRequiredService<ILogger<TeamsChannelRepository>>();
+                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+                return new TeamsChannelRepository(graphClient, telemetryClient, teamsChannelRepositoryLogger, loggerFactory);
             });
 
             builder.Services.AddOptions<HandleInactiveJobsConfig>().Configure<IConfiguration>((settings, configuration) =>

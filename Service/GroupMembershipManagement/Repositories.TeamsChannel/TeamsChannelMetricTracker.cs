@@ -1,9 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Graph;
 using Models;
-using Repositories.Contracts;
 using Repositories.Contracts.Constants;
 using Repositories.Contracts.Helpers;
 using System;
@@ -17,15 +18,15 @@ namespace Repositories.GraphGroups
     {
         private readonly GraphServiceClient _graphServiceClient;
         private readonly TelemetryClient _telemetryClient;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<TeamsChannelMetricTracker> _teamsChannelMetricTrackerLogger;
 
         public TeamsChannelMetricTracker(GraphServiceClient graphServiceClient,
-                                       TelemetryClient telemetryClient,
-                                       ILoggingRepository logger)
+                                         TelemetryClient telemetryClient,
+                                         ILogger<TeamsChannelMetricTracker> teamsChannelMetricTrackerLogger)
         {
             _graphServiceClient = graphServiceClient ?? throw new ArgumentNullException(nameof(graphServiceClient));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _loggingRepository = logger ?? throw new ArgumentNullException(nameof(logger));
+            _teamsChannelMetricTrackerLogger = teamsChannelMetricTrackerLogger ?? throw new ArgumentNullException(nameof(teamsChannelMetricTrackerLogger));
         }
 
         public async Task TrackMetricsAsync(IDictionary<string, IEnumerable<string>> headers, QueryType queryType, Guid? runId, GraphOperationType operationType = GraphOperationType.Read)
@@ -33,7 +34,7 @@ namespace Repositories.GraphGroups
             if (queryType == QueryType.Delta || queryType == QueryType.DeltaLink)
             {
                 const int deltaResourceUnitCost = 5;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}", RunId = runId });
+                _teamsChannelMetricTrackerLogger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}");
                 GraphTelemetryHelper.TrackResourceUnitsUsedByTypeEvent(_telemetryClient, deltaResourceUnitCost, queryType, runId);
                 _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(deltaResourceUnitCost, operationType.ToString());
                 return;
@@ -41,11 +42,11 @@ namespace Repositories.GraphGroups
 
             if (headers == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available", RunId = runId });
+                _teamsChannelMetricTrackerLogger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} is not available");
                 return;
             }
 
-            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _loggingRepository, _telemetryClient, operationType);
+            var telemetryResult = await GraphTelemetryHelper.TrackResourceUnitsAsync(headers, queryType, runId, _teamsChannelMetricTrackerLogger, _telemetryClient, operationType);
 
             // Telemetry values already recorded via GraphTelemetryHelper.
         }
@@ -74,12 +75,9 @@ namespace Repositories.GraphGroups
             if (headers.TryGetValue("Date", out var date))
                 dateValue = date.FirstOrDefault();
 
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage
-                {
-                    Message = $"Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}",
-                    RunId = runId
-                });
+            _teamsChannelMetricTrackerLogger.LogInformationWithRunId(runId, $"Request Id - {requestId}, Client Request Id - {clientRequestId}, Diagnostic - {diagnosticValue}, Date - {dateValue}");
+
+            await Task.CompletedTask;
         }
 
     }
