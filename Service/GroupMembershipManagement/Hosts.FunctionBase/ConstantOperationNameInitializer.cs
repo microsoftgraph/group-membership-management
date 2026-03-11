@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.ApplicationInsights.Channel;
+using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 
 namespace Hosts.FunctionBase
@@ -17,6 +18,12 @@ namespace Hosts.FunctionBase
             if (string.IsNullOrEmpty(telemetry.Context.Operation.Name))
             {
                 telemetry.Context.Operation.Name = _name;
+            }
+
+            // Add location to customDimensions for KQL union compatibility with legacy ApplicationLog_CL.location_s
+            if (telemetry is ISupportProperties props && !props.Properties.ContainsKey("location"))
+            {
+                props.Properties["location"] = _name;
             }
         }
     }

@@ -501,7 +501,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                     Service: '117px'
                     Groups: '93px'
                   }
-                  Query: 'ApplicationLog_CL \n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | join kind = inner ( \n    app("${resourceGroup}").customEvents \n    | where name == "SyncComplete" \n    | project timestamp,\n        Destination = tostring(customDimensions["Destination"]),\n        Result = tostring(customDimensions["Result"]),\n        DryRun = tobool(customDimensions["IsDryRunEnabled"])\n    | where Result == "Success" and DryRun == false\n    | distinct Destination\n)\non $left.Destination_s == $right.Destination\n| project TimeGenerated, Destination_s, TargetOfficeGroupId_g, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n| mv-expand Service = Services \n| distinct Destination_s, tostring(Service) \n| summarize Groups=count() by tostring(Service) \n | order by Groups\n\n'
+                  Query: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, Destination_s, TargetOfficeGroupId_g),\n  (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), Destination_s=tostring(customDimensions.Destination), TargetOfficeGroupId_g=tostring(customDimensions.TargetOfficeGroupId));\ngmm_logs\n | where location_s == "JobTrigger" and Message startswith "Linked services:" \n | join kind = inner ( \n    app("${resourceGroup}").customEvents \n    | where name == "SyncComplete" \n    | project timestamp,\n        Destination = tostring(customDimensions["Destination"]),\n        Result = tostring(customDimensions["Result"]),\n        DryRun = tobool(customDimensions["IsDryRunEnabled"])\n    | where Result == "Success" and DryRun == false\n    | distinct Destination\n)\non $left.Destination_s == $right.Destination\n| project TimeGenerated, Destination_s, TargetOfficeGroupId_g, Services = split(tostring(extract("services:(.*)", 1, Message)),",") \n| mv-expand Service = Services \n| distinct Destination_s, tostring(Service) \n| summarize Groups=count() by tostring(Service) \n | order by Groups\n\n'
                 }
               }
               partHeader: {
@@ -4151,7 +4151,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL \n| where Message contains "OrchestratorFunction number of jobs" and location_s == "JobTrigger"\n| extend JobCount = toint(extract("number of jobs in the syncJobs List: (\\\\d+)", 1, Message))\n| project timestamp = TimeGenerated, JobCount\n'
+                  value: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s),\n  (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location));\ngmm_logs\n| where Message contains "OrchestratorFunction number of jobs" and location_s == "JobTrigger"\n| extend JobCount = toint(extract("number of jobs in the syncJobs List: (\\\\d+)", 1, Message))\n| project timestamp = TimeGenerated, JobCount\n'
                   isOptional: true
                 }
                 {
@@ -4451,7 +4451,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                   GridColumnsWidth: {
                     Message: '379px'
                   }
-                  Query: 'ApplicationLog_CL\n| where ((location_s != "ProfileSync") and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "ErrorInvalidRecipients" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| where Message !startswith "Dispatched job status"\n| distinct TimeGenerated, location_s, Message, RunId_g\n| order by TimeGenerated desc\n'
+                  Query: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),\n  (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), RunId_g=tostring(customDimensions.RunId));\ngmm_logs\n| where ((location_s != "ProfileSync") and (Message has "exception" or Message has "error") and Message !has "Response" and Message !has "ErrorInvalidRecipients" and Message !has "Regex Expression:") or (Message has "Setting job status to" and Message !has "Idle" and Message !has "InProgress" and Message !has "StuckInProgress")\n| where Message !startswith "Dispatched job status"\n| distinct TimeGenerated, location_s, Message, RunId_g\n| order by TimeGenerated desc\n'
                   PartTitle: 'Jobs marked as Error'
                 }
               }
@@ -4512,7 +4512,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL \n|  project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g \n|  where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId" \n|  order by RunId_g desc, TimeGenerated asc \n|  where location_s == "JobTrigger" and RunId_g == next(RunId_g) and next(location_s) <> "GraphUpdater" \n|  project TimeGenerated, TargetOfficeGroupId_g, RunId_g \n|  where TimeGenerated > ago(30d) and TimeGenerated < ago(1d) and TargetOfficeGroupId_g  != RunId_g \n|  order by TimeGenerated desc'
+                  value: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g),\n  (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), RunId_g=tostring(customDimensions.RunId), TargetOfficeGroupId_g=tostring(customDimensions.TargetOfficeGroupId));\ngmm_logs\n|  project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g \n|  where location_s in ("JobTrigger", "GraphUpdater") and not(Message has_any("Email", "FilePath")) and Message has "RunId" \n|  order by RunId_g desc, TimeGenerated asc \n|  where location_s == "JobTrigger" and RunId_g == next(RunId_g) and next(location_s) <> "GraphUpdater" \n|  project TimeGenerated, TargetOfficeGroupId_g, RunId_g \n|  where TimeGenerated > ago(30d) and TimeGenerated < ago(1d) and TargetOfficeGroupId_g  != RunId_g \n|  order by TimeGenerated desc'
                   isOptional: true
                 }
                 {
@@ -4547,7 +4547,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'ApplicationLog_CL \n|  project TimeGenerated, Message, RunId_g, tostring(Destination_s)\n|  where Message has \'setting status to ErroredDueToStuckInProgress\'\n|  where TimeGenerated > ago(30d) and TimeGenerated < ago(1d)\n|  extend DestinationJson = parse_json(Destination_s)\n|  project TimeGenerated,\n           ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n           ChannelId = tostring(DestinationJson[0]["value"]["channelId"]),\n           RunId_g\n|  order by TimeGenerated desc\n'
+                  Query: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, RunId_g, Destination_s=tostring(Destination_s)),\n  (traces | project TimeGenerated=timestamp, Message=message, RunId_g=tostring(customDimensions.RunId), Destination_s=tostring(customDimensions.Destination));\ngmm_logs\n|  project TimeGenerated, Message, RunId_g, Destination_s\n|  where Message has \'setting status to ErroredDueToStuckInProgress\'\n|  where TimeGenerated > ago(30d) and TimeGenerated < ago(1d)\n|  extend DestinationJson = parse_json(Destination_s)\n|  project TimeGenerated,\n           ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n           ChannelId = tostring(DestinationJson[0]["value"]["channelId"]),\n           RunId_g\n|  order by TimeGenerated desc\n'
                   PartTitle: 'Jobs potentially stuck InProgress'
                   IsQueryContainTimeRange: true
                 }
@@ -4605,7 +4605,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
                 }
                 {
                   name: 'Query'
-                  value: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g\n| where Message has "Threshold Exceeded"\n| distinct TimeGenerated, TargetOfficeGroupId_g, RunId_g, Message\n| order by TimeGenerated desc\n'
+                  value: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g),\n  (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), RunId_g=tostring(customDimensions.RunId), TargetOfficeGroupId_g=tostring(customDimensions.TargetOfficeGroupId));\ngmm_logs\n| project TimeGenerated, Message, location_s, RunId_g, TargetOfficeGroupId_g\n| where Message has "Threshold Exceeded"\n| distinct TimeGenerated, TargetOfficeGroupId_g, RunId_g, Message\n| order by TimeGenerated desc\n'
                   isOptional: true
                 }
                 {
@@ -4644,9 +4644,9 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'ApplicationLog_CL\n| project TimeGenerated, Message, location_s, RunId_g, Destination_s\n| where Message has "Threshold Exceeded"\n| extend DestinationJson = parse_json(Destination_s)\n| project TimeGenerated, Message, location_s, RunId_g,\n            ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n            ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, RunId_g, TimeGenerated\n| order by TimeGenerated desc\n'
+                  Query: 'let gmm_logs = union\n  (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g, Destination_s),\n  (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), RunId_g=tostring(customDimensions.RunId), Destination_s=tostring(customDimensions.Destination));\ngmm_logs\n| project TimeGenerated, Message, location_s, RunId_g, Destination_s\n| where Message has "Threshold Exceeded"\n| extend DestinationJson = parse_json(Destination_s)\n| project TimeGenerated, Message, location_s, RunId_g,\n            ObjectId = tostring(DestinationJson[0]["value"]["objectId"]),\n            ChannelId = tostring(DestinationJson[0]["value"]["channelId"])\n| distinct ObjectId, ChannelId, RunId_g, TimeGenerated\n| order by TimeGenerated desc\n'
                   PartTitle: 'Threshold Exceeded Jobs'
-                  PartSubTitle: 'ApplicationLog_CL'
+                  PartSubTitle: 'GMM Logs'
                 }
               }
             }

@@ -970,18 +970,6 @@ module actionGroupTemplate 'actionGroup.bicep' = {
   }
 }
 
-module logAlertRuleTemplate 'logAlertRule.bicep' = {
-  name: 'logAlertRuleTemplate'
-  params: {
-    sourceId: logAnalyticsTemplate.outputs.resourceId
-    location: location
-    actionGroupId: actionGroupTemplate.outputs.actionGroupId
-  }
-  dependsOn: [
-    logAnalyticsTemplate
-    actionGroupTemplate
-  ]
-}
 
 var baseSecrets = [
   {
