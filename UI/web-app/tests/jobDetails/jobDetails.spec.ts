@@ -696,6 +696,11 @@ test.describe('Job Details Tests', () => {
 
   // Reset group creation setting to original state if it was originally disabled
   test.afterAll(async ({ browser }) => {
+    if (isMockMode) {
+      console.log('ℹ️ Mock mode: skipping group creation state reset.');
+      return;
+    }
+
     if (originalGroupCreationState === false) {
       const context = await browser.newContext({ storageState: 'tests/storageState.json' });
       const page = await context.newPage();
@@ -726,7 +731,7 @@ test.describe('Job Details Tests', () => {
     } else if (originalGroupCreationState === true) {
       console.log('ℹ️ Group creation feature was originally enabled, leaving it enabled.');
     } else {
-      console.log('⚠️ Could not determine original group creation state, leaving current state unchanged.');
+      console.log('ℹ️ Group creation state was not captured; skipping reset.');
     }
   });
 });

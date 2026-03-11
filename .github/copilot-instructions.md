@@ -189,6 +189,16 @@ Service/GroupMembershipManagement/
 - Test database operations
 - Verify message bus communications
 
+### Agent Test Execution Expectations
+- For every feature, bug fix, or refactor, run tests relevant to the files and behavior changed before completing the task.
+- Start with targeted tests (specific unit test projects/files or focused Playwright specs) for fast feedback, then run broader suites only when needed.
+- For UI feature development and routine validation, run Playwright in mock WebApi mode by default (`PLAYWRIGHT_USE_MOCK_API=true`) so tests are deterministic and do not depend on sign-in/auth setup.
+- Use real integration mode (`PLAYWRIGHT_USE_MOCK_API=false`) only when the task explicitly requires validating end-to-end auth or live WebApi behavior.
+- In PowerShell, prefer explicit commands such as: `$env:PLAYWRIGHT_USE_MOCK_API='true'; pnpm test:e2e <spec-or-args>; Remove-Item Env:PLAYWRIGHT_USE_MOCK_API -ErrorAction SilentlyContinue`.
+- If tests fail due to unrelated pre-existing issues, clearly report what failed, why it appears unrelated, and what was validated successfully.
+- If required test tooling is missing in the current environment (for example browser binaries for Playwright), install/setup it when possible and document what was executed.
+- Include a concise test summary in handoff notes: what was run, pass/fail outcome, and any gaps.
+
 ## Deployment & Operations
 
 ### Environment Management
