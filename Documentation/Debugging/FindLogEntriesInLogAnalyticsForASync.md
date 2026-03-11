@@ -7,11 +7,11 @@ This document will guide you through the steps required in log analytics for fin
 
 * Once you have the objectId for the destination group, navigate to the syncJobs table and run a query to find the latest runId for the respective destination group. The query editor on table storage will let you find the latest runId based on the target security group id. Set this value to the objectId from the earlier step and run the query.
 
-* Once you have the runId for the destination group, navigate to the log analytics workspace for your production environment. It start start with `gmm-data-`. Navigate to logs on the left panel and run the following query:
+* Once you have the runId for the destination group, navigate to the log analytics workspace for your production environment. It start start with `gmm-data-`. Navigate to logs on the left panel and run the following query (replace `<your-resource-group>` with your environment's resource group name, e.g. `gmm-data-prodv2`):
 
       let gmm_logs = union
         (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),
-        (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), RunId_g=tostring(customDimensions.RunId));
+        (AppTraces | project location_s=tostring(Properties.location), RunId_g=tostring(Properties.RunId));
       gmm_logs
       | where RunId_g == '<destination group RunId>'
       | order by TimeGenerated
@@ -22,7 +22,7 @@ This document will guide you through the steps required in log analytics for fin
 
       let gmm_logs = union
         (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),
-        (traces | project TimeGenerated=timestamp, Message=message, location_s=tostring(customDimensions.location), RunId_g=tostring(customDimensions.RunId));
+        (AppTraces | project location_s=tostring(Properties.location), RunId_g=tostring(Properties.RunId));
       gmm_logs
       | where RunId_g == '<destination group RunId>'
       | where location_s == 'GroupMembershipObtainer'
