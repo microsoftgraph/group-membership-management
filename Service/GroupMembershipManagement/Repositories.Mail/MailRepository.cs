@@ -3,6 +3,7 @@
 
 using AdaptiveCards.Templating;
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
@@ -28,7 +29,7 @@ namespace Repositories.Mail
         private readonly IMailConfig _mailConfig;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly GraphServiceClient _graphClient;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MailRepository> _mailRepositoryLogger;
         private readonly string _actionableEmailProviderId;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSettingsRepository _settingsRepository;
@@ -39,7 +40,7 @@ namespace Repositories.Mail
             GraphServiceClient graphClient, 
             IMailConfig mailAdaptiveCardConfig, 
             ILocalizationRepository localizationRepository, 
-            ILoggingRepository loggingRepository, 
+            ILogger<MailRepository> mailRepositoryLogger,
             string actionableEmailProviderId, 
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSettingsRepository settingsRepository,
@@ -50,7 +51,7 @@ namespace Repositories.Mail
             _graphClient = graphClient ?? throw new ArgumentNullException(nameof(graphClient));
             _mailConfig = mailAdaptiveCardConfig ?? throw new ArgumentNullException(nameof(mailAdaptiveCardConfig));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _mailRepositoryLogger = mailRepositoryLogger ?? throw new ArgumentNullException(nameof(mailRepositoryLogger));
             _actionableEmailProviderId = actionableEmailProviderId ?? throw new ArgumentNullException(nameof(actionableEmailProviderId));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
@@ -62,11 +63,7 @@ namespace Repositories.Mail
         {
             if (_mailConfig.SkipEmailNotifications)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email notifications are disabled."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email notifications are disabled.");
 
                 return new HttpResponseMessage(System.Net.HttpStatusCode.Accepted)
                 {
@@ -147,40 +144,24 @@ namespace Repositories.Mail
             }
             catch (ServiceException ex) when (ex.GetBaseException().GetType().Name == "MsalUiRequiredException")
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because Mail.Send permission has not been granted."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email cannot be sent because Mail.Send permission has not been granted.");
             }
             catch (ServiceException ex) when (ex.Message.Contains("MailboxNotEnabledForRESTAPI"))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email cannot be sent because required licenses are missing in the service account."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email cannot be sent because required licenses are missing in the service account.");
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Email cannot be sent due to an unexpected exception.\n{ex}"
-                });
+                _mailRepositoryLogger.LogErrorWithRunId(runId, $"Email cannot be sent due to an unexpected exception.\n{ex}", ex);
             }
             if (httpResponse != null)
             {
-                await GraphTelemetryHelper.TrackResourceUnitsAsync(httpResponse, QueryType.Other, runId, _loggingRepository, _telemetryClient);
+                await GraphTelemetryHelper.TrackResourceUnitsAsync(httpResponse, QueryType.Other, runId, _mailRepositoryLogger, _telemetryClient);
             }
             if (httpResponse == null)
             {
                 string errorMessage = "Failed to send email due to an unexpected exception.";
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = errorMessage
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, errorMessage);
                 return new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
                 {
                     ReasonPhrase = errorMessage
@@ -188,19 +169,11 @@ namespace Repositories.Mail
             }
             if (httpResponse.IsSuccessStatusCode)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = "Email sent successfully."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, "Email sent successfully.");
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Failed to send email: {httpResponse.StatusCode} - {await httpResponse.Content.ReadAsStringAsync()}"
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"Failed to send email: {httpResponse.StatusCode} - {await httpResponse.Content.ReadAsStringAsync()}");
             }
             return httpResponse;
         }
@@ -320,11 +293,7 @@ namespace Repositories.Mail
 
             if (Guid.TryParse(emailMessage.AdditionalContentParams[0], out Guid groupId))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"Successfully parsed group ID: {groupId}"
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"Successfully parsed group ID: {groupId}");
 
                 string groupName = await _graphGroupRepository.GetGroupNameAsync(groupId);
                 if (!string.IsNullOrEmpty(groupName))
@@ -334,11 +303,7 @@ namespace Repositories.Mail
             }
             else
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    RunId = runId,
-                    Message = $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID."
-                });
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID.");
             }
         }
         private AsyncPolicyWrap<HttpResponseMessage> GetHttpResponseMessageRetryPolicy(Guid? runId)

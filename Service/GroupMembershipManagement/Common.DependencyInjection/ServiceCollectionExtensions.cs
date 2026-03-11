@@ -5,6 +5,7 @@ using DIConcreteTypes;
 using Microsoft.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
@@ -78,7 +79,7 @@ namespace Common.DependencyInjection
                     new GraphServiceClient(graphTokenCredential),
                         provider.GetService<IMailConfig>(),
                         provider.GetService<ILocalizationRepository>(),
-                        provider.GetService<ILoggingRepository>(),
+                        provider.GetRequiredService<ILogger<MailRepository>>(),
                         GetValueOrDefault("actionableEmailProviderId"),
                         provider.GetService<IGraphGroupRepository>(),
                         provider.GetService<IDatabaseSettingsRepository>(),

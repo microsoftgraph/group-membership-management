@@ -1,23 +1,26 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
+using Microsoft.Extensions.Logging;
 using Polly;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Threading.Tasks;
 namespace Repositories.RetryPolicyProvider
 {
     public class RetryPolicyProvider: IRetryPolicyProvider
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<RetryPolicyProvider> _retryPolicyProviderLogger;
         private readonly IGraphServiceAttemptsValue _maxGraphServiceAttempts;
 
-        public RetryPolicyProvider(ILoggingRepository loggingRepository, IGraphServiceAttemptsValue maxGraphServiceAttempts)
+        public RetryPolicyProvider(ILogger<RetryPolicyProvider> retryPolicyProviderLogger, IGraphServiceAttemptsValue maxGraphServiceAttempts)
         {
-            _loggingRepository = loggingRepository;
+            _retryPolicyProviderLogger = retryPolicyProviderLogger ?? throw new ArgumentNullException(nameof(retryPolicyProviderLogger));
             _maxGraphServiceAttempts = maxGraphServiceAttempts;
         }
 
@@ -35,11 +38,9 @@ namespace Repositories.RetryPolicyProvider
                     sleepDurationProvider: GetSleepDuration,
                     onRetryAsync: async (response, timeSpan, retryCount, context) =>
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Throttled by Graph for the timespan: {timeSpan}. The retry count is {retryCount}.",
-                            RunId = runId
-                        });
+                        _retryPolicyProviderLogger.LogWarningWithRunId(runId, $"Throttled by Graph for the timespan: {timeSpan}. The retry count is {retryCount}.");
+
+                        await Task.CompletedTask;
                     });
         }
 
@@ -60,7 +61,9 @@ namespace Repositories.RetryPolicyProvider
                     retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
                     onRetryAsync: async (timeSpan, retryCount, context) =>
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Exponential backoff {retryCount}.", RunId = runId });
+                        _retryPolicyProviderLogger.LogInformationWithRunId(runId, $"Exponential backoff {retryCount}.");
+
+                        await Task.CompletedTask;
                     });
         }
 
@@ -68,11 +71,7 @@ namespace Repositories.RetryPolicyProvider
         {
             var waitTime = response.Result.Headers.RetryAfter.Date.Value - DateTime.UtcNow;
 
-            _ = _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Wait time set to {waitTime}",
-                RunId = null
-            });
+            _retryPolicyProviderLogger.LogInformation($"Wait time set to {waitTime}");
 
             return waitTime;
         }

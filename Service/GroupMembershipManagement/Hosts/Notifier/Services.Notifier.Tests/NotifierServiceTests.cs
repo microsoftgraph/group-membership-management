@@ -243,7 +243,7 @@ namespace Services.Notifier.Tests
         public async Task TestSendEmailServiceUnavailableAsync()
 
         {
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
             var runId = Guid.NewGuid();
             var retryAfterPolicy = retryRepo.CreateRetryAfterPolicy(runId);
             var exceptionHandlingPolicy = retryRepo.CreateExceptionHandlingPolicy(runId);
@@ -264,7 +264,7 @@ namespace Services.Notifier.Tests
         public async Task TestSendEmailTooManyRequestsAsync()
 
         {
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
             var runId = Guid.NewGuid();
             var retryAfterPolicy = retryRepo.CreateRetryAfterPolicy(runId);
             var exceptionHandlingPolicy = retryRepo.CreateExceptionHandlingPolicy(runId);
@@ -285,7 +285,7 @@ namespace Services.Notifier.Tests
         public async Task TestSendEmailRetryAsync()
 
         {
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
             var runId = Guid.NewGuid();
             var retryAfterPolicy = retryRepo.CreateRetryAfterPolicy(runId);
             var exceptionHandlingPolicy = retryRepo.CreateExceptionHandlingPolicy(runId);
@@ -414,13 +414,13 @@ namespace Services.Notifier.Tests
             var requestAdapter = new Mock<IRequestAdapter>();
             requestAdapter.SetupProperty(x => x.BaseUrl).SetReturnsDefault("https://graph.microsoft.com/v1.0");
             var graphServiceClient = new Mock<GraphServiceClient>(requestAdapter.Object, "https://graph.microsoft.com/v1.0");
-            var retryRepo = new RetryPolicyProvider(_loggerMock.Object, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
+            var retryRepo = new RetryPolicyProvider(NullLogger<RetryPolicyProvider>.Instance, new GraphServiceAttemptsValue { MaxExceptionHandlingAttempts = 2, MaxRetryAfterAttempts = 4 });
 
             var mailConfig = new MailConfig(true, false, "not-set", true);
             var mailRepository = new MailRepository(graphServiceClient.Object,
                                                     mailConfig,
                                                     _localizationRepository,
-                                                    _loggerMock.Object,
+                                                    NullLogger<MailRepository>.Instance,
                                                     "abc",
                                                     _graphGroupRepository.Object,
                                                     new Mock<IDatabaseSettingsRepository>().Object,
