@@ -22,6 +22,7 @@ export type Job = {
   period: number;
   arrow: string;
   estimatedNextRunTime: string;
+  estimatedPurgeDate?: string;
   lastModifiedTime?: string;
   thresholdPercentageForAdditions: number;
   thresholdPercentageForRemovals: number;

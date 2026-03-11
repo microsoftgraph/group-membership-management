@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Models;
 using Models.SyncJobChange;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
@@ -24,6 +25,7 @@ namespace Services
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
         public GetJobDetailsHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
@@ -31,7 +33,8 @@ namespace Services
                               IDatabaseTitlesRepository titlesRepository,
                               IGraphGroupRepository graphGroupRepository,
                               ITeamsChannelRepository teamsChannelRepository,
-                              IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
+                              IHttpContextAccessor httpContextAccessor,
+                              IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
@@ -40,6 +43,7 @@ namespace Services
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
         }
 
         protected override async Task<GetJobDetailsResponse> ExecuteCoreAsync(GetJobDetailsRequest request)
@@ -126,6 +130,18 @@ namespace Services
                 estimatedNextRunTime = job.ScheduledDate;
             }
 
+            // Calculate estimated purge date for inactive jobs
+            DateTime? estimatedPurgeDate = null;
+            if (job.Status == SyncStatus.DestinationGroupNotFound.ToString() ||
+                job.Status == SyncStatus.CustomerPaused.ToString() ||
+                job.Status == SyncStatus.MembershipDataNotFound.ToString() ||
+                job.Status == SyncStatus.NotOwnerOfDestinationGroup.ToString() ||
+                job.Status == SyncStatus.SecurityGroupNotFound.ToString() ||
+                job.Status == SyncStatus.ThresholdExceeded.ToString())
+            {
+                estimatedPurgeDate = job.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+            }
+
             var dto = new SyncJobDetailsDTO
             (
                 startDate: job.StartDate,
@@ -147,6 +163,7 @@ namespace Services
                 TargetDestinationType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
+                EstimatedPurgeDate = estimatedPurgeDate,
                 Status = job.Status,
                 Titles = titles,
                 LastModifiedByDisplayName = lastModifiedByDisplayName,

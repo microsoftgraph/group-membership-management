@@ -263,7 +263,12 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           {job.status === SyncStatus.DestinationGroupNotFound ? (
             <div className={classNames.root}>
               <div className={classNames.notFound}>
-                {format(strings.JobDetails.notFound, job.targetGroupId)}
+                {format(
+                  strings.JobDetails.notFound,
+                  job.targetGroupId,
+                  job.lastSuccessfulRunTime ? new Date(job.lastSuccessfulRunTime).toLocaleDateString() : 'Unknown',
+                  job.estimatedPurgeDate ? new Date(job.estimatedPurgeDate).toLocaleDateString() : 'Unknown'
+                )}
               </div>
             </div>
           ) : ( <>
