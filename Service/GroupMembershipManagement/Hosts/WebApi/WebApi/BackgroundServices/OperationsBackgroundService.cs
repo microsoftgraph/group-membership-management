@@ -99,6 +99,7 @@ namespace WebApi.BackgroundServices
                             var maQueue = ClearQueueAsync(_operationsSettings.MembershipAggregatorQueue, cancellationToken);
                             await Task.WhenAll(internalTQs, maQueue);
                             await ClearAllTopicsAsync(cancellationToken);
+                            await ResetJobsInProgressAsync();
                             await SetStatusAsync(ServiceStatuses.Stopped, operationDetails.RequestorId);
                             await _loggingRepository
                                     .LogMessageAsync(new LogMessage

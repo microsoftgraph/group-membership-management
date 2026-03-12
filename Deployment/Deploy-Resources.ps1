@@ -683,102 +683,6 @@ function Set-ADFResources {
         -BaseDelaySeconds 2
 }
 
-function Reset-Functions {
-    param (
-        [Parameter(Mandatory = $true)]
-        [string]$SolutionAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$EnvironmentAbbreviation,
-        [Parameter(Mandatory = $true)]
-        [string]$SubscriptionId
-    )
-
-    Write-Host "`n" -NoNewline
-    Write-Host ("=" * 60) -ForegroundColor Cyan
-    Write-Host "  Resetting Azure Functions" -ForegroundColor Cyan
-    Write-Host ("=" * 60) -ForegroundColor Cyan
-
-    $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
-    
-    Write-Host "`nQuerying Function Apps in resource group: " -NoNewline
-    Write-Host $computeResourceGroup -ForegroundColor Yellow
-
-    # Get all Function Apps in the compute resource group
-    $functionApps = Invoke-WithRetry `
-        -Operation { Get-AzFunctionApp -ResourceGroupName $computeResourceGroup } `
-        -OperationName "Get function apps for reset" `
-        -MaxAttempts 3 -BaseDelaySeconds 2
-
-    if ($null -eq $functionApps -or $functionApps.Count -eq 0) {
-        Write-Host "  No Function Apps found in resource group '$computeResourceGroup'." -ForegroundColor DarkYellow
-        return
-    }
-
-    Write-Host "  Found $($functionApps.Count) Function App(s)" -ForegroundColor Green
-    Write-Host ""
-
-    # Load the Reset-Function script
-    $deploymentPackageDirectory = (Split-Path $PSScriptRoot -Parent)
-    $resetFunctionScriptPath = Join-Path $deploymentPackageDirectory "Scripts/Reset-Function.ps1"
-    
-    if (-not (Test-Path $resetFunctionScriptPath)) {
-        Write-Warning "Reset-Function script not found at: $resetFunctionScriptPath"
-        return
-    }
-
-    . $resetFunctionScriptPath
-
-    $functionIndex = 0
-    $totalFunctions = $functionApps.Count
-
-    foreach ($functionApp in $functionApps) {
-        $functionIndex++
-        $functionAppName = $functionApp.Name
-
-        # Extract the function name from the full app name
-        # Expected format: {SolutionAbbreviation}-compute-{EnvironmentAbbreviation}-{FunctionName}
-        $prefix = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-"
-        if ($functionAppName.StartsWith($prefix)) {
-            $functionName = $functionAppName.Substring($prefix.Length)
-        }
-        else {
-            Write-Host "  [$functionIndex/$totalFunctions] " -ForegroundColor Magenta -NoNewline
-            Write-Host "Skipping " -ForegroundColor DarkYellow -NoNewline
-            Write-Host $functionAppName -ForegroundColor White -NoNewline
-            Write-Host " - does not match expected naming convention" -ForegroundColor DarkYellow
-            continue
-        }
-
-        Write-Host "  [$functionIndex/$totalFunctions] " -ForegroundColor Magenta -NoNewline
-        Write-Host "Resetting: " -ForegroundColor Gray -NoNewline
-        Write-Host $functionName -ForegroundColor White
-
-        try {
-            Reset-Function `
-                -SubscriptionId $SubscriptionId `
-                -SolutionAbbreviation $SolutionAbbreviation `
-                -EnvironmentAbbreviation $EnvironmentAbbreviation `
-                -FunctionName $functionName `
-                -StartFunction $false
-
-            Write-Host "    ✓ Successfully reset $functionName `n`n" -ForegroundColor Green
-        }
-        catch {
-            Write-Host "    ✗ Failed to reset $($functionName): $($_.Exception.Message) `n`n" -ForegroundColor Red
-        }
-    }
-
-    Write-Host "`nWaiting 60 seconds for function tables/queues to be deleted..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 60
-    Write-Host "✓ Wait complete.`n" -ForegroundColor Green
-
-    Write-Host ""
-    Write-Host ("=" * 60) -ForegroundColor Green
-    Write-Host "  ✓ Reset-Functions completed" -ForegroundColor Green
-    Write-Host ("=" * 60) -ForegroundColor Green
-    Write-Host ""
-}
-
 function Set-DefaultSecretsIfMissing {
     param (
         [Parameter(Mandatory = $true)]
@@ -1579,7 +1483,9 @@ function Start-FunctionApps {
         [Parameter(Mandatory = $true)]
         [string]$ResourceGroupName,
         [Parameter(Mandatory = $false)]
-        [bool]$SkipJobTrigger = $false
+        [bool]$SkipJobTrigger = $false,
+        [Parameter(Mandatory = $false)]
+        [int]$JobTriggerDelaySeconds = 60
     )
 
     $rgObject = Get-AzResourceGroup -Name $ResourceGroupName -ErrorAction SilentlyContinue
@@ -1587,16 +1493,19 @@ function Start-FunctionApps {
         return
     }
 
-    # start function apps
     Write-Host "`nStarting function apps"
+
+    $jobTriggerApp = $null
 
     $functionApps = Invoke-WithRetry `
         -Operation { Get-AzFunctionApp -ResourceGroupName $ResourceGroupName } `
         -OperationName "Get function apps to start" `
         -MaxAttempts 3 -BaseDelaySeconds 2
+        
     foreach ($functionApp in $functionApps) {
-        if ($SkipJobTrigger -eq $true -and $functionApp.Name -match "JobTrigger") {
-            Write-Host "Skipping start of job trigger function app $($functionApp.Name)"
+        if ($functionApp.Name -match "JobTrigger") {
+            $jobTriggerApp = $functionApp
+            Write-Host "Skipping $($functionApp.Name) (will start last)"
             continue
         }
         Write-Host "Starting function app $($functionApp.Name)"
@@ -1604,6 +1513,13 @@ function Start-FunctionApps {
             -Operation { Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
             -OperationName "Start $($functionApp.Name)" `
             -MaxAttempts 3 -BaseDelaySeconds 2
+    }
+
+    if ($null -ne $jobTriggerApp -and -not $SkipJobTrigger) {
+        Write-Host "`nWaiting $JobTriggerDelaySeconds seconds before starting JobTrigger..."
+        Start-Sleep -Seconds $JobTriggerDelaySeconds
+        Write-Host "Starting $($jobTriggerApp.Name)"
+        Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $jobTriggerApp.Name
     }
 }
 
@@ -3029,22 +2945,17 @@ function Deploy-Resources {
     }
 
     if(!$isInitialDeployment) {
-        
-        $jobTrigger = Invoke-WithRetry `
-            -Operation {
-                Get-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name "$computeResourceGroup-JobTrigger"
-            } `
-            -OperationName "Get JobTrigger function app" `
-            -MaxAttempts 3 -BaseDelaySeconds 2
 
-        Write-Host "`nStopping JobTrigger function app to prevent interference with deployment..."
-        Invoke-WithRetry `
-            -Operation { Stop-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $jobTrigger.Name -Force } `
-            -OperationName "Stop JobTrigger" `
-            -MaxAttempts 3 -BaseDelaySeconds 2
-        Write-Host "JobTrigger function app stopped." -ForegroundColor Green
+        . "$scriptsDirectory/GMM-WebAPI-Operations.ps1"
 
-        . "$scriptsDirectory/Reset-GMM.ps1" #  Import helper functions
+        Write-Host "`nStopping GMM via WebApi Stop endpoint before deployment..." -ForegroundColor Yellow
+        if($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
+            Invoke-GMMOperation -OperationName "Stop" -AuthMethod $resetGMMType `
+                -SolutionAbbreviation $solutionAbbreviation `
+                -EnvironmentAbbreviation $environmentAbbreviation
+        } else {
+            Write-Host "Skipping pre-deployment stop — resetGMMType is '$resetGMMType'." -ForegroundColor Yellow
+        }
 
         $connectionString = Get-KeyVaultSecretWithFirewallRetry `
             -VaultName "$SolutionAbbreviation-data-$environmentAbbreviation" `
@@ -3122,13 +3033,6 @@ function Deploy-Resources {
         -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
     }
 
-    if ($parameterHashtable.isInitialDeployment.value -ne $true) {
-        Reset-Functions `
-            -SolutionAbbreviation $solutionAbbreviation `
-            -EnvironmentAbbreviation $environmentAbbreviation `
-            -SubscriptionId $subscriptionId
-    }
-
     Set-FunctionAppCode `
         -ComputeResourceGroup $computeResourceGroup `
         -FunctionsPackagesDirectory "$deploymentPackageDirectory/function_packages" `
@@ -3173,32 +3077,16 @@ function Deploy-Resources {
         -ScriptsDirectory $scriptsDirectory `
         -ConnectionString $connectionString
 
-    if(!$isInitialDeployment -and $resetGMMType -ne "Skip") {
-        . ($scriptsDirectory + '/Reset-GMM.ps1')
-
-        if ($parameterHashtable.skipPrivilegedDirectoryActions.value -eq $true) {
-            Show-WebAPIResetAdministratorInstructions `
+    if (!$isInitialDeployment -and $resetGMMType -ne "Skip") {
+        Write-Host "`nCalling Reschedule endpoint via WebApi..." -ForegroundColor Yellow
+        if ($resetGMMType -eq "Credentials" -or $resetGMMType -eq "ServicePrincipal") {
+            Invoke-GMMOperation -OperationName "Reschedule" -AuthMethod $resetGMMType `
                 -SolutionAbbreviation $solutionAbbreviation `
                 -EnvironmentAbbreviation $environmentAbbreviation
         }
-        else {
-             Set-WebAPIAsResetAdministrator `
-                -SolutionAbbreviation $solutionAbbreviation `
-                -EnvironmentAbbreviation $environmentAbbreviation
-        }
-
-        if($resetGMMType -eq "Credentials") {
-            Reset-GMMWithCredentials `
-                -SolutionAbbreviation $solutionAbbreviation `
-                -EnvironmentAbbreviation $environmentAbbreviation
-        } elseif ($resetGMMType -eq "ServicePrincipal") {
-            Reset-GMMWithServicePrincipal `
-                -SolutionAbbreviation $solutionAbbreviation `
-                -EnvironmentAbbreviation $environmentAbbreviation
-        }
-    }
-
-    if ($startFunctions) {
+        Write-Host "`nStarting all remaining function apps..." -ForegroundColor Yellow
+        Start-FunctionApps -ResourceGroupName $computeResourceGroup
+    } elseif ($startFunctions) {
         Start-FunctionApps -ResourceGroupName $computeResourceGroup
     }
 
