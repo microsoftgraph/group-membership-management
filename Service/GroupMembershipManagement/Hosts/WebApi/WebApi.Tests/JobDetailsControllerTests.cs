@@ -68,6 +68,7 @@ namespace Services.Tests
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private Mock<INotificationService> _notificationService = null!;
         private Mock<IThresholdConfig> _thresholdConfig = null!;
+        private Mock<IHandleInactiveJobsConfig> _handleInactiveJobsConfig = null!;
         private bool _isGroupOwner = true;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
         private List<SyncJobHistory> _syncJobHistoryEntries = null!;
@@ -116,6 +117,8 @@ namespace Services.Tests
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();
             _thresholdConfig = new Mock<IThresholdConfig>();
+            _handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            _handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurging).Returns(30);
 
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
 
@@ -275,7 +278,8 @@ namespace Services.Tests
                                                              _titlesRepository.Object,
                                                              _graphGroupRepository.Object,
                                                              _teamsChannelRepository.Object,
-                                                             _httpContextAccessor.Object);
+                                                             _httpContextAccessor.Object,
+                                                             _handleInactiveJobsConfig.Object);
 
             _patchJobHandler = new PatchJobHandler(_loggingRepository.Object,
                                                    _graphGroupRepository.Object,
@@ -556,7 +560,8 @@ namespace Services.Tests
                                      _titlesRepository.Object,
                                      _graphGroupRepository.Object,
                                      _teamsChannelRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _handleInactiveJobsConfig.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler);
 
@@ -649,7 +654,8 @@ namespace Services.Tests
                                      _titlesRepository.Object,
                                      _graphGroupRepository.Object,
                                      _teamsChannelRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _handleInactiveJobsConfig.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler);
 
@@ -691,7 +697,8 @@ namespace Services.Tests
                                      _titlesRepository.Object,
                                      _graphGroupRepository.Object,
                                      _teamsChannelRepository.Object,
-                                     _httpContextAccessor.Object);
+                                     _httpContextAccessor.Object,
+                                     _handleInactiveJobsConfig.Object);
 
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler);
 

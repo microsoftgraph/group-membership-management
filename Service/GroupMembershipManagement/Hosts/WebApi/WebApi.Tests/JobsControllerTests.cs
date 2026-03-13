@@ -67,6 +67,7 @@ namespace Services.Tests
         private Mock<IServiceStatusRepository> _serviceStatusRepository = null!;
         private Mock<IOperationsTaskQueue> _backgroundTaskService = null!;
         private Mock<IThresholdConfig> _thresholdConfig = null!;
+        private Mock<IHandleInactiveJobsConfig> _handleInactiveJobsConfig = null!;
 
         [TestInitialize]
         public void Initialize()
@@ -83,6 +84,8 @@ namespace Services.Tests
             _pendingConfigurationConfig = new Mock<IPendingConfigurationConfig>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _thresholdConfig = new Mock<IThresholdConfig>();
+            _handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
+            _handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurging).Returns(30);
 
             // Setup default pending configuration setting to false
             _pendingConfigurationConfig.Setup(x => x.PendingConfigurationIsEnabled).Returns(false);
@@ -260,7 +263,8 @@ namespace Services.Tests
                                                 _titlesRepository.Object,
                                                 _graphGroupRepository.Object,
                                                 _teamsChannelRepository.Object,
-                                                _httpContextAccessor.Object);
+                                                _httpContextAccessor.Object,
+                                                _handleInactiveJobsConfig.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
             _jobsController.ControllerContext = new ControllerContext
