@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,6 +13,7 @@ namespace Repositories.ServiceBusTopics.Tests
     public class MockGraphGroupRepository : IGraphGroupRepository
     {
         public Guid RunId { get; set; }
+        public Guid? LastResolvedRunId { get; private set; }
 
         public HashSet<Guid> GroupsThatExist = new HashSet<Guid>();
         public HashSet<Guid> GroupsGMMOwns = new HashSet<Guid>();
@@ -23,6 +25,7 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<string> GetGroupNameAsync(Guid objectId)
         {
+            LastResolvedRunId = CorrelationActivity.ResolveRunId(fallbackRunId: RunId == Guid.Empty ? null : RunId);
             return Task.FromResult("GroupName");
         }
 
@@ -38,6 +41,7 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<bool> GroupExists(Guid objectId)
         {
+            LastResolvedRunId = CorrelationActivity.ResolveRunId(fallbackRunId: RunId == Guid.Empty ? null : RunId);
             return Task.FromResult(GroupsThatExist.Contains(objectId));
         }
 
@@ -48,6 +52,7 @@ namespace Repositories.ServiceBusTopics.Tests
 
         public Task<bool> IsAppIDOwnerOfGroup(string appId, Guid groupObjectId, bool validateGroupExists = true)
         {
+            LastResolvedRunId = CorrelationActivity.ResolveRunId(fallbackRunId: RunId == Guid.Empty ? null : RunId);
             return Task.FromResult(GroupsGMMOwns.Contains(groupObjectId));
         }
 

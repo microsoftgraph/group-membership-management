@@ -731,12 +731,7 @@ namespace Repositories.TeamsChannel
 
         private Guid? ResolveRunId(Guid? runId = null)
         {
-            if (runId.HasValue && runId.Value != Guid.Empty)
-            {
-                return runId.Value;
-            }
-
-            return RunId == Guid.Empty ? null : RunId;
+            return CorrelationActivity.ResolveRunId(runId, RunId == Guid.Empty ? null : RunId);
         }
 
         private async Task TrackResponseMetricsAsync(HttpResponseMessage response, Guid? runId, QueryType queryType = QueryType.Other, GraphOperationType operationType = GraphOperationType.Read)
