@@ -52,6 +52,8 @@ namespace Repositories.Contracts.Helpers
                                                                               TelemetryClient telemetryClient,
                                                                               GraphOperationType operationType = GraphOperationType.Read)
         {
+            var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
+
             if (headers == null || logger is null || telemetryClient is null)
             {
                 return new GraphTelemetryResult();
@@ -59,7 +61,7 @@ namespace Repositories.Contracts.Helpers
 
             if (!headers.TryGetValue(GraphResponseHeaders.ResourceUnit, out var resourceValues))
             {
-                logger.LogInformation("Resource unit cost of {QueryType} is not available for RunId {RunId}", queryType, runId);
+                logger.LogInformation("Resource unit cost of {QueryType} is not available for RunId {RunId}", queryType, resolvedRunId);
 
                 return new GraphTelemetryResult();
             }
@@ -67,14 +69,14 @@ namespace Repositories.Contracts.Helpers
             var ruu = ParseFirstInt(resourceValues);
             if (!ruu.HasValue)
             {
-                logger.LogWarning("Unable to parse resource unit cost of {QueryType} for RunId {RunId}", queryType, runId);
+                logger.LogWarning("Unable to parse resource unit cost of {QueryType} for RunId {RunId}", queryType, resolvedRunId);
 
                 return new GraphTelemetryResult();
             }
 
-            logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed} for RunId {RunId}", queryType, ruu.Value, runId);
+            logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed} for RunId {RunId}", queryType, ruu.Value, resolvedRunId);
 
-            TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, runId);
+            TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId);
             telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(ruu.Value, operationType.ToString());
 
             var telemetryResult = new GraphTelemetryResult
@@ -100,6 +102,8 @@ namespace Repositories.Contracts.Helpers
                                                               QueryType queryType,
                                                               Guid? runId)
         {
+            var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
+
             if (telemetryClient is null)
             {
                 return;
@@ -107,7 +111,7 @@ namespace Repositories.Contracts.Helpers
 
             var ruuByTypeEvent = new Dictionary<string, string>
             {
-                { "RunId", runId?.ToString() ?? string.Empty },
+                { "RunId", resolvedRunId?.ToString() ?? string.Empty },
                 { "ResourceUnitsUsed", ruu.ToString() },
                 { "QueryType", queryType.ToString() }
             };

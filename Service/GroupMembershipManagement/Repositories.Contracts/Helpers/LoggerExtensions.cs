@@ -2,8 +2,10 @@
 // Licensed under the MIT license.
 
 using Microsoft.Extensions.Logging;
+using Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Repositories.Contracts.Helpers
 {
@@ -11,15 +13,39 @@ namespace Repositories.Contracts.Helpers
     {
         public static IDisposable BeginRunIdScope(this ILogger logger, Guid? runId)
         {
-            if (!runId.HasValue)
+            var resolvedRunId = CorrelationActivity.ResolveRunId(runId);
+            if (!resolvedRunId.HasValue)
             {
                 return null;
             }
 
             return logger.BeginScope(new Dictionary<string, object>
             {
-                ["RunId"] = runId.Value
+                ["RunId"] = resolvedRunId.Value
             });
+        }
+
+        public static IDisposable BeginSyncJobScope(this ILogger logger, SyncJob syncJob)
+        {
+            if (syncJob == null)
+            {
+                return null;
+            }
+
+            var scopeValues = syncJob.ToDictionary()
+                                     .ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
+
+            if (syncJob.RunId.HasValue)
+            {
+                scopeValues[CorrelationActivity.RunIdPropertyName] = syncJob.RunId.Value;
+            }
+
+            if (syncJob.Id != Guid.Empty)
+            {
+                scopeValues[CorrelationActivity.SyncJobIdPropertyName] = syncJob.Id;
+            }
+
+            return logger.BeginScope(scopeValues);
         }
 
         public static void LogInformationWithRunId(this ILogger logger, Guid? runId, string message)

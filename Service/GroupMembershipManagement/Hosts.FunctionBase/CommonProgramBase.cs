@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.Azure.Functions.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Graph;
 using Repositories.Contracts;
@@ -33,6 +34,7 @@ using Azure.Core;
 using System.IO;
 using Models;
 using System.Data;
+using System.Linq;
 
 namespace Hosts.FunctionBase
 {
@@ -177,6 +179,20 @@ namespace Hosts.FunctionBase
             services.AddApplicationInsightsTelemetryWorkerService(options =>
             {
                 options.InstrumentationKey = GetValueOrThrowBase(configuration, "APPINSIGHTS_INSTRUMENTATIONKEY");
+            });
+
+            // The Application Insights SDK adds a default logging filter that instructs ILogger to capture only Warning
+            // and more severe logs. Remove it so Information-level traces flow through the worker's direct App Insights
+            // path, allowing TelemetryInitializers (location, LogSource, etc.) to enrich them.
+            // See: https://learn.microsoft.com/azure/azure-functions/dotnet-isolated-process-guide#application-insights
+            services.Configure<LoggerFilterOptions>(options =>
+            {
+                var defaultRule = options.Rules.FirstOrDefault(rule =>
+                    rule.ProviderName == "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider");
+                if (defaultRule is not null)
+                {
+                    options.Rules.Remove(defaultRule);
+                }
             });
 
             services.AddSingleton<ITelemetryInitializer>(sp => new ConstantOperationNameInitializer(functionName));
