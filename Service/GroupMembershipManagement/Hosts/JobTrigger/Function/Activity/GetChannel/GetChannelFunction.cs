@@ -1,33 +1,37 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.JobTrigger
 {
     public class GetChannelFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IJobTriggerService _jobTriggerService = null;
-        public GetChannelFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
+        private readonly ILogger<GetChannelFunction> _logger;
+        private readonly IJobTriggerService _jobTriggerService;
+
+        public GetChannelFunction(ILogger<GetChannelFunction> logger, IJobTriggerService jobTriggerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
         }
 
         [Function(nameof(GetChannelFunction))]
         public async Task<Channel> GetChannelAsync([ActivityTrigger] SyncJob syncJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetChannelFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-            var channel = await _jobTriggerService.GetChannelAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetChannelFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return channel;
+            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(GetChannelFunction), syncJob);
+            using (_logger.BeginSyncJobScope(syncJob))
+            {
+                _logger.ActivityFunctionStarted(nameof(GetChannelFunction));
+                var channel = await _jobTriggerService.GetChannelAsync(syncJob);
+                _logger.ActivityFunctionCompleted(nameof(GetChannelFunction));
+                return channel;
+            }
         }
     }
 }

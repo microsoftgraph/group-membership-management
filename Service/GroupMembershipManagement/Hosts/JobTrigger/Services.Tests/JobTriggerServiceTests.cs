@@ -18,14 +18,15 @@ using Tests.Repositories;
 using MockDatabaseSyncJobRepository = Repositories.Mocks.MockDatabaseSyncJobRepository;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Generic;
-using Repositories.Logging;
 using Models.Entities;
 using Newtonsoft.Json;
 using Models.Notifications;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Models.Helpers;
+using Repositories.Contracts.Helpers;
 using System.Text.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
@@ -41,7 +42,6 @@ namespace Services.Tests
         private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository = null;
         private MockNotificationTypesRepository _notificationTypesRepository = null;
         private MockJobNotificationRepository _jobNotificationRepository = null;
-        private MockLoggingRepository _loggingRepository = null;
         private MockServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private MockGraphGroupRepository _graphGroupRepository;
         private Mock<ITeamsChannelRepository> _mockTeamsChannelRepository = null;
@@ -71,7 +71,6 @@ namespace Services.Tests
             _destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
             _notificationTypesRepository = new MockNotificationTypesRepository();
             _jobNotificationRepository = new MockJobNotificationRepository();
-            _loggingRepository = new MockLoggingRepository();
             _serviceBusTopicsRepository = new MockServiceBusTopicsRepository();
             _graphGroupRepository = new MockGraphGroupRepository();
             _mockTeamsChannelRepository = new Mock<ITeamsChannelRepository>();
@@ -82,7 +81,7 @@ namespace Services.Tests
                 .Returns(Task.CompletedTask);
 
             _jobTriggerService = new JobTriggerService(
-                                        _loggingRepository,
+                                        NullLogger<JobTriggerService>.Instance,
                                         _syncJobRepository,
                                         _groupsRepository,
                                         _channelsRepository,
@@ -511,7 +510,7 @@ namespace Services.Tests
         {
 
             _jobTriggerService = new JobTriggerService(
-                _loggingRepository,
+                NullLogger<JobTriggerService>.Instance,
                 _syncJobRepository,
                 _groupsRepository,
                 _channelsRepository,
@@ -543,13 +542,12 @@ namespace Services.Tests
 
             foreach (var job in jobs)
             {
-                _jobTriggerService.RunId = job.RunId.Value;
-                var groupName = await _graphGroupRepository.GetGroupNameAsync(job.Group.GroupId);
+                using var activity = CorrelationActivity.StartSyncJobActivity(nameof(VerifyInitialSyncEmailNotificationIsSent), job);
+                _ = await _graphGroupRepository.GetGroupNameAsync(job.Group.GroupId);
                 await _jobTriggerService.SendEmailAsync(job, NotificationMessageType.SyncStartedNotification, new string[] { });
 
-                Assert.IsNotNull(_jobTriggerService.RunId);
-                Assert.IsNotNull(_graphGroupRepository.RunId);
-                Assert.AreEqual(_jobTriggerService.RunId, _graphGroupRepository.RunId);
+                Assert.IsNotNull(_graphGroupRepository.LastResolvedRunId);
+                Assert.AreEqual(job.RunId.Value, _graphGroupRepository.LastResolvedRunId.Value);
             }
 
             Assert.AreEqual(validStartDateJobs, jobs.Count);
@@ -563,7 +561,7 @@ namespace Services.Tests
         public async Task VerifyJobsAreProcessedWithMissingMailSendPermission()
         {
             _jobTriggerService = new JobTriggerService(
-                _loggingRepository,
+                NullLogger<JobTriggerService>.Instance,
                 _syncJobRepository,
                 _groupsRepository,
                 _channelsRepository,
@@ -607,7 +605,7 @@ namespace Services.Tests
         {
 
             _jobTriggerService = new JobTriggerService(
-                _loggingRepository,
+                NullLogger<JobTriggerService>.Instance,
                 _syncJobRepository,
                 _groupsRepository,
                 _channelsRepository,
@@ -650,7 +648,7 @@ namespace Services.Tests
         {
 
             _jobTriggerService = new JobTriggerService(
-                _loggingRepository,
+                NullLogger<JobTriggerService>.Instance,
                 _syncJobRepository,
                 _groupsRepository,
                 _channelsRepository,

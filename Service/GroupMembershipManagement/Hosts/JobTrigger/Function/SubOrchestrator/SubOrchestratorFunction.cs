@@ -7,7 +7,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Models;
 using Models.Notifications;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
@@ -22,17 +22,14 @@ namespace Hosts.JobTrigger
     public class SubOrchestratorFunction
     {
 
-        private readonly ILoggingRepository _loggingRepository = null;
         private readonly TelemetryClient _telemetryClient = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGMMResources _gmmResources;
 
-        public SubOrchestratorFunction(ILoggingRepository loggingRepository,
-                                       TelemetryClient telemetryClient,
+        public SubOrchestratorFunction(TelemetryClient telemetryClient,
                                        IEmailSenderRecipient emailSenderAndRecipients,
                                        IGMMResources gmmResources)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _emailSenderAndRecipients = emailSenderAndRecipients;
@@ -41,18 +38,15 @@ namespace Hosts.JobTrigger
         [Function(nameof(SubOrchestratorFunction))]
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-
             var syncJob = context.GetInput<SyncJob>();
+            var logger = context.CreateReplaySafeLogger(nameof(SubOrchestratorFunction));
+            using var scope = logger.BeginSyncJobScope(syncJob);
+
             try
             {
                 if (!string.IsNullOrEmpty(syncJob.Status) && syncJob.Status == SyncStatus.StuckInProgress.ToString())
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                RunId = (Guid)syncJob.RunId,
-                                Message = $"Job is stuck InProgress after retry, setting status to ErroredDueToStuckInProgress"
-                            });
+                    logger.JobStuckInProgress();
 
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.ErroredDueToStuckInProgress, SyncJob = syncJob });
                     return;
@@ -60,13 +54,7 @@ namespace Hosts.JobTrigger
 
                 if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = (Guid)syncJob.RunId,
-                        Message = $"{nameof(SubOrchestratorFunction)} function started at: {context.CurrentUtcDateTime}",
-                        Verbosity = VerbosityLevel.DEBUG
-                    });
+                logger.SubOrchestratorStarted(nameof(SubOrchestratorFunction));
 
                 var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
@@ -79,13 +67,7 @@ namespace Hosts.JobTrigger
 
                     if (!parsedAndValidatedDestination.IsValid)
                     {
-
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                             new LoggerRequest
-                             {
-                                 RunId = (Guid)syncJob.RunId,
-                                 Message = $"Destination query is empty or missing required fields for job:{syncJob.Id}"
-                             });
+                        logger.DestinationQueryEmpty(syncJob.Id);
 
                         await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
@@ -97,12 +79,7 @@ namespace Hosts.JobTrigger
                         var group = syncJob.Group ?? await context.CallActivityAsync<Group>(nameof(GetGroupFunction), syncJob);
                         if (group == null)
                         {
-                            await context.CallActivityAsync(nameof(LoggerFunction),
-                                new LoggerRequest
-                                {
-                                    RunId = (Guid)syncJob.RunId,
-                                    Message = $"Group not found for job:{syncJob.Id}"
-                                });
+                            logger.GroupNotFound(syncJob.Id);
                             await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
                             await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                             return;
@@ -116,12 +93,7 @@ namespace Hosts.JobTrigger
                         var channel = syncJob.Channel ?? await context.CallActivityAsync<Channel>(nameof(GetChannelFunction), syncJob);
                         if (channel == null)
                         {
-                            await context.CallActivityAsync(nameof(LoggerFunction),
-                                new LoggerRequest
-                                {
-                                    RunId = (Guid)syncJob.RunId,
-                                    Message = $"Channel not found for job:{syncJob.Id}"
-                                });
+                            logger.ChannelNotFound(syncJob.Id);
                             await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
                             await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
                             return;
@@ -134,17 +106,11 @@ namespace Hosts.JobTrigger
 
                     // Updates the job with the standardized destination.
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { SyncJob = syncJob });
-                
+
                 }
                 catch (JsonException)
                 {
-
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                RunId = (Guid)syncJob.RunId,
-                                Message = $"Destination query is not valid for job:{syncJob.Id}"
-                            });
+                    logger.DestinationQueryNotValid(syncJob.Id);
 
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.DestinationQueryNotValid, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.DestinationQueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
@@ -188,12 +154,7 @@ namespace Hosts.JobTrigger
                     }
                     catch (JsonException)
                     {
-                        await context.CallActivityAsync(nameof(LoggerFunction),
-                                new LoggerRequest
-                                {
-                                    RunId = (Guid)syncJob.RunId,
-                                    Message = $"Source query is not valid for job:{syncJob.Id}"
-                                });
+                        logger.SourceQueryNotValid(syncJob.Id);
 
                         await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
                         await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
@@ -202,13 +163,7 @@ namespace Hosts.JobTrigger
                 }
                 else
                 {
-
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                        new LoggerRequest
-                        {
-                            RunId = (Guid)syncJob.RunId,
-                            Message = $"Source query is empty for job:{syncJob.Id}"
-                        });
+                    logger.SourceQueryEmpty(syncJob.Id);
 
                     await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = SyncStatus.QueryNotValid, SyncJob = syncJob });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.QueryNotValid, ResultStatus = ResultStatus.Failure, RunId = syncJob.RunId });
@@ -299,24 +254,14 @@ namespace Hosts.JobTrigger
                 }
                 else
                 {
-                    await context.CallActivityAsync(nameof(LoggerFunction),
-                        new LoggerRequest
-                        {
-                            RunId = (Guid)syncJob.RunId,
-                            Message = $"Failed to retrieve latest job state for job {syncJob.Id} before sending to Service Bus. Using in-memory object as fallback."
-                        });
+                    logger.FailedToRetrieveLatestJobState(syncJob.Id);
                     await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
                 }
 
             }
             catch (Exception ex)
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        RunId = (Guid)syncJob.RunId,
-                        Message = $"Caught unexpected exception in {nameof(SubOrchestratorFunction)}, marking sync job as errored. Exception:\n{ex.Message}."
-                    });
+                logger.SubOrchestratorException(ex);
 
                 await context.CallActivityAsync(nameof(JobUpdaterFunction),
                     new JobUpdaterRequest { Status = SyncStatus.Error, SyncJob = syncJob });
@@ -326,13 +271,7 @@ namespace Hosts.JobTrigger
             }
             finally
             {
-                await context.CallActivityAsync(nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    RunId = (Guid)syncJob.RunId,
-                    Message = $"{nameof(SubOrchestratorFunction)} function completed at: {context.CurrentUtcDateTime}",
-                    Verbosity = VerbosityLevel.DEBUG
-                });
+                logger.SubOrchestratorCompleted(nameof(SubOrchestratorFunction));
             }
         }
 

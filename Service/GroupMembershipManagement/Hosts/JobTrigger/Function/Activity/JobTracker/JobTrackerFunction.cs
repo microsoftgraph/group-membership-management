@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Data.SqlTypes;
 using System.Threading.Tasks;
@@ -11,33 +12,37 @@ namespace Hosts.JobTrigger
 {
     public class JobTrackerFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<JobTrackerFunction> _logger;
 
-        public JobTrackerFunction(ILoggingRepository loggingRepository)
+        public JobTrackerFunction(ILogger<JobTrackerFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(JobTrackerFunction))]
         public async Task<int> TrackJobFrequencyAsync([ActivityTrigger] SyncJob syncJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobTrackerFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            var frequency = 0;
-            if (syncJob != null && syncJob.LastSuccessfulRunTime != SqlDateTime.MinValue.Value)
+            using (_logger.BeginSyncJobScope(syncJob))
             {
-                if (syncJob.Status == SyncStatus.Idle.ToString())
+                _logger.ActivityFunctionStarted(nameof(JobTrackerFunction));
+                var frequency = 0;
+                if (syncJob != null && syncJob.LastSuccessfulRunTime != SqlDateTime.MinValue.Value)
                 {
-                    var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulRunTime).TotalHours;
-                    frequency = timeDifference / syncJob.Period;
+                    if (syncJob.Status == SyncStatus.Idle.ToString())
+                    {
+                        var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulRunTime).TotalHours;
+                        frequency = timeDifference / syncJob.Period;
+                    }
+                    else if (syncJob.Status == SyncStatus.InProgress.ToString() || syncJob.Status == SyncStatus.StuckInProgress.ToString())
+                    {
+                        var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulStartTime).TotalHours;
+                        frequency = timeDifference / syncJob.Period;
+                    }
                 }
-                else if (syncJob.Status == SyncStatus.InProgress.ToString() || syncJob.Status == SyncStatus.StuckInProgress.ToString())
-                {
-                    var timeDifference = (int)(DateTime.UtcNow - syncJob.LastSuccessfulStartTime).TotalHours;
-                    frequency = timeDifference / syncJob.Period;
-                }
+
+                _logger.ActivityFunctionCompleted(nameof(JobTrackerFunction));
+                return frequency;
             }
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobTrackerFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return frequency;
         }
     }
 }

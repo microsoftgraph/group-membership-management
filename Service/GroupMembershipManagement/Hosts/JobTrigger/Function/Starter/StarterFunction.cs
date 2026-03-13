@@ -2,8 +2,7 @@
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -11,10 +10,11 @@ namespace Hosts.JobTrigger
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        public StarterFunction(ILoggingRepository loggingRepository)
+        private readonly ILogger<StarterFunction> _logger;
+
+        public StarterFunction(ILogger<StarterFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
 
@@ -23,9 +23,9 @@ namespace Hosts.JobTrigger
             [TimerTrigger("%jobTriggerSchedule%")] TimerInfo myTimer,
             [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.StarterFunctionStarted(nameof(StarterFunction));
             await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), null);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.StarterFunctionCompleted(nameof(StarterFunction));
         }
     }
 }

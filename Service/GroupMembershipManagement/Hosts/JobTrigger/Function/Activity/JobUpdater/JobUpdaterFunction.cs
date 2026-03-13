@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -11,12 +12,13 @@ namespace Hosts.JobTrigger
 {
     public class JobUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IJobTriggerService _jobTriggerService = null;
-        public JobUpdaterFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
+        private readonly ILogger<JobUpdaterFunction> _logger;
+        private readonly IJobTriggerService _jobTriggerService;
+
+        public JobUpdaterFunction(ILogger<JobUpdaterFunction> logger, IJobTriggerService jobTriggerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
         }
 
         [Function(nameof(JobUpdaterFunction))]
@@ -24,11 +26,13 @@ namespace Hosts.JobTrigger
         {
             if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-                _jobTriggerService.RunId = request.SyncJob.RunId ?? Guid.Empty;
-                await _jobTriggerService.UpdateSyncJobAsync(request.Status, request.SyncJob);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-
+                using var activity = CorrelationActivity.StartSyncJobActivity(nameof(JobUpdaterFunction), request.SyncJob);
+                using (_logger.BeginSyncJobScope(request.SyncJob))
+                {
+                    _logger.ActivityFunctionStarted(nameof(JobUpdaterFunction));
+                    await _jobTriggerService.UpdateSyncJobAsync(request.Status, request.SyncJob);
+                    _logger.ActivityFunctionCompleted(nameof(JobUpdaterFunction));
+                }
             }
         }
     }

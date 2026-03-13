@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -11,40 +12,21 @@ namespace Hosts.JobTrigger
 {
     public class GetSyncJobFunction
     {
+        private readonly ILogger<GetSyncJobFunction> _logger;
         private readonly IJobTriggerService _jobTriggerService;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public GetSyncJobFunction(IJobTriggerService jobTriggerService, ILoggingRepository loggingRepository)
+        public GetSyncJobFunction(ILogger<GetSyncJobFunction> logger, IJobTriggerService jobTriggerService)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [Function(nameof(GetSyncJobFunction))]
         public async Task<SyncJob> GetSyncJobByIdAsync([ActivityTrigger] Guid syncJobId)
         {
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage 
-                { 
-                    Message = $"{nameof(GetSyncJobFunction)} retrieving job {syncJobId}" 
-                }, 
-                VerbosityLevel.DEBUG);
-            
+            _logger.ActivityFunctionStarted(nameof(GetSyncJobFunction));
             var syncJob = await _jobTriggerService.GetSyncJobByIdAsync(syncJobId);
-            
-            if (syncJob != null && syncJob.RunId.HasValue)
-            {
-                _jobTriggerService.RunId = syncJob.RunId.Value;
-            }
-            
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage 
-                { 
-                    Message = $"{nameof(GetSyncJobFunction)} completed for job {syncJobId}, found: {syncJob != null}",
-                    RunId = syncJob?.RunId
-                }, 
-                VerbosityLevel.DEBUG);
-            
+            _logger.ActivityFunctionCompleted(nameof(GetSyncJobFunction));
             return syncJob;
         }
     }

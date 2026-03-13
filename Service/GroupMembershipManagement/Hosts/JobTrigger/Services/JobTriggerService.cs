@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.JobTrigger;
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Entities;
 using Models.Helpers;
@@ -8,6 +10,7 @@ using Models.Notifications;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using System;
@@ -31,7 +34,7 @@ namespace Services
             JobsToBeStarted
         }
 
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobTriggerService> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
@@ -50,19 +53,8 @@ namespace Services
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
 
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphGroupRepository.RunId = value;
-            }
-        }
-
         public JobTriggerService(
-            ILoggingRepository loggingRepository,
+            ILogger<JobTriggerService> logger,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
@@ -83,7 +75,7 @@ namespace Services
             )
         {
             _emailSenderAndRecipients = emailSenderAndRecipients;
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
@@ -177,12 +169,10 @@ namespace Services
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _serviceBusQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(job))
             {
-                RunId = job.RunId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-
-            });
+                _logger.SentNotificationMessage(message.MessageId);
+            }
 
         }
 
@@ -193,22 +183,20 @@ namespace Services
 
             if (status == SyncStatus.InProgress)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                using (_logger.BeginSyncJobScope(job))
                 {
-                    RunId = job.RunId,
-                    Message = $"Starting job."
-                });
+                    _logger.StartingJob();
+                }
 
                 job.LastSuccessfulStartTime = now;
             }
 
             if (status == SyncStatus.StuckInProgress)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                using (_logger.BeginSyncJobScope(job))
                 {
-                    RunId = job.RunId,
-                    Message = $"Restarting job stuck in InProgress."
-                });
+                    _logger.RestartingStuckJob();
+                }
 
                 job.LastRunTime = now;
                 job.LastSuccessfulStartTime = now;
@@ -364,11 +352,13 @@ namespace Services
         }
         private async Task<bool> CheckAndLogAsync(SyncJob job, string checkDescription, Func<Task<bool>> checkFunc)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = $"Checking: {checkDescription} exists." });
-            bool result = await checkFunc();
-            string resultMessage = result ? "passed" : "failed";
-            await _loggingRepository.LogMessageAsync(new LogMessage { RunId = job.RunId, Message = $"Check {resultMessage}: {checkDescription} {(result ? "exists" : "does not exist")}." });
-            return result;
+            using (_logger.BeginSyncJobScope(job))
+            {
+                _logger.CheckingExists(checkDescription);
+                bool result = await checkFunc();
+                _logger.CheckResult(result ? "passed" : "failed", checkDescription, result ? "exists" : "does not exist");
+                return result;
+            }
         }
 
     }

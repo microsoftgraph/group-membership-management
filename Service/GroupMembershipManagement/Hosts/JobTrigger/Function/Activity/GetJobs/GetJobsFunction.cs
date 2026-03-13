@@ -3,31 +3,31 @@
 
 using Models;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 using Services.Contracts;
-using Repositories.Contracts;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Hosts.JobTrigger
 {
     public class GetJobsFunction
     {
-        private readonly IJobTriggerService _jobTriggerService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
-        public GetJobsFunction(IJobTriggerService jobTriggerService, ILoggingRepository loggingRepository)
+        private readonly IJobTriggerService _jobTriggerService;
+        private readonly ILogger<GetJobsFunction> _logger;
+
+        public GetJobsFunction(IJobTriggerService jobTriggerService, ILogger<GetJobsFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(GetJobsFunction))]
         public async Task<List<SyncJob>> GetJobsToUpdateAsync([ActivityTrigger] object obj)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function started at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            _logger.GetJobsFunctionStarted(nameof(GetJobsFunction), DateTime.UtcNow);
             var tableQuery = await _jobTriggerService.GetSyncJobsAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetJobsFunction)} function completed at: {DateTime.UtcNow}" }, VerbosityLevel.DEBUG);
+            _logger.GetJobsFunctionCompleted(nameof(GetJobsFunction), DateTime.UtcNow);
             return tableQuery;
         }
     }

@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 using Hosts.JobTrigger;
 using JobTrigger.Activity.SchemaValidator;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Repositories.Contracts;
 using Services.Contracts;
 using Services.Tests.Helpers;
 using System;
@@ -17,14 +17,12 @@ namespace Services.Tests
     [TestClass]
     public class SchemaValidatorFunctionTests
     {
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IJobTriggerService> _jobTriggerService;
         private JsonSchemaProvider _jsonSchemaProvider;
 
         [TestInitialize]
         public void Setup()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _jobTriggerService = new Mock<IJobTriggerService>();
             _jsonSchemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
         }
@@ -32,7 +30,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestValidQueriesAsync()
         {
-            var schemaValidatorFunction = new SchemaValidatorFunction(_loggingRepository.Object, _jobTriggerService.Object, _jsonSchemaProvider);
+            var schemaValidatorFunction = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _jobTriggerService.Object, _jsonSchemaProvider);
 
             var syncJob = new SyncJob
             {
@@ -50,7 +48,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestInvalidQueriesAsync()
         {
-            var schemaValidatorFunction = new SchemaValidatorFunction(_loggingRepository.Object, _jobTriggerService.Object, _jsonSchemaProvider);
+            var schemaValidatorFunction = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _jobTriggerService.Object, _jsonSchemaProvider);
 
             var syncJob = new SyncJob
             {

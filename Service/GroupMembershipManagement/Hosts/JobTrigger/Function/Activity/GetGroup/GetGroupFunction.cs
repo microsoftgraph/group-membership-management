@@ -1,33 +1,37 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
-using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.JobTrigger
 {
     public class GetGroupFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IJobTriggerService _jobTriggerService = null;
-        public GetGroupFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService)
+        private readonly ILogger<GetGroupFunction> _logger;
+        private readonly IJobTriggerService _jobTriggerService;
+
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, IJobTriggerService jobTriggerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
         }
 
         [Function(nameof(GetGroupFunction))]
         public async Task<Group> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-            var group = await _jobTriggerService.GetGroupAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return group;
+            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(GetGroupFunction), syncJob);
+            using (_logger.BeginSyncJobScope(syncJob))
+            {
+                _logger.ActivityFunctionStarted(nameof(GetGroupFunction));
+                var group = await _jobTriggerService.GetGroupAsync(syncJob);
+                _logger.ActivityFunctionCompleted(nameof(GetGroupFunction));
+                return group;
+            }
         }
     }
 }

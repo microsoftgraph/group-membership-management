@@ -7,6 +7,8 @@ using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -48,14 +50,15 @@ namespace Hosts.JobTrigger
                 .ConfigureServices((context, services) =>
                 {
                     var configuration = context.Configuration;
-                    var functionName = "JobTrigger";
-                    var dryRunSettingName = string.Empty;
-                    var rootPath = context.HostingEnvironment.ContentRootPath;
-                    CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
-
-                    services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
-                    {                       
-                        settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
+                     var functionName = "JobTrigger";
+                     var dryRunSettingName = string.Empty;
+                     var rootPath = context.HostingEnvironment.ContentRootPath;
+                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                     services.ConfigureFunctionsApplicationInsights();
+ 
+                     services.AddOptions<JobTriggerConfig>().Configure<IConfiguration>((settings, configuration) =>
+                     {                       
+                         settings.GMMHasGroupReadWriteAllPermissions = GetBoolSetting(configuration, "JobTrigger:IsGroupReadWriteAllGranted", false);
                         settings.GMMHasChannelReadWriteAllPermissions = GetBoolSetting(configuration, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
                         settings.JobCountThreshold = GetIntSetting(configuration, "JobTrigger:JobCountThreshold", 10);
                         settings.JobPerMilleThreshold = GetIntSetting(configuration, "JobTrigger:JobPerMilleThreshold", 10);

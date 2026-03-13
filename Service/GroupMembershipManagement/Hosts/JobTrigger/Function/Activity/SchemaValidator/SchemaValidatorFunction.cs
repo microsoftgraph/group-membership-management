@@ -2,9 +2,10 @@
 // Licensed under the MIT license.
 using Hosts.JobTrigger;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using NJsonSchema;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Linq;
@@ -15,16 +16,16 @@ namespace JobTrigger.Activity.SchemaValidator
 {
     public class SchemaValidatorFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IJobTriggerService _jobTriggerService = null;
-        private readonly JsonSchemaProvider _schemaProvider = null;
+        private readonly ILogger<SchemaValidatorFunction> _logger;
+        private readonly IJobTriggerService _jobTriggerService;
+        private readonly JsonSchemaProvider _schemaProvider;
 
         public SchemaValidatorFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<SchemaValidatorFunction> logger,
             IJobTriggerService jobTriggerService,
             JsonSchemaProvider jsonSchemaProvider)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
             _schemaProvider = jsonSchemaProvider ?? throw new ArgumentNullException(nameof(jsonSchemaProvider));
         }
@@ -32,75 +33,55 @@ namespace JobTrigger.Activity.SchemaValidator
         [Function(nameof(SchemaValidatorFunction))]
         public async Task<bool> ValidateSchemasAsync([ActivityTrigger] SyncJob syncJob)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-
-            var isValidJson = true;
-
-            if (_schemaProvider.Schemas.Count == 0)
+            using (_logger.BeginSyncJobScope(syncJob))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                _logger.SchemaValidatorStarted(nameof(SchemaValidatorFunction));
+                var isValidJson = true;
+
+                if (_schemaProvider.Schemas.Count == 0)
                 {
-                    RunId = syncJob.RunId.GetValueOrDefault(),
-                    Message = $"No json schemas have been loaded. Skipping schema validation."
-                });
+                    _logger.NoJsonSchemasLoaded();
+                    return isValidJson;
+                }
 
-                return isValidJson;
-            }
-
-            var properties = typeof(SyncJob).GetProperties();
-            foreach (var schemaKV in _schemaProvider.Schemas)
-            {
-                var schema = await JsonSchema.FromJsonAsync(schemaKV.Value);
-                var property = properties.FirstOrDefault(x => x.Name.Equals(schemaKV.Key, StringComparison.InvariantCultureIgnoreCase));
-                if (property != null)
+                var properties = typeof(SyncJob).GetProperties();
+                foreach (var schemaKV in _schemaProvider.Schemas)
                 {
-                    try
+                    var schema = await JsonSchema.FromJsonAsync(schemaKV.Value);
+                    var property = properties.FirstOrDefault(x => x.Name.Equals(schemaKV.Key, StringComparison.InvariantCultureIgnoreCase));
+                    if (property != null)
                     {
-                        var result = schema.Validate(Convert.ToString(property.GetValue(syncJob)));
-                        if (result.Count > 0)
+                        try
                         {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            var result = schema.Validate(Convert.ToString(property.GetValue(syncJob)));
+                            if (result.Count > 0)
                             {
-                                RunId = syncJob.RunId.GetValueOrDefault(),
-                                Message = $"Schema is not valid for property: {schemaKV.Key}."
-                            });
-
-                            isValidJson = false;
-                            break;
+                                _logger.SchemaNotValid(schemaKV.Key);
+                                isValidJson = false;
+                                break;
+                            }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        if (e is JsonException || e.GetType().Name == "JsonReaderException")
+                        catch (Exception e)
                         {
-                            await _loggingRepository.LogMessageAsync(new LogMessage
+                            if (e is JsonException || e.GetType().Name == "JsonReaderException")
                             {
-                                RunId = syncJob.RunId.GetValueOrDefault(),
-                                Message = $"Unable to parse json for property: {property.Name}.\n{e}"
-                            });
+                                _logger.UnableToParseJson(e, property.Name);
+                                isValidJson = false;
+                                break;
+                            }
 
-                            isValidJson = false;
-                            break;
-                        }
-                        else
-                        {
                             throw;
                         }
                     }
-                }
-                else
-                {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
+                    else
                     {
-                        RunId = syncJob.RunId.GetValueOrDefault(),
-                        Message = $"Skipping schema validation for property: {schemaKV.Key} as it does not exist in SyncJob."
-                    });
+                        _logger.SkippingSchemaValidation(schemaKV.Key);
+                    }
                 }
+
+                _logger.SchemaValidatorCompleted(nameof(SchemaValidatorFunction));
+                return isValidJson;
             }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(SchemaValidatorFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-
-            return isValidJson;
         }
     }
 }

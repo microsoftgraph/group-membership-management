@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
 using System.Threading.Tasks;
@@ -12,15 +12,13 @@ namespace Hosts.JobTrigger
 {
     public class DestinationVerifierFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IJobTriggerService _jobTriggerService = null;
-        private readonly TelemetryClient _telemetryClient = null;
+        private readonly ILogger<DestinationVerifierFunction> _logger;
+        private readonly IJobTriggerService _jobTriggerService;
 
-        public DestinationVerifierFunction(ILoggingRepository loggingRepository, IJobTriggerService jobTriggerService, TelemetryClient telemetryClient)
+        public DestinationVerifierFunction(ILogger<DestinationVerifierFunction> logger, IJobTriggerService jobTriggerService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _jobTriggerService = jobTriggerService ?? throw new ArgumentNullException(nameof(jobTriggerService));
-            _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
         }
 
         [Function(nameof(DestinationVerifierFunction))]
@@ -30,22 +28,20 @@ namespace Hosts.JobTrigger
 
             if (syncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationVerifierFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-                _jobTriggerService.RunId = syncJob.RunId ?? Guid.Empty;
-
-                verifierResult = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(syncJob);
-
-                if (verifierResult == DestinationVerifierResult.Success)
+                using var activity = CorrelationActivity.StartSyncJobActivity(nameof(DestinationVerifierFunction), syncJob);
+                using (_logger.BeginSyncJobScope(syncJob))
                 {
-                    var endpoints = await _jobTriggerService.GetGroupEndpointsAsync(syncJob);
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        RunId = syncJob.RunId,
-                        Message = $"Linked services: {string.Join(",", endpoints)}"
-                    });
-                }
+                    _logger.ActivityFunctionStarted(nameof(DestinationVerifierFunction));
+                    verifierResult = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(syncJob);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DestinationVerifierFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
+                    if (verifierResult == DestinationVerifierResult.Success)
+                    {
+                        var endpoints = await _jobTriggerService.GetGroupEndpointsAsync(syncJob);
+                        _logger.LinkedServices(string.Join(",", endpoints));
+                    }
+
+                    _logger.ActivityFunctionCompleted(nameof(DestinationVerifierFunction));
+                }
             }
             return verifierResult;
         }
