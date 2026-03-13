@@ -11,7 +11,7 @@ This document will guide you through the steps required in log analytics for fin
 
       let gmm_logs = union
         (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),
-        (AppTraces | project location_s=tostring(Properties.location), RunId_g=tostring(Properties.RunId));
+        (AppTraces | project TimeGenerated, Message, location_s=tostring(Properties.location), RunId_g=tostring(Properties.RunId));
       gmm_logs
       | where RunId_g == '<destination group RunId>'
       | order by TimeGenerated
@@ -22,7 +22,7 @@ This document will guide you through the steps required in log analytics for fin
 
       let gmm_logs = union
         (ApplicationLog_CL | project TimeGenerated, Message, location_s, RunId_g),
-        (AppTraces | project location_s=tostring(Properties.location), RunId_g=tostring(Properties.RunId));
+        (AppTraces | project TimeGenerated, Message, location_s=tostring(Properties.location), RunId_g=tostring(Properties.RunId));
       gmm_logs
       | where RunId_g == '<destination group RunId>'
       | where location_s == 'GroupMembershipObtainer'
