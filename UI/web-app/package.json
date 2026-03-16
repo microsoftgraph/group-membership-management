@@ -102,6 +102,7 @@
       "minimatch@3": ">=3.1.5",
       "minimatch@5": ">=5.1.9",
       "minimatch@9": ">=9.0.9",
+      "flatted": ">=3.4.0",
       "serialize-javascript": ">=7.0.3",
       "underscore": ">=1.13.8"
     }
