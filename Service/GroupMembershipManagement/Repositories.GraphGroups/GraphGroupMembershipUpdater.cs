@@ -171,7 +171,7 @@ namespace Repositories.GraphGroups
 
         private async Task<(ResponseCode ResponseCode, int SuccessCount)> ProcessPatchBatch(ConcurrentQueue<ChunkOfUsers> queue, List<ChunkOfUsers> toSend, MakeBulkRequest makeRequest, int threadNumber)
         {
-            _graphGroupMembershipUpdaterLogger.LogDebugWithRunId(RunId, $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.");
+            _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Thread number {threadNumber}: Sending a batch of {toSend.Count} requests.");
             int requeued = 0;
             bool hasUnrecoverableErrors = false;
             var successfulRequests = toSend.Where(x => !x.SendAsPostRequest).SelectMany(x => x.ToSend).ToList().Count;
@@ -266,7 +266,7 @@ namespace Repositories.GraphGroups
                         }
                     }
                 }
-                _graphGroupMembershipUpdaterLogger.LogDebugWithRunId(RunId, $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.");
+                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Thread number {threadNumber}: {toSend.Count - requeued} out of {toSend.Count} requests succeeded. {queue.Count} left.");
             }
             catch (ServiceException ex)
             {
@@ -455,7 +455,7 @@ namespace Repositories.GraphGroups
                 var headers = response.Headers.ToDictionary(h => h.Key, h => h.Value);
                 await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, RunId, GraphOperationType.Write);
 
-                _graphGroupMembershipUpdaterLogger.LogDebugWithRunId(RunId, $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}");
+                _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Response - RequestId:{kvp.Key} - StatusCode:{status} - Content:{content}");
 
                 writeRequests.TrackValue(1);
 
@@ -532,13 +532,13 @@ namespace Repositories.GraphGroups
                     {
                         var throttleWait = CalculateThrottleWait(response.Headers.RetryAfter);
 
-                        _graphGroupMembershipUpdaterLogger.LogDebugWithRunId(RunId, $"Got 409 conflict due to concurrent updates. Waiting {throttleWait.TotalSeconds} seconds before retrying.");
+                        _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Got 409 conflict due to concurrent updates. Waiting {throttleWait.TotalSeconds} seconds before retrying.");
 
                         await Task.Delay(throttleWait);
                         beenConcurrencyViolated = true;
                     }
 
-                    _graphGroupMembershipUpdaterLogger.LogDebugWithRunId(RunId, $"Got 409 conflict due to concurrent updates. Retrying request {kvp.Key}.");
+                    _graphGroupMembershipUpdaterLogger.LogInformationWithRunId(RunId, $"Got 409 conflict due to concurrent updates. Retrying request {kvp.Key}.");
 
                     retryResponses.Add(new RetryResponse
                     {

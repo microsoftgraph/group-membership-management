@@ -32,7 +32,7 @@ namespace Repositories.FeatureFlag
                 var refresher = _refresherProvider.Refreshers.First();
                 if (!await refresher.TryRefreshAsync())
                 {
-                    _featureFlagRepositoryLogger.LogDebugWithRunId(runId, "Unable to refresh app configuration values");
+                    _featureFlagRepositoryLogger.LogInformationWithRunId(runId, "Unable to refresh app configuration values");
                 }
             }
 

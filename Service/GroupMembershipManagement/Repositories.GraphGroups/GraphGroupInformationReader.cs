@@ -580,7 +580,7 @@ namespace Repositories.GraphGroups
             }
             catch (Exception e)
             {
-                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error creating group: {e}", e);
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, $"Error creating group: {e}", e);
             }
         }
 
@@ -665,19 +665,19 @@ namespace Repositories.GraphGroups
                 }
                 else
                 {
-                    _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, "Error creating group");
+                    _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, "Error creating group");
                     return null;
                 }
             }
             catch (ODataError ex)
             {
-                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, ex.GetBaseException().ToString(), ex);
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, ex.GetBaseException().ToString(), ex);
 
                 throw;
             }
             catch (Exception e)
             {
-                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error creating group: {e}", e);
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(runId, $"Error creating group: {e}", e);
                 return null;
             }
         }

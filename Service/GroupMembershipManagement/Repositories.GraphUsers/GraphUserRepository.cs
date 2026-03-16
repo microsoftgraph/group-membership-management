@@ -252,12 +252,12 @@ namespace Repositories.GraphAzureADUsers
 
             if (profiles.Count > 0)
             {
-                _logger.LogInformationWithRunId(null, $"Added {profiles.Count} new users.");
+                _logger.LogInformationWithRunId(runId, $"Added {profiles.Count} new users.");
             }
 
             if (userIdsToRetry.Count > 0)
             {
-                _logger.LogWarningWithRunId(null, $"Too many requests. Requeueed {userIdsToRetry.Count} requests.");
+                _logger.LogWarningWithRunId(runId, $"Too many requests. Requeueed {userIdsToRetry.Count} requests.");
             }
 
             return (profiles, userIdsToRetry);
@@ -280,7 +280,7 @@ namespace Repositories.GraphAzureADUsers
 
                 var waitTime = (int)maxDelta.TotalMilliseconds + 30000;
 
-                _logger.LogInformationWithRunId(null, $"Waiting for {waitTime / 1000} seconds to continue.");
+                _logger.LogInformationWithRunId(runId, $"Waiting for {waitTime / 1000} seconds to continue.");
 
                 await Task.Delay(waitTime);
             }
@@ -298,7 +298,7 @@ namespace Repositories.GraphAzureADUsers
                         var profile = await ExtractProfileAsync(singleResponse, user.OnPremisesImmutableId);
                         profiles.Add(profile);
 
-                        _logger.LogInformationWithRunId(null, "Added new user.");
+                        _logger.LogInformationWithRunId(runId, "Added new user.");
                     }
                     else
                     {
@@ -307,7 +307,7 @@ namespace Repositories.GraphAzureADUsers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogErrorWithRunId(null, $"Error sending single request:\n{ex.Message}", ex);
+                    _logger.LogErrorWithRunId(runId, $"Error sending single request:\n{ex.Message}", ex);
                 }
             }
 
