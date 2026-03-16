@@ -45,7 +45,6 @@ stages:
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
           pnpm --version
-          pnpm install --frozen-lockfile
           pnpm audit --audit-level=moderate
         pwsh: true
       condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
