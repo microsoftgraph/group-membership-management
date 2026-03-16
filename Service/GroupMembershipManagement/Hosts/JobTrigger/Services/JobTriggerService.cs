@@ -121,7 +121,7 @@ namespace Services
             var jobsToBeStarted = jobsDueToRun;
             if (jobTriggerThresholdExceeded)
             {
-                jobsToBeStarted = jobsToBeStarted.OrderBy(job => job.LastRunTime).Take(_jobTriggerConfig.JobCountThreshold).ToList();
+                jobsToBeStarted = jobsToBeStarted.OrderBy(job => job.ScheduledDate).Take(_jobTriggerConfig.JobCountThreshold).ToList();
             }
             _telemetryClient.TrackMetric(nameof(Metric.JobsToBeStarted), jobsToBeStarted.Count);
 
