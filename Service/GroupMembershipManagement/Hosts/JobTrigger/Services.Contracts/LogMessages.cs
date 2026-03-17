@@ -6,7 +6,7 @@ using System;
 
 namespace Hosts.JobTrigger
 {
-    public static partial class Log
+    public static partial class LogMessages
     {
         // ── Orchestrator (1000-1009) ──
 
