@@ -27,6 +27,12 @@ namespace Repositories.Contracts.Helpers
 
         public static IDisposable BeginSyncJobScope(this ILogger logger, SyncJob syncJob)
         {
+            return BeginSyncJobScope(logger, syncJob, null);
+        }
+
+        public static IDisposable BeginSyncJobScope(this ILogger logger, SyncJob syncJob,
+            Dictionary<string, object> additionalProperties)
+        {
             if (syncJob == null)
             {
                 return null;
@@ -43,6 +49,14 @@ namespace Repositories.Contracts.Helpers
             if (syncJob.Id != Guid.Empty)
             {
                 scopeValues[CorrelationActivity.SyncJobIdPropertyName] = syncJob.Id;
+            }
+
+            if (additionalProperties != null)
+            {
+                foreach (var kvp in additionalProperties)
+                {
+                    scopeValues[kvp.Key] = kvp.Value;
+                }
             }
 
             return logger.BeginScope(scopeValues);
