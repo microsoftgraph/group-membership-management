@@ -146,6 +146,14 @@ namespace Services.Tests
                          await CallEmailSenderFunctionAsync(request as EmailSenderRequest);
                      });
 
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+                    .ReturnsAsync((TaskName name, object syncJobId, TaskOptions options) =>
+                    {
+                        var refreshedJob = _syncJob;
+                        refreshedJob.RunId = _syncJob.RunId; // Preserve RunId
+                        return refreshedJob;
+                    });
+
             _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                     {
@@ -761,6 +769,116 @@ namespace Services.Tests
         {
             var validatorFunction = new SchemaValidatorFunction(_loggingRespository.Object, _jobTriggerService.Object, _jsonSchemaProvider);
             return await validatorFunction.ValidateSchemasAsync(job);
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobFunction_IsCalled_BeforeTopicMessageSender()
+        {
+            // Arrange
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            var getSyncJobCalled = false;
+            var topicMessageSenderCalled = false;
+            var getSyncJobCalledFirst = false;
+
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>((name, input, options) =>
+                    {
+                        var syncJobId = (Guid)input; // Cast object to Guid
+                        getSyncJobCalled = true;
+                        if (!topicMessageSenderCalled)
+                            getSyncJobCalledFirst = true;
+                    })
+                    .ReturnsAsync(_syncJob);
+
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        topicMessageSenderCalled = true;
+                        await CallTopicMessageSenderFunctionAsync();
+                    });
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                    _telemetryClient,
+                                                    _emailSenderAndRecipients.Object,
+                                                    _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            Assert.IsTrue(getSyncJobCalled, "GetSyncJobFunction should be called");
+            Assert.IsTrue(topicMessageSenderCalled, "TopicMessageSenderFunction should be called");
+            Assert.IsTrue(getSyncJobCalledFirst, "GetSyncJobFunction should be called before TopicMessageSenderFunction");
+            _context.Verify(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task TopicMessageSender_ReceivesRefreshedJob_WithPreservedRunId()
+        {
+            // Arrange
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            var originalRunId = _syncJob.RunId;
+            SyncJob jobSentToTopicMessageSender = null;
+
+            var refreshedJob = SampleDataHelper.CreateSampleSyncJobs(1, "GroupMembership").First();
+            refreshedJob.Id = _syncJob.Id;
+            refreshedJob.Status = SyncStatus.InProgress.ToString();
+            refreshedJob.RunId = null; // Simulating database fetch without RunId
+
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+                    .ReturnsAsync(refreshedJob);
+
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        jobSentToTopicMessageSender = request as SyncJob;
+                        await CallTopicMessageSenderFunctionAsync();
+                    });
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                    _telemetryClient,
+                                                    _emailSenderAndRecipients.Object,
+                                                    _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            Assert.IsNotNull(jobSentToTopicMessageSender, "Job should be sent to TopicMessageSenderFunction");
+            Assert.AreEqual(originalRunId, jobSentToTopicMessageSender.RunId, "RunId should be preserved from orchestration context");
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), jobSentToTopicMessageSender.Status, "Should have refreshed status");
+        }
+
+        [TestMethod]
+        public async Task TopicMessageSender_UsesFallback_WhenGetSyncJobReturnsNull()
+        {
+            // Arrange
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+            SyncJob jobSentToTopicMessageSender = null;
+
+            _context.Setup(x => x.CallActivityAsync<SyncJob>(It.Is<TaskName>(x => x == nameof(GetSyncJobFunction)), It.IsAny<Guid>(), It.IsAny<TaskOptions>()))
+                    .ReturnsAsync((SyncJob)null);
+
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TopicMessageSenderFunction)), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        jobSentToTopicMessageSender = request as SyncJob;
+                        await CallTopicMessageSenderFunctionAsync();
+                    });
+
+            // Act
+            var suborchestrator = new SubOrchestratorFunction(_loggingRespository.Object,
+                                                    _telemetryClient,
+                                                    _emailSenderAndRecipients.Object,
+                                                    _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            // Assert
+            Assert.IsNotNull(jobSentToTopicMessageSender, "Job should still be sent to TopicMessageSenderFunction");
+            Assert.AreEqual(_syncJob.Id, jobSentToTopicMessageSender.Id, "Should use in-memory job as fallback");
+            _loggingRespository.Verify(x => x.LogMessageAsync(
+                It.Is<LogMessage>(m => m.Message.Contains("Failed to retrieve latest job state") && m.Message.Contains("Using in-memory object as fallback")),
+                It.IsAny<VerbosityLevel>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()), Times.Once());
         }
     }
 }

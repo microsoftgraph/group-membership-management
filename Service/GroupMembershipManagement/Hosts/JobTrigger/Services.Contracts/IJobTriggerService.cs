@@ -13,6 +13,7 @@ namespace Services.Contracts
     {
         public Guid RunId { get; set; }
         Task<List<SyncJob>> GetSyncJobsAsync();
+        Task<SyncJob> GetSyncJobByIdAsync(Guid syncJobId);
         Task<Group> GetGroupAsync(SyncJob syncJob);
         Task<Channel> GetChannelAsync(SyncJob syncJob);
          Task<ParsedAndValidateDestinationResponse> ParseAndValidateDestinationAsync(SyncJob syncJob);

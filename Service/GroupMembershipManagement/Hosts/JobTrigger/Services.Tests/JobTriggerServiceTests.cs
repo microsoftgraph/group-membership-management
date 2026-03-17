@@ -688,6 +688,59 @@ namespace Services.Tests
             Assert.AreEqual(validStartDateJobs, jobs.Count);
         }
 
+        [TestMethod]
+        public async Task GetSyncJobByIdAsync_ReturnsSyncJob_WhenJobExists()
+        {
+            // Arrange
+            var testJob = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            _syncJobRepository.Jobs.Add(testJob);
+            _graphGroupRepository.GroupsThatExist.Add(testJob.Group.GroupId);
+            _graphGroupRepository.GroupsGMMOwns.Add(testJob.Group.GroupId);
+
+            // Act
+            var result = await _jobTriggerService.GetSyncJobByIdAsync(testJob.Id);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(testJob.Id, result.Id);
+            Assert.AreEqual(testJob.TargetOfficeGroupId, result.TargetOfficeGroupId);
+            Assert.AreEqual(testJob.Query, result.Query);
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobByIdAsync_ReturnsNull_WhenJobDoesNotExist()
+        {
+            // Arrange
+            var nonExistentJobId = Guid.NewGuid();
+
+            // Act
+            var result = await _jobTriggerService.GetSyncJobByIdAsync(nonExistentJobId);
+
+            // Assert
+            Assert.IsNull(result);
+        }
+
+        [TestMethod]
+        public async Task GetSyncJobByIdAsync_ReturnsJobWithCurrentStatus_WhenStatusWasUpdated()
+        {
+            // Arrange
+            var testJob = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            testJob.Status = SyncStatus.Idle.ToString();
+            _syncJobRepository.Jobs.Add(testJob);
+            _graphGroupRepository.GroupsThatExist.Add(testJob.Group.GroupId);
+            _graphGroupRepository.GroupsGMMOwns.Add(testJob.Group.GroupId);
+
+            // Update the job status
+            await _jobTriggerService.UpdateSyncJobAsync(SyncStatus.InProgress, testJob);
+
+            // Act
+            var result = await _jobTriggerService.GetSyncJobByIdAsync(testJob.Id);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), result.Status);
+        }
+
         private class MockEmail<T> : IEmailSenderRecipient
         {
             public string SenderAddress => "";

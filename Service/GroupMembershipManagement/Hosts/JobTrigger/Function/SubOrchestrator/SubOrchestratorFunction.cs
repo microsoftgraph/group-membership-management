@@ -290,7 +290,23 @@ namespace Hosts.JobTrigger
 
                 var statusValue = syncJob.Status == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
                 await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = statusValue, SyncJob = syncJob });
-                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
+
+                var latestSyncJob = await context.CallActivityAsync<SyncJob>(nameof(GetSyncJobFunction), syncJob.Id);
+                if (latestSyncJob != null)
+                {
+                    latestSyncJob.RunId = syncJob.RunId;
+                    await context.CallActivityAsync(nameof(TopicMessageSenderFunction), latestSyncJob);
+                }
+                else
+                {
+                    await context.CallActivityAsync(nameof(LoggerFunction),
+                        new LoggerRequest
+                        {
+                            RunId = (Guid)syncJob.RunId,
+                            Message = $"Failed to retrieve latest job state for job {syncJob.Id} before sending to Service Bus. Using in-memory object as fallback."
+                        });
+                    await context.CallActivityAsync(nameof(TopicMessageSenderFunction), syncJob);
+                }
 
             }
             catch (Exception ex)

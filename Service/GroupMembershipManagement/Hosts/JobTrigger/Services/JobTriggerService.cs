@@ -127,6 +127,12 @@ namespace Services
 
             return jobsToBeStarted;
         }
+
+        public async Task<SyncJob> GetSyncJobByIdAsync(Guid syncJobId)
+        {
+            return await _databaseSyncJobsRepository.GetSyncJobAsync(syncJobId);
+        }
+
         public async Task<string> GetDestinationNameAsync(SyncJob job)
         {
             // Try to get the name from the DestinationNames table first
