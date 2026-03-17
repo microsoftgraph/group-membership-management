@@ -33,7 +33,6 @@ namespace Hosts.JobTrigger
                 };
             }
 
-            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(ParseAndValidateDestinationFunction), syncJob);
             using (_logger.BeginSyncJobScope(syncJob))
             {
                 _logger.ActivityFunctionStarted(nameof(ParseAndValidateDestinationFunction));

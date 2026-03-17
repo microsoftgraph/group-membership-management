@@ -26,7 +26,6 @@ namespace Hosts.JobTrigger
         {
             if (request.SyncJob != null)
             {
-                using var activity = CorrelationActivity.StartSyncJobActivity(nameof(JobUpdaterFunction), request.SyncJob);
                 using (_logger.BeginSyncJobScope(request.SyncJob))
                 {
                     _logger.ActivityFunctionStarted(nameof(JobUpdaterFunction));

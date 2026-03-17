@@ -24,7 +24,6 @@ namespace Hosts.JobTrigger
         [Function(nameof(GetGroupFunction))]
         public async Task<Group> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
         {
-            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(GetGroupFunction), syncJob);
             using (_logger.BeginSyncJobScope(syncJob))
             {
                 _logger.ActivityFunctionStarted(nameof(GetGroupFunction));

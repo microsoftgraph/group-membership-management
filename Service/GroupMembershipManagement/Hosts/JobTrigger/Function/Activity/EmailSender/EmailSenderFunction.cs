@@ -26,7 +26,6 @@ namespace Hosts.JobTrigger
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
             var job = request.SyncJob;
-            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(EmailSenderFunction), job);
             using (_logger.BeginSyncJobScope(job))
             {
                 _logger.ActivityFunctionStarted(nameof(EmailSenderFunction));

@@ -25,7 +25,6 @@ namespace Hosts.JobTrigger
         [Function(nameof(TelemetryTrackerFunction))]
         public async Task TrackEventAsync([ActivityTrigger] TelemetryTrackerRequest request)
         {
-            using var activity = CorrelationActivity.StartRunIdActivity(nameof(TelemetryTrackerFunction), request.RunId);
             using (_logger.BeginRunIdScope(request.RunId))
             {
                 _logger.ActivityFunctionStarted(nameof(TelemetryTrackerFunction));

@@ -27,7 +27,6 @@ namespace Hosts.JobTrigger
             if (syncJob == null)
                 return null;
 
-            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(DestinationNameReaderFunction), syncJob);
             using (_logger.BeginSyncJobScope(syncJob))
             {
                 _logger.ActivityFunctionStarted(nameof(DestinationNameReaderFunction));

@@ -28,7 +28,6 @@ namespace Hosts.JobTrigger
 
             if (syncJob != null)
             {
-                using var activity = CorrelationActivity.StartSyncJobActivity(nameof(DestinationVerifierFunction), syncJob);
                 using (_logger.BeginSyncJobScope(syncJob))
                 {
                     _logger.ActivityFunctionStarted(nameof(DestinationVerifierFunction));

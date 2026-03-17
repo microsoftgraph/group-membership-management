@@ -24,7 +24,6 @@ namespace Hosts.JobTrigger
         [Function(nameof(GetChannelFunction))]
         public async Task<Channel> GetChannelAsync([ActivityTrigger] SyncJob syncJob)
         {
-            using var activity = CorrelationActivity.StartSyncJobActivity(nameof(GetChannelFunction), syncJob);
             using (_logger.BeginSyncJobScope(syncJob))
             {
                 _logger.ActivityFunctionStarted(nameof(GetChannelFunction));
