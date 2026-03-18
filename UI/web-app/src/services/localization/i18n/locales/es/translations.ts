@@ -357,7 +357,7 @@ export const strings: IStrings = {
       userAddedPriorToHistoryMessage: 'El usuario fue agregado antes del historial de altas/bajas que tenemos registrado.',
       userNeverInGroupOrRemovedPriorToHistoryMessage: 'El usuario nunca estuvo en este grupo o fue eliminado antes del historial de altas/bajas que tenemos registrado.',
     },
-    notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe.',
+    notFound: 'La sincronización de membresía para el grupo con ID {0} ahora está deshabilitada porque el grupo ya no existe. GMM detectó este problema el {1}. Este trabajo se eliminará automáticamente el {2}. Para dejar inmediatamente de administrar con GMM, use el botón "Dejar de administrar con GMM" que aparece abajo.',
     openInAzure: 'Abrir en Azure',
     openInTeams: 'Abrir en Teams',
     viewDetails: 'Ver Detalles',
