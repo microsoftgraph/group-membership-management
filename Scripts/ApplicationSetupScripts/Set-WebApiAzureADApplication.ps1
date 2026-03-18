@@ -295,6 +295,10 @@ function Set-WebApiAzureADApplication {
 	Grant-LoggedInUserWebapiAppRoles 	-SolutionAbbreviation $SolutionAbbreviation `
                                   		-EnvironmentAbbreviation $EnvironmentAbbreviation
 
+	# Assign Operations.Reset role to WebAPI service principal (self-referencing)
+	Set-WebAPIAsResetAdministrator -SolutionAbbreviation $SolutionAbbreviation `
+	                               -EnvironmentAbbreviation $EnvironmentAbbreviation
+
 	if ($SaveToKeyVault -eq $true) {
 		Set-WebAPIKeyVaultSecrets `
 			-SolutionAbbreviation $SolutionAbbreviation `
@@ -645,4 +649,94 @@ function Test-WebApiApplication {
     
     return $true
 }
-							
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helper: Assign an app role to a service principal (idempotent)
+# ─────────────────────────────────────────────────────────────────────────────
+
+function Set-AppRoleToServicePrincipal {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$PrincipalId,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$ResourceId,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$AppRoleId
+    )
+
+    Write-Host "Setting app role to service principal with ID: $PrincipalId"
+
+    $existingAssignments = Get-MgServicePrincipalAppRoleAssignment -ServicePrincipalId $PrincipalId
+
+    $assignmentExists = $existingAssignments | Where-Object {
+        $_.AppRoleId -eq $AppRoleId -and $_.ResourceId -eq $ResourceId
+    }
+
+    if (-not $assignmentExists) {
+        New-MgServicePrincipalAppRoleAssignment `
+            -ServicePrincipalId $PrincipalId `
+            -BodyParameter @{
+                principalId = $PrincipalId
+                resourceId  = $ResourceId
+                appRoleId   = $AppRoleId
+            }
+
+        Write-Host "✅ App role assignment created successfully."
+    } else {
+        Write-Host "App role assignment already exists. Skipping creation."
+    }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Helper: Assign Operations.Reset role to WebAPI service principal
+# ─────────────────────────────────────────────────────────────────────────────
+
+function Set-WebAPIAsResetAdministrator {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$SolutionAbbreviation,
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$EnvironmentAbbreviation
+    )
+
+    Write-Host "Setting WebAPI as Reset Administrator"
+
+    $targetRoleValue = "Operations.Reset"
+
+    $app = Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation'" -ErrorAction SilentlyContinue
+    if (-not $app) {
+        throw "❌ Application '$SolutionAbbreviation-webapi-$EnvironmentAbbreviation' not found."
+    }
+
+    $role = $app.AppRoles | Where-Object { $_.Value -eq $targetRoleValue }
+
+    if ($role) {
+        Write-Host "Role Found:"
+        Write-Host "Display Name: $($role.DisplayName)"
+        Write-Host "Value: $($role.Value)"
+        Write-Host "ID: $($role.Id)"
+
+        $sp = Get-MgServicePrincipal -Filter "appId eq '$($app.AppId)'" -ErrorAction SilentlyContinue
+        if (-not $sp) {
+            throw "❌ Service Principal for application '$($app.AppId)' not found."
+        }
+
+        Write-Host "Service Principal Found:"
+        Write-Host "Display Name: $($sp.DisplayName)"
+        Write-Host "ID: $($sp.Id)"
+
+        Set-AppRoleToServicePrincipal `
+            -PrincipalId $sp.Id `
+            -ResourceId $sp.Id `
+            -AppRoleId $role.Id
+    } else {
+        Write-Host "No app role found with value '$targetRoleValue'."
+    }
+}
