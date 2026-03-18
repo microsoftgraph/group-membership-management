@@ -21,6 +21,19 @@ namespace Services
 {
     public class AzureMaintenanceService : IAzureMaintenanceService
 	{
+        private static readonly SyncStatus[] _purgeEligibleStatuses =
+        [
+            SyncStatus.CustomerPaused,
+            SyncStatus.DestinationGroupNotFound,
+            SyncStatus.MembershipDataNotFound,
+            SyncStatus.NotOwnerOfDestinationGroup,
+            SyncStatus.SecurityGroupNotFound,
+            SyncStatus.ThresholdExceeded,
+            SyncStatus.SubmissionRejected,
+            SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
+            SyncStatus.NestedGroupsFound
+        ];
+
         private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository = null;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository = null;
@@ -58,13 +71,7 @@ namespace Services
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            var jobs = await _syncJobRepository.GetSyncJobsAsync(true,
-                SyncStatus.CustomerPaused,
-                SyncStatus.DestinationGroupNotFound,
-                SyncStatus.MembershipDataNotFound,
-                SyncStatus.NotOwnerOfDestinationGroup,
-                SyncStatus.SecurityGroupNotFound,
-                SyncStatus.ThresholdExceeded);
+            var jobs = await _syncJobRepository.GetSyncJobsAsync(true, _purgeEligibleStatuses);
 
             var jobsToBePurged = ApplyPurgingFilters(jobs).ToList();
 
@@ -267,14 +274,8 @@ namespace Services
 
         public async Task<List<SyncJob>> GetJobsApproachingPurgingAsync()
         {
-            var jobsEligibleForPurging = await _syncJobRepository.GetSyncJobsAsync(false,
-                SyncStatus.CustomerPaused,
-                SyncStatus.DestinationGroupNotFound,
-                SyncStatus.MembershipDataNotFound,
-                SyncStatus.NotOwnerOfDestinationGroup,
-                SyncStatus.SecurityGroupNotFound,
-                SyncStatus.ThresholdExceeded);
-            
+            var jobsEligibleForPurging = await _syncJobRepository.GetSyncJobsAsync(false, _purgeEligibleStatuses);
+
             var warningCutOffDate = DateTime.UtcNow.Date.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurgingToSendWarning - _handleInactiveJobsConfig.NumberOfDaysBeforePurging);
 
             var jobsNeedingWarning = jobsEligibleForPurging
