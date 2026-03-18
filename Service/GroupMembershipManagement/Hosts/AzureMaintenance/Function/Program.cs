@@ -76,7 +76,7 @@ namespace Hosts.AzureMaintenance
                             services.GetService<IOptions<ThresholdNotificationConfig>>().Value.IsThresholdNotificationEnabled);
                     });
 
-                    services.AddSingleton<INotificationRepository, NotificationRepository>();
+                    services.AddScoped<INotificationRepository, NotificationRepository>();
 
                     services
                         .AddGraphAPIClient()

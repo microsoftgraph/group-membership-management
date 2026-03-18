@@ -63,19 +63,37 @@ namespace Repositories.EntityFramework
 
         public async Task<int> DeleteOlderThanAsync(DateTime cutoffDate)
         {
+            const int batchSize = 5000;
+            var originalTimeout = _writeContext.Database.GetCommandTimeout();
             try
             {
-                var deletedCount = await _writeContext.SyncJobHistory
-                    .Where(h => h.UpdatedAt < cutoffDate)
-                    .ExecuteDeleteAsync();
+                _writeContext.Database.SetCommandTimeout(TimeSpan.FromMinutes(5));
 
-                return deletedCount;
+                var totalDeleted = 0;
+                int deletedInBatch;
+
+                do
+                {
+                    deletedInBatch = await _writeContext.SyncJobHistory
+                        .Where(h => h.UpdatedAt < cutoffDate)
+                        .Take(batchSize)
+                        .ExecuteDeleteAsync();
+
+                    totalDeleted += deletedInBatch;
+                }
+                while (deletedInBatch == batchSize);
+
+                return totalDeleted;
             }
             catch (Exception ex)
             {
                 throw new InvalidOperationException(
                     $"Failed to delete job history records with cutoff date: {cutoffDate:yyyy-MM-dd}",
                     ex);
+            }
+            finally
+            {
+                _writeContext.Database.SetCommandTimeout(originalTimeout);
             }
         }
     }
