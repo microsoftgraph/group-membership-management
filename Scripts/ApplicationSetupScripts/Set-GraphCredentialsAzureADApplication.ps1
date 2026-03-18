@@ -248,7 +248,7 @@ function Set-GraphCredentialsAzureADApplication {
 		Set-GraphAppKeyVaultSecrets `
 			-SolutionAbbreviation $SolutionAbbreviation `
 			-EnvironmentAbbreviation $EnvironmentAbbreviation `
-			-TenantIdToCreateAppIn $AppTenantId `
+			-AppTenantId $AppTenantId `
 			-ApplicationClientId $graphApp.AppId `
 			-CertificateName $CertificateName `
 			-CreateNewSecret $CreateNewSecret
