@@ -118,6 +118,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
   const jobIdSet = useSelector(selectJobIdSet);
   const isJobOwnerDeleter: boolean = useSelector(selectIsJobOwnerDeleter);
   const canDeleteJob: boolean = isJobWriter || isJobOwnerDeleter;
+  const isDestinationGroupNotFound = job.status === SyncStatus.DestinationGroupNotFound;
   const showLoader: boolean = jobLoading || removeGMMPending;
 
   const [isJobHistoryPanelOpen, setIsJobHistoryPanelOpen] = useState(false);
@@ -260,7 +261,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
               </MessageBar>
             )}
           </div>
-          {job.status === SyncStatus.DestinationGroupNotFound ? (
+          {isDestinationGroupNotFound ? (
             <div className={classNames.root}>
               <div className={classNames.notFound}>
                 {format(
@@ -327,7 +328,7 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
           )}
         </>
       )}
-      <div className={classNames.removeGMM}>
+      <div className={isDestinationGroupNotFound ? classNames.removeGMMNotFound : classNames.removeGMM}>
         {canDeleteJob &&
         <ActionButton
           data-testid="remove-button"

@@ -123,6 +123,11 @@ export const getStyles = (props: IJobDetailsStyleProps): IJobDetailsStyles => {
         },
         removeGMM: {
             display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "flex-end"
+        },
+        removeGMMNotFound: {
+            display: "flex",
             alignItems: "center",
             justifyContent: "center",
             marginTop: 20,
