@@ -65,7 +65,7 @@ namespace JobTrigger.Activity.SchemaValidator
                         {
                             if (e is JsonException || e.GetType().Name == "JsonReaderException")
                             {
-                                _logger.UnableToParseJson(e, property.Name);
+                                _logger.UnableToParseJson(property.Name, e);
                                 isValidJson = false;
                                 break;
                             }

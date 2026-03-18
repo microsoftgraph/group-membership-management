@@ -124,7 +124,7 @@ namespace Hosts.JobTrigger
 
         [LoggerMessage(EventId = 1054, Level = LogLevel.Error,
             Message = "Unable to parse json for property {PropertyName}")]
-        public static partial void UnableToParseJson(this ILogger logger, Exception exception, string propertyName);
+        public static partial void UnableToParseJson(this ILogger logger, string propertyName, Exception exception);
 
         [LoggerMessage(EventId = 1055, Level = LogLevel.Information,
             Message = "Skipping schema validation for property {PropertyKey}")]
