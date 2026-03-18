@@ -65,11 +65,11 @@ namespace Hosts.MembershipAggregator
                 {
                     await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.SetTotalParts), input: request.PartsCount);
                     await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.AddCompletedPart), input: request.FilePath);
-                    hasSourceCompleted = await context.Entities.CallEntityAsync<bool>(entityInstanceId, nameof(JobTrackerEntity.IsComplete));
 
                     if (request.IsDestinationPart)
                         await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.SetDestinationPart), input: request.FilePath);
 
+                    hasSourceCompleted = await context.Entities.CallEntityAsync<bool>(entityInstanceId, nameof(JobTrackerEntity.IsComplete));
                 }
 
                 if (hasSourceCompleted)
