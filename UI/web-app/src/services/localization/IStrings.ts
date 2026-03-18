@@ -417,6 +417,7 @@ export type IStrings = {
             pendingReview: string;
             pendingConfiguration: string;
             submissionRejected: string;
+            nestedGroupsFound: string;
           };
         };
         destinationType: {

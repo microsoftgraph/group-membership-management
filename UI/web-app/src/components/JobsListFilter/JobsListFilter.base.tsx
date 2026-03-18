@@ -142,6 +142,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     {
       key: SyncStatus.SubmissionRejected,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.submissionRejected,
+    },
+    {
+      key: SyncStatus.NestedGroupsFound,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.nestedGroupsFound,
     }
   ];
 

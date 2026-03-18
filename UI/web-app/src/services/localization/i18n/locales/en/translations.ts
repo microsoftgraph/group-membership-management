@@ -422,6 +422,7 @@ export const strings: IStrings = {
             pendingReview: 'Pending Review',
             pendingConfiguration: 'System Configuration in Progress',
             submissionRejected: 'Submission Rejected',
+            nestedGroupsFound: 'Nested Groups Detected',
           },
         },
         destinationType: {

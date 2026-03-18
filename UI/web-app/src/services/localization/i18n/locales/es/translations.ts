@@ -424,6 +424,7 @@ export const strings: IStrings = {
             pendingReview: 'Revisión pendiente',
             pendingConfiguration: 'Configuración del sistema en progreso',
             submissionRejected: 'Solicitud rechazada',
+            nestedGroupsFound: 'Grupos anidados detectados',
           },
         },
         destinationType: {

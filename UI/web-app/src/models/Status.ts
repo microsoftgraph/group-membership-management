@@ -13,7 +13,8 @@ export enum SyncStatus {
   InProgress = 'InProgress',
   PendingReview = 'PendingReview',
   PendingConfiguration = 'PendingConfiguration',
-  SubmissionRejected = 'SubmissionRejected'
+  SubmissionRejected = 'SubmissionRejected',
+  NestedGroupsFound = 'NestedGroupsFound'
 }
 
 export enum ActionRequired {
@@ -27,6 +28,7 @@ export enum ActionRequired {
   PendingReview = 'Pending Review',
   PendingConfiguration = 'System Configuration in Progress',
   SubmissionRejected = 'Submission Rejected',
+  NestedGroupsFound = 'Nested Groups Detected',
 };
 
 export enum RunHistoryStatus {

@@ -58,6 +58,9 @@ export const processJob = (job: Job): Job => {
     case SyncStatus.SubmissionRejected:
       job['actionRequired'] = ActionRequired.SubmissionRejected;
       break;
+    case SyncStatus.NestedGroupsFound:
+      job['actionRequired'] = ActionRequired.NestedGroupsFound;
+      break;
   }
 
   return job;
