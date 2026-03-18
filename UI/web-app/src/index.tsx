@@ -76,6 +76,7 @@ const ThemedApp: React.FC = () => {
           <Route path="" element={<App />}>
             <Route path="/" element={<JobsPageWithMaintenanceCheck />} />
             <Route path="/JobDetails/:jobId" element={<JobDetailsWithMaintenanceCheck />} />
+            <Route path="/JobDetails/:jobId/history" element={<JobDetailsWithMaintenanceCheck />} />
             <Route path="/Groups/:groupId" element={<JobDetailsWithMaintenanceCheck />} />
             <Route path="/Groups/:groupId/Channels/:channelId" element={<JobDetailsWithMaintenanceCheck />} />
             <Route path="/OwnerPage" element={<OwnerPageWithMaintenanceCheck />} />

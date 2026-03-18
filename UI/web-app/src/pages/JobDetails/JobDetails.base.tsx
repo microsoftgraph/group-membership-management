@@ -226,6 +226,29 @@ export const JobDetailsBase: React.FunctionComponent<IJobDetailsProps> = (
     }
   }, [error, selectedJob, jobLoading, navigate]);
 
+  // Auto-open Run History panel if URL path includes /history
+  useEffect(() => {
+    if (window.location.pathname.includes('/history')) {
+      setIsJobHistoryPanelOpen(true);
+    }
+  }, []);
+
+  // Sync URL with panel state - add/remove /history suffix
+  useEffect(() => {
+    if (!jobId) return;
+
+    const currentPath = window.location.pathname;
+    const hasHistorySuffix = currentPath.includes('/history');
+
+    if (isJobHistoryPanelOpen && !hasHistorySuffix) {
+      // Panel opened - add /history to URL
+      navigate(`/JobDetails/${jobId}/history`, { replace: true });
+    } else if (!isJobHistoryPanelOpen && hasHistorySuffix) {
+      // Panel closed - remove /history from URL
+      navigate(`/JobDetails/${jobId}`, { replace: true });
+    }
+  }, [isJobHistoryPanelOpen, jobId, navigate]);
+
 
   return (
     <Page>

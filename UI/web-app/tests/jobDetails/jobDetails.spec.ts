@@ -550,6 +550,41 @@ test.describe('Job Details Tests', () => {
     expect(badUserResponses, 'Graph /users should not error for alias prefix').toHaveLength(0);
   });
 
+  test('Run History panel auto-opens when accessing /history route', async ({ page }) => {
+    const url = DOMAIN.startsWith('http://') || DOMAIN.startsWith('https://') ? DOMAIN : `https://${DOMAIN}`;
+
+    // Navigate to home page first
+    await page.goto(url);
+    await page.waitForTimeout(5000);
+
+    // Find a job and get its ID from the URL
+    const jobRow = page.locator('[role="row"]').first();
+    await jobRow.click();
+
+    // Get the current job ID from URL
+    await page.waitForURL(/\/JobDetails\/[a-f0-9-]+/);
+    const currentUrl = page.url();
+    const jobId = currentUrl.match(/\/JobDetails\/([a-f0-9-]+)/)?.[1];
+
+    if (!jobId) {
+      throw new Error('Could not extract job ID from URL');
+    }
+
+    // Navigate directly to the /history route
+    await page.goto(`${url}/JobDetails/${jobId}/history`);
+    await page.waitForTimeout(2000);
+
+    // Verify the Run History panel is open
+    const historyPanel = page.locator('.ms-Panel[role="dialog"]');
+    await expect(historyPanel).toBeVisible({ timeout: 5000 });
+
+    // Verify panel content shows history
+    const historyTitle = historyPanel.locator('text=/Run History|History/i');
+    await expect(historyTitle).toBeVisible();
+
+    console.log('✅ Run History panel auto-opens via /history route');
+  });
+
   // Helper: robustly select the first option from a labeled combobox/people picker
   // Returns a numeric id parsed from the option text if present (e.g., "User 22360" -> 22360)
   const selectComboOptionByLabel = async (page: Page, label: string, query: string): Promise<number | null> => {
