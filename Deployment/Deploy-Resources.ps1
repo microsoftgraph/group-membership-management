@@ -1649,6 +1649,10 @@ function Set-GMMAppRegistrationsProgrammatically {
         [Parameter(Mandatory = $false)]
         [string]$DirectoryTenantId,
         [Parameter(Mandatory = $false)]
+        [string]$KeyVaultTenantId,
+        [Parameter(Mandatory = $false)]
+        [string]$SubscriptionName,
+        [Parameter(Mandatory = $false)]
         [boolean]$SaveToKeyVault = $false,
         [Parameter(Mandatory = $false)]
         [switch]$SkipFunctionAuthApp
@@ -1661,6 +1665,8 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
+        -KeyVaultTenantId $KeyVaultTenantId `
+        -SubscriptionName $SubscriptionName `
         -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
@@ -1670,6 +1676,8 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
+        -KeyVaultTenantId $KeyVaultTenantId `
+        -SubscriptionName $SubscriptionName `
         -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
@@ -1679,6 +1687,8 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
+        -KeyVaultTenantId $KeyVaultTenantId `
+        -SubscriptionName $SubscriptionName `
         -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
@@ -1688,6 +1698,8 @@ function Set-GMMAppRegistrationsProgrammatically {
         -SolutionAbbreviation $SolutionAbbreviation `
         -EnvironmentAbbreviation $EnvironmentAbbreviation `
         -AppTenantId $DirectoryTenantId `
+        -KeyVaultTenantId $KeyVaultTenantId `
+        -SubscriptionName $SubscriptionName `
         -SaveToKeyVault $SaveToKeyVault `
         -SkipIfApplicationExists $false `
         -Clean $false
@@ -1698,6 +1710,8 @@ function Set-GMMAppRegistrationsProgrammatically {
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -AppTenantId $DirectoryTenantId `
+            -KeyVaultTenantId $KeyVaultTenantId `
+            -SubscriptionName $SubscriptionName `
             -SaveToKeyVault $SaveToKeyVault `
             -SkipIfApplicationExists $false `
             -Clean $false
