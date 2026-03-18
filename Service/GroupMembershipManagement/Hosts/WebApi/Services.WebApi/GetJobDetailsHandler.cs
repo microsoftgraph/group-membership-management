@@ -132,12 +132,7 @@ namespace Services
 
             // Calculate estimated purge date for inactive jobs
             DateTime? estimatedPurgeDate = null;
-            if (job.Status == SyncStatus.DestinationGroupNotFound.ToString() ||
-                job.Status == SyncStatus.CustomerPaused.ToString() ||
-                job.Status == SyncStatus.MembershipDataNotFound.ToString() ||
-                job.Status == SyncStatus.NotOwnerOfDestinationGroup.ToString() ||
-                job.Status == SyncStatus.SecurityGroupNotFound.ToString() ||
-                job.Status == SyncStatus.ThresholdExceeded.ToString())
+            if (job.Status == SyncStatus.DestinationGroupNotFound.ToString())
             {
                 estimatedPurgeDate = job.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
             }
