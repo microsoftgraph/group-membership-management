@@ -241,10 +241,5 @@ function Set-AppRolesIfNeeded {
         throw
     }
 
-    # Disconnect from Microsoft Graph before returning
-	if ($global:SkipMsGraphLogin -ne $true) {
-		Disconnect-MgGraph -ErrorAction SilentlyContinue
-	}
-
     Write-Host "`nSet-AppRolesIfNeeded completed successfully.`n"
 }
