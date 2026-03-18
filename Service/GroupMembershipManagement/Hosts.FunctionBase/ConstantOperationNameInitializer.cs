@@ -20,10 +20,10 @@ namespace Hosts.FunctionBase
                 telemetry.Context.Operation.Name = _name;
             }
 
-            // Add location to customDimensions for KQL union compatibility with legacy ApplicationLog_CL.location_s
-            if (telemetry is ISupportProperties props && !props.Properties.ContainsKey("location"))
+            // Add Location to customDimensions for KQL union compatibility with legacy ApplicationLog_CL.location_s
+            if (telemetry is ISupportProperties props && !props.Properties.ContainsKey("Location"))
             {
-                props.Properties["location"] = _name;
+                props.Properties["Location"] = _name;
             }
         }
     }
