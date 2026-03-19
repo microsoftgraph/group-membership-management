@@ -54,7 +54,7 @@ namespace Hosts.JobTrigger
 
                 if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
-                logger.SubOrchestratorStarted(nameof(SubOrchestratorFunction));
+                logger.FunctionStarted(nameof(SubOrchestratorFunction));
 
                 var frequency = await context.CallActivityAsync<int>(nameof(JobTrackerFunction), syncJob);
 
@@ -271,7 +271,7 @@ namespace Hosts.JobTrigger
             }
             finally
             {
-                logger.SubOrchestratorCompleted(nameof(SubOrchestratorFunction));
+                logger.FunctionCompleted(nameof(SubOrchestratorFunction));
             }
         }
 

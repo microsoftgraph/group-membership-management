@@ -20,7 +20,7 @@ namespace Hosts.JobTrigger
 
             using (logger.BeginRunIdScope(runId))
             {
-                logger.OrchestratorStarted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
+                logger.FunctionStarted(nameof(OrchestratorFunction));
 
                 var syncJobs = await context.CallActivityAsync<List<SyncJob>>(nameof(GetJobsFunction), (object)null);
                 logger.OrchestratorJobCount(nameof(OrchestratorFunction), syncJobs.Count);
@@ -39,7 +39,7 @@ namespace Hosts.JobTrigger
                     await Task.WhenAll(processingTasks);
                 }
 
-                logger.OrchestratorCompleted(nameof(OrchestratorFunction), context.CurrentUtcDateTime);
+                logger.FunctionCompleted(nameof(OrchestratorFunction));
             }
         }
     }

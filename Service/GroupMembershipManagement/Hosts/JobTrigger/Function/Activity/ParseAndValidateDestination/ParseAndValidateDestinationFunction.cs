@@ -35,9 +35,9 @@ namespace Hosts.JobTrigger
 
             using (_logger.BeginSyncJobScope(syncJob))
             {
-                _logger.ActivityFunctionStarted(nameof(ParseAndValidateDestinationFunction));
+                _logger.FunctionStarted(nameof(ParseAndValidateDestinationFunction));
                 var parsedAndValidatedDestination = await _jobTriggerService.ParseAndValidateDestinationAsync(syncJob);
-                _logger.ActivityFunctionCompleted(nameof(ParseAndValidateDestinationFunction));
+                _logger.FunctionCompleted(nameof(ParseAndValidateDestinationFunction));
 
                 return parsedAndValidatedDestination;
             }

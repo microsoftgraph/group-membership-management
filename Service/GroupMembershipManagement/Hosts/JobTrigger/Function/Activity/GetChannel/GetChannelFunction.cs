@@ -26,9 +26,9 @@ namespace Hosts.JobTrigger
         {
             using (_logger.BeginSyncJobScope(syncJob))
             {
-                _logger.ActivityFunctionStarted(nameof(GetChannelFunction));
+                _logger.FunctionStarted(nameof(GetChannelFunction));
                 var channel = await _jobTriggerService.GetChannelAsync(syncJob);
-                _logger.ActivityFunctionCompleted(nameof(GetChannelFunction));
+                _logger.FunctionCompleted(nameof(GetChannelFunction));
                 return channel;
             }
         }

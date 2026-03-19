@@ -24,9 +24,9 @@ namespace Hosts.JobTrigger
         [Function(nameof(GetSyncJobFunction))]
         public async Task<SyncJob> GetSyncJobByIdAsync([ActivityTrigger] Guid syncJobId)
         {
-            _logger.ActivityFunctionStarted(nameof(GetSyncJobFunction));
+            _logger.FunctionStarted(nameof(GetSyncJobFunction));
             var syncJob = await _jobTriggerService.GetSyncJobByIdAsync(syncJobId);
-            _logger.ActivityFunctionCompleted(nameof(GetSyncJobFunction));
+            _logger.FunctionCompleted(nameof(GetSyncJobFunction));
             return syncJob;
         }
     }

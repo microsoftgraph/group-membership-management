@@ -24,7 +24,7 @@ namespace Hosts.JobTrigger
         {
             using (_logger.BeginSyncJobScope(syncJob))
             {
-                _logger.ActivityFunctionStarted(nameof(JobTrackerFunction));
+                _logger.FunctionStarted(nameof(JobTrackerFunction));
                 var frequency = 0;
                 if (syncJob != null && syncJob.LastSuccessfulRunTime != SqlDateTime.MinValue.Value)
                 {
@@ -40,7 +40,7 @@ namespace Hosts.JobTrigger
                     }
                 }
 
-                _logger.ActivityFunctionCompleted(nameof(JobTrackerFunction));
+                _logger.FunctionCompleted(nameof(JobTrackerFunction));
                 return frequency;
             }
         }

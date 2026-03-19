@@ -28,9 +28,9 @@ namespace Hosts.JobTrigger
             var job = request.SyncJob;
             using (_logger.BeginSyncJobScope(job))
             {
-                _logger.ActivityFunctionStarted(nameof(EmailSenderFunction));
+                _logger.FunctionStarted(nameof(EmailSenderFunction));
                 await _jobTriggerService.SendEmailAsync(job, request.NotificationType, request.AdditionalContentParams);
-                _logger.ActivityFunctionCompleted(nameof(EmailSenderFunction));
+                _logger.FunctionCompleted(nameof(EmailSenderFunction));
             }
         }
     }

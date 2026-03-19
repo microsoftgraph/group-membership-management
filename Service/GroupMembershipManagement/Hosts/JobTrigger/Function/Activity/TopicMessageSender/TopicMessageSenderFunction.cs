@@ -28,9 +28,9 @@ namespace Hosts.JobTrigger
             {
                 using (_logger.BeginSyncJobScope(syncJob))
                 {
-                    _logger.ActivityFunctionStarted(nameof(TopicMessageSenderFunction));
+                    _logger.FunctionStarted(nameof(TopicMessageSenderFunction));
                     await _jobTriggerService.SendMessageAsync(syncJob);
-                    _logger.ActivityFunctionCompleted(nameof(TopicMessageSenderFunction));
+                    _logger.FunctionCompleted(nameof(TopicMessageSenderFunction));
                 }
             }
         }

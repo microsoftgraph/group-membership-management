@@ -35,7 +35,7 @@ namespace JobTrigger.Activity.SchemaValidator
         {
             using (_logger.BeginSyncJobScope(syncJob))
             {
-                _logger.SchemaValidatorStarted(nameof(SchemaValidatorFunction));
+                _logger.FunctionStarted(nameof(SchemaValidatorFunction));
                 var isValidJson = true;
 
                 if (_schemaProvider.Schemas.Count == 0)
@@ -79,7 +79,7 @@ namespace JobTrigger.Activity.SchemaValidator
                     }
                 }
 
-                _logger.SchemaValidatorCompleted(nameof(SchemaValidatorFunction));
+                _logger.FunctionCompleted(nameof(SchemaValidatorFunction));
                 return isValidJson;
             }
         }

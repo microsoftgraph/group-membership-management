@@ -23,9 +23,9 @@ namespace Hosts.JobTrigger
             [TimerTrigger("%jobTriggerSchedule%")] TimerInfo myTimer,
             [DurableClient] DurableTaskClient starter)
         {
-            _logger.StarterFunctionStarted(nameof(StarterFunction));
+            _logger.FunctionStarted(nameof(StarterFunction));
             await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), null);
-            _logger.StarterFunctionCompleted(nameof(StarterFunction));
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

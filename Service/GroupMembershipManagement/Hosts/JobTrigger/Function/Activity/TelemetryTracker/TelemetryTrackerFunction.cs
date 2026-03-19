@@ -27,7 +27,7 @@ namespace Hosts.JobTrigger
         {
             using (_logger.BeginRunIdScope(request.RunId))
             {
-                _logger.ActivityFunctionStarted(nameof(TelemetryTrackerFunction));
+                _logger.FunctionStarted(nameof(TelemetryTrackerFunction));
                 var jobsCompletedEvent = new Dictionary<string, string>
                 {
                     { "Status", request.JobStatus.ToString() },
@@ -38,7 +38,7 @@ namespace Hosts.JobTrigger
                 const string eventName = "NumberOfJobsCompleted";
                 _telemetryClient.TrackEvent(eventName, jobsCompletedEvent);
                 _logger.TrackedTelemetryEvent(eventName);
-                _logger.ActivityFunctionCompleted(nameof(TelemetryTrackerFunction));
+                _logger.FunctionCompleted(nameof(TelemetryTrackerFunction));
             }
         }
     }

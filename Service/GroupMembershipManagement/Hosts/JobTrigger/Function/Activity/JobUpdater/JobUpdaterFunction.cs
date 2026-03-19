@@ -28,9 +28,9 @@ namespace Hosts.JobTrigger
             {
                 using (_logger.BeginSyncJobScope(request.SyncJob))
                 {
-                    _logger.ActivityFunctionStarted(nameof(JobUpdaterFunction));
+                    _logger.FunctionStarted(nameof(JobUpdaterFunction));
                     await _jobTriggerService.UpdateSyncJobAsync(request.Status, request.SyncJob);
-                    _logger.ActivityFunctionCompleted(nameof(JobUpdaterFunction));
+                    _logger.FunctionCompleted(nameof(JobUpdaterFunction));
                 }
             }
         }

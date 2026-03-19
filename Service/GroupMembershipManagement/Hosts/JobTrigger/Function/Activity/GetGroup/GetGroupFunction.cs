@@ -26,9 +26,9 @@ namespace Hosts.JobTrigger
         {
             using (_logger.BeginSyncJobScope(syncJob))
             {
-                _logger.ActivityFunctionStarted(nameof(GetGroupFunction));
+                _logger.FunctionStarted(nameof(GetGroupFunction));
                 var group = await _jobTriggerService.GetGroupAsync(syncJob);
-                _logger.ActivityFunctionCompleted(nameof(GetGroupFunction));
+                _logger.FunctionCompleted(nameof(GetGroupFunction));
                 return group;
             }
         }

@@ -30,7 +30,7 @@ namespace Hosts.JobTrigger
             {
                 using (_logger.BeginSyncJobScope(syncJob))
                 {
-                    _logger.ActivityFunctionStarted(nameof(DestinationVerifierFunction));
+                    _logger.FunctionStarted(nameof(DestinationVerifierFunction));
                     verifierResult = await _jobTriggerService.DestinationExistsAndGMMCanWriteToItAsync(syncJob);
 
                     if (verifierResult == DestinationVerifierResult.Success)
@@ -39,7 +39,7 @@ namespace Hosts.JobTrigger
                         _logger.LinkedServices(string.Join(",", endpoints));
                     }
 
-                    _logger.ActivityFunctionCompleted(nameof(DestinationVerifierFunction));
+                    _logger.FunctionCompleted(nameof(DestinationVerifierFunction));
                 }
             }
             return verifierResult;

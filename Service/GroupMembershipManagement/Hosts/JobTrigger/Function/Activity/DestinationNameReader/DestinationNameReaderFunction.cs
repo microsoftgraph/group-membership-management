@@ -29,9 +29,9 @@ namespace Hosts.JobTrigger
 
             using (_logger.BeginSyncJobScope(syncJob))
             {
-                _logger.ActivityFunctionStarted(nameof(DestinationNameReaderFunction));
+                _logger.FunctionStarted(nameof(DestinationNameReaderFunction));
                 var destinationName = await _jobTriggerService.GetDestinationNameAsync(syncJob);
-                _logger.ActivityFunctionCompleted(nameof(DestinationNameReaderFunction));
+                _logger.FunctionCompleted(nameof(DestinationNameReaderFunction));
 
                 return destinationName;
             }

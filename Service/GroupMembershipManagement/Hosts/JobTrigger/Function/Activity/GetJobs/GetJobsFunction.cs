@@ -25,9 +25,9 @@ namespace Hosts.JobTrigger
         [Function(nameof(GetJobsFunction))]
         public async Task<List<SyncJob>> GetJobsToUpdateAsync([ActivityTrigger] object obj)
         {
-            _logger.GetJobsFunctionStarted(nameof(GetJobsFunction), DateTime.UtcNow);
+            _logger.FunctionStarted(nameof(GetJobsFunction));
             var tableQuery = await _jobTriggerService.GetSyncJobsAsync();
-            _logger.GetJobsFunctionCompleted(nameof(GetJobsFunction), DateTime.UtcNow);
+            _logger.FunctionCompleted(nameof(GetJobsFunction));
             return tableQuery;
         }
     }
