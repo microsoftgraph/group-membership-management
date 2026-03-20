@@ -223,5 +223,78 @@ namespace Services.Tests
             Assert.IsTrue(state.Items[0].Dispatched);
             Assert.AreEqual("instance-123", state.Items[0].OrchestrationInstanceId);
         }
+        [TestMethod]
+        public void TakeNextBatch_ReturnsFifoOrder()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            // Add items in specific order
+            entity.Add(new AddDeferredPendingRequest(300, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+            entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            var batch = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 3, InProgressSeconds: 60));
+
+            // Items should come back in insertion order (FIFO), not sorted by sequence number
+            Assert.AreEqual(3, batch.Count);
+            Assert.AreEqual(300, batch[0].SequenceNumber);
+            Assert.AreEqual(100, batch[1].SequenceNumber);
+            Assert.AreEqual(200, batch[2].SequenceNumber);
+        }
+
+        [TestMethod]
+        public void ReleaseInProgress_ReturnsFalse_WhenItemNotFound()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            var result = entity.ReleaseInProgress(999);
+
+            Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public void MarkCapacityDeniedAndRelease_SetsTimestampAndClearsInProgress()
+        {
+            var entity = new DeferredPendingIndexEntity();
+            var now = DateTimeOffset.UtcNow;
+
+            entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
+
+            // Take the item to mark it in-progress
+            entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
+
+            // Item should be in-progress
+            var emptyBatch = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
+            Assert.AreEqual(0, emptyBatch.Count);
+
+            // Mark capacity denied
+            var deniedAt = now.AddSeconds(5);
+            var result = entity.MarkCapacityDeniedAndRelease(new MarkCapacityDeniedRequest(100, deniedAt));
+
+            Assert.IsTrue(result);
+
+            var state = entity.GetState();
+            Assert.AreEqual(deniedAt, state.Items[0].LastCapacityDeniedAtUtc);
+            Assert.IsNull(state.Items[0].InProgressUntilUtc);
+
+            // Item should be available again
+            var batch = entity.TakeNextBatch(new TakeNextBatchRequest(now, MaxItems: 1, InProgressSeconds: 60));
+            Assert.AreEqual(1, batch.Count);
+        }
+
+        [TestMethod]
+        public void MarkCapacityDeniedAndRelease_ReturnsFalse_WhenItemNotFound()
+        {
+            var entity = new DeferredPendingIndexEntity();
+
+            var result = entity.MarkCapacityDeniedAndRelease(new MarkCapacityDeniedRequest(999, DateTimeOffset.UtcNow));
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(0, entity.GetState().Items.Count);
+        }
     }
 }
