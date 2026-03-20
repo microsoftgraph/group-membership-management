@@ -180,6 +180,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
       version: '2024-05-13'
     }
     raiPolicyName: openAIContentFilterPolicy.name
+    versionUpgradeOption: 'NoAutoUpgrade'
   }
   sku: {
     name: 'standard'
