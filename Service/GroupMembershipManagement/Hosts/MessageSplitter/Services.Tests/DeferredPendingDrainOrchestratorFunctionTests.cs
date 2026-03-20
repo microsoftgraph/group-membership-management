@@ -242,6 +242,116 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task RunAsync_RemovesStaleEntry_WhenMessageNotFoundAndOlderThanFiveMinutes()
+        {
+            var utcNow = new DateTime(2025, 12, 17, 12, 0, 0, DateTimeKind.Utc);
+            var lane = "small";
+
+            var runId = Guid.NewGuid();
+            var jobId = Guid.NewGuid();
+            const long sequenceNumber = 999;
+
+            var input = new DeferredPendingDrainRequest(lane);
+
+            var context = new Mock<TaskOrchestrationContext> { DefaultValue = DefaultValue.Mock };
+            context.Setup(x => x.GetInput<DeferredPendingDrainRequest>()).Returns(input);
+            context.SetupGet(x => x.CurrentUtcDateTime).Returns(utcNow);
+
+            var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
+            var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
+
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.TryAcquireDrainLock),
+                    It.IsAny<TryAcquireDrainLockRequest>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
+            // Item was enqueued 10 minutes ago — well past the 5-minute stale threshold
+            context.Setup(x => x.Entities.CallEntityAsync<List<DeferredPendingItem>>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.TakeNextBatch),
+                    It.IsAny<TakeNextBatchRequest>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(
+                [
+                    new DeferredPendingItem(sequenceNumber, runId, new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(-10), jobId)
+                    {
+                        Dispatched = false,
+                        OrchestrationInstanceId = null
+                    }
+                ]);
+
+            context.Setup(x => x.Entities.CallEntityAsync<AcquireLeaseResponse>(
+                    limiterEntityId,
+                    nameof(RunLimiter.Acquire),
+                    It.IsAny<AcquireLeaseRequest>(),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(new AcquireLeaseResponse(true, 1, new DateTimeOffset(utcNow, TimeSpan.Zero).AddMinutes(2)));
+
+            context.Setup(x => x.CallActivityAsync<ReceiveDeferredPendingResponse>(
+                    nameof(ReceiveDeferredPendingFunction),
+                    It.IsAny<ReceiveDeferredPendingRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new ReceiveDeferredPendingResponse(
+                    Dispatched: false,
+                    ShouldRemoveFromIndex: false,
+                    OrchestrationInstanceId: null,
+                    MessageNotFound: true));
+
+            context.Setup(x => x.Entities.CallEntityAsync<bool>(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.Remove),
+                    It.Is<long>(s => s == sequenceNumber),
+                    It.IsAny<CallEntityOptions>()))
+                .ReturnsAsync(true);
+
+            context.Setup(x => x.Entities.CallEntityAsync(
+                    indexEntityId,
+                    nameof(DeferredPendingIndexEntity.ReleaseDrainLock),
+                    null,
+                    It.IsAny<CallEntityOptions>()))
+                .Returns(Task.CompletedTask);
+
+            context.Setup(x => x.CallActivityAsync(
+                    nameof(LoggerFunction),
+                    It.IsAny<LoggerRequest>(),
+                    It.IsAny<TaskOptions>()))
+                .Returns(Task.CompletedTask);
+
+            var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
+            {
+                MaxInFlightMessages = 16,
+                LeaseTimeoutMinutes = 2,
+                HeartbeatIntervalMinutes = 0,
+                IsEnabled = true
+            });
+
+            await orchestrator.RunAsync(context.Object);
+
+            // Stale entry should be REMOVED (age > 5 min, message not found, not dispatched)
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.Remove),
+                It.Is<long>(s => s == sequenceNumber),
+                It.IsAny<CallEntityOptions>()), Times.Once());
+
+            // ReleaseInProgress should NOT be called (we removed it)
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                indexEntityId,
+                nameof(DeferredPendingIndexEntity.ReleaseInProgress),
+                It.IsAny<long>(),
+                It.IsAny<CallEntityOptions>()), Times.Never());
+
+            // Lease was acquired but nothing dispatched — should be released
+            context.Verify(x => x.Entities.CallEntityAsync<bool>(
+                limiterEntityId,
+                nameof(RunLimiter.Release),
+                runId,
+                It.IsAny<CallEntityOptions>()), Times.Once());
+        }
+
+        [TestMethod]
         public async Task RunAsync_DispatchesAndRemoves_WhenMessageFoundSuccessfully()
         {
             // Happy path: message is found, dispatched, and completed successfully

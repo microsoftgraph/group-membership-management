@@ -72,6 +72,7 @@ namespace Hosts.MessageSplitter
 
                 var processed = 0;
                 var removed = 0;
+                var staleRemoved = 0;
                 var newlyDispatched = 0;
                 var messageNotFound = 0;
                 var capacityDenied = 0;
@@ -199,7 +200,30 @@ namespace Hosts.MessageSplitter
                         await context.Entities.CallEntityAsync<bool>(limiterEntityId, nameof(RunLimiter.Release), item.RunId);
                     }
 
-                    if (received.ShouldRemoveFromIndex)
+                    var shouldRemove = received.ShouldRemoveFromIndex;
+
+                    // Stale entry detection: if the message is not found in Service Bus and
+                    // the item was enqueued more than 5 minutes ago, the message is permanently
+                    // gone — not a transient race between enqueue and defer (which takes milliseconds).
+                    if (!shouldRemove && received.MessageNotFound
+                        && (utcNow - item.EnqueuedAtUtc).TotalMinutes > 5)
+                    {
+                        shouldRemove = true;
+                        staleRemoved++;
+                        await context.CallActivityAsync(
+                            nameof(LoggerFunction),
+                            new LoggerRequest
+                            {
+                                Message = new LogMessage
+                                {
+                                    Message = $"DeferredPendingDrain: removing stale index entry (message not found, age={(utcNow - item.EnqueuedAtUtc).TotalMinutes:F1}min); seq={item.SequenceNumber} jobId={item.JobId} lane={lane}",
+                                    RunId = item.RunId
+                                },
+                                Verbosity = VerbosityLevel.INFO
+                            });
+                    }
+
+                    if (shouldRemove)
                     {
                         removed++;
                         await context.Entities.CallEntityAsync<bool>(
@@ -224,7 +248,7 @@ namespace Hosts.MessageSplitter
                     {
                         Message = new LogMessage
                         {
-                            Message = $"DeferredPendingDrain: completed lane={lane} processed={processed} newlyDispatched={newlyDispatched} removed={removed} messageNotFound={messageNotFound} capacityDenied={capacityDenied}",
+                            Message = $"DeferredPendingDrain: completed lane={lane} processed={processed} newlyDispatched={newlyDispatched} removed={removed} staleRemoved={staleRemoved} messageNotFound={messageNotFound} capacityDenied={capacityDenied}",
                         },
                         Verbosity = VerbosityLevel.INFO
                     });
