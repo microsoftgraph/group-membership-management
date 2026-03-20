@@ -142,7 +142,7 @@ namespace Services.Tests
             entity.Add(new AddDeferredPendingRequest(400, Guid.NewGuid(), t0, Guid.NewGuid()));                   // Just added
 
             // Prune items older than 120 minutes
-            var pruned = entity.PruneOlderThanMinutes((t0, 120));
+            var pruned = entity.PruneOlderThanMinutes(new PruneOlderThanMinutesRequest(t0, 120));
 
             Assert.AreEqual(2, pruned.Count); // Should remove items 100 and 200
             Assert.IsTrue(pruned.Any(i => i.SequenceNumber == 100));
@@ -163,7 +163,7 @@ namespace Services.Tests
             entity.Add(new AddDeferredPendingRequest(100, Guid.NewGuid(), now, Guid.NewGuid()));
             entity.Add(new AddDeferredPendingRequest(200, Guid.NewGuid(), now, Guid.NewGuid()));
 
-            var pruned = entity.PruneOlderThanMinutes((now, 120));
+            var pruned = entity.PruneOlderThanMinutes(new PruneOlderThanMinutesRequest(now, 120));
 
             Assert.AreEqual(0, pruned.Count);
             Assert.AreEqual(2, entity.GetState().Items.Count);

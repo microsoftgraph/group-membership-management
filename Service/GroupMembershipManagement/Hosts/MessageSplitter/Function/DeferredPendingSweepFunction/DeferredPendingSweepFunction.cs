@@ -80,7 +80,7 @@ namespace Hosts.MessageSplitter
             var prunedItems = await context.Entities.CallEntityAsync<List<DeferredPendingItem>>(
                 indexEntityId,
                 nameof(DeferredPendingIndexEntity.PruneOlderThanMinutes),
-                (utcNow, maxIndexAgeMinutes));
+                new PruneOlderThanMinutesRequest(utcNow, maxIndexAgeMinutes));
 
             // Set pruned jobs to Error status.
             foreach (var item in prunedItems)

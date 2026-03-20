@@ -159,7 +159,7 @@ namespace Hosts.MessageSplitter
             return State;
         }
 
-        public List<DeferredPendingItem> PruneOlderThanMinutes((DateTimeOffset UtcNow, int MaxAgeMinutes) request)
+        public List<DeferredPendingItem> PruneOlderThanMinutes(PruneOlderThanMinutesRequest request)
         {
             State ??= new DeferredPendingIndexState();
 
