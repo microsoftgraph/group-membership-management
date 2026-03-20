@@ -35,6 +35,9 @@ function Set-WebAPIAccessRoles {
 		[string] $ErrorActionPreference = $Stop
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
 	Write-Host "Granting RBACs to WebAPI";
 
 	if ([string]::IsNullOrEmpty($ComputeResourceGroupName)) {

@@ -36,6 +36,9 @@ function Set-StorageAccountContainerManagedIdentityRoles
 		[string] $ErrorActionPreference = $Stop
 	)
 
+	$scriptsDirectory = Split-Path $PSScriptRoot -Parent
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+
 	$computeResourceGroupName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
 	$functionApps = Invoke-WithRetry `
 		-Operation { Get-AzWebApp -ResourceGroupName $computeResourceGroupName | Select-Object -ExpandProperty Name } `

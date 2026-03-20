@@ -33,6 +33,7 @@ function Set-ADFManagedIdentityRoles
 
     $scriptsDirectory = Split-Path $PSScriptRoot -Parent
 	. ($scriptsDirectory + '/ReusableModules/Get-KeyVaultSecretWithFirewallRetry.ps1')
+	. ($scriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
 
 	$functionApps = @("SqlMembershipObtainer")
     $appServices = @("webapi")
