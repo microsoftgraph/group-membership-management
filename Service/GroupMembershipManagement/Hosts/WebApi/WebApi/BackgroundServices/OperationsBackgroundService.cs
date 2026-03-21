@@ -750,11 +750,31 @@ namespace WebApi.BackgroundServices
 
         private async Task ResetJobsInProgressAsync()
         {
-            using (var scope = _services.CreateScope())
+            await _loggingRepository.LogMessageAsync(new LogMessage
             {
+                Message = "ResetJobsInProgressAsync: Starting bulk reset of InProgress jobs to Idle."
+            });
+
+            try
+            {
+                using var scope = _services.CreateScope();
                 var databaseSyncJobsRepository = scope.ServiceProvider.GetRequiredService<IDatabaseSyncJobsRepository>();
-                var jobsInProgress = await databaseSyncJobsRepository.GetSyncJobsAsync(true, SyncStatus.InProgress);
-                await databaseSyncJobsRepository.UpdateSyncJobsAsync(jobsInProgress, SyncStatus.Idle);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+                var count = await databaseSyncJobsRepository.BulkResetJobStatusAsync(
+                    SyncStatus.InProgress, SyncStatus.Idle, cts.Token);
+
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"ResetJobsInProgressAsync: Successfully reset {count} InProgress jobs to Idle."
+                });
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"ResetJobsInProgressAsync failed or timed out. Proceeding with operation. Error: {ex.Message}"
+                });
             }
         }
 

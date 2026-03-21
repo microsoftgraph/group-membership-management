@@ -6,6 +6,7 @@ using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.SyncJobs.Tests
@@ -130,6 +131,11 @@ namespace Repositories.SyncJobs.Tests
         }
 
         public Task InsertSyncJobAsync(SyncJob job)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

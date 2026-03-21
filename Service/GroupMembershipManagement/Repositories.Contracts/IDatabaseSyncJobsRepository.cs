@@ -5,6 +5,7 @@ using Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Repositories.Contracts
@@ -28,5 +29,6 @@ namespace Repositories.Contracts
         Task<int> GetPeriodBySyncJobIdAsync(Guid syncJobId);
         Task<int> GetThresholdViolationsBySyncJobIdAsync(Guid syncJobId);
         Task<int> BulkApproveSyncJobsAsync(List<string> syncJobIds, int? thresholdViolationsToSet = null);
+        Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default);
     }
 }

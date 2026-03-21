@@ -242,5 +242,14 @@ namespace Repositories.EntityFramework
 
             return updatedToIdleCount;
         }
+
+        public async Task<int> BulkResetJobStatusAsync(SyncStatus fromStatus, SyncStatus toStatus, CancellationToken cancellationToken = default)
+        {
+            return await _writeContext.SyncJobs
+                .Where(j => j.Status == fromStatus.ToString())
+                .ExecuteUpdateAsync(
+                    s => s.SetProperty(j => j.Status, toStatus.ToString()),
+                    cancellationToken);
+        }
     }
 }
