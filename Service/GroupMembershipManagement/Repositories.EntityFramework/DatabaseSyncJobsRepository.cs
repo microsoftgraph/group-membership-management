@@ -251,5 +251,25 @@ namespace Repositories.EntityFramework
                     s => s.SetProperty(j => j.Status, toStatus.ToString()),
                     cancellationToken);
         }
+
+        public async Task<int> ClaimSyncJobAsync(Guid jobId, Guid? runId, int period, string targetStatus)
+        {
+            var idleStatus = SyncStatus.Idle.ToString();
+            var inProgressStatus = SyncStatus.InProgress.ToString();
+            var stuckStatus = SyncStatus.StuckInProgress.ToString();
+            var transientStatus = SyncStatus.TransientError.ToString();
+            var cutoffTime = DateTime.UtcNow.AddHours(-period);
+
+            return await _writeContext.SyncJobs
+                .Where(j => j.Id == jobId &&
+                    (j.Status == idleStatus
+                     || j.Status == transientStatus
+                     || (j.Status == inProgressStatus && j.LastSuccessfulStartTime < cutoffTime)))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(j => j.Status, targetStatus)
+                    .SetProperty(j => j.RunId, runId)
+                    .SetProperty(j => j.LastSuccessfulStartTime, DateTime.UtcNow)
+                    .SetProperty(j => j.LastRunTime, j => targetStatus == stuckStatus ? DateTime.UtcNow : j.LastRunTime));
+        }
     }
 }
