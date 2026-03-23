@@ -166,6 +166,12 @@ namespace Services.Tests
                         _jsonValidationResult = await CallSchemaValidatorFunctionAsync(request as SyncJob);
                     }).ReturnsAsync(() => _jsonValidationResult);
 
+            _context.Setup(x => x.CallActivityAsync<bool>(
+                        It.Is<TaskName>(x => x == nameof(ClaimJobFunction)),
+                        It.IsAny<ClaimJobRequest>(),
+                        It.IsAny<TaskOptions>()))
+                    .ReturnsAsync(true);
+
             _jsonSchemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
         }
 
@@ -376,10 +382,11 @@ namespace Services.Tests
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendMessageAsync(It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
 
-            Assert.AreEqual(SyncStatus.InProgress, _syncStatus);
+            _context.Verify(x => x.CallActivityAsync<bool>(
+                It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
+                It.IsAny<TaskOptions>()), Times.Once());
         }
 
         [TestMethod]
@@ -446,8 +453,11 @@ namespace Services.Tests
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.InProgress), It.IsAny<SyncJob>()), Times.Once());
+
+            _context.Verify(x => x.CallActivityAsync<bool>(
+                It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
+                It.IsAny<TaskOptions>()), Times.Once());
 
             serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
@@ -460,8 +470,6 @@ namespace Services.Tests
                                               && (bool)m.ApplicationProperties["IsDestinationPart"]),
                 It.IsAny<CancellationToken>()),
                 Times.Once());
-
-            Assert.AreEqual(SyncStatus.InProgress, _syncStatus);
         }
         [TestMethod]
         public async Task ProcessInProgressJob()
@@ -529,8 +537,11 @@ namespace Services.Tests
 
             _jobTriggerService.Verify(x => x.GetDestinationNameAsync(It.IsAny<SyncJob>()), Times.Once());
             _jobTriggerService.Verify(x => x.SendEmailAsync(It.IsAny<SyncJob>(), It.IsAny<NotificationMessageType>(), It.IsAny<string[]>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.IsAny<SyncStatus>(), It.IsAny<SyncJob>()), Times.Once());
-            _jobTriggerService.Verify(x => x.UpdateSyncJobAsync(It.Is<SyncStatus>(s => s == SyncStatus.StuckInProgress), It.IsAny<SyncJob>()), Times.Once());
+
+            _context.Verify(x => x.CallActivityAsync<bool>(
+                It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.StuckInProgress),
+                It.IsAny<TaskOptions>()), Times.Once());
 
             serviceBusSender.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
             serviceBusSender.Verify(x => x.SendMessageAsync(
@@ -541,8 +552,6 @@ namespace Services.Tests
                 It.Is<ServiceBusMessage>(m => m.ApplicationProperties.ContainsKey("IsDestinationPart")
                                               && (bool)m.ApplicationProperties["IsDestinationPart"]),
                 It.IsAny<CancellationToken>()), Times.Once());
-
-            Assert.AreEqual(SyncStatus.StuckInProgress, _syncStatus);
         }
 
         [TestMethod]
@@ -629,6 +638,82 @@ namespace Services.Tests
 				It.Is<JobUpdaterRequest>(req => req.Status == SyncStatus.Error), It.IsAny<TaskOptions>()), Times.Once());
 			_context.Verify(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)),
 				It.Is<TelemetryTrackerRequest>(req => req.JobStatus == SyncStatus.Error && req.ResultStatus == ResultStatus.Failure), It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_ReturnsFalse_SubOrchestratorBailsOut()
+        {
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            _context.Setup(x => x.CallActivityAsync<bool>(
+                        It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                        It.IsAny<ClaimJobRequest>(),
+                        It.IsAny<TaskOptions>()))
+                    .ReturnsAsync(false);
+
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync<int>(
+                It.Is<TaskName>(t => t == nameof(JobTrackerFunction)),
+                It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Never());
+            _context.Verify(x => x.CallActivityAsync<ParsedAndValidateDestinationResponse>(
+                It.Is<TaskName>(t => t == nameof(ParseAndValidateDestinationFunction)),
+                It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Never());
+            _context.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(t => t == nameof(TopicMessageSenderFunction)),
+                It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_ReturnsTrue_SubOrchestratorProceeds()
+        {
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync<bool>(
+                It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
+                It.IsAny<TaskOptions>()), Times.Once());
+            _context.Verify(x => x.CallActivityAsync(
+                It.Is<TaskName>(t => t == nameof(TopicMessageSenderFunction)),
+                It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_CalledWithCorrectStatus_WhenIdle()
+        {
+            _syncJob.Status = SyncStatus.Idle.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync<bool>(
+                It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.InProgress),
+                It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_CalledWithCorrectStatus_WhenInProgress()
+        {
+            _syncJob.Status = SyncStatus.InProgress.ToString();
+            _context.Setup(x => x.GetInput<SyncJob>()).Returns(_syncJob);
+
+            var suborchestrator = new SubOrchestratorFunction(
+                _telemetryClient, _emailSenderAndRecipients.Object, _gmmResources.Object);
+            await suborchestrator.RunSubOrchestratorAsync(_context.Object);
+
+            _context.Verify(x => x.CallActivityAsync<bool>(
+                It.Is<TaskName>(t => t == nameof(ClaimJobFunction)),
+                It.Is<ClaimJobRequest>(r => r.Status == SyncStatus.StuckInProgress),
+                It.IsAny<TaskOptions>()), Times.Once());
         }
 
         private async Task<ParsedAndValidateDestinationResponse> CallParseAndValidateDestinationFunction()

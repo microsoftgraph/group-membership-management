@@ -739,6 +739,219 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.InProgress.ToString(), result.Status);
         }
 
+        #region TryClaimAndUpdateJobAsync Tests
+
+        [TestMethod]
+        public async Task ClaimJob_IdleJob_ClaimsSuccessfully()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsTrue(result);
+            var updatedJob = _syncJobRepository.Jobs.First(j => j.Id == job.Id);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), updatedJob.Status);
+            Assert.AreEqual(job.RunId, updatedJob.RunId);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_TransientErrorJob_ClaimsSuccessfully()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.TransientError.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncJobRepository.Jobs.First().Status);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_StuckInProgressJob_ClaimsSuccessfully()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-25);
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
+
+            Assert.IsTrue(result);
+            var updatedJob = _syncJobRepository.Jobs.First();
+            Assert.AreEqual(SyncStatus.StuckInProgress.ToString(), updatedJob.Status);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_StuckInProgressJob_SetsLastRunTime()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-25);
+            job.LastRunTime = DateTime.UtcNow.AddDays(-5);
+            _syncJobRepository.Jobs.Add(job);
+
+            var beforeClaim = DateTime.UtcNow;
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
+
+            Assert.IsTrue(result);
+            var updatedJob = _syncJobRepository.Jobs.First();
+            Assert.IsTrue(updatedJob.LastRunTime >= beforeClaim);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_IdleJob_DoesNotSetLastRunTime()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            var originalLastRunTime = DateTime.UtcNow.AddDays(-5);
+            job.LastRunTime = originalLastRunTime;
+            _syncJobRepository.Jobs.Add(job);
+
+            await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.AreEqual(originalLastRunTime, _syncJobRepository.Jobs.First().LastRunTime);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_FreshInProgressJob_RejectsClaim()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-1);
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(SyncStatus.InProgress.ToString(), _syncJobRepository.Jobs.First().Status);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_StuckInProgressStatus_RejectsClaim()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.StuckInProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(SyncStatus.StuckInProgress.ToString(), _syncJobRepository.Jobs.First().Status);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_ErrorStatus_RejectsClaim()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Error.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(SyncStatus.Error.ToString(), _syncJobRepository.Jobs.First().Status);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_ConcurrentClaims_OnlyOneSucceeds()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            _syncJobRepository.Jobs.Add(job);
+
+            var firstClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+            var secondClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsTrue(firstClaim);
+            Assert.IsFalse(secondClaim);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_ConcurrentClaims_StuckJob_OnlyOneSucceeds()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-25);
+            _syncJobRepository.Jobs.Add(job);
+
+            var firstClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
+            var secondClaim = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
+
+            Assert.IsTrue(firstClaim);
+            Assert.IsFalse(secondClaim);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_NonexistentJob_ReturnsFalse()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            // NOT added to repository
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_InProgressAtBoundary_RejectsClaim()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.InProgress.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddHours(-24).AddMinutes(1);
+            _syncJobRepository.Jobs.Add(job);
+
+            var result = await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.StuckInProgress, job);
+
+            Assert.IsFalse(result);
+        }
+
+        [TestMethod]
+        public async Task ClaimJob_SetsLastSuccessfulStartTime()
+        {
+            var job = SampleDataHelper.CreateSampleSyncJobs(1, Organization).First();
+            job.Status = SyncStatus.Idle.ToString();
+            job.RunId = Guid.NewGuid();
+            job.Period = 24;
+            job.LastSuccessfulStartTime = DateTime.UtcNow.AddDays(-10);
+            _syncJobRepository.Jobs.Add(job);
+
+            var beforeClaim = DateTime.UtcNow;
+            await _jobTriggerService.TryClaimAndUpdateJobAsync(SyncStatus.InProgress, job);
+
+            var updatedJob = _syncJobRepository.Jobs.First();
+            Assert.IsTrue(updatedJob.LastSuccessfulStartTime >= beforeClaim);
+        }
+
+        #endregion
+
         private class MockEmail<T> : IEmailSenderRecipient
         {
             public string SenderAddress => "";
