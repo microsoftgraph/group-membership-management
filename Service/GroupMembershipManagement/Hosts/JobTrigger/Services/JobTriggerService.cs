@@ -219,6 +219,24 @@ namespace Services
 
             await _syncJobStatusService.UpdateJobStatusAsync(job, status, history, functionName: "JobTrigger");
         }
+
+        public async Task<bool> TryClaimAndUpdateJobAsync(SyncStatus status, SyncJob job)
+        {
+            var claimedCount = await _databaseSyncJobsRepository.ClaimSyncJobAsync(
+                job.Id, job.RunId, job.Period, status.ToString());
+            if (claimedCount == 0)
+                return false;
+
+            using (_logger.BeginSyncJobScope(job))
+            {
+                if (status == SyncStatus.InProgress)
+                    _logger.StartingJob();
+                else if (status == SyncStatus.StuckInProgress)
+                    _logger.RestartingStuckJob();
+            }
+
+            return true;
+        }
         public async Task SendMessageAsync(SyncJob job)
         {
             await _serviceBusTopicsRepository.AddMessageAsync(job);

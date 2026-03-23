@@ -52,6 +52,15 @@ namespace Hosts.JobTrigger
                     return;
                 }
 
+                // Atomic claim — prevent duplicate processing
+                var statusValue = syncJob.Status == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
+                var claimed = await context.CallActivityAsync<bool>(nameof(ClaimJobFunction), new ClaimJobRequest { Status = statusValue, SyncJob = syncJob });
+                if (!claimed)
+                {
+                    logger.SubOrchestratorJobAlreadyClaimed(syncJob.Id);
+                    return;
+                }
+
                 if (!context.IsReplaying) { TrackJobsStartedEvent(syncJob.RunId); }
 
                 logger.FunctionStarted(nameof(SubOrchestratorFunction));
@@ -242,9 +251,6 @@ namespace Hosts.JobTrigger
                                                         }
 
                                                     });
-
-                var statusValue = syncJob.Status == SyncStatus.Idle.ToString() ? SyncStatus.InProgress : SyncStatus.StuckInProgress;
-                await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { Status = statusValue, SyncJob = syncJob });
 
                 var latestSyncJob = await context.CallActivityAsync<SyncJob>(nameof(GetSyncJobFunction), syncJob.Id);
                 if (latestSyncJob != null)

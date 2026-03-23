@@ -111,5 +111,9 @@ namespace Hosts.JobTrigger
         [LoggerMessage(EventId = 10065, Level = LogLevel.Information,
             Message = "Tracked telemetry event {EventName}")]
         public static partial void TrackedTelemetryEvent(this ILogger logger, string eventName);
+
+        [LoggerMessage(EventId = 10066, Level = LogLevel.Warning,
+            Message = "Job {JobId} was already claimed by another process. Skipping.")]
+        public static partial void SubOrchestratorJobAlreadyClaimed(this ILogger logger, Guid jobId);
     }
 }

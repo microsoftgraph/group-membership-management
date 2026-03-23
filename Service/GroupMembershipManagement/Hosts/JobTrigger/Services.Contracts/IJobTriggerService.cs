@@ -20,6 +20,7 @@ namespace Services.Contracts
         Task SendEmailAsync(SyncJob job, NotificationMessageType notificationType, string[] additionalContentParameters);
         Task<DestinationVerifierResult> DestinationExistsAndGMMCanWriteToItAsync(SyncJob job);
         Task UpdateSyncJobAsync(SyncStatus? status, SyncJob job);
+        Task<bool> TryClaimAndUpdateJobAsync(SyncStatus status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
         Task<List<string>> GetGroupEndpointsAsync(SyncJob job);
     }
