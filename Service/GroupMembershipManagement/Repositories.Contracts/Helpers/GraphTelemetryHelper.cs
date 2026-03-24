@@ -61,7 +61,7 @@ namespace Repositories.Contracts.Helpers
 
             if (!headers.TryGetValue(GraphResponseHeaders.ResourceUnit, out var resourceValues))
             {
-                logger.LogInformation("Resource unit cost of {QueryType} is not available for RunId {RunId}", queryType, resolvedRunId);
+                logger.LogInformation("Resource unit cost of {QueryType} is not available", queryType);
 
                 return new GraphTelemetryResult();
             }
@@ -69,12 +69,12 @@ namespace Repositories.Contracts.Helpers
             var ruu = ParseFirstInt(resourceValues);
             if (!ruu.HasValue)
             {
-                logger.LogWarning("Unable to parse resource unit cost of {QueryType} for RunId {RunId}", queryType, resolvedRunId);
+                logger.LogWarning("Unable to parse resource unit cost of {QueryType}", queryType);
 
                 return new GraphTelemetryResult();
             }
 
-            logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed} for RunId {RunId}", queryType, ruu.Value, resolvedRunId);
+            logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed}", queryType, ruu.Value);
 
             TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId);
             telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(ruu.Value, operationType.ToString());

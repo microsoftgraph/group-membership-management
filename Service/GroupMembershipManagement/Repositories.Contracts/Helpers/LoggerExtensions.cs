@@ -59,7 +59,13 @@ namespace Repositories.Contracts.Helpers
                 }
             }
 
-            return logger.BeginScope(scopeValues);
+            var loggerScope = logger.BeginScope(scopeValues);
+            var runIdScope = CorrelationActivity.SetScopedRunId(syncJob.RunId);
+
+            if (runIdScope == null)
+                return loggerScope;
+
+            return new CompositeScope(loggerScope, runIdScope);
         }
 
         public static void LogInformationWithRunId(this ILogger logger, Guid? runId, string message)
@@ -98,6 +104,24 @@ namespace Repositories.Contracts.Helpers
             }
 
             logger.LogError(message);
+        }
+
+        private sealed class CompositeScope : IDisposable
+        {
+            private readonly IDisposable _loggerScope;
+            private readonly IDisposable _runIdScope;
+
+            public CompositeScope(IDisposable loggerScope, IDisposable runIdScope)
+            {
+                _loggerScope = loggerScope;
+                _runIdScope = runIdScope;
+            }
+
+            public void Dispose()
+            {
+                _runIdScope?.Dispose();
+                _loggerScope?.Dispose();
+            }
         }
     }
 }

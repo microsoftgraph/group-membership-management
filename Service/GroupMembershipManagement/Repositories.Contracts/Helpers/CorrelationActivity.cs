@@ -4,6 +4,7 @@
 using Models;
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 namespace Repositories.Contracts.Helpers
 {
@@ -11,6 +12,22 @@ namespace Repositories.Contracts.Helpers
     {
         public const string RunIdPropertyName = "RunId";
         public const string SyncJobIdPropertyName = "SyncJobId";
+
+        private static readonly AsyncLocal<Guid?> _asyncLocalRunId = new AsyncLocal<Guid?>();
+
+        /// <summary>
+        /// Sets the RunId in async-local storage for the current execution flow.
+        /// Returns an IDisposable that restores the previous value when disposed.
+        /// </summary>
+        public static IDisposable? SetScopedRunId(Guid? runId)
+        {
+            if (!runId.HasValue || runId.Value == Guid.Empty)
+                return null;
+
+            var previous = _asyncLocalRunId.Value;
+            _asyncLocalRunId.Value = runId.Value;
+            return new AsyncLocalRunIdScope(previous);
+        }
 
         public static Activity StartSyncJobActivity(string operationName, SyncJob syncJob)
         {
@@ -54,6 +71,12 @@ namespace Repositories.Contracts.Helpers
             if (currentRunId.HasValue)
             {
                 return currentRunId.Value;
+            }
+
+            var asyncLocalRunId = _asyncLocalRunId.Value;
+            if (asyncLocalRunId.HasValue && asyncLocalRunId.Value != Guid.Empty)
+            {
+                return asyncLocalRunId.Value;
             }
 
             if (fallbackRunId.HasValue && fallbackRunId.Value != Guid.Empty)
@@ -134,6 +157,13 @@ namespace Repositories.Contracts.Helpers
         private static Guid? TryParseGuid(string value)
         {
             return Guid.TryParse(value, out var parsedGuid) ? parsedGuid : null;
+        }
+
+        private sealed class AsyncLocalRunIdScope : IDisposable
+        {
+            private readonly Guid? _previousValue;
+            public AsyncLocalRunIdScope(Guid? previousValue) => _previousValue = previousValue;
+            public void Dispose() => _asyncLocalRunId.Value = _previousValue;
         }
     }
 }
