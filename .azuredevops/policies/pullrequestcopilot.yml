@@ -1,0 +1,15 @@
+# metadata
+name: PR Assistant repo config for Private GMM
+description: PR Assistant for review of Private GMM PR's
+
+# filters
+resource: repository
+
+# primitive configuration
+configuration:
+  pullRequestCopilotPrimitive:
+    enabled: true
+    maxReviewCommentsAllowed: 3
+    onPullRequestCreate:
+    - prompt: 'copilot: review'
+      autoResolve: false
