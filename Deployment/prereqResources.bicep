@@ -13,7 +13,7 @@ param teamsChannelServiceAccountObjectId string
 @secure()
 param teamsChannelServiceAccountPassword string
 param teamsChannelServiceAccountUsername string
-param functionAuthAppClientId string
+param functionAuthAppClientId string = ''
 
 param isInitialDeployment bool
 
