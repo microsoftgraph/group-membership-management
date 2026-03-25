@@ -601,6 +601,25 @@ function Set-NetworkingResources {
         Write-Host "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
     }
 
+    # Start the jumpbox VM if it exists and is stopped/deallocated.
+    # Auto-shutdown may have turned it off; extensions cannot deploy to a non-running VM.
+    $vmName = "$SolutionAbbreviation-networking-$EnvironmentAbbreviation-management-vm"
+    $vm = Get-AzVM -ResourceGroupName $networkingResourceGroup -Name $vmName -Status -ErrorAction SilentlyContinue
+    if ($null -ne $vm) {
+        $powerState = ($vm.Statuses | Where-Object { $_.Code -like 'PowerState/*' }).Code
+        if ($powerState -in @('PowerState/deallocated', 'PowerState/stopped')) {
+            Write-Host "Jumpbox VM '$vmName' is $($powerState -replace 'PowerState/'). Starting it before networking deployment..."
+            Start-AzVM -ResourceGroupName $networkingResourceGroup -Name $vmName
+            Write-Host "Jumpbox VM '$vmName' started successfully."
+        }
+        else {
+            Write-Host "Jumpbox VM '$vmName' is in state '$($powerState -replace 'PowerState/')'. No action needed."
+        }
+    }
+    else {
+        Write-Host "Jumpbox VM '$vmName' not found (first deployment). Skipping VM start."
+    }
+
     Write-Host "`nCreating networking resources"
     $templateFilePath = "$NetworkingTemplateDirectoryPath/networkingResources.json"
     Invoke-WithRetry `
