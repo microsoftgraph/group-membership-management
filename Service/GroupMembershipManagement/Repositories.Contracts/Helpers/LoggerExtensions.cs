@@ -5,8 +5,6 @@ using Microsoft.Extensions.Logging;
 using Models;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-
 namespace Repositories.Contracts.Helpers
 {
     public static class LoggerExtensions
@@ -38,18 +36,16 @@ namespace Repositories.Contracts.Helpers
                 return null;
             }
 
-            var scopeValues = syncJob.ToDictionary()
-                                     .ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
-
-            if (syncJob.RunId.HasValue)
+            var scopeValues = new Dictionary<string, object>
             {
-                scopeValues[CorrelationActivity.RunIdPropertyName] = syncJob.RunId.Value;
-            }
-
-            if (syncJob.Id != Guid.Empty)
-            {
-                scopeValues[CorrelationActivity.SyncJobIdPropertyName] = syncJob.Id;
-            }
+                ["Id"] = Convert.ToString(syncJob.Id),
+                ["RunId"] = Convert.ToString(syncJob.RunId),
+                ["TargetOfficeGroupId"] = Convert.ToString(syncJob.TargetOfficeGroupId),
+                ["Destination"] = Convert.ToString(syncJob.Destination),
+                ["AllowEmptyDestination"] = Convert.ToString(syncJob.AllowEmptyDestination),
+                ["MembershipType"] = Convert.ToString(syncJob.MembershipType),
+                ["Query"] = Convert.ToString(syncJob.Query)
+            };
 
             if (additionalProperties != null)
             {
