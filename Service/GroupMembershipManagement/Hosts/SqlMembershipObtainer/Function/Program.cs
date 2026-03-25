@@ -9,6 +9,8 @@ using Hosts.FunctionBase;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -51,6 +53,7 @@ namespace Hosts.SqlMembershipObtainer
                     var rootPath = context.HostingEnvironment.ContentRootPath;
 
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddSingleton<IBlobStorageRepository, BlobStorageRepository>((s) =>
                     {
