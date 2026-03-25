@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using DIConcreteTypes;
+using Hosts.MembershipAggregator;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -12,7 +14,7 @@ namespace Services
 {
     public class TopicMessageSenderService : ITopicMessageSenderService
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<TopicMessageSenderService> _logger;
         private readonly IServiceBusTopicsRepository _serviceBusTopicsRepository = null;
         private readonly IServiceBusTopicsRepository _messageSplitterSender = null;
         private readonly MultiLaneConfig _multilaneConfig = null;
@@ -21,12 +23,12 @@ namespace Services
         private const string LANE_SIZE_PROPERTY = "LaneSize";
 
         public TopicMessageSenderService(
-            ILoggingRepository loggingRepository,
+            ILogger<TopicMessageSenderService> logger,
             IServiceBusTopicsRepository serviceBusTopicsRepository,
             IServiceBusTopicsRepository messageSplitterSender,
             MultiLaneConfig multilaneConfig)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceBusTopicsRepository = serviceBusTopicsRepository ?? throw new ArgumentNullException(nameof(serviceBusTopicsRepository));
             _messageSplitterSender = messageSplitterSender ?? throw new ArgumentNullException(nameof(messageSplitterSender));
             _multilaneConfig = multilaneConfig ?? throw new ArgumentNullException(nameof(multilaneConfig));
@@ -52,11 +54,7 @@ namespace Services
             else
             {
                 await _serviceBusTopicsRepository.AddMessageAsync(message);
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Sent message to {request.SyncJob.MembershipType} membership updater",
-                    RunId = request.SyncJob.RunId
-                }, VerbosityLevel.INFO);
+                _logger.SentToMembershipUpdater(request.SyncJob.MembershipType);
             }
         }
 
@@ -74,11 +72,7 @@ namespace Services
 
             await _messageSplitterSender.AddMessageAsync(message);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Sent message to {message.ApplicationProperties[LANE_SIZE_PROPERTY]} lane with {request.MembersToBeUpdated} operations.",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.INFO);
+            _logger.SentToLane((string)message.ApplicationProperties[LANE_SIZE_PROPERTY], request.MembersToBeUpdated);
         }
     }
 }

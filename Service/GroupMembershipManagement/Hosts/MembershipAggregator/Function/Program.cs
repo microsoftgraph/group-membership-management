@@ -10,6 +10,7 @@ using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Repositories.BlobStorage;
 using Repositories.Contracts;
@@ -69,7 +70,7 @@ namespace Hosts.MembershipAggregator
                     .AddScoped<IGraphGroupRepository, GraphGroupRepository>()
                     .AddScoped<IGraphAPIService, GraphAPIService>((services) =>
                     {
-                        var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                        var logger = services.GetRequiredService<ILogger<GraphAPIService>>();
                         var graphGroupRepository = services.GetRequiredService<IGraphGroupRepository>();
 
                         var configuration = services.GetRequiredService<IConfiguration>();
@@ -79,7 +80,7 @@ namespace Hosts.MembershipAggregator
                         var notificationsQueueRepository = new ServiceBusQueueRepository(sender);
 
                         return new GraphAPIService(
-                            loggingRepository,
+                            logger,
                             graphGroupRepository,
                             notificationsQueueRepository
                         );
@@ -116,7 +117,7 @@ namespace Hosts.MembershipAggregator
                     {
                         var configuration = services.GetRequiredService<IConfiguration>();
 
-                        var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                        var logger = services.GetRequiredService<ILogger<TopicMessageSenderService>>();
                         var membershipUpdatersSender = services.GetRequiredService<IServiceBusTopicsRepository>();
 
                         var messageSplitterTopic = configuration["serviceBusMessageSplitterTopic"];
@@ -126,14 +127,14 @@ namespace Hosts.MembershipAggregator
 
                         var multilaneConfig = services.GetRequiredService<IOptions<MultiLaneConfig>>()?.Value;
 
-                        return new TopicMessageSenderService(loggingRepository, membershipUpdatersSender, messageSplitterSender, multilaneConfig);
+                        return new TopicMessageSenderService(logger, membershipUpdatersSender, messageSplitterSender, multilaneConfig);
                     })
                     .AddScoped<IDeltaCalculatorService, DeltaCalculatorService>((services) =>
                     {
                         var syncJobRepository = services.GetRequiredService<IDatabaseSyncJobsRepository>();
                         var groupsRepository = services.GetRequiredService<IDatabaseGroupsRepository>();
                         var channelsRepository = services.GetRequiredService<IDatabaseChannelsRepository>();
-                        var loggingRepository = services.GetRequiredService<ILoggingRepository>();
+                        var logger = services.GetRequiredService<ILogger<DeltaCalculatorService>>();
                         var graphAPIService = services.GetRequiredService<IGraphAPIService>();
                         var dryRun = services.GetRequiredService<IDryRunValue>();
                         var telemetryClient = services.GetRequiredService<TelemetryClient>();
@@ -151,7 +152,7 @@ namespace Hosts.MembershipAggregator
                             syncJobRepository,
                             groupsRepository,
                             channelsRepository,
-                            loggingRepository,
+                            logger,
                             graphAPIService,
                             dryRun,
                             thresholdConfig,
@@ -167,5 +168,5 @@ namespace Hosts.MembershipAggregator
 
             host.Run();
         }
-    }              
+    }
 }

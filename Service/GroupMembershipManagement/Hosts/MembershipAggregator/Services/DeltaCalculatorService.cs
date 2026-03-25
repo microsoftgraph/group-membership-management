@@ -1,21 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models.ServiceBus;
+using Hosts.MembershipAggregator;
+using MembershipAggregator.Services.Entities;
+using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Models;
-using Models.ThresholdNotifications;
 using Models.Notifications;
+using Models.ServiceBus;
+using Models.ThresholdNotifications;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Entities;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.ApplicationInsights;
-using System.Data.SqlTypes;
-using MembershipAggregator.Services.Entities;
 
 namespace Services
 {
@@ -25,7 +27,7 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<DeltaCalculatorService> _logger;
         private readonly IGraphAPIService _graphAPIService;
         private readonly IThresholdConfig _thresholdConfig;
         private readonly INotificationRepository _notificationRepository;
@@ -34,22 +36,11 @@ namespace Services
         private readonly TelemetryClient _telemetryClient;
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
 
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphAPIService.RunId = value;
-            }
-        }
-
         public DeltaCalculatorService(
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabaseGroupsRepository databaseGroupsRepository,
             IDatabaseChannelsRepository databaseChannelsRepository,
-            ILoggingRepository loggingRepository,
+            ILogger<DeltaCalculatorService> logger,
             IGraphAPIService graphAPIService,
             IDryRunValue dryRun,
             IThresholdConfig thresholdConfig,
@@ -62,7 +53,7 @@ namespace Services
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
             _thresholdConfig = thresholdConfig ?? throw new ArgumentNullException(nameof(thresholdConfig));
             _thresholdNotificationConfig = thresholdNotificationConfig ?? throw new ArgumentNullException(nameof(thresholdNotificationConfig));
@@ -109,42 +100,25 @@ namespace Services
             var job = await _syncJobRepository.GetSyncJobAsync(sourceMembership.SyncJobId);
             if (job == null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sync job : Id {sourceMembership.SyncJobId} was not found!", RunId = sourceMembership.RunId });
+                _logger.SyncJobNotFound(sourceMembership.SyncJobId);
                 deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
                 return deltaResponse;
             }
 
             var groupId = await GetGroupIdAsync(job);
-            var isDryRunSync = _loggingRepository.DryRun = job.IsDryRunEnabled || sourceMembership.MembershipObtainerDryRunEnabled || _isDryRunEnabled;
+            var isDryRunSync = job.IsDryRunEnabled || sourceMembership.MembershipObtainerDryRunEnabled || _isDryRunEnabled;
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"The Dry Run Enabled configuration is currently set to {isDryRunSync}. " +
-                          $"We will not be syncing members if any of the 3 Dry Run Enabled configurations is set to True.",
-                RunId = sourceMembership.RunId
-            });
+            _logger.DryRunConfiguration(isDryRunSync);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Processing sync job : Id {sourceMembership.SyncJobId}",
-                RunId = sourceMembership.RunId
-            });
+            _logger.ProcessingSyncJob(sourceMembership.SyncJobId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{groupId} job's status is {job.Status}.",
-                RunId = sourceMembership.RunId
-            });
+            _logger.JobStatusInfo(groupId, job.Status);
 
             var fromto = $"to {sourceMembership.Destination}";
-            var groupExistsResult = await _graphAPIService.GroupExistsAsync(sourceMembership.Destination.ObjectId, sourceMembership.RunId);
+            var groupExistsResult = await _graphAPIService.GroupExistsAsync(sourceMembership.Destination.ObjectId);
             if (!groupExistsResult.Result)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"When syncing {fromto}, destination group {sourceMembership.Destination} doesn't exist. Not syncing and marking as error.",
-                    RunId = sourceMembership.RunId
-                });
+                _logger.DestinationGroupNotExists(fromto, sourceMembership.Destination.ToString());
 
                 deltaResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
                 return deltaResponse;
@@ -202,12 +176,7 @@ namespace Services
                                                                                             string fromto,
                                                                                             SyncJob job)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Calculating membership difference {fromto}. " +
-                          $"Destination group has {destinationMembership?.SourceMembers?.Count ?? 0} users.",
-                RunId = sourceMembership.RunId
-            });
+            _logger.CalculatingMembershipDifference(fromto, destinationMembership?.SourceMembers?.Count ?? 0);
 
             var stopwatch = Stopwatch.StartNew();
             var sourceMembers = sourceMembership?.SourceMembers ?? new List<AzureADUser>();
@@ -229,13 +198,7 @@ namespace Services
 
             stopwatch.Stop();
 
-            await _loggingRepository.LogMessageAsync(
-            new LogMessage
-            {
-                Message = $"Calculated membership difference {fromto} in {stopwatch.Elapsed.TotalSeconds} seconds. " +
-                          $"Adding {delta.ToAdd.Count} users and removing {delta.ToRemove.Count}.",
-                RunId = sourceMembership.RunId
-            });
+            _logger.CalculatedMembershipDifference(fromto, stopwatch.Elapsed.TotalSeconds, delta.ToAdd.Count, delta.ToRemove.Count);
 
             var destinationMemberCount = destinationMembers.Count;
 
@@ -257,13 +220,7 @@ namespace Services
 
                 if (isAdditionsThresholdExceeded)
                 {
-                    await _loggingRepository.LogMessageAsync(
-                        new LogMessage
-                        {
-                            Message = $"Membership increase in {groupId} is {percentageIncrease}% " +
-                                      $"and is greater than threshold value {job.ThresholdPercentageForAdditions}%",
-                            RunId = runId
-                        });
+                    _logger.AdditionsThresholdExceeded(groupId, percentageIncrease, job.ThresholdPercentageForAdditions);
                 }
             }
 
@@ -274,13 +231,7 @@ namespace Services
 
                 if (isRemovalsThresholdExceeded)
                 {
-                    await _loggingRepository.LogMessageAsync(
-                        new LogMessage
-                        {
-                            Message = $"Membership decrease in {groupId} is {percentageDecrease}% " +
-                                      $"and is lesser than threshold value {job.ThresholdPercentageForRemovals}%",
-                            RunId = runId
-                        });
+                    _logger.RemovalsThresholdExceeded(groupId, percentageDecrease, job.ThresholdPercentageForRemovals);
                 }
             }
 
@@ -297,20 +248,12 @@ namespace Services
 
         private async Task LogIgnoreThresholdOnceAsync(SyncJob job, Guid runId)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Going to sync the job even though threshold exceeded because IgnoreThresholdOnce is currently set to {job.IgnoreThresholdOnce}.",
-                RunId = runId
-            });
+            _logger.IgnoreThresholdOnceSync(job.IgnoreThresholdOnce);
         }
 
         private async Task LogAllowEmptyDestinationAsync(SyncJob job, Guid runId)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Going to sync the job even though threshold exceeded because AllowEmptyDestination is currently set to {job.AllowEmptyDestination}.",
-                RunId = runId
-            });
+            _logger.AllowEmptyDestinationSync(job.AllowEmptyDestination);
         }
         private async Task SendThresholdNotificationAsync(ThresholdResult threshold, SyncJob job, Guid groupId, Guid runId)
         {
@@ -319,11 +262,7 @@ namespace Services
             var sendDisableJobNotification = currentThresholdViolations == _thresholdConfig.NumberOfThresholdViolationsToDisableJob;
 
             var groupName = await _graphAPIService.GetGroupNameAsync(groupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Threshold exceeded, no changes made to group {groupName} ({groupId}). ",
-                RunId = runId
-            });
+            _logger.ThresholdExceededNoChanges(groupName, groupId);
 
             if (!sendNotification && !sendDisableJobNotification)
             {
@@ -351,7 +290,7 @@ namespace Services
                 : NotificationMessageType.NormalThresholdNotification;
 
             var messageId = $"{job.Id}_{job.RunId}_{messageType}";
-            
+
             var message = new ServiceBusMessage
             {
                 MessageId = messageId,
@@ -359,12 +298,8 @@ namespace Services
             };
             message.ApplicationProperties.Add("MessageType", messageType.ToString());
             await _notificationsQueueRepository.SendMessageAsync(message);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Sent message {message.MessageId} to service bus notifications queue ",
-                RunId = job.RunId
-            });
-        }   
+            _logger.SentNotificationQueueMessage(message.MessageId);
+        }
         private async Task CloseUnresolvedThresholdNotificationAsync(SyncJob job)
         {
             if (_thresholdNotificationConfig.IsThresholdNotificationEnabled)
