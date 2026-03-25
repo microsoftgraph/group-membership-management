@@ -5,6 +5,8 @@ using Common.DependencyInjection;
 using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -46,6 +48,7 @@ namespace Hosts.MembershipAggregator
                     var dryRunSettingName = "MembershipAggregator:IsMembershipAggregatorDryRunEnabled";
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddOptions<MultiLaneConfig>().Configure<IConfiguration>((settings, configuration) =>
                     {
