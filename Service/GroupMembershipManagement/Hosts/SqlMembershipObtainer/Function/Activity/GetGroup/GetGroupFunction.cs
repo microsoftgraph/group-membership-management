@@ -1,33 +1,42 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.SqlMembershipObtainer;
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
     public class GetGroupFunction
     {
-        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<GetGroupFunction> _logger;
+        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService;
 
-        public GetGroupFunction(ISqlMembershipObtainerService sqlMembershipObtainerService, ILoggingRepository loggingRepository)
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, ISqlMembershipObtainerService sqlMembershipObtainerService)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sqlMembershipObtainerService = sqlMembershipObtainerService ?? throw new ArgumentNullException(nameof(sqlMembershipObtainerService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [Function(nameof(GetGroupFunction))]
-        public async Task<Guid> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<Guid> GetGroupAsync([ActivityTrigger] GetGroupRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            var groupId = await _sqlMembershipObtainerService.GetGroupIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return groupId;
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(GetGroupFunction));
+                var groupId = await _sqlMembershipObtainerService.GetGroupIdAsync(request.SyncJob);
+                _logger.FunctionCompleted(nameof(GetGroupFunction));
+                return groupId;
+            }
         }
     }
 }

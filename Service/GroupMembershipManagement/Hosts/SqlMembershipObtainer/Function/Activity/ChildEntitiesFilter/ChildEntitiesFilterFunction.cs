@@ -1,36 +1,45 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.SqlMembershipObtainer;
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using SqlMembershipObtainer.Entities;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
     public class ChildEntitiesFilterFunction
     {
-        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<ChildEntitiesFilterFunction> _logger;
+        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService;
 
-        public ChildEntitiesFilterFunction(ISqlMembershipObtainerService sqlMembershipObtainerService, ILoggingRepository loggingRepository)
+        public ChildEntitiesFilterFunction(ILogger<ChildEntitiesFilterFunction> logger, ISqlMembershipObtainerService sqlMembershipObtainerService)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sqlMembershipObtainerService = sqlMembershipObtainerService ?? throw new ArgumentNullException(nameof(sqlMembershipObtainerService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [Function(nameof(ChildEntitiesFilterFunction))]
         public async Task<MembershipFileResult> FilterChildEntities([ActivityTrigger] ChildEntitiesFilterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(ChildEntitiesFilterFunction));
 
-            var response = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary);
+                var response = await _sqlMembershipObtainerService.FilterChildEntitiesAsync(request.Query, request.TableName, request.SyncJob, request.GroupId, request.CurrentPart, request.Exclusionary);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ChildEntitiesFilterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                _logger.FunctionCompleted(nameof(ChildEntitiesFilterFunction));
 
-            return response;
+                return response;
+            }
         }
     }
 }

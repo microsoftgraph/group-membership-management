@@ -1,12 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
+using Hosts.SqlMembershipObtainer;
 using Microsoft.Azure.Functions.Worker;
-using Repositories.Contracts;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
 using Polly.Retry;
 using Polly;
 
@@ -14,30 +16,37 @@ namespace SqlMembershipObtainer
 {
     public class TableNameReaderFunction
     {
-        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService = null;
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<TableNameReaderFunction> _logger;
+        private readonly ISqlMembershipObtainerService _sqlMembershipObtainerService;
 
-        public TableNameReaderFunction(ISqlMembershipObtainerService sqlMembershipObtainerService, ILoggingRepository loggingRepository)
+        public TableNameReaderFunction(ILogger<TableNameReaderFunction> logger, ISqlMembershipObtainerService sqlMembershipObtainerService)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sqlMembershipObtainerService = sqlMembershipObtainerService ?? throw new ArgumentNullException(nameof(sqlMembershipObtainerService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         [Function(nameof(TableNameReaderFunction))]
         public async Task<string> GetSqlMembershipTableName([ActivityTrigger] TableNameReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-
-            string sqlMembershipObtainerTableName = null;
-
-            await _retryPolicy.ExecuteAsync(async () =>
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(request.SyncJob.RunId, request.GroupId);
-            });
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(TableNameReaderFunction));
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(TableNameReaderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                string sqlMembershipObtainerTableName = null;
 
-            return sqlMembershipObtainerTableName;
+                await _retryPolicy.ExecuteAsync(async () =>
+                {
+                    sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(request.SyncJob.RunId, request.GroupId);
+                });
+
+                _logger.FunctionCompleted(nameof(TableNameReaderFunction));
+
+                return sqlMembershipObtainerTableName;
+            }
         }
 
         private readonly AsyncRetryPolicy _retryPolicy = Policy

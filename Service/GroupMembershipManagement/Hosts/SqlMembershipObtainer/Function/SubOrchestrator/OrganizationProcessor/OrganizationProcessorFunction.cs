@@ -1,46 +1,38 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.SqlMembershipObtainer;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using SqlMembershipObtainer.Entities;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace SqlMembershipObtainer
 {
     public class OrganizationProcessorFunction
     {
-        public OrganizationProcessorFunction()
-        {
-        }
-
         [Function(nameof(OrganizationProcessorFunction))]
         public async Task<MembershipFileResult> ProcessQueryAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var response = new MembershipFileResult();           
+            var response = new MembershipFileResult();
             var request = context.GetInput<OrganizationProcessorRequest>();
 
-            await context.CallActivityAsync(
-                            nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                SyncJob = request.SyncJob,
-                                Message = $"{nameof(OrganizationProcessorFunction)} function started",
-                                Verbosity = VerbosityLevel.DEBUG
-                            });
+            var logger = context.CreateReplaySafeLogger("SqlMembershipObtainer.OrganizationProcessorFunction");
+            using var scope = logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            });
 
-            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), new TableNameReaderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId });
+            logger.FunctionStarted(nameof(OrganizationProcessorFunction));
+
+            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), new TableNameReaderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, CurrentPart = request.CurrentPart, TotalParts = request.TotalParts });
             if (string.IsNullOrWhiteSpace(tableName))
             {
-                await context.CallActivityAsync(
-                            nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                SyncJob = request.SyncJob,
-                                Message = "Table does not exist",
-                                Verbosity = VerbosityLevel.INFO
-                            });
+                logger.TableDoesNotExist();
                 return response;
             }
 
@@ -59,6 +51,7 @@ namespace SqlMembershipObtainer
                                                         SyncJob = request.SyncJob,
                                                         GroupId = request.GroupId,
                                                         CurrentPart = request.CurrentPart,
+                                                        TotalParts = request.TotalParts,
                                                         Exclusionary = request.Exclusionary,
                                                         TableName = tableName
                                                     });
@@ -75,20 +68,14 @@ namespace SqlMembershipObtainer
                                                                     SyncJob = request.SyncJob,
                                                                     GroupId = request.GroupId,
                                                                     CurrentPart = request.CurrentPart,
+                                                                    TotalParts = request.TotalParts,
                                                                     Exclusionary = request.Exclusionary,
                                                                     TableName = tableName
                                                                 });
                 }
             }
 
-            await context.CallActivityAsync(
-                           nameof(LoggerFunction),
-                           new LoggerRequest
-                           {
-                               SyncJob = request.SyncJob,
-                               Message = $"{nameof(OrganizationProcessorFunction)} function completed",
-                               Verbosity = VerbosityLevel.DEBUG
-                           });
+            logger.FunctionCompleted(nameof(OrganizationProcessorFunction));
 
             return response;
         }
