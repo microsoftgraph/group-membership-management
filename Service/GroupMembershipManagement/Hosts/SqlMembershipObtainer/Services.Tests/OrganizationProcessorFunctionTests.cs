@@ -4,6 +4,7 @@ using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Models;
 using SqlMembershipObtainer;
@@ -115,6 +116,10 @@ namespace Services.Tests
                 .ReturnsAsync("sometable");
             orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()))
+                .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                {
+                    await CallChildEntitiesFilterFunctionAsync(request as ChildEntitiesFilterRequest);
+                })
                 .ReturnsAsync(new MembershipFileResult());
 
             var function = new OrganizationProcessorFunction();
@@ -130,6 +135,12 @@ namespace Services.Tests
                 nameof(ChildEntitiesFilterFunction),
                 It.Is<ChildEntitiesFilterRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
                 It.IsAny<TaskOptions>()), Times.Once());
+        }
+
+        private async Task CallChildEntitiesFilterFunctionAsync(ChildEntitiesFilterRequest request)
+        {
+            var function = new ChildEntitiesFilterFunction(NullLogger<ChildEntitiesFilterFunction>.Instance, _sqlMembershipObtainerService.Object);
+            await function.FilterChildEntities(request);
         }
     }
 }

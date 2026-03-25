@@ -96,13 +96,25 @@ namespace Services.Tests
                                                         It.IsAny<TaskOptions>()))
                     .ReturnsAsync(() => _groupMembershipSenderResponse);
 
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()));
+            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x == nameof(TelemetryTrackerFunction)), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallTelemetryTrackerFunctionAsync(request as TelemetryTrackerRequest);
+                    });
 
-            _context.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()));
+            _context.Setup(x => x.CallActivityAsync(nameof(QueueMessageSenderFunction), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallQueueMessageSenderFunctionAsync(request as MembershipAggregatorHttpRequest);
+                    });
 
             _schemaProvider = SchemaProviderFactory.CreateJsonSchemaProvider();
 
             _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
                     .ReturnsAsync(() => _isValid);
         }
 
@@ -164,6 +176,10 @@ namespace Services.Tests
             _syncJob.Query = "[{\"type\":\"SqlMembership\",\"source\":{\"manager\":{\"id\":[1, 2]},\"filter\":\"Attribute = 'Value'\"}}]";
 
             _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
                     .ReturnsAsync(() => false);
 
             var orchestratorFunction = new OrchestratorFunction();
@@ -227,9 +243,17 @@ namespace Services.Tests
             _context.Setup(x => x.GetInput<OrchestratorRequest>()).Returns(() => _mainRequest);
             _context.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>())).ReturnsAsync(_syncJob.Group.GroupId);
             _context.Setup(x => x.CallActivityAsync<bool>(nameof(SchemaValidatorFunction), It.IsAny<SchemaValidatorRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallSchemaValidatorFunctionAsync(request as SchemaValidatorRequest);
+                    })
                     .ReturnsAsync(() => _isValid);
             _context.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()));
-            _context.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()));
+            _context.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
+                    .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
+                    {
+                        await CallTelemetryTrackerFunctionAsync(request as TelemetryTrackerRequest);
+                    });
 
             _context.Setup(x => x.CallSubOrchestratorAsync<MembershipFileResult>(
                                                       nameof(OrganizationProcessorFunction),
@@ -266,6 +290,24 @@ namespace Services.Tests
                 exception = ex;
             }
             return (exception);
+        }
+
+        private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
+        {
+            var function = new TelemetryTrackerFunction(NullLogger<TelemetryTrackerFunction>.Instance, _telemetryClient);
+            await function.TrackEventAsync(request);
+        }
+
+        private async Task CallSchemaValidatorFunctionAsync(SchemaValidatorRequest request)
+        {
+            var function = new SchemaValidatorFunction(NullLogger<SchemaValidatorFunction>.Instance, _schemaProvider);
+            await function.ValidateSchemasAsync(request);
+        }
+
+        private async Task CallQueueMessageSenderFunctionAsync(MembershipAggregatorHttpRequest request)
+        {
+            var function = new QueueMessageSenderFunction(NullLogger<QueueMessageSenderFunction>.Instance, _serviceBusQueueRepository.Object);
+            await function.SendMessageAsync(request);
         }
     }
 }
