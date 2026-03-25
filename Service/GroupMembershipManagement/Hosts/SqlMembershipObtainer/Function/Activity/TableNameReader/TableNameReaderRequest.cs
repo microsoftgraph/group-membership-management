@@ -9,5 +9,7 @@ namespace SqlMembershipObtainer
     {
         public required SyncJob SyncJob { get; init; }
         public required Guid GroupId { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
     }
 }

@@ -9,6 +9,8 @@ namespace SqlMembershipObtainer
     {
         public required SyncStatus JobStatus { get; init; }
         public required ResultStatus ResultStatus { get; init; }
-        public required Guid RunId { get; init; }
+        public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
     }
 }
