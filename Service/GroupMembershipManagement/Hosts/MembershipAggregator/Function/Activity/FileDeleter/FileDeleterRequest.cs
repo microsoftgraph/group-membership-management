@@ -1,13 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using System;
+using Models;
 
 namespace Hosts.MembershipAggregator
 {
     public class FileDeleterRequest
     {
+        public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
         public required string FilePath { get; init; }
-        public required Guid RunId { get; init; }
     }
 }

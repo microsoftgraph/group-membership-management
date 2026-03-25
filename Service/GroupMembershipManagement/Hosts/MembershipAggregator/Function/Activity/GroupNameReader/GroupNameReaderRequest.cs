@@ -9,6 +9,8 @@ namespace Hosts.MembershipAggregator
     public class GroupNameReaderRequest
     {
         public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
         public required Guid GroupId { get; init; }
     }
 }

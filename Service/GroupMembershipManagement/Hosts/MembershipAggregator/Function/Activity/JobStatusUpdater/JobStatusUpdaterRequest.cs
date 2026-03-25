@@ -8,6 +8,8 @@ namespace Hosts.MembershipAggregator
     public class JobStatusUpdaterRequest
     {
         public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
         public required SyncStatus Status { get; init; }
         public required bool IsDryRun { get; init; }
         public required bool IncrementThresholdViolations { get; init; }

@@ -7,7 +7,9 @@ namespace Hosts.MembershipAggregator
 {
     public class FileDownloaderRequest
     {
-        public required string FilePath { get; init; }
         public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
+        public required string FilePath { get; init; }
     }
 }

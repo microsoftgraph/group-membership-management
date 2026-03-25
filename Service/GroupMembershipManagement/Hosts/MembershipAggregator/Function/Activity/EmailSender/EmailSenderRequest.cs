@@ -8,6 +8,8 @@ namespace MembershipAggregator.Activity.EmailSender
     public class EmailSenderRequest
     {
         public required SyncJob SyncJob { get; init; }
+        public required int CurrentPart { get; init; }
+        public required int TotalParts { get; init; }
         public required NotificationMessageType NotificationType { get; init; }
         public required string[] AdditionalContentParams { get; init; }
     }
