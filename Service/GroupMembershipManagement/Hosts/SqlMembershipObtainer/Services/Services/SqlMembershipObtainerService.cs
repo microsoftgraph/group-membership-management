@@ -1,7 +1,9 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.SqlMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
@@ -16,15 +18,15 @@ namespace Services
 {
     public class SqlMembershipObtainerService : ISqlMembershipObtainerService
     {
-        private readonly ISqlMembershipRepository _sqlMembershipRepository = null;
-        private readonly IBlobStorageRepository _blobStorageRepository = null;
-        private readonly ISyncJobStatusService _syncJobStatusService = null;
-        private readonly IDatabaseGroupsRepository _databaseGroupsRepository = null;
-        private readonly IDatabaseChannelsRepository _databaseChannelsRepository = null;
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly TelemetryClient _telemetryClient = null;
+        private readonly ISqlMembershipRepository _sqlMembershipRepository;
+        private readonly IBlobStorageRepository _blobStorageRepository;
+        private readonly ISyncJobStatusService _syncJobStatusService;
+        private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
+        private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly ILogger<SqlMembershipObtainerService> _logger;
+        private readonly TelemetryClient _telemetryClient;
         private readonly bool _isSqlMembershipObtainerDryRunEnabled;
-        private readonly IDataFactoryService _dataFactoryService = null;
+        private readonly IDataFactoryService _dataFactoryService;
 
         private enum Metric
         {
@@ -36,7 +38,7 @@ namespace Services
                                     ISyncJobStatusService syncJobStatusService,
                                     IDatabaseGroupsRepository databaseGroupsRepository,
                                     IDatabaseChannelsRepository databaseChannelsRepository,
-                                    ILoggingRepository loggingRepository,
+                                    ILogger<SqlMembershipObtainerService> logger,
                                     TelemetryClient telemetryClient,
                                     IDryRunValue dryRun,
                                     IDataFactoryService dataFactoryService)
@@ -45,7 +47,7 @@ namespace Services
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _isSqlMembershipObtainerDryRunEnabled = dryRun == null ? throw new ArgumentNullException(nameof(dryRun)) : dryRun.DryRunEnabled;
@@ -74,7 +76,7 @@ namespace Services
                 throw ocSQLException;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {children.Count} records from {tableName} table", RunId = syncJob.RunId });
+            _logger.RecordsRetrieved(children.Count, tableName);
 
             var profiles = children.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).ToList();
 
@@ -86,7 +88,7 @@ namespace Services
 
         public async Task<MembershipFileResult> FilterChildEntitiesAsync(string query, string tableName, SyncJob syncJob, Guid targetOfficeGroupId, int currentPart, bool exclusionary)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Beginning to filter entities from {tableName} table", RunId = syncJob.RunId });
+            _logger.BeginningFilterEntities(tableName);
 
             var filteredEntities = new List<PersonEntity>();
 
@@ -109,7 +111,7 @@ namespace Services
                 throw ocSQLException;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved a total of {filteredEntities.Count} records from {tableName} table", RunId = syncJob.RunId });
+            _logger.RecordsRetrieved(filteredEntities.Count, tableName);
 
             var profiles = filteredEntities.Select(x => new GraphProfileInformation { PersonnelNumber = x.PersonnelNumber, Id = x.AzureObjectId }).Distinct().ToList();
 
@@ -153,13 +155,9 @@ namespace Services
             var start = DateTime.UtcNow;
             await _blobStorageRepository.UploadFileAsync(fileName, JsonSerializer.Serialize(groupMemberToBeSent));
             var end = DateTime.UtcNow;
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Time to upload file: {end - start}",
-                RunId = syncJob.RunId
-            });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Sent {groupMemberToBeSent.SourceMembers.Count} members for group {groupId}", RunId = syncJob.RunId });
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"SqlMembershipObtainer service completed at: {DateTime.UtcNow}", RunId = syncJob.RunId });
+            _logger.FileUploadDuration(end - start);
+            _logger.MembersSentForGroup(groupMemberToBeSent.SourceMembers.Count, groupId);
+            _logger.ServiceCompleted(DateTime.UtcNow);
 
             return new MembershipFileResult {
                 Status = status,
@@ -172,11 +170,12 @@ namespace Services
             var adfRunId = await GetADFRunIdAsync(runId);
             var tableName = adfRunId.Replace("-", "");
             var tableExists = await CheckIfTableExists(tableName, runId, targetOfficeGroupId);
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = tableExists ? $"{tableName} exists" : $"{tableName} does not exist",
-                RunId = runId
-            });
+
+            if (tableExists)
+                _logger.TableNameExists(tableName);
+            else
+                _logger.TableNameDoesNotExist(tableName);
+
             return tableExists ? tableName : "";
         }
 
@@ -208,11 +207,7 @@ namespace Services
 
         public async Task UpdateSyncJobStatusToIdleAsync(SyncJob job)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                RunId = job.RunId,
-                Message = $"Updating status of job {job.Id} to Idle."
-            });
+            _logger.UpdatingJobStatusToIdle(job.Id);
 
             var now = DateTime.UtcNow;
             var history = new SyncJobHistory
@@ -232,11 +227,7 @@ namespace Services
 
         private async Task SetSyncJobStatusAsync(SyncJob syncJob, SyncStatus status)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Setting status of job {syncJob.Id} to {status}.",
-                RunId = syncJob.RunId
-            });
+            _logger.SettingJobStatus(syncJob.Id, status.ToString());
 
             var now = DateTime.UtcNow;
             var history = new SyncJobHistory
@@ -257,6 +248,6 @@ namespace Services
         private async Task<string> GetADFRunIdAsync(Guid? runId)
         {
             return await _dataFactoryService.GetMostRecentSucceededRunIdAsync(runId);
-        }       
+        }
     }
 }
