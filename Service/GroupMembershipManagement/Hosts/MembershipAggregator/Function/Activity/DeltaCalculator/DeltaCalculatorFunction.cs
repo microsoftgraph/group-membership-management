@@ -2,12 +2,15 @@
 // Licensed under the MIT license.
 using MembershipAggregator.Services.Entities;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -15,110 +18,84 @@ namespace Hosts.MembershipAggregator
 {
     public class DeltaCalculatorFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<DeltaCalculatorFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IDeltaCalculatorService _deltaCalculatorService;
 
         public DeltaCalculatorFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<DeltaCalculatorFunction> logger,
             IBlobStorageRepository blobStorageRepository,
             IDeltaCalculatorService deltaCalculatorService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _deltaCalculatorService = deltaCalculatorService ?? throw new ArgumentNullException(nameof(deltaCalculatorService));
-            _blobStorageRepository = blobStorageRepository;
         }
 
         [Function(nameof(DeltaCalculatorFunction))]
         public async Task<DeltaCalculatorResponse> CalculateDeltaAsync([ActivityTrigger] DeltaCalculatorRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            GroupMembership sourceMembership;
-            GroupMembership destinationMembership;
-
-            _deltaCalculatorService.RunId = request.RunId;
-
-            if (request.ReadFromBlobs)
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
-                await _loggingRepository.LogMessageAsync(
-                    new LogMessage
-                    {
-                        Message = $"Source blob download result: {sourceBlobResult.BlobStatus} for path {request.SourceMembershipFilePath}",
-                        RunId = request.RunId
-                    },
-                    VerbosityLevel.DEBUG
-                );
-                var destinationBlobResult = await _blobStorageRepository.DownloadFileAsync(request.DestinationMembershipFilePath);
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(DeltaCalculatorFunction));
 
-                await _loggingRepository.LogMessageAsync(
-                    new LogMessage
-                    {
-                        Message = $"Destination blob download result: {destinationBlobResult.BlobStatus} for path {request.DestinationMembershipFilePath}",
-                        RunId = request.RunId
-                    },
-                    VerbosityLevel.DEBUG
-                );
+                GroupMembership sourceMembership;
+                GroupMembership destinationMembership;
 
-                if (sourceBlobResult.BlobStatus == BlobStatus.NotFound)
+                if (request.ReadFromBlobs)
                 {
-                    await _loggingRepository.LogMessageAsync(
-                        new LogMessage
-                        {
-                            Message = "SourceMembership blob not found",
-                            RunId = request.RunId
-                        },
-                        VerbosityLevel.DEBUG
-                    );
+                    var sourceBlobResult = await _blobStorageRepository.DownloadFileAsync(request.SourceMembershipFilePath);
+                    _logger.SourceBlobDownloadResult(sourceBlobResult.BlobStatus.ToString(), request.SourceMembershipFilePath);
 
-                    return new DeltaCalculatorResponse
+                    var destinationBlobResult = await _blobStorageRepository.DownloadFileAsync(request.DestinationMembershipFilePath);
+                    _logger.DestinationBlobDownloadResult(destinationBlobResult.BlobStatus.ToString(), request.DestinationMembershipFilePath);
+
+                    if (sourceBlobResult.BlobStatus == BlobStatus.NotFound)
                     {
-                        MembershipDeltaStatus = MembershipDeltaStatus.Error
-                    };
+                        _logger.SourceBlobNotFound();
+                        return new DeltaCalculatorResponse
+                        {
+                            MembershipDeltaStatus = MembershipDeltaStatus.Error
+                        };
+                    }
+
+                    if (destinationBlobResult.BlobStatus == BlobStatus.NotFound)
+                    {
+                        _logger.DestinationBlobNotFound();
+                        return new DeltaCalculatorResponse
+                        {
+                            MembershipDeltaStatus = MembershipDeltaStatus.Error
+                        };
+                    }
+
+                    var sourceJson = TryDecompress(sourceBlobResult.Content);
+                    var destinationJson = TryDecompress(destinationBlobResult.Content);
+
+                    sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceJson);
+                    destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationJson);
+                }
+                else
+                {
+                    sourceMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.SourceGroupMembership));
+                    destinationMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
                 }
 
-                if (destinationBlobResult.BlobStatus == BlobStatus.NotFound)
+                var response = await _deltaCalculatorService.CalculateDifferenceAsync(sourceMembership, destinationMembership);
+
+                _logger.FunctionCompleted(nameof(DeltaCalculatorFunction));
+                return new DeltaCalculatorResponse
                 {
-                    await _loggingRepository.LogMessageAsync(
-                        new LogMessage
-                        {
-                            Message = "DestinationMembership blob not found",
-                            RunId = request.RunId
-                        },
-                        VerbosityLevel.DEBUG
-                    );
-
-                    return new DeltaCalculatorResponse
-                    {
-                        MembershipDeltaStatus = MembershipDeltaStatus.Error
-                    };
-                }
-
-                var sourceJson = TryDecompress(sourceBlobResult.Content);
-                var destinationJson = TryDecompress(destinationBlobResult.Content);
-
-                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(sourceJson);
-                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(destinationJson);
+                    MembersToAddCount = response.MembersToAdd?.Count ?? 0,
+                    MembersToRemoveCount = response.MembersToRemove?.Count ?? 0,
+                    MembershipDeltaStatus = response.MembershipDeltaStatus,
+                    CompressedMembersToAddJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToAdd)),
+                    CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToRemove)),
+                };
             }
-            else
-            {
-                sourceMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.SourceGroupMembership));
-                destinationMembership = JsonSerializer.Deserialize<GroupMembership>(TextCompressor.Decompress(request.DestinationGroupMembership));
-            }
-
-            var response = await _deltaCalculatorService.CalculateDifferenceAsync(sourceMembership, destinationMembership);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(DeltaCalculatorFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return new DeltaCalculatorResponse
-            {
-                MembersToAddCount = response.MembersToAdd?.Count ?? 0,
-                MembersToRemoveCount = response.MembersToRemove?.Count ?? 0,
-                MembershipDeltaStatus = response.MembershipDeltaStatus,
-                CompressedMembersToAddJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToAdd)),
-                CompressedMembersToRemoveJSON = TextCompressor.Compress(JsonSerializer.Serialize(response.MembersToRemove)),
-            };
         }
 
         private static string TryDecompress(string content)

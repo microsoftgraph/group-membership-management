@@ -1,37 +1,47 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
+using Services.Entities;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class GroupNameReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IGraphAPIService _graphAPIService  = null;
-        public GroupNameReaderFunction(ILoggingRepository loggingRepository, IGraphAPIService graphAPIService)
+        private readonly ILogger<GroupNameReaderFunction> _logger;
+        private readonly IGraphAPIService _graphAPIService;
+
+        public GroupNameReaderFunction(ILogger<GroupNameReaderFunction> logger, IGraphAPIService graphAPIService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
         }
 
         [Function(nameof(GroupNameReaderFunction))]
         public async Task<SyncJobGroup> GetGroupNameAsync([ActivityTrigger] GroupNameReaderRequest request)
         {
             var group = new SyncJobGroup();
-            
+
             if (request.SyncJob != null)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-                _graphAPIService.RunId = request.SyncJob.RunId ?? Guid.Empty;
-                var groupName = await _graphAPIService.GetGroupNameAsync(request.GroupId);
-                group.SyncJob = request.SyncJob;
-                group.Name = groupName;
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupNameReaderFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+                using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+                {
+                    ["CurrentPart"] = request.CurrentPart,
+                    ["TotalParts"] = request.TotalParts
+                }))
+                {
+                    _logger.FunctionStarted(nameof(GroupNameReaderFunction));
+                    var groupName = await _graphAPIService.GetGroupNameAsync(request.GroupId);
+                    group.SyncJob = request.SyncJob;
+                    group.Name = groupName;
+                    _logger.FunctionCompleted(nameof(GroupNameReaderFunction));
+                }
             }
             return group;
         }

@@ -1,45 +1,41 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class TopicMessageSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly ITopicMessageSenderService _topicMessageSenderRepository = null;
+        private readonly ILogger<TopicMessageSenderFunction> _logger;
+        private readonly ITopicMessageSenderService _topicMessageSenderRepository;
 
         public TopicMessageSenderFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<TopicMessageSenderFunction> logger,
             ITopicMessageSenderService topicMessageSenderRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _topicMessageSenderRepository = topicMessageSenderRepository ?? throw new ArgumentNullException(nameof(topicMessageSenderRepository));
         }
 
         [Function(nameof(TopicMessageSenderFunction))]
-        public async Task SendMessageAsync([ActivityTrigger] MembershipHttpRequest request)
+        public async Task SendMessageAsync([ActivityTrigger] TopicMessageSenderRequest request)
         {
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                Message = $"{nameof(TopicMessageSenderFunction)} function started",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
-
-            await _topicMessageSenderRepository.SendMessageAsync(request);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
             {
-                Message = $"{nameof(TopicMessageSenderFunction)} function completed",
-                RunId = request.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
+                _logger.FunctionStarted(nameof(TopicMessageSenderFunction));
+                await _topicMessageSenderRepository.SendMessageAsync(request.MembershipHttpRequest);
+                _logger.FunctionCompleted(nameof(TopicMessageSenderFunction));
+            }
         }
-
     }
 }

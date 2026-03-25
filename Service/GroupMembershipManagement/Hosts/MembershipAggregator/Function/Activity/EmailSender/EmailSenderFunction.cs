@@ -2,34 +2,39 @@
 // Licensed under the MIT license.
 using MembershipAggregator.Activity.EmailSender;
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class EmailSenderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IGraphAPIService _graphAPIService  = null;
+        private readonly ILogger<EmailSenderFunction> _logger;
+        private readonly IGraphAPIService _graphAPIService;
 
-        public EmailSenderFunction(ILoggingRepository loggingRepository, IGraphAPIService graphAPIService)
+        public EmailSenderFunction(ILogger<EmailSenderFunction> logger, IGraphAPIService graphAPIService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-            _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService)); ;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _graphAPIService = graphAPIService ?? throw new ArgumentNullException(nameof(graphAPIService));
         }
 
         [Function(nameof(EmailSenderFunction))]
         public async Task SendEmailAsync([ActivityTrigger] EmailSenderRequest request)
         {
-            var job = request.SyncJob;
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function started", RunId = job.RunId }, VerbosityLevel.DEBUG);
-            _graphAPIService.RunId = job.RunId ?? Guid.Empty;
-            await _graphAPIService.SendEmailAsync(job, request.NotificationType, request.AdditionalContentParams);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(EmailSenderFunction)} function completed", RunId = job.RunId }, VerbosityLevel.DEBUG);
-
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(EmailSenderFunction));
+                await _graphAPIService.SendEmailAsync(request.SyncJob, request.NotificationType, request.AdditionalContentParams);
+                _logger.FunctionCompleted(nameof(EmailSenderFunction));
+            }
         }
     }
 }

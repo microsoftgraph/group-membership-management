@@ -2,33 +2,41 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class GetChannelFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IDeltaCalculatorService _deltaCalculatorService = null;
+        private readonly ILogger<GetChannelFunction> _logger;
+        private readonly IDeltaCalculatorService _deltaCalculatorService;
 
-        public GetChannelFunction(ILoggingRepository loggingRepository, IDeltaCalculatorService deltaCalculatorService)
+        public GetChannelFunction(ILogger<GetChannelFunction> logger, IDeltaCalculatorService deltaCalculatorService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _deltaCalculatorService = deltaCalculatorService ?? throw new ArgumentNullException(nameof(deltaCalculatorService));
         }
 
         [Function(nameof(GetChannelFunction))]
-        public async Task<string> GetChannelAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<string> GetChannelAsync([ActivityTrigger] GetChannelRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetChannelFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _deltaCalculatorService.RunId = syncJob.RunId ?? Guid.Empty;
-            var channelId = syncJob.MembershipType == MembershipTypes.GroupMembership.ToString() ? string.Empty : await _deltaCalculatorService.GetChannelIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetChannelFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return channelId;
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(GetChannelFunction));
+                var channelId = request.SyncJob.MembershipType == MembershipTypes.GroupMembership.ToString() ? string.Empty : await _deltaCalculatorService.GetChannelIdAsync(request.SyncJob);
+                _logger.FunctionCompleted(nameof(GetChannelFunction));
+                return channelId;
+            }
         }
     }
 }

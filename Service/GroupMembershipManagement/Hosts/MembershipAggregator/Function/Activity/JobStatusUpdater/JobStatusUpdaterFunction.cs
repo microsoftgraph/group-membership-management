@@ -1,27 +1,29 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
-using Models;
+using Microsoft.Extensions.Logging;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using Models.SyncJobHistory;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class JobStatusUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobStatusUpdaterFunction> _logger;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
 
         public JobStatusUpdaterFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<JobStatusUpdaterFunction> logger,
             IDatabaseSyncJobsRepository syncJobRespository,
             ISyncJobStatusService syncJobStatusService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobRepository = syncJobRespository ?? throw new ArgumentNullException(nameof(syncJobRespository));
             _syncJobStatusService = syncJobStatusService ?? throw new ArgumentNullException(nameof(syncJobStatusService));
         }
@@ -29,50 +31,57 @@ namespace Hosts.MembershipAggregator
         [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-
-            var syncJob = await _syncJobRepository.GetSyncJobAsync(request.SyncJob.Id);
-            if (syncJob != null)
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                var currentDate = DateTime.UtcNow;
-                if (request.IncrementThresholdViolations)
-                    syncJob.ThresholdViolations += 1;
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
 
-                if (request.IsDryRun)
-                    syncJob.DryRunTimeStamp = currentDate;
-                else
+                var syncJob = await _syncJobRepository.GetSyncJobAsync(request.SyncJob.Id);
+                if (syncJob != null)
                 {
-                    syncJob.LastRunTime = currentDate;
+                    var currentDate = DateTime.UtcNow;
+                    if (request.IncrementThresholdViolations)
+                        syncJob.ThresholdViolations += 1;
 
-                    if (request.IsNoOpSync)
+                    if (request.IsDryRun)
+                        syncJob.DryRunTimeStamp = currentDate;
+                    else
                     {
-                        if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
+                        syncJob.LastRunTime = currentDate;
 
-                        syncJob.ThresholdViolations = 0;
-                        syncJob.LastSuccessfulRunTime = currentDate;
+                        if (request.IsNoOpSync)
+                        {
+                            if (syncJob.IgnoreThresholdOnce) syncJob.IgnoreThresholdOnce = false;
+
+                            syncJob.ThresholdViolations = 0;
+                            syncJob.LastSuccessfulRunTime = currentDate;
+                        }
                     }
+
+                    syncJob.ScheduledDate = currentDate.AddHours(syncJob.Period);
+
+                    syncJob.Status = request.Status.ToString();
+                    syncJob.RunId = syncJob.RunId ?? request.SyncJob.RunId;
+
+                    var history = new SyncJobHistory
+                    {
+                        SyncJobId = syncJob.Id,
+                        RunId = syncJob.RunId ?? request.SyncJob.RunId ?? Guid.Empty,
+                        Status = request.Status.ToString(),
+                        UpdatedByFunction = "MembershipAggregator",
+                        ThresholdViolations = syncJob.ThresholdViolations,
+                        EndTime = currentDate,
+                        UpdatedAt = currentDate
+                    };
+
+                    await _syncJobStatusService.UpdateJobStatusAsync(syncJob, request.Status, history, functionName: "MembershipAggregator");
                 }
 
-                syncJob.ScheduledDate = currentDate.AddHours(syncJob.Period);
-
-                syncJob.Status = request.Status.ToString();
-                syncJob.RunId = syncJob.RunId ?? request.SyncJob.RunId;
-
-                var history = new SyncJobHistory
-                {
-                    SyncJobId = syncJob.Id,
-                    RunId = syncJob.RunId ?? request.SyncJob.RunId ?? Guid.Empty,
-                    Status = request.Status.ToString(),
-                    UpdatedByFunction = "MembershipAggregator",
-                    ThresholdViolations = syncJob.ThresholdViolations,
-                    EndTime = currentDate,
-                    UpdatedAt = currentDate
-                };
-
-                await _syncJobStatusService.UpdateJobStatusAsync(syncJob, request.Status, history, functionName: "MembershipAggregator");
+                _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
             }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
         }
     }
 }

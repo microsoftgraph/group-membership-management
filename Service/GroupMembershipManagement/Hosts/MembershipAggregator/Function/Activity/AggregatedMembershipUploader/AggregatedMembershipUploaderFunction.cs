@@ -2,10 +2,12 @@
 // Licensed under the MIT license.
 using Hosts.MembershipAggregator.Helpers;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -16,85 +18,79 @@ namespace Hosts.MembershipAggregator
 {
     public class AggregatedMembershipUploaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<AggregatedMembershipUploaderFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
-        public AggregatedMembershipUploaderFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository)
+        public AggregatedMembershipUploaderFunction(ILogger<AggregatedMembershipUploaderFunction> logger, IBlobStorageRepository blobStorageRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
         [Function(nameof(AggregatedMembershipUploaderFunction))]
         public async Task<AggregatedMembershipUploadResponse> UploadAggregatedMembershipAsync([ActivityTrigger] AggregatedMembershipUploadRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                Message = $"Starting aggregated membership upload for GroupId {request.GroupId}",
-                RunId = request.RunId
-            }, VerbosityLevel.DEBUG);
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.StartingAggregatedUpload(request.GroupId);
 
-            if (request.GroupId == Guid.Empty)
-            {
-                return Failure("GroupId is required for aggregated membership upload.");
-            }
-
-            try
-            {
-                if (request.SyncJob == null)
+                if (request.GroupId == Guid.Empty)
                 {
-                    return Failure("Sync job information is required for aggregated membership upload.");
+                    return Failure("GroupId is required for aggregated membership upload.");
                 }
 
-                if (string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
+                try
                 {
-                    return Failure("Source membership file path is missing.");
+                    if (request.SyncJob == null)
+                    {
+                        return Failure("Sync job information is required for aggregated membership upload.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(request.SourceMembershipFilePath))
+                    {
+                        return Failure("Source membership file path is missing.");
+                    }
+
+                    var metadata = await _blobStorageRepository.GetBlobMetadataAsync(request.SourceMembershipFilePath);
+                    if (metadata == null || metadata.BlobStatus == BlobStatus.NotFound)
+                    {
+                        return Failure($"Source membership blob was not found at path {request.SourceMembershipFilePath}.");
+                    }
+                    var membersToAdd = DeserializeMembers(request.CompressedMembersToAddJson);
+                    var membersToRemove = DeserializeMembers(request.CompressedMembersToRemoveJson);
+
+                    var aggregatedMembership = BuildAggregatedMembership(request, membersToAdd, membersToRemove);
+                    var memberCount = aggregatedMembership.SourceMembers.Count;
+
+                    var currentTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
+                    var filePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, request.GroupId, "Aggregated", currentTime);
+
+                    var serializerOptions = new JsonSerializerOptions
+                    {
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
+                    };
+
+                    var content = TextCompressor.Compress(JsonSerializer.Serialize(aggregatedMembership, serializerOptions));
+                    await _blobStorageRepository.UploadFileAsync(filePath, content);
+
+                    _logger.AggregatedUploadComplete(filePath);
+
+                    return new AggregatedMembershipUploadResponse
+                    {
+                        IsSuccessful = true,
+                        FilePath = filePath,
+                        MemberCount = memberCount
+                    };
                 }
-
-                var metadata = await _blobStorageRepository.GetBlobMetadataAsync(request.SourceMembershipFilePath);
-                if (metadata == null || metadata.BlobStatus == BlobStatus.NotFound)
+                catch (Exception ex)
                 {
-                    return Failure($"Source membership blob was not found at path {request.SourceMembershipFilePath}.");
+                    _logger.AggregatedUploadFailed(ex, ex.Message);
+                    return Failure(ex.Message);
                 }
-                var membersToAdd = DeserializeMembers(request.CompressedMembersToAddJson);
-                var membersToRemove = DeserializeMembers(request.CompressedMembersToRemoveJson);
-
-                var aggregatedMembership = BuildAggregatedMembership(request, membersToAdd, membersToRemove);
-                var memberCount = aggregatedMembership.SourceMembers.Count;
-
-                var currentTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
-                var filePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, request.GroupId, "Aggregated", currentTime);
-
-                var serializerOptions = new JsonSerializerOptions
-                {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
-                };
-
-                var content = TextCompressor.Compress(JsonSerializer.Serialize(aggregatedMembership, serializerOptions));
-                await _blobStorageRepository.UploadFileAsync(filePath, content);
-
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Aggregated membership file uploaded to {filePath}",
-                    RunId = request.RunId
-                }, VerbosityLevel.DEBUG);
-
-                return new AggregatedMembershipUploadResponse
-                {
-                    IsSuccessful = true,
-                    FilePath = filePath,
-                    MemberCount = memberCount
-                };
-            }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Aggregated membership upload failed: {ex.Message}",
-                    RunId = request.RunId
-                }, VerbosityLevel.DEBUG);
-
-                return Failure(ex.Message);
             }
         }
 
@@ -114,9 +110,7 @@ namespace Hosts.MembershipAggregator
             ICollection<AzureADUser> membersToAdd,
             ICollection<AzureADUser> membersToRemove)
         {
-            var runId = request.RunId != Guid.Empty
-                ? request.RunId
-                : request.SyncJob.RunId ?? Guid.Empty;
+            var runId = request.SyncJob.RunId ?? Guid.Empty;
 
             var destination = new AzureADGroup
             {
@@ -151,7 +145,6 @@ namespace Hosts.MembershipAggregator
             ICollection<AzureADUser> membersToAdd,
             ICollection<AzureADUser> membersToRemove)
         {
-            // Reuse the add collection when possible to avoid additional allocations.
             List<AzureADUser> aggregatedMembers;
             if (membersToAdd is List<AzureADUser> addList)
             {

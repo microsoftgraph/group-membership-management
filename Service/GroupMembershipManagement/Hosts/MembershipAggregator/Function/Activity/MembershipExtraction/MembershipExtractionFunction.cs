@@ -2,10 +2,12 @@
 // Licensed under the MIT license.
 using Hosts.MembershipAggregator.Helpers;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,133 +19,126 @@ namespace Hosts.MembershipAggregator
 {
     public class MembershipExtractionFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<MembershipExtractionFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
-        public MembershipExtractionFunction(ILoggingRepository loggingRepository, IBlobStorageRepository blobStorageRepository)
+        public MembershipExtractionFunction(ILogger<MembershipExtractionFunction> logger, IBlobStorageRepository blobStorageRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
 
         [Function(nameof(MembershipExtractionFunction))]
         public async Task<MembershipExtractionResponse> ExtractMembershipAsync([ActivityTrigger] MembershipExtractionRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
-                Message = $"Extracting membership information for {request.CompletedParts.Count} parts",
-                RunId = request.SyncJob?.RunId
-            }, VerbosityLevel.DEBUG);
-
-            try
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
             {
-                var allGroupMemberships = new List<(string FilePath, string Content)>();
+                _logger.ExtractingMembershipInfo(request.CompletedParts.Count);
 
-                foreach (var part in request.CompletedParts)
+                try
                 {
-                    var blobResult = await _blobStorageRepository.DownloadFileAsync(part);
-                    if (blobResult.BlobStatus == BlobStatus.NotFound)
+                    var allGroupMemberships = new List<(string FilePath, string Content)>();
+
+                    foreach (var part in request.CompletedParts)
+                    {
+                        var blobResult = await _blobStorageRepository.DownloadFileAsync(part);
+                        if (blobResult.BlobStatus == BlobStatus.NotFound)
+                        {
+                            return new MembershipExtractionResponse
+                            {
+                                IsSuccessful = false,
+                                ErrorMessage = $"File {part} was not found"
+                            };
+                        }
+
+                        allGroupMemberships.Add((part, blobResult.Content));
+                    }
+
+                    var membershipResult = await ExtractMembershipInformationAsync(
+                        allGroupMemberships.ToArray(),
+                        request.DestinationPart);
+
+                    if (membershipResult.SourceMembership == null)
                     {
                         return new MembershipExtractionResponse
                         {
                             IsSuccessful = false,
-                            ErrorMessage = $"File {part} was not found"
+                            ErrorMessage = "SourceMembership could not be extracted"
                         };
                     }
 
-                    allGroupMemberships.Add((part, blobResult.Content));
+                    var destinationExpected = !string.IsNullOrWhiteSpace(request.DestinationPart) && request.CompletedParts.Contains(request.DestinationPart);
+                    if (destinationExpected && membershipResult.DestinationMembership == null)
+                    {
+                        return new MembershipExtractionResponse
+                        {
+                            IsSuccessful = false,
+                            ErrorMessage = "DestinationMembership could not be extracted"
+                        };
+                    }
+
+                    var destinationMemberCount = membershipResult.DestinationMembership?.SourceMembers?.Count ?? 0;
+
+                    var currentUtcDateTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
+                    var groupId = request.GroupId != Guid.Empty
+                                   ? request.GroupId
+                                   : request.SyncJob?.TargetOfficeGroupId ?? Guid.Empty;
+
+                    if (groupId == Guid.Empty)
+                    {
+                        throw new InvalidOperationException("Unable to determine a valid group identifier for membership extraction output.");
+                    }
+
+                    var serializerOptions = new JsonSerializerOptions
+                    {
+                        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
+                    };
+
+                    var sourceFilePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, groupId, "SourceMembership", currentUtcDateTime);
+                    var sourceContent = TextCompressor.Compress(JsonSerializer.Serialize(membershipResult.SourceMembership, serializerOptions));
+                    await _blobStorageRepository.UploadFileAsync(sourceFilePath, sourceContent);
+
+                    string destinationFilePath = null;
+                    if (membershipResult.DestinationMembership != null)
+                    {
+                        destinationFilePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, groupId, "DestinationMembership", currentUtcDateTime);
+                        var destinationContent = TextCompressor.Compress(JsonSerializer.Serialize(membershipResult.DestinationMembership, serializerOptions));
+                        await _blobStorageRepository.UploadFileAsync(destinationFilePath, destinationContent);
+                    }
+
+                    var sourceMemberCount = membershipResult.SourceMembership.SourceMembers.Count;
+
+                    _logger.MembershipExtractionSuccess(sourceMemberCount, destinationMemberCount);
+
+                    return new MembershipExtractionResponse
+                    {
+                        IsSuccessful = true,
+                        SourceMembershipFilePath = sourceFilePath,
+                        DestinationMembershipFilePath = destinationFilePath,
+                        SourceMemberCount = sourceMemberCount,
+                        DestinationMemberCount = destinationMemberCount
+                    };
                 }
-
-                var membershipResult = await ExtractMembershipInformationAsync(
-                    allGroupMemberships.ToArray(),
-                    request.DestinationPart,
-                    request.SyncJob?.RunId ?? Guid.Empty);
-
-                if (membershipResult.SourceMembership == null)
+                catch (Exception ex)
                 {
+                    _logger.MembershipExtractionError(ex, ex.Message);
+
                     return new MembershipExtractionResponse
                     {
                         IsSuccessful = false,
-                        ErrorMessage = "SourceMembership could not be extracted"
+                        ErrorMessage = ex.Message
                     };
                 }
-
-                var destinationExpected = !string.IsNullOrWhiteSpace(request.DestinationPart) && request.CompletedParts.Contains(request.DestinationPart);
-                if (destinationExpected && membershipResult.DestinationMembership == null)
-                {
-                    return new MembershipExtractionResponse
-                    {
-                        IsSuccessful = false,
-                        ErrorMessage = "DestinationMembership could not be extracted"
-                    };
-                }
-
-                var destinationMemberCount = membershipResult.DestinationMembership?.SourceMembers?.Count ?? 0;
-
-                var currentUtcDateTime = request.CurrentUtcDateTime == default ? DateTime.UtcNow : request.CurrentUtcDateTime;
-                var groupId = request.GroupId != Guid.Empty
-                               ? request.GroupId
-                               : request.SyncJob?.TargetOfficeGroupId ?? Guid.Empty;
-
-                if (groupId == Guid.Empty)
-                {
-                    throw new InvalidOperationException("Unable to determine a valid group identifier for membership extraction output.");
-                }
-
-                var serializerOptions = new JsonSerializerOptions
-                {
-                    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault
-                };
-
-                var sourceFilePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, groupId, "SourceMembership", currentUtcDateTime);
-                var sourceContent = TextCompressor.Compress(JsonSerializer.Serialize(membershipResult.SourceMembership, serializerOptions));
-                await _blobStorageRepository.UploadFileAsync(sourceFilePath, sourceContent);
-
-                string destinationFilePath = null;
-                if (membershipResult.DestinationMembership != null)
-                {
-                    destinationFilePath = MembershipFilePathHelper.BuildFilePath(request.SyncJob, groupId, "DestinationMembership", currentUtcDateTime);
-                    var destinationContent = TextCompressor.Compress(JsonSerializer.Serialize(membershipResult.DestinationMembership, serializerOptions));
-                    await _blobStorageRepository.UploadFileAsync(destinationFilePath, destinationContent);
-                }
-
-                var sourceMemberCount = membershipResult.SourceMembership.SourceMembers.Count;
-
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Successfully extracted membership information with {sourceMemberCount} source members and {destinationMemberCount} destination members",
-                    RunId = request.SyncJob?.RunId
-                }, VerbosityLevel.DEBUG);
-
-                return new MembershipExtractionResponse
-                {
-                    IsSuccessful = true,
-                    SourceMembershipFilePath = sourceFilePath,
-                    DestinationMembershipFilePath = destinationFilePath,
-                    SourceMemberCount = sourceMemberCount,
-                    DestinationMemberCount = destinationMemberCount
-                };
-            }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error extracting membership information: {ex.Message}",
-                    RunId = request.SyncJob?.RunId
-                }, VerbosityLevel.DEBUG);
-
-                return new MembershipExtractionResponse
-                {
-                    IsSuccessful = false,
-                    ErrorMessage = ex.Message
-                };
             }
         }
 
         private async Task<(GroupMembership SourceMembership, GroupMembership DestinationMembership)> ExtractMembershipInformationAsync(
             (string FilePath, string Content)[] allGroupMemberships,
-            string destinationPath,
-            Guid runId)
+            string destinationPath)
         {
             var sourceGroupsMemberships = new List<GroupMembership>();
 
@@ -167,20 +162,12 @@ namespace Hosts.MembershipAggregator
                 }
                 catch (FormatException ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Failed to process file '{membership.FilePath}': {ex.Message}",
-                        RunId = runId
-                    }, VerbosityLevel.INFO);
+                    _logger.FileProcessingFailed(ex, membership.FilePath, ex.Message);
                     throw new InvalidOperationException($"Failed to process content from file '{membership.FilePath}': {ex.Message}", ex);
                 }
                 catch (JsonException ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"JSON deserialization failed for file '{membership.FilePath}': {ex.Message}",
-                        RunId = runId
-                    }, VerbosityLevel.INFO);
+                    _logger.JsonDeserializationFailed(ex, membership.FilePath, ex.Message);
                     throw new InvalidOperationException($"Failed to deserialize JSON content from file '{membership.FilePath}': {ex.Message}", ex);
                 }
             }
@@ -213,11 +200,7 @@ namespace Hosts.MembershipAggregator
 
             try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Processing destination membership file: {destinationPath}, Content length: {destinationMembershipFile.Content?.Length ?? 0}",
-                    RunId = runId
-                }, VerbosityLevel.DEBUG);
+                _logger.ProcessingDestinationFile(destinationPath, destinationMembershipFile.Content?.Length ?? 0);
 
                 if (string.IsNullOrEmpty(destinationMembershipFile.Content))
                 {
@@ -235,20 +218,12 @@ namespace Hosts.MembershipAggregator
             }
             catch (FormatException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Failed to process destination file '{destinationPath}': {ex.Message}",
-                    RunId = runId
-                }, VerbosityLevel.INFO);
+                _logger.DestinationFileProcessingFailed(ex, destinationPath, ex.Message);
                 throw new InvalidOperationException($"Failed to process content from destination file '{destinationPath}': {ex.Message}", ex);
             }
             catch (JsonException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"JSON deserialization failed for destination file '{destinationPath}': {ex.Message}",
-                    RunId = runId
-                }, VerbosityLevel.INFO);
+                _logger.DestinationJsonDeserializationFailed(ex, destinationPath, ex.Message);
                 throw new InvalidOperationException($"Failed to deserialize JSON content from destination file '{destinationPath}': {ex.Message}", ex);
             }
         }

@@ -2,34 +2,41 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class GetGroupFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IDeltaCalculatorService _deltaCalculatorService = null;
+        private readonly ILogger<GetGroupFunction> _logger;
+        private readonly IDeltaCalculatorService _deltaCalculatorService;
 
-        public GetGroupFunction(ILoggingRepository loggingRepository, IDeltaCalculatorService deltaCalculatorService)
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, IDeltaCalculatorService deltaCalculatorService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _deltaCalculatorService = deltaCalculatorService ?? throw new ArgumentNullException(nameof(deltaCalculatorService));
         }
 
         [Function(nameof(GetGroupFunction))]
-        public async Task<Guid> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<Guid> GetGroupAsync([ActivityTrigger] GetGroupRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _deltaCalculatorService.RunId = syncJob.RunId ?? Guid.Empty;
-            if (syncJob == null) return Guid.Empty;
-            var groupId = await _deltaCalculatorService.GetGroupIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return groupId;
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(GetGroupFunction));
+                if (request.SyncJob == null) return Guid.Empty;
+                var groupId = await _deltaCalculatorService.GetGroupIdAsync(request.SyncJob);
+                _logger.FunctionCompleted(nameof(GetGroupFunction));
+                return groupId;
+            }
         }
     }
 }

@@ -1,31 +1,41 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
     public class JobReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobReaderFunction> _logger;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
 
-        public JobReaderFunction(ILoggingRepository loggingRepository, IDatabaseSyncJobsRepository syncJobRepository)
+        public JobReaderFunction(ILogger<JobReaderFunction> logger, IDatabaseSyncJobsRepository syncJobRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
         }
 
         [Function(nameof(JobReaderFunction))]
         public async Task<SyncJob> GetSyncJobAsync([ActivityTrigger] JobReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            var syncJob = await _syncJobRepository.GetSyncJobAsync(request.JobId);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return syncJob;
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(JobReaderFunction));
+                var syncJob = await _syncJobRepository.GetSyncJobAsync(request.JobId);
+                _logger.FunctionCompleted(nameof(JobReaderFunction));
+                return syncJob;
+            }
         }
     }
 }
