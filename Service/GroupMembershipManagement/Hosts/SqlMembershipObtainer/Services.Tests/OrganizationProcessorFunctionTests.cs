@@ -1,6 +1,8 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using Models;
@@ -60,9 +62,11 @@ namespace Services.Tests
                 },
                 GroupId = Guid.NewGuid(),
                 CurrentPart = 1,
+                TotalParts = 1,
                 Exclusionary = false
             };
 
+            orgProcessorContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
             orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync("sometable");
@@ -72,8 +76,15 @@ namespace Services.Tests
 
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
+
+            orgProcessorContext.Verify(x => x.CallActivityAsync<string>(
+                nameof(TableNameReaderFunction),
+                It.Is<TableNameReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
+                nameof(ManagerOrgReaderFunction),
+                It.Is<ManagerOrgReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()), Times.Never());
         }
@@ -94,22 +105,31 @@ namespace Services.Tests
                 },
                 GroupId = Guid.NewGuid(),
                 CurrentPart = 1,
+                TotalParts = 1,
                 Exclusionary = false
             };
 
+            orgProcessorContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
             orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync("sometable");
             orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()))
+                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(new MembershipFileResult());
 
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
+
+            orgProcessorContext.Verify(x => x.CallActivityAsync<string>(
+                nameof(TableNameReaderFunction),
+                It.Is<TableNameReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             orgProcessorContext.Verify(x => x.CallActivityAsync<MembershipFileResult>(
-                nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()), Times.Once());
+                nameof(ChildEntitiesFilterFunction),
+                It.Is<ChildEntitiesFilterRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
+                It.IsAny<TaskOptions>()), Times.Once());
         }
     }
 }

@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -34,7 +36,7 @@ namespace Services.Tests
             var syncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
             var groupMembership = default(GroupMembership);
@@ -72,7 +74,7 @@ namespace Services.Tests
                                             syncJobStatusService.Object,
                                             groupsRepository.Object,
                                             channelsRepository.Object,
-                                            loggingRepository.Object,
+                                            logger,
                                             telemetryClient,
                                             dryRunValue.Object,
                                             dfService.Object);
@@ -81,12 +83,6 @@ namespace Services.Tests
 
             blobStorageRepository.Verify(x => x.UploadFileAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()), Times.Once());
             Assert.AreEqual(profiles.Count, groupMembership.SourceMembers.Count);
-
-            loggingRepository.Verify(x => x.LogMessageAsync(
-                                            It.Is<LogMessage>(m => m.Message.StartsWith("SqlMembershipObtainer service completed")),
-                                            It.IsAny<VerbosityLevel>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>()), Times.Once());
         }
 
         [TestMethod]
@@ -97,7 +93,7 @@ namespace Services.Tests
             var syncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
             var dfService = new Mock<IDataFactoryService>();
@@ -120,27 +116,21 @@ namespace Services.Tests
                 .Setup(x => x.GetChildEntitiesAsync(filter, 0, tableName, depth))
                 .ReturnsAsync(personEntities);
 
-            var capturedProfiles = new List<GraphProfileInformation>();
-            var expectedResponse = new MembershipFileResult { Status = SyncStatus.InProgress, FilePath = "file-path" };
-
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
                                             syncJobStatusService.Object,
                                             groupsRepository.Object,
                                             channelsRepository.Object,
-                                            loggingRepository.Object,
+                                            logger,
                                             telemetryClient,
                                             dryRunValue.Object,
                                             dfService.Object);
 
             var result = await sqlMembershipObtainerService.GetChildEntitiesAsync(filter, 0, tableName, depth, syncJob, groupId, currentPart, exclusionary);
 
-            loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains($"Retrieved a total of {personEntities.Count} records from {tableName} table")),
-                It.IsAny<VerbosityLevel>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()), Times.Once());
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.InProgress, result.Status);
         }
 
         [TestMethod]
@@ -151,7 +141,7 @@ namespace Services.Tests
             var syncJobStatusService = new Mock<ISyncJobStatusService>();
             var groupsRepository = new Mock<IDatabaseGroupsRepository>();
             var channelsRepository = new Mock<IDatabaseChannelsRepository>();
-            var loggingRepository = new Mock<ILoggingRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
             var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             var dryRunValue = new Mock<IDryRunValue>();
             var dfService = new Mock<IDataFactoryService>();
@@ -173,27 +163,21 @@ namespace Services.Tests
                 .Setup(x => x.FilterChildEntitiesAsync(query, tableName))
                 .ReturnsAsync(personEntities);
 
-            var capturedProfiles = new List<GraphProfileInformation>();
-            var expectedResponse = new MembershipFileResult { Status = SyncStatus.InProgress, FilePath = "file-path" };
-
             var sqlMembershipObtainerService = new SqlMembershipObtainerService(
                                             sqlMembershipRepository.Object,
                                             blobStorageRepository.Object,
                                             syncJobStatusService.Object,
                                             groupsRepository.Object,
                                             channelsRepository.Object,
-                                            loggingRepository.Object,
+                                            logger,
                                             telemetryClient,
                                             dryRunValue.Object,
                                             dfService.Object);
 
             var result = await sqlMembershipObtainerService.FilterChildEntitiesAsync(query, tableName, syncJob, groupId, currentPart, exclusionary);
 
-            loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains($"Retrieved a total of {personEntities.Count} records from {tableName} table")),
-                It.IsAny<VerbosityLevel>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()), Times.Once());
+            Assert.IsNotNull(result);
+            Assert.AreEqual(SyncStatus.InProgress, result.Status);
         }
 
     }
