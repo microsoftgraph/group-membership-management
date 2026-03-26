@@ -14,7 +14,8 @@ export enum SyncStatus {
   PendingReview = 'PendingReview',
   PendingConfiguration = 'PendingConfiguration',
   SubmissionRejected = 'SubmissionRejected',
-  NestedGroupsFound = 'NestedGroupsFound'
+  NestedGroupsFound = 'NestedGroupsFound',
+  GuestUsersCannotBeAddedToUnifiedGroup = 'GuestUsersCannotBeAddedToUnifiedGroup'
 }
 
 export enum ActionRequired {
@@ -29,6 +30,7 @@ export enum ActionRequired {
   PendingConfiguration = 'System Configuration in Progress',
   SubmissionRejected = 'Submission Rejected',
   NestedGroupsFound = 'Nested Groups Detected',
+  GuestUsersCannotBeAddedToUnifiedGroup = 'Guest Users Not Supported'
 };
 
 export enum RunHistoryStatus {

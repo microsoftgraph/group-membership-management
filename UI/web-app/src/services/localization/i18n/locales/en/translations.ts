@@ -423,6 +423,7 @@ export const strings: IStrings = {
             pendingConfiguration: 'System Configuration in Progress',
             submissionRejected: 'Submission Rejected',
             nestedGroupsFound: 'Nested Groups Detected',
+            guestUsersCannotBeAddedToUnifiedGroup: 'Guest Users Not Supported',
           },
         },
         destinationType: {

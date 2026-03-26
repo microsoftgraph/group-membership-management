@@ -146,6 +146,10 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
     {
       key: SyncStatus.NestedGroupsFound,
       text: strings.JobsList.JobsListFilter.filters.actionRequired.options.nestedGroupsFound,
+    },
+    {
+      key: SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
+      text: strings.JobsList.JobsListFilter.filters.actionRequired.options.guestUsersCannotBeAddedToUnifiedGroup,
     }
   ];
 

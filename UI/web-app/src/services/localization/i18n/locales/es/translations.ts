@@ -425,6 +425,7 @@ export const strings: IStrings = {
             pendingConfiguration: 'Configuración del sistema en progreso',
             submissionRejected: 'Solicitud rechazada',
             nestedGroupsFound: 'Grupos anidados detectados',
+            guestUsersCannotBeAddedToUnifiedGroup: 'Usuarios invitados no compatibles',
           },
         },
         destinationType: {

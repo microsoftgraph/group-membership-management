@@ -418,6 +418,7 @@ export type IStrings = {
             pendingConfiguration: string;
             submissionRejected: string;
             nestedGroupsFound: string;
+            guestUsersCannotBeAddedToUnifiedGroup: string;
           };
         };
         destinationType: {

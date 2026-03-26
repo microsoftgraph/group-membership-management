@@ -61,6 +61,9 @@ export const processJob = (job: Job): Job => {
     case SyncStatus.NestedGroupsFound:
       job['actionRequired'] = ActionRequired.NestedGroupsFound;
       break;
+    case SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup:
+      job['actionRequired'] = ActionRequired.GuestUsersCannotBeAddedToUnifiedGroup;
+      break;
   }
 
   return job;
