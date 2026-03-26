@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Repositories.Contracts;
 using System;
@@ -19,7 +20,6 @@ namespace Services.Tests
     [TestClass]
     public class AggregatedMembershipUploaderFunctionTests
     {
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private AggregatedMembershipUploaderFunction _function;
         private Dictionary<string, string> _uploadedBlobs;
@@ -30,9 +30,8 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _function = new AggregatedMembershipUploaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            _function = new AggregatedMembershipUploaderFunction(NullLogger<AggregatedMembershipUploaderFunction>.Instance, _blobStorageRepository.Object);
             _uploadedBlobs = new Dictionary<string, string>();
             _existingSourcePaths = new HashSet<string>();
             _groupId = Guid.NewGuid();
@@ -75,12 +74,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(membersToAdd)),
                 CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(membersToRemove)),
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -110,12 +110,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = string.Empty,
                 CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(removeList)),
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -135,12 +136,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = "  ",
                 CompressedMembersToAddJson = string.Empty,
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -171,7 +173,6 @@ namespace Services.Tests
 
             var expectedAdds = addMembers.Count;
             var expectedRemoves = removeMembers.Count;
-            var requestRunId = Guid.NewGuid();
             var currentTime = new DateTime(2025, 1, 5, 12, 30, 0, DateTimeKind.Utc);
 
             _syncJob.RunId = Guid.NewGuid();
@@ -183,12 +184,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(addMembers)),
                 CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(removeMembers)),
-                CurrentUtcDateTime = currentTime,
-                RunId = requestRunId
+                CurrentUtcDateTime = currentTime
             };
 
             // Act
@@ -205,7 +207,7 @@ namespace Services.Tests
             var aggregatedMembership = GetUploadedMembership(response.FilePath);
 
             Assert.IsNotNull(aggregatedMembership);
-            Assert.AreEqual(requestRunId, aggregatedMembership.RunId);
+            Assert.AreEqual(_syncJob.RunId, aggregatedMembership.RunId);
             Assert.AreEqual(_syncJob.Id, aggregatedMembership.SyncJobId);
             Assert.AreEqual(_syncJob.Query, aggregatedMembership.Query);
             Assert.AreEqual(_syncJob.IsDryRunEnabled, aggregatedMembership.MembershipObtainerDryRunEnabled);
@@ -218,56 +220,19 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task UploadAggregatedMembershipAsync_WithEmptyRequestRunId_UsesSyncJobRunId()
-        {
-            // Arrange
-            var sourcePath = $"/{_groupId}/source.json";
-            _existingSourcePaths.Add(sourcePath);
-
-            var currentTime = new DateTime(2025, 2, 10, 9, 15, 0, DateTimeKind.Utc);
-            var syncJobRunId = Guid.NewGuid();
-            _syncJob.RunId = syncJobRunId;
-
-            var request = new AggregatedMembershipUploadRequest
-            {
-                SyncJob = _syncJob,
-                GroupId = _groupId,
-                SourceMembershipFilePath = sourcePath,
-                CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
-                CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
-                CurrentUtcDateTime = currentTime,
-                RunId = Guid.Empty
-            };
-
-            // Act
-            var response = await _function.UploadAggregatedMembershipAsync(request);
-
-            // Assert
-            Assert.IsTrue(response.IsSuccessful);
-
-            var expectedFilePath = MembershipFilePathHelper.BuildFilePath(_syncJob, _groupId, "Aggregated", currentTime);
-            Assert.AreEqual(expectedFilePath, response.FilePath);
-
-            var aggregatedMembership = GetUploadedMembership(response.FilePath);
-
-            Assert.IsNotNull(aggregatedMembership);
-            Assert.AreEqual(syncJobRunId, aggregatedMembership.RunId);
-            Assert.AreEqual(syncJobRunId, aggregatedMembership.SyncJob.RunId);
-        }
-
-        [TestMethod]
         public async Task UploadAggregatedMembershipAsync_WithNullSyncJob_ReturnsFailure()
         {
             // Arrange
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = null!,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = $"/{_groupId}/source.json",
                 CompressedMembersToAddJson = string.Empty,
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -286,12 +251,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = Guid.Empty,
                 SourceMembershipFilePath = "/ignored/path.json",
                 CompressedMembersToAddJson = string.Empty,
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -315,12 +281,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = string.Empty,
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -346,12 +313,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = string.Empty,
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -370,12 +338,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = "/missing/path.json",
                 CompressedMembersToAddJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
                 CompressedMembersToRemoveJson = TextCompressor.Compress(JsonSerializer.Serialize(Array.Empty<AzureADUser>())),
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -397,12 +366,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = "not-valid-base64",
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act
@@ -426,12 +396,13 @@ namespace Services.Tests
             var request = new AggregatedMembershipUploadRequest
             {
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 SourceMembershipFilePath = sourcePath,
                 CompressedMembersToAddJson = invalidJson,
                 CompressedMembersToRemoveJson = string.Empty,
-                CurrentUtcDateTime = DateTime.UtcNow,
-                RunId = Guid.NewGuid()
+                CurrentUtcDateTime = DateTime.UtcNow
             };
 
             // Act

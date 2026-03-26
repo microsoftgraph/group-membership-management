@@ -6,6 +6,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Repositories.Contracts;
 using System;
@@ -19,7 +20,6 @@ namespace Services.Tests
     [TestClass]
     public class MembershipExtractionFunctionTests
     {
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private MembershipExtractionFunction _membershipExtractionFunction;
         private SyncJob _syncJob;
@@ -29,9 +29,8 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _membershipExtractionFunction = new MembershipExtractionFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            _membershipExtractionFunction = new MembershipExtractionFunction(NullLogger<MembershipExtractionFunction>.Instance, _blobStorageRepository.Object);
 
             _uploadedFiles = new Dictionary<string, string>();
             _blobStorageRepository
@@ -55,7 +54,7 @@ namespace Services.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(() => 
-                new MembershipExtractionFunction(null, _blobStorageRepository.Object));
+                new MembershipExtractionFunction(null!, _blobStorageRepository.Object));
         }
 
         [TestMethod]
@@ -63,7 +62,7 @@ namespace Services.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(() => 
-                new MembershipExtractionFunction(_loggingRepository.Object, null));
+                new MembershipExtractionFunction(NullLogger<MembershipExtractionFunction>.Instance, null!));
         }
 
         [TestMethod]
@@ -85,15 +84,6 @@ namespace Services.Tests
 
             Assert.AreEqual(response.SourceMemberCount, sourceMembership.SourceMembers.Count);
             Assert.AreEqual(response.DestinationMemberCount, destinationMembership.SourceMembers.Count);
-            
-            // Verify logging calls
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-            
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Successfully extracted membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -133,11 +123,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.AreEqual(exceptionMessage, response.ErrorMessage);
-            
-            // Verify error logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -149,6 +134,8 @@ namespace Services.Tests
                 CompletedParts = new List<string> { "destination" }, // Only destination, no sources
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 CurrentUtcDateTime = DateTime.UtcNow
             };
@@ -174,6 +161,8 @@ namespace Services.Tests
                 CompletedParts = new List<string> { "source1", "source2", "non-existent-destination" },
                 DestinationPart = "non-existent-destination",
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 CurrentUtcDateTime = DateTime.UtcNow
             };
@@ -342,7 +331,9 @@ namespace Services.Tests
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
                 GroupId = _groupId,
-                CurrentUtcDateTime = DateTime.UtcNow
+                CurrentUtcDateTime = DateTime.UtcNow,
+                CurrentPart = 1,
+                TotalParts = 1
             };
 
             var sourceUsers = CreateUsers(7);
@@ -468,7 +459,9 @@ namespace Services.Tests
                 DestinationPart = "missing-destination", 
                 SyncJob = _syncJob,
                 GroupId = _groupId,
-                CurrentUtcDateTime = DateTime.UtcNow
+                CurrentUtcDateTime = DateTime.UtcNow,
+                CurrentPart = 1,
+                TotalParts = 1
             };
 
             var sourceUsers = CreateUsers(3);
@@ -609,6 +602,8 @@ namespace Services.Tests
                 CompletedParts = new List<string> { "source1" },
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 CurrentUtcDateTime = DateTime.UtcNow
             };
@@ -628,11 +623,6 @@ namespace Services.Tests
             Assert.IsNotNull(response.ErrorMessage, "ErrorMessage should not be null");
             Assert.IsTrue(response.ErrorMessage.Contains("Content for file"), $"Expected 'Content for file' in error message, but got: {response.ErrorMessage}");
             Assert.IsTrue(response.ErrorMessage.Contains("is null or empty"), $"Expected 'is null or empty' in error message, but got: {response.ErrorMessage}");
-            
-            // Verify error logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -645,6 +635,8 @@ namespace Services.Tests
                 CompletedParts = new List<string> { "source1" },
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 CurrentUtcDateTime = DateTime.UtcNow
             };
@@ -664,11 +656,6 @@ namespace Services.Tests
             Assert.IsNotNull(response.ErrorMessage, "ErrorMessage should not be null");
             Assert.IsTrue(response.ErrorMessage.Contains("Content for file"), $"Expected 'Content for file' in error message, but got: {response.ErrorMessage}");
             Assert.IsTrue(response.ErrorMessage.Contains("is null or empty"), $"Expected 'is null or empty' in error message, but got: {response.ErrorMessage}");
-            
-            // Verify error logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -745,11 +732,6 @@ namespace Services.Tests
             Assert.AreEqual(response.SourceMemberCount, sourceFromResponse.SourceMembers.Count);
             Assert.AreEqual(2, destinationFromResponse.SourceMembers.Count);
             Assert.AreEqual(2, response.DestinationMemberCount);
-            
-            // Verify destination processing debug logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Processing destination membership file: destination")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -780,11 +762,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsTrue(response.ErrorMessage.Contains("Content for destination file 'destination' is null or empty"));
-            
-            // Verify error logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -815,11 +792,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsTrue(response.ErrorMessage.Contains("Content for destination file 'destination' is null or empty"));
-            
-            // Verify error logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -843,11 +815,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsTrue(!string.IsNullOrEmpty(response.ErrorMessage)); // JSON errors will be in ex.Message
-            
-            // Verify specific error logging for JSON deserialization
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -878,11 +845,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsTrue(response.ErrorMessage.Contains("Failed to deserialize JSON content from destination file 'destination'"));
-            
-            // Verify specific error logging for destination JSON deserialization
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("JSON deserialization failed for destination file 'destination'")), 
-                VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -906,11 +868,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsTrue(!string.IsNullOrEmpty(response.ErrorMessage)); // Format errors will be in ex.Message
-            
-            // Verify specific error logging for format error
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -941,11 +898,6 @@ namespace Services.Tests
             // Assert
             Assert.IsFalse(response.IsSuccessful);
             Assert.IsTrue(!string.IsNullOrEmpty(response.ErrorMessage)); // Format errors will be in ex.Message
-            
-            // Verify specific error logging for destination format error
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Error extracting membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -997,7 +949,9 @@ namespace Services.Tests
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
                 GroupId = _groupId,
-                CurrentUtcDateTime = DateTime.UtcNow
+                CurrentUtcDateTime = DateTime.UtcNow,
+                CurrentPart = 1,
+                TotalParts = 1
             };
 
             var sourceUsers1 = CreateUsers(3);
@@ -1018,11 +972,6 @@ namespace Services.Tests
             Assert.IsTrue(string.IsNullOrWhiteSpace(response.DestinationMembershipFilePath)); // Expected to be null when destination not in completed parts
             Assert.AreEqual(5, extractedSource.SourceMembers.Count); // 3 + 2 users from both sources
             Assert.AreEqual(5, response.SourceMemberCount);
-            
-            // Verify success logging
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.Contains("Successfully extracted membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod] 
@@ -1038,19 +987,6 @@ namespace Services.Tests
 
             // Assert
             Assert.IsTrue(response.IsSuccessful);
-            
-            // Verify all expected logging calls
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Extracting membership information for")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-                
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Processing destination membership file: destination")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
-                
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(m => m.Message.StartsWith("Successfully extracted membership information")), 
-                VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -1096,7 +1032,9 @@ namespace Services.Tests
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
                 GroupId = _groupId,
-                CurrentUtcDateTime = DateTime.UtcNow
+                CurrentUtcDateTime = DateTime.UtcNow,
+                CurrentPart = 1,
+                TotalParts = 1
             };
 
             var destinationUsers = CreateUsers(3);
@@ -1124,7 +1062,9 @@ namespace Services.Tests
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
                 GroupId = _groupId,
-                CurrentUtcDateTime = DateTime.UtcNow
+                CurrentUtcDateTime = DateTime.UtcNow,
+                CurrentPart = 1,
+                TotalParts = 1
             };
 
             var sourceUsers = CreateUsers(3);
@@ -1157,6 +1097,8 @@ namespace Services.Tests
                 CompletedParts = new List<string> { "source1", "source2", "destination" },
                 DestinationPart = "destination",
                 SyncJob = _syncJob,
+                CurrentPart = 1,
+                TotalParts = 1,
                 GroupId = _groupId,
                 CurrentUtcDateTime = DateTime.UtcNow
             };

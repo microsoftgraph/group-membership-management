@@ -5,10 +5,11 @@ using Azure.Messaging.ServiceBus;
 using Hosts.MembershipAggregator;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Repositories.Contracts;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -23,14 +24,12 @@ namespace Services.Tests
         private SyncJob _syncJob;
         private Group _group;
         private string _instanceId;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<DurableTaskClient> _durableClient;
 
         [TestInitialize]
         public void SetupTest()
         {
             _instanceId = "1234567890";
-            _loggingRepository = new Mock<ILoggingRepository>();
             _durableClient = new Mock<DurableTaskClient>("test");
             _syncJob = new SyncJob
             {
@@ -48,14 +47,18 @@ namespace Services.Tests
                 SyncJobId = _syncJob.Id
             };
             _durableClient
-                  .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(It.IsAny<TaskName>(), It.IsAny<MembershipAggregatorHttpRequest>(), It.IsAny<CancellationToken>()))
+                  .Setup(x => x.ScheduleNewOrchestrationInstanceAsync(
+                      It.IsAny<TaskName>(),
+                      It.IsAny<object>(),
+                      It.IsAny<StartOrchestrationOptions>(),
+                      It.IsAny<CancellationToken>()))
                   .ReturnsAsync(_instanceId);
         }
 
         [TestMethod]
         public async Task ProcessServiceBusMessageAsync()
         {
-            var starterFunction = new StarterFunction(_loggingRepository.Object);
+            var starterFunction = new StarterFunction(NullLogger<StarterFunction>.Instance);
             var content = new MembershipAggregatorHttpRequest
             {
                 FilePath = "file/path/name.json",
@@ -70,11 +73,11 @@ namespace Services.Tests
 
             await starterFunction.ProcessServiceBusMessageAsync(message, _durableClient.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.StartsWith("Processing message")),
-                        VerbosityLevel.INFO,
-                        It.IsAny<string>(),
-                        It.IsAny<string>()), Times.Once());
+            _durableClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
+                It.IsAny<TaskName>(),
+                It.IsAny<object>(),
+                It.IsAny<StartOrchestrationOptions>(),
+                It.IsAny<CancellationToken>()), Times.Once());
         }
     }
 }

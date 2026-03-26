@@ -7,10 +7,10 @@ using Hosts.MembershipAggregator;
 using MembershipAggregator.Services.Entities;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
-using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
@@ -41,9 +41,7 @@ namespace Services.Tests
         private TelemetryClient _telemetryClient;
         private bool _hasSourceCompleted = true;
 
-        private Mock<IConfiguration> _configuration;
         private JobTrackerEntity _jobTrackerEntity;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<TaskOrchestrationContext> _durableContext;
         private Mock<IServiceBusTopicsRepository> _serviceBusTopicsRepository;
@@ -58,10 +56,8 @@ namespace Services.Tests
         [TestInitialize]
         public void SetupTest()
         {
-            _configuration = new Mock<IConfiguration>();
             _jobTrackerEntity = new JobTrackerEntity();
             _entityFeature = new Mock<TaskOrchestrationEntityFeature>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _durableContext = new Mock<TaskOrchestrationContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
@@ -118,18 +114,16 @@ namespace Services.Tests
                 MembershipDeltaStatus = MembershipDeltaStatus.Ok
             };
 
-            _configuration.Setup(x => x[It.Is<string>(x => x == "graphUpdaterUrl")])
-                            .Returns("http://graph-updater-url");
-            _configuration.Setup(x => x[It.Is<string>(x => x == "graphUpdaterFunctionKey")])
-                            .Returns("112233445566");
-
             _syncJobRepository.Setup(x => x.GetSyncJobAsync(It.IsAny<Guid>()))
                                 .ReturnsAsync(() => _syncJob);
+
+            _durableContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>()))
+                            .Returns(NullLogger.Instance);
 
             _durableContext.Setup(x => x.GetInput<MembershipAggregatorHttpRequest>())
                             .Returns(() => _membershipAggregatorHttpRequest);
 
-            _durableContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+            _durableContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>()))
                             .ReturnsAsync(_group.GroupId);
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(TelemetryTrackerFunction), It.IsAny<TelemetryTrackerRequest>(), It.IsAny<TaskOptions>()))
@@ -138,13 +132,6 @@ namespace Services.Tests
                         var telemetryRequest = request as TelemetryTrackerRequest;
                         await CallTelemetryTrackerFunctionAsync(telemetryRequest);
                     });
-
-            _durableContext.Setup(x => x.CallActivityAsync(nameof(LoggerFunction), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                            .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
-                            {
-                                var loggerRequest = request as LoggerRequest;
-                                await CallLoggerFunctionAsync(loggerRequest);
-                            });
 
             _durableContext.Setup(x => x.CallActivityAsync(nameof(JobStatusUpdaterFunction), It.IsAny<JobStatusUpdaterRequest>(), It.IsAny<TaskOptions>()))
                             .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
@@ -161,11 +148,11 @@ namespace Services.Tests
                                                 )
                             .ReturnsAsync(() => _membershipSubOrchestratorResponse);
 
-            _durableContext.Setup(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<MembershipHttpRequest>(), It.IsAny<TaskOptions>()))
+            _durableContext.Setup(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()))
                            .Callback<TaskName, object, TaskOptions>(async (name, request, taskOptions) =>
                            {
-                               var membershipRequest = request as MembershipHttpRequest;
-                               await CallTopicMessageSenderFunctionAsync(membershipRequest);
+                               var topicRequest = request as TopicMessageSenderRequest;
+                               await CallTopicMessageSenderFunctionAsync(topicRequest.MembershipHttpRequest);
                            });
 
             
@@ -194,13 +181,12 @@ namespace Services.Tests
         [TestMethod]
         public async Task HandleMissingGroupIdAsync()
         {
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
-            _durableContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+            var orchestratorFunction = new OrchestratorFunction();
+            _durableContext.Setup(x => x.CallActivityAsync<Guid>(nameof(GetGroupFunction), It.IsAny<GetGroupRequest>(), It.IsAny<TaskOptions>()))
               .ReturnsAsync(Guid.Empty);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unable to get group id")), VerbosityLevel.DEBUG, It.IsAny<string>(), It.IsAny<string>()));
-                        _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
+            _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(
                                                                                                                                         It.IsAny<SyncJob>(),
                                                                                                                                         It.Is<SyncStatus?>(status => status == SyncStatus.Error),
                                                                                                                                         It.IsAny<SyncJobHistory>(),
@@ -210,11 +196,11 @@ namespace Services.Tests
         [TestMethod]
         public async Task TestJobWithSinglePartAsync()
         {
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -231,11 +217,11 @@ namespace Services.Tests
                 IsDestinationPart = false
             };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNull(_jobTrackerEntity.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -251,12 +237,12 @@ namespace Services.Tests
                 IsDestinationPart = true
             };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.IsNotNull(_jobTrackerEntity.JobState.DestinationPart);
             Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.JobState.DestinationPart);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
+            _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -265,11 +251,10 @@ namespace Services.Tests
         {
             _membershipSubOrchestratorResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+            _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -284,11 +269,10 @@ namespace Services.Tests
                                                )
                             .Throws<FileNotFoundException>();
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await Assert.ThrowsExceptionAsync<FileNotFoundException>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             _durableContext.Verify(x => x.CallActivityAsync(
                                                             nameof(JobStatusUpdaterFunction),
                                                             It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.FileNotFound),
@@ -309,12 +293,10 @@ namespace Services.Tests
                                                )
                             .Throws<Exception>();
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message == "Calling GraphUpdater"), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("GraphUpdater response Code")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Never());
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Unexpected exception")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()), Times.Once());
+            _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             _durableContext.Verify(x => x.CallActivityAsync(
                                                             nameof(JobStatusUpdaterFunction),
                                                             It.Is<JobStatusUpdaterRequest>(x => x.Status == SyncStatus.Error),
@@ -344,11 +326,10 @@ namespace Services.Tests
                 laneSize = message.ApplicationProperties["LaneSize"].ToString();
             };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.AreEqual("Small", laneSize);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Small lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -371,11 +352,10 @@ namespace Services.Tests
                 laneSize = message.ApplicationProperties["LaneSize"].ToString();
             };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.AreEqual("Small", laneSize);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Small lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -399,11 +379,10 @@ namespace Services.Tests
                 laneSize = message.ApplicationProperties["LaneSize"].ToString();
             };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.AreEqual("Large", laneSize);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Large lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
@@ -426,39 +405,38 @@ namespace Services.Tests
                 laneSize = message.ApplicationProperties["LaneSize"].ToString();
             };
 
-            var orchestratorFunction = new OrchestratorFunction(_configuration.Object, _loggingRepository.Object);
+            var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
             Assert.AreEqual("Large", laneSize);
-            _loggingRepository.Verify(x => x.LogMessageAsync(It.Is<LogMessage>(m => m.Message.StartsWith("Sent message to Large lane")), VerbosityLevel.INFO, It.IsAny<string>(), It.IsAny<string>()));
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
 
         private async Task CallTelemetryTrackerFunctionAsync(TelemetryTrackerRequest request)
         {
-            var telemetryTrackerFunction = new TelemetryTrackerFunction(_loggingRepository.Object, _telemetryClient);
+            var telemetryTrackerFunction = new TelemetryTrackerFunction(NullLogger<TelemetryTrackerFunction>.Instance, _telemetryClient);
             await telemetryTrackerFunction.TrackEventAsync(request);
-        }
-
-        private async Task CallLoggerFunctionAsync(LoggerRequest request)
-        {
-            var loggerFunction = new LoggerFunction(_loggingRepository.Object);
-            await loggerFunction.LogMessageAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
         {
-            var jobStatusUpdaterFunction = new JobStatusUpdaterFunction(_loggingRepository.Object, _syncJobRepository.Object, _syncJobStatusService.Object);
+            var jobStatusUpdaterFunction = new JobStatusUpdaterFunction(NullLogger<JobStatusUpdaterFunction>.Instance, _syncJobRepository.Object, _syncJobStatusService.Object);
             await jobStatusUpdaterFunction.UpdateJobStatusAsync(request);
         }
 
         private async Task CallTopicMessageSenderFunctionAsync(MembershipHttpRequest request)
         {
             
-            var topicMessageSenderRepository = new TopicMessageSenderService(_loggingRepository.Object, _serviceBusTopicsRepository.Object, _messageSplitterSender, _multilaneConfig.Value);
-            var topicMessageSenderFunction = new TopicMessageSenderFunction(_loggingRepository.Object, topicMessageSenderRepository);
+            var topicMessageSenderRepository = new TopicMessageSenderService(NullLogger<TopicMessageSenderService>.Instance, _serviceBusTopicsRepository.Object, _messageSplitterSender, _multilaneConfig.Value);
+            var topicMessageSenderFunction = new TopicMessageSenderFunction(NullLogger<TopicMessageSenderFunction>.Instance, topicMessageSenderRepository);
 
-            await topicMessageSenderFunction.SendMessageAsync(request);
+            await topicMessageSenderFunction.SendMessageAsync(new TopicMessageSenderRequest
+            {
+                MembershipHttpRequest = request,
+                SyncJob = request.SyncJob,
+                CurrentPart = 1,
+                TotalParts = 1
+            });
         }
     }
 }
