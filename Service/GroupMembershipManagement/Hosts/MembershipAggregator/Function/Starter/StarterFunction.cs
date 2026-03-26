@@ -3,9 +3,11 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,11 +16,11 @@ namespace Hosts.MembershipAggregator
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<StarterFunction> _logger;
 
-        public StarterFunction(ILoggingRepository loggingRepository)
+        public StarterFunction(ILogger<StarterFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function("ServiceBusStarterFunction")]
@@ -27,16 +29,21 @@ namespace Hosts.MembershipAggregator
             [DurableClient] DurableTaskClient starter)
         {
             var request = JsonSerializer.Deserialize<MembershipAggregatorHttpRequest>(Encoding.UTF8.GetString(message.Body));
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            _loggingRepository.SetSyncJobProperties(runId, request.SyncJob.ToDictionary());
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Processing message {message.MessageId}", RunId = runId }, VerbosityLevel.INFO);
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.PartNumber,
+                ["TotalParts"] = request.PartsCount
+            }))
+            {
+                _logger.FunctionStarted(nameof(StarterFunction));
+                _logger.ProcessingMessage(message.MessageId);
 
-            var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
+                var instanceId = await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), request);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"InstanceId: {instanceId}", RunId = runId }, VerbosityLevel.DEBUG);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
+                _logger.OrchestrationInstanceStarted(instanceId);
+                _logger.FunctionCompleted(nameof(StarterFunction));
+            }
         }
     }
 }

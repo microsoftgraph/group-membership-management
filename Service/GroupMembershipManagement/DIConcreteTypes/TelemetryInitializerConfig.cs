@@ -13,7 +13,16 @@ namespace DIConcreteTypes
         /// <summary>
         /// Gets the built-in category prefixes that are eligible for GMM tagging.
         /// </summary>
-        public static IReadOnlyList<string> DefaultAllowedPrefixes { get; } = ["Services.", "Repositories.", "Hosts.", "SqlMembershipObtainer.", "JobTrigger.", "GroupMembershipObtainer."];
+        public static IReadOnlyList<string> DefaultAllowedPrefixes { get; } =
+        [
+            "Services.",
+            "Repositories.",
+            "Hosts.",
+            "SqlMembershipObtainer.",
+            "JobTrigger.",
+            "MembershipAggregator.",
+            "GroupMembershipObtainer."
+        ];
 
         /// <summary>
         /// Gets or sets extra allowed prefixes that are merged with the built-in defaults.
