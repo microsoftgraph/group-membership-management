@@ -9,6 +9,9 @@ module.exports = {
 function readPackage(packageJson, context) {
 
   const dependencyChanges = [
+    new PackageUpgradeStrategy('brace-expansion', ['5.0.0', '^5.0.0', '~5.0.0', '5.0.1', '^5.0.1', '~5.0.1', '5.0.2', '^5.0.2', '~5.0.2', '5.0.3', '^5.0.3', '~5.0.3', '5.0.4', '^5.0.4', '~5.0.4'], '5.0.5'),
+    new PackageUpgradeStrategy('picomatch', ['2.3.1', '^2.3.1', '~2.3.1'], '2.3.2'),
+    new PackageUpgradeStrategy('picomatch', ['4.0.0', '^4.0.0', '~4.0.0', '4.0.1', '^4.0.1', '~4.0.1', '4.0.2', '^4.0.2', '~4.0.2', '4.0.3', '^4.0.3', '~4.0.3'], '4.0.4'),
     new PackageUpgradeStrategy('underscore', ['1.13.6', '^1.13.6', '~1.13.6'], '1.13.8'),
     new PackageUpgradeStrategy('serialize-javascript', ['4.0.0', '^4.0.0', '~4.0.0', '6.0.2', '^6.0.2', '~6.0.2', '6.0.1', '^6.0.1', '~6.0.1', '6.0.0', '^6.0.0', '~6.0.0'], '7.0.3'),
     new PackageUpgradeStrategy('cookie', ['0.4.2', '^0.4.2', '~0.4.2'], '0.7.2'),
