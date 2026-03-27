@@ -5,6 +5,8 @@ import {
     classNamesFunction,
     IProcessedStyleSet,
     DetailsList,
+    DetailsRow,
+    IDetailsRowProps,
     Panel,
     PanelType,
     Pivot,
@@ -65,7 +67,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [downloadingRunIds, setDownloadingRunIds] = useState<Set<string>>(new Set());
-    const [sortedColumn, setSortedColumn] = useState<string>('startTime');
+    const [sortedColumn, setSortedColumn] = useState<string>('endTime');
     const [isSortedDescending, setIsSortedDescending] = useState<boolean>(true);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [selectedUser, setSelectedUser] = useState<IPersonaProps[]>([]);
@@ -75,6 +77,19 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [userSearchInfo, setUserSearchInfo] = useState<string | null>(null);
     const [showProgressUnavailableMessage, setShowProgressUnavailableMessage] = useState(false);
     const [searchProgressText, setSearchProgressText] = useState<string | null>(null);
+    const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
+
+    const toggleRowExpand = (runId: string) => {
+        setExpandedRunIds(prev => {
+            const next = new Set(prev);
+            if (next.has(runId)) {
+                next.delete(runId);
+            } else {
+                next.add(runId);
+            }
+            return next;
+        });
+    };
 
     const syncHistorySearchSignalRServiceRef = useRef<SignalRSyncHistorySearchService>(new SignalRSyncHistorySearchService());
     const activeSearchRequestIdRef = useRef<string | null>(null);
@@ -415,43 +430,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
     const syncHistoryColumns: IColumn[] = [
         {
-            key: 'runId',
-            name: strings.JobDetails.Panel.runIdColumnLabel,
-            fieldName: 'runId',
-            minWidth: 100,
-            maxWidth: 150,
-            isResizable: true,
-            isMultiline: true,
-            isSorted: sortedColumn === 'runId',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-        },
-        {
-            key: 'startTime',
-            name: strings.JobDetails.Panel.startTimeColumnLabel,
-            fieldName: 'startTime',
-            minWidth: 100,
-            maxWidth: 150,
-            isResizable: true,
-            isMultiline: true,
-            isSorted: sortedColumn === 'startTime',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                if (!item.startTime) return <span>-</span>;
-                const utcDate = item.startTime.endsWith('Z') ? item.startTime : `${item.startTime}Z`;
-                const utcDateObj = new Date(utcDate);
-                const localDate = utcDateObj.toLocaleDateString();
-                const localTime = utcDateObj.toLocaleTimeString();
-                return (
-                    <div className={classNames.dateTimeContainer}>
-                        <div className={classNames.dateText}>{localDate}</div>
-                        <div className={classNames.timeText}>{localTime}</div>
-                    </div>
-                );
-            }
-        },
-        {
             key: 'endTime',
             name: strings.JobDetails.Panel.endTimeColumnLabel,
             fieldName: 'endTime',
@@ -474,20 +452,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         <div className={classNames.timeText}>{localTime}</div>
                     </div>
                 );
-            }
-        },
-        {
-            key: 'duration',
-            name: strings.JobDetails.Panel.durationColumnLabel,
-            fieldName: 'duration',
-            minWidth: 80,
-            maxWidth: 120,
-            isResizable: true,
-            isSorted: sortedColumn === 'duration',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                return <span>{item.duration ?? '-'}</span>;
             }
         },
         {
@@ -556,7 +520,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isSorted: sortedColumn === 'afterSyncUserCount',
             isSortedDescending: isSortedDescending,
             onColumnClick: handleColumnHeaderClick,
-            onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.afterSyncUserCountColumnLabel),
             onRender: (item: SyncJobHistory) => {
                 return <span>{item.afterSyncUserCount ?? '-'}</span>;
             }
@@ -576,16 +539,25 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }
         },
         {
-            key: 'updatedByFunction',
-            name: strings.JobDetails.Panel.updatedByFunctionColumnLabel,
-            fieldName: 'updatedByFunction',
-            minWidth: 120,
-            maxWidth: 200,
-            isResizable: true,
-            isMultiline: true,
-            isSorted: sortedColumn === 'updatedByFunction',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
+            key: 'expand',
+            name: '',
+            fieldName: '',
+            minWidth: 40,
+            maxWidth: 40,
+            isResizable: false,
+            onRender: (item: SyncJobHistory) => {
+                const isExpanded = expandedRunIds.has(item.runId);
+                return (
+                    <IconButton
+                        iconProps={{ iconName: isExpanded ? 'ChevronUp' : 'ChevronDown' }}
+                        ariaLabel={isExpanded ? 'Collapse row' : 'Expand row'}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleRowExpand(item.runId);
+                        }}
+                    />
+                );
+            },
         },
         ...(showDownloadColumn ? [{
             key: 'download',
@@ -630,21 +602,9 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             let bValue: number | string;
 
             switch (sortedColumn) {
-                case 'runId':
-                    aValue = a.runId || '';
-                    bValue = b.runId || '';
-                    break;
-                case 'startTime':
-                    aValue = getUtcTimestampMillis(a.startTime);
-                    bValue = getUtcTimestampMillis(b.startTime);
-                    break;
                 case 'endTime':
                     aValue = getUtcTimestampMillis(a.endTime);
                     bValue = getUtcTimestampMillis(b.endTime);
-                    break;
-                case 'duration':
-                    aValue = a.duration ?? 0;
-                    bValue = b.duration ?? 0;
                     break;
                 case 'beforeSyncUserCount':
                     aValue = a.beforeSyncUserCount ?? 0;
@@ -665,10 +625,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 case 'thresholdViolations':
                     aValue = a.thresholdViolations ?? 0;
                     bValue = b.thresholdViolations ?? 0;
-                    break;
-                case 'updatedByFunction':
-                    aValue = a.updatedByFunction || '';
-                    bValue = b.updatedByFunction || '';
                     break;
                 default:
                     return 0;
@@ -764,6 +720,28 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         formattedDetails = modalContent;
     }
 
+    const onRenderSyncHistoryRow = (rowProps?: IDetailsRowProps): JSX.Element => {
+        if (!rowProps) return <></>;
+        const item = rowProps.item as SyncJobHistory;
+        const isExpanded = expandedRunIds.has(item.runId);
+        return (
+            <>
+                <DetailsRow
+                    {...rowProps}
+                    styles={isExpanded ? { root: { borderBottom: 'none' } } : undefined}
+                />
+                {isExpanded && (
+                    <div style={{ padding: '4px 12px 8px 12px', backgroundColor: 'inherit', borderBottom: '1px solid #edebe9' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
+                            <span style={{ fontSize: '12px' }}>{item.runId}</span>
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    };
+
     return (
         <Panel
             type={PanelType.medium}
@@ -853,6 +831,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             columns={syncHistoryColumns}
                             items={filteredSyncHistoryItems}
                             selectionMode={0}
+                            onRenderRow={onRenderSyncHistoryRow}
                         />
                     </PivotItem>
                 )}
