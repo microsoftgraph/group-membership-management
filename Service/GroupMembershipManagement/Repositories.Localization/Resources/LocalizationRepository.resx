@@ -1209,14 +1209,28 @@ The group sync will be PAUSED until your response is received.
     <value>Sync Job Paused</value>
   </data>
   <data name="GuestUserFailureTitle" xml:space="preserve">
-    <value>Sync Disabled with Status {4}</value>
+    <value>Sync Disabled: Guest Users Not Supported</value>
   </data>
   <data name="GuestUserFailureEmailBody" xml:space="preserve">
-    <value>You received this notification because you are listed as an owner of **{1}**.
+    <value>You’re receiving this notification because you are an owner of **{1}**.
 
-The group **{1}** with Id: {0} **has been set to the status "GuestUsersCannotBeAddedToUnifiedGroup"** because GMM failed to add guest users to the destination, due to the destination not having the right settings to allow guest users to be added by GMM.
+During the latest sync, GMM detected one or more **guest users** in the membership source. GMM does not support adding guest users to Groups.
 
-Even though GMM couldn't add the guest users, it still **added the remaining {2} users** and **removed the expected {3} users** from the destination.</value>
+As a result, **sync has been disabled** and the group status is now **GuestUsersNotSupported**.
+
+Before sync was disabled, the following updates were applied for non-guest users:
+
+* **{2} users were added**
+* **{3} users were removed**
+
+To continue using GMM for this group:
+
+* Remove guest users from the sources
+* Then re-enable sync
+
+If guest users are required, they will need to be managed outside of GMM.
+
+</value>
   </data>
   <data name="ThresholdNotificationFallbackBody" xml:space="preserve">
     <value>The most recent attempt to update the membership of your GMM managed group '**{0}**' with Id: {1} exceeded the configured alert threshold.
