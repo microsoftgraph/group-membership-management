@@ -5,6 +5,7 @@ using Models.Helpers;
 using Models.Notifications;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
+using Microsoft.Extensions.Logging;
 using Polly;
 using Polly.Retry;
 using Repositories.Contracts;
@@ -24,7 +25,7 @@ namespace Hosts.GroupMembershipObtainer
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
-        private readonly ILoggingRepository _log;
+        private readonly ILogger<SGMembershipCalculator> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
@@ -40,14 +41,14 @@ namespace Hosts.GroupMembershipObtainer
                                       IDatabaseChannelsRepository databaseChannelsRepository,
                                       IServiceBusQueueRepository notificationsQueueRepository,
                                       IDatabaseDestinationAttributesRepository databaseDestinationAttributesRepository,
-                                      ILoggingRepository logging,
+                                      ILogger<SGMembershipCalculator> logger,
                                       IDryRunValue dryRun,
                                       ISyncJobStatusService syncJobStatusService
                                       )
         {
             _graphGroupRepository = graphGroupRepository;
             _blobStorageRepository = blobStorageRepository;
-            _log = logging;
+            _logger = logger;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _databaseGroupsRepository = databaseGroupsRepository;
             _databaseChannelsRepository = databaseChannelsRepository;
@@ -58,35 +59,19 @@ namespace Hosts.GroupMembershipObtainer
         }
 
         private const int NumberOfGraphRetries = 5;
-        private AsyncRetryPolicy _graphRetryPolicy;
         private const string EmailSubject = "EmailSubject";
-        private Guid _runId;
-        public Guid RunId
-        {
-            get { return _runId; }
-            set
-            {
-                _runId = value;
-                _graphGroupRepository.RunId = value;
-            }
-        }
 
         public object GraphRepository { get; set; }
 
         public async Task<PolicyResult<bool>> GroupExistsAsync(Guid objectId, Guid runId)
         {
-            // make this fresh every time because the lambda has to capture the run ID
-            _graphRetryPolicy = Policy.Handle<HttpRequestException>().Or<SocketException>().WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                   onRetry: async (ex, count) =>
+            var graphRetryPolicy = Policy.Handle<HttpRequestException>().Or<SocketException>().WaitAndRetryAsync(NumberOfGraphRetries, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+                   onRetry: (ex, sleepDuration) =>
                    {
-                       await _log.LogMessageAsync(new LogMessage
-                       {
-                           Message = $"Got a transient exception. Retrying. This was try {count} out of {NumberOfGraphRetries}.\n" + ex.ToString(),
-                           RunId = runId
-                       });
+                       _logger.TransientRetryException(ex, sleepDuration, NumberOfGraphRetries);
                    });
 
-            return await _graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
+            return await graphRetryPolicy.ExecuteAndCaptureAsync(() => _graphGroupRepository.GroupExists(objectId));
         }
 
         public async Task<DeltaGroupInformation> GetFirstDeltaLinkUsersPageAsync(Guid objectId, string deltaLink, int numberOfPages)
@@ -125,7 +110,7 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task<DeltaGroupInformation> GetFirstDeltaUsersPageAsync(Guid objectId, Guid runId, int numberOfPages)
         {
-            await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
+            _logger.ReadingUsersFromGroup(objectId);
             var result = await _graphGroupRepository.GetFirstDeltaUsersPageAsync(objectId, numberOfPages);
             return new DeltaGroupInformation
             {
@@ -148,7 +133,7 @@ namespace Hosts.GroupMembershipObtainer
 
         public async Task<GroupInformation> GetFirstTransitiveMembersPageAsync(Guid objectId, Guid runId)
         {
-            await _log.LogMessageAsync(new LogMessage { RunId = runId, Message = $"Reading users from the group with ID {objectId}." });
+            _logger.ReadingUsersFromGroup(objectId);
             var result = await _graphGroupRepository.GetFirstTransitiveMembersPageAsync(objectId);
             return new GroupInformation
             {
@@ -227,12 +212,7 @@ namespace Hosts.GroupMembershipObtainer
                 _isGroupMembershipDryRunEnabled,
                 syncJob.Query);
 
-            await _log.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"Read {memberCount} users from group {objectId} to be synced into the destination group {targetOfficeGroupId}."
-
-            }, VerbosityLevel.DEBUG);
+            _logger.ReadUsersFromGroup(memberCount, objectId, targetOfficeGroupId);
 
             // If we're reading from the target group itself, store the before sync user count during transitive/delta call
             if (objectId == targetOfficeGroupId)
@@ -252,11 +232,7 @@ namespace Hosts.GroupMembershipObtainer
             var timeStamp = DateTime.UtcNow.ToString("MMddyyyy-HHmm");
             var fileName = $"/cache/delta_{id}_{timeStamp}.json";
             await _blobStorageRepository.UploadFileAsync(fileName, deltaLink);
-            await _log.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"After initial delta call, successfully uploaded deltaLink {deltaLink} to cache for group {id}."
-            }, VerbosityLevel.DEBUG);
+            _logger.DeltaLinkUploadedToCache(deltaLink, id);
         }
 
         public async Task UploadCacheAsync(Guid id, Guid runId, GroupMembershipFileResult fileResult)
@@ -270,12 +246,7 @@ namespace Hosts.GroupMembershipObtainer
             // Stream directly from membership file to cache file to avoid loading all GUIDs into memory
             var count = await _blobStorageRepository.StreamMembershipToCacheAsync(fileResult.FilePath, fileName, metadata);
 
-            await _log.LogMessageAsync(new LogMessage
-            {
-                RunId = runId,
-                Message = $"After initial delta call, successfully uploaded {count} users to cache for group {id}."
-
-            }, VerbosityLevel.DEBUG);
+            _logger.CacheUploadedForGroup(count, id);
         }
         public async Task SaveDeltaUsersAsync(SyncJob syncJob, Guid id, List<AzureADUser> users, string deltaLink)
         {
@@ -305,12 +276,7 @@ namespace Hosts.GroupMembershipObtainer
             };
             message.ApplicationProperties.Add("MessageType", notificationType.ToString());
             await _notificationsQueueRepository.SendMessageAsync(message);
-            await _log.LogMessageAsync(new LogMessage
-            {
-                RunId = job.RunId,
-                Message = $"Sent message {message.MessageId} to service bus notifications queue "
-
-            });
+            _logger.SentNotificationQueueMessage(message.MessageId);
 
         }
 
@@ -350,11 +316,7 @@ namespace Hosts.GroupMembershipObtainer
                 return destinationName;
             }
 
-            await _log.LogMessageAsync(new LogMessage
-            {
-                RunId = job.RunId,
-                Message = "Destination name not found in database; attempting to retrieve from Graph"
-            });
+            _logger.DestinationNameNotInDatabase();
 
             if (job.MembershipType == MembershipTypes.GroupMembership.ToString())
             {

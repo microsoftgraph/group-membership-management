@@ -10,6 +10,8 @@ using DIConcreteTypes;
 using Hosts.FunctionBase;
 using Microsoft.ApplicationInsights.DependencyCollector;
 using Microsoft.ApplicationInsights.Extensibility;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -19,6 +21,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.GraphGroups;
 using Repositories.ServiceBusQueue;
+using Microsoft.Extensions.Logging;
 using System;
 using BusinessLogic.SyncJobUpdater;
 using Services.Contracts;
@@ -65,6 +68,7 @@ namespace Hosts.GroupMembershipObtainer
                     });
 
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
                     services.AddOptions<DeltaCachingConfig>().Configure<IConfiguration>((settings, configuration) =>
                     {
                         settings.DeltaCacheEnabled = CommonServices.GetBoolSettingBase(configuration, "GroupMembershipObtainer:IsDeltaCacheEnabled", false);
@@ -100,7 +104,7 @@ namespace Hosts.GroupMembershipObtainer
                             services.GetRequiredService<IDatabaseChannelsRepository>(),
                             notificationsQueueRepository,
                             services.GetRequiredService<IDatabaseDestinationAttributesRepository>(),
-                            services.GetRequiredService<ILoggingRepository>(),
+                            services.GetRequiredService<ILogger<SGMembershipCalculator>>(),
                             services.GetRequiredService<IDryRunValue>(),
                             services.GetRequiredService<ISyncJobStatusService>()
                         );

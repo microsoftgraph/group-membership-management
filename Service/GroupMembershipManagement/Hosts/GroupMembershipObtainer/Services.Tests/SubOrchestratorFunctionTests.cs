@@ -4,6 +4,8 @@ using Hosts.GroupMembershipObtainer;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -29,7 +31,6 @@ namespace Tests.Services
         private Mock<IDryRunValue> _dryRunValue;
         private MockDeltaCachingConfig _deltaCachingConfig;
         private Mock<IMailRepository> _mailRepository;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository;
         private Mock<IDatabaseGroupsRepository> _groupsRepository;
         private Mock<IDatabaseChannelsRepository> _channelsRepository;
@@ -66,7 +67,6 @@ namespace Tests.Services
             _dryRunValue = new Mock<IDryRunValue>();
             _deltaCachingConfig = new MockDeltaCachingConfig();
             _mailRepository = new Mock<IMailRepository>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupsRepository = new Mock<IDatabaseGroupsRepository>();
             _channelsRepository = new Mock<IDatabaseChannelsRepository>();
@@ -74,6 +74,7 @@ namespace Tests.Services
             _emailSenderRecipient = new Mock<IEmailSenderRecipient>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
             _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
+            _durableOrchestrationContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
@@ -153,7 +154,6 @@ namespace Tests.Services
 
             _groupMembershipRequest = new GroupMembershipRequest
             {
-                RunId = Guid.NewGuid(),
                 GroupId = Guid.NewGuid(),
                 SourceGroup = new AzureADGroup { ObjectId = Guid.NewGuid() },
                 SyncJob = syncJob
@@ -170,7 +170,7 @@ namespace Tests.Services
                                             _channelsRepository.Object,
                                             _serviceBusQueueRepository.Object,
                                             _destinationAttributesRepository.Object,
-                                            _loggingRepository.Object,
+                                            NullLogger<SGMembershipCalculator>.Instance,
                                             _dryRunValue.Object,
                                             _syncJobStatusService.Object
                                             );
@@ -251,7 +251,6 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _deltaLinkUserReaderResponse);
 
-
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DeleteBlobRequest>(), It.IsAny<TaskOptions>()))
                                         .Callback<TaskName, object, TaskOptions>(async (name, request, input) =>
                                         {
@@ -274,7 +273,6 @@ namespace Tests.Services
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<BlobResult>(nameof(BlobCheckerFunction), It.IsAny<BlobCheckerRequest>(), It.IsAny<TaskOptions>()))
                                         .ReturnsAsync(() => _cacheBlobResult);
 
-
             _graphGroupRepository.Setup(x => x.GroupExists(It.IsAny<Guid>())).ReturnsAsync(() => _groupExists);
             _graphGroupRepository.Setup(x => x.GetGroupsCountAsync(It.IsAny<Guid>())).ReturnsAsync(() => _groupCount);
             _graphGroupRepository.Setup(x => x.GetUsersCountAsync(It.IsAny<Guid>())).ReturnsAsync(() => _userCount);
@@ -292,7 +290,6 @@ namespace Tests.Services
 
                 return users;
             });
-
 
             _graphGroupRepository.Setup(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()))
                                  .ReturnsAsync(() =>
@@ -440,22 +437,8 @@ namespace Tests.Services
                                 });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -494,7 +477,6 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _deltaUserReaderResponse);
 
-
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<FileDownloaderRequest>(), It.IsAny<TaskOptions>()))
                                        .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                        {
@@ -520,22 +502,8 @@ namespace Tests.Services
                    });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -569,22 +537,8 @@ namespace Tests.Services
                                        .ReturnsAsync(() => _deltaUrl);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -603,7 +557,6 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _groupCount);
 
-
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync<int>(It.IsAny<TaskName>(), It.IsAny<GetUserCountRequest>(), It.IsAny<TaskOptions>()))
                                       .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
                                       {
@@ -620,32 +573,10 @@ namespace Tests.Services
                                        .ReturnsAsync(() => _deltaUrl);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
-
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function completed"),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
-
             Assert.AreEqual(SyncStatus.InProgress, response.Status);
             Assert.AreEqual(_filePath, response.FilePath);
         }
@@ -674,28 +605,14 @@ namespace Tests.Services
                                        })
                                        .Throws<KeyNotFoundException>();
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
 
             Assert.AreEqual(SyncStatus.InProgress, response.Status);
         }
-
-
 
         [TestMethod]
         public async Task ProcessTMSinglePageRequestTestAsync()
@@ -709,22 +626,8 @@ namespace Tests.Services
                                        .ReturnsAsync(() => _groupCount);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -764,22 +667,8 @@ namespace Tests.Services
                            .ReturnsAsync(() => content);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -816,22 +705,8 @@ namespace Tests.Services
                                        .ReturnsAsync(() => _deltaUrl);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -853,22 +728,8 @@ namespace Tests.Services
                                       .ReturnsAsync(() => _groupCount);
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                   It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists.")),
-                                   It.IsAny<VerbosityLevel>(),
-                                   It.IsAny<string>(),
-                                   It.IsAny<string>()
-                               ), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                    It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                    It.IsAny<VerbosityLevel>(),
-                                    It.IsAny<string>(),
-                                    It.IsAny<string>()
-                                ), Times.Once);
 
             _graphGroupRepository.Verify(x => x.GetGroupsCountAsync(It.IsAny<Guid>()), Times.Once);
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
@@ -924,7 +785,7 @@ namespace Tests.Services
                                 });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _graphGroupRepository.Verify(x => x.GetFirstDeltaUsersPageAsync(It.IsAny<Guid>(), It.IsAny<int>()), Times.Once);
@@ -967,9 +828,8 @@ namespace Tests.Services
                                        })
                                        .ReturnsAsync(() => _deltaUrl);
 
-
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
         }
@@ -1003,7 +863,7 @@ namespace Tests.Services
                                  });
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var compressedResponse = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             _graphGroupRepository.Verify(x => x.GetFirstTransitiveMembersPageAsync(It.IsAny<Guid>()), Times.Once);
@@ -1022,31 +882,9 @@ namespace Tests.Services
             _groupExists = false;
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message == $"{nameof(SubOrchestratorFunction)} function started"),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()
-                            ), Times.Once);
-
             _graphGroupRepository.Verify(x => x.GroupExists(It.IsAny<Guid>()), Times.Once);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} exists")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()
-                            ), Times.Never);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                It.Is<LogMessage>(m => m.Message.Contains($"Group with ID {_groupMembershipRequest.SourceGroup.ObjectId} doesn't exist")),
-                                It.IsAny<VerbosityLevel>(),
-                                It.IsAny<string>(),
-                                It.IsAny<string>()
-                            ), Times.Once);
 
             Assert.AreEqual(SyncStatus.SecurityGroupNotFound, response.Status);
         }
@@ -1058,16 +896,9 @@ namespace Tests.Services
                                         .Throws<HttpRequestException>();
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
 
             await Assert.ThrowsExceptionAsync<HttpRequestException>(async () => await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object));
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.StartsWith("Caught HttpRequestException")),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
         }
 
         [TestMethod]
@@ -1077,122 +908,115 @@ namespace Tests.Services
                                         .Throws<OutOfMemoryException>();
 
             var telemetryClient = new TelemetryClient(TelemetryConfiguration.CreateDefault());
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, telemetryClient);
 
             await Assert.ThrowsExceptionAsync<OutOfMemoryException>(async () => await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object));
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.StartsWith("Caught Exception")),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()
-                    ), Times.Once);
         }
 
         private async Task<bool> CallGroupValidatorFunctionAsync(GroupValidatorRequest request)
         {
-            var function = new GroupValidatorFunction(_loggingRepository.Object, _membershipCalculator, _emailSenderRecipient.Object);
+            var function = new GroupValidatorFunction(NullLogger<GroupValidatorFunction>.Instance, _membershipCalculator, _emailSenderRecipient.Object);
             return await function.ValidateGroupAsync(request);
         }
 
         private async Task<string> CallFileDownloaderFunctionAsync(FileDownloaderRequest request)
         {
-            var function = new FileDownloaderFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            var function = new FileDownloaderFunction(NullLogger<FileDownloaderFunction>.Instance, _blobStorageRepository.Object);
             return await function.DownloadFileAsync(request);
         }
 
         private async Task CallFileDeleterFunctionAsync(FileDeleterRequest request)
         {
-            var function = new FileDeleterFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            var function = new FileDeleterFunction(NullLogger<FileDeleterFunction>.Instance, _blobStorageRepository.Object);
             await function.DeleteFileAsync(request);
         }
 
         private async Task<int> CallGroupsReaderFunctionAsync(GetTransitiveGroupCountRequest request)
         {
-            var function = new GetTransitiveGroupCountFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new GetTransitiveGroupCountFunction(NullLogger<GetTransitiveGroupCountFunction>.Instance, _membershipCalculator);
             return await function.GetGroupsAsync(request);
         }
 
         private async Task<int> CallUsersReaderFunctionAsync(GetUserCountRequest request)
         {
-            var function = new GetUserCountFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new GetUserCountFunction(NullLogger<GetUserCountFunction>.Instance, _membershipCalculator);
             return await function.GetUserCountAsync(request);
         }
 
         private async Task<string> CallMembersReaderFunctionAsync(MembersReaderRequest request)
         {
-            var function = new MembersReaderFunction(_loggingRepository.Object, _blobStorageRepository.Object, _membershipCalculator);
+            var function = new MembersReaderFunction(NullLogger<MembersReaderFunction>.Instance, _blobStorageRepository.Object, _membershipCalculator);
             return await function.GetMembersAsync(request);
         }
 
         private async Task<string> CallSubsequentMembersReaderFunctionAsync(SubsequentMembersReaderRequest request)
         {
-            var function = new SubsequentMembersReaderFunction(_loggingRepository.Object, _blobStorageRepository.Object, _membershipCalculator);
+            var function = new SubsequentMembersReaderFunction(NullLogger<SubsequentMembersReaderFunction>.Instance, _blobStorageRepository.Object, _membershipCalculator);
             return await function.GetMembersAsync(request);
         }
 
         private async Task<DeltaUrls> CallDeltaUserReaderFunctionAsync(DeltaUserReaderRequest request)
         {
-            var function = new DeltaUserReaderFunction(_loggingRepository.Object, _blobStorageRepository.Object, _membershipCalculator);
+            var function = new DeltaUserReaderFunction(NullLogger<DeltaUserReaderFunction>.Instance, _blobStorageRepository.Object, _membershipCalculator);
             return await function.GetDeltaUsersAsync(request);
         }
 
         private async Task<DeltaUrls> CallSubsequentDeltaUserReaderFunctionAsync(SubsequentDeltaUserReaderRequest request)
         {
-            var function = new SubsequentDeltaUserReaderFunction(_loggingRepository.Object, _blobStorageRepository.Object, _membershipCalculator);
+            var function = new SubsequentDeltaUserReaderFunction(NullLogger<SubsequentDeltaUserReaderFunction>.Instance, _blobStorageRepository.Object, _membershipCalculator);
             return await function.GetSubsequentDeltaUsersAsync(request);
         }
         private async Task<DeltaUrls> CallDeltaLinkUserReaderFunctionAsync(DeltaLinkUserReaderRequest request)
         {
-            var function = new DeltaLinkUserReaderFunction(_loggingRepository.Object, _membershipCalculator, _blobStorageRepository.Object);
+            var function = new DeltaLinkUserReaderFunction(NullLogger<DeltaLinkUserReaderFunction>.Instance, _membershipCalculator, _blobStorageRepository.Object);
             return await function.GetDeltaLinkUsersAsync(request);
         }
 
         private async Task<DeltaUrls> CallSubsequentDeltaLinkUserReaderFunctionAsync(SubsequentDeltaLinkUserReaderRequest request)
         {
-            var function = new SubsequentDeltaLinkUserReaderFunction(_loggingRepository.Object, _membershipCalculator, _blobStorageRepository.Object);
+            var function = new SubsequentDeltaLinkUserReaderFunction(NullLogger<SubsequentDeltaLinkUserReaderFunction>.Instance, _membershipCalculator, _blobStorageRepository.Object);
             return await function.GetSubsequentDeltaLinkUsersAsync(request);
         }
 
         private async Task CallDeltaLinkUploaderFunctionAsync(DeltaLinkUploaderRequest request)
         {
-            var function = new DeltaLinkUploaderFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new DeltaLinkUploaderFunction(NullLogger<DeltaLinkUploaderFunction>.Instance, _membershipCalculator);
             await function.SendDeltaLinkAsync(request);
         }
 
         private async Task CallJobStatusUpdaterFunctionAsync(JobStatusUpdaterRequest request)
         {
-            var function = new JobStatusUpdaterFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new JobStatusUpdaterFunction(NullLogger<JobStatusUpdaterFunction>.Instance, _membershipCalculator);
             await function.UpdateJobStatusAsync(request);
         }
 
         private async Task CallCacheUploaderFunctionAsync(CacheUploaderRequest request)
         {
-            var function = new CacheUploaderFunction(_loggingRepository.Object, _membershipCalculator);
+            var function = new CacheUploaderFunction(NullLogger<CacheUploaderFunction>.Instance, _membershipCalculator);
             await function.SendUsersAsync(request);
         }
 
         private async Task<GroupMembershipFileResult> CallTransitiveAndDeltaUsersSenderFunctionAsync(TransitiveAndDeltaUsersSenderRequest request)
         {
-            var function = new TransitiveAndDeltaUsersSenderFunction(_loggingRepository.Object, _blobStorageRepository.Object, _membershipCalculator);
+            var function = new TransitiveAndDeltaUsersSenderFunction(NullLogger<TransitiveAndDeltaUsersSenderFunction>.Instance, _blobStorageRepository.Object, _membershipCalculator);
             return await function.SendUsersAsync(request);
         }
 
         private async Task CallDeleteBlobFunctionAsync(DeleteBlobRequest request)
         {
-            var function = new DeleteBlobFunction(_loggingRepository.Object, _blobStorageRepository.Object);
+            var function = new DeleteBlobFunction(NullLogger<DeleteBlobFunction>.Instance, _blobStorageRepository.Object);
             await function.DeleteAsync(request);
         }
 
         private async Task CallProcessCachedAndDeltaUsersFunctionAsync(ProcessCachedAndDeltaUsersRequest request)
         {
-            var function = new ProcessCachedAndDeltaUsersFunction(_loggingRepository.Object, _membershipCalculator, _blobStorageRepository.Object);
+            var function = new ProcessCachedAndDeltaUsersFunction(NullLogger<ProcessCachedAndDeltaUsersFunction>.Instance, _membershipCalculator, _blobStorageRepository.Object);
             await function.RunAsync(request);
         }
 
         private async Task CallLogNestedGroupsFunctionAsync(LogNestedGroupsRequest request)
         {
-            var function = new LogNestedGroupsFunction(_loggingRepository.Object, _graphGroupRepository.Object);
+            var function = new LogNestedGroupsFunction(NullLogger<LogNestedGroupsFunction>.Instance, _graphGroupRepository.Object);
             await function.LogNestedGroupsAsync(request);
         }
 
@@ -1207,16 +1031,12 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = groupId,
-                RunId = runId,
-                Status = "InProgress",
+                TargetOfficeGroupId = groupId,                Status = "InProgress",
                 Query = $"[{{\"type\":\"GroupMembership\",\"sources\":[{sourceGroupId}]}}]"
             };
 
             var request = new GroupMembershipRequest
-            {
-                RunId = runId,
-                GroupId = groupId,
+            {                GroupId = groupId,
                 SourceGroup = new AzureADGroup { ObjectId = sourceGroupId },
                 SyncJob = syncJob,
                 CurrentPart = 1,
@@ -1253,7 +1073,7 @@ namespace Tests.Services
                                         })
                                         .ReturnsAsync(nestedGroups);
 
-            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<SyncJob>(), It.IsAny<TaskOptions>()))
+            _durableOrchestrationContext.Setup(x => x.CallActivityAsync<string>(It.IsAny<TaskName>(), It.IsAny<DestinationNameReaderRequest>(), It.IsAny<TaskOptions>()))
                                         .ReturnsAsync("Test Group Name");
 
             _durableOrchestrationContext.Setup(x => x.CallActivityAsync(It.IsAny<TaskName>(), It.IsAny<EmailSenderRequest>(), It.IsAny<TaskOptions>()));
@@ -1264,14 +1084,14 @@ namespace Tests.Services
                                             await CallJobStatusUpdaterFunctionAsync(req as JobStatusUpdaterRequest);
                                         });
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, _telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             Assert.AreEqual(SyncStatus.NestedGroupsFound, response.Status);
 
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync<List<AzureADGroup>>(
                 It.Is<TaskName>(n => n.Name == nameof(LogNestedGroupsFunction)),
-                It.Is<LogNestedGroupsRequest>(r => r.RunId == runId && r.GroupId == groupId),
+                It.Is<LogNestedGroupsRequest>(r => r.GroupId == groupId),
                 It.IsAny<TaskOptions>()), Times.Once);
 
             _durableOrchestrationContext.Verify(x => x.CallActivityAsync(
@@ -1301,16 +1121,12 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = destinationGroupId,
-                RunId = runId,
-                Status = "InProgress",
+                TargetOfficeGroupId = destinationGroupId,                Status = "InProgress",
                 Query = $"[{{\"type\":\"GroupMembership\",\"sources\":[{sourceGroupId}]}}]"
             };
 
             var request = new GroupMembershipRequest
-            {
-                RunId = runId,
-                GroupId = destinationGroupId,
+            {                GroupId = destinationGroupId,
                 SourceGroup = new AzureADGroup { ObjectId = sourceGroupId },
                 SyncJob = syncJob,
                 CurrentPart = 1,
@@ -1354,7 +1170,7 @@ namespace Tests.Services
                                             await CallDeleteBlobFunctionAsync(req as DeleteBlobRequest);
                                         });
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, _telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             Assert.AreEqual(SyncStatus.InProgress, response.Status);
@@ -1387,16 +1203,12 @@ namespace Tests.Services
             var syncJob = new SyncJob
             {
                 Id = Guid.NewGuid(),
-                TargetOfficeGroupId = groupId,
-                RunId = runId,
-                Status = "InProgress",
+                TargetOfficeGroupId = groupId,                Status = "InProgress",
                 Query = $"[{{\"type\":\"GroupMembership\",\"sources\":[{sourceGroupId}]}}]"
             };
 
             var request = new GroupMembershipRequest
-            {
-                RunId = runId,
-                GroupId = groupId,
+            {                GroupId = groupId,
                 SourceGroup = new AzureADGroup { ObjectId = sourceGroupId },
                 SyncJob = syncJob,
                 CurrentPart = 1,
@@ -1452,7 +1264,7 @@ namespace Tests.Services
                                             await CallDeltaLinkUploaderFunctionAsync(req as DeltaLinkUploaderRequest);
                                         });
 
-            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _loggingRepository.Object, _telemetryClient);
+            var subOrchestratorFunction = new SubOrchestratorFunction(_deltaCachingConfig, _telemetryClient);
             var response = await subOrchestratorFunction.RunSubOrchestratorAsync(_durableOrchestrationContext.Object);
 
             Assert.AreEqual(SyncStatus.InProgress, response.Status);

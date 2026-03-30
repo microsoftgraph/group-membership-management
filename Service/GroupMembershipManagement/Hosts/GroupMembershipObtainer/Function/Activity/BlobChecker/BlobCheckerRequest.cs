@@ -1,12 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
+using Models;
 
 namespace Hosts.GroupMembershipObtainer
 {
     public class BlobCheckerRequest
     {
-        public Guid RunId { get; set; }
         public string Prefix { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }

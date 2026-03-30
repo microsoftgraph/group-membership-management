@@ -7,8 +7,10 @@ namespace Hosts.GroupMembershipObtainer
 {
     public class DeltaLinkUploaderRequest
     {
-        public Guid RunId { get; set; }       
-        public Guid ObjectId { get; set; }       
+        public Guid ObjectId { get; set; }
         public string DeltaLink { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }

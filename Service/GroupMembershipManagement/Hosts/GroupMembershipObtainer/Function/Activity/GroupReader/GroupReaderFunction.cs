@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
@@ -11,51 +13,46 @@ namespace Hosts.GroupMembershipObtainer
 {
     public class GroupReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GroupReaderFunction> _logger;
         private readonly SGMembershipCalculator _membershipCalculator;
 
-        public GroupReaderFunction(ILoggingRepository loggingRepository, SGMembershipCalculator membershipCalculator)
+        public GroupReaderFunction(ILogger<GroupReaderFunction> logger, SGMembershipCalculator membershipCalculator)
         {
-            _loggingRepository = loggingRepository;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _membershipCalculator = membershipCalculator;
         }
 
         [Function(nameof(GroupReaderFunction))]
         public async Task<GroupReaderResponse> GetGroupAsync([ActivityTrigger] GroupReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            if (request.IsDestinationPart)
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                _logger.FunctionStarted(nameof(GroupReaderFunction));
+                if (request.IsDestinationPart)
                 {
-                    RunId = request.RunId,
-                    Message = $"Getting destination group for Part# {request.CurrentPart}, with group id {request.GroupId}."
-                });
-            }
-            else
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage
+                    _logger.GettingDestinationGroup(request.CurrentPart, request.GroupId);
+                }
+                else
                 {
-                    RunId = request.RunId,
-                    Message = $"Getting source group for Part# {request.CurrentPart} {request.SyncJob.Query} to be synced into the destination group {request.GroupId}."
-                });
+                    _logger.GettingSourceGroup(request.CurrentPart, request.SyncJob.Query, request.GroupId);
+                }
+
+                var response = new GroupReaderResponse();
+
+                if (request.IsDestinationPart)
+                {
+                    response.SourceGroup = new AzureADGroup { ObjectId = request.GroupId };
+                    response.SourceGroupId = Guid.Empty.ToString();
+
+                }
+                else
+                {
+                    response = GetSourceGroup(request);
+                }
+
+                _logger.FunctionCompleted(nameof(GroupReaderFunction));
+                return response;
             }
-
-            var response = new GroupReaderResponse();
-
-            if (request.IsDestinationPart)
-            {
-                response.SourceGroup = new AzureADGroup { ObjectId = request.GroupId };
-                response.SourceGroupId = Guid.Empty.ToString();
-
-            }
-            else
-            {
-                response = GetSourceGroup(request);
-            }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GroupReaderFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-            return response;
         }
 
         public GroupReaderResponse GetSourceGroup(GroupReaderRequest request)

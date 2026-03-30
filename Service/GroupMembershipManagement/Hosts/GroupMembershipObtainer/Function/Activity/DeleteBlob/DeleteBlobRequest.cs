@@ -7,8 +7,9 @@ namespace Hosts.GroupMembershipObtainer
 {
     public class DeleteBlobRequest
     {
-        public Guid RunId { get; set; }
         public Guid GroupId { get; set; }
         public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }

@@ -8,5 +8,7 @@ namespace Hosts.GroupMembershipObtainer
     {
         public string FilePath { get; set; }
         public SyncJob SyncJob { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
     }
 }

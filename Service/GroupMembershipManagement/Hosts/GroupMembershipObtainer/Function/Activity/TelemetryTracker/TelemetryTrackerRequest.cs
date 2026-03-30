@@ -1,7 +1,6 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Models;
-using System;
 
 namespace Hosts.GroupMembershipObtainer
 {
@@ -9,6 +8,8 @@ namespace Hosts.GroupMembershipObtainer
     {
         public SyncStatus JobStatus { get; set; }
         public ResultStatus ResultStatus { get; set; }
-        public Guid? RunId { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }

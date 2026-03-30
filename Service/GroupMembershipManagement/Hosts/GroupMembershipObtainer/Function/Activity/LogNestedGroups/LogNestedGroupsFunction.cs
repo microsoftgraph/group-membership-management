@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,41 +14,36 @@ namespace Hosts.GroupMembershipObtainer
 {
     public class LogNestedGroupsFunction
     {
-        private readonly ILoggingRepository _log;
+        private readonly ILogger<LogNestedGroupsFunction> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
 
-        public LogNestedGroupsFunction(ILoggingRepository loggingRepository, IGraphGroupRepository graphGroupRepository)
+        public LogNestedGroupsFunction(ILogger<LogNestedGroupsFunction> logger, IGraphGroupRepository graphGroupRepository)
         {
-            _log = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
         [Function(nameof(LogNestedGroupsFunction))]
         public async Task<List<AzureADGroup>> LogNestedGroupsAsync([ActivityTrigger] LogNestedGroupsRequest request)
         {
-            await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(LogNestedGroupsFunction)} function started", RunId = request.RunId }, VerbosityLevel.DEBUG);
-
-            try
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object> { ["CurrentPart"] = request.CurrentPart, ["TotalParts"] = request.TotalParts }))
             {
-                var groups = await _graphGroupRepository.GetDirectGroupTypeMembersAsync(request.GroupId);
+                _logger.FunctionStarted(nameof(LogNestedGroupsFunction));
 
-                await _log.LogMessageAsync(new LogMessage
+                try
                 {
-                    RunId = request.RunId,
-                    Message = $"Retrieved {groups.Count} group-type members for group {request.GroupId}. Group IDs: {string.Join(", ", groups.Select(g => g.ObjectId))}"
-                });
+                    var groups = await _graphGroupRepository.GetDirectGroupTypeMembersAsync(request.GroupId);
 
-                await _log.LogMessageAsync(new LogMessage { Message = $"{nameof(LogNestedGroupsFunction)} function completed", RunId = request.RunId }, VerbosityLevel.DEBUG);
-                return groups;
-            }
-            catch (Exception ex)
-            {
-                await _log.LogMessageAsync(new LogMessage
+                    _logger.RetrievedNestedGroups(groups.Count, request.GroupId, string.Join(", ", groups.Select(g => g.ObjectId)));
+
+                    _logger.FunctionCompleted(nameof(LogNestedGroupsFunction));
+                    return groups;
+                }
+                catch (Exception ex)
                 {
-                    RunId = request.RunId,
-                    Message = $"Error retrieving group-type members for group {request.GroupId}: {ex.Message}"
-                });
-                throw;
+                    _logger.NestedGroupsRetrievalError(ex, request.GroupId, ex.Message);
+                    throw;
+                }
             }
         }
     }

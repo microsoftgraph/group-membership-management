@@ -2,32 +2,39 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Hosts.GroupMembershipObtainer
 {
     public class GetGroupFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
+        private readonly ILogger<GetGroupFunction> _logger;
         private readonly SGMembershipCalculator _calculator = null;
 
-        public GetGroupFunction(ILoggingRepository loggingRepository, SGMembershipCalculator calculator)
+        public GetGroupFunction(ILogger<GetGroupFunction> logger, SGMembershipCalculator calculator)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _calculator = calculator ?? throw new ArgumentNullException(nameof(calculator));
         }
 
         [Function(nameof(GetGroupFunction))]
-        public async Task<Guid> GetGroupAsync([ActivityTrigger] SyncJob syncJob)
+        public async Task<Guid> GetGroupAsync([ActivityTrigger] GetGroupRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function started", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            _calculator.RunId = syncJob.RunId ?? Guid.Empty;
-            var groupId = await _calculator.GetGroupIdAsync(syncJob);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(GetGroupFunction)} function completed", RunId = syncJob.RunId }, VerbosityLevel.DEBUG);
-            return groupId;
+            using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
+            {
+                ["CurrentPart"] = request.CurrentPart,
+                ["TotalParts"] = request.TotalParts
+            }))
+            {
+                _logger.FunctionStarted(nameof(GetGroupFunction));
+                var groupId = await _calculator.GetGroupIdAsync(request.SyncJob);
+                _logger.FunctionCompleted(nameof(GetGroupFunction));
+                return groupId;
+            }
         }
     }
 }

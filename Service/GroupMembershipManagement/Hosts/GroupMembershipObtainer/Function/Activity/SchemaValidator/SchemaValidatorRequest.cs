@@ -1,12 +1,14 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
-using System;
+using Models;
 
 namespace Hosts.GroupMembershipObtainer
 {
     public class SchemaValidatorRequest
     {
         public string Query { get; set; }
-        public Guid? RunId { get; set; }
+        public int CurrentPart { get; set; }
+        public int TotalParts { get; set; }
+        public SyncJob SyncJob { get; set; }
     }
 }
