@@ -1,7 +1,6 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.10.35027.167
+# Visual Studio Version 18
+VisualStudioVersion = 18.4.11620.152 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SyncJobUpdater", "SyncJobUpdater.csproj", "{D6DC947C-D41D-4DB5-A712-5CDF8DA827A0}"
 EndProject
@@ -16,6 +15,32 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services.Tests", "..\Services.SyncJobUpdater.Tests\Services.Tests.csproj", "{DFDF0FF1-54E0-4F16-B1A2-7FD0474FB2C8}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Services", "..\Services\Services.csproj", "{1C0B2B77-6100-493A-ADE3-58C0234C9908}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BusinessLogic.SyncJobUpdater", "..\..\..\BusinessLogic.SyncJobUpdater\BusinessLogic.SyncJobUpdater.csproj", "{B1A1A1A1-1111-1111-1111-111111111111}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DIConcreteTypes", "..\..\..\DIConcreteTypes\DIConcreteTypes.csproj", "{B2A2A2A2-2222-2222-2222-222222222222}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Common.DependencyInjection", "..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj", "{B3A3A3A3-3333-3333-3333-333333333333}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Logging", "..\..\..\Repositories.Logging\Repositories.Logging.csproj", "{B4A4A4A4-4444-4444-4444-444444444444}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Mail", "..\..\..\Repositories.Mail\Repositories.Mail.csproj", "{B5A5A5A5-5555-5555-5555-555555555555}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework", "..\..\..\Repositories.EntityFramework\Repositories.EntityFramework.csproj", "{B6A6A6A6-6666-6666-6666-666666666666}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.Localization", "..\..\..\Repositories.Localization\Repositories.Localization.csproj", "{B7A7A7A7-7777-7777-7777-777777777777}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.FeatureFlag", "..\..\..\Repositories.FeatureFlag\Repositories.FeatureFlag.csproj", "{B8A8A8A8-8888-8888-8888-888888888888}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.ServiceBusQueue", "..\..\..\Repositories.ServiceBusQueue\Repositories.ServiceBusQueue.csproj", "{B9A9A9A9-9999-9999-9999-999999999999}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.EntityFramework.Contexts", "..\..\..\Repositories.EntityFramework.Contexts\Repositories.EntityFramework.Contexts.csproj", "{BABABABA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Repositories.RetryPolicyProvider", "..\..\..\Repositories.RetryPolicyProvider\Repositories.RetryPolicyProvider.csproj", "{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SqlMembershipObtainer.Entities", "..\..\SqlMembershipObtainer.Common\SqlMembershipObtainer.Entities\SqlMembershipObtainer.Entities.csproj", "{BCBCBCBC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "..\..\..\Entities\Entities.csproj", "{EAEAEAEA-EEEE-EEEE-EEEE-EEEEEEEEEEEE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +76,58 @@ Global
 		{1C0B2B77-6100-493A-ADE3-58C0234C9908}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C0B2B77-6100-493A-ADE3-58C0234C9908}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C0B2B77-6100-493A-ADE3-58C0234C9908}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B1A1A1A1-1111-1111-1111-111111111111}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B1A1A1A1-1111-1111-1111-111111111111}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B1A1A1A1-1111-1111-1111-111111111111}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B1A1A1A1-1111-1111-1111-111111111111}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B2A2A2A2-2222-2222-2222-222222222222}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B2A2A2A2-2222-2222-2222-222222222222}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B2A2A2A2-2222-2222-2222-222222222222}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B2A2A2A2-2222-2222-2222-222222222222}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3A3A3A3-3333-3333-3333-333333333333}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3A3A3A3-3333-3333-3333-333333333333}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3A3A3A3-3333-3333-3333-333333333333}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3A3A3A3-3333-3333-3333-333333333333}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4A4A4A4-4444-4444-4444-444444444444}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4A4A4A4-4444-4444-4444-444444444444}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4A4A4A4-4444-4444-4444-444444444444}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4A4A4A4-4444-4444-4444-444444444444}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5A5A5A5-5555-5555-5555-555555555555}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5A5A5A5-5555-5555-5555-555555555555}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5A5A5A5-5555-5555-5555-555555555555}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5A5A5A5-5555-5555-5555-555555555555}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B6A6A6A6-6666-6666-6666-666666666666}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B6A6A6A6-6666-6666-6666-666666666666}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B6A6A6A6-6666-6666-6666-666666666666}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B6A6A6A6-6666-6666-6666-666666666666}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7A7A7A7-7777-7777-7777-777777777777}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7A7A7A7-7777-7777-7777-777777777777}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7A7A7A7-7777-7777-7777-777777777777}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7A7A7A7-7777-7777-7777-777777777777}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8A8A8A8-8888-8888-8888-888888888888}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8A8A8A8-8888-8888-8888-888888888888}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8A8A8A8-8888-8888-8888-888888888888}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8A8A8A8-8888-8888-8888-888888888888}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B9A9A9A9-9999-9999-9999-999999999999}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B9A9A9A9-9999-9999-9999-999999999999}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B9A9A9A9-9999-9999-9999-999999999999}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B9A9A9A9-9999-9999-9999-999999999999}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BABABABA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BABABABA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BABABABA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BABABABA-AAAA-AAAA-AAAA-AAAAAAAAAAAA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BCBCBCBC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BCBCBCBC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BCBCBCBC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BCBCBCBC-CCCC-CCCC-CCCC-CCCCCCCCCCCC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EAEAEAEA-EEEE-EEEE-EEEE-EEEEEEEEEEEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EAEAEAEA-EEEE-EEEE-EEEE-EEEEEEEEEEEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EAEAEAEA-EEEE-EEEE-EEEE-EEEEEEEEEEEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EAEAEAEA-EEEE-EEEE-EEEE-EEEEEEEEEEEE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
