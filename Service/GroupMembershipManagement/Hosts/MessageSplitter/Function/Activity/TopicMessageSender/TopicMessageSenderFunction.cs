@@ -3,10 +3,12 @@
 using DIConcreteTypes;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Helpers;
 using Models.ServiceBus;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,17 +23,17 @@ namespace Hosts.MessageSplitter
         private const int MaxBatchSizeInBytes = 256 * 1024;
         private const int ThrottleDelayMs = 500;
 
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<TopicMessageSenderFunction> _logger;
         private readonly IBlobStorageRepository _blobStorageRepository;
         private readonly IServiceBusTopicsRepository _membershipUpdaterSender;
         private readonly JsonSerializerOptions _jsonSerializerOptions;
 
         public TopicMessageSenderFunction(
-            ILoggingRepository loggingRepository,
+            ILogger<TopicMessageSenderFunction> logger,
             [FromKeyedServices("membershipUpdaterSender")] IServiceBusTopicsRepository membershipUpdaterSender,
             IBlobStorageRepository blobStorageRepository)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
             _membershipUpdaterSender = membershipUpdaterSender ?? throw new ArgumentNullException(nameof(membershipUpdaterSender));
             _jsonSerializerOptions = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
@@ -40,19 +42,12 @@ namespace Hosts.MessageSplitter
         [Function(nameof(TopicMessageSenderFunction))]
         public async Task SendMessageAsync([ActivityTrigger] TopicMessageSenderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
+            using (_logger.BeginSyncJobScope(request.MembershipRequest.SyncJob))
             {
-                Message = $"{nameof(TopicMessageSenderFunction)} function started",
-                RunId = request.MembershipRequest.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
-
-            await SendMessagesAsync(request);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(TopicMessageSenderFunction)} function completed",
-                RunId = request.MembershipRequest.SyncJob.RunId
-            }, VerbosityLevel.DEBUG);
+                _logger.FunctionStarted(nameof(TopicMessageSenderFunction));
+                await SendMessagesAsync(request);
+                _logger.FunctionCompleted(nameof(TopicMessageSenderFunction));
+            }
         }
 
         private async Task SendMessagesAsync(TopicMessageSenderRequest request)
@@ -99,11 +94,7 @@ namespace Hosts.MessageSplitter
 
                 if (messageSize > MaxBatchSizeInBytes)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Message {message.MessageId} exceeds the maximum batch size and will be sent individually.",
-                        RunId = request.MembershipRequest.SyncJob.RunId
-                    }, VerbosityLevel.INFO);
+                    _logger.MessageExceedsBatchSize(message.MessageId);
 
                     await _membershipUpdaterSender.AddMessagesAsync(new List<ServiceBusMessage> { message });
                     totalSent++;
@@ -130,13 +121,7 @@ namespace Hosts.MessageSplitter
                 totalSent += currentBatch.Count;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Sent {totalSent} messages with {request.MembershipRequest.MembersToBeUpdated} total operations to {targetSubscription} membership updater",
-                RunId = request.MembershipRequest.SyncJob.RunId
-            }, VerbosityLevel.INFO);
-
-
+            _logger.SentMessagesToUpdater(totalSent, request.MembershipRequest.MembersToBeUpdated, targetSubscription);
         }
 
         private async Task<GroupMembership[]> SplitGroupMembershipAsync(TopicMessageSenderRequest request)
@@ -163,7 +148,7 @@ namespace Hosts.MessageSplitter
         {
             var blobResult = new BlobResult { BlobStatus = BlobStatus.NotFound };
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloading file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.DownloadingFile(request.FilePath);
 
             blobResult = await _blobStorageRepository.DownloadFileAsync(request.FilePath);
             if (blobResult.BlobStatus == BlobStatus.NotFound)
@@ -171,7 +156,7 @@ namespace Hosts.MessageSplitter
                 throw new FileNotFoundException($"File {request.FilePath} was not found");
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Downloaded file {request.FilePath}", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            _logger.DownloadedFile(request.FilePath);
             return blobResult.Content;
         }
     }

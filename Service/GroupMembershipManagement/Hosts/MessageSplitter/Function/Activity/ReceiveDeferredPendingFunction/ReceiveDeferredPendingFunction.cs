@@ -6,8 +6,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -18,14 +17,14 @@ namespace Hosts.MessageSplitter
     public class ReceiveDeferredPendingFunction
     {
         private readonly ServiceBusReceiver _pendingReceiver;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<ReceiveDeferredPendingFunction> _logger;
 
         public ReceiveDeferredPendingFunction(
             [FromKeyedServices("messageSplitterPendingReceiver")] ServiceBusReceiver pendingReceiver,
-            ILoggingRepository loggingRepository)
+            ILogger<ReceiveDeferredPendingFunction> logger)
         {
             _pendingReceiver = pendingReceiver ?? throw new ArgumentNullException(nameof(pendingReceiver));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(ReceiveDeferredPendingFunction))]
@@ -44,20 +43,13 @@ namespace Hosts.MessageSplitter
                 // This can legitimately happen if drain runs before the message is deferred.
                 // Only remove the index entry if we already dispatched the orchestration.
                 var shouldRemoveFromIndex = request.AlreadyDispatched;
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Deferred message not found (will {(shouldRemoveFromIndex ? "remove" : "retry")} index entry) seq={request.SequenceNumber}: {ex.Message}",
-                    RunId = request.RunId
-                }, VerbosityLevel.INFO);
+                _logger.DeferredMessageNotFound(shouldRemoveFromIndex ? "remove" : "retry", request.SequenceNumber, ex.Message);
 
                 return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Failed to receive deferred message seq={request.SequenceNumber}: {ex.Message}"
-                }, VerbosityLevel.INFO);
+                _logger.DeferredReceiveFailed(ex, request.SequenceNumber, ex.Message);
 
                 return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: false, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: false);
             }
@@ -67,11 +59,7 @@ namespace Hosts.MessageSplitter
                 // This can happen if drain runs before the message is deferred.
                 // Only remove the index entry if we already dispatched the orchestration.
                 var shouldRemoveFromIndex = request.AlreadyDispatched;
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Deferred message not found (null) (will {(shouldRemoveFromIndex ? "remove" : "retry")} index entry) seq={request.SequenceNumber}",
-                    RunId = request.RunId
-                }, VerbosityLevel.INFO);
+                _logger.DeferredMessageNull(shouldRemoveFromIndex ? "remove" : "retry", request.SequenceNumber);
 
                 return new ReceiveDeferredPendingResponse(Dispatched: request.AlreadyDispatched, ShouldRemoveFromIndex: shouldRemoveFromIndex, OrchestrationInstanceId: request.OrchestrationInstanceId, MessageNotFound: true);
             }
@@ -87,11 +75,7 @@ namespace Hosts.MessageSplitter
                     if (workItem == null)
                     {
                         await _pendingReceiver.DeadLetterMessageAsync(message, deadLetterReason: "InvalidPendingMessage", deadLetterErrorDescription: "Deserialized work item was null.");
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Dead-lettered deferred pending message due to null body; seq={request.SequenceNumber}",
-                            RunId = request.RunId
-                        }, VerbosityLevel.INFO);
+                        _logger.DeferredDeadLetteredNullBody(request.SequenceNumber);
                         return new ReceiveDeferredPendingResponse(Dispatched: false, ShouldRemoveFromIndex: true, OrchestrationInstanceId: null, MessageNotFound: false);
                     }
 
@@ -106,11 +90,7 @@ namespace Hosts.MessageSplitter
                             workItem,
                             new StartOrchestrationOptions { InstanceId = instanceId });
 
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Dispatched deferred pending orchestration instanceId={instanceId} seq={request.SequenceNumber}",
-                            RunId = request.RunId
-                        }, VerbosityLevel.INFO);
+                        _logger.DeferredDispatched(instanceId, request.SequenceNumber);
                     }
 
                     dispatched = true;
@@ -119,20 +99,13 @@ namespace Hosts.MessageSplitter
                 try
                 {
                     await _pendingReceiver.CompleteMessageAsync(message);
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Completed deferred pending message seq={request.SequenceNumber}",
-                        RunId = request.RunId
-                    }, VerbosityLevel.INFO);
+                    _logger.DeferredCompleted(request.SequenceNumber);
                     return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: true, OrchestrationInstanceId: instanceId, MessageNotFound: false);
                 }
                 catch (Exception ex)
                 {
                     // Orchestration is dispatched, but message settle failed. Keep index entry for retry.
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Scheduled orchestration but failed to complete deferred message seq={request.SequenceNumber}: {ex.Message}"
-                    }, VerbosityLevel.INFO);
+                    _logger.DeferredCompleteFailed(request.SequenceNumber, ex.Message);
 
                     return new ReceiveDeferredPendingResponse(Dispatched: dispatched, ShouldRemoveFromIndex: false, OrchestrationInstanceId: instanceId, MessageNotFound: false);
                 }
@@ -143,11 +116,7 @@ namespace Hosts.MessageSplitter
                 try
                 {
                     await _pendingReceiver.DeadLetterMessageAsync(message, deadLetterReason: "InvalidPendingMessage", deadLetterErrorDescription: ex.Message);
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Dead-lettered deferred pending message due to invalid payload; seq={request.SequenceNumber} err={ex.Message}",
-                        RunId = request.RunId
-                    }, VerbosityLevel.INFO);
+                    _logger.DeferredDeadLetteredInvalidPayload(ex, request.SequenceNumber, ex.Message);
                 }
                 catch
                 {

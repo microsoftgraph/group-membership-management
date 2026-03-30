@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 using MessageSplitter.Contracts;
 using Microsoft.Azure.Functions.Worker;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 
@@ -11,21 +11,24 @@ namespace Hosts.MessageSplitter
 {
     public class JobStatusUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobStatusUpdaterFunction> _logger;
         private readonly IMessageSplitterService _messageSplitterService;
 
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, IMessageSplitterService messageSplitterService)
+        public JobStatusUpdaterFunction(ILogger<JobStatusUpdaterFunction> logger, IMessageSplitterService messageSplitterService)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _messageSplitterService = messageSplitterService ?? throw new ArgumentNullException(nameof(messageSplitterService));
         }
 
         [Function(nameof(JobStatusUpdaterFunction))]
         public async Task UpdateJobStatusAsync([ActivityTrigger] JobStatusUpdaterRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
-            await _messageSplitterService.UpdateJobStatusAsync(request.SyncJob.Id, request.Status);
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = request.SyncJob.RunId }, VerbosityLevel.DEBUG);
+            using (_logger.BeginSyncJobScope(request.SyncJob))
+            {
+                _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
+                await _messageSplitterService.UpdateJobStatusAsync(request.SyncJob.Id, request.Status);
+                _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
+            }
         }
     }
 }

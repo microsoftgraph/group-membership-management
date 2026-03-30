@@ -12,6 +12,5 @@ namespace Hosts.MessageSplitter
         public string SubscriptionName { get; set; }
         public string LaneSize { get; set; }
         public int InstanceToUse { get; set; }
-
     }
 }
