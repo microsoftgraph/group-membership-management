@@ -3,21 +3,21 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
-using Models;
+using Microsoft.Extensions.Logging;
 using Models.ServiceBus;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using Services.Contracts;
 
 namespace Hosts.SyncJobUpdater
 {
     public class JobStatusUpdaterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<JobStatusUpdaterFunction> _logger;
         private readonly ISyncJobUpdaterService _syncJobUpdaterService;
 
-        public JobStatusUpdaterFunction(ILoggingRepository loggingRepository, ISyncJobUpdaterService syncJobUpdaterService)
+        public JobStatusUpdaterFunction(ILogger<JobStatusUpdaterFunction> logger, ISyncJobUpdaterService syncJobUpdaterService)
         {
-            _loggingRepository = loggingRepository;
+            _logger = logger;
             _syncJobUpdaterService = syncJobUpdaterService;
         }
 
@@ -26,9 +26,12 @@ namespace Hosts.SyncJobUpdater
         {
             if (message != null && message.JobId != Guid.Empty)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function started", RunId = message.RunId }, VerbosityLevel.DEBUG);
-                await _syncJobUpdaterService.UpdateSyncJobStatusAsync(message);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(JobStatusUpdaterFunction)} function completed", RunId = message.RunId }, VerbosityLevel.DEBUG);
+                using (_logger.BeginSyncJobScope(message.SyncJob))
+                {
+                    _logger.FunctionStarted(nameof(JobStatusUpdaterFunction));
+                    await _syncJobUpdaterService.UpdateSyncJobStatusAsync(message);
+                    _logger.FunctionCompleted(nameof(JobStatusUpdaterFunction));
+                }
             }
         }
     }
