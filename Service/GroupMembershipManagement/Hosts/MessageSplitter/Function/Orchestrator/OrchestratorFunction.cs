@@ -5,8 +5,9 @@ using DIConcreteTypes;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Threading.Tasks;
 
@@ -15,14 +16,11 @@ namespace Hosts.MessageSplitter
 
     public class OrchestratorFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
         private readonly MembershipUpdaters _membershipUpdaters;
 
         public OrchestratorFunction(
-                ILoggingRepository loggingRepository,
                 MembershipUpdaters membershipUpdaters)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _membershipUpdaters = membershipUpdaters ?? throw new ArgumentNullException(nameof(membershipUpdaters));
         }
 
@@ -30,46 +28,39 @@ namespace Hosts.MessageSplitter
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var request = context.GetInput<OrchestratorRequest>();
-            var runId = request.MembershipRequest.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
+            var logger = context.CreateReplaySafeLogger("MessageSplitter.OrchestratorFunction");
             var updaterType = request.UpdaterType;
             var instanceTrackerEntityId = new EntityInstanceId(nameof(InstanceTracker), request.CurrentLaneSize);
             var subscription = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize];
 
-            await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
+            using (logger.BeginSyncJobScope(request.MembershipRequest.SyncJob))
             {
-                Message = new LogMessage { Message = $"Processing message {request.MessageId}, by orchestrator instance {context.InstanceId}", RunId = runId }
-            });
+                logger.ProcessingMessageByOrchestrator(context.InstanceId);
 
-            try
-            {
-                await context.CallActivityAsync(nameof(TopicMessageSenderFunction), new TopicMessageSenderRequest
+                try
                 {
-                    MembershipRequest = request.MembershipRequest,
-                    MessageSize = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize].MessageSize,
-                    SubscriptionName = request.SubscriptionName,
-                    InstanceToUse = 1,
-                    LaneSize = request.CurrentLaneSize
-                });
-            }
-            catch (Exception ex)
-            {
-                await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
+                    await context.CallActivityAsync(nameof(TopicMessageSenderFunction), new TopicMessageSenderRequest
+                    {
+                        MembershipRequest = request.MembershipRequest,
+                        MessageSize = _membershipUpdaters.AvailableInstances[request.UpdaterType][request.CurrentLaneSize].MessageSize,
+                        SubscriptionName = request.SubscriptionName,
+                        InstanceToUse = 1,
+                        LaneSize = request.CurrentLaneSize
+                    });
+                }
+                catch (Exception ex)
                 {
-                    Message = new LogMessage { Message = $"Unexpected error: {ex.Message}", RunId = runId }
-                });
+                    logger.OrchestratorUnexpectedException(ex);
 
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
-                new JobStatusUpdaterRequest
-                {
-                    Status = SyncStatus.Error,
-                    SyncJob = request.MembershipRequest.SyncJob
-                });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
+                    new JobStatusUpdaterRequest
+                    {
+                        Status = SyncStatus.Error,
+                        SyncJob = request.MembershipRequest.SyncJob
+                    });
 
-                throw;
-            }
-            finally
-            {
-                _loggingRepository.RemoveSyncJobProperties(runId);
+                    throw;
+                }
             }
         }
     }

@@ -7,8 +7,8 @@ using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -19,13 +19,13 @@ namespace Hosts.MessageSplitter
     {
         private readonly IConfiguration _configuration;
         private readonly RunLimiterSettings _runLimiterSettings;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<DeferredPendingSweepFunction> _logger;
 
-        public DeferredPendingSweepFunction(IConfiguration configuration, RunLimiterSettings runLimiterSettings, ILoggingRepository loggingRepository)
+        public DeferredPendingSweepFunction(IConfiguration configuration, RunLimiterSettings runLimiterSettings, ILogger<DeferredPendingSweepFunction> logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _runLimiterSettings = runLimiterSettings ?? throw new ArgumentNullException(nameof(runLimiterSettings));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(DeferredPendingSweepFunction))]
@@ -39,9 +39,7 @@ namespace Hosts.MessageSplitter
             }
 
             var lane = CommonServices.GetValueOrThrowBase(_configuration, "messageSplitterSubscription").ToLowerInvariant();
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"DeferredPendingSweep timer fired; scheduling sweep lane={lane}" },
-                VerbosityLevel.INFO);
+            _logger.SweepTimerFired(lane);
             await durableClient.ScheduleNewOrchestrationInstanceAsync(
                 nameof(DeferredPendingSweepOrchestratorFunction),
                 new DeferredPendingSweepRequest(lane));
@@ -60,15 +58,10 @@ namespace Hosts.MessageSplitter
                 return;
             }
 
+            var logger = context.CreateReplaySafeLogger("MessageSplitter.DeferredPendingSweepOrchestratorFunction");
             var utcNow = new DateTimeOffset(context.CurrentUtcDateTime, TimeSpan.Zero);
 
-            await context.CallActivityAsync(
-                nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = new LogMessage { Message = $"DeferredPendingSweep: start lane={lane}" },
-                    Verbosity = VerbosityLevel.INFO
-                });
+            logger.SweepStarted(lane);
 
             // Prune stale leases.
             var limiterEntityId = new EntityInstanceId(nameof(RunLimiter), lane);
@@ -93,26 +86,10 @@ namespace Hosts.MessageSplitter
                         Status = SyncStatus.Error
                     });
 
-                await context.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage
-                        {
-                            Message = $"DeferredPendingSweep: pruned stale index entry and set job to Error; seq={item.SequenceNumber} jobId={item.JobId} lane={lane}",
-                            RunId = item.RunId
-                        },
-                        Verbosity = VerbosityLevel.INFO
-                    });
+                logger.SweepPrunedStaleEntry(item.SequenceNumber, item.JobId, lane);
             }
 
-            await context.CallActivityAsync(
-                nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = new LogMessage { Message = $"DeferredPendingSweep: prunedExpiredLeases={prunedLeases} prunedOldIndexItems={prunedItems.Count} lane={lane}" },
-                    Verbosity = VerbosityLevel.INFO
-                });
+            logger.SweepCompleted(prunedLeases, prunedItems.Count, lane);
 
             // Kick drain.
             await context.CallSubOrchestratorAsync(nameof(DeferredPendingDrainOrchestrator), new DeferredPendingDrainRequest(lane));

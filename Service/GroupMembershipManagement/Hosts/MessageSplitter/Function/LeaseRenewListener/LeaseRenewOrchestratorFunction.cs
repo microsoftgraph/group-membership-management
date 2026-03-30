@@ -4,9 +4,9 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
-using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 
@@ -30,6 +30,7 @@ namespace Hosts.MessageSplitter
             }
 
             var request = context.GetInput<MessageSplitterLeaseRenewSignal>();
+            var logger = context.CreateReplaySafeLogger("MessageSplitter.LeaseRenewOrchestratorFunction");
             var lane = (request.LaneSize ?? "large").ToLowerInvariant();
             var entityId = new EntityInstanceId(nameof(RunLimiter), lane);
 
@@ -40,17 +41,7 @@ namespace Hosts.MessageSplitter
 
             if (!response.Renewed)
             {
-                await context.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage
-                        {
-                            Message = $"Lease renew signal ignored; no existing lease found. lane={lane}",
-                            RunId = request.RunId
-                        },
-                        Verbosity = VerbosityLevel.INFO
-                    });
+                logger.LeaseRenewIgnored(lane);
             }
         }
     }

@@ -3,12 +3,9 @@
 
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
-using Microsoft.DurableTask.Entities;
-using Models;
+using Microsoft.Extensions.Logging;
 using Models.ServiceBus;
-using Repositories.Contracts;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -18,11 +15,11 @@ namespace Hosts.MessageSplitter
 {
     public class LeaseRenewListenerFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<LeaseRenewListenerFunction> _logger;
 
-        public LeaseRenewListenerFunction(ILoggingRepository loggingRepository)
+        public LeaseRenewListenerFunction(ILogger<LeaseRenewListenerFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(LeaseRenewListenerFunction))]
@@ -46,14 +43,12 @@ namespace Hosts.MessageSplitter
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to parse lease renew signal: {ex.Message}" }, VerbosityLevel.INFO);
+                _logger.FailedToParseLeaseRenewSignal(ex, ex.Message);
                 await actions.DeadLetterMessageAsync(message, deadLetterReason: "InvalidLeaseRenewMessage", deadLetterErrorDescription: ex.Message);
                 return;
             }
 
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Processing lease renew signal; lane={signal.LaneSize} leaseTimeoutMinutes={signal.LeaseTimeoutMinutes}", RunId = signal.RunId },
-                VerbosityLevel.INFO);
+            _logger.ProcessingLeaseRenewSignal(signal.LaneSize, signal.LeaseTimeoutMinutes);
             await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(LeaseRenewOrchestratorFunction), signal);
             await actions.CompleteMessageAsync(message);
         }

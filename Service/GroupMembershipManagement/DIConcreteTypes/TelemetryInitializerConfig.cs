@@ -23,7 +23,8 @@ namespace DIConcreteTypes
             "MembershipAggregator.",
             "GroupMembershipObtainer.",
             "SyncJobUpdater.",
-            "DestinationAttributesUpdater."
+            "DestinationAttributesUpdater.",
+            "MessageSplitter."
         ];
 
         /// <summary>

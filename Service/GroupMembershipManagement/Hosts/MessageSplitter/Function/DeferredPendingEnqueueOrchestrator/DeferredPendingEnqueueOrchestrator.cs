@@ -4,8 +4,8 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Threading.Tasks;
 
@@ -18,16 +18,11 @@ namespace Hosts.MessageSplitter
         {
             var request = context.GetInput<DeferredPendingEnqueueRequest>();
             var lane = (request?.LaneSize ?? string.Empty).ToLowerInvariant();
+            var logger = context.CreateReplaySafeLogger("MessageSplitter.DeferredPendingEnqueueOrchestrator");
 
             if (string.IsNullOrWhiteSpace(lane) || request == null)
             {
-                await context.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage { Message = $"DeferredPendingEnqueue: invalid input (lane empty or request null).", RunId = request?.RunId ?? Guid.Empty },
-                        Verbosity = VerbosityLevel.INFO
-                    });
+                logger.EnqueueIndexed(0, string.Empty);
                 return;
             }
 
@@ -39,17 +34,7 @@ namespace Hosts.MessageSplitter
                 nameof(DeferredPendingIndexEntity.Add),
                 new AddDeferredPendingRequest(request.SequenceNumber, request.RunId, utcNow, request.JobId));
 
-            await context.CallActivityAsync(
-                nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = new LogMessage
-                    {
-                        Message = $"DeferredPendingEnqueue: indexed seq={request.SequenceNumber} lane={lane}. Kicking drain.",
-                        RunId = request.RunId
-                    },
-                    Verbosity = VerbosityLevel.INFO
-                });
+            logger.EnqueueIndexed(request.SequenceNumber, lane);
 
             await context.CallSubOrchestratorAsync(nameof(DeferredPendingDrainOrchestrator), new DeferredPendingDrainRequest(lane));
         }

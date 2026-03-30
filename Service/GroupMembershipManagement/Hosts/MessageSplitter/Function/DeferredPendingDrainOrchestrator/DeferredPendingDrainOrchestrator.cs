@@ -4,8 +4,8 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -32,16 +32,9 @@ namespace Hosts.MessageSplitter
                 return;
             }
 
-            await context.CallActivityAsync(
-                nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = new LogMessage
-                    {
-                        Message = $"DeferredPendingDrain: start lane={lane}",
-                    },
-                    Verbosity = VerbosityLevel.INFO
-                });
+            var logger = context.CreateReplaySafeLogger("MessageSplitter.DeferredPendingDrainOrchestrator");
+
+            logger.DrainStarted(lane);
 
             var indexEntityId = new EntityInstanceId(nameof(DeferredPendingIndexEntity), lane);
 
@@ -56,13 +49,7 @@ namespace Hosts.MessageSplitter
 
             if (!lockAcquired)
             {
-                await context.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage { Message = $"DeferredPendingDrain: drain lock not acquired lane={lane} (another drain in progress)" },
-                        Verbosity = VerbosityLevel.INFO
-                    });
+                logger.DrainLockNotAcquired(lane);
                 return;
             }
 
@@ -85,13 +72,7 @@ namespace Hosts.MessageSplitter
 
                 if (batch == null || batch.Count == 0)
                 {
-                    await context.CallActivityAsync(
-                        nameof(LoggerFunction),
-                        new LoggerRequest
-                        {
-                            Message = new LogMessage { Message = $"DeferredPendingDrain: no items to process lane={lane}" },
-                            Verbosity = VerbosityLevel.INFO
-                        });
+                    logger.DrainNoItems(lane);
                     return;
                 }
 
@@ -120,17 +101,7 @@ namespace Hosts.MessageSplitter
 
                             if (shouldLog)
                             {
-                                await context.CallActivityAsync(
-                                    nameof(LoggerFunction),
-                                    new LoggerRequest
-                                    {
-                                        Message = new LogMessage
-                                        {
-                                            Message = $"DeferredPendingDrain: no capacity; stopping drain lane={lane} inFlight={lease.InFlightCount} runId={item.RunId} seq={item.SequenceNumber}",
-                                            RunId = item.RunId
-                                        },
-                                        Verbosity = VerbosityLevel.INFO
-                                    });
+                                logger.DrainNoCapacity(lane, lease.InFlightCount, item.RunId, item.SequenceNumber);
                             }
 
                             // Mark capacity denied and release in-progress marker
@@ -154,17 +125,7 @@ namespace Hosts.MessageSplitter
                     }
                     catch
                     {
-                        await context.CallActivityAsync(
-                            nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                Message = new LogMessage
-                                {
-                                    Message = $"DeferredPendingDrain: ReceiveDeferredPending failed; lane={lane} runId={item.RunId} seq={item.SequenceNumber}",
-                                    RunId = item.RunId
-                                },
-                                Verbosity = VerbosityLevel.INFO
-                            });
+                        logger.DrainReceiveFailed(lane, item.RunId, item.SequenceNumber);
                         if (leaseAcquiredForDispatch)
                         {
                             // No work was dispatched: release the lease.
@@ -210,17 +171,11 @@ namespace Hosts.MessageSplitter
                     {
                         shouldRemove = true;
                         staleRemoved++;
-                        await context.CallActivityAsync(
-                            nameof(LoggerFunction),
-                            new LoggerRequest
-                            {
-                                Message = new LogMessage
-                                {
-                                    Message = $"DeferredPendingDrain: removing stale index entry (message not found, age={(utcNow - item.EnqueuedAtUtc).TotalMinutes:F1}min); seq={item.SequenceNumber} jobId={item.JobId} lane={lane}",
-                                    RunId = item.RunId
-                                },
-                                Verbosity = VerbosityLevel.INFO
-                            });
+                        logger.DrainRemovingStaleEntry(
+                            $"{(utcNow - item.EnqueuedAtUtc).TotalMinutes:F1}",
+                            item.SequenceNumber,
+                            item.JobId,
+                            lane);
                     }
 
                     if (shouldRemove)
@@ -242,16 +197,7 @@ namespace Hosts.MessageSplitter
 
                 }
 
-                await context.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    new LoggerRequest
-                    {
-                        Message = new LogMessage
-                        {
-                            Message = $"DeferredPendingDrain: completed lane={lane} processed={processed} newlyDispatched={newlyDispatched} removed={removed} staleRemoved={staleRemoved} messageNotFound={messageNotFound} capacityDenied={capacityDenied}",
-                        },
-                        Verbosity = VerbosityLevel.INFO
-                    });
+                logger.DrainCompleted(lane, processed, newlyDispatched, removed, staleRemoved, messageNotFound, capacityDenied);
             }
             finally
             {

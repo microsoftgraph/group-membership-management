@@ -6,9 +6,9 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
-using Repositories.Contracts;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -18,11 +18,11 @@ namespace Hosts.MessageSplitter
 {
     public class CompletionListenerFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<CompletionListenerFunction> _logger;
 
-        public CompletionListenerFunction(ILoggingRepository loggingRepository)
+        public CompletionListenerFunction(ILogger<CompletionListenerFunction> logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Function(nameof(CompletionListenerFunction))]
@@ -48,14 +48,12 @@ namespace Hosts.MessageSplitter
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to parse completion signal: {ex.Message}" }, VerbosityLevel.INFO);
+                _logger.FailedToParseCompletionSignal(ex, ex.Message);
                 await actions.DeadLetterMessageAsync(message, deadLetterReason: "InvalidCompletionMessage", deadLetterErrorDescription: ex.Message);
                 return;
             }
 
-            await _loggingRepository.LogMessageAsync(
-                new LogMessage { Message = $"Processing completion signal; lane={signal.LaneSize}", RunId = signal.RunId },
-                VerbosityLevel.INFO);
+            _logger.ProcessingCompletionSignal(signal.LaneSize);
             await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(CompletionOrchestratorFunction), signal);
             await actions.CompleteMessageAsync(message);
         }
@@ -94,22 +92,13 @@ namespace Hosts.MessageSplitter
             }
 
             var request = context.GetInput<MessageSplitterCompletionSignal>();
+            var logger = context.CreateReplaySafeLogger("MessageSplitter.CompletionOrchestratorFunction");
             var entityId = new EntityInstanceId(nameof(RunLimiter), request.LaneSize.ToLowerInvariant());
             var released = await context.Entities.CallEntityAsync<bool>(entityId, nameof(RunLimiter.Release), request.RunId);
 
             var drainAction = released ? "Starting deferred drain." : "Skipping drain (nothing released).";
 
-            await context.CallActivityAsync(
-                nameof(LoggerFunction),
-                new LoggerRequest
-                {
-                    Message = new LogMessage
-                    {
-                        Message = $"Completion processed; lane={request.LaneSize.ToLowerInvariant()} released={released}. {drainAction}",
-                        RunId = request.RunId
-                    },
-                    Verbosity = VerbosityLevel.INFO
-                });
+            logger.CompletionProcessed(request.LaneSize.ToLowerInvariant(), released, drainAction);
 
             if (released)
             {

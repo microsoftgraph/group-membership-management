@@ -6,8 +6,10 @@ using MessageSplitter.Contracts;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.Helpers;
 using System;
 using System.Text;
 using System.Text.Json;
@@ -17,19 +19,19 @@ namespace Hosts.MessageSplitter
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<StarterFunction> _logger;
         private readonly IMessageSplitterService _messageSplitterService;
         private readonly MembershipUpdaters _membershipUpdaters;
         private readonly IServiceBusTopicsRepository _messageSplitterTopicSenderRepository;
         private readonly RunLimiterSettings _runLimiterSettings;
 
-        public StarterFunction(ILoggingRepository loggingRepository,
+        public StarterFunction(ILogger<StarterFunction> logger,
                                IMessageSplitterService messageSplitterService,
                                MembershipUpdaters membershipUpdaters,
                                [FromKeyedServices("messageSplitterTopicSenderRepository")] IServiceBusTopicsRepository messageSplitterTopicSenderRepository,
                                RunLimiterSettings runLimiterSettings)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _membershipUpdaters = membershipUpdaters ?? throw new ArgumentNullException(nameof(membershipUpdaters));
             _messageSplitterService = messageSplitterService ?? throw new ArgumentNullException(nameof(messageSplitterService));
             _messageSplitterTopicSenderRepository = messageSplitterTopicSenderRepository ?? throw new ArgumentNullException(nameof(messageSplitterTopicSenderRepository));
@@ -44,30 +46,31 @@ namespace Hosts.MessageSplitter
             [DurableClient] DurableTaskClient durableClient)
         {
             var request = JsonSerializer.Deserialize<MembershipHttpRequest>(Encoding.UTF8.GetString(message.Body));
-            var runId = request.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
 
-            _loggingRepository.SetSyncJobProperties(runId, request.SyncJob.ToDictionary());
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started", RunId = runId }, VerbosityLevel.DEBUG);
-
-            try
+            using (_logger.BeginSyncJobScope(request.SyncJob))
             {
-                var orchestrationRequest = CreateOrchestratorRequest(message, request);
+                _logger.FunctionStarted(nameof(StarterFunction));
 
-                if(_runLimiterSettings.IsEnabled)
-                    await EnqueuePendingWorkAsync(orchestrationRequest);
-                else
-                    await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), orchestrationRequest);
+                try
+                {
+                    var orchestrationRequest = CreateOrchestratorRequest(message, request);
 
-                await actions.CompleteMessageAsync(message);
+                    if(_runLimiterSettings.IsEnabled)
+                        await EnqueuePendingWorkAsync(orchestrationRequest);
+                    else
+                        await durableClient.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction), orchestrationRequest);
+
+                    await actions.CompleteMessageAsync(message);
+                }
+                catch (Exception ex)
+                {
+                    _logger.StarterUnexpectedError(ex, ex.Message);
+                    await _messageSplitterService.UpdateJobStatusAsync(request.SyncJob.Id, SyncStatus.Error);
+                    throw;
+                }
+
+                _logger.FunctionCompleted(nameof(StarterFunction));
             }
-            catch (Exception ex)
-            {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unexpected error {ex.Message}", RunId = runId }, VerbosityLevel.DEBUG);
-                await _messageSplitterService.UpdateJobStatusAsync(request.SyncJob.Id, SyncStatus.Error);
-                throw;
-            }
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed", RunId = runId }, VerbosityLevel.DEBUG);
         }
 
         private OrchestratorRequest CreateOrchestratorRequest(ServiceBusReceivedMessage message, MembershipHttpRequest request)
