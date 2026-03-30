@@ -2,12 +2,13 @@
 // Licensed under the MIT license.
 using BusinessLogic.SyncJobUpdater;
 using Hosts.SyncJobUpdater;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
 using Moq;
 using Repositories.Contracts;
-using Services.SyncJobUpdater.Tests.Mocks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,6 @@ namespace Services.Tests
     {
         private Mock<IDatabaseSyncJobsRepository> _mockDatabaseSyncJobsRepository;
         private Mock<ISyncJobHistoryRepository> _mockSyncJobHistoryRepository;
-        private MockLoggingRepository _mockLoggingRepository;
         private SyncJobUpdaterService _syncJobUpdaterService;
         private SyncJob _updatedJob = null;
         private DateTime _currentDateTime;
@@ -32,7 +32,6 @@ namespace Services.Tests
 
             _mockDatabaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
-            _mockLoggingRepository = new MockLoggingRepository();
 
             var syncJobStatusService = new SyncJobStatusService(
                 _mockDatabaseSyncJobsRepository.Object,
@@ -40,7 +39,7 @@ namespace Services.Tests
 
             _syncJobUpdaterService = new SyncJobUpdaterService(
                 _mockDatabaseSyncJobsRepository.Object, 
-                _mockLoggingRepository,
+                NullLogger<SyncJobUpdaterService>.Instance,
                 syncJobStatusService);
 
             _mockDatabaseSyncJobsRepository.Setup(x => x.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()))
