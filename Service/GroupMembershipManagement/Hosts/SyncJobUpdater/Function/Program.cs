@@ -45,6 +45,7 @@ namespace Hosts.SyncJobUpdater
                         FunctionName,
                         DryRunSettingName,
                         rootPath);
+                    services.ConfigureFunctionsApplicationInsights();
 
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
                     services.AddScoped<ISyncJobUpdaterService>(sp =>
