@@ -8,6 +8,8 @@ using DIConcreteTypes;
 using Hosts.FunctionBase;
 using MessageSplitter.Contracts;
 using MessageSplitter.Services;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -50,6 +52,7 @@ namespace Hosts.MessageSplitter
                             var dryRunSettingName = string.Empty;
                             var rootPath = context.HostingEnvironment.ContentRootPath;
                             CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+                            services.ConfigureFunctionsApplicationInsights();
 
                             services.Configure<MultiLaneConfig>(configuration.GetSection("MultiLane"));
                             services.Configure<RunLimiterSettings>(settings =>
