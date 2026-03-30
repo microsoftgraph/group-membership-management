@@ -4,13 +4,15 @@
 using System;
 using Azure.Identity;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using Repositories.EntityFramework;
 using Services.Contracts;
 using BusinessLogic.SyncJobUpdater;
+using Microsoft.Azure.Functions.Worker;
 
 namespace Hosts.SyncJobUpdater
 {
@@ -48,11 +50,7 @@ namespace Hosts.SyncJobUpdater
                     services.ConfigureFunctionsApplicationInsights();
 
                     services.AddScoped<ISyncJobStatusService, SyncJobStatusService>();
-                    services.AddScoped<ISyncJobUpdaterService>(sp =>
-                        new SyncJobUpdaterService(
-                            sp.GetRequiredService<IDatabaseSyncJobsRepository>(),
-                            sp.GetRequiredService<ILoggingRepository>(),
-                            sp.GetRequiredService<ISyncJobStatusService>()));
+                    services.AddScoped<ISyncJobUpdaterService, SyncJobUpdaterService>();
                 })
                 .Build();
 

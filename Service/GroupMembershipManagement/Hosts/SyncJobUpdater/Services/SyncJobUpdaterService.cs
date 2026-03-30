@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobHistory;
@@ -12,16 +13,16 @@ namespace Hosts.SyncJobUpdater
 {
     public class SyncJobUpdaterService : ISyncJobUpdaterService
     {
-        private readonly ILoggingRepository _log;
+        private readonly ILogger<SyncJobUpdaterService> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobStatusService _syncJobStatusService;
 
         public SyncJobUpdaterService(
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            ILoggingRepository logging,
+            ILogger<SyncJobUpdaterService> logger,
             ISyncJobStatusService syncJobStatusService)
         {
-            _log = logging;
+            _logger = logger;
             _databaseSyncJobsRepository = databaseSyncJobsRepository;
             _syncJobStatusService = syncJobStatusService;
         }
@@ -33,11 +34,7 @@ namespace Hosts.SyncJobUpdater
             
             if (syncJob == null)
             {
-                await _log.LogMessageAsync(new LogMessage 
-                { 
-                    Message = $"Unable to find sync job with ID {message.JobId}",
-                    RunId = message.RunId 
-                });
+                _logger.SyncJobNotFound(message.JobId);
                 return;
             }
 
@@ -84,11 +81,7 @@ namespace Hosts.SyncJobUpdater
 
             await _syncJobStatusService.UpdateJobStatusAsync(syncJob, message.NewStatus, history);
 
-            await _log.LogMessageAsync(new LogMessage 
-            { 
-                Message = $"Updated sync job {message.JobId} status to {message.NewStatus}",
-                RunId = message.RunId 
-            });
+            _logger.SyncJobStatusUpdated(message.JobId, message.NewStatus.ToString());
         }
 
     }
