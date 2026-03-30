@@ -35,7 +35,7 @@ namespace Hosts.MessageSplitter
 
             using (logger.BeginSyncJobScope(request.MembershipRequest.SyncJob))
             {
-                logger.ProcessingMessageByOrchestrator(context.InstanceId);
+                logger.ProcessingMessageByOrchestrator(request.MessageId, context.InstanceId);
 
                 try
                 {

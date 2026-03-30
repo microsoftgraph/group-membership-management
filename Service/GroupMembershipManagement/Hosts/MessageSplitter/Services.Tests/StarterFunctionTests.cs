@@ -7,6 +7,8 @@ using Hosts.MessageSplitter;
 using MessageSplitter.Contracts;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -23,7 +25,6 @@ namespace Services.Tests
         private SyncJob _syncJob;
         private Group _group;
         private MembershipUpdaters _membershipUpdaters;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IMessageSplitterService> _messageSplitterService;
         private Mock<ServiceBusMessageActions> _serviceBusMessageActions;
         private Mock<IServiceBusTopicsRepository> _messageSplitterTopicSenderRepository;
@@ -33,7 +34,6 @@ namespace Services.Tests
         [TestInitialize]
         public void SetupTest()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _messageSplitterService = new Mock<IMessageSplitterService>();
             _serviceBusMessageActions = new Mock<ServiceBusMessageActions>();
             _messageSplitterTopicSenderRepository = new Mock<IServiceBusTopicsRepository>();
@@ -69,7 +69,7 @@ namespace Services.Tests
         public async Task ProcessServiceBusMessageAsync()
         {
             var starterFunction = new StarterFunction(
-                _loggingRepository.Object,
+                NullLogger<StarterFunction>.Instance,
                 _messageSplitterService.Object,
                 _membershipUpdaters,
                 _messageSplitterTopicSenderRepository.Object,
@@ -108,7 +108,7 @@ namespace Services.Tests
         public async Task ProcessLargeServiceBusMessageAsync()
         {
             var starterFunction = new StarterFunction(
-                _loggingRepository.Object,
+                NullLogger<StarterFunction>.Instance,
                 _messageSplitterService.Object,
                 Helpers.GetAvailableMembershipUpdaters(currentLaneSize: "Large"),
                 _messageSplitterTopicSenderRepository.Object,
@@ -148,7 +148,7 @@ namespace Services.Tests
         public async Task ProcessServiceBusMessageWithInvalidTypeAsync()
         {
             var starterFunction = new StarterFunction(
-                _loggingRepository.Object,
+                NullLogger<StarterFunction>.Instance,
                 _messageSplitterService.Object,
                 _membershipUpdaters,
                 _messageSplitterTopicSenderRepository.Object,
@@ -175,13 +175,6 @@ namespace Services.Tests
             await Assert.ThrowsExceptionAsync<KeyNotFoundException>(async () => await starterFunction.ProcessServiceBusMessageAsync(message, _serviceBusMessageActions.Object, _durableClient.Object));
 
             _messageSplitterTopicSenderRepository.Verify(x => x.AddMessageAsync(It.IsAny<Models.ServiceBus.ServiceBusMessage>()), Times.Never());
-
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                        It.Is<LogMessage>(m => m.Message.StartsWith("Unexpected error")),
-                        It.IsAny<VerbosityLevel>(),
-                        It.IsAny<string>(),
-                        It.IsAny<string>()), Times.Once());
 
             _messageSplitterService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<Guid>(), SyncStatus.Error), Times.Once());
         }

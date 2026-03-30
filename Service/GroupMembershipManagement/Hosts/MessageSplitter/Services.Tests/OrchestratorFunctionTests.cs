@@ -5,10 +5,11 @@ using DIConcreteTypes;
 using Hosts.MessageSplitter;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Repositories.Contracts;
 
 namespace Services.Tests
 {
@@ -19,14 +20,12 @@ namespace Services.Tests
         private Group _group;
         private MembershipUpdaters _membershipUpdaters;
         private OrchestratorRequest _orchestratorRequest;
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<TaskOrchestrationContext> _durableContext;
 
 
         [TestInitialize]
         public void SetupTest()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _durableContext = new Mock<TaskOrchestrationContext>();
             _membershipUpdaters = Helpers.GetAvailableMembershipUpdaters();
 
@@ -69,18 +68,14 @@ namespace Services.Tests
 
             _durableContext.Setup(x => x.Entities.LockEntitiesAsync(It.IsAny<EntityInstanceId>()));
 
+            _durableContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
         }
 
         [TestMethod]
         public async Task RunOrchestratorAsync()
         {
-            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipUpdaters);
+            var orchestratorFunction = new OrchestratorFunction(_membershipUpdaters);
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
-
-            _durableContext.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                                            It.Is<LoggerRequest>(r => r.Message.Message.StartsWith("Processing message")),
-                                                            It.IsAny<TaskOptions>()),
-                                                            Times.Once());
 
             _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction),
                                                 It.IsAny<TopicMessageSenderRequest>(),
@@ -97,13 +92,8 @@ namespace Services.Tests
                                                 It.IsAny<TaskOptions>()))
                            .ThrowsAsync(new Exception("Test exception"));
 
-            var orchestratorFunction = new OrchestratorFunction(_loggingRepository.Object, _membershipUpdaters);
+            var orchestratorFunction = new OrchestratorFunction(_membershipUpdaters);
             await Assert.ThrowsExceptionAsync<Exception>(async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
-
-            _durableContext.Verify(x => x.CallActivityAsync(nameof(LoggerFunction),
-                                                            It.Is<LoggerRequest>(r => r.Message.Message.StartsWith("Processing message")),
-                                                            It.IsAny<TaskOptions>()),
-                                                            Times.Once());
 
             _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction),
                                                 It.IsAny<TopicMessageSenderRequest>(),

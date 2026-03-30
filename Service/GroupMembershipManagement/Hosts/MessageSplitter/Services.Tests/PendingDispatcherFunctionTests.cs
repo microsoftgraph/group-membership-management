@@ -8,10 +8,11 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
-using Repositories.Contracts;
 using System.Text;
 using System.Text.Json;
 
@@ -20,7 +21,6 @@ namespace Services.Tests
     [TestClass]
     public class PendingDispatcherFunctionTests
     {
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IMessageSplitterService> _messageSplitterService;
         private Mock<ServiceBusMessageActions> _actions;
         private Mock<DurableTaskClient> _durableClient;
@@ -28,7 +28,6 @@ namespace Services.Tests
         [TestInitialize]
         public void Setup()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _messageSplitterService = new Mock<IMessageSplitterService>();
             _actions = new Mock<ServiceBusMessageActions>();
             _durableClient = new Mock<DurableTaskClient>("test");
@@ -85,7 +84,7 @@ namespace Services.Tests
             var bytes = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(request));
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(bytes), sequenceNumber: 123);
 
-            var function = new PendingDispatcherFunction(_loggingRepository.Object, _messageSplitterService.Object);
+            var function = new PendingDispatcherFunction(NullLogger<PendingDispatcherFunction>.Instance, _messageSplitterService.Object);
             await function.ProcessPendingAsync(message, _actions.Object, _durableClient.Object);
 
             _actions.Verify(x => x.DeferMessageAsync(message, It.IsAny<IDictionary<string, object>>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -95,8 +94,6 @@ namespace Services.Tests
                 It.Is<object>(o => o is DeferredPendingEnqueueRequest),
                 It.IsAny<StartOrchestrationOptions>(),
                 It.IsAny<CancellationToken>()), Times.Once());
-
-            _loggingRepository.Verify(x => x.UpsertSyncJobProperties(runId, It.IsAny<Dictionary<string, string>>()));
         }
 
         [TestMethod]
@@ -105,7 +102,7 @@ namespace Services.Tests
             var bytes = Encoding.UTF8.GetBytes("{ this is not valid json");
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(bytes));
 
-            var function = new PendingDispatcherFunction(_loggingRepository.Object, _messageSplitterService.Object);
+            var function = new PendingDispatcherFunction(NullLogger<PendingDispatcherFunction>.Instance, _messageSplitterService.Object);
             await function.ProcessPendingAsync(message, _actions.Object, _durableClient.Object);
 
             _actions.Verify(x => x.DeadLetterMessageAsync(
@@ -153,7 +150,7 @@ namespace Services.Tests
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("gRPC timeout"));
 
-            var function = new PendingDispatcherFunction(_loggingRepository.Object, _messageSplitterService.Object);
+            var function = new PendingDispatcherFunction(NullLogger<PendingDispatcherFunction>.Instance, _messageSplitterService.Object);
 
             await Assert.ThrowsExceptionAsync<Exception>(
                 () => function.ProcessPendingAsync(message, _actions.Object, _durableClient.Object));
@@ -206,7 +203,7 @@ namespace Services.Tests
                     It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("gRPC timeout"));
 
-            var function = new PendingDispatcherFunction(_loggingRepository.Object, _messageSplitterService.Object);
+            var function = new PendingDispatcherFunction(NullLogger<PendingDispatcherFunction>.Instance, _messageSplitterService.Object);
 
             // Should NOT throw - should handle gracefully at max delivery count
             await function.ProcessPendingAsync(message, _actions.Object, _durableClient.Object);

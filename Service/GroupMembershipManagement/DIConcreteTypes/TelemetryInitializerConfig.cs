@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using System;
 using System.Collections.Generic;
 
 namespace DIConcreteTypes
@@ -13,8 +14,8 @@ namespace DIConcreteTypes
         /// <summary>
         /// Gets the built-in category prefixes that are eligible for GMM tagging.
         /// </summary>
-        public static IReadOnlyList<string> DefaultAllowedPrefixes { get; } =
-        [
+        public static IReadOnlyList<string> DefaultAllowedPrefixes { get; } = Array.AsReadOnly(new[]
+        {
             "Services.",
             "Repositories.",
             "Hosts.",
@@ -25,7 +26,7 @@ namespace DIConcreteTypes
             "SyncJobUpdater.",
             "DestinationAttributesUpdater.",
             "MessageSplitter."
-        ];
+        });
 
         /// <summary>
         /// Gets or sets extra allowed prefixes that are merged with the built-in defaults.

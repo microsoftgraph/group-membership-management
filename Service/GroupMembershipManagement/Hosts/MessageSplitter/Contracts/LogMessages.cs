@@ -28,8 +28,8 @@ namespace Hosts.MessageSplitter
         // ── OrchestratorFunction (120020-120029) ──
 
         [LoggerMessage(EventId = 120020, Level = LogLevel.Information,
-            Message = "Processing message by orchestrator instance {InstanceId}")]
-        public static partial void ProcessingMessageByOrchestrator(this ILogger logger, string instanceId);
+            Message = "Processing message {MessageId}, by orchestrator instance {InstanceId}")]
+        public static partial void ProcessingMessageByOrchestrator(this ILogger logger, string messageId, string instanceId);
 
         [LoggerMessage(EventId = 120021, Level = LogLevel.Error,
             Message = "Unexpected exception in orchestrator")]
@@ -131,7 +131,7 @@ namespace Hosts.MessageSplitter
 
         [LoggerMessage(EventId = 120074, Level = LogLevel.Warning,
             Message = "DeferredPendingDrain: ReceiveDeferredPending failed; lane={LaneSize} runId={RunId} seq={SequenceNumber}")]
-        public static partial void DrainReceiveFailed(this ILogger logger, string laneSize, Guid runId, long sequenceNumber);
+        public static partial void DrainReceiveFailed(this ILogger logger, Exception exception, string laneSize, Guid runId, long sequenceNumber);
 
         [LoggerMessage(EventId = 120075, Level = LogLevel.Information,
             Message = "DeferredPendingDrain: removing stale index entry (message not found, age={AgeMinutes}min); seq={SequenceNumber} jobId={JobId} lane={LaneSize}")]

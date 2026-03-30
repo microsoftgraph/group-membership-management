@@ -4,6 +4,8 @@
 using Hosts.MessageSplitter;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Moq;
@@ -84,11 +86,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -203,11 +201,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -313,11 +307,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -424,11 +414,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -481,11 +467,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .ReturnsAsync(false);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -574,11 +556,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -687,11 +665,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -826,11 +800,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {
@@ -964,11 +934,7 @@ namespace Services.Tests
                     It.IsAny<CallEntityOptions>()))
                 .Returns(Task.CompletedTask);
 
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                .Returns(Task.CompletedTask);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new DeferredPendingDrainOrchestrator(new RunLimiterSettings
             {

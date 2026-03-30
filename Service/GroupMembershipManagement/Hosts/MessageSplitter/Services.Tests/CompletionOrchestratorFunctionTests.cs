@@ -4,6 +4,8 @@
 using Hosts.MessageSplitter;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Entities;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -22,6 +24,7 @@ namespace Services.Tests
 
             var context = new Mock<TaskOrchestrationContext> { DefaultValue = DefaultValue.Mock };
             context.Setup(x => x.GetInput<MessageSplitterCompletionSignal>()).Returns(signal);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             context.Setup(x => x.Entities.CallEntityAsync<bool>(
                     It.IsAny<EntityInstanceId>(),
@@ -29,12 +32,6 @@ namespace Services.Tests
                     runId,
                     It.IsAny<CallEntityOptions>()))
                    .ReturnsAsync(true);
-
-            context.Setup(x => x.CallActivityAsync(
-                    nameof(LoggerFunction),
-                    It.IsAny<LoggerRequest>(),
-                    It.IsAny<TaskOptions>()))
-                   .Returns(Task.CompletedTask);
 
                 context.Setup(x => x.CallSubOrchestratorAsync(
                     nameof(DeferredPendingDrainOrchestrator),
@@ -51,11 +48,6 @@ namespace Services.Tests
                 runId,
                 It.IsAny<CallEntityOptions>()), Times.Once());
 
-            context.Verify(x => x.CallActivityAsync(
-                nameof(LoggerFunction),
-                It.IsAny<LoggerRequest>(),
-                It.IsAny<TaskOptions>()), Times.Once());
-
             context.Verify(x => x.CallSubOrchestratorAsync(
                 nameof(DeferredPendingDrainOrchestrator),
                 It.IsAny<DeferredPendingDrainRequest>(),
@@ -70,6 +62,7 @@ namespace Services.Tests
 
             var context = new Mock<TaskOrchestrationContext> { DefaultValue = DefaultValue.Mock };
             context.Setup(x => x.GetInput<MessageSplitterCompletionSignal>()).Returns(signal);
+            context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             var orchestrator = new CompletionOrchestratorFunction(new RunLimiterSettings { IsEnabled = false });
             await orchestrator.RunAsync(context.Object);
@@ -81,10 +74,6 @@ namespace Services.Tests
             context.Verify(x => x.CallSubOrchestratorAsync(
                 nameof(DeferredPendingDrainOrchestrator),
                 It.IsAny<DeferredPendingDrainRequest>(),
-                It.IsAny<TaskOptions>()), Times.Never());
-            context.Verify(x => x.CallActivityAsync(
-                nameof(LoggerFunction),
-                It.IsAny<LoggerRequest>(),
                 It.IsAny<TaskOptions>()), Times.Never());
         }
     }

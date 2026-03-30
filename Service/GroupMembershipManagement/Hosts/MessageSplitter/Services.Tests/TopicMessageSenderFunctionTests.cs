@@ -3,6 +3,8 @@
 
 using DIConcreteTypes;
 using Hosts.MessageSplitter;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.ServiceBus;
@@ -15,7 +17,6 @@ namespace Services.Tests
     [TestClass]
     public class TopicMessageSenderFunctionTests
     {
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<IBlobStorageRepository> _blobStorageRepository;
         private Mock<IServiceBusTopicsRepository> _serviceBusTopicsRepository;
         private GroupMembership _fileContent;
@@ -24,7 +25,6 @@ namespace Services.Tests
         [TestInitialize]
         public void SetupTest()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _serviceBusTopicsRepository = new Mock<IServiceBusTopicsRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
 
@@ -54,7 +54,7 @@ namespace Services.Tests
         public async Task TestSendMessageAsync()
         {
             var function = new TopicMessageSenderFunction(
-                                    _loggingRepository.Object,
+                                    NullLogger<TopicMessageSenderFunction>.Instance,
                                     _serviceBusTopicsRepository.Object,
                                     _blobStorageRepository.Object);
 
@@ -100,7 +100,7 @@ namespace Services.Tests
         public async Task TestSendMessageAsync_LargeLane_SetsSessionId()
         {
             var function = new TopicMessageSenderFunction(
-                                    _loggingRepository.Object,
+                                    NullLogger<TopicMessageSenderFunction>.Instance,
                                     _serviceBusTopicsRepository.Object,
                                     _blobStorageRepository.Object);
 

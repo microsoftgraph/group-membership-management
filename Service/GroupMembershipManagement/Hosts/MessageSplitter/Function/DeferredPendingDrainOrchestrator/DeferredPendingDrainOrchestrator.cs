@@ -123,9 +123,9 @@ namespace Hosts.MessageSplitter
                             nameof(ReceiveDeferredPendingFunction),
                             new ReceiveDeferredPendingRequest(item.SequenceNumber, item.RunId, item.Dispatched, item.OrchestrationInstanceId));
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        logger.DrainReceiveFailed(lane, item.RunId, item.SequenceNumber);
+                        logger.DrainReceiveFailed(ex, lane, item.RunId, item.SequenceNumber);
                         if (leaseAcquiredForDispatch)
                         {
                             // No work was dispatched: release the lease.

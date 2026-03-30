@@ -6,10 +6,11 @@ using Hosts.MessageSplitter;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models.ServiceBus;
 using Moq;
-using Repositories.Contracts;
 using System.Text;
 using System.Text.Json;
 
@@ -18,14 +19,12 @@ namespace Services.Tests
     [TestClass]
     public class CompletionListenerFunctionTests
     {
-        private Mock<ILoggingRepository> _loggingRepository;
         private Mock<ServiceBusMessageActions> _actions;
         private Mock<DurableTaskClient> _durableClient;
 
         [TestInitialize]
         public void Setup()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _actions = new Mock<ServiceBusMessageActions>();
             _durableClient = new Mock<DurableTaskClient>("test");
 
@@ -60,7 +59,7 @@ namespace Services.Tests
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(bytes));
 
-            var function = new CompletionListenerFunction(_loggingRepository.Object);
+            var function = new CompletionListenerFunction(NullLogger<CompletionListenerFunction>.Instance);
             await function.ProcessCompletionAsync(message, _actions.Object, _durableClient.Object);
 
             _durableClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
@@ -85,7 +84,7 @@ namespace Services.Tests
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(Array.Empty<byte>()), properties: props);
 
-            var function = new CompletionListenerFunction(_loggingRepository.Object);
+            var function = new CompletionListenerFunction(NullLogger<CompletionListenerFunction>.Instance);
             await function.ProcessCompletionAsync(message, _actions.Object, _durableClient.Object);
 
             _durableClient.Verify(x => x.ScheduleNewOrchestrationInstanceAsync(
@@ -108,7 +107,7 @@ namespace Services.Tests
 
             var message = ServiceBusModelFactory.ServiceBusReceivedMessage(new BinaryData(Array.Empty<byte>()), properties: props);
 
-            var function = new CompletionListenerFunction(_loggingRepository.Object);
+            var function = new CompletionListenerFunction(NullLogger<CompletionListenerFunction>.Instance);
             await function.ProcessCompletionAsync(message, _actions.Object, _durableClient.Object);
 
             _actions.Verify(x => x.DeadLetterMessageAsync(
