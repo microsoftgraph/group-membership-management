@@ -21,7 +21,8 @@ namespace DIConcreteTypes
             "SqlMembershipObtainer.",
             "JobTrigger.",
             "MembershipAggregator.",
-            "GroupMembershipObtainer."
+            "GroupMembershipObtainer.",
+            "SyncJobUpdater."
         ];
 
         /// <summary>

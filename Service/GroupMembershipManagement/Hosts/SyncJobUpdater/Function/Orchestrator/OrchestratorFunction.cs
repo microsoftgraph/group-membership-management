@@ -16,7 +16,7 @@ namespace Hosts.SyncJobUpdater
         [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger(nameof(OrchestratorFunction));
+            var logger = context.CreateReplaySafeLogger("SyncJobUpdater.OrchestratorFunction");
             var mainRequest = context.GetInput<OrchestratorRequest>();
             
             if (mainRequest?.Message != null)
