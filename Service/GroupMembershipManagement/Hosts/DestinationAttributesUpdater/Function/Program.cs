@@ -5,6 +5,8 @@ using Azure.Identity;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
 using Microsoft.ApplicationInsights;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.ApplicationInsights;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -39,6 +41,7 @@ var host = new HostBuilder()
     var dryRunSettingName = string.Empty;
     var rootPath = context.HostingEnvironment.ContentRootPath;
     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+    services.ConfigureFunctionsApplicationInsights();
 
     services.AddGraphAPIClient();
     services.AddScoped<IGraphGroupRepository, GraphGroupRepository>();

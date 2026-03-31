@@ -7,12 +7,14 @@
 </PropertyGroup>
 <ItemGroup>
   <PackageReference Include="Microsoft.Azure.Functions.Worker" />
+  <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" />
   <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
   <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" />
   <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" OutputItemType="Analyzer" />
 </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Common.DependencyInjection\Common.DependencyInjection.csproj" />
+    <ProjectReference Include="..\Services.Contracts\Services.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Hosts.FunctionBase\Hosts.FunctionBase.csproj" />
     <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Repositories.GraphGroups\Repositories.GraphAzureADGroups.csproj" />

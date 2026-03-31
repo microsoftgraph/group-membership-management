@@ -22,7 +22,7 @@ namespace DIConcreteTypes
             "JobTrigger.",
             "MembershipAggregator.",
             "GroupMembershipObtainer.",
-            "SyncJobUpdater."
+            "DestinationAttributesUpdater."
         ];
 
         /// <summary>

@@ -4,8 +4,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Extensions.DurableTask;
 using Microsoft.DurableTask.Client;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
@@ -13,21 +12,21 @@ namespace Hosts.DestinationAttributesUpdater
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        public StarterFunction(ILoggingRepository loggingRepository)
-        {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
-        }
+        private readonly ILogger<StarterFunction> _logger;
 
+        public StarterFunction(ILogger<StarterFunction> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
 
         [Function(nameof(StarterFunction))]
         public async Task Run(
             [TimerTrigger("%destinationAttributesUpdaterSchedule%")] TimerInfo myTimer,
             [DurableClient] DurableTaskClient starter)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
             await starter.ScheduleNewOrchestrationInstanceAsync(nameof(OrchestratorFunction));
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(StarterFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
         }
     }
 }

@@ -2,11 +2,11 @@
 // Licensed under the MIT license.
 using Hosts.DestinationAttributesUpdater;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Models;
 using Models.Helpers;
 using Moq;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -19,11 +19,8 @@ namespace Services.Tests
     [TestClass]
     public class OrchestratorFunctionTests
     {
-
         private Mock<IDestinationAttributesUpdaterService> _mockDestinationAttributeUpdaterService;
-        private Mock<ILoggingRepository> _mockLoggingRepository;
         Mock<TaskOrchestrationContext> _context;
-
 
         private const string GroupMembershipDestinationType = "GroupMembership";
         private const string TeamsChannelMemberhsipDestinationType = "TeamsChannelMembership";
@@ -31,19 +28,15 @@ namespace Services.Tests
         private List<DestinationAttributes> _attributeReaderResponse;
         List<DestinationInfo> _destinationReaderResponse;
 
-
-        private const string EmailSubject = "EmailSubject";
-        private const string SyncStartedEmailBody = "SyncStartedEmailBody";
-        private const string SyncDisabledNoGroupEmailBody = "SyncDisabledNoGroupEmailBody";
-
         private JsonSerializerOptions _destinationObjectSerializerOptions;
 
         [TestInitialize]
         public void InitializeTest()
         {
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockDestinationAttributeUpdaterService = new Mock<IDestinationAttributesUpdaterService>();
             _context = new Mock<TaskOrchestrationContext>();
+
+            _context.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
 
             _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(AttributeCacheUpdaterFunction)), It.IsAny<DestinationAttributes>(), It.IsAny<TaskOptions>()))
                     .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -71,12 +64,6 @@ namespace Services.Tests
                         _destinationReaderResponse = new List<DestinationInfo>();
                     })
                     .ReturnsAsync(() => _destinationReaderResponse);
-
-            _context.Setup(x => x.CallActivityAsync(It.Is<TaskName>(x => x.Name == nameof(LoggerFunction)), It.IsAny<LoggerRequest>(), It.IsAny<TaskOptions>()))
-                   .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
-                   {
-                       await CallLoggerFunctionAsync(request as LoggerRequest);
-                   });
 
             _destinationObjectSerializerOptions = new JsonSerializerOptions { Converters = { new DestinationValueConverter() } };
         }
@@ -116,28 +103,22 @@ namespace Services.Tests
 
         private async Task CallAttributeCacheUpdaterAsync()
         {
-            var AttributeCacheUpdaterFunction = new AttributeCacheUpdaterFunction(_mockLoggingRepository.Object, _mockDestinationAttributeUpdaterService.Object);
-            await AttributeCacheUpdaterFunction.UpdateAttributesAsync(new DestinationAttributes());
+            var attributeCacheUpdaterFunction = new AttributeCacheUpdaterFunction(NullLogger<AttributeCacheUpdaterFunction>.Instance, _mockDestinationAttributeUpdaterService.Object);
+            await attributeCacheUpdaterFunction.UpdateAttributesAsync(new DestinationAttributes());
         }
 
         private async Task<List<DestinationAttributes>> CallAttributeReaderAsync(AttributeReaderRequest request)
         {
-            var AttributeReaderFunction = new AttributeReaderFunction(_mockLoggingRepository.Object, _mockDestinationAttributeUpdaterService.Object);
-            var response = await AttributeReaderFunction.GetAttributesAsync(request);
+            var attributeReaderFunction = new AttributeReaderFunction(NullLogger<AttributeReaderFunction>.Instance, _mockDestinationAttributeUpdaterService.Object);
+            var response = await attributeReaderFunction.GetAttributesAsync(request);
             return response;
         }
 
         private async Task<List<DestinationInfo>> CallDestinationReaderAsync(string destinationType)
         {
-            var DestinationReaderFunction = new DestinationReaderFunction(_mockLoggingRepository.Object, _mockDestinationAttributeUpdaterService.Object);
-            var response = await DestinationReaderFunction.GetDestinationsAsync(destinationType);
+            var destinationReaderFunction = new DestinationReaderFunction(NullLogger<DestinationReaderFunction>.Instance, _mockDestinationAttributeUpdaterService.Object);
+            var response = await destinationReaderFunction.GetDestinationsAsync(destinationType);
             return response;
-        }
-
-        private async Task CallLoggerFunctionAsync(LoggerRequest request)
-        {
-            var loggerFunction = new LoggerFunction(_mockLoggingRepository.Object);
-            await loggerFunction.LogMessageAsync(request);
         }
 
         private string SerializeDestination(DestinationObject destination)

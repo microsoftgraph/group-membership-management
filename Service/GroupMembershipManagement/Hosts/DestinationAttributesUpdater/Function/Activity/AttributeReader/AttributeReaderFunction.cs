@@ -2,8 +2,8 @@
 // Licensed under the MIT license.
 
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using System;
 using System.Collections.Generic;
@@ -13,25 +13,24 @@ namespace Hosts.DestinationAttributesUpdater
 {
     public class AttributeReaderFunction
     {
-        private readonly ILoggingRepository _loggingRepository = null;
-        private readonly IDestinationAttributesUpdaterService _destinationAttributeUpdaterService = null;
+        private readonly ILogger<AttributeReaderFunction> _logger;
+        private readonly IDestinationAttributesUpdaterService _destinationAttributeUpdaterService;
 
-        public AttributeReaderFunction(ILoggingRepository loggingRepository, IDestinationAttributesUpdaterService destinationAttributeUpdater)
+        public AttributeReaderFunction(ILogger<AttributeReaderFunction> logger, IDestinationAttributesUpdaterService destinationAttributeUpdater)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _destinationAttributeUpdaterService = destinationAttributeUpdater ?? throw new ArgumentNullException(nameof(destinationAttributeUpdater));
         }
 
         [Function(nameof(AttributeReaderFunction))]
         public async Task<List<DestinationAttributes>> GetAttributesAsync([ActivityTrigger] AttributeReaderRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeReaderFunction)} function started" }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(AttributeReaderFunction));
 
             var destinationAttributes = await _destinationAttributeUpdaterService.GetBulkDestinationAttributesAsync(request.Destinations, request.DestinationType);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeReaderFunction)} retrieved {destinationAttributes?.Count ?? 0} destination attributes for type {request.DestinationType}" }, VerbosityLevel.DEBUG);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(AttributeReaderFunction)} function completed" }, VerbosityLevel.DEBUG);
+            _logger.AttributesRetrieved(destinationAttributes?.Count ?? 0, request.DestinationType);
+            _logger.FunctionCompleted(nameof(AttributeReaderFunction));
 
             return destinationAttributes;
         }
