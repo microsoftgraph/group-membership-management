@@ -177,7 +177,7 @@ resource gpt4oDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-
     model: {
       format: 'OpenAI'
       name: 'gpt-4o'
-      version: '2024-05-13'
+      version: '2024-11-20'
     }
     raiPolicyName: openAIContentFilterPolicy.name
     versionUpgradeOption: 'NoAutoUpgrade'
