@@ -324,6 +324,7 @@ export type IStrings = {
       ignoreThresholdOnce: string;
       businessJustification: string;
       groupSettings: string;
+      takeAction: string;
       RunHistoryStatus: {
         idle: string;
         failed: string;

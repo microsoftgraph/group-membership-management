@@ -329,6 +329,7 @@ export const strings: IStrings = {
       ignoreThresholdOnce: 'Ignore Threshold Once',
       businessJustification: 'Business Justification',
       groupSettings: 'Group Settings',
+      takeAction: 'Take action',
       RunHistoryStatus: {
         idle: 'Completed',
         failed: 'Failed',

@@ -24,6 +24,8 @@ export interface IJobHistoryPanelStyles {
     changeTypeDefault: IStyle;
     syncFiltersContainer: IStyle;
     statusFilter: IStyle;
+    statusCellThresholdExceeded: IStyle;
+    statusCellContainer: IStyle;
     userSearchField: IStyle;
     userSearchLabel: IStyle;
     userSearchInputShell: IStyle;

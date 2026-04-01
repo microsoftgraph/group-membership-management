@@ -44,6 +44,7 @@ import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchP
 import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
+import { RunHistoryStatus } from '../../models/Status';
 import { format } from 'react-string-format';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { SignalRSyncHistorySearchService } from '../../services/signalR/SignalRSyncHistorySearchService';
@@ -462,7 +463,17 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 300,
             isResizable: true,
             onRender: (item: SyncJobHistory) => {
-                return <span>{getStatusDisplayText(item.status)}</span>;
+                const isThresholdExceeded = item.status === RunHistoryStatus.ThresholdExceeded;
+                return (
+                    <div className={classNames.statusCellContainer}>
+                        <span className={isThresholdExceeded ? classNames.statusCellThresholdExceeded : undefined}>
+                            {getStatusDisplayText(item.status)}
+                        </span>
+                        {isThresholdExceeded && (
+                            <Link>{strings.JobDetails.Panel.takeAction}</Link>
+                        )}
+                    </div>
+                );
             }
         },
         {

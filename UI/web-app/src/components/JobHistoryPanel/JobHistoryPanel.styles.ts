@@ -58,6 +58,14 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
         changeTypeDefault: {
             backgroundColor: theme.palette.neutralSecondary,
         },
+        statusCellContainer: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+        },
+        statusCellThresholdExceeded: {
+            color: theme.semanticColors.errorIcon,
+        },
         syncFiltersContainer: {
             display: 'grid',
             gridTemplateColumns: '220px 1fr',

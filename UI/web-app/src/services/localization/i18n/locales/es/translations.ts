@@ -331,6 +331,7 @@ export const strings: IStrings = {
       ignoreThresholdOnce: 'Ignorar umbral una vez',
       businessJustification: 'Justificación del cambio',
       groupSettings: 'Configuración del grupo',
+      takeAction: 'Tomar acción',
       RunHistoryStatus: {
         idle: 'Completado',
         failed: 'Fallido',
