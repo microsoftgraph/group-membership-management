@@ -28,11 +28,7 @@ namespace Hosts.DestinationAttributesUpdater
 
             await _destinationAttributeUpdaterService.UpdateAttributes(destinationAttributes);
 
-            var name = string.IsNullOrWhiteSpace(destinationAttributes.Name) ? "N/A" : destinationAttributes.Name;
-            var ownersList = destinationAttributes.Owners != null ? string.Join(",", destinationAttributes.Owners) : "N/A";
-            var email = string.IsNullOrWhiteSpace(destinationAttributes.Email) ? "N/A" : destinationAttributes.Email;
-
-            _logger.AttributesUpdated(destinationAttributes.Id, name, email, ownersList);
+            _logger.AttributesUpdated(destinationAttributes.Id);
             _logger.FunctionCompleted(nameof(AttributeCacheUpdaterFunction));
         }
     }

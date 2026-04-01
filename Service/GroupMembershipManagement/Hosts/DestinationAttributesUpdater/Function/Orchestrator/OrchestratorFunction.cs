@@ -52,6 +52,8 @@ namespace Hosts.DestinationAttributesUpdater
             catch (Exception ex)
             {
                 logger.OrchestratorUnexpectedException(ex);
+                logger.FunctionFailed(nameof(OrchestratorFunction));
+                return;
             }
 
             logger.FunctionCompleted(nameof(OrchestratorFunction));

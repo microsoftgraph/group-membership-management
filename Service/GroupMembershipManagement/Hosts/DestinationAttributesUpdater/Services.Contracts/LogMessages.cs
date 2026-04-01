@@ -18,6 +18,10 @@ namespace Hosts.DestinationAttributesUpdater
             Message = "{FunctionName} function completed")]
         public static partial void FunctionCompleted(this ILogger logger, string functionName);
 
+        [LoggerMessage(EventId = 100002, Level = LogLevel.Error,
+            Message = "{FunctionName} function failed")]
+        public static partial void FunctionFailed(this ILogger logger, string functionName);
+
         // ── OrchestratorFunction ──
 
         [LoggerMessage(EventId = 100010, Level = LogLevel.Error,
@@ -39,7 +43,7 @@ namespace Hosts.DestinationAttributesUpdater
         // ── AttributeCacheUpdaterFunction ──
 
         [LoggerMessage(EventId = 100040, Level = LogLevel.Information,
-            Message = "AttributeCacheUpdaterFunction: jobId {JobId}, Name: {Name}, Email: {Email}, Owners: ({Owners})")]
-        public static partial void AttributesUpdated(this ILogger logger, Guid jobId, string name, string email, string owners);
+            Message = "AttributeCacheUpdaterFunction: jobId {JobId}")]
+        public static partial void AttributesUpdated(this ILogger logger, Guid jobId);
     }
 }
