@@ -28,6 +28,7 @@ namespace WebApi.Controllers.v1.Jobs
         private readonly IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> _getJobChangesRequestHandler;
         private readonly IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> _getSyncJobHistoryRequestHandler;
         private readonly IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> _getMembershipDownloadRequestHandler;
+        private readonly IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse> _getThresholdNotificationRequestHandler;
 
         public JobDetailsController(IRequestHandler<GetJobDetailsRequest, GetJobDetailsResponse> getJobsRequestHandler,
                                     IRequestHandler<RemoveGMMRequest, RemoveGMMResponse> removeGMMRequestHandler,
@@ -36,7 +37,8 @@ namespace WebApi.Controllers.v1.Jobs
                                     IRequestHandler<GetChannelRequest, GetChannelResponse> getChannelRequestHandler,
                                     IRequestHandler<GetJobChangesRequest, GetJobChangesResponse> getJobChangesRequestHandler,
                                     IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse> getSyncJobHistoryRequestHandler,
-                                    IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> getMembershipDownloadRequestHandler)
+                                    IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse> getMembershipDownloadRequestHandler,
+                                    IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse> getThresholdNotificationRequestHandler)
         {
             _getJobDetailsRequestHandler = getJobsRequestHandler ?? throw new ArgumentNullException(nameof(getJobsRequestHandler));
             _removeGMMRequestHandler = removeGMMRequestHandler ?? throw new ArgumentNullException(nameof(removeGMMRequestHandler));
@@ -46,6 +48,7 @@ namespace WebApi.Controllers.v1.Jobs
             _getJobChangesRequestHandler = getJobChangesRequestHandler ?? throw new ArgumentNullException(nameof(getJobChangesRequestHandler));
             _getSyncJobHistoryRequestHandler = getSyncJobHistoryRequestHandler ?? throw new ArgumentNullException(nameof(getSyncJobHistoryRequestHandler));
             _getMembershipDownloadRequestHandler = getMembershipDownloadRequestHandler ?? throw new ArgumentNullException(nameof(getMembershipDownloadRequestHandler));
+            _getThresholdNotificationRequestHandler = getThresholdNotificationRequestHandler ?? throw new ArgumentNullException(nameof(getThresholdNotificationRequestHandler));
         }
 
         [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
@@ -313,6 +316,20 @@ namespace WebApi.Controllers.v1.Jobs
                 System.Net.HttpStatusCode.OK => Ok(response.History),
                 System.Net.HttpStatusCode.NotFound => NotFound(),
                 System.Net.HttpStatusCode.Forbidden => Forbid(),
+                _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
+            };
+        }
+
+        [Authorize(Roles = Models.Roles.JOB_OWNER_READER + "," + Models.Roles.JOB_OWNER_WRITER + "," + Models.Roles.JOB_TENANT_READER + "," + Models.Roles.JOB_TENANT_WRITER)]
+        [HttpGet("history/sync/{syncJobId}/threshold-notification")]
+        public async Task<ActionResult> GetThresholdNotificationAsync(Guid syncJobId)
+        {
+            var response = await _getThresholdNotificationRequestHandler.ExecuteAsync(new GetThresholdNotificationRequest(syncJobId));
+
+            return response.StatusCode switch
+            {
+                System.Net.HttpStatusCode.OK => Ok(response),
+                System.Net.HttpStatusCode.NotFound => NotFound(),
                 _ => Problem(statusCode: (int)System.Net.HttpStatusCode.InternalServerError)
             };
         }

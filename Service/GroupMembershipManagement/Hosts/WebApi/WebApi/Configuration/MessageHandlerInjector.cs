@@ -55,6 +55,7 @@ namespace WebApi.Configuration
             services.AddTransient<IRequestHandler<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse>, GetSyncJobHistoryHandler>();
             services.AddTransient<IRequestHandler<SearchSyncHistoryByUserRequest, SearchSyncHistoryByUserResponse>, SearchSyncHistoryByUserHandler>();
             services.AddTransient<IRequestHandler<GetMembershipDownloadRequest, GetMembershipDownloadResponse>, GetMembershipDownloadHandler>();
+            services.AddTransient<IRequestHandler<GetThresholdNotificationRequest, GetThresholdNotificationResponse>, GetThresholdNotificationHandler>();
 
             services.AddTransient<IRequestHandler<PostOperationRequest, PostOperationResponse>, PostOperationHandler>();
             services.AddTransient<IRequestHandler<GetServiceStatusRequest, GetServiceStatusResponse>, GetServiceStatusHandler>();
