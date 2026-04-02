@@ -8,6 +8,8 @@ import {
     DialogType,
     DefaultButton,
     IProcessedStyleSet,
+    Spinner,
+    SpinnerSize,
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { format } from 'react-string-format';
@@ -27,6 +29,7 @@ export const TakeActionModalBase: React.FunctionComponent<ITakeActionModalProps>
         className,
         styles,
         isOpen,
+        isLoading,
         onDismiss,
         groupName,
         usersToAdd,
@@ -84,32 +87,38 @@ export const TakeActionModalBase: React.FunctionComponent<ITakeActionModalProps>
             minWidth={540}
         >
             <div className={classNames.root}>
-                <p className={classNames.warningText}>
-                    {format(modal.warningText, <strong>{groupName}</strong>)}
-                </p>
-                <p className={classNames.detailsText}>
-                    {format(
-                        modal.detailsText,
-                        <strong>{usersToAdd}</strong>,
-                        <strong>{increasePercentage.toFixed(2)}</strong>,
-                        <strong>{thresholdPercentage}</strong>
-                    )}
-                </p>
-                <div className={classNames.actionsGrid}>
-                    {actions.map((action) => (
-                        <div
-                            key={action.title}
-                            className={classNames.actionCard}
-                            onClick={action.onClick}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') action.onClick(); }}
-                        >
-                            <div className={classNames.actionCardTitle}>{action.title}</div>
-                            <div className={classNames.actionCardDescription}>{action.description}</div>
+                {isLoading ? (
+                    <Spinner size={SpinnerSize.medium} />
+                ) : (
+                    <>
+                        <p className={classNames.warningText}>
+                            {format(modal.warningText, <strong>{groupName}</strong>)}
+                        </p>
+                        <p className={classNames.detailsText}>
+                            {format(
+                                modal.detailsText,
+                                <strong>{usersToAdd}</strong>,
+                                <strong>{increasePercentage.toFixed(2)}</strong>,
+                                <strong>{thresholdPercentage}</strong>
+                            )}
+                        </p>
+                        <div className={classNames.actionsGrid}>
+                            {actions.map((action) => (
+                                <div
+                                    key={action.title}
+                                    className={classNames.actionCard}
+                                    onClick={action.onClick}
+                                    role="button"
+                                    tabIndex={0}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') action.onClick(); }}
+                                >
+                                    <div className={classNames.actionCardTitle}>{action.title}</div>
+                                    <div className={classNames.actionCardDescription}>{action.description}</div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    </>
+                )}
                 <div className={classNames.footer}>
                     <DefaultButton text={strings.cancel} onClick={onDismiss} />
                 </div>

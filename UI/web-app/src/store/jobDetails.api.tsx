@@ -14,6 +14,7 @@ import { GetJobChangesRequest } from '../models/GetJobChangesRequest';
 import { GetChannelRequest } from '../models/GetChannelRequest';
 import { SyncJobChangeReason } from '../models/SyncJobChangeReason';
 import { SearchSyncHistoryByUserResult } from '../models/SearchSyncHistoryByUserResult';
+import { ThresholdNotificationData } from '../models/ThresholdNotificationData';
 
 export const fetchJobDetails = createAsyncThunk<
   Job,
@@ -333,4 +334,27 @@ export const downloadMembershipChanges = createAsyncThunk<
   } finally {
     window.URL.revokeObjectURL(url);
   }
+});
+
+export const fetchThresholdNotification = createAsyncThunk<
+  ThresholdNotificationData,
+  string,
+  ThunkConfig
+>('jobs/fetchThresholdNotification', async (syncJobId, { extra }) => {
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers({
+    'Authorization': `Bearer ${token}`,
+  });
+
+  const response = await fetch(config.getThresholdNotification(syncJobId), {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch threshold notification.');
+  }
+
+  return await response.json() as ThresholdNotificationData;
 });

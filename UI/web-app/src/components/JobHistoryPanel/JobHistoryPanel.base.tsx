@@ -35,12 +35,13 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges, searchSyncHistoryByUser } from '../../store/jobDetails.api';
+import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges, searchSyncHistoryByUser, fetchThresholdNotification } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchProgressUpdate';
+import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
 import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
@@ -599,6 +600,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState('');
     const [takeActionItem, setTakeActionItem] = useState<SyncJobHistory | null>(null);
+    const [thresholdData, setThresholdData] = useState<ThresholdNotificationData | null>(null);
+    const [isThresholdDataLoading, setIsThresholdDataLoading] = useState(false);
 
     const getUtcTimestampMillis = (dateTime?: string | null): number => {
         if (!dateTime) return 0;
@@ -710,12 +713,24 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setModalContent('');
     };
 
-    const handleTakeAction = (item: SyncJobHistory) => {
+    const handleTakeAction = async (item: SyncJobHistory) => {
         setTakeActionItem(item);
+        setThresholdData(null);
+        setIsThresholdDataLoading(true);
+        try {
+            const data = await dispatch(fetchThresholdNotification(jobId)).unwrap();
+            setThresholdData(data);
+        } catch {
+            setThresholdData(null);
+        } finally {
+            setIsThresholdDataLoading(false);
+        }
     };
 
     const handleCloseTakeAction = () => {
         setTakeActionItem(null);
+        setThresholdData(null);
+        setIsThresholdDataLoading(false);
     };
 
     const parseNestedJson = (obj: any) => {
@@ -880,15 +895,12 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             </Modal>
             <TakeActionModal
                 isOpen={takeActionItem !== null}
+                isLoading={isThresholdDataLoading}
                 onDismiss={handleCloseTakeAction}
                 groupName={selectedJob?.targetGroupName ?? ''}
-                usersToAdd={takeActionItem?.usersAdded ?? 0}
-                increasePercentage={
-                    takeActionItem?.usersAdded != null && takeActionItem?.beforeSyncUserCount
-                        ? (takeActionItem.usersAdded / takeActionItem.beforeSyncUserCount) * 100
-                        : 0
-                }
-                thresholdPercentage={selectedJob?.thresholdPercentageForAdditions ?? 0}
+                usersToAdd={thresholdData?.changeQuantityForAdditions ?? 0}
+                increasePercentage={thresholdData?.changePercentageForAdditions ?? 0}
+                thresholdPercentage={thresholdData?.thresholdPercentageForAdditions ?? 0}
                 onApplyChanges={() => {}}
                 onEditRules={() => {}}
                 onEditThreshold={() => {}}

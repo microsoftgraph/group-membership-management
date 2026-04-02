@@ -28,6 +28,7 @@ export interface ITakeActionModalProps extends React.AllHTMLAttributes<HTMLEleme
     className?: string;
     styles?: IStyleFunctionOrObject<ITakeActionModalStyleProps, ITakeActionModalStyles>;
     isOpen: boolean;
+    isLoading: boolean;
     onDismiss: () => void;
     groupName: string;
     usersToAdd: number;

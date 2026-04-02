@@ -32,6 +32,7 @@ export const config = {
   getJobDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/job`,
   getJobChanges: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/history/configuration`,
   getSyncJobHistory: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/history/sync`,
+  getThresholdNotification: (syncJobId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/history/sync/${encodeURIComponent(syncJobId)}/threshold-notification`,
   searchSyncHistoryUser: (syncJobId: string, userObjectId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/history/sync/${syncJobId}/search-user/${userObjectId}`,
   downloadMembershipChanges: (syncJobId: string, runId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/download`,
   getOrgLeaderDetails: `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/orgLeaderDetails`,
