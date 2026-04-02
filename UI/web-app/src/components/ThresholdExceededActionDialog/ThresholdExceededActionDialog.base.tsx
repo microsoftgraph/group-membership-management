@@ -15,15 +15,15 @@ import { useTheme } from '@fluentui/react/lib/Theme';
 import { format } from 'react-string-format';
 import { useStrings } from '../../store/hooks';
 import type {
-    ITakeActionModalProps,
-    ITakeActionModalStyleProps,
-    ITakeActionModalStyles,
-} from './TakeActionModal.types';
+    IThresholdExceededActionDialogProps,
+    IThresholdExceededActionDialogStyleProps,
+    IThresholdExceededActionDialogStyles,
+} from './ThresholdExceededActionDialog.types';
 
-const getClassNames = classNamesFunction<ITakeActionModalStyleProps, ITakeActionModalStyles>();
+const getClassNames = classNamesFunction<IThresholdExceededActionDialogStyleProps, IThresholdExceededActionDialogStyles>();
 
-export const TakeActionModalBase: React.FunctionComponent<ITakeActionModalProps> = (
-    props: ITakeActionModalProps
+export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresholdExceededActionDialogProps> = (
+    props: IThresholdExceededActionDialogProps
 ) => {
     const {
         className,
@@ -43,9 +43,9 @@ export const TakeActionModalBase: React.FunctionComponent<ITakeActionModalProps>
 
     const theme = useTheme();
     const strings = useStrings();
-    const modal = strings.JobDetails.Panel.TakeActionModal;
+    const modal = strings.JobDetails.Panel.ThresholdExceededActionDialog;
 
-    const classNames: IProcessedStyleSet<ITakeActionModalStyles> = getClassNames(styles, {
+    const classNames: IProcessedStyleSet<IThresholdExceededActionDialogStyles> = getClassNames(styles, {
         className,
         theme,
     });

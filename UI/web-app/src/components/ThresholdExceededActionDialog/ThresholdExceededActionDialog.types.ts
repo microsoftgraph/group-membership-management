@@ -8,7 +8,7 @@ import {
 } from '@fluentui/react';
 import type React from 'react';
 
-export interface ITakeActionModalStyles {
+export interface IThresholdExceededActionDialogStyles {
     root: IStyle;
     warningText: IStyle;
     detailsText: IStyle;
@@ -19,14 +19,14 @@ export interface ITakeActionModalStyles {
     footer: IStyle;
 }
 
-export interface ITakeActionModalStyleProps {
+export interface IThresholdExceededActionDialogStyleProps {
     className?: string;
     theme: ITheme;
 }
 
-export interface ITakeActionModalProps extends React.AllHTMLAttributes<HTMLElement> {
+export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttributes<HTMLElement> {
     className?: string;
-    styles?: IStyleFunctionOrObject<ITakeActionModalStyleProps, ITakeActionModalStyles>;
+    styles?: IStyleFunctionOrObject<IThresholdExceededActionDialogStyleProps, IThresholdExceededActionDialogStyles>;
     isOpen: boolean;
     isLoading: boolean;
     onDismiss: () => void;

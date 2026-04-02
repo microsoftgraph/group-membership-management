@@ -49,7 +49,7 @@ import { RunHistoryStatus } from '../../models/Status';
 import { format } from 'react-string-format';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { SignalRSyncHistorySearchService } from '../../services/signalR/SignalRSyncHistorySearchService';
-import { TakeActionModal } from '../TakeActionModal';
+import { ThresholdExceededActionDialog } from '../ThresholdExceededActionDialog';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -893,7 +893,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     />
                 </div>
             </Modal>
-            <TakeActionModal
+            <ThresholdExceededActionDialog
                 isOpen={takeActionItem !== null}
                 isLoading={isThresholdDataLoading}
                 onDismiss={handleCloseTakeAction}

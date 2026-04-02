@@ -330,7 +330,7 @@ export const strings: IStrings = {
       businessJustification: 'Business Justification',
       groupSettings: 'Group Settings',
       takeAction: 'Take action',
-      TakeActionModal: {
+      ThresholdExceededActionDialog: {
         title: 'Take action',
         warningText: 'A recent synchronization attempt of {0} resulted in changes that were larger than expected and require approval before synchronization can proceed.',
         detailsText: 'GMM has identified {0} members to be added, increasing the group size by {1}% which is more than the current conditions threshold of {2}%.',

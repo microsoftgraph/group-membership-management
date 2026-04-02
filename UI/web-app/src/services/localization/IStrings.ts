@@ -325,7 +325,7 @@ export type IStrings = {
       businessJustification: string;
       groupSettings: string;
       takeAction: string;
-      TakeActionModal: {
+      ThresholdExceededActionDialog: {
         title: string;
         warningText: string;
         detailsText: string;

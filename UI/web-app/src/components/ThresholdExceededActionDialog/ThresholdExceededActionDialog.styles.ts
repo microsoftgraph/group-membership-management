@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import type { ITakeActionModalStyleProps, ITakeActionModalStyles } from './TakeActionModal.types';
+import type { IThresholdExceededActionDialogStyleProps, IThresholdExceededActionDialogStyles } from './ThresholdExceededActionDialog.types';
 
-export const getStyles = (props: ITakeActionModalStyleProps): ITakeActionModalStyles => {
+export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThresholdExceededActionDialogStyles => {
     const { className, theme } = props;
 
     return {
