@@ -325,6 +325,19 @@ export type IStrings = {
       businessJustification: string;
       groupSettings: string;
       takeAction: string;
+      TakeActionModal: {
+        title: string;
+        warningText: string;
+        detailsText: string;
+        applyChanges: string;
+        applyChangesDescription: string;
+        editRules: string;
+        editRulesDescription: string;
+        editThreshold: string;
+        editThresholdDescription: string;
+        pauseSync: string;
+        pauseSyncDescription: string;
+      };
       RunHistoryStatus: {
         idle: string;
         failed: string;

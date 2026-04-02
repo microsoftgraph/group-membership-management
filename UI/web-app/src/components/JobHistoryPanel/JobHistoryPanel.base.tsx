@@ -48,6 +48,7 @@ import { RunHistoryStatus } from '../../models/Status';
 import { format } from 'react-string-format';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { SignalRSyncHistorySearchService } from '../../services/signalR/SignalRSyncHistorySearchService';
+import { TakeActionModal } from '../TakeActionModal';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
@@ -470,7 +471,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             {getStatusDisplayText(item.status)}
                         </span>
                         {isThresholdExceeded && (
-                            <Link>{strings.JobDetails.Panel.takeAction}</Link>
+                            <Link onClick={() => handleTakeAction(item)}>{strings.JobDetails.Panel.takeAction}</Link>
                         )}
                     </div>
                 );
@@ -597,6 +598,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalContent, setModalContent] = useState('');
+    const [takeActionItem, setTakeActionItem] = useState<SyncJobHistory | null>(null);
 
     const getUtcTimestampMillis = (dateTime?: string | null): number => {
         if (!dateTime) return 0;
@@ -706,6 +708,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setModalContent('');
+    };
+
+    const handleTakeAction = (item: SyncJobHistory) => {
+        setTakeActionItem(item);
+    };
+
+    const handleCloseTakeAction = () => {
+        setTakeActionItem(null);
     };
 
     const parseNestedJson = (obj: any) => {
@@ -868,6 +878,22 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     />
                 </div>
             </Modal>
+            <TakeActionModal
+                isOpen={takeActionItem !== null}
+                onDismiss={handleCloseTakeAction}
+                groupName={selectedJob?.targetGroupName ?? ''}
+                usersToAdd={takeActionItem?.usersAdded ?? 0}
+                increasePercentage={
+                    takeActionItem?.usersAdded != null && takeActionItem?.beforeSyncUserCount
+                        ? (takeActionItem.usersAdded / takeActionItem.beforeSyncUserCount) * 100
+                        : 0
+                }
+                thresholdPercentage={selectedJob?.thresholdPercentageForAdditions ?? 0}
+                onApplyChanges={() => {}}
+                onEditRules={() => {}}
+                onEditThreshold={() => {}}
+                onPauseSync={() => {}}
+            />
         </Panel>
     )
 };
