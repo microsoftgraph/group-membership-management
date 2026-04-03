@@ -471,9 +471,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         <span className={isThresholdExceeded ? classNames.statusCellThresholdExceeded : undefined}>
                             {getStatusDisplayText(item.status)}
                         </span>
+                        {/* TODO: Uncomment once action card implementations are complete (tracked in follow-up PR)
                         {isThresholdExceeded && (
                             <Link onClick={() => handleTakeAction(item)}>{strings.JobDetails.Panel.takeAction}</Link>
-                        )}
+                        )} */}
                     </div>
                 );
             }
