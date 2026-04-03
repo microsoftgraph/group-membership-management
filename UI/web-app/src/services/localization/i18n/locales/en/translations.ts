@@ -330,6 +330,7 @@ export const strings: IStrings = {
       businessJustification: 'Business Justification',
       groupSettings: 'Group Settings',
       takeAction: 'Take action',
+      syncPausedSuccess: 'The sync has been paused.',
       ThresholdExceededActionDialog: {
         title: 'Take action',
         warningText: 'A recent synchronization attempt of {0} resulted in changes that were larger than expected and require approval before synchronization can proceed.',

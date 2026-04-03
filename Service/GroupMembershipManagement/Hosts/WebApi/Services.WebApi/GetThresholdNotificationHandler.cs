@@ -36,6 +36,7 @@ namespace Services
                     return response;
                 }
 
+                response.NotificationId = notification.Id;
                 response.ChangeQuantityForAdditions = notification.ChangeQuantityForAdditions;
                 response.ChangePercentageForAdditions = notification.ChangePercentageForAdditions;
                 response.ThresholdPercentageForAdditions = notification.ThresholdPercentageForAdditions;

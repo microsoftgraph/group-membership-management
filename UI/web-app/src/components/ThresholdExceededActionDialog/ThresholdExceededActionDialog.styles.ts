@@ -38,6 +38,24 @@ export const getStyles = (props: IThresholdExceededActionDialogStyleProps): IThr
             backgroundColor: theme.palette.white,
         },
 
+        actionCardEnabled: {
+            border: `1px solid ${theme.palette.neutralLight}`,
+            borderRadius: 4,
+            padding: '16px',
+            cursor: 'pointer',
+            backgroundColor: theme.palette.white,
+            selectors: {
+                ':hover': {
+                    backgroundColor: theme.palette.neutralLighterAlt,
+                    borderColor: theme.palette.neutralTertiary,
+                },
+                ':focus': {
+                    outline: `2px solid ${theme.palette.themePrimary}`,
+                    outlineOffset: '-2px',
+                },
+            },
+        },
+
         actionCardTitle: {
             fontWeight: 600,
             fontSize: 14,

@@ -35,7 +35,7 @@ import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges, searchSyncHistoryByUser, fetchThresholdNotification } from '../../store/jobDetails.api';
+import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges, searchSyncHistoryByUser, fetchThresholdNotification, resolveNotification } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
@@ -603,6 +603,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [takeActionItem, setTakeActionItem] = useState<SyncJobHistory | null>(null);
     const [thresholdData, setThresholdData] = useState<ThresholdNotificationData | null>(null);
     const [isThresholdDataLoading, setIsThresholdDataLoading] = useState(false);
+    const [syncPaused, setSyncPaused] = useState(false);
 
     const getUtcTimestampMillis = (dateTime?: string | null): number => {
         if (!dateTime) return 0;
@@ -734,6 +735,16 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setIsThresholdDataLoading(false);
     };
 
+    const handlePauseSync = async () => {
+        if (!thresholdData?.notificationId) return;
+        try {
+            await dispatch(resolveNotification({ notificationId: thresholdData.notificationId, resolution: 'Paused' })).unwrap();
+            setSyncPaused(true);
+        } finally {
+            handleCloseTakeAction();
+        }
+    };
+
     const parseNestedJson = (obj: any) => {
         for (const key in obj) {
             if (typeof obj[key] === 'string') {
@@ -788,6 +799,14 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             headerText={strings.JobDetails.Panel.history}
             closeButtonAriaLabel={strings.close}
         >
+            {syncPaused && (
+                <MessageBar
+                    messageBarType={MessageBarType.success}
+                    onDismiss={() => setSyncPaused(false)}
+                >
+                    {strings.JobDetails.Panel.syncPausedSuccess}
+                </MessageBar>
+            )}
             <Pivot>
                 <PivotItem
                     headerText={strings.JobDetails.Panel.configurationPivotHeader}
@@ -905,7 +924,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 onApplyChanges={() => {}}
                 onEditRules={() => {}}
                 onEditThreshold={() => {}}
-                onPauseSync={() => {}}
+                onPauseSync={handlePauseSync}
+                isPauseSyncEnabled={!!thresholdData?.notificationId}
             />
         </Panel>
     )

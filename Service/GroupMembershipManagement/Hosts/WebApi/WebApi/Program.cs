@@ -181,9 +181,12 @@ namespace WebApi
                     if (path != null && path.Contains("/notifications", StringComparison.OrdinalIgnoreCase))
                     {
                         var scopeClaim = context.Principal?.Claims.FirstOrDefault(c => c.Type == "scp" || c.Type == "http://schemas.microsoft.com/identity/claims/scope")?.Value;
-                        if (string.IsNullOrWhiteSpace(scopeClaim) || !scopeClaim.Contains(oamEntraAppScope))
+                        var hasOamScope = !string.IsNullOrWhiteSpace(scopeClaim) && scopeClaim.Contains(oamEntraAppScope);
+                        var hasUiScope = !string.IsNullOrWhiteSpace(scopeClaim) && scopeClaim.Contains("user_impersonation");
+
+                        if (!hasOamScope && !hasUiScope)
                         {
-                            context.Fail($"Required scope '{oamEntraAppScope}' not present in token");
+                            context.Fail($"Required scope '{oamEntraAppScope}' or 'user_impersonation' not present in token");
                             return;
                         }
                     }

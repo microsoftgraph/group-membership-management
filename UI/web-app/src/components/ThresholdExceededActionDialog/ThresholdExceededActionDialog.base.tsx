@@ -39,6 +39,7 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
         onEditRules,
         onEditThreshold,
         onPauseSync,
+        isPauseSyncEnabled = false,
     } = props;
 
     const theme = useTheme();
@@ -55,21 +56,25 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
             title: modal.applyChanges,
             description: modal.applyChangesDescription,
             onClick: onApplyChanges,
+            enabled: false,
         },
         {
             title: modal.editRules,
             description: modal.editRulesDescription,
             onClick: onEditRules,
+            enabled: false,
         },
         {
             title: modal.editThreshold,
             description: modal.editThresholdDescription,
             onClick: onEditThreshold,
+            enabled: false,
         },
         {
             title: modal.pauseSync,
             description: modal.pauseSyncDescription,
             onClick: onPauseSync,
+            enabled: isPauseSyncEnabled,
         },
     ];
 
@@ -106,18 +111,19 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                             {actions.map((action) => (
                                 <div
                                     key={action.title}
-                                    className={classNames.actionCard}
-                                    onClick={action.onClick}
+                                    className={action.enabled ? classNames.actionCardEnabled : classNames.actionCard}
+                                    onClick={action.enabled ? action.onClick : undefined}
                                     role="button"
-                                    tabIndex={0}
-                                    onKeyDown={(e) => {
+                                    tabIndex={action.enabled ? 0 : -1}
+                                    aria-disabled={!action.enabled}
+                                    onKeyDown={action.enabled ? (e) => {
                                         if (e.key === 'Enter') {
                                             action.onClick();
                                         } else if (e.key === ' ' && !e.repeat) {
                                             e.preventDefault();
                                             action.onClick();
                                         }
-                                    }}
+                                    } : undefined}
                                 >
                                     <div className={classNames.actionCardTitle}>{action.title}</div>
                                     <div className={classNames.actionCardDescription}>{action.description}</div>

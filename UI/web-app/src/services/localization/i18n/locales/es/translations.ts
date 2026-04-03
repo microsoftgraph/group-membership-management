@@ -332,6 +332,7 @@ export const strings: IStrings = {
       businessJustification: 'Justificación del cambio',
       groupSettings: 'Configuración del grupo',
       takeAction: 'Tomar acción',
+      syncPausedSuccess: 'La sincronización ha sido pausada.',
       ThresholdExceededActionDialog: {
         title: 'Tomar acción',
         warningText: 'Un intento de sincronización reciente de {0} resultó en cambios más grandes de lo esperado y requiere aprobación antes de que la sincronización pueda continuar.',

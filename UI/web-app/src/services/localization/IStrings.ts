@@ -325,6 +325,7 @@ export type IStrings = {
       businessJustification: string;
       groupSettings: string;
       takeAction: string;
+      syncPausedSuccess: string;
       ThresholdExceededActionDialog: {
         title: string;
         warningText: string;

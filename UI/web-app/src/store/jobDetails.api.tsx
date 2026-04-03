@@ -358,3 +358,26 @@ export const fetchThresholdNotification = createAsyncThunk<
 
   return await response.json() as ThresholdNotificationData;
 });
+
+export const resolveNotification = createAsyncThunk<
+  void,
+  { notificationId: string; resolution: string },
+  ThunkConfig
+>('jobs/resolveNotification', async ({ notificationId, resolution }, { extra }) => {
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  });
+
+  const response = await fetch(config.resolveNotification(notificationId), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ resolution }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to resolve notification.');
+  }
+});

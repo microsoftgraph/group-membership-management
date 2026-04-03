@@ -8,6 +8,7 @@ namespace Services.Messages.Responses
 {
     public class GetThresholdNotificationResponse : ResponseBase
     {
+        public Guid? NotificationId { get; set; }
         public int ChangeQuantityForAdditions { get; set; }
         public double ChangePercentageForAdditions { get; set; }
         public int ThresholdPercentageForAdditions { get; set; }

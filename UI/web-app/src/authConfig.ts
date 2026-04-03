@@ -55,4 +55,5 @@ export const config = {
   getGroupDetails: (groupId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/group/${groupId}`,
   getChannelDetails: (teamId: string, channelId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/groups/${teamId}/channels/${channelId}`,
   removeGMM: (syncJobId: string) =>`${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/jobDetails/${syncJobId}/removeGmm`,
+  resolveNotification: (notificationId: string) => `${process.env.REACT_APP_AAD_APP_SERVICE_BASE_URI}/api/v1/notifications/${encodeURIComponent(notificationId)}/resolve`,
 };

@@ -14,6 +14,7 @@ export interface IThresholdExceededActionDialogStyles {
     detailsText: IStyle;
     actionsGrid: IStyle;
     actionCard: IStyle;
+    actionCardEnabled: IStyle;
     actionCardTitle: IStyle;
     actionCardDescription: IStyle;
     footer: IStyle;
@@ -38,4 +39,5 @@ export interface IThresholdExceededActionDialogProps extends React.AllHTMLAttrib
     onEditRules: () => void;
     onEditThreshold: () => void;
     onPauseSync: () => void;
+    isPauseSyncEnabled?: boolean;
 }

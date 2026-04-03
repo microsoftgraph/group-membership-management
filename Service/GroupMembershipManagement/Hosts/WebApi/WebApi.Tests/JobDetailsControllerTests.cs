@@ -1842,8 +1842,10 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetThresholdNotification_ReturnsOk_WhenNotificationExists()
         {
+            var notificationId = Guid.NewGuid();
             var notification = new Models.ThresholdNotifications.ThresholdNotification
             {
+                Id = notificationId,
                 SyncJobId = _jobEntity.Id,
                 ChangeQuantityForAdditions = 98,
                 ChangePercentageForAdditions = 4900.0,
@@ -1860,6 +1862,10 @@ namespace Services.Tests
 
             Assert.IsNotNull(result);
             Assert.AreEqual((int)HttpStatusCode.OK, result.StatusCode);
+
+            var response = result.Value as GetThresholdNotificationResponse;
+            Assert.IsNotNull(response);
+            Assert.AreEqual(notificationId, response.NotificationId);
         }
 
         [TestMethod]
