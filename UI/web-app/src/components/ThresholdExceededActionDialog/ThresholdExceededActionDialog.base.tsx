@@ -110,7 +110,14 @@ export const ThresholdExceededActionDialogBase: React.FunctionComponent<IThresho
                                     onClick={action.onClick}
                                     role="button"
                                     tabIndex={0}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') action.onClick(); }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            action.onClick();
+                                        } else if (e.key === ' ' && !e.repeat) {
+                                            e.preventDefault();
+                                            action.onClick();
+                                        }
+                                    }}
                                 >
                                     <div className={classNames.actionCardTitle}>{action.title}</div>
                                     <div className={classNames.actionCardDescription}>{action.description}</div>
