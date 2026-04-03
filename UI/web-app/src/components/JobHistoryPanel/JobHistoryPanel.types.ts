@@ -33,6 +33,11 @@ export interface IJobHistoryPanelStyles {
     userSearchPickerText: IStyle;
     userSearchPickerItemsWrapper: IStyle;
     userSearchIcon: IStyle;
+    userSuggestionList: IStyle;
+    userSuggestionItem: IStyle;
+    userSuggestionRow: IStyle;
+    userSuggestionPrimaryText: IStyle;
+    userSuggestionSecondaryText: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

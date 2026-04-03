@@ -5,6 +5,7 @@ import {
     classNamesFunction,
     IProcessedStyleSet,
     DetailsList,
+    DetailsListLayoutMode,
     DetailsRow,
     IDetailsRowProps,
     Panel,
@@ -15,17 +16,17 @@ import {
     Link,
     Modal,
     IconButton,
-    Icon,
-    Label,
     useTheme,
     TextField,
     MessageBar,
     MessageBarType,
     Dropdown,
     IDropdownOption,
+    Label,
     NormalPeoplePicker,
     Spinner,
     SpinnerSize,
+    DirectionalHint,
 } from '@fluentui/react';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import {
@@ -34,27 +35,54 @@ import {
 import { useStrings } from '../../store/hooks';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '../../store';
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { fetchJobChanges, fetchSyncJobHistory, downloadMembershipChanges, searchSyncHistoryByUser, fetchThresholdNotification, resolveNotification } from '../../store/jobDetails.api';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { downloadMembershipChanges, fetchJobChanges, fetchSyncJobHistory, fetchThresholdNotification, resolveNotification, searchSyncHistoryByUser } from '../../store/jobDetails.api';
 import { selectSelectedJobChanges, selectSelectedJobDetails } from '../../store/jobs.slice';
 import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchProgressUpdate';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
-import { selectIsJobTenantReader, selectIsJobTenantWriter, selectIsSubmissionReviewer } from '../../store/roles.slice';
+import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
 import { getStatusDisplayText } from '../../utils/jobUtils';
 import { RunHistoryStatus } from '../../models/Status';
 import { format } from 'react-string-format';
+import { ThresholdExceededActionDialog } from '../ThresholdExceededActionDialog';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
 import { SignalRSyncHistorySearchService } from '../../services/signalR/SignalRSyncHistorySearchService';
-import { ThresholdExceededActionDialog } from '../ThresholdExceededActionDialog';
 
 const getClassNames = classNamesFunction<
     IJobHistoryPanelStyleProps,
     IJobHistoryPanelStyles
 >();
+
+type CombinedHistoryListItem = {
+    id: string;
+    eventType: 'sync' | 'configuration';
+    time: string | null;
+    statusText: string;
+    beforeSyncUserCount: number | null;
+    usersAdded: number | null;
+    usersRemoved: number | null;
+    afterSyncUserCount: number | null;
+    syncHistory?: SyncJobHistory;
+    jobChange?: SyncJobChange;
+};
+
+type SyncSortKey =
+    | 'time'
+    | 'eventType'
+    | 'status'
+    | 'beforeSyncUserCount'
+    | 'usersAdded'
+    | 'usersRemoved'
+    | 'afterSyncUserCount';
+
+const syncPageSizeOptions: IDropdownOption[] = [10, 20, 30, 40, 50].map((value) => ({
+    key: value,
+    text: value.toString(),
+}));
 
 
 export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps> = (
@@ -64,15 +92,31 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const strings = useStrings();
     const theme = useTheme();
     const dispatch = useDispatch<AppDispatch>();
+    const jobChanges = useSelector(selectSelectedJobChanges) ?? [];
     const selectedJob = useSelector(selectSelectedJobDetails);
+    const isJobTenantReader = useSelector(selectIsJobTenantReader);
+    const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
+    const showSyncTab = isJobTenantReader || isJobTenantWriter;
+    const canDownloadMembershipChanges = isJobTenantWriter;
 
     const classNames: IProcessedStyleSet<IJobHistoryPanelStyles> = getClassNames(styles, { className, theme });
 
+    const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
+    const [expandedSyncRowIds, setExpandedSyncRowIds] = useState<Set<string>>(new Set());
     const [downloadError, setDownloadError] = useState<string | null>(null);
     const [downloadingRunIds, setDownloadingRunIds] = useState<Set<string>>(new Set());
-    const [sortedColumn, setSortedColumn] = useState<string>('endTime');
-    const [isSortedDescending, setIsSortedDescending] = useState<boolean>(true);
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalContent, setModalContent] = useState('');
+    const [modalTitle, setModalTitle] = useState('');
+    const [modalViewMode, setModalViewMode] = useState<'details' | 'query'>('details');
+    const [syncSortKey, setSyncSortKey] = useState<SyncSortKey>('time');
+    const [isSyncSortDescending, setIsSyncSortDescending] = useState(true);
+    const [syncPageNumber, setSyncPageNumber] = useState(1);
+    const [syncPageSize, setSyncPageSize] = useState(10);
+    const [takeActionItem, setTakeActionItem] = useState<SyncJobHistory | null>(null);
+    const [thresholdData, setThresholdData] = useState<ThresholdNotificationData | null>(null);
+    const [isThresholdDataLoading, setIsThresholdDataLoading] = useState(false);
+    const [syncPaused, setSyncPaused] = useState(false);
     const [selectedUser, setSelectedUser] = useState<IPersonaProps[]>([]);
     const [matchingRunIds, setMatchingRunIds] = useState<Set<string> | null>(null);
     const [isUserSearchLoading, setIsUserSearchLoading] = useState(false);
@@ -80,23 +124,44 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [userSearchInfo, setUserSearchInfo] = useState<string | null>(null);
     const [showProgressUnavailableMessage, setShowProgressUnavailableMessage] = useState(false);
     const [searchProgressText, setSearchProgressText] = useState<string | null>(null);
-    const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
-
-    const toggleRowExpand = (runId: string) => {
-        setExpandedRunIds(prev => {
-            const next = new Set(prev);
-            if (next.has(runId)) {
-                next.delete(runId);
-            } else {
-                next.add(runId);
-            }
-            return next;
-        });
-    };
+    const [userPickerSuggestions, setUserPickerSuggestions] = useState<IPersonaProps[]>([]);
 
     const syncHistorySearchSignalRServiceRef = useRef<SignalRSyncHistorySearchService>(new SignalRSyncHistorySearchService());
     const activeSearchRequestIdRef = useRef<string | null>(null);
     const isSignalRProgressDisabledRef = useRef(false);
+    const userPickerRef = useRef<any>(null);
+    const ignoreNextEmptyUserInputRef = useRef(false);
+
+    const getChangeReasonText = (changeReason: string): string => {
+        switch (changeReason) {
+            case SyncJobChangeReason.Onboarding:
+                return strings.JobDetails.Panel.onboardingRequest;
+            case SyncJobChangeReason.OnboardingAutoApproved:
+                return strings.JobDetails.Panel.onboardingAutoApproved;
+            case SyncJobChangeReason.StatusUpdate:
+                return strings.JobDetails.Panel.statusUpdate;
+            case SyncJobChangeReason.Update:
+                return strings.JobDetails.Panel.update;
+            case SyncJobChangeReason.SubmissionApproved:
+                return strings.JobDetails.Panel.submissionApproved;
+            case SyncJobChangeReason.SubmissionRejected:
+                return strings.JobDetails.Panel.submissionRejected;
+            case SyncJobChangeReason.GroupSettings:
+                return strings.JobDetails.Panel.groupSettings;
+            case SyncJobChangeReason.IgnoreThresholdOnce:
+                return strings.JobDetails.Panel.ignoreThresholdOnce;
+            default:
+                return changeReason;
+        }
+    };
+
+    const getUtcTimestampMillis = (dateTime?: string | null): number => {
+        if (!dateTime) return 0;
+
+        const utcDateTime = dateTime.endsWith('Z') ? dateTime : `${dateTime}Z`;
+        const millis = new Date(utcDateTime).getTime();
+        return Number.isNaN(millis) ? 0 : millis;
+    };
 
     const buildRequestId = (): string => {
         if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -106,8 +171,254 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     };
 
-    const updateProgressText = (progress: SyncHistorySearchProgressUpdate) => {
+    const updateProgressText = (progress: SyncHistorySearchProgressUpdate): void => {
         setSearchProgressText(`${strings.JobDetails.Panel.searchUserLoading} (${progress.processedRuns}/${progress.totalRuns})`);
+    };
+
+    const updateUserPickerPopup = (suggestions: IPersonaProps[]): void => {
+        const picker = userPickerRef.current as {
+            input?: { current?: { inputElement?: HTMLInputElement | null } | null };
+            setState?: (state: {
+                suggestionsVisible: boolean;
+                suggestionsLoading: boolean;
+                suggestionsExtendedLoading: boolean;
+                isMostRecentlyUsedVisible: boolean;
+            }) => void;
+            updateSuggestions?: (nextSuggestions: IPersonaProps[]) => void;
+        } | null;
+
+        const inputElement = picker?.input?.current?.inputElement ?? null;
+        const isInputFocused = Boolean(inputElement && document.activeElement === inputElement);
+        const shouldShowSuggestions = isInputFocused && suggestions.length > 0 && Boolean(inputElement?.value?.trim());
+
+        if (!picker?.setState) {
+            return;
+        }
+
+        if (typeof picker.updateSuggestions === 'function') {
+            picker.updateSuggestions(suggestions);
+        }
+
+        picker.setState({
+            suggestionsVisible: shouldShowSuggestions,
+            suggestionsLoading: false,
+            suggestionsExtendedLoading: false,
+            isMostRecentlyUsedVisible: false,
+        });
+    };
+
+    const getSelectedUserObjectId = (users: IPersonaProps[] = selectedUser): string | null => {
+        if (users.length === 0) {
+            return null;
+        }
+
+        const persona = users[0];
+        if (typeof persona.id === 'string' && persona.id.trim() !== '') {
+            return persona.id;
+        }
+
+        if (typeof persona.key === 'string' && persona.key.trim() !== '') {
+            return persona.key;
+        }
+
+        return null;
+    };
+
+    const removeDuplicatePersonas = (personas: IPersonaProps[], possibleDuplicates: IPersonaProps[]): IPersonaProps[] => {
+        return personas.filter((persona) => !possibleDuplicates.some((item) => {
+            const existingId = item.id ?? item.key;
+            const personaId = persona.id ?? persona.key;
+            return existingId === personaId;
+        }));
+    };
+
+    const getPickerSuggestions = async (
+        filterText: string,
+        currentPersonas?: IPersonaProps[],
+    ): Promise<IPersonaProps[]> => {
+        const normalizedFilterText = typeof filterText === 'string' ? filterText : '';
+        const trimmedFilter = normalizedFilterText.trim();
+
+        if (!trimmedFilter) {
+            return [];
+        }
+
+        return removeDuplicatePersonas(userPickerSuggestions, currentPersonas ?? []);
+    };
+
+    const renderUserSuggestion = (persona: IPersonaProps): JSX.Element => {
+        const primaryText = typeof persona.text === 'string' && persona.text.trim() !== ''
+            ? persona.text
+            : typeof persona.secondaryText === 'string'
+                ? persona.secondaryText
+                : '';
+        const secondaryText = typeof persona.secondaryText === 'string' && persona.secondaryText !== primaryText
+            ? persona.secondaryText
+            : '';
+
+        return (
+            <div className={classNames.userSuggestionRow}>
+                <div className={classNames.userSuggestionPrimaryText}>{primaryText}</div>
+                {secondaryText && (
+                    <div className={classNames.userSuggestionSecondaryText}>{secondaryText}</div>
+                )}
+            </div>
+        );
+    };
+
+    const clearUserSearch = (): void => {
+        ignoreNextEmptyUserInputRef.current = false;
+        setSelectedUser([]);
+        setUserPickerSuggestions([]);
+        setMatchingRunIds(null);
+        setIsUserSearchLoading(false);
+        setUserSearchError(null);
+        setUserSearchInfo(null);
+        setShowProgressUnavailableMessage(false);
+        setSearchProgressText(null);
+        activeSearchRequestIdRef.current = null;
+        window.requestAnimationFrame(() => updateUserPickerPopup([]));
+    };
+
+    const handleUserSearchInputChange = (input: string): string => {
+        const normalizedInput = typeof input === 'string' ? input : '';
+        const trimmedInput = normalizedInput.trim();
+
+        if (!trimmedInput) {
+            if (ignoreNextEmptyUserInputRef.current) {
+                ignoreNextEmptyUserInputRef.current = false;
+                return normalizedInput;
+            }
+
+            clearUserSearch();
+            return normalizedInput;
+        }
+
+        ignoreNextEmptyUserInputRef.current = false;
+
+        dispatch(getPeoplePickerSuggestions(trimmedInput))
+            .unwrap()
+            .then((users) => {
+                const personas = users.map((user) => ({
+                    key: user.id,
+                    id: user.id,
+                    text: user.text,
+                    secondaryText: user.secondaryText,
+                }));
+
+                setUserPickerSuggestions(personas);
+                window.requestAnimationFrame(() => updateUserPickerPopup(personas));
+            })
+            .catch(() => {
+                setUserPickerSuggestions([]);
+                window.requestAnimationFrame(() => updateUserPickerPopup([]));
+            });
+
+        return normalizedInput;
+    };
+
+    const searchHistoryForUser = async (userObjectId: string): Promise<void> => {
+        setMatchingRunIds(null);
+        setSyncPageNumber(1);
+        setUserSearchError(null);
+        setUserSearchInfo(null);
+        setShowProgressUnavailableMessage(false);
+        setIsUserSearchLoading(true);
+        setSearchProgressText(strings.JobDetails.Panel.searchUserLoading);
+
+        const requestId = buildRequestId();
+        const signalRService = syncHistorySearchSignalRServiceRef.current;
+        let signalRSubscribedRequestId: string | null = null;
+        let useSignalRProgress = false;
+
+        activeSearchRequestIdRef.current = requestId;
+
+        try {
+            if (!isSignalRProgressDisabledRef.current) {
+                try {
+                    await signalRService.startConnection();
+                    await signalRService.subscribe(requestId);
+                    signalRSubscribedRequestId = requestId;
+                    useSignalRProgress = true;
+                } catch {
+                    isSignalRProgressDisabledRef.current = true;
+                    setShowProgressUnavailableMessage(true);
+                }
+            }
+
+            const result = await dispatch(searchSyncHistoryByUser({
+                syncJobId: jobId,
+                userObjectId,
+                requestId: useSignalRProgress ? requestId : undefined,
+            })).unwrap();
+
+            if (activeSearchRequestIdRef.current !== requestId) {
+                return;
+            }
+
+            setMatchingRunIds(new Set(result.matchingRunIds));
+
+            if (result.matchingRunIds.length === 0 && result.checkedCurrentGroupMembership) {
+                if (result.userInCurrentGroup) {
+                    setUserSearchInfo(strings.JobDetails.Panel.userAddedPriorToHistoryMessage);
+                } else {
+                    setUserSearchInfo(strings.JobDetails.Panel.userNeverInGroupOrRemovedPriorToHistoryMessage);
+                }
+            }
+        } catch {
+            if (activeSearchRequestIdRef.current !== requestId) {
+                return;
+            }
+
+            setMatchingRunIds(new Set());
+            setUserSearchError(strings.JobDetails.Panel.searchUserError);
+        } finally {
+            if (signalRSubscribedRequestId) {
+                try {
+                    await signalRService.unsubscribe(signalRSubscribedRequestId);
+                } catch {
+                    // Ignore SignalR unsubscribe failures.
+                }
+            }
+
+            if (activeSearchRequestIdRef.current === requestId) {
+                activeSearchRequestIdRef.current = null;
+                setIsUserSearchLoading(false);
+                setSearchProgressText(null);
+            }
+        }
+    };
+
+    const onSelectedUserChanged = (items?: IPersonaProps[]): void => {
+        const users = items ?? [];
+        ignoreNextEmptyUserInputRef.current = users.length > 0;
+
+        setSelectedUser(users);
+        setSyncPageNumber(1);
+        setUserSearchError(null);
+        setUserSearchInfo(null);
+        setShowProgressUnavailableMessage(false);
+        updateUserPickerPopup([]);
+
+        if (users.length === 0) {
+            clearUserSearch();
+            return;
+        }
+
+        const selectedObjectId = getSelectedUserObjectId(users);
+
+        if (!selectedObjectId) {
+            ignoreNextEmptyUserInputRef.current = false;
+            activeSearchRequestIdRef.current = null;
+            setMatchingRunIds(new Set());
+            setUserPickerSuggestions([]);
+            setIsUserSearchLoading(false);
+            setSearchProgressText(null);
+            setUserSearchError(strings.JobDetails.Panel.searchUserError);
+            return;
+        }
+
+        void searchHistoryForUser(selectedObjectId);
     };
 
     useEffect(() => {
@@ -140,157 +451,206 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         };
     }, [showProgressUnavailableMessage, isUserSearchLoading]);
 
-    useEffect(() => {
-        setDownloadError(null);
-        setStatusFilter('all');
-        setSelectedUser([]);
-        setMatchingRunIds(null);
-        setIsUserSearchLoading(false);
-        setUserSearchError(null);
-        setUserSearchInfo(null);
-        setShowProgressUnavailableMessage(false);
-        setSearchProgressText(null);
-        activeSearchRequestIdRef.current = null;
-    }, [isOpen]);
-
-    const getSelectedUserObjectId = (): string | null => {
-        if (selectedUser.length === 0) return null;
-        const persona = selectedUser[0];
-        if (typeof persona.id === 'string' && persona.id.trim() !== '') {
-            return persona.id;
+    const renderTimestamp = (dateTime: string | null): JSX.Element => {
+        if (!dateTime) {
+            return <span>{strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
         }
 
-        if (typeof persona.key === 'string' && persona.key.trim() !== '') {
-            return persona.key;
+        const utcDate = dateTime.endsWith('Z') ? dateTime : `${dateTime}Z`;
+        const utcDateObj = new Date(utcDate);
+
+        return (
+            <div className={classNames.dateTimeContainer}>
+                <div className={classNames.dateText}>{utcDateObj.toLocaleDateString()}</div>
+                <div className={classNames.timeText}>{utcDateObj.toLocaleTimeString()}</div>
+            </div>
+        );
+    };
+
+    const renderCount = (value: number | null): JSX.Element => {
+        return <span>{value ?? strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
+    };
+
+    const canRenderDownloadLink = (item: CombinedHistoryListItem): boolean => {
+        if (!canDownloadMembershipChanges || item.eventType !== 'sync' || !item.syncHistory) {
+            return false;
+        }
+
+        return (item.usersAdded ?? 0) > 0 || (item.usersRemoved ?? 0) > 0;
+    };
+
+    const renderDownloadLink = (item: CombinedHistoryListItem): JSX.Element | null => {
+        if (!canRenderDownloadLink(item) || !item.syncHistory) {
+            return null;
+        }
+
+        const runId = item.syncHistory.runId;
+
+        return (
+            <Link
+                onClick={() => void handleDownload(runId)}
+                disabled={downloadingRunIds.has(runId)}
+                aria-label={format(strings.JobDetails.Panel.downloadAriaLabel, runId)}
+            >
+                {downloadingRunIds.has(runId)
+                    ? strings.JobDetails.Panel.downloadingText
+                    : strings.JobDetails.Panel.downloadLinkText}
+            </Link>
+        );
+    };
+
+    const toggleSyncRowExpand = (rowId: string) => {
+        setExpandedSyncRowIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(rowId)) {
+                next.delete(rowId);
+            } else {
+                next.add(rowId);
+            }
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        if (!isOpen) {
+            setExpandedSyncRowIds(new Set());
+            setSyncHistoryItems([]);
+            setDownloadError(null);
+            setDownloadingRunIds(new Set());
+            setIsModalOpen(false);
+            setModalContent('');
+            setModalTitle('');
+            setModalViewMode('details');
+            setSyncPageNumber(1);
+            setTakeActionItem(null);
+            setThresholdData(null);
+            setIsThresholdDataLoading(false);
+            setSelectedUser([]);
+            setMatchingRunIds(null);
+            setIsUserSearchLoading(false);
+            setUserSearchError(null);
+            setUserSearchInfo(null);
+            setShowProgressUnavailableMessage(false);
+            setSearchProgressText(null);
+            setUserPickerSuggestions([]);
+            activeSearchRequestIdRef.current = null;
+            isSignalRProgressDisabledRef.current = false;
+            ignoreNextEmptyUserInputRef.current = false;
+            syncHistorySearchSignalRServiceRef.current.stopConnection();
+            return;
+        }
+
+        setExpandedSyncRowIds(new Set());
+        setSyncPageNumber(1);
+        dispatch(fetchJobChanges({ syncJobId: jobId }));
+
+        if (!showSyncTab) {
+            setSyncHistoryItems([]);
+            return;
+        }
+
+        dispatch(fetchSyncJobHistory(jobId))
+            .unwrap()
+            .then((history) => {
+                setSyncHistoryItems(history);
+
+                const selectedObjectId = getSelectedUserObjectId();
+                if (selectedObjectId) {
+                    void searchHistoryForUser(selectedObjectId);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                setSyncHistoryItems([]);
+            });
+    }, [dispatch, isOpen, jobId, showSyncTab]);
+
+    const handleViewDetails = (details: string) => {
+        setModalTitle(strings.JobDetails.Panel.changeDetailsColumnLabel);
+        setModalViewMode('details');
+        setModalContent(details);
+        setIsModalOpen(true);
+    };
+
+    const findQueryInChangeDetails = (value: unknown): string | null => {
+        if (typeof value === 'string') {
+            return value.trim() ? value : null;
+        }
+
+        if (!value || typeof value !== 'object') {
+            return null;
+        }
+
+        const record = value as Record<string, unknown>;
+        const directQuery = record.Query ?? record.query;
+        if (typeof directQuery === 'string' && directQuery.trim()) {
+            return directQuery;
+        }
+
+        for (const childValue of Object.values(record)) {
+            const query = findQueryInChangeDetails(childValue);
+            if (query) {
+                return query;
+            }
         }
 
         return null;
     };
 
-    const removeDuplicates = (personas: IPersonaProps[], possibleDupes: IPersonaProps[]) => {
-        return personas.filter(persona => !possibleDupes.some(item => item.id === persona.id));
-    };
-
-    const getPickerSuggestions = async (
-        filterText: string,
-        currentPersonas: IPersonaProps[] | undefined
-    ): Promise<IPersonaProps[]> => {
-        if (!filterText || filterText.trim() === '') {
-            return [];
+    const extractQueryFromChangeDetails = (changeDetails: string): string | null => {
+        if (!changeDetails.trim()) {
+            return null;
         }
-
-        const users = await dispatch(getPeoplePickerSuggestions(filterText)).unwrap();
-
-        const personas = users.map((user) => {
-            return {
-                key: user.id,
-                id: user.id,
-                text: user.text,
-                secondaryText: user.secondaryText,
-            };
-        });
-
-        return removeDuplicates(personas, currentPersonas || []);
-    };
-
-    const searchHistoryForUser = async (userObjectId: string) => {
-        setUserSearchError(null);
-        setUserSearchInfo(null);
-        setShowProgressUnavailableMessage(false);
-        setIsUserSearchLoading(true);
-        setSearchProgressText(strings.JobDetails.Panel.searchUserLoading);
-
-        const requestId = buildRequestId();
-        const signalRService = syncHistorySearchSignalRServiceRef.current;
-        let signalRSubscribedRequestId: string | null = null;
-        let useSignalRProgress = false;
 
         try {
-            if (!isSignalRProgressDisabledRef.current) {
-                try {
-                    await signalRService.startConnection();
-                    if (activeSearchRequestIdRef.current) {
-                        await signalRService.unsubscribe(activeSearchRequestIdRef.current);
-                    }
-                    activeSearchRequestIdRef.current = requestId;
-                    await signalRService.subscribe(requestId);
-                    signalRSubscribedRequestId = requestId;
-                    useSignalRProgress = true;
-                } catch {
-                    isSignalRProgressDisabledRef.current = true;
-                    activeSearchRequestIdRef.current = null;
-                    setShowProgressUnavailableMessage(true);
-                }
-            }
-
-            const result = await dispatch(searchSyncHistoryByUser({
-                syncJobId: jobId,
-                userObjectId,
-                requestId: useSignalRProgress ? requestId : undefined,
-            })).unwrap();
-            setMatchingRunIds(new Set(result.matchingRunIds));
-
-            if (result.matchingRunIds.length === 0 && result.checkedCurrentGroupMembership) {
-                if (result.userInCurrentGroup) {
-                    setUserSearchInfo(strings.JobDetails.Panel.userAddedPriorToHistoryMessage);
-                } else {
-                    setUserSearchInfo(strings.JobDetails.Panel.userNeverInGroupOrRemovedPriorToHistoryMessage);
-                }
-            }
+            const parsedChangeDetails = JSON.parse(changeDetails);
+            return findQueryInChangeDetails(parsedChangeDetails);
         } catch {
-            setMatchingRunIds(new Set());
-            setUserSearchError(strings.JobDetails.Panel.searchUserError);
-        } finally {
-            setIsUserSearchLoading(false);
-            setSearchProgressText(null);
-            if (signalRSubscribedRequestId) {
-                await signalRService.unsubscribe(signalRSubscribedRequestId);
-            }
-            activeSearchRequestIdRef.current = null;
+            return null;
         }
     };
 
-    const onSelectedUserChanged = (items?: IPersonaProps[]) => {
-        const users = items ?? [];
-        setSelectedUser(users);
-        setUserSearchError(null);
-        setUserSearchInfo(null);
-        setShowProgressUnavailableMessage(false);
-
-        if (users.length === 0) {
-            setMatchingRunIds(null);
-            setIsUserSearchLoading(false);
-            setSearchProgressText(null);
-            activeSearchRequestIdRef.current = null;
-            return;
+    const formatQueryForDisplay = (query: string): string => {
+        try {
+            return JSON.stringify(JSON.parse(query), null, 2);
+        } catch {
+            return query;
         }
-
-        const selectedObjectId =
-            typeof users[0].id === 'string' && users[0].id.trim() !== ''
-                ? users[0].id
-                : typeof users[0].key === 'string' && users[0].key.trim() !== ''
-                    ? users[0].key
-                    : null;
-
-        if (!selectedObjectId) {
-            setMatchingRunIds(new Set());
-            setUserSearchError(strings.JobDetails.Panel.searchUserError);
-            return;
-        }
-
-        searchHistoryForUser(selectedObjectId);
     };
 
-    const handleDownload = async (runId: string) => {
-        if (downloadingRunIds.has(runId)) return;
+    const handleOpenQuery = (changeDetails: string) => {
+        const query = extractQueryFromChangeDetails(changeDetails);
+        if (!query) {
+            return;
+        }
+
+        setModalTitle(strings.JobDetails.Panel.openQuery);
+        setModalViewMode('query');
+        setModalContent(formatQueryForDisplay(query));
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setModalContent('');
+        setModalTitle('');
+        setModalViewMode('details');
+    };
+
+    const handleDownload = async (runId: string): Promise<void> => {
+        if (downloadingRunIds.has(runId)) {
+            return;
+        }
+
         setDownloadError(null);
-        setDownloadingRunIds(prev => new Set(prev).add(runId));
+        setDownloadingRunIds((prev) => new Set(prev).add(runId));
+
         try {
             await dispatch(downloadMembershipChanges({ syncJobId: jobId, runId, targetGroupId: selectedJob?.targetGroupId ?? '' })).unwrap();
         } catch {
             setDownloadError(strings.JobDetails.Panel.downloadError);
         } finally {
-            setDownloadingRunIds(prev => {
+            setDownloadingRunIds((prev) => {
                 const next = new Set(prev);
                 next.delete(runId);
                 return next;
@@ -298,49 +658,43 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     };
 
-    const getChangeTypeColorClass = (changeReason: string): string => {
-        switch (changeReason) {
-            case SyncJobChangeReason.SubmissionRejected:
-                return classNames.changeTypeRejected;
-            case SyncJobChangeReason.SubmissionApproved:
-            case SyncJobChangeReason.OnboardingAutoApproved:
-                return classNames.changeTypeApproved;
-            case SyncJobChangeReason.Onboarding:
-            case SyncJobChangeReason.Update:
-            case SyncJobChangeReason.StatusUpdate:
-            case SyncJobChangeReason.IgnoreThresholdOnce:
-                return classNames.changeTypeUpdate;
-            case SyncJobChangeReason.GroupSettings:
-                return classNames.changeTypeGroupSettings;
-            default:
-                return classNames.changeTypeDefault;
+    const parseNestedJson = (obj: unknown): unknown => {
+        if (!obj || typeof obj !== 'object') {
+            return obj;
         }
+
+        for (const key in obj as Record<string, unknown>) {
+            const value = (obj as Record<string, unknown>)[key];
+
+            if (typeof value === 'string') {
+                try {
+                    (obj as Record<string, unknown>)[key] = JSON.parse(value);
+                    parseNestedJson((obj as Record<string, unknown>)[key]);
+                } catch {
+                    // Leave non-JSON strings unchanged.
+                }
+            } else if (value && typeof value === 'object') {
+                parseNestedJson(value);
+            }
+        }
+
+        return obj;
     };
 
-    const getChangeReasonText = (changeReason: string): string => {
-        switch (changeReason) {
-            case SyncJobChangeReason.Onboarding:
-                return strings.JobDetails.Panel.onboardingRequest;
-            case SyncJobChangeReason.OnboardingAutoApproved:
-                return strings.JobDetails.Panel.onboardingAutoApproved;
-            case SyncJobChangeReason.StatusUpdate:
-                return strings.JobDetails.Panel.statusUpdate;
-            case SyncJobChangeReason.Update:
-                return strings.JobDetails.Panel.update;
-            case SyncJobChangeReason.SubmissionApproved:
-                return strings.JobDetails.Panel.submissionApproved;
-            case SyncJobChangeReason.SubmissionRejected:
-                return strings.JobDetails.Panel.submissionRejected;
-            case SyncJobChangeReason.GroupSettings:
-                return strings.JobDetails.Panel.groupSettings;
-            case SyncJobChangeReason.IgnoreThresholdOnce:
-                return strings.JobDetails.Panel.ignoreThresholdOnce;
-            default:
-                return changeReason;
+    let formattedModalContent;
+    if (modalViewMode === 'query') {
+        formattedModalContent = modalContent;
+    } else {
+        try {
+            const parsedDetails = JSON.parse(modalContent);
+            const cleanedDetails = parseNestedJson(parsedDetails);
+            formattedModalContent = JSON.stringify(cleanedDetails, null, 2);
+        } catch {
+            formattedModalContent = modalContent;
         }
-    };
+    }
 
-    const columns: IColumn[] = [
+    const configurationColumns: IColumn[] = [
         {
             key: 'changeTime',
             name: strings.JobDetails.Panel.changeTimeColumnLabel,
@@ -349,18 +703,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 150,
             isResizable: true,
             isMultiline: true,
-            onRender: (item: SyncJobChange) => {
-                const utcDate = item.changeTime.endsWith('Z') ? item.changeTime : `${item.changeTime}Z`;
-                const utcDateObj = new Date(utcDate);
-                const localDate = utcDateObj.toLocaleDateString();
-                const localTime = utcDateObj.toLocaleTimeString();
-                return (
-                    <div className={classNames.dateTimeContainer}>
-                        <div className={classNames.dateText}>{localDate}</div>
-                        <div className={classNames.timeText}>{localTime}</div>
-                    </div>
-                );
-            }
+            onRender: (item: SyncJobChange) => renderTimestamp(item.changeTime),
         },
         {
             key: 'changedByDisplayName',
@@ -379,16 +722,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 250,
             isResizable: true,
             isMultiline: true,
-            onRender: (item: SyncJobChange) => {
-                const colorClass = getChangeTypeColorClass(item.changeReason);
-                const text = getChangeReasonText(item.changeReason);
-                return (
-                    <div className={classNames.changeReasonContainer}>
-                        <span aria-hidden="true" className={`${classNames.changeTypeIndicator} ${colorClass}`} />
-                        <span>{text}</span>
-                    </div>
-                );
-            }
+            onRender: (item: SyncJobChange) => <span>{getChangeReasonText(item.changeReason)}</span>,
         },
         {
             key: 'businessJustification',
@@ -398,9 +732,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 300,
             isResizable: true,
             isMultiline: true,
-            onRender: (item: SyncJobChange) => {
-                return <span>{item.businessJustification}</span>;
-            }
+            onRender: (item: SyncJobChange) => <span>{item.businessJustification}</span>,
         },
         {
             key: 'changeDetails',
@@ -410,311 +742,273 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             maxWidth: 150,
             isResizable: true,
             isMultiline: true,
-            onRender: (item: SyncJobChange) => {
-                return <Link onClick={() => handleViewDetails(item.changeDetails)}>
+            onRender: (item: SyncJobChange) => (
+                <Link onClick={() => handleViewDetails(item.changeDetails)}>
                     {strings.JobDetails.Panel.viewDetails}
-                </Link>;
-            }
+                </Link>
+            ),
         }
     ];
 
-    const handleColumnHeaderClick = (event?: React.MouseEvent<HTMLElement>, column?: IColumn): void => {
-        if (!column) return;
-        
-        const newIsSortedDescending = sortedColumn === column.key ? !isSortedDescending : true;
-        setSortedColumn(column.key);
-        setIsSortedDescending(newIsSortedDescending);
+    const combinedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
+        const configurationItems = jobChanges.map((item, index) => ({
+            id: `configuration-${index}-${item.changeTime}`,
+            eventType: 'configuration' as const,
+            time: item.changeTime,
+            statusText: getChangeReasonText(item.changeReason),
+            beforeSyncUserCount: null,
+            usersAdded: null,
+            usersRemoved: null,
+            afterSyncUserCount: null,
+            jobChange: item,
+        }));
+
+        const syncItems = syncHistoryItems.map((item) => ({
+            id: `sync-${item.runId}`,
+            eventType: 'sync' as const,
+            time: item.endTime ?? item.startTime,
+            statusText: getStatusDisplayText(item.status),
+            beforeSyncUserCount: item.beforeSyncUserCount ?? null,
+            usersAdded: item.usersAdded ?? null,
+            usersRemoved: item.usersRemoved ?? null,
+            afterSyncUserCount: item.afterSyncUserCount ?? null,
+            syncHistory: item,
+        }));
+
+        return [...configurationItems, ...syncItems].sort(
+            (left, right) => getUtcTimestampMillis(right.time) - getUtcTimestampMillis(left.time)
+        );
+    }, [jobChanges, syncHistoryItems]);
+
+    const sortedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
+        const items = [...combinedSyncItems];
+
+        items.sort((left, right) => {
+            let compareValue = 0;
+
+            switch (syncSortKey) {
+                case 'time':
+                    compareValue = getUtcTimestampMillis(left.time) - getUtcTimestampMillis(right.time);
+                    break;
+                case 'eventType':
+                    compareValue = left.eventType.localeCompare(right.eventType);
+                    break;
+                case 'status':
+                    compareValue = left.statusText.localeCompare(right.statusText);
+                    break;
+                case 'beforeSyncUserCount':
+                    compareValue = (left.beforeSyncUserCount ?? -1) - (right.beforeSyncUserCount ?? -1);
+                    break;
+                case 'usersAdded':
+                    compareValue = (left.usersAdded ?? -1) - (right.usersAdded ?? -1);
+                    break;
+                case 'usersRemoved':
+                    compareValue = (left.usersRemoved ?? -1) - (right.usersRemoved ?? -1);
+                    break;
+                case 'afterSyncUserCount':
+                    compareValue = (left.afterSyncUserCount ?? -1) - (right.afterSyncUserCount ?? -1);
+                    break;
+            }
+
+            if (compareValue === 0) {
+                return getUtcTimestampMillis(right.time) - getUtcTimestampMillis(left.time);
+            }
+
+            return isSyncSortDescending ? compareValue * -1 : compareValue;
+        });
+
+        return items;
+    }, [combinedSyncItems, isSyncSortDescending, syncSortKey]);
+
+    const filteredCombinedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
+        if (selectedUser.length === 0 || matchingRunIds === null) {
+            return sortedSyncItems;
+        }
+
+        return sortedSyncItems.filter((item) => item.eventType === 'sync'
+            && item.syncHistory
+            && matchingRunIds.has(item.syncHistory.runId));
+    }, [matchingRunIds, selectedUser.length, sortedSyncItems]);
+
+    const totalSyncPages = Math.max(1, Math.ceil(filteredCombinedSyncItems.length / syncPageSize));
+
+    useEffect(() => {
+        if (syncPageNumber > totalSyncPages) {
+            setSyncPageNumber(totalSyncPages);
+        }
+    }, [syncPageNumber, totalSyncPages]);
+
+    const pagedSyncItems = useMemo<CombinedHistoryListItem[]>(() => {
+        const startIndex = (syncPageNumber - 1) * syncPageSize;
+        return filteredCombinedSyncItems.slice(startIndex, startIndex + syncPageSize);
+    }, [filteredCombinedSyncItems, syncPageNumber, syncPageSize]);
+
+    const onSyncColumnHeaderClick = (_event?: React.MouseEvent<HTMLElement>, column?: IColumn): void => {
+        if (!column || column.key === 'expand') {
+            return;
+        }
+
+        const nextSortKey = column.key as SyncSortKey;
+        const nextIsSortedDescending = syncSortKey === nextSortKey ? !isSyncSortDescending : false;
+
+        setSyncSortKey(nextSortKey);
+        setIsSyncSortDescending(nextIsSortedDescending);
+        setSyncPageNumber(1);
     };
 
-    const isJobTenantReader = useSelector(selectIsJobTenantReader);
-    const isJobTenantWriter = useSelector(selectIsJobTenantWriter);
-    const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
-    const showDownloadColumn = isJobTenantReader || isJobTenantWriter || isSubmissionReviewer;
+    const onSyncPageSizeChanged = (_event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption): void => {
+        if (!option) {
+            return;
+        }
 
-    const syncHistoryColumns: IColumn[] = [
+        setSyncPageSize(Number(option.key));
+        setSyncPageNumber(1);
+    };
+
+    const onSyncPageNumberChanged = (_event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
+        if (!newValue) {
+            return;
+        }
+
+        const parsedPageNumber = Number(newValue);
+        if (Number.isNaN(parsedPageNumber) || parsedPageNumber < 1 || parsedPageNumber > totalSyncPages) {
+            return;
+        }
+
+        setSyncPageNumber(parsedPageNumber);
+    };
+
+    const navigateSyncPage = (direction: number): void => {
+        const nextPageNumber = syncPageNumber + direction;
+        if (nextPageNumber < 1 || nextPageNumber > totalSyncPages) {
+            return;
+        }
+
+        setSyncPageNumber(nextPageNumber);
+    };
+
+    const renderCombinedStatus = (item: CombinedHistoryListItem): JSX.Element => {
+        const isThresholdExceeded = item.syncHistory?.status === RunHistoryStatus.ThresholdExceeded;
+
+        return (
+            <div className={classNames.statusCellContainer}>
+                <span className={isThresholdExceeded ? classNames.statusCellThresholdExceeded : undefined}>
+                    {item.statusText}
+                </span>
+            </div>
+        );
+    };
+
+    const syncColumns: IColumn[] = [
         {
-            key: 'endTime',
+            key: 'time',
             name: strings.JobDetails.Panel.endTimeColumnLabel,
-            fieldName: 'endTime',
-            minWidth: 100,
-            maxWidth: 150,
+            fieldName: 'time',
+            minWidth: 70,
             isResizable: true,
             isMultiline: true,
-            isSorted: sortedColumn === 'endTime',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                if (!item.endTime) return <span>-</span>;
-                const utcDate = item.endTime.endsWith('Z') ? item.endTime : `${item.endTime}Z`;
-                const utcDateObj = new Date(utcDate);
-                const localDate = utcDateObj.toLocaleDateString();
-                const localTime = utcDateObj.toLocaleTimeString();
-                return (
-                    <div className={classNames.dateTimeContainer}>
-                        <div className={classNames.dateText}>{localDate}</div>
-                        <div className={classNames.timeText}>{localTime}</div>
-                    </div>
-                );
-            }
+            isSorted: syncSortKey === 'time',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
+            onRender: (item: CombinedHistoryListItem) => renderTimestamp(item.time),
+        },
+        {
+            key: 'eventType',
+            name: strings.JobDetails.Panel.eventTypeColumnLabel,
+            fieldName: 'eventType',
+            minWidth: 90,
+            isResizable: true,
+            isMultiline: true,
+            isSorted: syncSortKey === 'eventType',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
+            onRender: (item: CombinedHistoryListItem) => (
+                <span>{item.eventType === 'sync' ? strings.JobDetails.Panel.syncPivotHeader : strings.JobDetails.Panel.configurationPivotHeader}</span>
+            ),
         },
         {
             key: 'status',
             name: strings.JobDetails.Panel.statusColumnLabel,
-            fieldName: 'status',
-            minWidth: 200,
-            maxWidth: 300,
+            fieldName: 'statusText',
+            minWidth: 70,
             isResizable: true,
-            onRender: (item: SyncJobHistory) => {
-                const isThresholdExceeded = item.status === RunHistoryStatus.ThresholdExceeded;
-                return (
-                    <div className={classNames.statusCellContainer}>
-                        <span className={isThresholdExceeded ? classNames.statusCellThresholdExceeded : undefined}>
-                            {getStatusDisplayText(item.status)}
-                        </span>
-                        {/* TODO: Uncomment once action card implementations are complete (tracked in follow-up PR)
-                        {isThresholdExceeded && (
-                            <Link onClick={() => handleTakeAction(item)}>{strings.JobDetails.Panel.takeAction}</Link>
-                        )} */}
-                    </div>
-                );
-            }
+            isMultiline: true,
+            isSorted: syncSortKey === 'status',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
+            onRender: (item: CombinedHistoryListItem) => renderCombinedStatus(item),
         },
         {
             key: 'beforeSyncUserCount',
             name: strings.JobDetails.Panel.beforeSyncUserCountColumnLabel,
             fieldName: 'beforeSyncUserCount',
-            minWidth: 80,
-            maxWidth: 120,
+            minWidth: 60,
             isResizable: true,
             isMultiline: true,
-            isSorted: sortedColumn === 'beforeSyncUserCount',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
+            isSorted: syncSortKey === 'beforeSyncUserCount',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
             onRenderHeader: () => renderMultilineHeader(strings.JobDetails.Panel.beforeSyncUserCountColumnLabel),
-            onRender: (item: SyncJobHistory) => {
-                return <span>{item.beforeSyncUserCount ?? '-'}</span>;
-            }
+            onRender: (item: CombinedHistoryListItem) => renderCount(item.beforeSyncUserCount),
         },
         {
             key: 'usersAdded',
             name: strings.JobDetails.Panel.usersAddedColumnLabel,
             fieldName: 'usersAdded',
-            minWidth: 80,
-            maxWidth: 120,
+            minWidth: 70,
             isResizable: true,
-            isSorted: sortedColumn === 'usersAdded',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                return <span>{item.usersAdded ?? '-'}</span>;
-            }
+            isSorted: syncSortKey === 'usersAdded',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
+            onRender: (item: CombinedHistoryListItem) => renderCount(item.usersAdded),
         },
         {
             key: 'usersRemoved',
             name: strings.JobDetails.Panel.usersRemovedColumnLabel,
             fieldName: 'usersRemoved',
-            minWidth: 80,
-            maxWidth: 120,
+            minWidth: 70,
             isResizable: true,
-            isSorted: sortedColumn === 'usersRemoved',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                return <span>{item.usersRemoved ?? '-'}</span>;
-            }
+            isSorted: syncSortKey === 'usersRemoved',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
+            onRender: (item: CombinedHistoryListItem) => renderCount(item.usersRemoved),
         },
         {
             key: 'afterSyncUserCount',
             name: strings.JobDetails.Panel.afterSyncUserCountColumnLabel,
             fieldName: 'afterSyncUserCount',
-            minWidth: 80,
-            maxWidth: 120,
+            minWidth: 70,
             isResizable: true,
             isMultiline: true,
-            isSorted: sortedColumn === 'afterSyncUserCount',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                return <span>{item.afterSyncUserCount ?? '-'}</span>;
-            }
-        },
-        {
-            key: 'thresholdViolations',
-            name: strings.JobDetails.Panel.thresholdViolationsColumnLabel,
-            fieldName: 'thresholdViolations',
-            minWidth: 100,
-            maxWidth: 150,
-            isResizable: true,
-            isSorted: sortedColumn === 'thresholdViolations',
-            isSortedDescending: isSortedDescending,
-            onColumnClick: handleColumnHeaderClick,
-            onRender: (item: SyncJobHistory) => {
-                return <span>{item.thresholdViolations ?? '-'}</span>;
-            }
+            isSorted: syncSortKey === 'afterSyncUserCount',
+            isSortedDescending: isSyncSortDescending,
+            onColumnClick: onSyncColumnHeaderClick,
+            onRender: (item: CombinedHistoryListItem) => renderCount(item.afterSyncUserCount),
         },
         {
             key: 'expand',
             name: '',
             fieldName: '',
-            minWidth: 40,
-            maxWidth: 40,
+            minWidth: 32,
+            maxWidth: 32,
             isResizable: false,
-            onRender: (item: SyncJobHistory) => {
-                const isExpanded = expandedRunIds.has(item.runId);
+            onRender: (item: CombinedHistoryListItem) => {
+                const isExpanded = expandedSyncRowIds.has(item.id);
                 return (
                     <IconButton
                         iconProps={{ iconName: isExpanded ? 'ChevronUp' : 'ChevronDown' }}
-                        ariaLabel={isExpanded ? 'Collapse row' : 'Expand row'}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRowExpand(item.runId);
+                        ariaLabel={isExpanded
+                            ? strings.JobDetails.Panel.collapseRowAriaLabel
+                            : strings.JobDetails.Panel.expandRowAriaLabel}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            toggleSyncRowExpand(item.id);
                         }}
                     />
                 );
             },
         },
-        ...(showDownloadColumn ? [{
-            key: 'download',
-            name: strings.JobDetails.Panel.downloadColumnLabel,
-            fieldName: 'download',
-            minWidth: 80,
-            maxWidth: 120,
-            isResizable: true,
-            onRender: (item: SyncJobHistory) => {
-                const hasChanges = (item.usersAdded ?? 0) > 0 || (item.usersRemoved ?? 0) > 0;
-                if (!hasChanges) return null;
-                return (
-                    <Link
-                        onClick={() => handleDownload(item.runId)}
-                        disabled={downloadingRunIds.has(item.runId)}
-                        aria-label={format(strings.JobDetails.Panel.downloadAriaLabel, item.runId)}
-                    >
-                        {downloadingRunIds.has(item.runId) ? strings.JobDetails.Panel.downloadingText : strings.JobDetails.Panel.downloadLinkText}
-                    </Link>
-                );
-            }
-        }] : [])
     ];
-
-    const [detailsListItems, setDetailsListItems] = useState<SyncJobChange[]>([]);
-    const [syncHistoryItems, setSyncHistoryItems] = useState<SyncJobHistory[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [modalContent, setModalContent] = useState('');
-    const [takeActionItem, setTakeActionItem] = useState<SyncJobHistory | null>(null);
-    const [thresholdData, setThresholdData] = useState<ThresholdNotificationData | null>(null);
-    const [isThresholdDataLoading, setIsThresholdDataLoading] = useState(false);
-    const [syncPaused, setSyncPaused] = useState(false);
-
-    const getUtcTimestampMillis = (dateTime?: string | null): number => {
-        if (!dateTime) return 0;
-        const utcDateTime = dateTime.endsWith('Z') ? dateTime : `${dateTime}Z`;
-        const millis = new Date(utcDateTime).getTime();
-        return Number.isNaN(millis) ? 0 : millis;
-    };
-
-    const sortedSyncHistoryItems = useMemo(() => {
-        const items = [...syncHistoryItems];
-        
-        items.sort((a: SyncJobHistory, b: SyncJobHistory) => {
-            let aValue: number | string;
-            let bValue: number | string;
-
-            switch (sortedColumn) {
-                case 'endTime':
-                    aValue = getUtcTimestampMillis(a.endTime);
-                    bValue = getUtcTimestampMillis(b.endTime);
-                    break;
-                case 'beforeSyncUserCount':
-                    aValue = a.beforeSyncUserCount ?? 0;
-                    bValue = b.beforeSyncUserCount ?? 0;
-                    break;
-                case 'usersAdded':
-                    aValue = a.usersAdded ?? 0;
-                    bValue = b.usersAdded ?? 0;
-                    break;
-                case 'usersRemoved':
-                    aValue = a.usersRemoved ?? 0;
-                    bValue = b.usersRemoved ?? 0;
-                    break;
-                case 'afterSyncUserCount':
-                    aValue = a.afterSyncUserCount ?? 0;
-                    bValue = b.afterSyncUserCount ?? 0;
-                    break;
-                case 'thresholdViolations':
-                    aValue = a.thresholdViolations ?? 0;
-                    bValue = b.thresholdViolations ?? 0;
-                    break;
-                default:
-                    return 0;
-            }
-
-            if (aValue < bValue) {
-                return isSortedDescending ? 1 : -1;
-            }
-            if (aValue > bValue) {
-                return isSortedDescending ? -1 : 1;
-            }
-            return 0;
-        });
-
-        return items;
-    }, [syncHistoryItems, sortedColumn, isSortedDescending]);
-
-    const jobChanges: SyncJobChange[] | undefined = useSelector(selectSelectedJobChanges);
-    const showSyncTab = isJobTenantReader || isJobTenantWriter;
-
-    const statusOptions: IDropdownOption[] = [
-        { key: 'all', text: strings.JobDetails.Panel.statusFilterAllOption },
-        ...Array.from(new Set(syncHistoryItems.map((item) => item.status))).map((status) => ({
-            key: status,
-            text: getStatusDisplayText(status),
-        })),
-    ];
-
-    const syncHistoryItemsFilteredByStatus = statusFilter === 'all'
-        ? sortedSyncHistoryItems
-        : sortedSyncHistoryItems.filter((item) => item.status === statusFilter);
-
-    const filteredSyncHistoryItems = matchingRunIds === null
-        ? syncHistoryItemsFilteredByStatus
-        : syncHistoryItemsFilteredByStatus.filter((item) => matchingRunIds.has(item.runId));
-
-    useEffect(() => {
-        if (isOpen) {
-            dispatch(fetchJobChanges({ syncJobId: jobId }));
-            if (showSyncTab) {
-                dispatch(fetchSyncJobHistory(jobId))
-                    .unwrap()
-                    .then((history) => {
-                        setSyncHistoryItems(history);
-                        const selectedObjectId = getSelectedUserObjectId();
-                        if (selectedObjectId) {
-                            searchHistoryForUser(selectedObjectId);
-                        }
-                    })
-                    .catch((error) => {
-                        console.error('Failed to fetch sync job history:', error);
-                    });
-            }
-        }
-    }, [isOpen, dispatch, jobId, showSyncTab]);
-
-    useEffect(() => {
-        if (jobChanges) {
-            setDetailsListItems(jobChanges);
-        }
-    }, [jobChanges]);
-
-    const handleViewDetails = (details: string) => {
-        setModalContent(details);
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setModalContent('');
-    };
-
     const handleTakeAction = async (item: SyncJobHistory) => {
         setTakeActionItem(item);
         setThresholdData(null);
@@ -735,8 +1029,11 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setIsThresholdDataLoading(false);
     };
 
-    const handlePauseSync = async () => {
-        if (!thresholdData?.notificationId) return;
+    const handlePauseSync = async (): Promise<void> => {
+        if (!thresholdData?.notificationId) {
+            return;
+        }
+
         try {
             await dispatch(resolveNotification({ notificationId: thresholdData.notificationId, resolution: 'Paused' })).unwrap();
             setSyncPaused(true);
@@ -745,45 +1042,68 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     };
 
-    const parseNestedJson = (obj: any) => {
-        for (const key in obj) {
-            if (typeof obj[key] === 'string') {
-                try {
-                    obj[key] = JSON.parse(obj[key]);
-                    parseNestedJson(obj[key]); // Recursively parse nested JSON strings
-                } catch (e) {
-                    // Not a JSON string, leave it as is
-                }
-            }
+    const renderExpandedSyncContent = (item: CombinedHistoryListItem): JSX.Element | null => {
+        if (item.eventType === 'sync' && item.syncHistory) {
+            const downloadLink = renderDownloadLink(item);
+
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
+                        <span style={{ fontSize: '12px' }}>{item.syncHistory.runId}</span>
+                    </div>
+                    {downloadLink && (
+                        <div>
+                            {downloadLink}
+                        </div>
+                    )}
+                </div>
+            );
         }
-        return obj;
+
+        if (item.eventType === 'configuration' && item.jobChange) {
+            const query = extractQueryFromChangeDetails(item.jobChange.changeDetails);
+
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.changedByColumnLabel}:</strong>
+                        <span style={{ fontSize: '12px' }}>{item.jobChange.changedByDisplayName || strings.JobDetails.Panel.emptyValuePlaceholder}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.businessJustification}:</strong>
+                        <span style={{ fontSize: '12px' }}>{item.jobChange.businessJustification || strings.JobDetails.Panel.emptyValuePlaceholder}</span>
+                    </div>
+                    {query && (
+                        <div>
+                            <Link onClick={() => handleOpenQuery(item.jobChange!.changeDetails)}>
+                                {strings.JobDetails.Panel.openQuery}
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        return null;
     };
 
-    let formattedDetails;
-    try {
-        const parsedDetails = JSON.parse(modalContent);
-        const cleanedDetails = parseNestedJson(parsedDetails);
-        formattedDetails = JSON.stringify(cleanedDetails, null, 2);
-    } catch (e) {
-        formattedDetails = modalContent;
-    }
-
-    const onRenderSyncHistoryRow = (rowProps?: IDetailsRowProps): JSX.Element => {
+    const onRenderSyncRow = (rowProps?: IDetailsRowProps): JSX.Element => {
         if (!rowProps) return <></>;
-        const item = rowProps.item as SyncJobHistory;
-        const isExpanded = expandedRunIds.has(item.runId);
+
+        const item = rowProps.item as CombinedHistoryListItem;
+        const isExpanded = expandedSyncRowIds.has(item.id);
+        const expandedContent = renderExpandedSyncContent(item);
+
         return (
             <>
                 <DetailsRow
                     {...rowProps}
-                    styles={isExpanded ? { root: { borderBottom: 'none' } } : undefined}
+                    styles={isExpanded && expandedContent ? { root: { borderBottom: 'none' } } : undefined}
                 />
-                {isExpanded && (
+                {isExpanded && expandedContent && (
                     <div style={{ padding: '4px 12px 8px 12px', backgroundColor: 'inherit', borderBottom: '1px solid #edebe9' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <strong style={{ fontSize: '14px' }}>{strings.JobDetails.Panel.runIdColumnLabel}:</strong>
-                            <span style={{ fontSize: '12px' }}>{item.runId}</span>
-                        </div>
+                        {expandedContent}
                     </div>
                 )}
             </>
@@ -792,12 +1112,19 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
     return (
         <Panel
-            type={PanelType.medium}
+            type={PanelType.custom}
+            customWidth="760px"
             isLightDismiss
             isOpen={isOpen}
             onDismiss={dismissPanel}
             headerText={strings.JobDetails.Panel.history}
             closeButtonAriaLabel={strings.close}
+            layerProps={{ eventBubblingEnabled: true }}
+            styles={{
+                main: { overflow: 'visible' },
+                contentInner: { overflow: 'visible' },
+                scrollableContent: { overflow: 'visible' },
+            }}
         >
             {syncPaused && (
                 <MessageBar
@@ -812,13 +1139,13 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     headerText={strings.JobDetails.Panel.configurationPivotHeader}
                     headerButtonProps={{
                         'data-order': 1,
-                        'data-title': strings.JobDetails.Panel.configurationPivotHeader
+                        'data-title': strings.JobDetails.Panel.configurationPivotHeader,
                     }}
                 >
                     <DetailsList
-                        setKey="set"
-                        columns={columns}
-                        items={detailsListItems}
+                        setKey="configurationSet"
+                        columns={configurationColumns}
+                        items={jobChanges}
                         selectionMode={0}
                     />
                 </PivotItem>
@@ -827,7 +1154,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                         headerText={strings.JobDetails.Panel.syncPivotHeader}
                         headerButtonProps={{
                             'data-order': 2,
-                            'data-title': strings.JobDetails.Panel.syncPivotHeader
+                            'data-title': strings.JobDetails.Panel.syncPivotHeader,
                         }}
                     >
                         {downloadError && (
@@ -839,30 +1166,56 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             </MessageBar>
                         )}
                         <div className={classNames.syncFiltersContainer}>
-                            <Dropdown
-                                className={classNames.statusFilter}
-                                label={strings.JobDetails.Panel.statusFilterLabel}
-                                selectedKey={statusFilter}
-                                options={statusOptions}
-                                onChange={(_, option) => setStatusFilter((option?.key as string) ?? 'all')}
-                            />
-                            <div className={classNames.userSearchField}>
+                            <div className={classNames.userSearchField} style={{ gridColumn: '1 / -1' }}>
                                 <Label className={classNames.userSearchLabel}>{strings.JobDetails.Panel.searchUserLabel}</Label>
                                 <NormalPeoplePicker
-                                        aria-label={strings.JobDetails.Panel.searchUserLabel}
-                                        className={classNames.userSearchPicker}
-                                        onResolveSuggestions={getPickerSuggestions}
-                                        onChange={onSelectedUserChanged}
-                                        selectedItems={selectedUser}
-                                        itemLimit={1}
-                                        resolveDelay={300}
-                                        inputProps={{ placeholder: strings.JobDetails.Panel.searchUserPlaceholder }}
-                                        pickerSuggestionsProps={{ noResultsFoundText: strings.JobDetails.Panel.searchUserNoResults }}
-                                    />
+                                    componentRef={userPickerRef}
+                                    key={'normal'}
+                                    aria-label={strings.JobDetails.Panel.searchUserLabel}
+                                    onRenderSuggestionsItem={renderUserSuggestion}
+                                    onResolveSuggestions={getPickerSuggestions}
+                                    onInputChange={handleUserSearchInputChange}
+                                    onChange={onSelectedUserChanged}
+                                    selectedItems={selectedUser}
+                                    itemLimit={1}
+                                    resolveDelay={600}
+                                    inputProps={{ placeholder: strings.JobDetails.Panel.searchUserPlaceholder }}
+                                    pickerSuggestionsProps={{
+                                        suggestionsClassName: classNames.userSuggestionList,
+                                        suggestionsItemClassName: classNames.userSuggestionItem,
+                                        resultsMaximumNumber: 5,
+                                        noResultsFoundText: strings.JobDetails.Panel.searchUserNoResults,
+                                        loadingText: strings.JobDetails.Panel.searchUserLoading,
+                                        suggestionsAvailableAlertText: strings.JobDetails.Panel.searchUserLabel,
+                                    }}
+                                    styles={{
+                                        text: classNames.userSearchPicker,
+                                    }}
+                                    pickerCalloutProps={{
+                                        directionalHint: DirectionalHint.bottomLeftEdge,
+                                        directionalHintFixed: true,
+                                        alignTargetEdge: true,
+                                        target: userPickerRef.current?.input?.current?.inputElement ?? undefined,
+                                        calloutMinWidth: 220,
+                                        calloutMaxWidth: 300,
+                                        gapSpace: 4,
+                                        coverTarget: false,
+                                        doNotLayer: true,
+                                        styles: {
+                                            root: {
+                                                zIndex: 1000,
+                                            },
+                                            calloutMain: {},
+                                        },
+                                    }}
+                                />
                             </div>
                         </div>
                         {isUserSearchLoading && (
-                            <Spinner label={searchProgressText ?? strings.JobDetails.Panel.searchUserLoading} size={SpinnerSize.small} />
+                            <Spinner
+                                label={searchProgressText ?? strings.JobDetails.Panel.searchUserLoading}
+                                size={SpinnerSize.small}
+                            />
                         )}
                         {showProgressUnavailableMessage && isUserSearchLoading && (
                             <MessageBar messageBarType={MessageBarType.info}>
@@ -883,33 +1236,88 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             </MessageBar>
                         )}
                         <DetailsList
-                            setKey="syncHistorySet"
-                            columns={syncHistoryColumns}
-                            items={filteredSyncHistoryItems}
+                            setKey="combinedSyncSet"
+                            columns={syncColumns}
+                            items={pagedSyncItems}
+                            layoutMode={DetailsListLayoutMode.justified}
                             selectionMode={0}
-                            onRenderRow={onRenderSyncHistoryRow}
+                            onRenderRow={onRenderSyncRow}
                         />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginTop: '12px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <IconButton
+                                    iconProps={{ iconName: 'ChevronLeft' }}
+                                    title={strings.JobsList.PagingBar.previousPage}
+                                    ariaLabel={strings.JobsList.PagingBar.previousPage}
+                                    onClick={() => navigateSyncPage(-1)}
+                                    disabled={syncPageNumber <= 1}
+                                />
+                                <span>{strings.JobsList.PagingBar.page}</span>
+                                <TextField
+                                    ariaLabel={strings.JobsList.PagingBar.pageNumberAriaLabel}
+                                    styles={{ root: { width: 56 } }}
+                                    value={syncPageNumber.toString()}
+                                    onChange={onSyncPageNumberChanged}
+                                />
+                                <span>{strings.JobsList.PagingBar.of} {totalSyncPages}</span>
+                                <IconButton
+                                    iconProps={{ iconName: 'ChevronRight' }}
+                                    title={strings.JobsList.PagingBar.nextPage}
+                                    ariaLabel={strings.JobsList.PagingBar.nextPage}
+                                    onClick={() => navigateSyncPage(1)}
+                                    disabled={syncPageNumber >= totalSyncPages}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>{strings.JobsList.PagingBar.display}</span>
+                                <Dropdown
+                                    ariaLabel={strings.JobsList.PagingBar.pageSizeAriaLabel}
+                                    selectedKey={syncPageSize}
+                                    options={syncPageSizeOptions}
+                                    onChange={onSyncPageSizeChanged}
+                                    styles={{ dropdown: { width: 90 } }}
+                                />
+                                <span>{strings.JobsList.PagingBar.items}</span>
+                            </div>
+                        </div>
                     </PivotItem>
                 )}
             </Pivot>
             <Modal
                 isOpen={isModalOpen}
                 onDismiss={handleCloseModal}
-                className={classNames.container}
+                styles={{
+                    main: {
+                        width: '85vw',
+                        maxWidth: '1100px',
+                        height: '80vh',
+                    },
+                }}
             >
-                <div className={classNames.header}>
-                    <IconButton
-                        iconProps={{ iconName: 'Cancel' }}
-                        ariaLabel={strings.close}
-                        onClick={handleCloseModal}
-                    />
-                </div>
-                <div>
+                <div className={classNames.container}>
+                    <div className={classNames.header}>
+                        <span>{modalTitle || strings.JobDetails.Panel.changeDetailsColumnLabel}</span>
+                        <IconButton
+                            iconProps={{ iconName: 'Cancel' }}
+                            ariaLabel={strings.close}
+                            onClick={handleCloseModal}
+                        />
+                    </div>
                     <TextField
-                        value={formattedDetails}
+                        value={formattedModalContent}
                         readOnly
                         multiline
-                        resizable={true}
+                        resizable
+                        rows={28}
+                        spellCheck={false}
+                        styles={{
+                            root: { flex: 1, minHeight: 0 },
+                            fieldGroup: { minHeight: '65vh' },
+                            field: {
+                                fontFamily: 'Consolas, "Courier New", monospace',
+                                lineHeight: '1.5',
+                            },
+                        }}
                     />
                 </div>
             </Modal>

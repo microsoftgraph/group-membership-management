@@ -295,10 +295,15 @@ export type IStrings = {
     Panel: {
       dismissButtonAriaLabel: string;
       changeTimeColumnLabel: string;
+      eventTypeColumnLabel: string;
       changedByColumnLabel: string;
       changeReasonColumnLabel: string;
       changeDetailsColumnLabel: string;
       viewDetails: string;
+      openQuery: string;
+      emptyValuePlaceholder: string;
+      expandRowAriaLabel: string;
+      collapseRowAriaLabel: string;
       history: string;
       configurationPivotHeader: string;
       syncPivotHeader: string;
