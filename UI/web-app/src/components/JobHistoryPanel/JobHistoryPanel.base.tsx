@@ -1096,9 +1096,10 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 setResolvedRunIds((prev) => new Set(prev).add(pauseRunId));
             }
             dispatch(fetchJobChanges({ syncJobId: jobId }));
-            handleCloseTakeAction();
         } catch {
             setResolveError(strings.JobDetails.Panel.resolveError);
+        } finally {
+            handleCloseTakeAction();
         }
     };
 
