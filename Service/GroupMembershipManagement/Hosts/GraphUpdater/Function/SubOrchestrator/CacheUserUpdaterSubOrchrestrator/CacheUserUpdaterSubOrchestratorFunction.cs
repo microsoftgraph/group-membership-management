@@ -16,7 +16,7 @@ namespace Hosts.GraphUpdater
         [Function(nameof(CacheUserUpdaterSubOrchestratorFunction))]
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger("GraphUpdater.CacheUserUpdaterSubOrchestratorFunction");
+            var logger = context.CreateReplaySafeLogger("Hosts.GraphUpdater.CacheUserUpdaterSubOrchestratorFunction");
             var request = context.GetInput<CacheUserUpdaterRequest>();
             using var scope = logger.BeginGraphUpdaterScope(request);
 

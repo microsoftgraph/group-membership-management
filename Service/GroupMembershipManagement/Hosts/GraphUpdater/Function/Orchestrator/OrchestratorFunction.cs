@@ -64,7 +64,7 @@ namespace Hosts.GraphUpdater
             var sourceUsersNotFound = new List<AzureADUser>();
             var destinationUsersNotFound = new List<AzureADUser>();
             var syncCompleteEvent = new SyncCompleteCustomEvent();
-            var logger = context.CreateReplaySafeLogger("GraphUpdater.OrchestratorFunction");
+            var logger = context.CreateReplaySafeLogger("Hosts.GraphUpdater.OrchestratorFunction");
 
             graphRequest = context.GetInput<MembershipHttpRequest>();
             using var scope = logger.BeginSyncJobScope(graphRequest.SyncJob);

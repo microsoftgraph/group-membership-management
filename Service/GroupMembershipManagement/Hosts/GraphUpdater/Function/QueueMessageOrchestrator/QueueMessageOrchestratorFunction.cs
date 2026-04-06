@@ -19,7 +19,7 @@ namespace Hosts.GraphUpdater
         [Function(nameof(QueueMessageOrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger("GraphUpdater.QueueMessageOrchestratorFunction");
+            var logger = context.CreateReplaySafeLogger("Hosts.GraphUpdater.QueueMessageOrchestratorFunction");
             var orchestratorRequest = context.GetInput<QueueMessageOrchestratorRequest>();
 
             try
