@@ -1083,20 +1083,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         }
     };
 
-    const handleApplyChanges = async (): Promise<void> => {
-        if (!thresholdData?.notificationId) {
-            return;
-        }
-
-        try {
-            await dispatch(resolveNotification({ notificationId: thresholdData.notificationId, resolution: 'IgnoreOnce' })).unwrap();
-            setChangesApplied(true);
-            dispatch(fetchJobChanges({ syncJobId: jobId }));
-        } finally {
-            handleCloseTakeAction();
-        }
-    };
-
     const handlePauseSync = async (): Promise<void> => {
         if (!thresholdData?.notificationId) {
             return;
@@ -1112,8 +1098,6 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             dispatch(fetchJobChanges({ syncJobId: jobId }));
         } catch {
             setResolveError(strings.JobDetails.Panel.resolveError);
-        } finally {
-            handleCloseTakeAction();
         }
     };
 
