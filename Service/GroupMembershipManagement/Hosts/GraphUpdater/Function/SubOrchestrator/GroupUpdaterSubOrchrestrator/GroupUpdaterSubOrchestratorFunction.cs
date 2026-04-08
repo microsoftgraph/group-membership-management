@@ -28,7 +28,7 @@ namespace Hosts.GraphUpdater
         [Function(nameof(GroupUpdaterSubOrchestratorFunction))]
         public async Task<GroupUpdaterSubOrchestratorResponse> RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger("Hosts.GraphUpdater.GroupUpdaterSubOrchestratorFunction");
+            var logger = context.CreateReplaySafeLogger("GraphUpdater.GroupUpdaterSubOrchestratorFunction");
             var skip = 0;
             var request = context.GetInput<GroupUpdaterRequest>();
             using var scope = logger.BeginGraphUpdaterScope(request);

@@ -75,7 +75,7 @@ namespace Hosts.GraphUpdater
             var laneSize = request.LaneSize;
 
             var runId = groupMembership.SyncJob.RunId.GetValueOrDefault(Guid.Empty);
-            var logger = context.CreateReplaySafeLogger("Hosts.GraphUpdater.OrchestratorMultiLaneFunction");
+            var logger = context.CreateReplaySafeLogger("GraphUpdater.OrchestratorMultiLaneFunction");
             var additionalProperties = new Dictionary<string, object>
             {
                 ["MessageIndex"] = groupMembership.MessageIndex,
