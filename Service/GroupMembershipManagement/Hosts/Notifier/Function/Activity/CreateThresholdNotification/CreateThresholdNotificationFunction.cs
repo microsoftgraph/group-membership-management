@@ -9,6 +9,8 @@ using System;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
 using Models;
+using System.Text.Json;
+using System.Collections.Generic;
 
 namespace Hosts.Notifier
 {

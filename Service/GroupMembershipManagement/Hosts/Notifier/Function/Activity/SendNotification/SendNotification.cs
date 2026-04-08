@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Repositories.Contracts.Helpers;
 using Services.Notifier;
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Services.Notifier.Contracts;
 
