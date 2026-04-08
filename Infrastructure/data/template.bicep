@@ -723,10 +723,10 @@ module dataKeyVaultTemplate 'keyVault.bicep' = if (!isDataKVPresent) {
 // -----------------------------------------------
 
 module dataKvPrivateEndpoint '../networking/privateEndpoint.bicep' = {
-  name: 'deploy-${keyVaultName}-pe'
+  name: 'deploy-${networkingResourceGroupName}-data-kv-pe'
   scope: resourceGroup(networkingResourceGroupName)
   params: {
-    name: '${keyVaultName}-pe'
+    name: '${networkingResourceGroupName}-data-kv-pe'
     location: location
     subnetId: privateEndpointSubnetId
     privateLinkServiceId: resourceId('Microsoft.KeyVault/vaults', keyVaultName)
