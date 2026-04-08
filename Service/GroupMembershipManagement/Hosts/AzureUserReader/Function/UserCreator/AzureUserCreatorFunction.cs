@@ -4,7 +4,6 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Models;
-using Repositories.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
