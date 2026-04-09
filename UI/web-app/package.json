@@ -2,6 +2,7 @@
   "name": "web-app",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.4+sha512.b2dc20e2fc72b3e18848459b37359a32064663e5627a51e4c74b2c29dd8e8e0491483c3abb40789cfd578bf362fb6ba8261b05f0387d76792ed6e23ea3b1b6a0",
   "homepage": ".",
   "dependencies": {
     "@azure/msal-browser": "5.4.0",
@@ -19,7 +20,7 @@
     "@types/react": "18.0.27",
     "@types/react-dom": "18.0.10",
     "ajv": "8.18.0",
-    "axios": "1.13.2",
+    "axios": "1.15.0",
     "base32-encode": "^2.0.0",
     "history": "5.3.0",
     "i18next": "23.6.0",
@@ -91,6 +92,7 @@
   "pnpm": {
     "overrides": {
       "ajv": ">=8.18.0",
+      "axios": ">=1.15.0",
       "brace-expansion@5.0.4": "5.0.5",
       "cookie": ">=0.7.2",
       "esbuild": ">=0.25.0",
