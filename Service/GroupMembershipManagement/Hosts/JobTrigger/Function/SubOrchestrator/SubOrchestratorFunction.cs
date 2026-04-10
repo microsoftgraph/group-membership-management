@@ -113,8 +113,8 @@ namespace Hosts.JobTrigger
                         syncJob.Destination = $"[{{\"type\":\"{syncJob.MembershipType}\",\"value\":{{\"objectId\":\"{groupId}\",\"channelId\":\"{channelId}\"}}}}]";
                     }
 
-                    // Updates the job with the standardized destination.
-                    await context.CallActivityAsync(nameof(JobUpdaterFunction), new JobUpdaterRequest { SyncJob = syncJob });
+                    // Updates the job with the standardized destination only — avoids overwriting Status and LastSuccessfulStartTime
+                    await context.CallActivityAsync(nameof(DestinationUpdaterFunction), new DestinationUpdaterRequest { JobId = syncJob.Id, Destination = syncJob.Destination });
 
                 }
                 catch (JsonException)

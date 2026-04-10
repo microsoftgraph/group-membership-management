@@ -166,5 +166,13 @@ namespace Repositories.SyncJobs.Tests
                 job.LastRunTime = DateTime.UtcNow;
             return Task.FromResult(1);
         }
+
+        public Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)
+        {
+            var job = Jobs.FirstOrDefault(x => x.Id == jobId);
+            if (job != null)
+                job.Destination = destination;
+            return Task.CompletedTask;
+        }
     }
 }

@@ -271,5 +271,13 @@ namespace Repositories.EntityFramework
                     .SetProperty(j => j.LastSuccessfulStartTime, DateTime.UtcNow)
                     .SetProperty(j => j.LastRunTime, j => targetStatus == stuckStatus ? DateTime.UtcNow : j.LastRunTime));
         }
+
+        public async Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)
+        {
+            await _writeContext.SyncJobs
+                .Where(j => j.Id == jobId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(j => j.Destination, destination));
+        }
     }
 }

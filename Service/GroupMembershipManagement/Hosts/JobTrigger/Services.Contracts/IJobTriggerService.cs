@@ -23,5 +23,6 @@ namespace Services.Contracts
         Task<bool> TryClaimAndUpdateJobAsync(SyncStatus status, SyncJob job);
         Task SendMessageAsync(SyncJob job);
         Task<List<string>> GetGroupEndpointsAsync(SyncJob job);
+        Task UpdateSyncJobDestinationAsync(Guid jobId, string destination);
     }
 }

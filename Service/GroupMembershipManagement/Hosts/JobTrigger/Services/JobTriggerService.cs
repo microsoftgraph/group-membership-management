@@ -262,6 +262,11 @@ namespace Services
             return await _graphGroupRepository.GetGroupEndpointsAsync(destinationObjectId);
         }
 
+        public async Task UpdateSyncJobDestinationAsync(Guid jobId, string destination)
+        {
+            await _databaseSyncJobsRepository.UpdateSyncJobDestinationAsync(jobId, destination);
+        }
+
         public async Task<Group> GetGroupAsync(SyncJob syncJob)
         {
             return syncJob.Group ?? await _databaseGroupsRepository.GetGroupUsingSyncJobIdAsync(syncJob.Id);
