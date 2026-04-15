@@ -18,6 +18,7 @@ using Models.Entities;
 using System.Text.Json;
 using Services.TeamsChannelUpdater.Contracts;
 using Models.Notifications;
+using Models.Helpers;
 
 namespace Hosts.TeamsChannelUpdater
 {
@@ -90,7 +91,8 @@ namespace Hosts.TeamsChannelUpdater
 
                 JsonSerializerOptions options = new JsonSerializerOptions();
                 options.Converters.Add(new AzureADTeamsUserConverter());
-                groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(fileContent, options);
+                var decompressedContent = TryDecompress(fileContent);
+                groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(decompressedContent, options);
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty), Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
@@ -268,6 +270,23 @@ namespace Hosts.TeamsChannelUpdater
             return $"Synchronization for {targetGroupId} is now complete. " +
                    $"{membersToAdd} users have been added. " +
                    $"{membersToRemove} users have been removed.";
+        }
+
+        private static string TryDecompress(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+            {
+                return content;
+            }
+
+            try
+            {
+                return TextCompressor.Decompress(content);
+            }
+            catch (FormatException)
+            {
+                return content;
+            }
         }
     }
 }
