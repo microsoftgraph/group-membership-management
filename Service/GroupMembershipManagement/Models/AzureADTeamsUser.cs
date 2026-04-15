@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 
 namespace Models.Entities
 {
@@ -25,7 +26,20 @@ namespace Models.Entities
             }
             set
             {
-                ConversationMemberId = ((TeamsUserProperties)value).ConversationMemberId;
+                if (value is TeamsUserProperties tup)
+                {
+                    ConversationMemberId = tup.ConversationMemberId;
+                }
+                else if (value is JsonElement je)
+                {
+                    ConversationMemberId = je.TryGetProperty("ConversationMemberId", out var prop)
+                        ? prop.GetString()
+                        : null;
+                }
+                else if (value != null)
+                {
+                    ConversationMemberId = ((TeamsUserProperties)value).ConversationMemberId;
+                }
             }
         }
         public override bool Equals(object obj)
