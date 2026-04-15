@@ -46,7 +46,7 @@ namespace Hosts.TeamsChannelUpdater
                 {
                     var configuration = context.Configuration;
                     var functionName = "TeamsChannelUpdater";
-                    var dryRunSettingName = "TeamsChannel__IsTeamsChannelDryRunEnabled";
+                    var dryRunSettingName = "TeamsChannel:IsTeamsChannelDryRunEnabled";
                     var rootPath = context.HostingEnvironment.ContentRootPath;
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
 
@@ -55,7 +55,7 @@ namespace Hosts.TeamsChannelUpdater
                         var config = serviceProvider.GetService<IConfiguration>();
                         var graphCredentials = serviceProvider.GetService<IOptions<GraphCredentials>>().Value;
 
-                        var channelReadWriteApplicationPermissionGranted = GetBoolSetting(config, "TeamsChannel__IsChannelReadWriteApplicationPermissionGranted", false);
+                        var channelReadWriteApplicationPermissionGranted = CommonServices.GetBoolSettingBase(config, "TeamsChannel:IsChannelReadWriteApplicationPermissionGranted", false);
 
                         TokenCredential graphTokenCredential;
                         if (channelReadWriteApplicationPermissionGranted)
@@ -104,10 +104,6 @@ namespace Hosts.TeamsChannelUpdater
             host.Run();
         }
 
-        private static bool GetBoolSetting(IConfiguration configuration, string settingName, bool defaultValue)
-        {
-            var checkParse = bool.TryParse(configuration[settingName], out bool value);
-            return checkParse ? value : defaultValue;
-        }
+
     }
 }
