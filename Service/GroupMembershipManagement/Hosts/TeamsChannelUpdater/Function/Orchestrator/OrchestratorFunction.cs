@@ -93,6 +93,10 @@ namespace Hosts.TeamsChannelUpdater
                 options.Converters.Add(new AzureADTeamsUserConverter());
                 var decompressedContent = TryDecompress(fileContent);
                 groupMembership = JsonSerializer.Deserialize<TeamsGroupMembership>(decompressedContent, options);
+                if (groupMembership == null)
+                {
+                    throw new InvalidOperationException("Deserialized group membership is null.");
+                }
 
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function started", RunId = syncJob.RunId.GetValueOrDefault(Guid.Empty), Verbosity = VerbosityLevel.DEBUG });
                 await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest
