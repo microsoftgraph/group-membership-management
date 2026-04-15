@@ -19,10 +19,6 @@
       "rewrite": "/index.html"
     },
     {
-      "route": "/JobDetails/*/history",
-      "rewrite": "/index.html"
-    },
-    {
       "route": "/JobDetails/*",
       "rewrite": "/index.html"
     },
