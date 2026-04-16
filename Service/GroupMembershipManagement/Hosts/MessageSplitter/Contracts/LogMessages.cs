@@ -137,10 +137,6 @@ namespace Hosts.MessageSplitter
             Message = "DeferredPendingDrain: item processed lane={LaneSize} seq={SequenceNumber} result={Result} messageNotFound={MessageNotFound}")]
         public static partial void DrainItemProcessed(this ILogger logger, string laneSize, long sequenceNumber, string result, bool messageNotFound);
 
-        [LoggerMessage(EventId = 120077, Level = LogLevel.Information,
-            Message = "DeferredPendingDrain: releasing {RemainingCount} remaining batch items on early exit; lane={LaneSize}")]
-        public static partial void DrainReleasingRemainingItems(this ILogger logger, string laneSize, int remainingCount);
-
         // ── DeferredPendingEnqueueOrchestrator (120080-120089) ──
 
         [LoggerMessage(EventId = 120080, Level = LogLevel.Information,
