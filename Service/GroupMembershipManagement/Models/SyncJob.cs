@@ -83,6 +83,12 @@ namespace Models
         public DateTime ScheduledDate { get; set; } = SqlDateTime.MinValue.Value;
 
         /// <summary>
+        /// Date the sync job row was first created (UTC). Set once by the database
+        /// (DEFAULT GETUTCDATE()) and never updated.
+        /// </summary>
+        public DateTime InitialOnboardingDate { get; set; } = SqlDateTime.MinValue.Value;
+
+        /// <summary>
         /// Ignore threshold check if this is set to true
         /// </summary>
         [IgnoreLogging]

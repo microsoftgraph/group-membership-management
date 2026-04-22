@@ -608,6 +608,11 @@ namespace Repositories.EntityFramework.Contexts.Migrations
                     b.Property<bool>("IgnoreThresholdOnce")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime>("InitialOnboardingDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
                     b.Property<bool>("IsDryRunEnabled")
                         .HasColumnType("bit");
 

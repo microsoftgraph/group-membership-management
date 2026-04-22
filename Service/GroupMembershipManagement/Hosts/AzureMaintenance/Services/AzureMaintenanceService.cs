@@ -34,6 +34,11 @@ namespace Services
             SyncStatus.NestedGroupsFound
         ];
 
+        // Any DateTime at or below this value is treated as an unset sentinel.
+        // Covers both the C# default SqlDateTime.MinValue (1753-01-01) and the
+        // SQL column default (1601-01-01) used for never-populated rows.
+        private static readonly DateTime _minRealDate = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
         private readonly IDatabaseSyncJobsRepository _syncJobRepository = null;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository = null;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository = null;
@@ -85,7 +90,15 @@ namespace Services
 
         private IEnumerable<SyncJob> ApplyPurgingFilters(IEnumerable<SyncJob> jobs)
         {
-            return jobs.Where(x => x.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging) <= DateTime.UtcNow);
+            var purgeIfOlderThan = DateTime.UtcNow.AddDays(-_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+            return jobs.Where(x =>
+            {
+                // Never-run jobs have LastRunTime at a sentinel (1753/1601);
+                // fall back to InitialOnboardingDate so age is measured from
+                // row creation. Guard against any row missing both anchors.
+                var inactivitySince = x.LastRunTime > _minRealDate ? x.LastRunTime : x.InitialOnboardingDate;
+                return inactivitySince > _minRealDate && inactivitySince <= purgeIfOlderThan;
+            });
         }
 
         public async Task<string> GetGroupNameAsync(Guid groupId)
@@ -117,18 +130,19 @@ namespace Services
             var groupName = await GetGroupNameAsync(job.TargetOfficeGroupId);
             string[] additionalContentParams;
 
-            // Parameters for warning email: status, since date, allowed days, purge date
-            var purgeDate = job.LastRunTime.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+            // Show creation date for never-run jobs instead of the LastRunTime sentinel.
+            var inactivitySince = job.LastRunTime > _minRealDate ? job.LastRunTime : job.InitialOnboardingDate;
+            var purgeDate = inactivitySince.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
             additionalContentParams = new[]
             {
                 job.Status,
-                job.LastRunTime.ToString("MMMM dd, yyyy"),
+                inactivitySince.ToString("MMMM dd, yyyy"),
                 _handleInactiveJobsConfig.NumberOfDaysBeforePurging.ToString(),
                 purgeDate.ToString("MMMM dd, yyyy"),
                 job.TargetOfficeGroupId.ToString(),
                 groupName
             };
-            
+
             var messageContent = new Dictionary<string, Object>
             {
                 { "SyncJob", job },
@@ -276,17 +290,23 @@ namespace Services
         {
             var jobsEligibleForPurging = await _syncJobRepository.GetSyncJobsAsync(false, _purgeEligibleStatuses);
 
-            var warningCutOffDate = DateTime.UtcNow.Date.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurgingToSendWarning - _handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+            var warningTargetDate = DateTime.UtcNow.Date.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurgingToSendWarning - _handleInactiveJobsConfig.NumberOfDaysBeforePurging);
 
             var jobsNeedingWarning = jobsEligibleForPurging
-                .Where(job => job.LastRunTime.Date == warningCutOffDate)
+                .Where(job =>
+                {
+                    // Same anchor rule as ApplyPurgingFilters: fall back to
+                    // InitialOnboardingDate when the job has never run.
+                    var inactivitySince = job.LastRunTime > _minRealDate ? job.LastRunTime : job.InitialOnboardingDate;
+                    return inactivitySince > _minRealDate && inactivitySince.Date == warningTargetDate;
+                })
                 .ToList();
 
             await _loggingRepository.LogMessageAsync(new LogMessage
             {
-                Message = $"Jobs needing warning as of {warningCutOffDate}: {jobsNeedingWarning.Count}"
+                Message = $"Jobs needing warning as of {warningTargetDate}: {jobsNeedingWarning.Count}"
             });
-            
+
             return jobsNeedingWarning;
         }
 

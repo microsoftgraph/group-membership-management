@@ -95,6 +95,11 @@ namespace Repositories.EntityFramework.Contexts
                         .IsRequired(false)
                         .OnDelete(DeleteBehavior.NoAction);
 
+            modelBuilder.Entity<SyncJob>()
+                        .Property(s => s.InitialOnboardingDate)
+                        .ValueGeneratedOnAdd()
+                        .HasDefaultValueSql("GETUTCDATE()");
+
             modelBuilder.Entity<Status>()
                         .ToTable("Statuses");
 
