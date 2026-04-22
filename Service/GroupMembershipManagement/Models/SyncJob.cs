@@ -86,7 +86,7 @@ namespace Models
         /// Date the sync job row was first created (UTC). Set once by the database
         /// (DEFAULT GETUTCDATE()) and never updated.
         /// </summary>
-        public DateTime InitialOnboardingDate { get; set; } = SqlDateTime.MinValue.Value;
+        public DateTime InitialOnboardingDate { get; set; }
 
         /// <summary>
         /// Ignore threshold check if this is set to true
