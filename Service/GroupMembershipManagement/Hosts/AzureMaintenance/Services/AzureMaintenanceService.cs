@@ -132,6 +132,10 @@ namespace Services
 
             // Show creation date for never-run jobs instead of the LastRunTime sentinel.
             var inactivitySince = job.LastRunTime > _minRealDate ? job.LastRunTime : job.InitialOnboardingDate;
+            if (inactivitySince <= _minRealDate)
+            {
+                inactivitySince = DateTime.UtcNow; // Fallback to current date if both are sentinel
+            }
             var purgeDate = inactivitySince.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
             additionalContentParams = new[]
             {
