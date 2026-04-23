@@ -33,8 +33,9 @@ namespace BusinessLogic.SyncJobUpdater
                 await _databaseSyncJobsRepository.UpdateSyncJobStatusAsync(new[] { job }, status);
             }
 
-            // Some callers use this method to persist SyncJob field updates without changing status.
-            // In that case we must not write a SyncJobHistory record with a default/incorrect status.
+            // When both status and history are null there is nothing to persist (no status change,
+            // no history update). Callers needing to persist other SyncJob fields without changing
+            // status should use a dedicated repository method (e.g. UpdateSyncJobsAsync), not this one.
             if (!status.HasValue && history == null)
             {
                 return;
