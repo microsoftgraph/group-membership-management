@@ -62,6 +62,7 @@ namespace Services.Tests
         private Mock<IDatabaseSettingsRepository> _databaseSettingsRepository = null!;
         private Mock<IPendingConfigurationConfig> _pendingConfigurationConfig = null!;
         private Mock<IServiceBusQueueRepository> _serviceBusQueueRepository = null!;
+        private Mock<IServiceBusQueueRepository> _autoApproverQueueRepository = null!;
         private ODataQueryOptions<SyncJob> _odataQueryOptions = null!;
         private Mock<IHttpContextAccessor> _httpContextAccessor = null!;
         private PostOperationHandler _postResetRequestHandler = null!;
@@ -83,6 +84,7 @@ namespace Services.Tests
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
             _pendingConfigurationConfig = new Mock<IPendingConfigurationConfig>();
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
+            _autoApproverQueueRepository = new Mock<IServiceBusQueueRepository>();
             _thresholdConfig = new Mock<IThresholdConfig>();
             _handleInactiveJobsConfig = new Mock<IHandleInactiveJobsConfig>();
             _handleInactiveJobsConfig.Setup(x => x.NumberOfDaysBeforePurging).Returns(30);
@@ -254,7 +256,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance,
                                                 _databaseSyncJobsRepository.Object,
@@ -410,7 +413,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -422,6 +426,42 @@ namespace Services.Tests
             var result = response as CreatedResult;
             Assert.IsNotNull(result);
             _syncJobChangeRepository.Verify(x => x.Save(It.IsAny<SyncJobChange>()), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task PostJobWithPendingConfigurationEnabled_DoesNotEnqueueAutoApproverAsync()
+        {
+            _context = CreateHttpContext(new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, "user@domain.com"),
+                new Claim(ClaimTypes.Role, Roles.JOB_TENANT_WRITER),
+                new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", Guid.NewGuid().ToString())
+            });
+
+            _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
+            _pendingConfigurationConfig.Setup(x => x.PendingConfigurationIsEnabled).Returns(true);
+
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
+                                                 _destinationAttributesRepository.Object,
+                                                 _titlesRepository.Object,
+                                                 _graphGroupRepository.Object,
+                                                 _syncJobChangeRepository.Object,
+                                                 _databaseSettingsRepository.Object,
+                                                 _pendingConfigurationConfig.Object,
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
+
+            _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler);
+            _jobsController.ControllerContext = new ControllerContext
+            {
+                HttpContext = _context
+            };
+
+            var response = await _jobsController.PostJobAsync(_newSyncJob);
+            var result = response as CreatedResult;
+
+            Assert.IsNotNull(result);
+            _autoApproverQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Never);
         }
 
         [TestMethod]
@@ -456,7 +496,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -519,7 +560,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -566,7 +608,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -606,7 +649,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -643,7 +687,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -683,7 +728,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -726,7 +772,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1505,7 +1552,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalEnabledAndValidGroupsTestAsync()
+        public async Task PostJobWithAutoApprovalEnabledAndValidGroups_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -1540,7 +1587,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1553,17 +1601,19 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was auto-approved (status should be Idle)
+            // Verify that the job was created in PendingReview
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.Idle.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
             
-            // Verify that the sync job change was saved with OnboardingAutoApproved reason
+            // Verify that the sync job change was saved with Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
-                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
+
+            _autoApproverQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalEnabledButHiddenMembershipGroupTestAsync()
+        public async Task PostJobWithAutoApprovalEnabledButHiddenMembershipGroup_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -1598,7 +1648,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1621,7 +1672,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalDisabledTestAsync()
+        public async Task PostJobWithAutoApprovalDisabled_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -1656,7 +1707,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1679,7 +1731,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalEnabledButNonGroupMembershipQueryTestAsync()
+        public async Task PostJobWithAutoApprovalEnabledButNonGroupMembershipQuery_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -1706,7 +1758,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1731,7 +1784,7 @@ namespace Services.Tests
         // New tests for org leader auto-approval scenarios
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalEnabledAndMatchingManagerIdTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledAndMatchingManagerId_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -1771,7 +1824,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1784,17 +1838,17 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was auto-approved (status should be Idle)
+            // Verify that the job was created in PendingReview
             _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.Idle.ToString())), Times.Once);
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
             
-            // Verify that the sync job change was saved with OnboardingAutoApproved reason
+            // Verify that the sync job change was saved with Onboarding reason
             _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
-                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButNonMatchingManagerIdTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButNonMatchingManagerId_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -1831,7 +1885,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1854,7 +1909,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalDisabledTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalDisabled_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -1890,7 +1945,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1913,7 +1969,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButMultipleSqlMembershipQueriesTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButMultipleSqlMembershipQueries_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -1949,7 +2005,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -1972,7 +2029,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButNonSqlMembershipQueryTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButNonSqlMembershipQuery_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -2009,7 +2066,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2032,7 +2090,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButUserWithoutOnPremisesImmutableIdTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalEnabledButUserWithoutOnPremisesImmutableId_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -2068,7 +2126,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2091,7 +2150,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithBothAutoApprovalSettingsEnabledButOnlyGroupBasedMatches_TestAsync()
+        public async Task PostJobWithBothAutoApprovalSettingsEnabledButOnlyGroupBasedMatches_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -2137,7 +2196,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2150,17 +2210,17 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was auto-approved (status should be Idle)
-            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.Idle.ToString())), Times.Once);
-            
-            // Verify that the sync job change was saved with OnboardingAutoApproved reason
-            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
-                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+            // Verify that the job was created in PendingReview
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job =>
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+
+            // Verify that the sync job change was saved with Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
         }
 
         [TestMethod]
-        public async Task PostJobWithBothAutoApprovalSettingsEnabledButOnlyOrgLeaderMatches_TestAsync()
+        public async Task PostJobWithBothAutoApprovalSettingsEnabledButOnlyOrgLeaderMatches_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -2198,7 +2258,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2211,17 +2272,17 @@ namespace Services.Tests
             
             Assert.IsNotNull(result);
             
-            // Verify that the job was auto-approved (status should be Idle)
-            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job => 
-                job.Status == SyncStatus.Idle.ToString())), Times.Once);
-            
-            // Verify that the sync job change was saved with OnboardingAutoApproved reason
-            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change => 
-                change.ChangeReason == SyncJobChangeReason.OnboardingAutoApproved.ToString())), Times.Once);
+            // Verify that the job was created in PendingReview
+            _databaseSyncJobsRepository.Verify(x => x.CreateSyncJobAsync(It.Is<SyncJob>(job =>
+                job.Status == SyncStatus.PendingReview.ToString())), Times.Once);
+
+            // Verify that the sync job change was saved with Onboarding reason
+            _syncJobChangeRepository.Verify(x => x.Save(It.Is<SyncJobChange>(change =>
+                change.ChangeReason == SyncJobChangeReason.Onboarding.ToString())), Times.Once);
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalErrorDuringSettingsRetrievalTestAsync()
+        public async Task PostJobWithAutoApprovalErrorDuringSettingsRetrieval_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -2251,7 +2312,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2274,7 +2336,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalErrorDuringGraphAPICallTestAsync()
+        public async Task PostJobWithAutoApprovalErrorDuringGraphAPICall_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -2308,7 +2370,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2331,7 +2394,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalInvalidJSONQueryTestAsync()
+        public async Task PostJobWithAutoApprovalInvalidJSONQuery_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -2381,7 +2444,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2403,7 +2467,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalEmptyQueryArrayTestAsync()
+        public async Task PostJobWithAutoApprovalEmptyQueryArray_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -2453,7 +2517,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2476,7 +2541,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalInvalidOnPremisesImmutableIdTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalInvalidOnPremisesImmutableId_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -2515,7 +2580,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2538,7 +2604,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithOrgLeaderAutoApprovalUserLookupErrorTestAsync()
+        public async Task PostJobWithOrgLeaderAutoApprovalUserLookupError_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             var userUpn = "user@domain.com";
@@ -2574,7 +2640,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2597,7 +2664,7 @@ namespace Services.Tests
         }
 
         [TestMethod]
-        public async Task PostJobWithAutoApprovalSettingNullValueTestAsync()
+        public async Task PostJobWithAutoApprovalSettingNullValue_EnqueuesForAutoApproverAsync()
         {
             // Setup context
             _context = CreateHttpContext(new List<Claim>
@@ -2627,7 +2694,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2679,7 +2747,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext
@@ -2737,7 +2806,8 @@ namespace Services.Tests
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
-                                                 _serviceBusQueueRepository.Object);
+                                                 _serviceBusQueueRepository.Object,
+                                                 _autoApproverQueueRepository.Object);
 
             _jobsController = new JobsController(_getJobsHandler, _patchJobsHandler, _postJobHandler, _getJobDetailsHandler, _postResetRequestHandler, NullLogger<JobsController>.Instance);
             _jobsController.ControllerContext = new ControllerContext

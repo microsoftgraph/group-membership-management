@@ -557,6 +557,15 @@ namespace WebApi
                 return new ServiceBusQueueRepository(sender);
             });
 
+            builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("AutoApprover", (services, key) =>
+            {
+                var operationsSettings = services.GetRequiredService<OperationsSettings>();
+                var autoApproverQueue = operationsSettings.AutoApproverQueue;
+                var client = services.GetRequiredService<ServiceBusClient>();
+                var sender = client.CreateSender(autoApproverQueue);
+                return new ServiceBusQueueRepository(sender);
+            });
+
             builder.Services.AddKeyedSingleton<IServiceBusQueueRepository, ServiceBusQueueRepository>("Notifications", (services, key) =>
             {
                 var operationsSettings = services.GetRequiredService<OperationsSettings>();

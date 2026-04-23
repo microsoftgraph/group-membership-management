@@ -9,6 +9,10 @@ using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Models;
+using Models.ServiceBus;
+using Services.AutoApprover.Contracts;
+using System.Text.Json;
 
 namespace Hosts.AutoApprover
 {
@@ -16,21 +20,23 @@ namespace Hosts.AutoApprover
     {
         private readonly ILogger<StarterFunction> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IAutoApproverService _autoApproverService;
 
-        public StarterFunction(ILogger<StarterFunction> logger, IConfiguration configuration)
+        public StarterFunction(ILogger<StarterFunction> logger, IConfiguration configuration, IAutoApproverService autoApproverService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _autoApproverService = autoApproverService ?? throw new ArgumentNullException(nameof(autoApproverService));
         }
 
         [Function(nameof(StarterFunction))]
-        public Task Run(
+        public async Task Run(
             [ServiceBusTrigger("%serviceBusAutoApproverQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message)
         {
             if (!CommonServices.GetBoolSettingBase(_configuration, "AutoApprover:IsEnabled", false))
             {
                 _logger.AutoApproverDisabled();
-                return Task.CompletedTask;
+                return;
             }
 
             _logger.FunctionStarted(nameof(StarterFunction));
@@ -38,8 +44,25 @@ namespace Hosts.AutoApprover
             var messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
             _logger.MessageReceived(message.MessageId, messageBody.Length);
 
+            AutoApprovalQueueMessage autoApprovalMessage;
+            try
+            {
+                autoApprovalMessage = JsonSerializer.Deserialize<AutoApprovalQueueMessage>(messageBody);
+                if (autoApprovalMessage == null)
+                {
+                    _logger.LogDebug("AutoApprover message deserialized to null.");
+                    return;
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogDebug("AutoApprover message deserialization failed: {Message}", ex.Message);
+                return;
+            }
+
+            await _autoApproverService.ProcessAutoApprovalAsync(autoApprovalMessage);
+
             _logger.FunctionCompleted(nameof(StarterFunction));
-            return Task.CompletedTask;
         }
     }
 }

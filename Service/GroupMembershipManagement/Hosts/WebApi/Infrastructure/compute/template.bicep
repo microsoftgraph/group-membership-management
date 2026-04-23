@@ -112,6 +112,7 @@ var serviceBusMembershipUpdatersTopic = resourceId(subscription().subscriptionId
 var serviceBusConfigurationQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusConfigurationQueue')
 var serviceBusSyncJobTopic = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusSyncJobTopic')
 var serviceBusNotificationsQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusNotificationsQueue')
+var serviceBusAutoApproverQueue = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'serviceBusAutoApproverQueue')
 var jobSchedulerFunctionBaseUrl = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionBaseUrl')
 var jobSchedulerFunctionKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobSchedulerFunctionKey')
 var functionAuthAppClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'functionAuthAppClientId')
@@ -305,6 +306,10 @@ var appSettings = [
   {
     name: 'Settings:ServiceBus:NotificationsQueue'
     value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusNotificationsQueue, '2019-09-01').secretUriWithVersion})'
+  }
+  {
+    name: 'Settings:ServiceBus:AutoApproverQueue'
+    value: '@Microsoft.KeyVault(SecretUri=${reference(serviceBusAutoApproverQueue, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'Settings:JobSchedulerFunctionBaseUrl'

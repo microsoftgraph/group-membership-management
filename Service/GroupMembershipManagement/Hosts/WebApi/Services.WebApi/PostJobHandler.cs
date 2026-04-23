@@ -8,13 +8,13 @@ using Models.SyncJobChange;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
-using Services.Helpers;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
 namespace Services
@@ -31,6 +31,7 @@ namespace Services
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly IPendingConfigurationConfig _pendingConfigurationConfig;
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
+        private readonly IServiceBusQueueRepository? _autoApproverQueueRepository;
 
         public PostJobHandler(
             ILogger<PostJobHandler> logger,
@@ -41,7 +42,8 @@ namespace Services
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
             IPendingConfigurationConfig pendingConfigurationConfig,
-            IServiceBusQueueRepository serviceBusQueueRepository) : base(logger)
+            IServiceBusQueueRepository serviceBusQueueRepository,
+            [FromKeyedServices("AutoApprover")] IServiceBusQueueRepository? autoApproverQueueRepository = null) : base(logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
@@ -52,6 +54,7 @@ namespace Services
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _pendingConfigurationConfig = pendingConfigurationConfig ?? throw new ArgumentNullException(nameof(pendingConfigurationConfig));
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
+            _autoApproverQueueRepository = autoApproverQueueRepository;
         }
 
         protected override async Task<PostJobResponse> ExecuteCoreAsync(PostJobRequest request)
@@ -62,11 +65,6 @@ namespace Services
             {
                 var newSyncJobEntity = MapSyncJobDTOtoEntity(request.NewSyncJob);
                 
-                // Check if auto-approval feature is enabled
-                var isGroupBasedAutoApprovalEnabled = await IsAutoApprovalForGroupBasedSyncsEnabledAsync();
-                var isOrgLeaderAutoApprovalEnabled = await IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync();
-                var shouldAutoApprove = await ShouldAutoApproveJobAsync(request.NewSyncJob.Query, request.UserIdentity, isGroupBasedAutoApprovalEnabled, isOrgLeaderAutoApprovalEnabled);
-
                 var isPendingConfigurationEnabled = _pendingConfigurationConfig.PendingConfigurationIsEnabled;
 
                 // Check if pending configuration feature is enabled, only works for groups
@@ -76,18 +74,7 @@ namespace Services
                 }
                 else
                 {
-                    // Check if auto-approval feature is enabled
-                    if (shouldAutoApprove)
-                    {
-                        newSyncJobEntity.Status = SyncStatus.Idle.ToString();
-
-                        if (newSyncJobEntity.StartDate < DateTime.UtcNow)
-                        {
-                            newSyncJobEntity.StartDate = DateTime.UtcNow.AddHours(24);
-                        }
-
-                        _logger.JobAutoApproved();
-                    }
+                    // Auto-approval is now handled by the AutoApprover function
                 }
 
                 var isAITitleEnabled = await IsAITitleEnabledAsync();
@@ -125,7 +112,7 @@ namespace Services
                     await _destinationAttributesRepository.UpdateAttributes(destinationAttributes);
                     var changedOnBehalfOfDisplayName = request.NewSyncJob.LastModifiedOnBehalfOfDisplayName;
                     var changedOnBehalfOfObjectId = request.NewSyncJob.LastModifiedOnBehalfOfObjectId;
-                    var changeReason = shouldAutoApprove ? SyncJobChangeReason.OnboardingAutoApproved : SyncJobChangeReason.Onboarding;
+                    var changeReason = SyncJobChangeReason.Onboarding;
 
                     await _syncJobChangeRepository.Save(new SyncJobChange
                     {
@@ -162,7 +149,12 @@ namespace Services
                     {
                         var jobConfigurationQueueMessage = new JobConfigurationQueueMessage {
                             JobId = newSyncJobId,
-                            GroupId = destinationId
+                            GroupId = destinationId,
+                            RequestorObjectId = request.UserIdentity,
+                            RequestorDisplayName = request.UserDisplayName,
+                            ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
+                            ChangedOnBehalfOfObjectId = changedOnBehalfOfObjectId,
+                            BusinessJustification = request.BusinessJustification
                         };
                         var body = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(jobConfigurationQueueMessage));
 
@@ -175,6 +167,33 @@ namespace Services
                         await _serviceBusQueueRepository.SendMessageAsync(message);
 
                         _logger.JobConfigurationMessageSent(message.MessageId);
+                    }
+
+                    if (!isPendingConfigurationEnabled || newSyncJobEntity.MembershipType != MembershipTypes.GroupMembership.ToString())
+                    {
+                        if (_autoApproverQueueRepository != null && newSyncJobEntity.Status == SyncStatus.PendingReview.ToString())
+                        {
+                            var autoApprovalMessage = new AutoApprovalQueueMessage
+                            {
+                                SyncJobId = newSyncJobId,
+                                RequestorObjectId = request.UserIdentity,
+                                RequestorDisplayName = request.UserDisplayName,
+                                ChangedOnBehalfOfDisplayName = changedOnBehalfOfDisplayName,
+                                ChangedOnBehalfOfObjectId = changedOnBehalfOfObjectId,
+                                BusinessJustification = request.BusinessJustification
+                            };
+
+                            var autoApprovalBody = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(autoApprovalMessage));
+                            var autoApprovalServiceBusMessage = new ServiceBusMessage
+                            {
+                                MessageId = newSyncJobId.ToString(),
+                                Body = autoApprovalBody
+                            };
+
+                            await _autoApproverQueueRepository.SendMessageAsync(autoApprovalServiceBusMessage);
+
+                            _logger.LogInformation("Sent message {MessageId} to auto-approver queue", autoApprovalServiceBusMessage.MessageId);
+                        }
                     }
 
                     if (isAITitleEnabled && request.NewSyncJob.Titles != null)
@@ -199,135 +218,6 @@ namespace Services
             return response;
         }
 
-        private async Task<bool> ShouldAutoApproveJobAsync(string query, string userIdentity, bool isGroupBasedAutoApprovalEnabled, bool isOrgLeaderAutoApprovalEnabled)
-        {
-            try
-            {
-                // Check for GroupMembership auto-approval scenario (only if enabled)
-                if (isGroupBasedAutoApprovalEnabled)
-                {
-                    var groupMembershipApproval = await ShouldAutoApproveGroupMembershipJobAsync(query);
-                    if (groupMembershipApproval)
-                        return true;
-                }
-
-                // Check for SqlMembership manager auto-approval scenario (only if enabled)
-                if (isOrgLeaderAutoApprovalEnabled)
-                {
-                    var sqlMembershipApproval = await ShouldAutoApproveSqlMembershipJobAsync(query, userIdentity);
-                    if (sqlMembershipApproval)
-                        return true;
-                }
-
-                return false;
-            }
-            catch (Exception ex)
-            {
-                _logger.AutoApprovalCheckFailed(ex);
-                return false;
-            }
-        }
-
-        private async Task<bool> ShouldAutoApproveGroupMembershipJobAsync(string query)
-        {
-            try
-            {
-                // Use JsonParser to check if this is a GroupMembership-only query
-                if (!JsonParser.IsGroupMembershipOnlyQuery(query))
-                    return false;
-
-                // Get the group IDs to check visibility
-                var groupIds = JsonParser.GetGroupMembershipSourceIds(query);
-                if (groupIds == null || groupIds.Count == 0)
-                    return false;
-
-                var groups = await _graphGroupRepository.GetGroupsAsync(groupIds);
-                
-                var hiddenGroupFound = groups.Any(group => string.Equals(group.Visibility, "HiddenMembership", StringComparison.OrdinalIgnoreCase));
-                if (hiddenGroupFound)
-                {
-                    return false;
-                }
-
-                _logger.GroupMembershipAutoApprovalGranted(groupIds.Count);
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.GroupMembershipAutoApprovalCheckFailed(ex);
-                return false;
-            }
-        }
-
-        private async Task<bool> ShouldAutoApproveSqlMembershipJobAsync(string query, string userIdentity)
-        {
-            try
-            {
-                var userDetails = await GetUserOnPremisesImmutableIdAsync(userIdentity);
-                if (string.IsNullOrEmpty(userDetails))
-                    return false;
-
-                // Parse the user's onPremisesImmutableId as manager ID
-                if (!int.TryParse(userDetails, out var userImmutableId))
-                    return false;
-
-                // Use JsonParser to check if this is a single SqlMembership query with matching manager ID
-                if (!JsonParser.IsSingleSqlMembershipQueryWithManagerId(query, userImmutableId))
-                    return false;
-
-                _logger.SqlMembershipAutoApprovalGranted();
-
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.SqlMembershipAutoApprovalCheckFailed(ex);
-                return false;
-            }
-        }
-
-        private async Task<string> GetUserOnPremisesImmutableIdAsync(string userIdentity)
-        {
-            try
-            {
-                var user = await _graphGroupRepository.GetUserWithOnPremisesImmutableIdAsync(userIdentity, null);
-                return user?.OnPremisesImmutableId;
-            }
-            catch (Exception ex)
-            {
-                _logger.OnPremisesImmutableIdRetrievalFailed(ex);
-                return null;
-            }
-        }
-
-        private async Task<bool> IsAutoApprovalForGroupBasedSyncsEnabledAsync()
-        {
-            try
-            {
-                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled);
-                return setting != null ? bool.Parse(setting.SettingValue) : false;
-            }
-            catch (Exception ex)
-            {
-                _logger.GroupBasedAutoApprovalSettingRetrievalFailed(ex);
-                return false;
-            }
-        }
-
-        private async Task<bool> IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabledAsync()
-        {
-            try
-            {
-                var setting = await _databaseSettingsRepository.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
-                return setting != null ? bool.Parse(setting.SettingValue) : false;
-            }
-            catch (Exception ex)
-            {
-                _logger.OrgLeaderAutoApprovalSettingRetrievalFailed(ex);
-                return false;
-            }
-        }
 
         private async Task<bool> IsAITitleEnabledAsync()
         {
