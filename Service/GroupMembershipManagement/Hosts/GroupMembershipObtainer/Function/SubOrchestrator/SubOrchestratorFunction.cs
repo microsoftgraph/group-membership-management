@@ -206,7 +206,9 @@ namespace Hosts.GroupMembershipObtainer
                                     var deltaLink = await GetInitialDeltaLinkUsers(context, deltaFileContent, request, logger);
                                     var countOfUsersFromAADGroup = await GetUsersCountFunction(context, request);
 
-                                    // If we're reading from the target group itself, store the before sync user count during delta link call
+                                    // If we're reading from the target group itself, store the before sync user count during delta link call.
+                                    // Status is deliberately not set: this call's intent is solely to persist BeforeSyncUserCount on
+                                    // SyncJobHistory. Leaving Status null prevents overwriting a terminal status that may have been set by another concurrent operation.
                                     if (request.GroupId == request.SourceGroup.ObjectId)
                                     {
                                         await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
@@ -215,7 +217,6 @@ namespace Hosts.GroupMembershipObtainer
                                                 SyncJob = request.SyncJob,
                                                 CurrentPart = request.CurrentPart,
                                                 TotalParts = request.TotalParts,
-                                                Status = SyncStatus.InProgress,
                                                 BeforeSyncUserCount = countOfUsersFromAADGroup
                                             });
                                     }

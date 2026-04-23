@@ -41,17 +41,15 @@ namespace Services.Tests
         [TestMethod]
         public async Task UpdateJobStatusAsync_WhenStatusNullAndNoHistory_DoesNotPersistHistory()
         {
-            // Arrange
-            _databaseSyncJobsRepository
-                .Setup(repo => repo.UpdateSyncJobStatusAsync(It.Is<IEnumerable<SyncJob>>(jobs => jobs.Count() == 1 && jobs.First() == _job), null))
-                .Returns(Task.CompletedTask)
-                .Verifiable();
-
-            // Act
+            // Act — no repo expectations set up; strict mock will fail if anything is called.
             await _service.UpdateJobStatusAsync(_job, null, null, "FunctionName");
 
-            // Assert
-            _databaseSyncJobsRepository.Verify();
+            // Assert — when status is null there is no SyncJob row write (prevents clobbering a
+            // terminal status written by a concurrent sibling), and when history is also null
+            // nothing is persisted at all.
+            _databaseSyncJobsRepository.Verify(
+                repo => repo.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()),
+                Times.Never);
             _syncJobHistoryRepository.Verify(repo => repo.GetByRunIdAsync(It.IsAny<Guid>()), Times.Never);
             _syncJobHistoryRepository.Verify(repo => repo.CreateAsync(It.IsAny<SyncJobHistory>()), Times.Never);
             _syncJobHistoryRepository.Verify(repo => repo.UpdateAsync(It.IsAny<SyncJobHistory>()), Times.Never);
@@ -179,6 +177,44 @@ namespace Services.Tests
             await _service.CreateOrUpdateJobHistoryAsync(history);
 
             // Assert
+            _syncJobHistoryRepository.Verify();
+        }
+
+        [TestMethod]
+        public async Task UpdateJobStatusAsync_WhenStatusNullButHistoryProvided_WritesOnlyHistory()
+        {
+            // Arrange — a caller in the "stash" pattern: persist SyncJobHistory fields (e.g.
+            // BeforeSyncUserCount) without changing SyncJob.Status. The service must NOT write
+            // to the SyncJob row in this case, otherwise a concurrent sibling's terminal status
+            // (e.g. SecurityGroupNotFound) could be clobbered by a whole-row EF update.
+            var runId = Guid.NewGuid();
+            var history = new SyncJobHistory
+            {
+                SyncJobId = _job.Id,
+                RunId = runId,
+                Status = SyncStatus.SecurityGroupNotFound.ToString(),
+                BeforeSyncUserCount = 42,
+                UpdatedByFunction = "GroupMembershipObtainer"
+            };
+
+            _syncJobHistoryRepository
+                .Setup(repo => repo.GetByRunIdAsync(runId))
+                .ReturnsAsync((SyncJobHistory)null!);
+
+            _syncJobHistoryRepository
+                .Setup(repo => repo.CreateAsync(It.Is<SyncJobHistory>(h =>
+                    h.BeforeSyncUserCount == 42 &&
+                    h.Status == SyncStatus.SecurityGroupNotFound.ToString())))
+                .Returns(Task.CompletedTask)
+                .Verifiable();
+
+            // Act
+            await _service.UpdateJobStatusAsync(_job, status: null, history: history, functionName: "GroupMembershipObtainer");
+
+            // Assert
+            _databaseSyncJobsRepository.Verify(
+                repo => repo.UpdateSyncJobStatusAsync(It.IsAny<IEnumerable<SyncJob>>(), It.IsAny<SyncStatus?>()),
+                Times.Never);
             _syncJobHistoryRepository.Verify();
         }
     }

@@ -214,10 +214,13 @@ namespace Hosts.GroupMembershipObtainer
 
             _logger.ReadUsersFromGroup(memberCount, objectId, targetOfficeGroupId);
 
-            // If we're reading from the target group itself, store the before sync user count during transitive/delta call
+            // If we're reading from the target group itself, store the before sync user count during transitive/delta call.
+            // Status is deliberately passed as null: the intent of this call is to persist BeforeSyncUserCount on SyncJobHistory,
+            // not to change SyncJob.Status. Passing null prevents overwriting a terminal status (e.g. SecurityGroupNotFound)
+            // that a concurrent sibling part may have already written.
             if (objectId == targetOfficeGroupId)
             {
-                await UpdateSyncJobStatusAsync(syncJob, SyncStatus.InProgress, memberCount);
+                await UpdateSyncJobStatusAsync(syncJob, status: null, memberCount);
             }
 
             return new GroupMembershipFileResult
@@ -280,7 +283,7 @@ namespace Hosts.GroupMembershipObtainer
 
         }
 
-        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus status, int? beforeSyncUserCount = null)
+        public async Task UpdateSyncJobStatusAsync(SyncJob job, SyncStatus? status, int? beforeSyncUserCount = null)
         {
             var syncJob = await _databaseSyncJobsRepository.GetSyncJobAsync(job.Id);
             if (syncJob != null)
@@ -289,9 +292,9 @@ namespace Hosts.GroupMembershipObtainer
                 {
                     SyncJobId = syncJob.Id,
                     RunId = syncJob.RunId ?? Guid.Empty,
-                    Status = status.ToString(),
+                    Status = status?.ToString() ?? syncJob.Status,
                     UpdatedByFunction = "GroupMembershipObtainer",
-                    EndTime = status != SyncStatus.InProgress ? DateTime.UtcNow : null,
+                    EndTime = status.HasValue && status.Value != SyncStatus.InProgress ? DateTime.UtcNow : null,
                     UpdatedAt = DateTime.UtcNow,
                     BeforeSyncUserCount = beforeSyncUserCount
                 };

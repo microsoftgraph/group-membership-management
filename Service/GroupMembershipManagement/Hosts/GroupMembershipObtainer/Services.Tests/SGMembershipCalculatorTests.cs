@@ -553,11 +553,13 @@ namespace Tests.FunctionApps
             Assert.IsNotNull(result);
             Assert.AreEqual(expectedUserCount, result.MemberCount);
 
-            // Verify UpdateSyncJobStatusAsync was called with the correct parameters
+            // Verify UpdateJobStatusAsync was called with status=null (stash path — persists
+            // BeforeSyncUserCount to history without touching SyncJob.Status). History.Status
+            // should mirror the DB state (InProgress from the test's syncJob setup).
             _syncJobStatusService.Verify(
                 x => x.UpdateJobStatusAsync(
                     It.Is<SyncJob>(s => s.Id == syncJob.Id),
-                    SyncStatus.InProgress,
+                    (SyncStatus?)null,
                     It.Is<Models.SyncJobHistory.SyncJobHistory>(h =>
                         h.BeforeSyncUserCount == expectedUserCount &&
                         h.Status == SyncStatus.InProgress.ToString() &&
@@ -634,6 +636,80 @@ namespace Tests.FunctionApps
                     It.IsAny<Models.SyncJobHistory.SyncJobHistory>(),
                     It.IsAny<string>()),
                 Times.Never);
+        }
+
+        [TestMethod]
+        public async Task StashPathDoesNotClobberTerminalStatusWrittenByConcurrentSibling()
+        {
+            // Regression test for the SGNF-overwrite bug.
+            //
+            // Scenario: a sibling part (e.g. a SubOrchestrator Parallel.ForEach branch) has already
+            // detected the destination group is missing and written Status=SecurityGroupNotFound
+            // to the SyncJob row. THIS part is the destination-delta / transitive path that
+            // persists BeforeSyncUserCount to SyncJobHistory. The stash path must NOT reset the
+            // status back to InProgress.
+            //
+            // Assertions:
+            //   1. UpdateJobStatusAsync is invoked with status = null (no SyncJob write).
+            //   2. The SyncJobHistory row mirrors the DB's current Status (SGNF), not InProgress.
+            var targetGroupId = Guid.NewGuid();
+            var runId = Guid.NewGuid();
+            const int expectedUserCount = 75;
+
+            var mockBlobRepository = new Mock<IBlobStorageRepository>();
+            mockBlobRepository
+                .Setup(x => x.MergeAndStreamUserBlobsAsync(
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<AzureADGroup>(),
+                    It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<bool>(),
+                    It.IsAny<string>()))
+                .ReturnsAsync(expectedUserCount);
+
+            var graphRepo = new MockGraphGroupRepository { GroupsToUsers = new Dictionary<Guid, List<AzureADUser>>() };
+
+            _groupsRepository.Setup(x => x.GetGroupUsingSyncJobIdAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(new Group { GroupId = targetGroupId, SyncJobId = Guid.NewGuid() });
+
+            var calc = new SGMembershipCalculator(
+                graphRepo,
+                mockBlobRepository.Object,
+                _syncJobs,
+                _groupsRepository.Object,
+                _channelsRepository.Object,
+                _notificationsQueueRepository.Object,
+                _databaseDestinationAttributesRepository.Object,
+                NullLogger<SGMembershipCalculator>.Instance,
+                _dryRun,
+                _syncJobStatusService.Object);
+
+            // Sibling already marked the job as SGNF at the DB level.
+            var syncJob = new SyncJob
+            {
+                Id = Guid.NewGuid(),
+                RunId = runId,
+                MembershipType = "GroupMembership",
+                Status = SyncStatus.SecurityGroupNotFound.ToString(),
+                Query = _querySample.GetQuery()
+            };
+            _syncJobs.Jobs.Add(syncJob);
+
+            // Act — reading from the destination itself triggers the stash call.
+            var result = await calc.SendTransitiveAndDeltaMembershipAsync(syncJob, targetGroupId, 1, false);
+
+            // Assert
+            Assert.IsNotNull(result);
+            Assert.AreEqual(expectedUserCount, result.MemberCount);
+
+            _syncJobStatusService.Verify(
+                x => x.UpdateJobStatusAsync(
+                    It.Is<SyncJob>(s => s.Id == syncJob.Id),
+                    (SyncStatus?)null,
+                    It.Is<Models.SyncJobHistory.SyncJobHistory>(h =>
+                        h.BeforeSyncUserCount == expectedUserCount &&
+                        h.Status == SyncStatus.SecurityGroupNotFound.ToString() &&
+                        h.EndTime == null &&
+                        h.UpdatedByFunction == "GroupMembershipObtainer"),
+                    "GroupMembershipObtainer"),
+                Times.Once);
         }
     }
 }
