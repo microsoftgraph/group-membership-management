@@ -23,7 +23,7 @@ overrides:
   minimatch@9: '>=9.0.9'
   picomatch@4.0.3: 4.0.4
   picomatch@<2.3.2: 2.3.2
-  postcss: '>=8.5.10'
+  postcss: ^8.5.10
   rollup: '>=4.28.1'
   serialize-javascript: '>=7.0.3'
   underscore: '>=1.13.8'
