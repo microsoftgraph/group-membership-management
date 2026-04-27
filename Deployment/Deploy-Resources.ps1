@@ -2699,19 +2699,19 @@ function Set-PublishUICode {
 
     Set-Location -Path $WebAppDirectory
 
-    Write-Host "Installing UI dependencies via pnpm..." -ForegroundColor Yellow
-    pnpm install --frozen-lockfile
-    if ($LASTEXITCODE -ne 0) {
-        throw "pnpm install failed. Resolve dependency issues before redeploying."
-    }
-
-    Write-Host "Running UI unit tests with coverage..." -ForegroundColor Yellow
-    pnpm run test:run --coverage
-    if ($LASTEXITCODE -ne 0) {
-        throw "UI unit tests failed or coverage threshold not met. Deployment aborted."
-    }
-
     try {
+        Write-Host "Installing UI dependencies via pnpm..." -ForegroundColor Yellow
+        pnpm install --frozen-lockfile
+        if ($LASTEXITCODE -ne 0) {
+            throw "pnpm install failed. Resolve dependency issues before redeploying."
+        }
+
+        Write-Host "Running UI unit tests with coverage..." -ForegroundColor Yellow
+        pnpm run test:run --coverage
+        if ($LASTEXITCODE -ne 0) {
+            throw "UI unit tests failed or coverage threshold not met. Deployment aborted."
+        }
+
         # Get the web app deployment token
         $webAppName = $resolvedStaticWebAppName
         $webAppSecrets = Invoke-WithRetry `
