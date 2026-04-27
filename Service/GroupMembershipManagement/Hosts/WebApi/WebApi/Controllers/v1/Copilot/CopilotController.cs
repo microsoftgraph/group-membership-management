@@ -66,6 +66,7 @@ namespace WebApi.Controllers.v1.Copilot
                     SourceParts = response.SourceParts.Select(sp => new SourcePartDto
                     {
                         PartId = sp.PartId,
+                        SourceType = sp.SourceType,
                         Filter = sp.Filter,
                         Title = sp.Title,
                         IsExclusion = sp.IsExclusion,
@@ -73,7 +74,9 @@ namespace WebApi.Controllers.v1.Copilot
                         OrgLeaderName = sp.OrgLeaderName,
                         OrgLeaderEmail = sp.OrgLeaderEmail,
                         OrgLeaderObjectId = sp.OrgLeaderObjectId,
-                        OrgLeaderDepth = sp.OrgLeaderDepth
+                        OrgLeaderDepth = sp.OrgLeaderDepth,
+                        GroupId = sp.GroupId,
+                        GroupName = sp.GroupName
                     }).ToList()
                 });
             }
@@ -126,6 +129,7 @@ namespace WebApi.Controllers.v1.Copilot
     public class SourcePartDto
     {
         public string PartId { get; set; } = string.Empty;
+        public string SourceType { get; set; } = "SqlMembership";
         public string Filter { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public bool IsExclusion { get; set; }
@@ -134,6 +138,8 @@ namespace WebApi.Controllers.v1.Copilot
         public string? OrgLeaderEmail { get; set; }
         public string? OrgLeaderObjectId { get; set; }
         public int? OrgLeaderDepth { get; set; }
+        public string? GroupId { get; set; }
+        public string? GroupName { get; set; }
     }
 
     public class UserContextDto

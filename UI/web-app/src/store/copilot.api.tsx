@@ -9,6 +9,7 @@ import { TokenType } from '../services/auth';
 import { IChatMessage } from '../components/CopilotPanel/CopilotPanel.types';
 import { ISourcePart } from '../models/ISourcePart';
 import { HRSourcePart } from '../models/HRSourcePart';
+import { GroupMembershipSourcePart } from '../models/GroupMembershipSourcePart';
 import { SourcePartType } from '../models/SourcePartType';
 
 export interface CopilotResponse {
@@ -23,10 +24,11 @@ interface CopilotApiResponse {
     sourceParts?: ApiSourcePart[]; // Array of source parts from backend
 }
 
-// Backend source part format (now includes org leader info per-part)
+// Backend source part format (now includes org leader info per-part and group membership support)
 interface ApiSourcePart {
     partId: string;
-    filter: string | null; // Can be null for org-only queries
+    sourceType?: string; // "SqlMembership" (default) or "GroupMembership"
+    filter: string | null; // Can be null for org-only queries or group membership
     title: string;
     isExclusion: boolean;
     useOrgStructure: boolean;
@@ -34,9 +36,30 @@ interface ApiSourcePart {
     orgLeaderEmail?: string;
     orgLeaderObjectId?: string;
     orgLeaderDepth?: number;
+    groupId?: string; // For GroupMembership: the Entra ID group's objectId
+    groupName?: string; // For GroupMembership: the group's display name
 }
 
 function transformSourcePart(apiPart: ApiSourcePart): ISourcePart {
+    const isGroupMembership = apiPart.sourceType === 'GroupMembership' && !!apiPart.groupId;
+
+    if (isGroupMembership) {
+        const groupQuery: GroupMembershipSourcePart = {
+            type: SourcePartType.GroupMembership,
+            source: apiPart.groupId!,
+            exclusionary: apiPart.isExclusion,
+        };
+
+        return {
+            id: apiPart.partId || uuidv4(),
+            title: apiPart.title || apiPart.groupName || 'Group Source',
+            query: groupQuery,
+            isNew: true,
+            isExpanded: false,
+        };
+    }
+
+    // Default: HR / SqlMembership source part
     const hrQuery: HRSourcePart = {
         type: SourcePartType.HR,
         source: {

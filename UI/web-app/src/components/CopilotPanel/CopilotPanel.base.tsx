@@ -468,7 +468,9 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             onChange={(_, newValue) => setInputValue(newValue || '')}
                             onKeyDown={handleInputKeyDown}
                             disabled={isLoading}
-                            multiline={false}
+                            multiline
+                            autoAdjustHeight
+                            resizable={false}
                             borderless
                             styles={{
                                 root: {
@@ -478,6 +480,9 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                                 },
                                 field: {
                                     fontSize: '14px',
+                                    minHeight: '20px',
+                                    maxHeight: '100px',
+                                    overflow: 'auto',
                                 },
                             }}
                         />

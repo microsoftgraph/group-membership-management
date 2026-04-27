@@ -87,6 +87,21 @@ namespace Services.WebApi
             }")
         );
 
+        private static readonly ChatTool SearchGroupTool = ChatTool.CreateFunctionTool(
+            functionName: "search_group",
+            functionDescription: "Search for Entra ID groups by name or email. Use this when the user wants to include members of a specific Entra ID group as a source. Returns matching groups with their name, email, and objectId.",
+            functionParameters: BinaryData.FromString(@"{
+                ""type"": ""object"",
+                ""properties"": {
+                    ""searchQuery"": {
+                        ""type"": ""string"",
+                        ""description"": ""The group name or email prefix to search for (e.g., 'Engineering Team' or 'eng-team')""
+                    }
+                },
+                ""required"": [""searchQuery""]
+            }")
+        );
+
         #endregion
 
         #region Cache
@@ -165,6 +180,8 @@ namespace Services.WebApi
             requestOptions.Tools.Add(LookupPersonTool);
             // Add the tool for validating an org leader against HR database
             requestOptions.Tools.Add(ValidateOrgLeaderTool);
+            // Add the tool for searching Entra ID groups
+            requestOptions.Tools.Add(SearchGroupTool);
 
             // Fetch HR attributes from database (cached)
             var hrAttributes = await GetHrAttributesAsync();
@@ -246,6 +263,7 @@ namespace Services.WebApi
                                 "get_attribute_values" => await ExecuteGetAttributeValuesToolAsync(toolCall.FunctionArguments.ToString()),
                                 "lookup_person" => await ExecuteLookupPersonToolAsync(toolCall.FunctionArguments.ToString()),
                                 "validate_org_leader" => await ExecuteValidateOrgLeaderToolAsync(toolCall.FunctionArguments.ToString()),
+                                "search_group" => await ExecuteSearchGroupToolAsync(toolCall.FunctionArguments.ToString()),
                                 _ => LogAndReturnUnknownTool(toolCall.FunctionName)
                             };
                             return (toolCall.Id, result);
@@ -368,21 +386,68 @@ namespace Services.WebApi
 
                 // Exact match by displayName
                 List<Microsoft.Graph.Models.User> allUsers = new();
-                try
+                var isEmail = searchQuery.Contains('@');
+
+                if (isEmail)
                 {
-                    var exactResponse = await graphClient.Users.GetAsync(config =>
+                    // Search by mail or userPrincipalName
+                    try
                     {
-                        config.Headers.Add("ConsistencyLevel", "eventual");
-                        config.QueryParameters.Filter = $"displayName eq '{searchSafe}'";
-                        config.QueryParameters.Select = selectFields;
-                        config.QueryParameters.Count = true;
-                        config.QueryParameters.Top = 10;
-                    });
-                    allUsers = exactResponse?.Value ?? new();
+                        var emailResponse = await graphClient.Users.GetAsync(config =>
+                        {
+                            config.Headers.Add("ConsistencyLevel", "eventual");
+                            config.QueryParameters.Filter = $"mail eq '{searchSafe}' or userPrincipalName eq '{searchSafe}'";
+                            config.QueryParameters.Select = selectFields;
+                            config.QueryParameters.Count = true;
+                            config.QueryParameters.Top = 10;
+                        });
+                        allUsers = emailResponse?.Value ?? new();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Graph email search failed for '{SearchQuery}'", searchQuery);
+                    }
                 }
-                catch
+                else
                 {
-                    // $filter eq can fail for some special characters
+                    // Exact match by displayName
+                    try
+                    {
+                        var exactResponse = await graphClient.Users.GetAsync(config =>
+                        {
+                            config.Headers.Add("ConsistencyLevel", "eventual");
+                            config.QueryParameters.Filter = $"displayName eq '{searchSafe}'";
+                            config.QueryParameters.Select = selectFields;
+                            config.QueryParameters.Count = true;
+                            config.QueryParameters.Top = 10;
+                        });
+                        allUsers = exactResponse?.Value ?? new();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Graph exact displayName search failed for '{SearchQuery}'", searchQuery);
+                    }
+
+                    // If exact match found nothing, try startswith
+                    if (allUsers.Count == 0)
+                    {
+                        try
+                        {
+                            var startsWithResponse = await graphClient.Users.GetAsync(config =>
+                            {
+                                config.Headers.Add("ConsistencyLevel", "eventual");
+                                config.QueryParameters.Filter = $"startswith(displayName,'{searchSafe}')";
+                                config.QueryParameters.Select = selectFields;
+                                config.QueryParameters.Count = true;
+                                config.QueryParameters.Top = 10;
+                            });
+                            allUsers = startsWithResponse?.Value ?? new();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Graph startsWith search failed for '{SearchQuery}'", searchQuery);
+                        }
+                    }
                 }
 
                 // Filter in code: only real enabled member accounts with reasonable display names
@@ -519,6 +584,74 @@ namespace Services.WebApi
 
         #endregion
 
+        #region Search Group Tool
+
+        private async Task<string> ExecuteSearchGroupToolAsync(string argumentsJson)
+        {
+            try
+            {
+                var args = JsonSerializer.Deserialize<SearchGroupArgs>(argumentsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if (string.IsNullOrWhiteSpace(args?.SearchQuery))
+                {
+                    return JsonSerializer.Serialize(new { error = "No search query specified" });
+                }
+
+                var searchQuery = args.SearchQuery.Trim();
+                var searchSafe = searchQuery.Replace("'", "''");
+
+                using var scope = _serviceScopeFactory.CreateScope();
+                var graphGroupRepository = scope.ServiceProvider.GetRequiredService<IGraphGroupRepository>();
+
+                // Build filter: search by displayName prefix, mail prefix, or exact id
+                string filter;
+                if (Guid.TryParse(searchQuery, out _))
+                {
+                    filter = $"id eq '{searchQuery}'";
+                }
+                else
+                {
+                    filter = $"startswith(displayName,'{searchSafe}') or startswith(mail,'{searchSafe}') or startswith(mailNickname,'{searchSafe}')";
+                }
+
+                var groups = await graphGroupRepository.SearchDestinationsAsync(filter);
+
+                if (groups == null || groups.Count == 0)
+                {
+                    return JsonSerializer.Serialize(new
+                    {
+                        message = $"No groups found matching '{searchQuery}'. Try a different name or provide the group's email address.",
+                        groups = Array.Empty<object>()
+                    });
+                }
+
+                var groupResults = groups.Select(g => new
+                {
+                    objectId = g.ObjectId.ToString(),
+                    displayName = g.Name ?? "Unknown",
+                    email = g.Email ?? "No email"
+                }).ToList();
+
+                return JsonSerializer.Serialize(new
+                {
+                    message = groupResults.Count == 1
+                        ? $"Found 1 group matching '{searchQuery}'"
+                        : $"Found {groupResults.Count} groups matching '{searchQuery}'",
+                    groups = groupResults
+                });
+            }
+            catch (Exception ex)
+            {
+                return JsonSerializer.Serialize(new { error = $"Failed to search groups: {ex.Message}" });
+            }
+        }
+
+        private class SearchGroupArgs
+        {
+            public string? SearchQuery { get; set; }
+        }
+
+        #endregion
+
         #region Private Helpers
 
         /// <summary>
@@ -644,12 +777,29 @@ namespace Services.WebApi
                             // New format: sourceParts array with per-part org leader info
                             foreach (var sp in structured.SourceParts)
                             {
-                                if (!string.IsNullOrEmpty(sp.Filter) || sp.UseOrgStructure)
+                                var isGroupMembership = string.Equals(sp.SourceType, "GroupMembership", StringComparison.OrdinalIgnoreCase);
+
+                                if (isGroupMembership && !string.IsNullOrEmpty(sp.GroupId))
+                                {
+                                    sourceParts.Add(new CopilotSourcePartResult
+                                    {
+                                        PartId = Guid.NewGuid().ToString(),
+                                        SourceType = "GroupMembership",
+                                        Filter = string.Empty,
+                                        Title = sp.Title ?? sp.GroupName ?? "Group Source",
+                                        IsExclusion = sp.IsExclusion,
+                                        UseOrgStructure = false,
+                                        GroupId = sp.GroupId,
+                                        GroupName = sp.GroupName
+                                    });
+                                }
+                                else if (!string.IsNullOrEmpty(sp.Filter) || sp.UseOrgStructure)
                                 {
                                     var objectId = !string.IsNullOrEmpty(sp.OrgLeaderEmail) && _validatedOrgLeaders.TryGetValue(sp.OrgLeaderEmail, out var oid) ? oid : null;
                                     sourceParts.Add(new CopilotSourcePartResult
                                     {
                                         PartId = Guid.NewGuid().ToString(),
+                                        SourceType = "SqlMembership",
                                         Filter = sp.Filter ?? "",
                                         Title = sp.Title ?? "HR Filter",
                                         IsExclusion = sp.IsExclusion,
@@ -777,6 +927,9 @@ namespace Services.WebApi
             public string? OrgLeaderName { get; set; }
             public string? OrgLeaderEmail { get; set; }
             public int? OrgLeaderDepth { get; set; }
+            public string? SourceType { get; set; }
+            public string? GroupId { get; set; }
+            public string? GroupName { get; set; }
         }
 
         private class SourcePartJson

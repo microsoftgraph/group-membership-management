@@ -42,6 +42,10 @@ namespace Services.WebApi.Contracts
     public class CopilotSourcePartResult
     {
         public string PartId { get; set; } = string.Empty;
+        /// <summary>
+        /// "SqlMembership" (HR) or "GroupMembership". Defaults to SqlMembership for backward compatibility.
+        /// </summary>
+        public string SourceType { get; set; } = "SqlMembership";
         public string Filter { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public bool IsExclusion { get; set; }
@@ -50,6 +54,14 @@ namespace Services.WebApi.Contracts
         public string? OrgLeaderEmail { get; set; }
         public string? OrgLeaderObjectId { get; set; }
         public int? OrgLeaderDepth { get; set; }
+        /// <summary>
+        /// For GroupMembership source type: the Entra ID group's object ID.
+        /// </summary>
+        public string? GroupId { get; set; }
+        /// <summary>
+        /// For GroupMembership source type: the group's display name.
+        /// </summary>
+        public string? GroupName { get; set; }
     }
 
     public class CopilotUserContext
