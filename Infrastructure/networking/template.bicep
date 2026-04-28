@@ -117,6 +117,7 @@ var privateDnsZoneNames = [
   'privatelink.azconfig.io'
   'privatelink.table.core.windows.net'
   'privatelink.queue.core.windows.net'
+  'privatelink.service.signalr.net'
 ]
 
 // -----------------------------------------------

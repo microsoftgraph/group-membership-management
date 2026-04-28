@@ -378,6 +378,26 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
   }
 }
 
+// =====================================================================================
+// Private Endpoint — SignalR
+// =====================================================================================
+
+var networkingResourceGroup = '${solutionAbbreviation}-networking-${environmentAbbreviation}'
+var privateLinkVnetName = '${solutionAbbreviation}-networking-${environmentAbbreviation}-privatelink-vnet'
+
+module signalRPrivateEndpoint 'privateEndpoint.bicep' = {
+  name: 'deploy-signalr-pe'
+  scope: resourceGroup(networkingResourceGroup)
+  params: {
+    name: '${solutionAbbreviation}-networking-${environmentAbbreviation}-signalr-pe'
+    location: location
+    subnetId: resourceId(networkingResourceGroup, 'Microsoft.Network/virtualNetworks/subnets', privateLinkVnetName, 'PrivateEndpointSubnet')
+    privateLinkServiceId: signalR.id
+    groupIds: ['signalr']
+    privateDnsZoneId: resourceId(networkingResourceGroup, 'Microsoft.Network/privateDnsZones', 'privatelink.service.signalr.net')
+  }
+}
+
 module servicePlanTemplate 'servicePlan.bicep' = {
   name: 'servicePlanTemplate-WebApi'
   params: {
