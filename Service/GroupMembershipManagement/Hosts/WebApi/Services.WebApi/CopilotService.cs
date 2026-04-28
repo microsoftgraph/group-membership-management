@@ -763,6 +763,27 @@ namespace Services.WebApi
                 trimmed = jsonBlockMatch.Groups[1].Value.Trim();
             }
 
+            // Handle duplicate JSON objects (LLM sometimes outputs {...}{...})
+            // Try to parse as-is first; on failure, take everything up to the first "}\n{" split
+            if (trimmed.StartsWith("{"))
+            {
+                try
+                {
+                    JsonDocument.Parse(trimmed);
+                }
+                catch (JsonException)
+                {
+                    // Likely trailing duplicate — take first object by splitting on }{ boundary
+                    var splitIndex = trimmed.IndexOf("}\n{", StringComparison.Ordinal);
+                    if (splitIndex < 0) splitIndex = trimmed.IndexOf("}{", StringComparison.Ordinal);
+                    if (splitIndex > 0)
+                    {
+                        trimmed = trimmed.Substring(0, splitIndex + 1);
+                        _logger.LogWarning("LLM returned duplicate JSON objects — using first object only");
+                    }
+                }
+            }
+
             if (trimmed.StartsWith("{"))
             {
                 try

@@ -126,21 +126,52 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       }));
     }
     
+    // Deduplicate: skip generated parts that match already-applied source parts
+    // (LLM sometimes returns previously accepted parts again)
+    const isDuplicate = (part: ISourcePart): boolean => {
+      return sourceParts.some(existing => {
+        if (existing.query.type !== part.query.type) return false;
+        if (existing.query.exclusionary !== part.query.exclusionary) return false;
+        // For group membership: same groupId
+        if (part.query.type === SourcePartType.GroupMembership && existing.query.type === SourcePartType.GroupMembership) {
+          return part.query.source === existing.query.source;
+        }
+        // For HR/org: same org leader email + same filter
+        if (part.useOrgStructure && existing.useOrgStructure) {
+          return part.managerToAutoSelect?.email === existing.managerToAutoSelect?.email;
+        }
+        // For HR filter-only: same filter string
+        if (part.query.type === SourcePartType.HR && existing.query.type === SourcePartType.HR) {
+          const partFilter = 'source' in part.query ? JSON.stringify(part.query.source) : '';
+          const existingFilter = 'source' in existing.query ? JSON.stringify(existing.query.source) : '';
+          return partFilter === existingFilter;
+        }
+        return false;
+      });
+    };
+
     if (activeSourcePartId && generatedParts.length > 0) {
       // Update the specific source part that was active when Copilot was opened
-      // Each part already carries its own useOrgStructure, managerToAutoSelect, depthToAutoSelect
       const updatedPart = {
         ...generatedParts[0],
-        id: activeSourcePartId, // Keep the original ID
-        isExpanded: true, // Keep expanded so user sees the applied filters
+        id: activeSourcePartId,
+        isExpanded: true,
       };
       dispatch(updateSourcePart(updatedPart));
       
-      // If multiple parts were generated, add the rest as new source parts
-      generatedParts.slice(1).forEach(part => dispatch(addSourcePart({...part, isExpanded: true})));
+      // Add remaining parts, skipping duplicates of already-applied parts
+      generatedParts.slice(1).forEach(part => {
+        if (!isDuplicate(part)) {
+          dispatch(addSourcePart({...part, isExpanded: true}));
+        }
+      });
     } else {
-      // No active source part - add all generated parts as new
-      generatedParts.forEach(part => dispatch(addSourcePart({...part, isExpanded: true})));
+      // No active source part - add all generated parts as new, skipping duplicates
+      generatedParts.forEach(part => {
+        if (!isDuplicate(part)) {
+          dispatch(addSourcePart({...part, isExpanded: true}));
+        }
+      });
     }
     setActiveSourcePartId(null);
     setCopilotUsedPartIds(prev => {
@@ -149,7 +180,7 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
       return next;
     });
     dispatch(closePanel());
-  }, [dispatch, activeSourcePartId]);
+  }, [dispatch, activeSourcePartId, sourceParts]);
 
   // Hide copilot apply overlay when data loading completes (with minimum display time)
   // For org structure flows, also wait until the org leader picker is populated

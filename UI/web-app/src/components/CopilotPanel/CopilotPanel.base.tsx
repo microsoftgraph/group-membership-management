@@ -102,6 +102,20 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
 
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLDivElement>(null);
+    const wasLoadingRef = useRef(false);
+
+    // Re-focus input after AI response completes
+    useEffect(() => {
+        if (wasLoadingRef.current && !isLoading) {
+            // Small delay to ensure the DOM is updated
+            setTimeout(() => {
+                const textarea = inputRef.current?.querySelector('textarea');
+                textarea?.focus();
+            }, 100);
+        }
+        wasLoadingRef.current = isLoading;
+    }, [isLoading]);
 
     const suggestedPrompts: ISuggestedPrompt[] = [];
 
@@ -109,6 +123,15 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Scroll to bottom when panel opens (returning to existing conversation)
+    useEffect(() => {
+        if (isOpen && messages.length > 0) {
+            setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            }, 50);
+        }
+    }, [isOpen]);
 
     const handleSendMessage = useCallback(async (messageText: string, displayText?: string) => {
         if (!messageText.trim() || isLoading) return;
@@ -462,6 +485,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     </div>
                     <div className={classNames.inputContainer}>
                         <TextField
+                            elementRef={inputRef}
                             className={classNames.inputField}
                             placeholder={strings.Copilot?.inputPlaceholder || 'Ask a question or describe the membership you want'}
                             value={inputValue}
