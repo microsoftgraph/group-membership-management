@@ -32,10 +32,6 @@ Flag to skip the resource providers check.
 Optional.
 If you are using a user-assigned managed identity, set this flag to true to assign the necessary permissions to the managed identity.
 
-.PARAMETER RunUITests
-Optional.
-When set, runs UI unit tests with coverage before deploying the web app. Intended for pipeline use; external customers can skip tests by omitting this flag.
-
 .EXAMPLE
 
 Default: 
@@ -2639,9 +2635,7 @@ function Set-PublishUICode {
         [Parameter(Mandatory = $true)]
         [string]$SharepointDomain,
         [Parameter(Mandatory = $true)]
-        [string]$SubscriptionId,
-        [Parameter(Mandatory = $false)]
-        [switch]$RunUITests
+        [string]$SubscriptionId
     )
 
     $resolvedStaticWebAppName = if ([string]::IsNullOrWhiteSpace($StaticWebAppName)) { "$SolutionAbbreviation-ui" } else { $StaticWebAppName }
@@ -2708,15 +2702,10 @@ function Set-PublishUICode {
             throw "pnpm install failed. Resolve dependency issues before redeploying."
         }
 
-        if ($RunUITests) {
-            Write-Host "Running UI unit tests with coverage..." -ForegroundColor Yellow
-            pnpm run test:run --coverage
-            if ($LASTEXITCODE -ne 0) {
-                throw "UI unit tests failed or coverage threshold not met. Deployment aborted."
-            }
-        }
-        else {
-            Write-Host "Skipping UI unit tests (use -RunUITests to enable)." -ForegroundColor Yellow
+        Write-Host "Running UI unit tests with coverage..." -ForegroundColor Yellow
+        pnpm run test:run --coverage
+        if ($LASTEXITCODE -ne 0) {
+            throw "UI unit tests failed or coverage threshold not met. Deployment aborted."
         }
 
         # Get the web app deployment token
@@ -3129,9 +3118,7 @@ function Deploy-Resources {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $false)]
-        [string]$ParameterFileName = "parameters.json",
-        [Parameter(Mandatory = $false)]
-        [switch]$RunUITests
+        [string]$ParameterFileName = "parameters.json"
     )
 
     # --- Transcript logging ---
@@ -3341,8 +3328,7 @@ function Deploy-Resources {
         -MainTenantId $parameterHashtable.tenantId.value `
         -TenantDomain $tenantDomain `
         -SharepointDomain $sharepointDomain `
-        -SubscriptionId $subscriptionId `
-        -RunUITests:$RunUITests
+        -SubscriptionId $subscriptionId
     
     # Call the WebAPI to perform EF migrations.
     Start-EFMigrationViaWebAPI `
