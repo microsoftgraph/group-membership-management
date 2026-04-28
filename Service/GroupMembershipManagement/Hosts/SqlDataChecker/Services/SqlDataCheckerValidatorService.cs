@@ -12,6 +12,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Services.Entities;
 using System.Data;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using IDataFactoryRepository = Repositories.Contracts.IDataFactoryRepository;
 
@@ -268,6 +269,61 @@ namespace Services
             }
 
             return nullDict;
+        }
+
+        public Dictionary<string, double> GetColumnThresholds()
+        {
+            var thresholds = new Dictionary<string, double>();
+            var retryPolicy = GetRetryPolicy();
+            try
+            {
+                var token = GetAccessToken();
+
+                retryPolicy.Execute(() =>
+                {
+                    using (var conn = new SqlConnection(_sqlServerConnectionString))
+                    {
+                        conn.AccessToken = token.Token;
+                        conn.Open();
+                        var selectQuery = "SELECT Attributes FROM [dbo].[SqlMembershipSources] WHERE Name = 'SqlMembership'";
+                        using (var cmd = new SqlCommand(selectQuery, conn))
+                        {
+                            var result = cmd.ExecuteScalar();
+                            if (result != null && result != DBNull.Value)
+                            {
+                                var json = result.ToString();
+                                var attributes = JsonSerializer.Deserialize<List<SqlMembershipAttribute>>(json);
+                                if (attributes != null)
+                                {
+                                    foreach (var attr in attributes)
+                                    {
+                                        if (attr.NullThreshold.HasValue && !string.IsNullOrWhiteSpace(attr.Name))
+                                        {
+                                            thresholds[attr.Name] = attr.NullThreshold.Value;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        conn.Close();
+                    }
+                });
+            }
+
+            catch (SqlException ex)
+            {
+                var exceptionMessage = "Sql Exception in SqlDataChecker - GetColumnThresholds()";
+                var scSQLException = new SqlDataCheckerSQLException(exceptionMessage, ex);
+
+                _telemetryClient.TrackException(scSQLException, new Dictionary<string, string>()
+                    {
+                        {"Exception", ex.Message }
+                    });
+
+                throw scSQLException;
+            }
+
+            return thresholds;
         }
 
         private AccessToken GetAccessToken()

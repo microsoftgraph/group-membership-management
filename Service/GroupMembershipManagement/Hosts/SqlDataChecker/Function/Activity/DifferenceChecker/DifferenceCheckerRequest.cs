@@ -11,5 +11,6 @@ namespace SqlDataChecker
         public Dictionary<string, int> PreviousNullColumns {  get; set; }
         public int LatestNumberOfRows { get; set; }
         public int PreviousNumberOfRows { get; set; }
+        public Dictionary<string, double> ColumnThresholds { get; set; }
     }
 }

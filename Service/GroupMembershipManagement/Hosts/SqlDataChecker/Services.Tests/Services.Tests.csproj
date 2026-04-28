@@ -24,6 +24,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Services\Services.csproj" />
     <ProjectReference Include="..\Services.Entities\Services.Entities.csproj" />
+    <ProjectReference Include="..\..\..\Repositories.Contracts\Repositories.Contracts.csproj" />
+    <ProjectReference Include="..\Function\SqlDataChecker.csproj" />
   </ItemGroup>
 
 </Project>

@@ -40,7 +40,9 @@ namespace SqlDataChecker
                 var numberOfLatestRows = await context.CallActivityAsync<int>(nameof(RowReaderFunction), tableNames.Latest);
                 var numberOfPrevioustRows = await context.CallActivityAsync<int>(nameof(RowReaderFunction), tableNames.Previous);
 
-                await context.CallActivityAsync(nameof(DifferenceCheckerFunction), new DifferenceCheckerRequest { LatestNullColumns = nullLatestColumns, PreviousNullColumns = nullPreviousColumns, LatestNumberOfRows = numberOfLatestRows, PreviousNumberOfRows = numberOfPrevioustRows });
+                var columnThresholds = await context.CallActivityAsync<Dictionary<string, double>>(nameof(ThresholdReaderFunction), null);
+
+                await context.CallActivityAsync(nameof(DifferenceCheckerFunction), new DifferenceCheckerRequest { LatestNullColumns = nullLatestColumns, PreviousNullColumns = nullPreviousColumns, LatestNumberOfRows = numberOfLatestRows, PreviousNumberOfRows = numberOfPrevioustRows, ColumnThresholds = columnThresholds });
             }
             await context.CallActivityAsync(nameof(LoggerFunction), new LoggerRequest { Message = $"{nameof(OrchestratorFunction)} function completed", Verbosity = VerbosityLevel.DEBUG });
         }
