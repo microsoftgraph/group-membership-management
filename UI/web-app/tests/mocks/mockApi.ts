@@ -701,11 +701,26 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     }
 
     if (path.endsWith('/users')) {
-      const search = (requestUrl.searchParams.get('$search') || requestUrl.searchParams.get('$filter') || '').toLowerCase();
+      const rawSearch = (requestUrl.searchParams.get('$search') || '').toLowerCase();
+      const rawFilter = (requestUrl.searchParams.get('$filter') || '').toLowerCase();
+      // Extract search terms from OData expressions like "mail:adele" or startswith(displayName,'adele')
+      const extractTerms = (s: string): string[] => {
+        const terms: string[] = [];
+        // Match quoted field:value patterns from $search (e.g., "mail:adele")
+        for (const m of s.matchAll(/"(?:\w+:)?([^"]+)"/g)) terms.push(m[1]);
+        // Match startswith(field,'value') patterns from $filter
+        for (const m of s.matchAll(/startswith\(\w+,'([^']+)'\)/g)) terms.push(m[1]);
+        // Fallback: use the raw string if no patterns matched
+        if (terms.length === 0 && s.trim()) terms.push(s.trim());
+        return terms;
+      };
+      const searchTerms = [...extractTerms(rawSearch), ...extractTerms(rawFilter)];
       const value = mockGraphUsers.filter((user) =>
-        user.displayName.toLowerCase().includes(search) ||
-        user.mail.toLowerCase().includes(search) ||
-        user.userPrincipalName.toLowerCase().includes(search)
+        searchTerms.length === 0 || searchTerms.some((term) =>
+          user.displayName.toLowerCase().includes(term) ||
+          user.mail.toLowerCase().includes(term) ||
+          user.userPrincipalName.toLowerCase().includes(term)
+        )
       );
 
       await fulfillJson(route, { value: value.length > 0 ? value : mockGraphUsers });

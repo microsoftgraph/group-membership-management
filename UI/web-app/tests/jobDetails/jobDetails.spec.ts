@@ -11,6 +11,69 @@ const EMAIL = process.env.INTEGRATION_TEST_EMAIL || 'playwright@contoso.com';
 const isMockMode = process.env.PLAYWRIGHT_USE_MOCK_API !== 'false';
 const testTimeoutMs = Number(process.env.PLAYWRIGHT_TEST_TIMEOUT_MS ?? 30000);
 
+/**
+ * Types into a Fluent UI v8 NormalPeoplePicker and triggers suggestion resolution.
+ * 
+ * Playwright's standard input methods (fill, pressSequentially, keyboard.type) don't trigger
+ * React 18's synthetic onInput event for Fluent UI's Autofill component. This workaround
+ * directly invokes the React component instances via fiber tree traversal to:
+ * 1. Set the Autofill's internal state
+ * 2. Call onResolveSuggestions directly (bypassing the debounce)
+ * 3. Populate the suggestion store and make suggestions visible
+ */
+async function typeIntoPicker(page: Page, pickerInputLocator: any, text: string) {
+  await pickerInputLocator.focus();
+  await pickerInputLocator.evaluate(async (el: HTMLInputElement, val: string) => {
+    el.focus();
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    )!.set!;
+    nativeInputValueSetter.call(el, val);
+
+    const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$'));
+    if (!fiberKey) throw new Error('React fiber not found on picker input');
+    let fiber = (el as any)[fiberKey];
+
+    let autofillInstance: any = null;
+    let basePickerInstance: any = null;
+    let current = fiber;
+    while (current) {
+      if (current.stateNode) {
+        if (current.stateNode._onInputChanged && !autofillInstance) {
+          autofillInstance = current.stateNode;
+        }
+        if (current.stateNode._onResolveSuggestions && !basePickerInstance) {
+          basePickerInstance = current.stateNode;
+          break;
+        }
+      }
+      current = current.return;
+    }
+
+    if (!basePickerInstance || !autofillInstance) {
+      throw new Error('BasePicker or Autofill instance not found in fiber tree');
+    }
+
+    autofillInstance.setState({ inputValue: val });
+    basePickerInstance.setState({ isFocused: true });
+    await new Promise(r => setTimeout(r, 50));
+
+    const onResolveSuggestions = basePickerInstance.props.onResolveSuggestions;
+    if (!onResolveSuggestions) throw new Error('onResolveSuggestions prop missing');
+
+    const suggestions = await onResolveSuggestions(val, basePickerInstance.state.items || []);
+    if (suggestions && suggestions.length > 0) {
+      basePickerInstance.suggestionStore.updateSuggestions(suggestions, -1);
+      basePickerInstance.setState({
+        suggestionsVisible: true,
+        suggestionsLoading: false,
+        moreSuggestionsAvailable: false,
+      });
+    }
+  }, text);
+  await page.waitForTimeout(500);
+}
+
 test.beforeEach(async ({ page }) => {
   await setupMockPage(page);
 });
@@ -80,16 +143,19 @@ test.describe('Job Details Tests', () => {
     await page.getByPlaceholder('Enter the name of the group').click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
-    console.log(`Group name: ${groupName}`);
 
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
 
     // Select authorized senders
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('adele');
+    const pickerInput = page.locator('.ms-BasePicker-input').first();
+    await pickerInput.click();
+    await page.waitForTimeout(500);
+
+    await typeIntoPicker(page, pickerInput, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.getByRole('combobox', { name: AUTHORIZED_SENDERS_LABEL }).fill('alex');
+
+    await typeIntoPicker(page, pickerInput, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
@@ -167,16 +233,16 @@ test.describe('Job Details Tests', () => {
     await page.getByPlaceholder('Enter the name of the group').click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
-    console.log(`Group name: ${groupName}`);
 
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
 
     // Select authorized senders
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('adele');
+    const pickerInputUnsupported = page.locator('.ms-BasePicker-input').first();
+    await pickerInputUnsupported.click();
+    await typeIntoPicker(page, pickerInputUnsupported, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.getByRole('combobox', { name: AUTHORIZED_SENDERS_LABEL }).fill('alex');
+    await typeIntoPicker(page, pickerInputUnsupported, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
@@ -237,16 +303,16 @@ test.describe('Job Details Tests', () => {
     await page.getByPlaceholder('Enter the name of the group').click();
 
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
-    console.log(`Group name: ${groupName}`);
 
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
 
     // Select authorized senders
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('adele');
+    const pickerInputInclusionary = page.locator('.ms-BasePicker-input').first();
+    await pickerInputInclusionary.click();
+    await typeIntoPicker(page, pickerInputInclusionary, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.getByRole('combobox', { name: AUTHORIZED_SENDERS_LABEL }).fill('alex');
+    await typeIntoPicker(page, pickerInputInclusionary, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
     // Create group
@@ -315,10 +381,11 @@ test.describe('Job Details Tests', () => {
     // Fill group name
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
     // Select authorized senders
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('adele');
+    const pickerInputOnboarding = page.locator('.ms-BasePicker-input').first();
+    await pickerInputOnboarding.click();
+    await typeIntoPicker(page, pickerInputOnboarding, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
-    await page.getByRole('combobox', { name: AUTHORIZED_SENDERS_LABEL }).fill('alex');
+    await typeIntoPicker(page, pickerInputOnboarding, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
     // Create group
     await page.getByRole('button', { name: 'Create group' }).click();
@@ -539,8 +606,9 @@ test.describe('Job Details Tests', () => {
     await page.getByPlaceholder('Enter the name of the group').fill(groupName);
 
     // Minimal required fields to proceed
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).click();
-    await page.getByLabel(AUTHORIZED_SENDERS_LABEL).fill('user');
+    const pickerInputPeople = page.locator('.ms-BasePicker-input').first();
+    await pickerInputPeople.click();
+    await typeIntoPicker(page, pickerInputPeople, 'user');
     const senderOptions = page.locator('[role="listbox"] [role="option"]');
     await expect(senderOptions.first()).toBeVisible({ timeout: 10000 });
     await senderOptions.first().click();
@@ -646,23 +714,19 @@ test.describe('Job Details Tests', () => {
 
   const selectComboOptionByLabel = async (page: Page, label: string, query: string): Promise<number | null> => {
     try {
-      // Check if page is still valid
       if (page.isClosed()) {
         throw new Error('Page has been closed');
       }
 
       const input = page.getByLabel(label);
-
-      // Ensure input is visible and enabled before interaction
       await expect(input).toBeVisible({ timeout: 10000 });
       await expect(input).toBeEnabled({ timeout: 5000 });
 
-      await input.click();
-      await page.waitForTimeout(500); // Small delay for dropdown to initialize
-
-      await input.fill('');
-      await page.waitForTimeout(200);
-      await input.type(query, { delay: 100 }); // Slower typing for better reliability
+      // Use the typeIntoPicker helper for Fluent UI pickers
+      const pickerInputEl = page.locator('.ms-BasePicker-input').last();
+      await pickerInputEl.click();
+      await page.waitForTimeout(500);
+      await typeIntoPicker(page, pickerInputEl, query);
 
       const listbox = page.locator('[role="listbox"]');
       const option = listbox.locator('[role="option"]');
