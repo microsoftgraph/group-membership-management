@@ -15,7 +15,7 @@ namespace Hosts.JobTrigger
         [Function(nameof(OrchestratorFunction))]
         public async Task RunOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
-            var logger = context.CreateReplaySafeLogger(nameof(OrchestratorFunction));
+            var logger = context.CreateReplaySafeLogger($"JobTrigger.{nameof(OrchestratorFunction)}");
             var runId = context.NewGuid();
 
             using (logger.BeginRunIdScope(runId))

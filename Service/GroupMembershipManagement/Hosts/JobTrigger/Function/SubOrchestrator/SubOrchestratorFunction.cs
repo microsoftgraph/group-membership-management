@@ -39,7 +39,7 @@ namespace Hosts.JobTrigger
         public async Task RunSubOrchestratorAsync([OrchestrationTrigger] TaskOrchestrationContext context)
         {
             var syncJob = context.GetInput<SyncJob>();
-            var logger = context.CreateReplaySafeLogger(nameof(SubOrchestratorFunction));
+            var logger = context.CreateReplaySafeLogger($"JobTrigger.{nameof(SubOrchestratorFunction)}");
             using var scope = logger.BeginSyncJobScope(syncJob);
 
             try
