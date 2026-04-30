@@ -227,6 +227,14 @@ export const strings: IStrings = {
         copilotTopPDescription: "Controls diversity via nucleus sampling. Lower values (e.g., 0.5) limit to more likely tokens. Higher values (e.g., 0.95) allow broader token selection.",
         leaveEmptyNote: "Leave empty to use the built-in default instructions. Custom instructions will override the defaults.",
         currentDefaultInstructions: "View current default instructions",
+        suggestedPromptsTitle: "Suggested Prompts",
+        suggestedPromptsDescription: "Configure the suggested prompt buttons shown in the Copilot welcome message. Users can click these to quickly start a conversation. If no prompts are configured, the suggestions section will be hidden.",
+        suggestedPromptLabelField: "Button label",
+        suggestedPromptPromptField: "Full prompt",
+        suggestedPromptAdd: "Add prompt",
+        suggestedPromptPopulateDefaults: "Populate defaults",
+        suggestedPromptLabelPlaceholder: "e.g., Include FTEs and interns",
+        suggestedPromptPromptPlaceholder: "e.g., Include all FTEs and interns",
       }
     }
   },
@@ -707,7 +715,6 @@ export const strings: IStrings = {
     leaderPrompt: "Got it! Whose org should I pull {0} from? Please provide the leader's alias or name.",
     leaderInputPlaceholder: 'Type an alias or name',
     leaderSubmit: 'Continue',
-    tryOneOfTheseToGetStarted: 'TRY ONE OF THESE TO GET STARTED',
   },
   excludePrefix: 'Exclude',
   copy: 'Copy',

@@ -16,7 +16,8 @@ export const enum SettingKey {
     IsAICopilotEnabled = 11,
     CopilotTemperature = 12,
     CopilotTopP = 13,
-    CopilotInstructions = 14
+    CopilotInstructions = 14,
+    CopilotSuggestedPrompts = 15
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -34,5 +35,6 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.IsAICopilotEnabled]: 'IsAICopilotEnabled',
     [SettingKey.CopilotTemperature]: 'CopilotTemperature',
     [SettingKey.CopilotTopP]: 'CopilotTopP',
-    [SettingKey.CopilotInstructions]: 'CopilotInstructions'
+    [SettingKey.CopilotInstructions]: 'CopilotInstructions',
+    [SettingKey.CopilotSuggestedPrompts]: 'CopilotSuggestedPrompts'
 };

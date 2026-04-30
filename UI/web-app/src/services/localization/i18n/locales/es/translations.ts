@@ -228,6 +228,14 @@ export const strings: IStrings = {
         copilotTopPDescription: "Controla la diversidad mediante muestreo de núcleo. Valores más bajos (ej. 0.5) limitan a tokens más probables. Valores más altos (ej. 0.95) permiten una selección más amplia de tokens.",
         leaveEmptyNote: "Deje vacío para usar las instrucciones predeterminadas. Las instrucciones personalizadas anularán las predeterminadas.",
         currentDefaultInstructions: "Ver instrucciones predeterminadas actuales",
+        suggestedPromptsTitle: "Indicaciones sugeridas",
+        suggestedPromptsDescription: "Configure los botones de indicaciones sugeridas que se muestran en el mensaje de bienvenida del Copilot. Los usuarios pueden hacer clic en ellos para iniciar una conversación rápidamente. Si no se configuran indicaciones, la sección de sugerencias se ocultará.",
+        suggestedPromptLabelField: "Etiqueta del botón",
+        suggestedPromptPromptField: "Indicación completa",
+        suggestedPromptAdd: "Agregar indicación",
+        suggestedPromptPopulateDefaults: "Rellenar valores predeterminados",
+        suggestedPromptLabelPlaceholder: "ej., Incluir empleados y pasantes",
+        suggestedPromptPromptPlaceholder: "ej., Incluir todos los empleados y pasantes",
       }
     }
   },
@@ -709,7 +717,6 @@ export const strings: IStrings = {
     leaderPrompt: '¡Entendido! ¿De la organización de quién debo obtener {0}? Proporciona el alias o nombre del líder.',
     leaderInputPlaceholder: 'Escribe un alias o nombre',
     leaderSubmit: 'Continuar',
-    tryOneOfTheseToGetStarted: 'PRUEBA UNO DE ESTOS PARA EMPEZAR',
   },
   excludePrefix: 'Excluir',
   copy: 'Copiar',

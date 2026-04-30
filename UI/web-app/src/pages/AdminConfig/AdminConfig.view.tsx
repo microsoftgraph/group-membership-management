@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon, IconButton, ActionButton } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -266,6 +266,7 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.CopilotTemperature]: true,
     [SettingKey.CopilotTopP]: true,
     [SettingKey.CopilotInstructions]: true,
+    [SettingKey.CopilotSuggestedPrompts]: true,
   });
 
   useEffect(() => {
@@ -692,6 +693,99 @@ const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsP
           onChange={(value) => handleSettingChange(SettingKey.CopilotTopP)(value.toString())}
         />
       </div>
+      <SuggestedPromptsEditor strings={strings} settings={settings} setSettings={setSettings} />
     </div>
   );
 }
+
+const DEFAULT_SUGGESTED_PROMPTS = [
+  { label: 'Include FTEs and interns', prompt: 'Include all FTEs and interns' },
+  { label: 'Include People managers', prompt: 'Include all People managers' },
+  { label: 'Include employees who are L65+ or People managers', prompt: 'Include all employees who are level 65 or above, or who are People managers' },
+  { label: 'Include U.S. based employees', prompt: 'Include all U.S. based employees' },
+  { label: 'Include members of a group', prompt: 'Include all members of a specific Entra ID group' },
+];
+
+const SuggestedPromptsEditor: React.FunctionComponent<{
+  strings: AdminConfigViewProps['strings'];
+  settings: { readonly [key in SettingKey]: string };
+  setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+}> = ({ strings, settings, setSettings }) => {
+
+  const prompts: Array<{ label: string; prompt: string }> = useMemo(() => {
+    const json = settings[SettingKey.CopilotSuggestedPrompts];
+    if (!json) return [];
+    try {
+      const parsed = JSON.parse(json);
+      if (Array.isArray(parsed)) return parsed;
+    } catch { /* invalid JSON */ }
+    return [];
+  }, [settings[SettingKey.CopilotSuggestedPrompts]]);
+
+  const updatePrompts = (newPrompts: Array<{ label: string; prompt: string }>) => {
+    setSettings((prev) => ({
+      ...prev,
+      [SettingKey.CopilotSuggestedPrompts]: JSON.stringify(newPrompts),
+    }));
+  };
+
+  const handleFieldChange = (index: number, field: 'label' | 'prompt', value: string) => {
+    const updated = [...prompts];
+    updated[index] = { ...updated[index], [field]: value };
+    updatePrompts(updated);
+  };
+
+  const handleRemove = (index: number) => {
+    const updated = prompts.filter((_, i) => i !== index);
+    updatePrompts(updated);
+  };
+
+  const handleAdd = () => {
+    updatePrompts([...prompts, { label: '', prompt: '' }]);
+  };
+
+  const handlePopulateDefaults = () => {
+    updatePrompts(DEFAULT_SUGGESTED_PROMPTS);
+  };
+
+  return (
+    <div style={{ marginTop: '20px' }}>
+      <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.suggestedPromptsTitle}</Text>
+      <Text variant="small" block style={{ marginBottom: '12px' }}>{strings.AISettings.labels.suggestedPromptsDescription}</Text>
+      {prompts.map((p, index) => (
+        <div key={index} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '8px' }}>
+          <TextField
+            style={{ flex: 1 }}
+            placeholder={strings.AISettings.labels.suggestedPromptLabelPlaceholder}
+            value={p.label}
+            onChange={(_, val) => handleFieldChange(index, 'label', val ?? '')}
+          />
+          <TextField
+            style={{ flex: 2 }}
+            placeholder={strings.AISettings.labels.suggestedPromptPromptPlaceholder}
+            value={p.prompt}
+            onChange={(_, val) => handleFieldChange(index, 'prompt', val ?? '')}
+          />
+          <IconButton
+            iconProps={{ iconName: 'Delete' }}
+            title="Remove"
+            onClick={() => handleRemove(index)}
+            styles={{ root: { marginTop: '2px' } }}
+          />
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+        <ActionButton
+          iconProps={{ iconName: 'Add' }}
+          text={strings.AISettings.labels.suggestedPromptAdd}
+          onClick={handleAdd}
+        />
+        <ActionButton
+          iconProps={{ iconName: 'Refresh' }}
+          text={strings.AISettings.labels.suggestedPromptPopulateDefaults}
+          onClick={handlePopulateDefaults}
+        />
+      </div>
+    </div>
+  );
+};

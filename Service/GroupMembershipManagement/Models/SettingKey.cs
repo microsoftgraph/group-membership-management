@@ -19,6 +19,7 @@ namespace Models
         IsAICopilotEnabled = 11,
         CopilotTemperature = 12,
         CopilotTopP = 13,
-        CopilotInstructions = 14
+        CopilotInstructions = 14,
+        CopilotSuggestedPrompts = 15
     }
 }

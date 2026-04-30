@@ -246,6 +246,13 @@ export const selectCopilotInstructions = (state: RootState) => {
   return setting ? setting.settingValue : undefined;
 }
 
+export const selectCopilotSuggestedPrompts = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return undefined;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.CopilotSuggestedPrompts);
+  return setting ? setting.settingValue : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 

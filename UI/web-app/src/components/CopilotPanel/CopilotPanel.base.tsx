@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     classNamesFunction,
     IProcessedStyleSet,
@@ -36,6 +36,7 @@ import {
     clearLastSourcePart,
 } from '../../store/copilot.slice';
 import { sendCopilotMessage } from '../../store/copilot.api';
+import { selectCopilotSuggestedPrompts } from '../../store/settings.slice';
 import { selectOrgLeaderDetails } from '../../store/orgLeaderDetails.slice';
 import { getSourcePartsFromState } from '../../store/manageMembership.slice';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
@@ -117,7 +118,23 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         wasLoadingRef.current = isLoading;
     }, [isLoading]);
 
-    const suggestedPrompts: ISuggestedPrompt[] = [];
+    // Suggested prompts from admin settings
+    const suggestedPromptsJson = useSelector(selectCopilotSuggestedPrompts);
+    const suggestedPrompts: ISuggestedPrompt[] = useMemo(() => {
+        if (!suggestedPromptsJson) return [];
+        try {
+            const parsed = JSON.parse(suggestedPromptsJson);
+            if (Array.isArray(parsed)) {
+                return parsed.map((p: any, i: number) => ({
+                    id: String(i + 1),
+                    label: p.label || '',
+                    prompt: p.prompt || '',
+                })).filter((p: ISuggestedPrompt) => p.label && p.prompt);
+            }
+        } catch { /* invalid JSON, show no prompts */ }
+        return [];
+    }, [suggestedPromptsJson]);
+
 
     // Scroll to bottom when new messages arrive
     useEffect(() => {
@@ -304,7 +321,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     {suggestedPrompts.length > 0 && (
                     <div className={classNames.suggestedPromptsContainer}>
                         <div className={classNames.suggestedPromptsHeader}>
-                            {strings.Copilot?.tryOneOfTheseToGetStarted || 'TRY ONE OF THESE TO GET STARTED'}
+                            {'TRY ONE OF THESE TO GET STARTED'}
                         </div>
                         {suggestedPrompts.map((prompt) => (
                             <button

@@ -224,6 +224,14 @@ export type IStrings = {
         copilotTopPDescription: string;
         leaveEmptyNote: string;
         currentDefaultInstructions: string;
+        suggestedPromptsTitle: string;
+        suggestedPromptsDescription: string;
+        suggestedPromptLabelField: string;
+        suggestedPromptPromptField: string;
+        suggestedPromptAdd: string;
+        suggestedPromptPopulateDefaults: string;
+        suggestedPromptLabelPlaceholder: string;
+        suggestedPromptPromptPlaceholder: string;
       }
     }
   },
@@ -728,6 +736,5 @@ export type IStrings = {
       leaderPrompt: string;
       leaderInputPlaceholder: string;
       leaderSubmit: string;
-      tryOneOfTheseToGetStarted: string;
   };
 };

@@ -21,6 +21,7 @@ import {
   selectCopilotTemperature,
   selectCopilotTopP,
   selectCopilotInstructions,
+  selectCopilotSuggestedPrompts,
   selectDefaultAIPrompt,
 } from '../../store/settings.slice';
 import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
@@ -66,6 +67,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const copilotTemperature = useSelector(selectCopilotTemperature);
   const copilotTopP = useSelector(selectCopilotTopP);
   const copilotInstructions = useSelector(selectCopilotInstructions);
+  const copilotSuggestedPrompts = useSelector(selectCopilotSuggestedPrompts);
   const defaultAIPrompt = useSelector(selectDefaultAIPrompt);
   const sqlMembershipSource = useSelector(selectSource);
   const sqlMembershipSourceAttributes = useSelector(selectAttributes);
@@ -97,13 +99,14 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.CopilotTemperature]: copilotTemperature ?? '0.7',
     [SettingKey.CopilotTopP]: copilotTopP ?? '0.9',
     [SettingKey.CopilotInstructions]: copilotInstructions ?? '',
+    [SettingKey.CopilotSuggestedPrompts]: copilotSuggestedPrompts ?? '',
   });
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled, isAICopilotEnabled, copilotTemperature, copilotTopP, copilotInstructions]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled, isAICopilotEnabled, copilotTemperature, copilotTopP, copilotInstructions, copilotSuggestedPrompts]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -204,6 +207,12 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
         patchSetting({
           settingKey: SettingKey.CopilotInstructions,
           settingValue: formattedSettings[SettingKey.CopilotInstructions]
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CopilotSuggestedPrompts,
+          settingValue: formattedSettings[SettingKey.CopilotSuggestedPrompts]
         })
       );
     }

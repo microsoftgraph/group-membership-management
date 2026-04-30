@@ -24,7 +24,8 @@ namespace Models
             { SettingKey.IsAICopilotEnabled, Guid.Parse("A1B2C3D4-E5F6-7890-ABCD-EF1234567890") },
             { SettingKey.CopilotTemperature, Guid.Parse("C3D4E5F6-A7B8-9012-CDEF-123456789012") },
             { SettingKey.CopilotTopP, Guid.Parse("D4E5F6A7-B8C9-0123-DEF0-234567890123") },
-            { SettingKey.CopilotInstructions, Guid.Parse("E5F6A7B8-C9D0-1234-EF01-345678901234") }
+            { SettingKey.CopilotInstructions, Guid.Parse("E5F6A7B8-C9D0-1234-EF01-345678901234") },
+            { SettingKey.CopilotSuggestedPrompts, Guid.Parse("F6A7B8C9-D0E1-2345-F012-456789012345") }
         };
     }
 }
