@@ -4065,7 +4065,16 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customMetrics\n| where name == "ResourceUnitsUsed"\n| extend QueryType = tostring(customDimensions["QueryType"])\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 10s), QueryType\n'
+                  // TODO: 7+ days after this deploys to prod, drop the
+                  // customEvents branch — by then the dashboard's 7-day window contains
+                  // only customMetrics data with the QueryType dim. Simplify back to:
+                  //   customMetrics
+                  //   | where name == "ResourceUnitsUsed"
+                  //   | extend QueryType = tostring(customDimensions["QueryType"])
+                  //   | where isnotempty(QueryType)
+                  //   | extend customMetric_valueSum = iif(itemType == 'customMetric', valueSum, todouble(''))
+                  //   | summarize ['customMetrics/ResourceUnitsUsed_sum'] = sum(customMetric_valueSum) by bin(timestamp, 10s), QueryType
+                  Query: 'let migrationStart = toscalar(\n    customMetrics\n    | where name == "ResourceUnitsUsed" and isnotempty(tostring(customDimensions["QueryType"]))\n    | summarize min(timestamp)\n);\nunion\n(\n    customMetrics\n    | where name == "ResourceUnitsUsed"\n    | extend QueryType = tostring(customDimensions["QueryType"])\n    | where isnotempty(QueryType)\n    | extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n),\n(\n    customEvents\n    | where name == "ResourceUnitsUsedByType"\n    | where isnull(migrationStart) or timestamp < migrationStart\n    | extend QueryType = tostring(customDimensions["QueryType"])\n    | extend customMetric_valueSum = todouble(toint(customDimensions["ResourceUnitsUsed"]))\n)\n| summarize [\'customMetrics/ResourceUnitsUsed_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 10s), QueryType\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Entra RUU by Access Pattern'
