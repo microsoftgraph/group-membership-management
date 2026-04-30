@@ -77,7 +77,8 @@ namespace Repositories.Contracts.Helpers
             logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed}", queryType, ruu.Value);
 
             TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId);
-            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType").TrackValue(ruu.Value, operationType.ToString());
+            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType", "QueryType")
+                           .TrackValue(ruu.Value, operationType.ToString(), queryType.ToString());
 
             var telemetryResult = new GraphTelemetryResult
             {
