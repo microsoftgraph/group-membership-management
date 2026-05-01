@@ -125,11 +125,13 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
         try {
             const parsed = JSON.parse(suggestedPromptsJson);
             if (Array.isArray(parsed)) {
-                return parsed.map((p: any, i: number) => ({
-                    id: String(i + 1),
-                    label: p.label || '',
-                    prompt: p.prompt || '',
-                })).filter((p: ISuggestedPrompt) => p.label && p.prompt);
+                return parsed
+                    .filter((p: any) => typeof p === 'object' && p !== null)
+                    .map((p: any, i: number) => ({
+                        id: String(i + 1),
+                        label: p.label || '',
+                        prompt: p.prompt || '',
+                    })).filter((p: ISuggestedPrompt) => p.label && p.prompt);
             }
         } catch { /* invalid JSON, show no prompts */ }
         return [];

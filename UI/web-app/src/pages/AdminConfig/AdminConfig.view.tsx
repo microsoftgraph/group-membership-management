@@ -717,7 +717,14 @@ const SuggestedPromptsEditor: React.FunctionComponent<{
     if (!json) return [];
     try {
       const parsed = JSON.parse(json);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item: any) => typeof item === 'object' && item !== null)
+          .map((item: any) => ({
+            label: typeof item.label === 'string' ? item.label : '',
+            prompt: typeof item.prompt === 'string' ? item.prompt : '',
+          }));
+      }
     } catch { /* invalid JSON */ }
     return [];
   }, [settings[SettingKey.CopilotSuggestedPrompts]]);
