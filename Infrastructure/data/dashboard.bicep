@@ -3979,7 +3979,7 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
             position: {
               x: 13
               y: 44
-              colSpan: 10
+              colSpan: 6
               rowSpan: 4
             }
             metadata: {
