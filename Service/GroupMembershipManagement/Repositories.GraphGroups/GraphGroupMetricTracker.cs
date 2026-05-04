@@ -36,7 +36,7 @@ namespace Repositories.GraphGroups
                 const int deltaResourceUnitCost = 5;
                 _logger.LogInformationWithRunId(runId, $"Resource unit cost of {Enum.GetName(typeof(QueryType), queryType)} - {deltaResourceUnitCost}");
                 TrackResourceUnitsUsedByTypeEvent(deltaResourceUnitCost, queryType, runId);
-                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType", "QueryType")
+                _telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName)
                                 .TrackValue(deltaResourceUnitCost, operationType.ToString(), queryType.ToString());
                 return;
             }

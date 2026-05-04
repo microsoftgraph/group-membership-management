@@ -77,7 +77,7 @@ namespace Repositories.Contracts.Helpers
             logger.LogInformation("Resource unit cost of {QueryType} is {ResourceUnitsUsed}", queryType, ruu.Value);
 
             TrackResourceUnitsUsedByTypeEvent(telemetryClient, ruu.Value, queryType, resolvedRunId);
-            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, "OperationType", "QueryType")
+            telemetryClient.GetMetric(TelemetryConstants.ResourceUnitsMetricName, TelemetryConstants.OperationTypeDimensionName, TelemetryConstants.QueryTypeDimensionName)
                            .TrackValue(ruu.Value, operationType.ToString(), queryType.ToString());
 
             var telemetryResult = new GraphTelemetryResult
@@ -114,7 +114,7 @@ namespace Repositories.Contracts.Helpers
             {
                 { "RunId", resolvedRunId?.ToString() ?? string.Empty },
                 { "ResourceUnitsUsed", ruu.ToString() },
-                { "QueryType", queryType.ToString() }
+                { TelemetryConstants.QueryTypeDimensionName, queryType.ToString() }
             };
 
             telemetryClient.TrackEvent(TelemetryConstants.ResourceUnitsEventName, ruuByTypeEvent);
