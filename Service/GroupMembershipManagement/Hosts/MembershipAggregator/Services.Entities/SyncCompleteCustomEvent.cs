@@ -1,10 +1,11 @@
-
 // Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.using System;
+// Licensed under the MIT license.
+
+using Models;
 
 namespace MembershipAggregator.Services.Entities
 {
-    public class SyncCompleteCustomEvent
+    public class SyncCompleteCustomEvent : ISyncCompleteCustomEvent
     {
         public string TargetOfficeGroupId { get; set; } = "N/A";
         public string Destination { get; set; } = "N/A";

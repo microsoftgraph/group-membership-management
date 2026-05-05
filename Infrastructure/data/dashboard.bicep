@@ -719,19 +719,29 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
               settings: {
                 content: {
-                  Query: 'customEvents\n| where name == "SyncComplete"\n| order by timestamp desc\n| project timestamp,\n    Destination = tostring(customDimensions["Destination"]),\n    Type = tostring(customDimensions["Type"]),\n    Result = tostring(customDimensions["Result"]),\n    DryRun = tobool(customDimensions["IsDryRunEnabled"])\n| where Result in ("Success", "PartialSuccess") and DryRun == false\n| extend ResultLabel = case(Result == "Success", "Success Jobs", Result == "PartialSuccess", "Partial Success Jobs", Result)\n| summarize by Destination, Type, ResultLabel, Bin = bin(timestamp, 1d)\n| summarize count() by Bin, ResultLabel\n\n'
+                  // TODO: 7+ days after this deploys to prod, drop the
+                  // customEvents branch — by then the dashboard's window contains
+                  // only customMetrics data. Simplify back to:
+                  //   customMetrics
+                  //   | where name == "SyncComplete"
+                  //   | extend Result = tostring(customDimensions["Result"])
+                  //   | where Result in ("Success", "PartialSuccess")
+                  //   | extend customMetric_valueSum = iif(itemType == 'customMetric', valueSum, todouble(''))
+                  //   | extend ResultLabel = case(Result == "Success", "Success Jobs", "Partial Success Jobs")
+                  //   | summarize ['customMetrics/SyncComplete_sum'] = sum(customMetric_valueSum) by bin(timestamp, 1d), ResultLabel
+                  Query: 'let migrationStart = toscalar(\n    customMetrics\n    | where name == "SyncComplete"\n    | summarize min(timestamp)\n);\nunion\n(\n    customMetrics\n    | where name == "SyncComplete"\n    | extend Result = tostring(customDimensions["Result"])\n    | where Result in ("Success", "PartialSuccess")\n    | extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n),\n(\n    customEvents\n    | where name == "SyncComplete"\n    | where isnull(migrationStart) or timestamp < migrationStart\n    | extend Result = tostring(customDimensions["Result"])\n    | extend DryRun = tobool(customDimensions["IsDryRunEnabled"])\n    | where Result in ("Success", "PartialSuccess") and DryRun == false\n    | extend customMetric_valueSum = todouble(1)\n)\n| extend ResultLabel = case(Result == "Success", "Success Jobs", "Partial Success Jobs")\n| summarize [\'customMetrics/SyncComplete_sum\'] = sum(customMetric_valueSum) by bin(timestamp, 1d), ResultLabel\n'
                   ControlType: 'FrameControlChart'
                   SpecificChart: 'StackedColumn'
                   PartTitle: 'Sync Jobs Successful By Destination'
                   Dimensions: {
                     xAxis: {
-                      name: 'Bin'
+                      name: 'timestamp'
                       type: 'datetime'
                     }
                     yAxis: [
                       {
-                        name: 'count_'
-                        type: 'long'
+                        name: 'customMetrics/SyncComplete_sum'
+                        type: 'real'
                       }
                     ]
                     splitBy: [

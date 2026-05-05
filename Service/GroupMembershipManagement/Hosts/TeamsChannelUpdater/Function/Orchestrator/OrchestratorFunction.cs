@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Models;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using Microsoft.ApplicationInsights;
 using System.Linq;
 using Models.ServiceBus;
@@ -29,11 +28,6 @@ namespace Hosts.TeamsChannelUpdater
         private readonly TelemetryClient _telemetryClient;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients = null;
         private readonly IGMMResources _gmmResources = null;
-        enum Metric
-        {
-            SyncComplete,
-            SyncJobTimeElapsedSeconds
-        }
 
         public OrchestratorFunction(TelemetryClient telemetryClient,
             IEmailSenderRecipient emailSenderAndRecipients,
@@ -175,11 +169,11 @@ namespace Hosts.TeamsChannelUpdater
                     if (membersAddedResponse.SuccessCount + membersAddedResponse.UsersNotFound.Count == membersToAdd.Count &&
                         membersRemovedResponse.SuccessCount + membersRemovedResponse.UsersNotFound.Count == membersToRemove.Count)
                     {
-                        TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
+                        SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Success");
                     }
                     else
                     {
-                        TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "PartialSuccess");
+                        SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "PartialSuccess");
                     }
                 }
 
@@ -203,26 +197,11 @@ namespace Hosts.TeamsChannelUpdater
 
                 if (!context.IsReplaying)
                 {
-                    TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
+                    SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
                 }
 
                 throw;
             }
-        }
-
-        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
-        {
-            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
-
-            syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
-            syncCompleteEvent.Result = successStatus;
-
-            var syncCompleteDict = syncCompleteEvent.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
-
-            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
         private TeamsChannelUpdaterSubOrchestratorRequest CreateTeamsGroupUpdaterRequest(bool isInitialSync, SyncJob syncJob, ICollection<AzureADTeamsUser> members, AzureADTeamsChannel teamsChannelInfo, RequestType type)

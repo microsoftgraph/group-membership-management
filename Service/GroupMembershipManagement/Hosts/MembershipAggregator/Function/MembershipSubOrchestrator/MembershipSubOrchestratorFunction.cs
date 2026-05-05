@@ -19,10 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using Metric = MembershipAggregator.Services.Entities.Metric;
-using SyncCompleteCustomEvent = MembershipAggregator.Services.Entities.SyncCompleteCustomEvent;
 
 namespace Hosts.MembershipAggregator
 {
@@ -458,7 +455,7 @@ namespace Hosts.MembershipAggregator
                 });
 
                 if (!context.IsReplaying)
-                    TrackSyncCompleteEvent(context, dbSyncJob, syncCompleteEvent, "Success");
+                    SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, dbSyncJob.LastSuccessfulStartTime, "Success");
 
                 await context.CallActivityAsync(nameof(JobStatusUpdaterFunction),
                                 new JobStatusUpdaterRequest
@@ -511,21 +508,6 @@ namespace Hosts.MembershipAggregator
                     FilePath = request.DestinationMembershipFilePath
                 });
             }
-        }
-
-        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
-        {
-            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
-
-            syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
-            syncCompleteEvent.Result = successStatus;
-
-            var syncCompleteDict = syncCompleteEvent.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
-
-            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
     }
 }

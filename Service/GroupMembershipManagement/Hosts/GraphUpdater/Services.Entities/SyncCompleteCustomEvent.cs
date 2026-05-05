@@ -3,10 +3,11 @@
 
 using System;
 using System.Collections.Generic;
+using Models;
 
 namespace Services.Entities
 {
-    public class SyncCompleteCustomEvent
+    public class SyncCompleteCustomEvent : ISyncCompleteCustomEvent
     {
         public string TargetOfficeGroupId { get; set; } = "N/A";
         public string Destination { get; set; } = "N/A";

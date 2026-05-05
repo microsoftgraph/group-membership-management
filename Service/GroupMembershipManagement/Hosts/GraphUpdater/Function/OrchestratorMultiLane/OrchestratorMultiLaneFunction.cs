@@ -22,7 +22,6 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.Linq;
 using System.Net.Http;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,11 +35,6 @@ namespace Hosts.GraphUpdater
         private readonly IGMMResources _gmmResources = null;
         private readonly IDeltaCachingConfig _deltaCachingConfig = null;
         private readonly RunLimiterSettings _runLimiterSettings;
-        enum Metric
-        {
-            SyncComplete,
-            SyncJobTimeElapsedSeconds
-        }
 
         public OrchestratorMultiLaneFunction(
             TelemetryClient telemetryClient,
@@ -274,7 +268,10 @@ namespace Hosts.GraphUpdater
                                                         AdditionalContentParams = additionalContent
                                                     });
 
-                    TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
+                    if (!context.IsReplaying)
+                    {
+                        SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
+                    }
 
                     logger.FunctionCompleted(nameof(OrchestratorMultiLaneFunction));
 
@@ -333,16 +330,16 @@ namespace Hosts.GraphUpdater
                     {
                         if (syncStatus == SyncStatus.Error)
                         {
-                            TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
+                            SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
                         }
                         else if (jobState.TotalMembersAdded + jobState.TotalMembersToAddNotFound + jobState.TotalMembersToAddAlreadyExist == jobState.TotalMembersToAdd &&
                              jobState.TotalMembersRemoved + jobState.TotalMembersToRemoveNotFound == jobState.TotalMembersToRemove)
                         {
-                            TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Success");
+                            SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Success");
                         }
                         else
                         {
-                            TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "PartialSuccess");
+                            SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "PartialSuccess");
                         }
 
                         _telemetryClient.TrackMetric(nameof(Services.Entities.Metric.MembersNotFound), jobState.TotalMembersToAddNotFound + jobState.TotalMembersToRemoveNotFound);
@@ -392,7 +389,10 @@ namespace Hosts.GraphUpdater
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Error, ResultStatus = ResultStatus.Failure, SyncJob = syncJob });
                 }
 
-                TrackSyncCompleteEvent(context, syncJob, syncCompleteEvent, "Failure");
+                if (!context.IsReplaying)
+                {
+                    SyncCompleteTelemetryHelper.TrackSyncCompleteEventAndMetric(_telemetryClient, syncCompleteEvent, context.CurrentUtcDateTime, syncJob.LastSuccessfulStartTime, "Failure");
+                }
 
                 shouldEmitCompletion = true;
 
@@ -569,21 +569,6 @@ namespace Hosts.GraphUpdater
                 { "UsersNotFound", usersNotFoundCount.ToString() }
             };
             _telemetryClient.TrackEvent("UsersNotFoundCount", usersNotFoundEvent);
-        }
-
-        private void TrackSyncCompleteEvent(TaskOrchestrationContext context, SyncJob syncJob, SyncCompleteCustomEvent syncCompleteEvent, string successStatus)
-        {
-            var timeElapsedForJob = (context.CurrentUtcDateTime - syncJob.LastSuccessfulStartTime).TotalSeconds;
-            _telemetryClient.TrackMetric(nameof(Metric.SyncJobTimeElapsedSeconds), timeElapsedForJob);
-
-            syncCompleteEvent.SyncJobTimeElapsedSeconds = timeElapsedForJob.ToString();
-            syncCompleteEvent.Result = successStatus;
-
-            var syncCompleteDict = syncCompleteEvent.GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .ToDictionary(prop => prop.Name, prop => (string)prop.GetValue(syncCompleteEvent, null));
-
-            _telemetryClient.TrackEvent(nameof(Metric.SyncComplete), syncCompleteDict);
         }
 
         private static JobStatusUpdaterRequest CreateJobStatusUpdaterRequest(SyncJob syncJob, SyncStatus syncStatus, int thresholdViolations, int usersAdded = 0, int usersRemoved = 0)

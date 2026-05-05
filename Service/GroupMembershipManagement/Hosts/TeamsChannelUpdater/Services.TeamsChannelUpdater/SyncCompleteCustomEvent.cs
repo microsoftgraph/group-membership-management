@@ -1,9 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Models;
+
 namespace Hosts.TeamsChannelUpdater
 {
-    public class SyncCompleteCustomEvent
+    public class SyncCompleteCustomEvent : ISyncCompleteCustomEvent
     {
         public string Destination { get; set; } = "N/A";
         public string GroupId { get; set; } = "N/A";
