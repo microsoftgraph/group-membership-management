@@ -413,6 +413,206 @@ namespace Services.Notifier.Tests
             Assert.IsFalse(string.IsNullOrWhiteSpace(html));
         }
 
+        // ── JobPurgingWarning ────────────────────────────────────────────────────
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ReturnsNonEmptyHtml()
+        {
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ContainsGroupName()
+        {
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, GroupName);
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ContainsGroupId()
+        {
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, GroupId);
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ContainsSentDate()
+        {
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, SentDate);
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ContainsCtaUrl()
+        {
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, JobUrl);
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ContainsStatusInactiveSinceAndPurgeDate()
+        {
+            var email = MakeJobPurgingWarningEmail(
+                status: "CustomerPaused",
+                inactiveSince: "April 07, 2026",
+                scheduledPurgeDate: "May 07, 2026");
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, "CustomerPaused");
+            StringAssert.Contains(html, "April 07, 2026");
+            StringAssert.Contains(html, "May 07, 2026");
+        }
+
+        [TestMethod]
+        [DataRow("CustomerPaused")]
+        [DataRow("MembershipDataNotFound")]
+        [DataRow("DestinationGroupNotFound")]
+        [DataRow("SecurityGroupNotFound")]
+        [DataRow("NotOwnerOfDestinationGroup")]
+        [DataRow("ThresholdExceeded")]
+        [DataRow("SubmissionRejected")]
+        [DataRow("GuestUsersCannotBeAddedToUnifiedGroup")]
+        [DataRow("NestedGroupsFound")]
+        [DataRow("UnknownStatus")]
+        [DataRow("")]
+        public async Task BuildJobPurgingWarningFallbackAsync_ReturnsNonEmptyHtml_ForAllStatuses(string status)
+        {
+            var email = MakeJobPurgingWarningEmail(status: status);
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html), $"Expected non-empty HTML for status={status}");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_UsesGenericDescription_WhenStatusIsUnknown()
+        {
+            var email = MakeJobPurgingWarningEmail(status: "BogusStatus");
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            // Generic description includes the literal status token in its body.
+            StringAssert.Contains(html, "BogusStatus");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_UsesStatusSpecificDescription_WhenStatusIsKnown()
+        {
+            var pausedEmail = MakeJobPurgingWarningEmail(status: "CustomerPaused");
+            var pausedHtml = await _builder.BuildJobPurgingWarningFallbackAsync(pausedEmail, GroupName, GroupId, JobUrl, SentDate);
+
+            var noOwnerEmail = MakeJobPurgingWarningEmail(status: "NotOwnerOfDestinationGroup");
+            var noOwnerHtml = await _builder.BuildJobPurgingWarningFallbackAsync(noOwnerEmail, GroupName, GroupId, JobUrl, SentDate);
+
+            // Different statuses must produce different description content.
+            Assert.AreNotEqual(pausedHtml, noOwnerHtml,
+                "Status-specific descriptions should differ between CustomerPaused and NotOwnerOfDestinationGroup.");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_HtmlEncodesGroupName()
+        {
+            const string maliciousName = "<script>alert('xss')</script>";
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, maliciousName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(html.Contains("<script>"), "Raw <script> tag must not appear in output");
+            StringAssert.Contains(html, "&lt;script&gt;");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_HtmlEncodesStatus()
+        {
+            var email = MakeJobPurgingWarningEmail(status: "<img src=x onerror=alert(1)>");
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(html.Contains("<img"), "Raw <img> tag must not appear in output");
+            StringAssert.Contains(html, "&lt;img");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_BlocksNonHttpCtaUrl()
+        {
+            const string javascriptUrl = "javascript:alert(1)";
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, javascriptUrl, SentDate);
+            Assert.IsFalse(html.Contains("href=\"javascript:"), "javascript: URL must not appear as an href");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ToleratesNullAdditionalParams()
+        {
+            var email = new EmailMessage { Content = "JobPurgingWarningEmailBody" };
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_ToleratesGraphFailure_StillReturnsHtml()
+        {
+            _graphGroupRepository
+                .Setup(g => g.GetGroupEmailAsync(It.IsAny<Guid>()))
+                .ThrowsAsync(new Exception("Graph unavailable"));
+
+            var email = MakeJobPurgingWarningEmail();
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            Assert.IsFalse(html.Contains("testgroup@contoso.com"));
+        }
+
+        [TestMethod]
+        [DataRow("customerpaused")]
+        [DataRow("CUSTOMERPAUSED")]
+        [DataRow("CustomerPaused")]
+        public async Task BuildJobPurgingWarningFallbackAsync_StatusKeyLookupIsCaseInsensitive(string status)
+        {
+            // ResolvePurgeWarningStatusKey round-trips through SyncStatus enum (ignoreCase: true)
+            // so any casing should hit the CustomerPaused-specific description, not Generic.
+            var email = MakeJobPurgingWarningEmail(status: status);
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            // Generic description begins "The job for ... has been in {0} status since"; the
+            // CustomerPaused description begins "This sync has been **paused by the owner**".
+            // Any non-Generic match for a known status proves canonicalization worked.
+            StringAssert.Contains(html, "paused by the owner");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_FallsBackToUnknownGroupName_AndOmitsEmptyBoldPairs()
+        {
+            // When destinationGroupName is empty AND AdditionalContentParams[5] is also empty,
+            // the builder substitutes the localized "your group" placeholder before the markdown
+            // step runs. This guards both the fallback and the empty-bold-pair sanitizer:
+            // **{5}** must never collapse to **** or ** ** in the rendered output.
+            var email = new EmailMessage
+            {
+                Content = "JobPurgingWarningEmailBody",
+                AdditionalContentParams = new[]
+                {
+                    "CustomerPaused", "April 07, 2026", "30", "May 07, 2026", GroupId, string.Empty
+                }
+            };
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(
+                email, destinationGroupName: "", GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(html.Contains("****"), "Empty bold pair (****) should not appear in output");
+            Assert.IsFalse(html.Contains("** **"), "Empty bold pair (** **) should not appear in output");
+            StringAssert.Contains(html, "your group");
+        }
+
+        [TestMethod]
+        public async Task BuildJobPurgingWarningFallbackAsync_DiffersInCalloutBody_BetweenStatuses()
+        {
+            // Each status should produce a distinct CalloutBody.{Status} resource. This is the
+            // owner-action-guidance counterpart to the Description-uniqueness test above.
+            var pausedHtml = await _builder.BuildJobPurgingWarningFallbackAsync(
+                MakeJobPurgingWarningEmail(status: "CustomerPaused"), GroupName, GroupId, JobUrl, SentDate);
+            var nestedHtml = await _builder.BuildJobPurgingWarningFallbackAsync(
+                MakeJobPurgingWarningEmail(status: "NestedGroupsFound"), GroupName, GroupId, JobUrl, SentDate);
+
+            StringAssert.Contains(pausedHtml, "Resume the sync");
+            StringAssert.Contains(nestedHtml, "flat membership");
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────────
 
         private static EmailMessage MakeSyncStartedEmail(string requestor = "admin@contoso.com")
@@ -450,6 +650,20 @@ namespace Services.Notifier.Tests
                 Content = "SubmissionRejectedEmailBody",
                 // [0]=groupId, [1]=groupName, [2]=rejectionReason, [3]=requestor
                 AdditionalContentParams = new[] { GroupId, GroupName, reason, requestor }
+            };
+        }
+
+        private static EmailMessage MakeJobPurgingWarningEmail(
+            string status = "CustomerPaused",
+            string inactiveSince = "April 07, 2026",
+            string daysBeforePurging = "30",
+            string scheduledPurgeDate = "May 07, 2026")
+        {
+            return new EmailMessage
+            {
+                Content = "JobPurgingWarningEmailBody",
+                // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
+                AdditionalContentParams = new[] { status, inactiveSince, daysBeforePurging, scheduledPurgeDate, GroupId, GroupName }
             };
         }
     }

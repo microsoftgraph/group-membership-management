@@ -198,7 +198,11 @@ namespace Repositories.Mail
 
             string adaptiveCardJson = _localizationRepository.TranslateSetting(CardTemplate.DefaultCardTemplate);
 
-            string groupId = emailMessage?.AdditionalContentParams[0];
+            // Most notification types put the destination GroupId at AdditionalContentParams[0],
+            // but JobPurgingWarning (AzureMaintenanceService.SendWarningEmailAsync) puts the
+            // SyncStatus at [0] and the GroupId at [4]. Pick the right index per type so the
+            // styled fallback renders the correct OBJECT ID and resolves the destination group.
+            string groupId = GetParamSafe(emailMessage, GetGroupIdIndex(emailMessage?.Content));
             string destinationGroupName = string.IsNullOrEmpty(emailMessage?.DestinationGroupName) ? "" : emailMessage.DestinationGroupName;
             var urlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.UIUrl);
             var dashboardUrlSetting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.DashboardUrl);
@@ -235,6 +239,8 @@ namespace Repositories.Mail
                     styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                else if (string.Equals(emailMessage?.Content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
+                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))
                     styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
@@ -309,7 +315,10 @@ namespace Repositories.Mail
                 return;
             }
 
-            if (Guid.TryParse(emailMessage.AdditionalContentParams[0], out Guid groupId))
+            var groupIdIndex = GetGroupIdIndex(emailMessage.Content);
+            var rawGroupId = GetParamSafe(emailMessage, groupIdIndex);
+
+            if (Guid.TryParse(rawGroupId, out Guid groupId))
             {
                 _mailRepositoryLogger.LogInformationWithRunId(runId, $"Successfully parsed group ID: {groupId}");
 
@@ -321,8 +330,24 @@ namespace Repositories.Mail
             }
             else
             {
-                _mailRepositoryLogger.LogInformationWithRunId(runId, $"The provided value '{emailMessage.AdditionalContentParams[0]}' is not a valid GUID.");
+                _mailRepositoryLogger.LogInformationWithRunId(runId, $"The provided value '{rawGroupId}' is not a valid GUID.");
             }
+        }
+
+        // Most notification types put GroupId at AdditionalContentParams[0]; JobPurgingWarning
+        // (AzureMaintenanceService.SendWarningEmailAsync) puts Status at [0] and GroupId at [4].
+        private static int GetGroupIdIndex(string? content)
+        {
+            return string.Equals(content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase)
+                ? 4
+                : 0;
+        }
+
+        private static string GetParamSafe(EmailMessage emailMessage, int index)
+        {
+            return emailMessage?.AdditionalContentParams != null && emailMessage.AdditionalContentParams.Length > index
+                ? emailMessage.AdditionalContentParams[index]
+                : string.Empty;
         }
         private AsyncPolicyWrap<HttpResponseMessage> GetHttpResponseMessageRetryPolicy(Guid? runId)
         {

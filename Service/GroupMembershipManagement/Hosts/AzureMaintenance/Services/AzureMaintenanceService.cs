@@ -23,19 +23,6 @@ namespace Services
 {
     public class AzureMaintenanceService : IAzureMaintenanceService
 	{
-        private static readonly SyncStatus[] _purgeEligibleStatuses =
-        [
-            SyncStatus.CustomerPaused,
-            SyncStatus.DestinationGroupNotFound,
-            SyncStatus.MembershipDataNotFound,
-            SyncStatus.NotOwnerOfDestinationGroup,
-            SyncStatus.SecurityGroupNotFound,
-            SyncStatus.ThresholdExceeded,
-            SyncStatus.SubmissionRejected,
-            SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
-            SyncStatus.NestedGroupsFound
-        ];
-
         // Any DateTime at or below this value is treated as an unset sentinel.
         // Covers both the C# default SqlDateTime.MinValue (1753-01-01) and the
         // SQL column default (1601-01-01) used for never-populated rows.
@@ -78,7 +65,7 @@ namespace Services
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
         {
-            var jobs = await _syncJobRepository.GetSyncJobsAsync(true, _purgeEligibleStatuses);
+            var jobs = await _syncJobRepository.GetSyncJobsAsync(true, PurgeEligibleStatuses.All);
 
             var jobsToBePurged = ApplyPurgingFilters(jobs).ToList();
 
@@ -275,7 +262,7 @@ namespace Services
 
         public async Task<List<SyncJob>> GetJobsApproachingPurgingAsync()
         {
-            var jobsEligibleForPurging = await _syncJobRepository.GetSyncJobsAsync(false, _purgeEligibleStatuses);
+            var jobsEligibleForPurging = await _syncJobRepository.GetSyncJobsAsync(false, PurgeEligibleStatuses.All);
 
             var warningTargetDate = DateTime.UtcNow.Date.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurgingToSendWarning - _handleInactiveJobsConfig.NumberOfDaysBeforePurging);
 

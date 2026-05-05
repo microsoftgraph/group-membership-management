@@ -19,6 +19,15 @@ namespace Repositories.Mail
         private const int RejectionReasonIndex = 2;
         private const int RejectionRequestorIndex = 3;
 
+
+        // JobPurgingWarning AdditionalContentParams indices (set by AzureMaintenanceService.SendWarningEmailAsync):
+        // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
+        private const int PurgeWarningStatusIndex = 0;
+        private const int PurgeWarningInactiveSinceIndex = 1;
+        private const int PurgeWarningDaysBeforePurgingIndex = 2;
+        private const int PurgeWarningScheduledPurgeDateIndex = 3;
+        private const int PurgeWarningGroupNameIndex = 5;
+
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly ILogger<MailFallbackBuilder> _logger;
@@ -118,6 +127,92 @@ namespace Repositories.Mail
             );
         }
 
+        public async Task<string> BuildJobPurgingWarningFallbackAsync(
+            EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
+        {
+            var status              = GetParam(emailMessage, PurgeWarningStatusIndex);
+            var inactiveSince       = GetParam(emailMessage, PurgeWarningInactiveSinceIndex);
+            var daysBeforePurging   = GetParam(emailMessage, PurgeWarningDaysBeforePurgingIndex);
+            var scheduledPurgeDate  = GetParam(emailMessage, PurgeWarningScheduledPurgeDateIndex);
+            // Prefer the resolved DestinationGroupName, but fall back to the value carried in
+            // AdditionalContentParams[5] (set by AzureMaintenanceService) when the caller could
+            // not resolve a name. An empty group name corrupts the markdown bold parser via
+            // **{5}** -> ****, so we treat blank as "unknown" rather than letting it propagate.
+            var groupName = !string.IsNullOrWhiteSpace(destinationGroupName)
+                ? destinationGroupName
+                : GetParam(emailMessage, PurgeWarningGroupNameIndex, defaultValue: string.Empty);
+            if (string.IsNullOrWhiteSpace(groupName))
+            {
+                groupName = _localizationRepository.TranslateSetting("FallbackUnknownGroupName");
+            }
+
+            var statusKey = ResolvePurgeWarningStatusKey(status);
+
+            // Status-aware description and callout body. Uses positional tokens consistent with
+            // the existing JobPurgingWarningEmailBody resource: {0}=Status, {1}=InactiveSince,
+            // {2}=NumberOfDaysBeforePurging, {3}=ScheduledPurgeDate, {5}=GroupName.
+            var description = _localizationRepository.TranslateSetting(
+                $"JobPurgingWarningFallback.Description.{statusKey}",
+                status, inactiveSince, daysBeforePurging, scheduledPurgeDate, string.Empty, groupName);
+            var calloutBody = _localizationRepository.TranslateSetting(
+                $"JobPurgingWarningFallback.CalloutBody.{statusKey}");
+
+            var rows = await BuildBaseRowsAsync(groupId, requestor: string.Empty);
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.Status"),
+                    System.Net.WebUtility.HtmlEncode(status),
+                    "font-weight:600;color:#603900;"));
+            }
+            if (!string.IsNullOrWhiteSpace(inactiveSince))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.InactiveSince"),
+                    System.Net.WebUtility.HtmlEncode(inactiveSince), ""));
+            }
+            if (!string.IsNullOrWhiteSpace(scheduledPurgeDate))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.ScheduledPurgeDate"),
+                    System.Net.WebUtility.HtmlEncode(scheduledPurgeDate),
+                    "font-weight:600;color:#603900;"));
+            }
+
+            return FormatTemplate(
+                HtmlTemplates.JobPurgingWarningTemplate,
+                prefix: "JobPurgingWarningFallback",
+                groupName: destinationGroupName,
+                headerText: _localizationRepository.TranslateSetting("JobPurgingWarningFallback.HeaderReason"),
+                description: description,
+                calloutBody: calloutBody,
+                rows: rows,
+                jobUrl: jobUrl,
+                sentDate: sentDate
+            );
+        }
+
+        // Normalizes the raw status string from the email message into the canonical PascalCase
+        // SyncStatus name used in resx keys (JobPurgingWarningFallback.Description.{Status} /
+        // .CalloutBody.{Status}). Round-tripping through the enum protects against case-mismatch
+        // resx misses for inputs like "customerpaused".
+        private string ResolvePurgeWarningStatusKey(string status)
+        {
+            if (Enum.TryParse<SyncStatus>(status, ignoreCase: true, out var parsed)
+                && Array.IndexOf(PurgeEligibleStatuses.All, parsed) >= 0)
+            {
+                return parsed.ToString();
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                _logger.LogWarning(
+                    "Unknown SyncStatus '{Status}' for JobPurgingWarning fallback; using Generic description.",
+                    status);
+            }
+            return "Generic";
+        }
+
         private async Task<StringBuilder> BuildBaseRowsAsync(string groupId, string requestor)
         {
             var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
@@ -203,7 +298,6 @@ namespace Repositories.Mail
                 "SyncPurgedForInactivityEmailBody" => "PurgedForInactivity",
                 "NoDataEmailContent" => "NoData",
                 "SyncJobDisabledEmailBody" => "Generic",
-                "JobPurgingWarningEmailBody" => "Generic",
                 _ => "Generic"
             };
         }
@@ -252,6 +346,12 @@ namespace Repositories.Mail
                 return string.Empty;
 
             var html = System.Net.WebUtility.HtmlEncode(content);
+
+            // Strip empty bold pairs (e.g. **{0}** where {0}="" produces ****, or stray ** **).
+            // This protects the bold-pair parser below from being misaligned by empty placeholders,
+            // which otherwise causes adjacent **bold** spans to render incorrectly and trailing ** to leak.
+            // Narrowed from `\*{4,}` so that legitimate runs of asterisks in user-supplied content are preserved.
+            html = Regex.Replace(html, @"\*\*\s*\*\*", "");
 
             // Convert **bold** to <strong>
             html = Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");

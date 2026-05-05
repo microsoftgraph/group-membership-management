@@ -1456,4 +1456,93 @@ Consider revising your request and resubmitting a new configuration change throu
   <data name="SubmissionRejectedFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
   </data>
+  <data name="FallbackDetailsRow.Status" xml:space="preserve">
+    <value>STATUS</value>
+  </data>
+  <data name="FallbackDetailsRow.InactiveSince" xml:space="preserve">
+    <value>INACTIVE SINCE</value>
+  </data>
+  <data name="FallbackDetailsRow.ScheduledPurgeDate" xml:space="preserve">
+    <value>SCHEDULED PURGE DATE</value>
+  </data>
+  <data name="FallbackUnknownGroupName" xml:space="preserve">
+    <value>your group</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Badge" xml:space="preserve">
+    <value>WARNING</value>
+  </data>
+  <data name="JobPurgingWarningFallback.HeaderReason" xml:space="preserve">
+    <value>Sync job will be purged soon</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutTitle" xml:space="preserve">
+    <value>WHAT HAPPENS IF YOU DO NOTHING</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CtaLabel" xml:space="preserve">
+    <value>Go to GMM UI</value>
+  </data>
+  <data name="JobPurgingWarningFallback.FooterExplanation" xml:space="preserve">
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for critical events that require attention.</value>
+  </data>
+  <!-- Per-status descriptions. Tokens: {0}=Status, {1}=InactiveSince, {2}=NumberOfDaysBeforePurging, {3}=ScheduledPurgeDate, {5}=GroupName -->
+  <data name="JobPurgingWarningFallback.Description.CustomerPaused" xml:space="preserve">
+    <value>This sync has been **paused by the owner** since **{1}**. GMM only retains paused jobs for **{2} days**. Unless the sync is resumed, the job for **{5}** will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.MembershipDataNotFound" xml:space="preserve">
+    <value>GMM has been unable to find membership data for **{5}** since **{1}**. Jobs in the **MembershipDataNotFound** state are retained for **{2} days**. Unless the underlying data source is restored, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.DestinationGroupNotFound" xml:space="preserve">
+    <value>The destination group for **{5}** has not been found since **{1}**. Jobs whose destination group is missing are retained for **{2} days**. Unless the group is restored, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.SecurityGroupNotFound" xml:space="preserve">
+    <value>One or more configured source security groups for **{5}** have not been found since **{1}**. Jobs in this state are retained for **{2} days**. Unless the configuration is updated, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.NotOwnerOfDestinationGroup" xml:space="preserve">
+    <value>GMM has not been an owner of the destination group for **{5}** since **{1}**. GMM requires owner permissions to manage membership and only retains jobs in this state for **{2} days**. Unless GMM is re-added as an owner, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.ThresholdExceeded" xml:space="preserve">
+    <value>A drastic membership change for **{5}** has been awaiting owner approval since **{1}**. Jobs blocked on threshold approval are retained for **{2} days**. Unless the change is approved or the configuration is updated, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.SubmissionRejected" xml:space="preserve">
+    <value>The most recent configuration submission for **{5}** was rejected on **{1}** and has not been resubmitted. Rejected submissions are retained for **{2} days**. Unless a new submission is approved, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.GuestUsersCannotBeAddedToUnifiedGroup" xml:space="preserve">
+    <value>Guest users have been detected in the source for **{5}** since **{1}**. GMM cannot add guest users to a Unified group, and only retains jobs in this state for **{2} days**. Unless the source configuration is corrected, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.NestedGroupsFound" xml:space="preserve">
+    <value>Nested groups have been detected in the source for **{5}** since **{1}**. GMM does not support nested groups and only retains jobs in this state for **{2} days**. Unless the source is flattened, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.Description.Generic" xml:space="preserve">
+    <value>The job for **{5}** has been in **{0}** status since **{1}**. GMM only retains jobs in this state for **{2} days**. Unless this issue is resolved, the job will be permanently purged on **{3}**.</value>
+  </data>
+  <!-- Per-status callout bodies (action guidance). -->
+  <data name="JobPurgingWarningFallback.CalloutBody.CustomerPaused" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch to restore membership management. **Resume the sync from the GMM UI** to keep the job active.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.MembershipDataNotFound" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Verify your source data and membership definition in the GMM UI before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.DestinationGroupNotFound" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Restore the destination group or update the sync configuration before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.SecurityGroupNotFound" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Update the source group configuration in the GMM UI before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.NotOwnerOfDestinationGroup" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Add GMM back as an owner of the destination group before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.ThresholdExceeded" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Approve the pending threshold change or adjust your membership definition before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.SubmissionRejected" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Resubmit a corrected configuration through the GMM UI before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.GuestUsersCannotBeAddedToUnifiedGroup" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Update the source configuration to exclude guest users before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.NestedGroupsFound" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Replace nested groups in the source with flat membership lists before the purge date.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.CalloutBody.Generic" xml:space="preserve">
+    <value>The job will be permanently removed and you will need to re-onboard from scratch. Take one of the following actions before the purge date: resume the sync, update the configuration, or contact support for assistance.</value>
+  </data>
 </root>
