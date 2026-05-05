@@ -65,6 +65,7 @@ namespace SqlDataChecker.Tests
 
             Assert.IsTrue(ex.Message.Contains("Column1"));
             Assert.IsTrue(ex.Message.Contains("FAILED"));
+            Assert.IsTrue(ex.Message.Contains("threshold: 50%"));
         }
 
         [TestMethod]
@@ -118,6 +119,7 @@ namespace SqlDataChecker.Tests
                 () => InvokeValidateColumn(request));
 
             Assert.IsTrue(ex.Message.Contains("Column1"));
+            Assert.IsTrue(ex.Message.Contains("threshold: 20%"));
             Assert.IsFalse(ex.Message.Contains("Column2"));
         }
 
@@ -223,6 +225,31 @@ namespace SqlDataChecker.Tests
             };
 
             // 40% < 50% default — should not throw
+            await InvokeValidateColumn(request);
+        }
+
+        [TestMethod]
+        public async Task ValidateColumn_FractionalThreshold_PrecisionPreserved()
+        {
+            var request = new DifferenceCheckerRequest
+            {
+                LatestNullColumns = new Dictionary<string, int>
+                {
+                    { "Column1", 5001 }
+                },
+                PreviousNullColumns = new Dictionary<string, int>
+                {
+                    { "Column1", 0 }
+                },
+                LatestNumberOfRows = 10000,
+                PreviousNumberOfRows = 10000,
+                ColumnThresholds = new Dictionary<string, double>
+                {
+                    { "Column1", 0.5001 } // 50.01% threshold
+                }
+            };
+
+            // 5001/10000 = 50.01%, exactly at threshold — should NOT throw (strict >)
             await InvokeValidateColumn(request);
         }
 

@@ -299,7 +299,12 @@ namespace Services
                                     {
                                         if (attr.NullThreshold.HasValue && !string.IsNullOrWhiteSpace(attr.Name))
                                         {
-                                            thresholds[attr.Name] = attr.NullThreshold.Value;
+                                            var clampedThreshold = Math.Max(0.0, Math.Min(1.0, attr.NullThreshold.Value));
+                                            if (clampedThreshold != attr.NullThreshold.Value)
+                                            {
+                                                _loggingRepository.LogMessageAsync(new LogMessage { Message = $"NullThreshold for '{attr.Name}' was out of range ({attr.NullThreshold.Value}), clamped to {clampedThreshold}." }, VerbosityLevel.INFO).GetAwaiter().GetResult();
+                                            }
+                                            thresholds[attr.Name] = clampedThreshold;
                                         }
                                     }
                                 }

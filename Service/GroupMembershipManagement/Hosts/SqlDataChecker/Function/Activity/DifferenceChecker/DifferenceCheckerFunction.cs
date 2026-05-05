@@ -62,10 +62,11 @@ namespace SqlDataChecker
                         ? columnThresholds[item.Key]
                         : NullThresholdPercentage;
 
-                    if ((long)item.Value * 100 > (long)latestNumberOfRows * (long)(threshold * 100))
+                    var nullRatio = (double)item.Value / latestNumberOfRows;
+                    if (nullRatio > threshold)
                     {
-                        var nullPercentage = Math.Round((double)item.Value / latestNumberOfRows * 100, 2);
-                        columnsExceedingThreshold.Add($"{item.Key} ({nullPercentage}% null, threshold: {threshold * 100}%)");
+                        var nullPercentage = Math.Round(nullRatio * 100, 2);
+                        columnsExceedingThreshold.Add($"{item.Key} ({nullPercentage}% null, threshold: {Math.Round(threshold * 100, 2)}%)");
                     }
                 }
             }
@@ -76,12 +77,12 @@ namespace SqlDataChecker
 
             if (columnsExceedingThreshold.Count > 0)
             {
-                var message = $"SqlDataChecker FAILED: {columnsExceedingThreshold.Count} column(s) exceeded the {NullThresholdPercentage * 100}% null threshold: {string.Join(", ", columnsExceedingThreshold)}";
+                var message = $"SqlDataChecker FAILED: {columnsExceedingThreshold.Count} column(s) exceeded their null threshold: {string.Join(", ", columnsExceedingThreshold)}";
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = message }, VerbosityLevel.INFO);
                 _telemetryClient.TrackEvent("SqlDataCheckerNullThresholdExceeded", new Dictionary<string, string>
                 {
                     { "ColumnsExceeded", string.Join(", ", columnsExceedingThreshold) },
-                    { "Threshold", $"{NullThresholdPercentage * 100}%" },
+                    { "DefaultThreshold", $"{NullThresholdPercentage * 100}%" },
                     { "LatestRowCount", latestNumberOfRows.ToString() }
                 });
                 throw new InvalidOperationException(message);
