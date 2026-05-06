@@ -230,9 +230,10 @@ export const selectPagingOptions = createSelector(
     }
     if (filterDestinationName) {
       const subConditions: string[] = [];
+      const escapedName = filterDestinationName.replace(/'/g, "''");
 
-      subConditions.push("contains(tolower(DestinationName/Name), tolower('" + filterDestinationName + "'))");
-      subConditions.push("contains(tolower(DestinationEmail/Email), tolower('" + filterDestinationName + "'))");
+      subConditions.push("contains(tolower(DestinationName/Name), tolower('" + escapedName + "'))");
+      subConditions.push("contains(tolower(DestinationEmail/Email), tolower('" + escapedName + "'))");
 
       if (isGuidValid(filterDestinationName)) {
         subConditions.push("targetOfficeGroupId eq " + filterDestinationName);
