@@ -72,9 +72,10 @@ namespace Services.WebApi
             var additionalContentParameters = isRejection
                 ? new string[]
                 {
-                    syncJob.TargetOfficeGroupId.ToString(),  // {0} - Group ID
-                    groupName,                               // {1} - Group Name
-                    businessJustification!                   // {2} - Rejection Reason
+                    syncJob.TargetOfficeGroupId.ToString(),                      // {0} - Group ID
+                    groupName,                                                     // {1} - Group Name
+                    businessJustification!,                                        // {2} - Rejection Reason
+                    syncJob.Requestor ?? string.Empty                             // {3} - Requestor email
                 }
                 : new string[]
                 {

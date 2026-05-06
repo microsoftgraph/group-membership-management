@@ -178,8 +178,239 @@ namespace Services.Notifier.Tests
             const string javascriptUrl = "javascript:alert(1)";
             var email = MakeSyncStartedEmail();
             var html = await _builder.BuildSyncStartedFallbackAsync(email, GroupName, GroupId, javascriptUrl, SentDate);
-            // The href must be HTML-encoded and not contain the raw javascript: scheme as a link
             Assert.IsFalse(html.Contains("href=\"javascript:"), "javascript: URL must not appear as an href");
+        }
+
+        // ── SyncDisabled ─────────────────────────────────────────────────────────
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ReturnsNonEmptyHtml()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ContainsGroupName()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, GroupName);
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ContainsGroupId()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, GroupId);
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ContainsSentDate()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, SentDate);
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ContainsCtaUrl()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, JobUrl);
+        }
+
+        [TestMethod]
+        [DataRow("SyncDisabledNoGroupEmailBody")]
+        [DataRow("SyncDisabledNoSourceGroupEmailBody")]
+        [DataRow("SyncDisabledNoOwnerEmailBody")]
+        [DataRow("SyncDisabledNoValidGroupIds")]
+        [DataRow("GuestUserFailureEmailBody")]
+        [DataRow("NoDataEmailContent")]
+        [DataRow("SyncJobDisabledEmailBody")]
+        [DataRow("UnknownContentType")]
+        public async Task BuildSyncDisabledFallbackAsync_ReturnsNonEmptyHtml_ForAllDisableReasons(string contentType)
+        {
+            var email = MakeSyncDisabledEmail(contentType);
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html), $"Expected non-empty HTML for contentType={contentType}");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ContainsGroupAlias_WhenGraphReturnsEmail()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, "testgroup@contoso.com");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ContainsRequestor_WhenProvided()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody", requestor: "owner@contoso.com");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, "owner@contoso.com");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_HtmlEncodesGroupName()
+        {
+            const string maliciousName = "<script>alert('xss')</script>";
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, maliciousName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(html.Contains("<script>"), "Raw <script> tag must not appear in output");
+            StringAssert.Contains(html, "&lt;script&gt;");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_ToleratesGraphFailure_StillReturnsHtml()
+        {
+            _graphGroupRepository
+                .Setup(g => g.GetGroupEmailAsync(It.IsAny<Guid>()))
+                .ThrowsAsync(new Exception("Graph unavailable"));
+
+            var email = MakeSyncDisabledEmail("SyncJobDisabledEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            Assert.IsFalse(html.Contains("testgroup@contoso.com"));
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_BlocksNonHttpCtaUrl()
+        {
+            const string javascriptUrl = "javascript:alert(1)";
+            var email = MakeSyncDisabledEmail("SyncJobDisabledEmailBody");
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, javascriptUrl, SentDate);
+            Assert.IsFalse(html.Contains("href=\"javascript:"), "javascript: URL must not appear as an href");
+        }
+
+        // ── SubmissionRejected ───────────────────────────────────────────────────
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ReturnsNonEmptyHtml()
+        {
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsGroupName()
+        {
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, GroupName);
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsGroupId()
+        {
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, GroupId);
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsSentDate()
+        {
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, SentDate);
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsCtaUrl()
+        {
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, JobUrl);
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsRejectionReason_WhenProvided()
+        {
+            const string reason = "Violates company policy";
+            var email = MakeSubmissionRejectedEmail(reason: reason);
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, reason);
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsRequestor_WhenProvided()
+        {
+            var email = MakeSubmissionRejectedEmail(requestor: "requester@contoso.com");
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, "requester@contoso.com");
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_OmitsRejectionReasonRow_WhenReasonIsEmpty()
+        {
+            var email = MakeSubmissionRejectedEmail(reason: "");
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            // The row label should not appear when reason is empty
+            Assert.IsFalse(html.Contains("Rejection Reason"), "Rejection Reason row should be absent when reason is empty");
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ContainsGroupAlias_WhenGraphReturnsEmail()
+        {
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            StringAssert.Contains(html, "testgroup@contoso.com");
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_HtmlEncodesGroupName()
+        {
+            const string maliciousName = "<script>alert('xss')</script>";
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, maliciousName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(html.Contains("<script>"), "Raw <script> tag must not appear in output");
+            StringAssert.Contains(html, "&lt;script&gt;");
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_HtmlEncodesRejectionReason()
+        {
+            const string maliciousReason = "<img src=x onerror=alert(1)>";
+            var email = MakeSubmissionRejectedEmail(reason: maliciousReason);
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(html.Contains("<img"), "Raw <img> tag must not appear in output");
+            StringAssert.Contains(html, "&lt;img");
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ToleratesGraphFailure_StillReturnsHtml()
+        {
+            _graphGroupRepository
+                .Setup(g => g.GetGroupEmailAsync(It.IsAny<Guid>()))
+                .ThrowsAsync(new Exception("Graph unavailable"));
+
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            Assert.IsFalse(html.Contains("testgroup@contoso.com"));
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_BlocksNonHttpCtaUrl()
+        {
+            const string javascriptUrl = "javascript:alert(1)";
+            var email = MakeSubmissionRejectedEmail();
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, javascriptUrl, SentDate);
+            Assert.IsFalse(html.Contains("href=\"javascript:"), "javascript: URL must not appear as an href");
+        }
+
+        [TestMethod]
+        public async Task BuildSubmissionRejectedFallbackAsync_ToleratesNullAdditionalParams()
+        {
+            var email = new EmailMessage { Content = "SubmissionRejectedEmailBody" };
+            var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────────
@@ -199,6 +430,26 @@ namespace Services.Notifier.Tests
             {
                 Content = "SyncCompletedEmailBody",
                 AdditionalContentParams = new[] { GroupId, GroupName, added, removed, requestor }
+            };
+        }
+
+        private static EmailMessage MakeSyncDisabledEmail(string contentType, string requestor = "admin@contoso.com")
+        {
+            return new EmailMessage
+            {
+                Content = contentType,
+                AdditionalContentParams = new[] { GroupId, GroupName, "0", "0", requestor }
+            };
+        }
+
+        private static EmailMessage MakeSubmissionRejectedEmail(
+            string reason = "Duplicate request", string requestor = "requester@contoso.com")
+        {
+            return new EmailMessage
+            {
+                Content = "SubmissionRejectedEmailBody",
+                // [0]=groupId, [1]=groupName, [2]=rejectionReason, [3]=requestor
+                AdditionalContentParams = new[] { GroupId, GroupName, reason, requestor }
             };
         }
     }

@@ -1331,6 +1331,81 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncCompletedFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
   </data>
+  <data name="SyncDisabledFallback.Badge" xml:space="preserve">
+    <value>ACTION REQUIRED</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.NoDestinationGroup" xml:space="preserve">
+    <value>Destination Does Not Exist</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.NoSourceGroup" xml:space="preserve">
+    <value>Source Does Not Exist</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.NotValidSource" xml:space="preserve">
+    <value>Source Not Valid</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.NoOwner" xml:space="preserve">
+    <value>GMM Is Not an Owner</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.GuestUsers" xml:space="preserve">
+    <value>Guest Users Detected</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.NoData" xml:space="preserve">
+    <value>No Data Found</value>
+  </data>
+  <data name="SyncDisabledFallback.HeaderReason.Generic" xml:space="preserve">
+    <value>Attention Required</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.NoDestinationGroup" xml:space="preserve">
+    <value>GMM has paused this membership sync because the target group **no longer exists**. Members will not be updated until the group is restored or the sync configuration is updated.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.NoSourceGroup" xml:space="preserve">
+    <value>GMM has paused this membership sync because its configured source group **no longer exists**. The sync process cannot continue until the source is restored or the configuration is updated.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.NotValidSource" xml:space="preserve">
+    <value>GMM has paused this membership sync because one or more source group IDs are **not valid security groups**. The sync process cannot continue until the source configuration is corrected.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.NoOwner" xml:space="preserve">
+    <value>GMM has paused this membership sync because **GMM is not an owner**. GMM requires owner permissions to manage group membership. Please add GMM as an owner to re-enable syncing.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.GuestUsers" xml:space="preserve">
+    <value>GMM has paused this membership sync because **guest users** were detected in the membership source. GMM does not support adding guest users to groups and cannot continue with the current configuration.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.Generic" xml:space="preserve">
+    <value>Sync has been disabled for this group. The sync process configured by **{0}** is no longer running and members will not be updated.</value>
+  </data>
+  <data name="SyncDisabledFallback.Description.NoData" xml:space="preserve">
+    <value>GMM has paused this membership sync because the membership definition **returns no users**. As a safety precaution, GMM paused syncing to prevent inadvertent removal of all members. Please review your membership definition to ensure it is correct.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutTitle" xml:space="preserve">
+    <value>WHAT HAPPENS IF YOU DO NOTHING</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.NoDestinationGroup" xml:space="preserve">
+    <value>Group membership will not be updated or managed until the group is restored or the sync configuration is updated.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.NoSourceGroup" xml:space="preserve">
+    <value>Membership for this group cannot be updated or managed until the source is restored or the configuration is changed.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.NotValidSource" xml:space="preserve">
+    <value>Group membership cannot be synced until the invalid source group IDs are replaced with valid security groups in the sync configuration.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.NoOwner" xml:space="preserve">
+    <value>GMM cannot update group memberships until owner permissions are granted to the GMM service account.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.GuestUsers" xml:space="preserve">
+    <value>Group membership cannot be synced because GMM cannot add guest users to groups. The configuration must be updated to exclude guest users.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.NoData" xml:space="preserve">
+    <value>No membership changes will be applied until the membership definition is corrected to return users. Verify your query filters and source group configurations.</value>
+  </data>
+  <data name="SyncDisabledFallback.CalloutBody.Generic" xml:space="preserve">
+    <value>Group membership will not be updated until this issue is resolved. Contact support for assistance.</value>
+  </data>
+  <data name="SyncDisabledFallback.CtaLabel" xml:space="preserve">
+    <value>Review in GMM UI</value>
+  </data>
+  <data name="SyncDisabledFallback.FooterExplanation" xml:space="preserve">
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for critical events that require attention.</value>
+  </data>
   <data name="FallbackGroupType.M365Group" xml:space="preserve">
     <value>M365 Group</value>
   </data>
@@ -1357,5 +1432,26 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="FallbackDetailsRow.MembersRemoved" xml:space="preserve">
     <value>MEMBERS REMOVED</value>
+  </data>
+  <data name="FallbackDetailsRow.RejectionReason" xml:space="preserve">
+    <value>REJECTION REASON</value>
+  </data>
+  <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
+    <value>SUBMISSION REJECTED</value>
+  </data>
+  <data name="SubmissionRejectedFallback.Description" xml:space="preserve">
+    <value>Your request to update the membership sync configuration for this group has been reviewed and was not approved. See the details below for the reason provided.</value>
+  </data>
+  <data name="SubmissionRejectedFallback.CalloutTitle" xml:space="preserve">
+    <value>WHAT CAN YOU DO?</value>
+  </data>
+  <data name="SubmissionRejectedFallback.CalloutBody" xml:space="preserve">
+    <value>Review the rejection reason above and consider revising your request. You can resubmit a new configuration change through the GMM portal. If you believe this decision is incorrect, reach out to your GMM reviewer for clarification.</value>
+  </data>
+  <data name="SubmissionRejectedFallback.CtaLabel" xml:space="preserve">
+    <value>Go to GMM Portal</value>
+  </data>
+  <data name="SubmissionRejectedFallback.FooterExplanation" xml:space="preserve">
+    <value>This email was sent because you submitted a membership sync configuration change for the group **{0}**, which is managed by GMM.</value>
   </data>
 </root>

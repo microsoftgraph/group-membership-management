@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation.
+﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
 namespace Repositories.Mail
@@ -88,27 +88,29 @@ namespace Repositories.Mail
           </td>
         </tr>";
 
-        /// <summary>
-        /// Redesigned HTML email body fragment for SyncStarted notifications.
-        /// This is body-only markup (no &lt;!DOCTYPE&gt;/&lt;html&gt;/&lt;head&gt;/&lt;body&gt;); the caller is expected to wrap it
-        /// inside a single top-level HTML document so the result is not a nested document.
-        /// Tokens: {0}=badgeText, {1}=groupName, {2}=title, {3}=description,
-        ///         {4}=detailsTableRows, {5}=calloutTitle, {6}=calloutBody,
-        ///         {7}=ctaButtonLabel, {8}=ctaUrl, {9}=footerExplanation, {10}=sentDate
-        /// </summary>
-        public const string SyncStartedTemplate = @"<table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#f3f2f1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">
-    <tr><td align=""center"" style=""padding:32px 16px;"">
 
-      <table width=""600"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1);"">
+        // ── Styling constants ──────────────────────────────────────────────────────
+        private const string BlueBadgeStyle =
+            "display:inline-block;background:#e8f4fd;color:#0078d4;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:0.5px;";
+        private const string OrangePillBadgeStyle =
+            "display:inline-block;background:#fde7d9;border:1px solid #f3bf9b;color:#d83b01;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
+        private const string BlueCalloutTableStyle =
+            "border-left:5px solid #0078d4;background:#deecf9;border-radius:0 4px 4px 0;";
+        private const string OrangeCalloutTableStyle =
+            "border-left:5px solid #d83b01;background:#fff4ce;border-radius:0 4px 4px 0;";
+        private const string BlueCalloutTitleStyle =
+            "font-size:13px;font-weight:700;color:#004578;letter-spacing:0.5px;margin-bottom:8px;";
+        private const string OrangeCalloutTitleStyle =
+            "font-size:13px;font-weight:700;color:#603900;letter-spacing:0.5px;margin-bottom:8px;";
 
+        // ── Per-template header HTML (unique icon + background + title text per type) ──
+        private const string SyncStartedHeaderHtml = @"
         <!-- Header bar -->
         <tr>
           <td style=""background:#0078d4;padding:14px 24px;"">
             <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
               <td style=""padding-right:12px;vertical-align:middle;"">
-                <div style=""display:inline-block;width:36px;height:36px;background:rgba(255,255,255,0.25);border-radius:18px;text-align:center;line-height:36px;mso-line-height-rule:exactly;"">
-                  <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAIXSURBVFhH7ZchTBxREIaRlUhk5UkkEll5svIkEokkQSBrmlQiK0kwJ5HINkEgkUgCCGia90/zX/+9vPtzd7x9uweI/ZJNbnP/zs6bnTczb2trYGBg4GMTEfsATgFcLrlOI2IcEdv+3MYBcAjgNgoAcB8RxxHxye30jiJ2406UAOAOwFe32RsRMQHwvOTFV4wQo8oFKFq8v3StOHLbnaFz/hYA04jYdW1ORHwG8HPJsz9cWw2dyCOn32PXrQPAnnIxd/LAda1hYuc5J+fWRm0VETHKN1ZK6YURdl0rlFc5E9e0gQ6llP40xpgmrilG0bvLjJ27pgYAv+fL/c/INUVwtWao6tPmRMSO2eTCv7uuCHYAAL9k59j/rwHAN/OPufjkunfBU6YBQALwxfVvDnNNRZz9mR3pXA72VxM/FOoCU04lut9WK+tWu/pA3ePa80V03s2dUUI/uGccAFxbA8sNcxDAWfUYBuDEHWzbg1eRlS9S151UB/82VgA8uqYG7eI5nUpMSumiMZRSorM7rmmDUmcePf52TSvokDV3Gq8+Y7DmNbZE95Th3JZb1PjVqtQoctwQuZ1eho8Zmp5z4zxfFA2cmgMXxn8tsm73rsIjoBfdKsILtVFtjWeYWTuzZ5gmrb5AMTrrVqMDVnUOF6Eus/DJX0NTTF29q0UTydm6c7I+MU+Em43aa2hS5iDRXJ3q5cDAQCH/ABG1io/gBGI4AAAAAElFTkSuQmCC"" width=""20"" height=""20"" alt="""" style=""display:inline-block;vertical-align:middle;border:0;"" />
-                </div>
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAACMklEQVR4Ad3Bv6vVZQDH8ff72ylrSFuUoOiHS1tGbboIhkPwGNFUS2C42BA0N5xrUGtbf0BGXHF7BJckoghSiGgosMEhqqm4ocWlq3w64Blu18P3fJ9zj9dLrxfLkKSwJNIoSWEgtdJIBkhS2Ca1MoDMkaSwJGplDumRpLBkaqWHzJCkcJeplRk6dhnZIklhh6iVLWSTJIUdplY2kakkhXtErUx17DIjtinJQeBpbvtb/RFYY0EykaTQ7jngTeBJ/utWkkvAx+qfDKRWJkYs5gRwEvgL+AT4HlhPcgB4UT2e5NkkY/VXGoxodwg4CVwF3gOuM6VeA74BDqvvJHkXeBvYYKCONgKngBvA+8B1Zvs6yar6OHCCBh0NkuxJsh/4FFijh/oUE0leosF9SQoDqTfV88BP9EjyIHBE/V19JMkl9R96jMfjZ1ZWVq7KRJLCMPcneV69AuwF1lgStTIxos2r6uvcdhY4R48kB4EN9WcG6mjzBRDgFnCRfg8DH6iv0aCjzW9JLgMd8AT93lAfAj6jQUe7j4AbwBg4yp0eAE4Dx5N8DnxLA5lKUhgoyWPAGXU/cA34DlhP8qj6ArAX+BL4ENhgDrUyNWIB6i9J3gJeTnJMfYUJlSQ/qBeAr1jAiAWp68CqugrsA/YAf6g32QbZJElhh6mVTWSLJIUdola2kBmSFO4ytTJDxy4jPZIUlkyt9JA5khSWRK1MIQMkKWyTWhlAGiUpDKRW7oUkhf+rfwHI5NaCqrN6zgAAAABJRU5ErkJggg=="" width=""36"" height=""36"" alt=""Sync icon"" style=""display:block;border:0;"" />
               </td>
               <td style=""vertical-align:middle;"">
                 <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Initial sync started</span><br />
@@ -116,102 +118,15 @@ namespace Repositories.Mail
               </td>
             </tr></table>
           </td>
-        </tr>
+        </tr>";
 
-        <!-- Badge -->
-        <tr>
-          <td style=""padding:24px 24px 4px;"">
-            <span style=""display:inline-block;background:#e8f4fd;color:#0078d4;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:0.5px;"">{0}</span>
-          </td>
-        </tr>
-
-        <!-- Title -->
-        <tr>
-          <td style=""padding:8px 24px 6px;"">
-            <span style=""font-size:22px;font-weight:600;color:#242424;"">{2}</span>
-          </td>
-        </tr>
-
-        <!-- Description -->
-        <tr>
-          <td style=""padding:4px 24px 20px;font-size:14px;line-height:1.6;color:#424242;"">
-            {3}
-          </td>
-        </tr>
-
-        <!-- Details Table -->
-        <tr>
-          <td style=""padding:0 24px 20px;"">
-            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border:1px solid #edebe9;border-radius:4px;overflow:hidden;"">
-              {4}
-            </table>
-          </td>
-        </tr>
-
-        <!-- Callout Box -->
-        <tr>
-          <td style=""padding:0 24px 24px;"">
-            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-left:5px solid #0078d4;background:#deecf9;border-radius:0 4px 4px 0;"">
-              <tr>
-                <td style=""padding:18px 22px;"">
-                  <div style=""font-size:13px;font-weight:700;color:#004578;letter-spacing:0.5px;margin-bottom:8px;"">{5}</div>
-                  <div style=""font-size:14px;line-height:1.6;color:#323130;"">{6}</div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-
-        <!-- CTA Button -->
-        <tr>
-          <td style=""padding:0 24px 28px;"">
-            <a href=""{8}"" style=""display:inline-block;padding:10px 24px;background:#0078d4;color:#ffffff;text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;font-family:'Segoe UI',sans-serif;"">
-              {7}
-            </a>
-          </td>
-        </tr>
-
-        <!-- Divider -->
-        <tr><td style=""padding:0 24px;""><hr style=""border:none;border-top:1px solid #edebe9;margin:0;""></td></tr>
-
-        <!-- Footer explanation -->
-        <tr>
-          <td style=""padding:16px 24px 8px;font-size:13px;line-height:1.5;color:#605e5c;"">
-            {9}
-          </td>
-        </tr>
-
-        <!-- Sent date footer -->
-        <tr>
-          <td style=""padding:8px 24px 20px;font-size:12px;color:#a19f9d;"">
-            Sent {10} &middot; Group Membership Management &middot; Microsoft
-          </td>
-        </tr>
-
-      </table>
-    </td></tr>
-  </table>";
-
-        /// <summary>
-        /// Redesigned HTML email body fragment for SyncCompleted notifications.
-        /// This is body-only markup (no &lt;!DOCTYPE&gt;/&lt;html&gt;/&lt;head&gt;/&lt;body&gt;); the caller is expected to wrap it
-        /// inside a single top-level HTML document so the result is not a nested document.
-        /// Uses the same token layout as SyncStartedTemplate:
-        /// Tokens: {0}=badgeText, {1}=groupName, {2}=title, {3}=description,
-        ///         {4}=detailsTableRows, {5}=calloutTitle, {6}=calloutBody,
-        ///         {7}=ctaButtonLabel, {8}=ctaUrl, {9}=footerExplanation, {10}=sentDate
-        /// </summary>
-        public const string SyncCompletedTemplate = @"<table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#f3f2f1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">
-    <tr><td align=""center"" style=""padding:32px 16px;"">
-
-      <table width=""600"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1);"">
-
+        private const string SyncCompletedHeaderHtml = @"
         <!-- Header bar -->
         <tr>
           <td style=""background:#0078d4;padding:14px 24px;"">
             <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
               <td style=""padding-right:12px;vertical-align:middle;"">
-                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:rgba(255,255,255,0.25);color:#ffffff;border-radius:18px;font-size:20px;font-weight:300;"">&#x2713;</span>
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAABJklEQVR4Ad3BUW7jMBBEwddErjdzWM4BO/kwYK8pS5QtKcFWcQTbwUHETraDSZKKncQE28GHJBUTxAbbwUEkFRvECtvBwSQVK8QC28HJJBULGn+MeGI7uIik4ol4YDu4mKTigbixHfwSScXNF9fp3CUvNK7RmdT4YTs4T2eD7eCmca7OKFnROE9nlGxonKMzSiY0jtcZJZNkO1jXuUvWdUbJJEnVJBXzOq91RskkScWPxn6dUWeUvKGxLRl17jqj5E1fvK+zLPlAY04yJ/mQuLEdbOu8lrxJUnHT2CdZlhyksV/yr+RA4oHt4GKSigfiie3gIpKKJ2KB7eBkkooFjT9GrLAdHExSsUJssB0cRFKxQUywHXxIUjFB7GQ7mCSp+A22g//VN+bDZGbW8fASAAAAAElFTkSuQmCC"" width=""36"" height=""36"" alt=""Complete icon"" style=""display:block;border:0;"" />
               </td>
               <td style=""vertical-align:middle;"">
                 <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Onboarding complete</span><br />
@@ -219,26 +134,91 @@ namespace Repositories.Mail
               </td>
             </tr></table>
           </td>
-        </tr>
+        </tr>";
 
-        <!-- Badge + Group Name -->
+        private const string SyncDisabledHeaderHtml = @"
+        <!-- Header bar - Blue with pause icon -->
+        <tr>
+          <td style=""background:#0078d4;padding:14px 24px;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
+              <td style=""padding-right:12px;vertical-align:middle;"">
+                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAA6ElEQVR4Ad3BQY7CQBAEwcwR32seSz+wlgMHQJaxhYHRRnCEJMVBZKckxUZqs5NskKR4k9psIC8kKQ6iNi/IiiTFwdRmhSxIUnyY2iwYTEaeJCm+RG2eyJ0kxZepzR25SVL8iNrcDCZzYr8Lj848uvDozA6DqyTFDyUpbgaTGUxmMJnBZEaSYgJJiquhNhNQm6vBZAaTGUxmMJnBldr8kNrcDCZzYr8z6868Qe4kKb5Mbe7IkyTFl6jNE1mQpPgwtVkwmIysSFIcTG1WyAtJioOozQuyQZLiTWqzgeyUpNhIbX4hSfFf/QF0HVVo7Poh9wAAAABJRU5ErkJggg=="" width=""36"" height=""36"" alt=""Pause icon"" style=""display:block;border:0;"" />
+              </td>
+              <td style=""vertical-align:middle;"">
+                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Sync paused - {1}</span><br />
+                <span style=""color:#ffffff;font-size:13px;"">Group Membership Management</span>
+              </td>
+            </tr></table>
+          </td>
+        </tr>";
+
+        private const string SubmissionRejectedHeaderHtml = @"
+        <!-- Header bar - Red for rejection -->
+        <tr>
+          <td style=""background:#a4262c;padding:14px 24px;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
+              <td style=""padding-right:12px;vertical-align:middle;"">
+                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:rgba(255,255,255,0.2);color:#ffffff;border-radius:50%;font-size:20px;font-weight:700;"">&#x2715;</span>
+              </td>
+              <td style=""vertical-align:middle;"">
+                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Submission Rejected</span><br />
+                <span style=""color:#ffffff;font-size:13px;"">Group Membership Management</span>
+              </td>
+            </tr></table>
+          </td>
+        </tr>";
+
+        // ── Public template properties ─────────────────────────────────────────────
+
+        /// <summary>Body-only fragment. Tokens: {0}=badge, {1}=headerText (only rendered by SyncDisabled header),
+        /// {2}=title, {3}=description, {4}=detailsRows, {5}=calloutTitle, {6}=calloutBody,
+        /// {7}=ctaLabel, {8}=ctaUrl, {9}=footerExplanation, {10}=sentDate</summary>
+        public static string SyncStartedTemplate =>
+            BuildEmailBodyTemplate(SyncStartedHeaderHtml, BlueBadgeStyle, BlueCalloutTableStyle, BlueCalloutTitleStyle);
+
+        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate.</summary>
+        public static string SyncCompletedTemplate =>
+            BuildEmailBodyTemplate(SyncCompletedHeaderHtml, BlueBadgeStyle, BlueCalloutTableStyle, BlueCalloutTitleStyle);
+
+        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
+        /// in the header bar (e.g. "Sync paused - {1}") with the localized disable reason.</summary>
+        public static string SyncDisabledTemplate =>
+            BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, BlueCalloutTableStyle, BlueCalloutTitleStyle);
+
+        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate.</summary>
+        public static string SubmissionRejectedTemplate =>
+            BuildEmailBodyTemplate(SubmissionRejectedHeaderHtml, OrangePillBadgeStyle, OrangeCalloutTableStyle, OrangeCalloutTitleStyle);
+
+        // ── Shared HTML body builder ───────────────────────────────────────────────
+        private static string BuildEmailBodyTemplate(
+            string headerHtml,
+            string badgeStyle,
+            string calloutTableStyle,
+            string calloutTitleStyle) =>
+            $@"<table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#f3f2f1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">
+    <tr><td align=""center"" style=""padding:32px 16px;"">
+
+      <table width=""600"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1);"">
+{headerHtml}
+
+        <!-- Badge -->
         <tr>
           <td style=""padding:24px 24px 4px;"">
-            <span style=""display:inline-block;background:#e8f4fd;color:#0078d4;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:0.5px;"">{0}</span>
+            <span style=""{badgeStyle}"">{{0}}</span>
           </td>
         </tr>
 
         <!-- Title -->
         <tr>
           <td style=""padding:8px 24px 6px;"">
-            <span style=""font-size:22px;font-weight:600;color:#242424;"">{2}</span>
+            <span style=""font-size:22px;font-weight:600;color:#242424;"">{{2}}</span>
           </td>
         </tr>
 
         <!-- Description -->
         <tr>
           <td style=""padding:4px 24px 20px;font-size:14px;line-height:1.6;color:#424242;"">
-            {3}
+            {{3}}
           </td>
         </tr>
 
@@ -246,7 +226,7 @@ namespace Repositories.Mail
         <tr>
           <td style=""padding:0 24px 20px;"">
             <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border:1px solid #edebe9;border-radius:4px;overflow:hidden;"">
-              {4}
+              {{4}}
             </table>
           </td>
         </tr>
@@ -254,11 +234,11 @@ namespace Repositories.Mail
         <!-- Callout Box -->
         <tr>
           <td style=""padding:0 24px 24px;"">
-            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-left:5px solid #0078d4;background:#deecf9;border-radius:0 4px 4px 0;"">
+            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""{calloutTableStyle}"">
               <tr>
                 <td style=""padding:18px 22px;"">
-                  <div style=""font-size:13px;font-weight:700;color:#004578;letter-spacing:0.5px;margin-bottom:8px;"">{5}</div>
-                  <div style=""font-size:14px;line-height:1.6;color:#323130;"">{6}</div>
+                  <div style=""{calloutTitleStyle}"">{{5}}</div>
+                  <div style=""font-size:14px;line-height:1.6;color:#323130;"">{{6}}</div>
                 </td>
               </tr>
             </table>
@@ -268,8 +248,8 @@ namespace Repositories.Mail
         <!-- CTA Button -->
         <tr>
           <td style=""padding:0 24px 28px;"">
-            <a href=""{8}"" style=""display:inline-block;padding:10px 24px;background:#0078d4;color:#ffffff;text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;font-family:'Segoe UI',sans-serif;"">
-              {7}
+            <a href=""{{8}}"" style=""display:inline-block;padding:10px 24px;background:#0078d4;color:#ffffff;text-decoration:none;border-radius:4px;font-size:14px;font-weight:600;font-family:'Segoe UI',sans-serif;"">
+              {{7}}
             </a>
           </td>
         </tr>
@@ -280,14 +260,14 @@ namespace Repositories.Mail
         <!-- Footer explanation -->
         <tr>
           <td style=""padding:16px 24px 8px;font-size:13px;line-height:1.5;color:#605e5c;"">
-            {9}
+            {{9}}
           </td>
         </tr>
 
         <!-- Sent date footer -->
         <tr>
           <td style=""padding:8px 24px 20px;font-size:12px;color:#a19f9d;"">
-            Sent {10} &middot; Group Membership Management &middot; Microsoft
+            Sent {{10}} &middot; Group Membership Management &middot; Microsoft
           </td>
         </tr>
 
@@ -299,7 +279,7 @@ namespace Repositories.Mail
         /// A single row for the details table in the SyncStarted/SyncCompleted templates.
         /// Tokens: {0}=label, {1}=value, {2}=optional style override for value cell
         /// </summary>
-        public const string DetailsTableRow = @"<tr>
+        public const string DetailsTableRow= @"<tr>
                 <td style=""padding:10px 16px;font-size:12px;font-weight:600;color:#605e5c;text-transform:uppercase;letter-spacing:0.3px;border-bottom:1px solid #edebe9;width:140px;vertical-align:top;"">{0}</td>
                 <td style=""padding:10px 16px;font-size:14px;color:#242424;border-bottom:1px solid #edebe9;{2}"">{1}</td>
               </tr>";

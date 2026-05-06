@@ -13,5 +13,11 @@ namespace Repositories.Contracts
 
         Task<string> BuildSyncCompletedFallbackAsync(
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate);
+
+        Task<string> BuildSyncDisabledFallbackAsync(
+            EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate);
+
+        Task<string> BuildSubmissionRejectedFallbackAsync(
+            EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate);
     }
 }

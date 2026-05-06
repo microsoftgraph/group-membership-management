@@ -16,6 +16,8 @@ namespace Repositories.Mail
         private const int AddedCountIndex = 2;
         private const int RemovedCountIndex = 3;
         private const int RequestorIndex = 4;
+        private const int RejectionReasonIndex = 2;
+        private const int RejectionRequestorIndex = 3;
 
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILocalizationRepository _localizationRepository;
@@ -34,69 +36,133 @@ namespace Repositories.Mail
         public async Task<string> BuildSyncStartedFallbackAsync(
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
         {
-            var groupName = destinationGroupName ?? string.Empty;
-            var requestor = emailMessage.AdditionalContentParams?.Length > RequestorIndex
-                ? emailMessage.AdditionalContentParams[RequestorIndex]
-                : string.Empty;
+            var requestor = GetParam(emailMessage, RequestorIndex);
+            var rows = await BuildBaseRowsAsync(groupId, requestor);
 
-            var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
-            var rows = BuildCommonRows(groupId, groupAlias, groupType, requestor);
-
-            return string.Format(
+            return FormatTemplate(
                 HtmlTemplates.SyncStartedTemplate,
-                _localizationRepository.TranslateSetting("SyncStartedFallback.Badge"),                                                         // {0} badge
-                System.Net.WebUtility.HtmlEncode(groupName),                                                                                    // {1} group name
-                System.Net.WebUtility.HtmlEncode(groupName),                                                                                    // {2} title
-                ConvertContentToHtml(_localizationRepository.TranslateSetting("SyncStartedFallback.Description", requestor)),                   // {3} description
-                rows.ToString(),                                                                                                                 // {4} details table rows
-                _localizationRepository.TranslateSetting("SyncStartedFallback.CalloutTitle"),                                                   // {5} callout title
-                ConvertContentToHtml(_localizationRepository.TranslateSetting("SyncStartedFallback.CalloutBody")),                              // {6} callout body
-                _localizationRepository.TranslateSetting("SyncStartedFallback.CtaLabel"),                                                       // {7} CTA label
-                System.Net.WebUtility.HtmlEncode(SanitizeUrl(jobUrl)),                                                                          // {8} CTA url
-                ConvertContentToHtml(_localizationRepository.TranslateSetting("SyncStartedFallback.FooterExplanation", groupName)),             // {9} footer explanation
-                sentDate                                                                                                                         // {10} sent date
+                prefix: "SyncStartedFallback",
+                groupName: destinationGroupName,
+                headerText: destinationGroupName ?? string.Empty,
+                description: _localizationRepository.TranslateSetting("SyncStartedFallback.Description", requestor),
+                calloutBody: _localizationRepository.TranslateSetting("SyncStartedFallback.CalloutBody"),
+                rows: rows,
+                jobUrl: jobUrl,
+                sentDate: sentDate
             );
         }
 
         public async Task<string> BuildSyncCompletedFallbackAsync(
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
         {
-            var groupName = destinationGroupName ?? string.Empty;
-            var addedCount = emailMessage.AdditionalContentParams?.Length > AddedCountIndex
-                ? emailMessage.AdditionalContentParams[AddedCountIndex]
-                : "0";
-            var removedCount = emailMessage.AdditionalContentParams?.Length > RemovedCountIndex
-                ? emailMessage.AdditionalContentParams[RemovedCountIndex]
-                : "0";
-            var requestor = emailMessage.AdditionalContentParams?.Length > RequestorIndex
-                ? emailMessage.AdditionalContentParams[RequestorIndex]
-                : string.Empty;
+            var addedCount   = GetParam(emailMessage, AddedCountIndex,   defaultValue: "0");
+            var removedCount = GetParam(emailMessage, RemovedCountIndex,  defaultValue: "0");
+            var requestor    = GetParam(emailMessage, RequestorIndex);
 
-            var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
-            var rows = BuildCommonRows(groupId, groupAlias, groupType, requestor);
+            var rows = await BuildBaseRowsAsync(groupId, requestor);
             rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
                 _localizationRepository.TranslateSetting("FallbackDetailsRow.MembersAdded"),
-                System.Net.WebUtility.HtmlEncode(addedCount),
-                "font-weight:600;color:#107c10;"));
+                System.Net.WebUtility.HtmlEncode(addedCount), "font-weight:600;color:#107c10;"));
             rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
                 _localizationRepository.TranslateSetting("FallbackDetailsRow.MembersRemoved"),
-                System.Net.WebUtility.HtmlEncode(removedCount),
-                "font-weight:600;color:#a4262c;"));
+                System.Net.WebUtility.HtmlEncode(removedCount), "font-weight:600;color:#a4262c;"));
 
-            return string.Format(
+            return FormatTemplate(
                 HtmlTemplates.SyncCompletedTemplate,
-                _localizationRepository.TranslateSetting("SyncCompletedFallback.Badge"),                                                                        // {0} badge
-                System.Net.WebUtility.HtmlEncode(groupName),                                                                                                    // {1} group name
-                System.Net.WebUtility.HtmlEncode(groupName),                                                                                                    // {2} title
-                ConvertContentToHtml(_localizationRepository.TranslateSetting("SyncCompletedFallback.Description")),                                            // {3} description
-                rows.ToString(),                                                                                                                                 // {4} details table rows
-                _localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutTitle"),                                                                 // {5} callout title
-                ConvertContentToHtml(_localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutBody", addedCount, removedCount, groupName)),       // {6} callout body
-                _localizationRepository.TranslateSetting("SyncCompletedFallback.CtaLabel"),                                                                     // {7} CTA label
-                System.Net.WebUtility.HtmlEncode(SanitizeUrl(jobUrl)),                                                                                       // {8} CTA url
-                ConvertContentToHtml(_localizationRepository.TranslateSetting("SyncCompletedFallback.FooterExplanation", groupName)),                           // {9} footer explanation
-                sentDate                                                                                                                                         // {10} sent date
+                prefix: "SyncCompletedFallback",
+                groupName: destinationGroupName,
+                headerText: destinationGroupName ?? string.Empty,
+                description: _localizationRepository.TranslateSetting("SyncCompletedFallback.Description"),
+                calloutBody: _localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutBody", addedCount, removedCount, destinationGroupName ?? string.Empty),
+                rows: rows,
+                jobUrl: jobUrl,
+                sentDate: sentDate
             );
+        }
+
+        public async Task<string> BuildSyncDisabledFallbackAsync(
+            EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
+        {
+            var requestor    = GetParam(emailMessage, RequestorIndex);
+            var rows         = await BuildBaseRowsAsync(groupId, requestor);
+            var disableReason = GetDisableReason(emailMessage.Content);
+
+            return FormatTemplate(
+                HtmlTemplates.SyncDisabledTemplate,
+                prefix: "SyncDisabledFallback",
+                groupName: destinationGroupName,
+                headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
+                description: _localizationRepository.TranslateSetting($"SyncDisabledFallback.Description.{disableReason}", requestor),
+                calloutBody: _localizationRepository.TranslateSetting($"SyncDisabledFallback.CalloutBody.{disableReason}"),
+                rows: rows,
+                jobUrl: jobUrl,
+                sentDate: sentDate
+            );
+        }
+
+        public async Task<string> BuildSubmissionRejectedFallbackAsync(
+            EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
+        {
+            _logger.LogInformation(
+                "Building SubmissionRejected fallback HTML for group {GroupId} ({GroupName}).", groupId, destinationGroupName);
+
+            var rejectionReason = GetParam(emailMessage, RejectionReasonIndex);
+            var requestor       = GetParam(emailMessage, RejectionRequestorIndex);
+
+            var rows = await BuildBaseRowsAsync(groupId, requestor);
+            if (!string.IsNullOrWhiteSpace(rejectionReason))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.RejectionReason"),
+                    System.Net.WebUtility.HtmlEncode(rejectionReason), ""));
+            }
+
+            return FormatTemplate(
+                HtmlTemplates.SubmissionRejectedTemplate,
+                prefix: "SubmissionRejectedFallback",
+                groupName: destinationGroupName,
+                headerText: destinationGroupName ?? string.Empty,
+                description: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.Description"),
+                calloutBody: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.CalloutBody"),
+                rows: rows,
+                jobUrl: jobUrl,
+                sentDate: sentDate
+            );
+        }
+
+        private async Task<StringBuilder> BuildBaseRowsAsync(string groupId, string requestor)
+        {
+            var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
+            return BuildCommonRows(groupId, groupAlias, groupType, requestor);
+        }
+
+        private string FormatTemplate(
+            string template, string prefix, string groupName,
+            string headerText, string description, string calloutBody,
+            StringBuilder rows, string jobUrl, string sentDate)
+        {
+            var name = groupName ?? string.Empty;
+            return string.Format(
+                template,
+                _localizationRepository.TranslateSetting($"{prefix}.Badge"),             // {0} badge
+                System.Net.WebUtility.HtmlEncode(headerText),                                // {1} header text (varies)
+                System.Net.WebUtility.HtmlEncode(name),                                  // {2} title
+                ConvertContentToHtml(description),                                        // {3} description
+                rows.ToString(),                                                          // {4} details table rows
+                _localizationRepository.TranslateSetting($"{prefix}.CalloutTitle"),      // {5} callout title
+                ConvertContentToHtml(calloutBody),                                        // {6} callout body
+                _localizationRepository.TranslateSetting($"{prefix}.CtaLabel"),          // {7} CTA label
+                System.Net.WebUtility.HtmlEncode(SanitizeUrl(jobUrl)),                   // {8} CTA url
+                ConvertContentToHtml(_localizationRepository.TranslateSetting($"{prefix}.FooterExplanation", name)), // {9} footer
+                sentDate                                                                  // {10} sent date
+            );
+        }
+
+        private static string GetParam(EmailMessage emailMessage, int index, string defaultValue = "")
+        {
+            return emailMessage.AdditionalContentParams?.Length > index
+                ? emailMessage.AdditionalContentParams[index]
+                : defaultValue;
         }
 
         private async Task<(string alias, string type)> FetchGroupMetaAsync(string groupId)
@@ -132,6 +198,28 @@ namespace Repositories.Mail
             return (groupAlias, groupType);
         }
 
+        private string GetDisableReason(string? contentType)
+        {
+            if (string.IsNullOrEmpty(contentType))
+                return "Generic";
+
+            // Map email content types to disable reason keys for context-specific descriptions
+            return contentType switch
+            {
+                "SyncThresholdBothEmailBody" => "Threshold",
+                "SyncDisabledNoGroupEmailBody" => "NoDestinationGroup",
+                "SyncDisabledNoSourceGroupEmailBody" => "NoSourceGroup",
+                "SyncDisabledNoOwnerEmailBody" => "NoOwner",
+                "SyncDisabledNoValidGroupIds" => "NotValidSource",
+                "GuestUserFailureEmailBody" => "GuestUsers",
+                "SyncPurgedForInactivityEmailBody" => "PurgedForInactivity",
+                "NoDataEmailContent" => "NoData",
+                "SyncJobDisabledEmailBody" => "Generic",
+                "JobPurgingWarningEmailBody" => "Generic",
+                _ => "Generic"
+            };
+        }
+
         private StringBuilder BuildCommonRows(string groupId, string groupAlias, string groupType, string requestor)
         {
             Func<string, string> encode = System.Net.WebUtility.HtmlEncode;
@@ -151,9 +239,12 @@ namespace Repositories.Mail
             rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
                 _localizationRepository.TranslateSetting("FallbackDetailsRow.ObjectId"),
                 encode(groupId), "font-family:Consolas,'Courier New',monospace;font-size:13px;"));
-            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                _localizationRepository.TranslateSetting("FallbackDetailsRow.RequestedBy"),
-                encode(requestor), ""));
+            if (!string.IsNullOrEmpty(requestor))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.RequestedBy"),
+                    encode(requestor), ""));
+            }
             return rows;
         }
 

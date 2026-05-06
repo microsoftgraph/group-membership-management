@@ -14,6 +14,7 @@ using Repositories.Contracts;
 using Repositories.Contracts.Constants;
 using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
+using Services.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -228,87 +229,32 @@ namespace Repositories.Mail
 
             if (_mailConfig.EnableStyledFallbackEmails)
             {
+                string styledFallback = null;
+
                 if (string.Equals(emailMessage?.Content, "SyncStartedEmailBody", StringComparison.OrdinalIgnoreCase))
-                {
-                    var styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
-                    htmlContent = $@"<!DOCTYPE html>
-<html lang=""en"">
-<head>
-  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-  <title>{System.Net.WebUtility.HtmlEncode(destinationGroupName)}</title>
-  <script type=""application/adaptivecard+json"">
-{adaptiveCard}
-  </script>
-</head>
-<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
-{styledFallback}
-</body>
-</html>";
-                }
+                    styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
+                    styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                else if (IsSyncDisabledNotification(emailMessage?.Content))
+                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
+                    styledFallback = await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+
+                if (styledFallback != null)
                 {
-                    var styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
-                    htmlContent = $@"<!DOCTYPE html>
-<html lang=""en"">
-<head>
-  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-  <title>{System.Net.WebUtility.HtmlEncode(destinationGroupName)}</title>
-  <script type=""application/adaptivecard+json"">
-{adaptiveCard}
-  </script>
-</head>
-<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
-{styledFallback}
-</body>
-</html>";
+                    htmlContent = WrapStyledFallback(styledFallback, destinationGroupName, adaptiveCard);
                 }
                 else
                 {
                     // Legacy adaptive-card + plain-text fallback for notification types
                     // that have not yet been migrated to a styled HTML template.
-                    var simpleMessage = GetSimpleMessage(emailMessage);
-                    var fallbackHTMLContent = simpleMessage.Body.Content;
-
-                    var legacyHtmlTemplate = @"<html>
-                <head
-                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-                  <script type=""application/adaptivecard+json"">
-                 {0}
-                  </script>
-                </head>
-                <body>
-                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
-                <h1>Original Message</h1>
-                <pre>{1}</pre>
-                </body>
-                </html>";
-
-                    htmlContent = string.Format(legacyHtmlTemplate, adaptiveCard, fallbackHTMLContent);
+                    htmlContent = BuildLegacyFallback(emailMessage, adaptiveCard);
                 }
             }
             else
             {
                 // Feature disabled: use legacy adaptive-card + plain-text fallback for all notification types.
-                var simpleMessage = GetSimpleMessage(emailMessage);
-                var fallbackHTMLContent = simpleMessage.Body.Content;
-
-                var legacyHtmlTemplate = @"<html>
-                <head
-                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
-                  <script type=""application/adaptivecard+json"">
-                 {0}
-                  </script>
-                </head>
-                <body>
-                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
-                <h1>Original Message</h1>
-                <pre>{1}</pre>
-                </body>
-                </html>";
-
-                htmlContent = string.Format(legacyHtmlTemplate, adaptiveCard, fallbackHTMLContent);
+                htmlContent = BuildLegacyFallback(emailMessage, adaptiveCard);
             }
 
             var message = new Message
@@ -384,6 +330,54 @@ namespace Repositories.Mail
             var exceptionHandlingPolicy = _retryPolicyProvider.CreateExceptionHandlingPolicy(runId);
 
             return retryAfterPolicy.WrapAsync(exceptionHandlingPolicy);
+        }
+
+        private static string WrapStyledFallback(string body, string groupName, string adaptiveCard) =>
+            $@"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+  <title>{System.Net.WebUtility.HtmlEncode(groupName)}</title>
+  <script type=""application/adaptivecard+json"">
+{adaptiveCard}
+  </script>
+</head>
+<body style=""margin:0;padding:0;background-color:#f3f2f1;-webkit-font-smoothing:antialiased;"">
+{body}
+</body>
+</html>";
+
+        private string BuildLegacyFallback(EmailMessage emailMessage, string adaptiveCard)
+        {
+            var simpleMessage = GetSimpleMessage(emailMessage);
+            var fallbackHTMLContent = simpleMessage.Body.Content;
+
+            var legacyHtmlTemplate = @"<html>
+                <head
+                  <meta http-equiv=""Content-Type"" content=""text/html; charset=utf-8"">
+                  <script type=""application/adaptivecard+json"">
+                 {0}
+                  </script>
+                </head>
+                <body>
+                <p style=""color: red;"">Warning: Group Membership Management (GMM) notifications are powered by Outlook Actionable Messages. The following is a fallback message that you will see if the Actionable Message fails to render.</p>
+                <h1>Original Message</h1>
+                <pre>{1}</pre>
+                </body>
+                </html>";
+
+            return string.Format(legacyHtmlTemplate, adaptiveCard, fallbackHTMLContent);
+        }
+
+        private bool IsSyncDisabledNotification(string? contentType)
+        {
+            if (string.IsNullOrEmpty(contentType))
+                return false;
+
+            return contentType.Contains("Disabled", StringComparison.OrdinalIgnoreCase)
+                || contentType.Contains("Failure", StringComparison.OrdinalIgnoreCase)
+                || contentType.Contains("NoData", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
