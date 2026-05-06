@@ -198,5 +198,55 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91503, Level = LogLevel.Error,
             Message = "CopilotChatHandler: Error processing request")]
         public static partial void CopilotChatFailed(this ILogger logger, Exception exception);
+
+        // ── CopilotService (93100-93149) ──
+
+        [LoggerMessage(EventId = 93100, Level = LogLevel.Warning,
+            Message = "Retry {RetryCount} after {DelaySeconds}s")]
+        public static partial void CopilotChatRetryAttempt(this ILogger logger, int retryCount, double delaySeconds, Exception exception);
+
+        [LoggerMessage(EventId = 93101, Level = LogLevel.Debug,
+            Message = "Tool call iteration {Iteration}/{Max}: {Tools}")]
+        public static partial void CopilotToolCallIteration(this ILogger logger, int iteration, int max, string tools);
+
+        [LoggerMessage(EventId = 93102, Level = LogLevel.Debug,
+            Message = "Chat completed with {ToolCalls} tool calls, {SourceParts} source parts")]
+        public static partial void CopilotChatLoopCompleted(this ILogger logger, int toolCalls, int sourceParts);
+
+        [LoggerMessage(EventId = 93103, Level = LogLevel.Warning,
+            Message = "Unknown tool requested: {FunctionName}")]
+        public static partial void CopilotUnknownToolRequested(this ILogger logger, string functionName);
+
+        [LoggerMessage(EventId = 93104, Level = LogLevel.Warning,
+            Message = "HR DB services (ISqlMembershipRepository/IDataFactoryRepository) unavailable")]
+        public static partial void CopilotHrDbServicesUnavailable(this ILogger logger);
+
+        [LoggerMessage(EventId = 93105, Level = LogLevel.Warning,
+            Message = "HR validation failed")]
+        public static partial void CopilotHrValidationFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 93106, Level = LogLevel.Warning,
+            Message = "Graph UPN search failed for {Email}")]
+        public static partial void CopilotGraphUpnSearchFailed(this ILogger logger, string email, Exception exception);
+
+        [LoggerMessage(EventId = 93107, Level = LogLevel.Warning,
+            Message = "Graph mail search failed for {Email}")]
+        public static partial void CopilotGraphMailSearchFailed(this ILogger logger, string email, Exception exception);
+
+        [LoggerMessage(EventId = 93108, Level = LogLevel.Warning,
+            Message = "JSON parse error in LLM response")]
+        public static partial void CopilotLlmResponseJsonParseError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 93109, Level = LogLevel.Information,
+            Message = "Plain-text fallback: extracted filter={Filter}, leader={Leader}")]
+        public static partial void CopilotPlainTextFallbackExtracted(this ILogger logger, string filter, string leader);
+
+        [LoggerMessage(EventId = 93110, Level = LogLevel.Error,
+            Message = "Failed to fetch HR attributes")]
+        public static partial void CopilotHrAttributesFetchFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 93111, Level = LogLevel.Warning,
+            Message = "Failed to get ADF run ID")]
+        public static partial void CopilotAdfRunIdFetchFailed(this ILogger logger, Exception exception);
     }
 }

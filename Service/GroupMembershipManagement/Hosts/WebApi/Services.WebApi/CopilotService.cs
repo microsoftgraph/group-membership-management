@@ -3,6 +3,7 @@
 
 using Azure.AI.OpenAI;
 using Azure.Identity;
+using Hosts.WebApi;
 using OpenAI.Chat;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
@@ -137,7 +138,7 @@ namespace Services.WebApi
                     sleepDurationProvider: retryAttempt => TimeSpan.FromSeconds(Math.Min(Math.Pow(2, retryAttempt), 10)),
                     onRetry: (exception, timespan, retryCount, context) =>
                     {
-                        _logger.LogWarning(exception, "Retry {RetryCount} after {Delay}s", retryCount, timespan.TotalSeconds);
+                        _logger.CopilotChatRetryAttempt(retryCount, timespan.TotalSeconds, exception);
                     });
         }
 
@@ -232,7 +233,7 @@ namespace Services.WebApi
                         toolCallCount++;
                         
                         var toolCallNames = string.Join(", ", chatCompletion.ToolCalls.Select(t => t.FunctionName));
-                        _logger.LogDebug("Tool call iteration {Iteration}/{Max}: {Tools}", toolCallCount, maxToolCalls, toolCallNames);
+                        _logger.CopilotToolCallIteration(toolCallCount, maxToolCalls, toolCallNames);
 
                         // Add assistant message with tool calls to conversation
                         messages.Add(new AssistantChatMessage(chatCompletion));
@@ -294,7 +295,7 @@ namespace Services.WebApi
                             }
                         }
 
-                        _logger.LogDebug("Chat completed with {ToolCalls} tool calls, {SourceParts} source parts", toolCallCount, sourceParts.Count);
+                        _logger.CopilotChatLoopCompleted(toolCallCount, sourceParts.Count);
 
                         return new CopilotChatResult
                         {
@@ -319,7 +320,7 @@ namespace Services.WebApi
 
         private string LogAndReturnUnknownTool(string functionName)
         {
-            _logger.LogWarning("Unknown tool requested: {FunctionName}", functionName);
+            _logger.CopilotUnknownToolRequested(functionName);
             return $"Error: Unknown tool '{functionName}'";
         }
 
@@ -535,7 +536,7 @@ namespace Services.WebApi
 
                 if (sqlRepo == null || adfRepo == null)
                 {
-                    _logger.LogWarning("HR DB services (ISqlMembershipRepository/IDataFactoryRepository) unavailable");
+                    _logger.CopilotHrDbServicesUnavailable();
                     return (false, 0, 0);
                 }
 
@@ -551,7 +552,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "HR validation failed");
+                _logger.CopilotHrValidationFailed(ex);
                 return (false, 0, 0);
             }
         }
@@ -590,7 +591,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Graph UPN search failed for {Email}", email);
+                _logger.CopilotGraphUpnSearchFailed(email, ex);
             }
 
             // Fallback: search by mail property (for cases where input is a mail address, not UPN)
@@ -611,7 +612,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Graph mail search failed for {Email}", email);
+                _logger.CopilotGraphMailSearchFailed(email, ex);
             }
 
             return null;
@@ -709,7 +710,7 @@ namespace Services.WebApi
                 }
                 catch (JsonException ex)
                 {
-                    _logger.LogWarning(ex, "JSON parse error in LLM response");
+                    _logger.CopilotLlmResponseJsonParseError(ex);
                 }
             }
 
@@ -737,7 +738,7 @@ namespace Services.WebApi
                     extractedLeaderName = leaderMatch.Groups[1].Value;
                 }
 
-                _logger.LogInformation("Plain-text fallback: extracted filter={Filter}, leader={Leader}", extractedFilter, extractedLeaderName);
+                _logger.CopilotPlainTextFallbackExtracted(extractedFilter, extractedLeaderName);
 
                 var fallbackPart = new CopilotSourcePartResult
                 {
@@ -853,7 +854,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to fetch HR attributes");
+                _logger.CopilotHrAttributesFetchFailed(ex);
                 // Return empty list on error, don't crash
                 return new List<HrAttributeInfo>();
             }
@@ -903,7 +904,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to get ADF run ID");
+                _logger.CopilotAdfRunIdFetchFailed(ex);
                 return JsonSerializer.Serialize(new { 
                     note = "Unable to fetch exact attribute values from database (permission issue). Ask the user what values they'd like to use and note that the values should be verified after applying.",
                     attributes = attributeNames 
