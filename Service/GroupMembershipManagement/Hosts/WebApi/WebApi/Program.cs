@@ -82,10 +82,16 @@ namespace WebApi
             var oamEntraAppScope = builder.Configuration.GetValue<string>("Settings:oamEntraAppScope");
 
             builder.Services.AddDbContext<GMMContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContext"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }));
 
             builder.Services.AddDbContext<GMMReadContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContextReadOnly")));
+                options.UseSqlServer(builder.Configuration.GetConnectionString("JobsContextReadOnly"), sqlServerOptions =>
+                {
+                    sqlServerOptions.EnableRetryOnFailure();
+                }));
 
             builder.Services.Configure<WebAPISettings>(builder.Configuration.GetSection("WebAPI:Settings"));
             builder.Configuration.AddAzureAppConfiguration(options =>
