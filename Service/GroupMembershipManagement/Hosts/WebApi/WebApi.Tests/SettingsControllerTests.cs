@@ -31,7 +31,6 @@ namespace Services.Tests
         private Setting _settingEntity = null!;
         private SettingsController _settingsController = null!;
         private List<Setting> _settings = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSettingsRepository> _settingsRepository = null!;
         private GetAllSettingsHandler _getAllSettingsHandler = null!;
         private GetSettingHandler _getSettingHandler = null!;
@@ -45,7 +44,6 @@ namespace Services.Tests
         public void Initialize()
         {
             _context = new DefaultHttpContext();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _getSupportEmailHandlerMock = new Mock<IRequestHandler<GetSupportEmailRequest, GetSupportEmailResponse>>();
             _getSupportEmailHandlerMock.Setup(h => h.ExecuteAsync(It.IsAny<GetSupportEmailRequest>()))

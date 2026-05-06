@@ -7,6 +7,6 @@ namespace Services.Messages.Responses
 {
     public class GetSupportEmailResponse : ResponseBase
     {
-        public string SupportEmailAddress { get; set; }
+        public string? SupportEmailAddress { get; set; }
     }
 }

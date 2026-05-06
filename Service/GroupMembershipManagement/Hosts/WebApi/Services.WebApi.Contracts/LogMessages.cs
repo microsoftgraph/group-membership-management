@@ -32,5 +32,19 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 90011, Level = LogLevel.Information,
             Message = "Completed execution of request {RequestType} ({InstanceId})")]
         public static partial void RequestCompleted(this ILogger logger, string requestType, Guid instanceId);
+
+        // ── GetSupportEmailHandler (91300-91349) ──
+
+        [LoggerMessage(EventId = 91300, Level = LogLevel.Information,
+            Message = "Retrieved secret '{SecretName}' from Key Vault")]
+        public static partial void SecretRetrievedFromKeyVault(this ILogger logger, string secretName);
+
+        [LoggerMessage(EventId = 91301, Level = LogLevel.Warning,
+            Message = "Failed to retrieve secret '{SecretName}' from Key Vault")]
+        public static partial void SecretRetrievalFailedFromKeyVault(this ILogger logger, string secretName, Exception exception);
+
+        [LoggerMessage(EventId = 91302, Level = LogLevel.Error,
+            Message = "Unexpected error while retrieving support email addresses")]
+        public static partial void SupportEmailRetrievalFailed(this ILogger logger, Exception exception);
     }
 }

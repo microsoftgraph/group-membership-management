@@ -1,31 +1,29 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Hosts.WebApi;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Models;
-using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System;
 using System.Threading.Tasks;
 using WebApi.Models;
-using Microsoft.Extensions.Logging;
 
 namespace Services
 {
     public class GetSupportEmailHandler : RequestHandlerBase<GetSupportEmailRequest, GetSupportEmailResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetSupportEmailHandler> _logger;
         private readonly SecretClient _keyVaultClient;
         private readonly IOptions<WebApiSettings> _webApiSettings;
 
-        public GetSupportEmailHandler(ILogger<GetSupportEmailHandler> logger, ILoggingRepository loggingRepository, IOptions<WebApiSettings> webApiSettings) : base(logger)
+        public GetSupportEmailHandler(ILogger<GetSupportEmailHandler> logger, IOptions<WebApiSettings> webApiSettings) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             if (webApiSettings?.Value == null)
                 {
                     throw new ArgumentNullException(nameof(webApiSettings));
@@ -66,22 +64,22 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve support email addresses: {ex.Message}" });
+                _logger.SupportEmailRetrievalFailed(ex);
                 throw;
             }
         }
 
-        private async Task<string> GetSecretValueAsync(string secretName)
+        private async Task<string?> GetSecretValueAsync(string secretName)
         {
             try
             {
                 KeyVaultSecret secret = await _keyVaultClient.GetSecretAsync(secretName, cancellationToken: CancellationToken.None);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Retrieved secret '{secretName}' successfully." });
+                _logger.SecretRetrievedFromKeyVault(secretName);
                 return secret.Value;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to retrieve secret '{secretName}' from Key Vault: {ex.Message}" });
+                _logger.SecretRetrievalFailedFromKeyVault(secretName, ex);
                 return null;
             }
         }
