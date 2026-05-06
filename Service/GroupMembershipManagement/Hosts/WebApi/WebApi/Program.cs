@@ -31,7 +31,6 @@ using Repositories.EntityFramework;
 using Repositories.EntityFramework.Contexts;
 using Repositories.GraphGroups;
 using Repositories.Localization;
-using Repositories.Logging;
 using Repositories.NotificationsRepository;
 using Repositories.ServiceBusQueue;
 using Repositories.ServiceStatus;
@@ -285,18 +284,6 @@ namespace WebApi
                 options.ResourcesPath = "Resources";
             });
             builder.Services.AddSingleton<ILocalizationRepository, LocalizationRepository>();
-
-            builder.Services.AddOptions<LogAnalyticsSecret<LoggingRepository>>().Configure<IConfiguration>((settings, configuration) =>
-            {
-                settings.WorkSpaceId = configuration.GetValue<string>("Settings:logAnalyticsCustomerId");
-                settings.SharedKey = configuration.GetValue<string>("Settings:logAnalyticsPrimarySharedKey");
-                settings.Location = "WebAPI";
-            })
-            .Services.AddSingleton<ILoggingRepository, LoggingRepository>(services =>
-            {
-                var settings = services.GetRequiredService<IOptions<LogAnalyticsSecret<LoggingRepository>>>();
-                return new LoggingRepository(settings.Value);
-            });
 
             builder.Services.AddOptions<DataFactorySecrets<IDataFactoryRepository>>().Configure<IConfiguration>((settings, configuration) =>
             {

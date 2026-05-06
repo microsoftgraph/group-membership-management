@@ -16,7 +16,6 @@ namespace Services.Tests
     [TestClass]
     public class OrgLeaderDetailsControllerTests
     {
-        private Mock<ILoggingRepository> _loggingRepository = null;
         private Mock<IDataFactoryRepository> _dataFactoryRepository = null!;
         private Mock<ISqlMembershipRepository> _sqlMembershipRepository = null!;
 
@@ -27,7 +26,6 @@ namespace Services.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _dataFactoryRepository = new Mock<IDataFactoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
