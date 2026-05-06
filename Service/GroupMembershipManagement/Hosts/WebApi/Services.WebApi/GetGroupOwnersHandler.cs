@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.WebApi;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -12,15 +13,14 @@ namespace Services
 {
     public class GetGroupOwnersHandler : RequestHandlerBase<GetGroupOwnersRequest, GetGroupOwnersResponse>
     {
+        private readonly ILogger<GetGroupOwnersHandler> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly ILoggingRepository _loggingRepository;
 
         public GetGroupOwnersHandler(
             ILogger<GetGroupOwnersHandler> logger,
-            ILoggingRepository loggingRepository,
             IGraphGroupRepository graphGroupRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
@@ -38,10 +38,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve group owners for group {request.GroupId}\n{ex.Message}"
-                });
+                _logger.GroupOwnersRetrievalFailed(request.GroupId, ex);
                 throw;
             }
 

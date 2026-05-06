@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -17,25 +18,25 @@ namespace Services
 {
     public class GetGroupHandler : RequestHandlerBase<GetGroupRequest, GetGroupResponse>
     {
+        private readonly ILogger<GetGroupHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseGroupsRepository _databaseGroupsRepository;
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public GetGroupHandler(ILogger<GetGroupHandler> logger, ILoggingRepository loggingRepository,
+        public GetGroupHandler(ILogger<GetGroupHandler> logger,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IDatabaseGroupsRepository databaseGroupsRepository,
                               IDatabaseTitlesRepository titlesRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
 
@@ -61,10 +62,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve group endpoints\n{ex.GetBaseException()}"
-                });
+                _logger.GroupDetailsEndpointsRetrievalFailed(ex.GetBaseException());
             }
 
             var type = job.MembershipType;

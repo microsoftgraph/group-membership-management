@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -12,12 +13,12 @@ namespace Services
 {
     public class GetGroupMembersHandler : RequestHandlerBase<GetGroupMembersRequest, GetGroupMembersResponse>
     {
+        private readonly ILogger<GetGroupMembersHandler> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public GetGroupMembersHandler(ILogger<GetGroupMembersHandler> logger, ILoggingRepository loggingRepository, IGraphGroupRepository graphGroupRepository) : base(logger)
+        public GetGroupMembersHandler(ILogger<GetGroupMembersHandler> logger, IGraphGroupRepository graphGroupRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
@@ -34,17 +35,11 @@ namespace Services
                 response.GroupMemberCount = groups.Count;
                 response.Groups = groups.Select(g => new GroupMemberGroup(g.ObjectId, g.Name ?? string.Empty)).ToList();
 
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    Message = $"Retrieved {groups.Count} group-type members for group {request.GroupId}. Group IDs: {string.Join(", ", groups.Select(g => g.ObjectId))}"
-                });
+                _logger.GroupMembersRetrieved(groups.Count, request.GroupId, string.Join(", ", groups.Select(g => g.ObjectId)));
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    Message = $"Unable to retrieve group-type members for group {request.GroupId}\n{ex.Message}"
-                });
+                _logger.GroupMembersRetrievalFailed(request.GroupId, ex);
                 throw;
             }
 

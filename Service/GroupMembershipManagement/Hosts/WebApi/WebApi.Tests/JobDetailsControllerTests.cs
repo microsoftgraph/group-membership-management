@@ -297,7 +297,7 @@ namespace Services.Tests
                                                     _graphGroupRepository.Object,
                                                    _syncJobRepository.Object);
 
-            _getGroupHandler = new GetGroupHandler(NullLogger<GetGroupHandler>.Instance, _loggingRepository.Object,
+            _getGroupHandler = new GetGroupHandler(NullLogger<GetGroupHandler>.Instance,
                                                             _syncJobRepository.Object,
                                                             _groupRepository.Object,
                                                             _titlesRepository.Object,

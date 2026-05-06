@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -12,29 +13,23 @@ namespace Services.WebApi
 {
     public class GetServiceStatusHandler : RequestHandlerBase<GetServiceStatusRequest, GetServiceStatusResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetServiceStatusHandler> _logger;
         private readonly IServiceStatusRepository _serviceStatusRepository;
 
-        public GetServiceStatusHandler(ILogger<GetServiceStatusHandler> logger, ILoggingRepository loggingRepository,
+        public GetServiceStatusHandler(ILogger<GetServiceStatusHandler> logger,
                                        IServiceStatusRepository serviceStatusRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceStatusRepository = serviceStatusRepository ?? throw new ArgumentNullException(nameof(serviceStatusRepository));
         }
 
         protected override async Task<GetServiceStatusResponse> ExecuteCoreAsync(GetServiceStatusRequest request)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Retrieving service status."
-            });
+            _logger.ServiceStatusRetrieving();
 
             var currentStatus = await _serviceStatusRepository.GetCurrentServiceStatusAsync();
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Current service status is {currentStatus}."
-            });
+            _logger.ServiceStatusCurrent(currentStatus.ToString());
 
             return new GetServiceStatusResponse
             {

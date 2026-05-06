@@ -34,7 +34,6 @@ namespace Services.Tests
         private List<Channel> _channels = null!;
         private HttpContext _context = null!;
         private DestinationController _destinationController = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<ITeamsChannelRepository> _teamsChannelRepository = null!;
         private Mock<ITeamsChannelConfig> _teamsChannelConfig = null!;
@@ -56,15 +55,14 @@ namespace Services.Tests
         {
             _context = new DefaultHttpContext();
             _destinations = new List<AzureADGroup>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _teamsChannelConfig = new Mock<ITeamsChannelConfig>();
             _searchGroupsHandler = new SearchGroupsHandler(NullLogger<SearchGroupsHandler>.Instance, _graphGroupRepository.Object);
             _searchChannelsHandler = new SearchChannelsHandler(NullLogger<SearchChannelsHandler>.Instance, _teamsChannelRepository.Object);
-            _getGroupEndpointsHandler = new GetGroupEndpointsHandler(NullLogger<GetGroupEndpointsHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
-            _getGroupOwnersHandler = new GetGroupOwnersHandler(NullLogger<GetGroupOwnersHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
+            _getGroupEndpointsHandler = new GetGroupEndpointsHandler(NullLogger<GetGroupEndpointsHandler>.Instance, _graphGroupRepository.Object);
+            _getGroupOwnersHandler = new GetGroupOwnersHandler(NullLogger<GetGroupOwnersHandler>.Instance, _graphGroupRepository.Object);
             _postGroupHandler = new PostGroupHandler(NullLogger<PostGroupHandler>.Instance, _graphGroupRepository.Object);
             _graphCredentials = new Mock<IOptions<GraphCredentials>>();
             var testGraphCredentials = new GraphCredentials
@@ -641,7 +639,7 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.GetDirectGroupTypeMembersAsync(groupId)).ReturnsAsync(expectedGroups);
 
-            var handler = new GetGroupMembersHandler(NullLogger<GetGroupMembersHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
+            var handler = new GetGroupMembersHandler(NullLogger<GetGroupMembersHandler>.Instance, _graphGroupRepository.Object);
 
             var mockServiceProvider = new Mock<IServiceProvider>();
             mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
@@ -672,7 +670,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupMembersWithEmptyGuidReturnsBadRequestAsync()
         {
-            var handler = new GetGroupMembersHandler(NullLogger<GetGroupMembersHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
+            var handler = new GetGroupMembersHandler(NullLogger<GetGroupMembersHandler>.Instance, _graphGroupRepository.Object);
 
             var mockServiceProvider = new Mock<IServiceProvider>();
             mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))

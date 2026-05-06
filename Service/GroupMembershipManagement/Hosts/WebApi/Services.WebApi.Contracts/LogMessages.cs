@@ -426,5 +426,35 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 92043, Level = LogLevel.Error,
             Message = "Failed to call JobScheduler.")]
         public static partial void JobSchedulerFailed(this ILogger logger, Exception exception);
+
+        // ── Destinations + ServiceStatus (91200-91299) ──
+
+        [LoggerMessage(EventId = 91200, Level = LogLevel.Warning,
+            Message = "Unable to retrieve group endpoints")]
+        public static partial void GroupEndpointsRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91201, Level = LogLevel.Warning,
+            Message = "Unable to retrieve group owners for group {GroupId}")]
+        public static partial void GroupOwnersRetrievalFailed(this ILogger logger, Guid groupId, Exception exception);
+
+        [LoggerMessage(EventId = 91202, Level = LogLevel.Information,
+            Message = "Retrieved {GroupMemberCount} group-type members for group {GroupId}. Group IDs: {GroupIds}")]
+        public static partial void GroupMembersRetrieved(this ILogger logger, int groupMemberCount, Guid groupId, string groupIds);
+
+        [LoggerMessage(EventId = 91203, Level = LogLevel.Warning,
+            Message = "Unable to retrieve group-type members for group {GroupId}")]
+        public static partial void GroupMembersRetrievalFailed(this ILogger logger, Guid groupId, Exception exception);
+
+        [LoggerMessage(EventId = 91204, Level = LogLevel.Warning,
+            Message = "Unable to retrieve group endpoints for group details")]
+        public static partial void GroupDetailsEndpointsRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91205, Level = LogLevel.Information,
+            Message = "Retrieving service status.")]
+        public static partial void ServiceStatusRetrieving(this ILogger logger);
+
+        [LoggerMessage(EventId = 91206, Level = LogLevel.Information,
+            Message = "Current service status is {Status}.")]
+        public static partial void ServiceStatusCurrent(this ILogger logger, string status);
     }
 }

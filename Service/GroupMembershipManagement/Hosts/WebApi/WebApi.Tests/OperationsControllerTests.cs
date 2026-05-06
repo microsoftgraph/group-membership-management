@@ -24,7 +24,6 @@ namespace WebApi.Tests
         private OperationsController _operationsController = null!;
         private PostOperationHandler _postResetRequestHandler = null!;
         private GetServiceStatusHandler _getServiceStatusRequestHandler = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IServiceStatusRepository> _serviceStatusRepository = null!;
         private Mock<IOperationsTaskQueue> _backgroundTaskService = null!;
 
@@ -33,7 +32,6 @@ namespace WebApi.Tests
         {
             _context = new DefaultHttpContext();
 
-            _loggingRepository = new Mock<ILoggingRepository>();
             _serviceStatusRepository = new Mock<IServiceStatusRepository>();
             _backgroundTaskService = new Mock<IOperationsTaskQueue>();
 
@@ -41,7 +39,7 @@ namespace WebApi.Tests
                                                                 _serviceStatusRepository.Object,
                                                                 _backgroundTaskService.Object);
 
-            _getServiceStatusRequestHandler = new GetServiceStatusHandler(NullLogger<GetServiceStatusHandler>.Instance, _loggingRepository.Object,
+            _getServiceStatusRequestHandler = new GetServiceStatusHandler(NullLogger<GetServiceStatusHandler>.Instance,
                                                                           _serviceStatusRepository.Object);
 
             _operationsController = new OperationsController(_postResetRequestHandler,
