@@ -13,6 +13,7 @@ using Services.Messages.Responses;
 using System.Net;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 
 namespace Services
@@ -31,6 +32,7 @@ namespace Services
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
 
         public PostJobHandler(
+            ILogger<PostJobHandler> logger,
             IDatabaseSyncJobsRepository syncJobRepository,
             IDatabaseDestinationAttributesRepository destinationAttributesRepository,
             IDatabaseTitlesRepository titlesRepository,
@@ -39,7 +41,7 @@ namespace Services
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
             IPendingConfigurationConfig pendingConfigurationConfig,
-            IServiceBusQueueRepository serviceBusQueueRepository) : base(loggingRepository)
+            IServiceBusQueueRepository serviceBusQueueRepository) : base(logger)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));

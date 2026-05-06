@@ -13,6 +13,7 @@ using Services.Messages.Responses;
 using System;
 using System.Threading.Tasks;
 using WebApi.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -22,7 +23,7 @@ namespace Services
         private readonly SecretClient _keyVaultClient;
         private readonly IOptions<WebApiSettings> _webApiSettings;
 
-        public GetSupportEmailHandler(ILoggingRepository loggingRepository, IOptions<WebApiSettings> webApiSettings) : base(loggingRepository)
+        public GetSupportEmailHandler(ILogger<GetSupportEmailHandler> logger, ILoggingRepository loggingRepository, IOptions<WebApiSettings> webApiSettings) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             if (webApiSettings?.Value == null)

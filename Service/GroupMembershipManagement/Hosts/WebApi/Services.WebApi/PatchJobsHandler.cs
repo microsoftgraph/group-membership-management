@@ -7,6 +7,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -16,10 +17,10 @@ namespace Services
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IThresholdConfig _thresholdConfig;
         
-        public PatchJobsHandler(ILoggingRepository loggingRepository,
+        public PatchJobsHandler(ILogger<PatchJobsHandler> logger,
                                 IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                                 ISyncJobChangeRepository syncJobChangeRepository,
-                                IThresholdConfig thresholdConfig) : base(loggingRepository)
+                                IThresholdConfig thresholdConfig) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));

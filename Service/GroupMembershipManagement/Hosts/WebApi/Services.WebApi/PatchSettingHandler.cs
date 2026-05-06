@@ -5,14 +5,15 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
     public class PatchSettingHandler : RequestHandlerBase<PatchSettingRequest, NullResponse>
     {
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
-        public PatchSettingHandler(ILoggingRepository loggingRepository,
-                                IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
+        public PatchSettingHandler(ILogger<PatchSettingHandler> logger,
+                                IDatabaseSettingsRepository databaseSettingsRepository) : base(logger)
         {
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }

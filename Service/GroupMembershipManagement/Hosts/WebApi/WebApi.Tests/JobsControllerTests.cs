@@ -27,6 +27,7 @@ using System.Security.Claims;
 using WebApi.Controllers.v1.Jobs;
 using WebApi.Models;
 using WebApi.Models.Responses;
+using Microsoft.Extensions.Logging.Abstractions;
 using NewTitle = WebApi.Models.DTOs.NewTitle;
 using NewSyncJobDTO = WebApi.Models.DTOs.NewSyncJob;
 using PagedResponseDTO = WebApi.Models.DTOs.PagedResponse<WebApi.Models.DTOs.SyncJob>;
@@ -232,22 +233,22 @@ namespace Services.Tests
             _databaseSyncJobsRepository.Setup(repo => repo.CreateSyncJobAsync(It.IsAny<SyncJob>()))
                 .ReturnsAsync(Guid.NewGuid());
 
-            _postResetRequestHandler = new PostOperationHandler(_loggingRepository.Object,
+            _postResetRequestHandler = new PostOperationHandler(NullLogger<PostOperationHandler>.Instance, _loggingRepository.Object,
                                                                 _serviceStatusRepository.Object,
                                                                 _backgroundTaskService.Object);
 
-            _getJobsHandler = new GetJobsHandler(_loggingRepository.Object,
+            _getJobsHandler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                                  _databaseSyncJobsRepository.Object,
                                                  _graphGroupRepository.Object,
                                                  _httpContextAccessor.Object,
                                                  _syncJobChangeRepository.Object);
 
-            _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
+            _patchJobsHandler = new PatchJobsHandler(NullLogger<PatchJobsHandler>.Instance,
                                                  _databaseSyncJobsRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _thresholdConfig.Object);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -257,7 +258,7 @@ namespace Services.Tests
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _getJobDetailsHandler = new GetJobDetailsHandler(_loggingRepository.Object,
+            _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance, _loggingRepository.Object,
                                                 _databaseSyncJobsRepository.Object,
                                                 _syncJobChangeRepository.Object,
                                                 _titlesRepository.Object,
@@ -343,7 +344,7 @@ namespace Services.Tests
                 .ReturnsAsync(new List<AzureADGroup>());
 
             _getJobsHandler = new GetJobsHandler(
-                                     _loggingRepository.Object,
+                                     NullLogger<GetJobsHandler>.Instance,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
@@ -398,13 +399,13 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
             _getJobsHandler = new GetJobsHandler(
-                                     _loggingRepository.Object,
+                                     NullLogger<GetJobsHandler>.Instance,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
                                      _syncJobChangeRepository.Object);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -445,13 +446,13 @@ namespace Services.Tests
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
             _getJobsHandler = new GetJobsHandler(
-                                     _loggingRepository.Object,
+                                     NullLogger<GetJobsHandler>.Instance,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
                                      _syncJobChangeRepository.Object);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -509,13 +510,13 @@ namespace Services.Tests
                                      .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAITitleEnabled, SettingValue = "false" });
 
             _getJobsHandler = new GetJobsHandler(
-                                     _loggingRepository.Object,
+                                     NullLogger<GetJobsHandler>.Instance,
                                      _databaseSyncJobsRepository.Object,
                                      _graphGroupRepository.Object,
                                      _httpContextAccessor.Object,
                                      _syncJobChangeRepository.Object);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -563,7 +564,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -604,7 +605,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -642,7 +643,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -683,7 +684,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -727,7 +728,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -773,7 +774,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(_context);
 
-            _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
+            _patchJobsHandler = new PatchJobsHandler(NullLogger<PatchJobsHandler>.Instance,
                                                  _databaseSyncJobsRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _thresholdConfig.Object);
@@ -838,7 +839,7 @@ namespace Services.Tests
             // Setup threshold config to return 5 for NumberOfThresholdViolationsToNotify
             _thresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(5);
 
-            _patchJobsHandler = new PatchJobsHandler(_loggingRepository.Object,
+            _patchJobsHandler = new PatchJobsHandler(NullLogger<PatchJobsHandler>.Instance,
                                                  _databaseSyncJobsRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _thresholdConfig.Object);
@@ -982,7 +983,7 @@ namespace Services.Tests
                 IsSortedDescending = false
             };
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1057,7 +1058,7 @@ namespace Services.Tests
                 IsSortedDescending = true
             };
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1141,7 +1142,7 @@ namespace Services.Tests
                 IsSortedDescending = false
             };
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1226,7 +1227,7 @@ namespace Services.Tests
                 IsSortedDescending = true
             };
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1277,7 +1278,7 @@ namespace Services.Tests
             });
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1327,7 +1328,7 @@ namespace Services.Tests
             });
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1377,7 +1378,7 @@ namespace Services.Tests
             });
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1405,7 +1406,7 @@ namespace Services.Tests
             });
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(userContext);
 
-            var handler = new GetJobsHandler(_loggingRepository.Object,
+            var handler = new GetJobsHandler(NullLogger<GetJobsHandler>.Instance,
                                              _databaseSyncJobsRepository.Object,
                                              _graphGroupRepository.Object,
                                              _httpContextAccessor.Object,
@@ -1464,7 +1465,7 @@ namespace Services.Tests
             // Setup sync job with GroupMembership query
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1523,7 +1524,7 @@ namespace Services.Tests
             // Setup sync job with GroupMembership query
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1582,7 +1583,7 @@ namespace Services.Tests
             // Setup sync job with GroupMembership query
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1633,7 +1634,7 @@ namespace Services.Tests
             var groupId = Guid.NewGuid();
             _newSyncJob.Query = $"[{{\"type\":\"SecurityGroup\",\"source\":\"{groupId}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1699,7 +1700,7 @@ namespace Services.Tests
             // Setup sync job with single SqlMembership query where manager ID matches user's onPremisesImmutableId
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1760,7 +1761,7 @@ namespace Services.Tests
             // Setup sync job with single SqlMembership query where manager ID does NOT match user's onPremisesImmutableId
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{differentManagerId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1820,7 +1821,7 @@ namespace Services.Tests
             // Setup sync job with single SqlMembership query where manager ID matches user's onPremisesImmutableId
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1880,7 +1881,7 @@ namespace Services.Tests
             // Setup sync job with multiple SqlMembership queries (should not auto-approve)
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}},{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -1941,7 +1942,7 @@ namespace Services.Tests
             var groupId = Guid.NewGuid();
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2001,7 +2002,7 @@ namespace Services.Tests
             var managerId = "12345";
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2071,7 +2072,7 @@ namespace Services.Tests
             // Setup sync job with GroupMembership query (should trigger group-based auto-approval)
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId1}\"}},{{\"type\":\"GroupMembership\",\"source\":\"{groupId2}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2133,7 +2134,7 @@ namespace Services.Tests
             // Setup sync job with single SqlMembership query where manager ID matches user's onPremisesImmutableId
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{userOnPremisesImmutableId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2187,7 +2188,7 @@ namespace Services.Tests
             var groupId = Guid.NewGuid();
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2245,7 +2246,7 @@ namespace Services.Tests
             // Setup sync job with GroupMembership query
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2319,7 +2320,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = 20
             };
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2392,7 +2393,7 @@ namespace Services.Tests
                 ThresholdPercentageForRemovals = 20
             };
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2455,7 +2456,7 @@ namespace Services.Tests
             var managerId = "12345";
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2515,7 +2516,7 @@ namespace Services.Tests
             var managerId = "12345";
             _newSyncJob.Query = $"[{{\"type\":\"SqlMembership\",\"source\":{{\"manager\":{{\"id\":{managerId}}}}}}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2569,7 +2570,7 @@ namespace Services.Tests
             var groupId = Guid.NewGuid();
             _newSyncJob.Query = $"[{{\"type\":\"GroupMembership\",\"source\":\"{groupId}\"}}]";
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2622,7 +2623,7 @@ namespace Services.Tests
             _databaseSettingsRepository.Setup(x => x.GetSettingByKeyAsync(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled))
                                       .ReturnsAsync(new Setting { SettingKey = SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, SettingValue = "false" });
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
@@ -2688,7 +2689,7 @@ namespace Services.Tests
             _serviceBusQueueRepository.Setup(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()))
                                       .ThrowsAsync(new Exception("Service Bus error"));
 
-            _postJobHandler = new PostJobHandler(_databaseSyncJobsRepository.Object,
+            _postJobHandler = new PostJobHandler(NullLogger<PostJobHandler>.Instance, _databaseSyncJobsRepository.Object,
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,

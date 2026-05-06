@@ -8,6 +8,7 @@ using Repositories.Contracts.InjectConfig;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -19,12 +20,12 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly string _teamsChannelOwner;
 
-        public GetChannelOnboardingStatusHandler(ILoggingRepository loggingRepository,
+        public GetChannelOnboardingStatusHandler(ILogger<GetChannelOnboardingStatusHandler> logger,
                               IGraphGroupRepository graphGroupRepository,
                               ITeamsChannelRepository teamsChannelRepository,
                               ITeamsChannelConfig teamsChannelConfig,
                               IDatabaseSyncJobsRepository syncJobRepository,
-                              IOptions<GraphCredentials> graphCredentials) : base(loggingRepository)
+                              IOptions<GraphCredentials> graphCredentials) : base(logger)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));

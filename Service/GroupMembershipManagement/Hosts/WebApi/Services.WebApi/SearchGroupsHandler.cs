@@ -6,6 +6,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 using DestinationDTO = WebApi.Models.DTOs.Destination;
 
 namespace Services
@@ -13,8 +14,8 @@ namespace Services
     public class SearchGroupsHandler : RequestHandlerBase<SearchGroupsRequest, SearchGroupsResponse>
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
-        public SearchGroupsHandler(ILoggingRepository loggingRepository,
-                              IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
+        public SearchGroupsHandler(ILogger<SearchGroupsHandler> logger,
+                              IGraphGroupRepository graphGroupRepository) : base(logger)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }

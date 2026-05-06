@@ -9,6 +9,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using WebApi.Models;
+using Microsoft.Extensions.Logging;
 using SyncJobDTO = WebApi.Models.DTOs.SyncJob;
 
 namespace Services
@@ -20,11 +21,11 @@ namespace Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
 
-        public GetJobsHandler(ILoggingRepository loggingRepository,
+        public GetJobsHandler(ILogger<GetJobsHandler> logger,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor,
-                              ISyncJobChangeRepository syncJobChangeRepository) : base(loggingRepository)
+                              ISyncJobChangeRepository syncJobChangeRepository) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));

@@ -9,6 +9,7 @@ using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using System.Net;
 using WebApi.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Services.WebApi
 {
@@ -18,9 +19,9 @@ namespace Services.WebApi
         private readonly IServiceStatusRepository _serviceStatusRepository;
         private readonly IOperationsTaskQueue _backgroundTaskService;
 
-        public PostOperationHandler(ILoggingRepository loggingRepository,
+        public PostOperationHandler(ILogger<PostOperationHandler> logger, ILoggingRepository loggingRepository,
                                 IServiceStatusRepository serviceStatusRepository,
-                                IOperationsTaskQueue backgroundTaskService) : base(loggingRepository)
+                                IOperationsTaskQueue backgroundTaskService) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _serviceStatusRepository = serviceStatusRepository ?? throw new ArgumentNullException(nameof(serviceStatusRepository));

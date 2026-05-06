@@ -5,6 +5,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 using ChannelDTO = WebApi.Models.DTOs.Channel;
 
 namespace Services
@@ -12,8 +13,8 @@ namespace Services
     public class SearchChannelsHandler : RequestHandlerBase<SearchChannelsRequest, SearchChannelsResponse>
     {
         private readonly ITeamsChannelRepository _teamsChannelRepository;
-        public SearchChannelsHandler(ILoggingRepository loggingRepository,
-                              ITeamsChannelRepository teamsChannelRepository) : base(loggingRepository)
+        public SearchChannelsHandler(ILogger<SearchChannelsHandler> logger,
+                              ITeamsChannelRepository teamsChannelRepository) : base(logger)
         {
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
         }

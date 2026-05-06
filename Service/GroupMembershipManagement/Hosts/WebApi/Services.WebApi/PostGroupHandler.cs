@@ -6,6 +6,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -13,7 +14,7 @@ namespace Services
     {
         private readonly IGraphGroupRepository _graphGroupRepository;
 
-        public PostGroupHandler(ILoggingRepository loggingRepository, IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
+        public PostGroupHandler(ILogger<PostGroupHandler> logger, IGraphGroupRepository graphGroupRepository) : base(logger)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }

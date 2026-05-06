@@ -15,6 +15,7 @@ using System.Data.SqlTypes;
 using System.Net;
 using System.Text.Json;
 using WebApi.Models.DTOs;
+using Microsoft.Extensions.Logging;
 using LogMessage = Models.LogMessage;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
@@ -33,6 +34,7 @@ namespace Services.WebApi
         private readonly IThresholdConfig _thresholdConfig;
 
         public PatchJobHandler(
+            ILogger<PatchJobHandler> logger,
             ILoggingRepository loggingRepository,
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
@@ -41,7 +43,7 @@ namespace Services.WebApi
             IDatabaseSettingsRepository databaseSettingsRepository,
             INotificationService notificationService,
             IThresholdConfig thresholdConfig)
-            : base(loggingRepository)
+            : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));

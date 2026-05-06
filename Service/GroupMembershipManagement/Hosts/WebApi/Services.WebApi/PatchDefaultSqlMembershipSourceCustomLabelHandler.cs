@@ -5,14 +5,15 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
     public class PatchDefaultSqlMembershipSourceCustomLabelHandler : RequestHandlerBase<PatchDefaultSqlMembershipSourceCustomLabelRequest, NullResponse>
     {
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
-        public PatchDefaultSqlMembershipSourceCustomLabelHandler(ILoggingRepository loggingRepository,
-                                IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository) : base(loggingRepository)
+        public PatchDefaultSqlMembershipSourceCustomLabelHandler(ILogger<PatchDefaultSqlMembershipSourceCustomLabelHandler> logger,
+                                IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository) : base(logger)
         {
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
         }

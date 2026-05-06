@@ -8,6 +8,7 @@ using Services.Messages.Responses;
 using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Net;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WebApi.Tests
 {
@@ -23,7 +24,7 @@ namespace WebApi.Tests
         {
             _mockCopilotService = new Mock<ICopilotService>();
             _mockLoggingRepository = new Mock<ILoggingRepository>();
-            _handler = new CopilotChatHandler(_mockCopilotService.Object, _mockLoggingRepository.Object);
+            _handler = new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, _mockCopilotService.Object, _mockLoggingRepository.Object);
         }
 
         [TestMethod]
@@ -337,14 +338,14 @@ namespace WebApi.Tests
         public void Constructor_WithNullCopilotService_ThrowsArgumentNullException()
         {
             Assert.ThrowsException<ArgumentNullException>(
-                () => new CopilotChatHandler(null!, _mockLoggingRepository.Object));
+                () => new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, null!, _mockLoggingRepository.Object));
         }
 
         [TestMethod]
         public void Constructor_WithNullLoggingRepository_ThrowsArgumentNullException()
         {
             Assert.ThrowsException<ArgumentNullException>(
-                () => new CopilotChatHandler(_mockCopilotService.Object, null!));
+                () => new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, _mockCopilotService.Object, null!));
         }
     }
 }

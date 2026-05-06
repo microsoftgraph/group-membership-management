@@ -13,6 +13,7 @@ using System.Net;
 using System.Security.Claims;
 using WebApi.Controllers.v1.Operations;
 using WebApi.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WebApi.Tests
 {
@@ -36,11 +37,11 @@ namespace WebApi.Tests
             _serviceStatusRepository = new Mock<IServiceStatusRepository>();
             _backgroundTaskService = new Mock<IOperationsTaskQueue>();
 
-            _postResetRequestHandler = new PostOperationHandler(_loggingRepository.Object,
+            _postResetRequestHandler = new PostOperationHandler(NullLogger<PostOperationHandler>.Instance, _loggingRepository.Object,
                                                                 _serviceStatusRepository.Object,
                                                                 _backgroundTaskService.Object);
 
-            _getServiceStatusRequestHandler = new GetServiceStatusHandler(_loggingRepository.Object,
+            _getServiceStatusRequestHandler = new GetServiceStatusHandler(NullLogger<GetServiceStatusHandler>.Instance, _loggingRepository.Object,
                                                                           _serviceStatusRepository.Object);
 
             _operationsController = new OperationsController(_postResetRequestHandler,

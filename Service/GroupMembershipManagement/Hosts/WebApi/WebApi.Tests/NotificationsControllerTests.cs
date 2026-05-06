@@ -182,7 +182,7 @@ namespace Services.Tests
             _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig, _thresholdConfig.Object, _syncJobRepository.Object);
             _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
-            _resolveNotificationsHandler = new ResolveNotificationHandler(_loggingRepository.Object,
+            _resolveNotificationsHandler = new ResolveNotificationHandler(NullLogger<ResolveNotificationHandler>.Instance, _loggingRepository.Object,
                 _notificationRepository.Object,
                 _syncJobRepository.Object,
                 _syncJobChangeRepository.Object,
@@ -190,7 +190,7 @@ namespace Services.Tests
                 _telemetryClient,
                 _thresholdNotificationService,
                 _gmmEmailReceivers);
-            _notificationCardHandler = new NotificationCardHandler(_loggingRepository.Object,
+            _notificationCardHandler = new NotificationCardHandler(NullLogger<NotificationCardHandler>.Instance,
                 _notificationRepository.Object,
                 _graphGroupRepository.Object,
                 _thresholdNotificationService,

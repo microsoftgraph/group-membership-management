@@ -7,6 +7,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Data;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -19,10 +20,10 @@ namespace Services
 
         private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
 
-        public GetDefaultSqlMembershipSourceAttributesHandler(ILoggingRepository loggingRepository,
+        public GetDefaultSqlMembershipSourceAttributesHandler(ILogger<GetDefaultSqlMembershipSourceAttributesHandler> logger, ILoggingRepository loggingRepository,
                               IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository,
                               IDataFactoryRepository dataFactoryRepository,
-                              ISqlMembershipRepository sqlMembershipRepository) : base(loggingRepository)
+                              ISqlMembershipRepository sqlMembershipRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));

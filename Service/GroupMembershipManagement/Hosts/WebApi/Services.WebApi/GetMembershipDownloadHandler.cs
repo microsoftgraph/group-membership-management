@@ -9,6 +9,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.IO.Compression;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -19,9 +20,10 @@ namespace Services
         private readonly IBlobStorageRepository _blobStorageRepository;
 
         public GetMembershipDownloadHandler(
+            ILogger<GetMembershipDownloadHandler> logger,
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
-            IBlobStorageRepository blobStorageRepository) : base(loggingRepository)
+            IBlobStorageRepository blobStorageRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));

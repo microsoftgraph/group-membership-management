@@ -10,6 +10,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using WebApi.Models;
+using Microsoft.Extensions.Logging;
 using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 
 namespace Services
@@ -23,12 +24,12 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public GetGroupHandler(ILoggingRepository loggingRepository,
+        public GetGroupHandler(ILogger<GetGroupHandler> logger, ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IDatabaseGroupsRepository databaseGroupsRepository,
                               IDatabaseTitlesRepository titlesRepository,
                               IGraphGroupRepository graphGroupRepository,
-                              IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
+                              IHttpContextAccessor httpContextAccessor) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));

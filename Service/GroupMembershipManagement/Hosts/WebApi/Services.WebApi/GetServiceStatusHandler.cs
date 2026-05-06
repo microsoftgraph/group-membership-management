@@ -6,6 +6,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services.WebApi
 {
@@ -14,8 +15,8 @@ namespace Services.WebApi
         private readonly ILoggingRepository _loggingRepository;
         private readonly IServiceStatusRepository _serviceStatusRepository;
 
-        public GetServiceStatusHandler(ILoggingRepository loggingRepository,
-                                       IServiceStatusRepository serviceStatusRepository) : base(loggingRepository)
+        public GetServiceStatusHandler(ILogger<GetServiceStatusHandler> logger, ILoggingRepository loggingRepository,
+                                       IServiceStatusRepository serviceStatusRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _serviceStatusRepository = serviceStatusRepository ?? throw new ArgumentNullException(nameof(serviceStatusRepository));

@@ -6,6 +6,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -17,9 +18,9 @@ namespace Services
 
         private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
 
-        public GetSqlValidationHandler(ILoggingRepository loggingRepository,
+        public GetSqlValidationHandler(ILogger<GetSqlValidationHandler> logger, ILoggingRepository loggingRepository,
                                 ISqlMembershipRepository sqlMembershipRepository,
-                                IDataFactoryRepository dataFactoryRepository) : base(loggingRepository)
+                                IDataFactoryRepository dataFactoryRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));

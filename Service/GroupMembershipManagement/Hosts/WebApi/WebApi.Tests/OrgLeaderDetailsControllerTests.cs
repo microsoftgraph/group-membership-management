@@ -9,6 +9,7 @@ using Services.Messages.Responses;
 using System.Security.Claims;
 using WebApi.Controllers.v1.OrgLeaderDetails;
 using WebApi.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Services.Tests
 {
@@ -30,8 +31,8 @@ namespace Services.Tests
             _dataFactoryRepository = new Mock<IDataFactoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
-            _getOrgLeaderDetailsHandler = new GetOrgLeaderDetailsHandler(_loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
-            _getOrgLeaderHandler = new GetOrgLeaderHandler(_loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _getOrgLeaderDetailsHandler = new GetOrgLeaderDetailsHandler(NullLogger<GetOrgLeaderDetailsHandler>.Instance, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _getOrgLeaderHandler = new GetOrgLeaderHandler(NullLogger<GetOrgLeaderHandler>.Instance, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
             _orgLeaderDetailsController = new OrgLeaderDetailsController(_getOrgLeaderDetailsHandler, _getOrgLeaderHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>

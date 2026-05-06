@@ -10,6 +10,7 @@ using Services.Contracts;
 using Services.Contracts.Notifications;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -24,14 +25,14 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly IGMMEmailReceivers _gmmEmailReceivers;
 
-        public ResolveNotificationHandler(ILoggingRepository loggingRepository,
+        public ResolveNotificationHandler(ILogger<ResolveNotificationHandler> logger, ILoggingRepository loggingRepository,
                               INotificationRepository notificationRepository,
                               IDatabaseSyncJobsRepository syncJobRepository,
                               ISyncJobChangeRepository syncJobChangeRepository,
                               IGraphGroupRepository graphGroupRepository,
                               TelemetryClient telemetryClient,
                               IThresholdNotificationService thresholdNotificationService,
-                              IGMMEmailReceivers gmmEmailReceivers) : base(loggingRepository)
+                              IGMMEmailReceivers gmmEmailReceivers) : base(logger)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));

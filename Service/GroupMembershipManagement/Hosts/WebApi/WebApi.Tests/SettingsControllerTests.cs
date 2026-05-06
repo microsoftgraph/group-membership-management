@@ -20,6 +20,7 @@ using Services.Contracts;
 using Services.Messages.Responses;
 using Microsoft.Extensions.Options;
 using WebApi.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Services.Tests
 {
@@ -51,9 +52,9 @@ namespace Services.Tests
                                        .ReturnsAsync(new GetSupportEmailResponse { SupportEmailAddress = "support@example.com" });
 
             _getSupportEmailHandler = _getSupportEmailHandlerMock.Object;
-            _getAllSettingsHandler = new GetAllSettingsHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _getSettingHandler = new GetSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
-            _patchSettingHandler = new PatchSettingHandler(_loggingRepository.Object, _settingsRepository.Object);
+            _getAllSettingsHandler = new GetAllSettingsHandler(NullLogger<GetAllSettingsHandler>.Instance, _settingsRepository.Object);
+            _getSettingHandler = new GetSettingHandler(NullLogger<GetSettingHandler>.Instance, _settingsRepository.Object);
+            _patchSettingHandler = new PatchSettingHandler(NullLogger<PatchSettingHandler>.Instance, _settingsRepository.Object);
             _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
             {
                 ControllerContext = CreateControllerContext(new List<Claim>

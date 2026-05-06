@@ -5,6 +5,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 using SettingDTO = WebApi.Models.DTOs.Setting;
 
 namespace Services
@@ -12,8 +13,8 @@ namespace Services
     public class GetDefaultSqlMembershipSourceHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceRequest, GetDefaultSqlMembershipSourceResponse>
     {
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
-        public GetDefaultSqlMembershipSourceHandler(ILoggingRepository loggingRepository,
-                                IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository) : base(loggingRepository)
+        public GetDefaultSqlMembershipSourceHandler(ILogger<GetDefaultSqlMembershipSourceHandler> logger,
+                                IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository) : base(logger)
         {
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
         }

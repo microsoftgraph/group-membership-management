@@ -14,6 +14,7 @@ using Services.WebApi.Contracts;
 using System.Data.SqlTypes;
 using System.Net;
 using WebApi.Models.DTOs;
+using Microsoft.Extensions.Logging.Abstractions;
 using SyncJob = Models.SyncJob;
 using Setting = Models.Setting;
 
@@ -50,6 +51,7 @@ namespace WebApi.Tests
             _mockThresholdConfig.Setup(x => x.NumberOfThresholdViolationsToNotify).Returns(3);
 
             _patchJobHandler = new PatchJobHandler(
+                NullLogger<PatchJobHandler>.Instance,
                 _mockLoggingRepository.Object,
                 _mockGraphGroupRepository.Object,
                 _mockSyncJobRepository.Object,

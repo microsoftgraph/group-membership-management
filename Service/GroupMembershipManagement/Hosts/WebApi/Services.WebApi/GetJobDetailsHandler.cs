@@ -12,6 +12,7 @@ using Services.Messages.Responses;
 using System.Net;
 using System.Text.Json;
 using WebApi.Models;
+using Microsoft.Extensions.Logging;
 using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 
 namespace Services
@@ -27,14 +28,14 @@ namespace Services
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
-        public GetJobDetailsHandler(ILoggingRepository loggingRepository,
+        public GetJobDetailsHandler(ILogger<GetJobDetailsHandler> logger, ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               ISyncJobChangeRepository syncJobChangesRepository,
                               IDatabaseTitlesRepository titlesRepository,
                               IGraphGroupRepository graphGroupRepository,
                               ITeamsChannelRepository teamsChannelRepository,
                               IHttpContextAccessor httpContextAccessor,
-                              IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(loggingRepository)
+                              IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));

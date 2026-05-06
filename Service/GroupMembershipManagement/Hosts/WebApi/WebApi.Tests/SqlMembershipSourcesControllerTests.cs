@@ -14,6 +14,7 @@ using WebApi.Controllers.v1.Settings;
 using WebApi.Controllers.v1.SqlMembershipSources;
 using WebApi.Models;
 using WebApi.Models.Responses;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Services.Tests
 {
@@ -42,13 +43,13 @@ namespace Services.Tests
             _dataFactoryRepository = new Mock<IDataFactoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
-            _getDefaultSqlMembershipSourceHandler = new GetDefaultSqlMembershipSourceHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object);
-            _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(_loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(_loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _patchDefaultSqlMembershipSourceCustomLabelHandler = new PatchDefaultSqlMembershipSourceCustomLabelHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object);
-            _patchDefaultSqlMembershipSourceAttributesHandler = new PatchDefaultSqlMembershipSourceAttributesHandler(_loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object);
-            _getSqlValidationHandler = new GetSqlValidationHandler(_loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _getDefaultSqlMembershipSourceHandler = new GetDefaultSqlMembershipSourceHandler(NullLogger<GetDefaultSqlMembershipSourceHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
+            _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributesHandler>.Instance, _loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeValuesHandler>.Instance, _loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _patchDefaultSqlMembershipSourceCustomLabelHandler = new PatchDefaultSqlMembershipSourceCustomLabelHandler(NullLogger<PatchDefaultSqlMembershipSourceCustomLabelHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
+            _patchDefaultSqlMembershipSourceAttributesHandler = new PatchDefaultSqlMembershipSourceAttributesHandler(NullLogger<PatchDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
+            _getSqlValidationHandler = new GetSqlValidationHandler(NullLogger<GetSqlValidationHandler>.Instance, _loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
 
             _sqlMembershipSourcesController = new SqlMembershipSourcesController(_getDefaultSqlMembershipSourceHandler,
                 _getDefaultSqlMembershipSourceAttributesHandler,

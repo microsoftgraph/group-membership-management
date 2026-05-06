@@ -4,6 +4,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -11,15 +12,13 @@ namespace Services
     {
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public GetOrgLeaderHandler(ILoggingRepository loggingRepository,
+        public GetOrgLeaderHandler(ILogger<GetOrgLeaderHandler> logger,
                                 ISqlMembershipRepository sqlMembershipRepository,
-                                IDataFactoryRepository dataFactoryRepository) : base(loggingRepository)
+                                IDataFactoryRepository dataFactoryRepository) : base(logger)
         {
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<GetOrgLeaderResponse> ExecuteCoreAsync(GetOrgLeaderRequest request)

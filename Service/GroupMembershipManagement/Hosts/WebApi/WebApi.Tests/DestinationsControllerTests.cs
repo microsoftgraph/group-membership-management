@@ -19,6 +19,7 @@ using Services.Messages.Responses;
 using Models.Entities;
 using Services.Messages.Requests;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Services.Tests
 {
@@ -60,11 +61,11 @@ namespace Services.Tests
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _teamsChannelRepository = new Mock<ITeamsChannelRepository>();
             _teamsChannelConfig = new Mock<ITeamsChannelConfig>();
-            _searchGroupsHandler = new SearchGroupsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
-            _searchChannelsHandler = new SearchChannelsHandler(_loggingRepository.Object, _teamsChannelRepository.Object);
-            _getGroupEndpointsHandler = new GetGroupEndpointsHandler(_loggingRepository.Object, _graphGroupRepository.Object);
-            _getGroupOwnersHandler = new GetGroupOwnersHandler(_loggingRepository.Object, _graphGroupRepository.Object);
-            _postGroupHandler = new PostGroupHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            _searchGroupsHandler = new SearchGroupsHandler(NullLogger<SearchGroupsHandler>.Instance, _graphGroupRepository.Object);
+            _searchChannelsHandler = new SearchChannelsHandler(NullLogger<SearchChannelsHandler>.Instance, _teamsChannelRepository.Object);
+            _getGroupEndpointsHandler = new GetGroupEndpointsHandler(NullLogger<GetGroupEndpointsHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
+            _getGroupOwnersHandler = new GetGroupOwnersHandler(NullLogger<GetGroupOwnersHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
+            _postGroupHandler = new PostGroupHandler(NullLogger<PostGroupHandler>.Instance, _graphGroupRepository.Object);
             _graphCredentials = new Mock<IOptions<GraphCredentials>>();
             var testGraphCredentials = new GraphCredentials
             {
@@ -81,11 +82,11 @@ namespace Services.Tests
 
 
             _graphCredentials.Setup(gc => gc.Value).Returns(testGraphCredentials);
-            _getGroupOnboardingStatusHandler = new GetGroupOnboardingStatusHandler(_loggingRepository.Object,
+            _getGroupOnboardingStatusHandler = new GetGroupOnboardingStatusHandler(NullLogger<GetGroupOnboardingStatusHandler>.Instance,
                                                                                    _graphGroupRepository.Object,
                                                                                    _syncJobRepository.Object,
                                                                                    _graphCredentials.Object);
-            _getChannelOnboardingStatusHandler = new GetChannelOnboardingStatusHandler(_loggingRepository.Object,
+            _getChannelOnboardingStatusHandler = new GetChannelOnboardingStatusHandler(NullLogger<GetChannelOnboardingStatusHandler>.Instance,
                                                                                     _graphGroupRepository.Object,
                                                                                     _teamsChannelRepository.Object,
                                                                                     _teamsChannelConfig.Object,
@@ -407,7 +408,7 @@ namespace Services.Tests
         {
             _teamsChannelConfig.Setup(x => x.GMMHasTeamsChannelApplicationPermissions).Returns(true);
 
-            _getChannelOnboardingStatusHandler = new GetChannelOnboardingStatusHandler(_loggingRepository.Object,
+            _getChannelOnboardingStatusHandler = new GetChannelOnboardingStatusHandler(NullLogger<GetChannelOnboardingStatusHandler>.Instance,
                                                                                     _graphGroupRepository.Object,
                                                                                     _teamsChannelRepository.Object,
                                                                                     _teamsChannelConfig.Object,
@@ -640,7 +641,7 @@ namespace Services.Tests
 
             _graphGroupRepository.Setup(x => x.GetDirectGroupTypeMembersAsync(groupId)).ReturnsAsync(expectedGroups);
 
-            var handler = new GetGroupMembersHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            var handler = new GetGroupMembersHandler(NullLogger<GetGroupMembersHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
 
             var mockServiceProvider = new Mock<IServiceProvider>();
             mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))
@@ -671,7 +672,7 @@ namespace Services.Tests
         [TestMethod]
         public async Task GetGroupMembersWithEmptyGuidReturnsBadRequestAsync()
         {
-            var handler = new GetGroupMembersHandler(_loggingRepository.Object, _graphGroupRepository.Object);
+            var handler = new GetGroupMembersHandler(NullLogger<GetGroupMembersHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object);
 
             var mockServiceProvider = new Mock<IServiceProvider>();
             mockServiceProvider.Setup(x => x.GetService(typeof(Services.Contracts.IRequestHandler<Services.Messages.Requests.GetGroupMembersRequest, Services.Messages.Responses.GetGroupMembersResponse>)))

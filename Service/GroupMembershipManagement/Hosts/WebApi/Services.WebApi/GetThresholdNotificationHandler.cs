@@ -8,6 +8,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -17,9 +18,9 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
-        public GetThresholdNotificationHandler(ILoggingRepository loggingRepository,
+        public GetThresholdNotificationHandler(ILogger<GetThresholdNotificationHandler> logger, ILoggingRepository loggingRepository,
                                                INotificationRepository notificationRepository,
-                                               IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(loggingRepository)
+                                               IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));

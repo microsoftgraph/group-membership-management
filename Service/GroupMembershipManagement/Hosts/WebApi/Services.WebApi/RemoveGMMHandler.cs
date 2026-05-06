@@ -8,6 +8,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
+using Microsoft.Extensions.Logging;
 using LogMessage = Models.LogMessage;
 
 namespace Services
@@ -18,9 +19,9 @@ namespace Services
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ILoggingRepository _loggingRepository;
 
-        public RemoveGMMHandler(ILoggingRepository loggingRepository,
+        public RemoveGMMHandler(ILogger<RemoveGMMHandler> logger, ILoggingRepository loggingRepository,
                               IGraphGroupRepository graphGroupRepository,
-                              IDatabaseSyncJobsRepository syncJobRepository) : base(loggingRepository)
+                              IDatabaseSyncJobsRepository syncJobRepository) : base(logger)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));

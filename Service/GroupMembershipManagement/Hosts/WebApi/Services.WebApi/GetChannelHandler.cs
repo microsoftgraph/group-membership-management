@@ -10,6 +10,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using WebApi.Models;
+using Microsoft.Extensions.Logging;
 using SyncJobDetailsDTO = WebApi.Models.DTOs.SyncJobDetails;
 
 namespace Services
@@ -24,13 +25,13 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public GetChannelHandler(ILoggingRepository loggingRepository,
+        public GetChannelHandler(ILogger<GetChannelHandler> logger, ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IDatabaseChannelsRepository databaseChannelsRepository,
                               IDatabaseTitlesRepository titlesRepository,
                               ITeamsChannelRepository teamsChannelRepository,
                               IGraphGroupRepository graphGroupRepository,
-                              IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
+                              IHttpContextAccessor httpContextAccessor) : base(logger)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));

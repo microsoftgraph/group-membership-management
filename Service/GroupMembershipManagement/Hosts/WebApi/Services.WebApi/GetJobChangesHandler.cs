@@ -8,6 +8,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -16,8 +17,8 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobChangeRepository _syncJobChangesRepository;
 
-        public GetJobChangesHandler(ILoggingRepository loggingRepository,
-                                    ISyncJobChangeRepository syncJobChangesRepository) : base(loggingRepository)
+        public GetJobChangesHandler(ILogger<GetJobChangesHandler> logger, ILoggingRepository loggingRepository,
+                                    ISyncJobChangeRepository syncJobChangesRepository) : base(logger)
         {
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));

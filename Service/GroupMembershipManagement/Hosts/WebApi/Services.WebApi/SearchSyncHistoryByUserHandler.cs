@@ -11,6 +11,7 @@ using Services.WebApi;
 using System.Net;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -26,12 +27,13 @@ namespace Services
         private readonly IHubContext<SignalRService> _hubContext;
 
         public SearchSyncHistoryByUserHandler(
+            ILogger<SearchSyncHistoryByUserHandler> logger,
             ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ISyncJobHistoryRepository syncJobHistoryRepository,
             IBlobStorageRepository blobStorageRepository,
             IGraphGroupRepository graphGroupRepository,
-            IHubContext<SignalRService> hubContext) : base(loggingRepository)
+            IHubContext<SignalRService> hubContext) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));

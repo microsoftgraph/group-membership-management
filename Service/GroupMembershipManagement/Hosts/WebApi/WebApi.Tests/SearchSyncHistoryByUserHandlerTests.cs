@@ -10,6 +10,7 @@ using Services.Messages.Responses;
 using Services.WebApi;
 using System.Net;
 using System.Threading;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WebApi.Tests
 {
@@ -55,6 +56,7 @@ namespace WebApi.Tests
                 .Returns(Task.CompletedTask);
 
             _handler = new SearchSyncHistoryByUserHandler(
+                NullLogger<SearchSyncHistoryByUserHandler>.Instance,
                 _mockLoggingRepository.Object,
                 _mockSyncJobRepository.Object,
                 _mockSyncJobHistoryRepository.Object,

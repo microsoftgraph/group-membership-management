@@ -7,6 +7,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 using SqlMembershipAttributeValueDTO = WebApi.Models.DTOs.SqlMembershipAttributeMapping;
 
 namespace Services
@@ -17,9 +18,9 @@ namespace Services
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
-        public GetDefaultSqlMembershipSourceAttributeMappingsHandler(ILoggingRepository loggingRepository,
+        public GetDefaultSqlMembershipSourceAttributeMappingsHandler(ILogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler> logger, ILoggingRepository loggingRepository,
                               IDataFactoryRepository dataFactoryRepository,
-                              ISqlMembershipRepository sqlMembershipRepository) : base(loggingRepository)
+                              ISqlMembershipRepository sqlMembershipRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));

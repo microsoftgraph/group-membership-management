@@ -5,14 +5,15 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 using SettingDTO = WebApi.Models.DTOs.Setting;
 
 namespace Services{
     public class GetSettingHandler : RequestHandlerBase<GetSettingRequest, GetSettingResponse>
     {
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
-        public GetSettingHandler(ILoggingRepository loggingRepository, 
-                                IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
+        public GetSettingHandler(ILogger<GetSettingHandler> logger, 
+                                IDatabaseSettingsRepository databaseSettingsRepository) : base(logger)
         {
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }

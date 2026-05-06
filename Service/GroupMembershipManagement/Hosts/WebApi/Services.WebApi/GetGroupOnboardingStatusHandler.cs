@@ -7,6 +7,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -17,10 +18,10 @@ namespace Services
         private readonly string _gmmAppId;
         private readonly string _gmmAppName;
 
-        public GetGroupOnboardingStatusHandler(ILoggingRepository loggingRepository,
+        public GetGroupOnboardingStatusHandler(ILogger<GetGroupOnboardingStatusHandler> logger,
                               IGraphGroupRepository graphGroupRepository,
                               IDatabaseSyncJobsRepository syncJobRepository,
-                              IOptions<GraphCredentials> graphCredentials) : base(loggingRepository)
+                              IOptions<GraphCredentials> graphCredentials) : base(logger)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));

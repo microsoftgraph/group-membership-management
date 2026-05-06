@@ -7,6 +7,7 @@ using Services.Contracts;
 using Services.Contracts.Notifications;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services.WebApi
 {
@@ -20,11 +21,11 @@ namespace Services.WebApi
         private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly IGMMEmailReceivers _gmmEmailReceivers;
 
-        public NotificationCardHandler(ILoggingRepository loggingRepository,
+        public NotificationCardHandler(ILogger<NotificationCardHandler> logger,
             INotificationRepository notificationRepository,
             IGraphGroupRepository graphGroupRepository,
             IThresholdNotificationService thresholdNotificationService,
-            IGMMEmailReceivers gmmEmailReceivers) : base(loggingRepository)
+            IGMMEmailReceivers gmmEmailReceivers) : base(logger)
         {
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));

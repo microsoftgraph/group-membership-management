@@ -7,6 +7,7 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using System.Net;
+using Microsoft.Extensions.Logging;
 
 namespace Services.WebApi
 {
@@ -16,8 +17,9 @@ namespace Services.WebApi
         private readonly ILoggingRepository _loggingRepository;
 
         public CopilotChatHandler(
+            ILogger<CopilotChatHandler> logger,
             ICopilotService copilotService,
-            ILoggingRepository loggingRepository) : base(loggingRepository)
+            ILoggingRepository loggingRepository) : base(logger)
         {
             _copilotService = copilotService ?? throw new ArgumentNullException(nameof(copilotService));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));

@@ -4,6 +4,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 using SettingDTO = WebApi.Models.DTOs.Setting;
 
 namespace Services
@@ -11,8 +12,8 @@ namespace Services
     public class GetAllSettingsHandler : RequestHandlerBase<GetAllSettingsRequest, GetAllSettingsResponse>
     {
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
-        public GetAllSettingsHandler(ILoggingRepository loggingRepository,
-                                IDatabaseSettingsRepository databaseSettingsRepository) : base(loggingRepository)
+        public GetAllSettingsHandler(ILogger<GetAllSettingsHandler> logger,
+                                IDatabaseSettingsRepository databaseSettingsRepository) : base(logger)
         {
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
         }

@@ -6,6 +6,7 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using WebApi.Models.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -14,7 +15,7 @@ namespace Services
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
 
-        public GetGroupMembersHandler(ILoggingRepository loggingRepository, IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
+        public GetGroupMembersHandler(ILogger<GetGroupMembersHandler> logger, ILoggingRepository loggingRepository, IGraphGroupRepository graphGroupRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));

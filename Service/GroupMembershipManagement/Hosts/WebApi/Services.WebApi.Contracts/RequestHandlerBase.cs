@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-using Models;
-using Repositories.Contracts;
+using Hosts.WebApi;
+using Microsoft.Extensions.Logging;
 using Services.Messages.Contracts.Requests;
 using Services.Messages.Contracts.Responses;
 
@@ -11,32 +11,20 @@ namespace Services.Contracts
                 where TRequestBase : RequestBase
                 where TResponseBase : ResponseBase, new()
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger _logger;
 
-        public RequestHandlerBase(ILoggingRepository loggingRepository)
+        public RequestHandlerBase(ILogger logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<TResponseBase> ExecuteAsync(TRequestBase request)
         {
-            await _loggingRepository.LogMessageAsync(
-            new LogMessage
-            {
-                InstanceId = request.InstanceId,
-                MessageTypeName = request.GetType().Name,
-                Message = "Started execution of request"
-            });
+            _logger.RequestStarted(request.GetType().Name, request.InstanceId);
 
             var response = await ExecuteCoreAsync(request);
 
-            await _loggingRepository.LogMessageAsync(
-            new LogMessage
-            {
-                InstanceId = request.InstanceId,
-                MessageTypeName = request.GetType().Name,
-                Message = "Completed execution of request"
-            });
+            _logger.RequestCompleted(request.GetType().Name, request.InstanceId);
 
             return response;
         }

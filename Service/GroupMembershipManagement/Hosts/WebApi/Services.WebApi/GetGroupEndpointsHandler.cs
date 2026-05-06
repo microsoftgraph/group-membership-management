@@ -5,6 +5,7 @@ using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
+using Microsoft.Extensions.Logging;
 
 namespace Services
 {
@@ -14,8 +15,9 @@ namespace Services
         private readonly ILoggingRepository _loggingRepository;
 
         public GetGroupEndpointsHandler(
+            ILogger<GetGroupEndpointsHandler> logger,
             ILoggingRepository loggingRepository,
-            IGraphGroupRepository graphGroupRepository) : base(loggingRepository)
+            IGraphGroupRepository graphGroupRepository) : base(logger)
         {
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));

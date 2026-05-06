@@ -8,6 +8,7 @@ using Repositories.Contracts;
 using Services;
 using Services.Messages.Requests;
 using System.Net;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WebApi.Tests
 {
@@ -32,6 +33,7 @@ namespace WebApi.Tests
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
 
             _handler = new GetMembershipDownloadHandler(
+                NullLogger<GetMembershipDownloadHandler>.Instance,
                 _mockLoggingRepository.Object,
                 _mockSyncJobRepository.Object,
                 _mockBlobStorageRepository.Object);
