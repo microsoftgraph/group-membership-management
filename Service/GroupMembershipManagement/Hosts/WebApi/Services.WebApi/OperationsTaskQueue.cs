@@ -1,7 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Repositories.Contracts;
+using Hosts.WebApi;
+using Microsoft.Extensions.Logging;
 using Services.WebApi.Contracts;
 using WebApi.Models;
 
@@ -11,12 +12,12 @@ namespace Services.WebApi
     {
         private readonly Queue<OperationDetails> _operations;
         private readonly SemaphoreSlim _signal = new SemaphoreSlim(1);
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<OperationsTaskQueue> _logger;
 
-        public OperationsTaskQueue(ILoggingRepository loggingRepository)
+        public OperationsTaskQueue(ILogger<OperationsTaskQueue> logger)
         {
             _operations = new Queue<OperationDetails>();
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public async Task<OperationDetails?> DequeueAsync()
@@ -28,7 +29,7 @@ namespace Services.WebApi
             }
 
             var operation = _operations.Dequeue();
-            await _loggingRepository.LogMessageAsync(new Models.LogMessage { Message = $"Dequeued operation {operation.Operation}" });
+            _logger.OperationDequeued(operation.Operation);
 
             _signal.Release();
 
@@ -39,7 +40,7 @@ namespace Services.WebApi
         {
             await _signal.WaitAsync();
 
-            await _loggingRepository.LogMessageAsync(new Models.LogMessage { Message = $"Queuing operation {operation.Operation}" });
+            _logger.OperationQueueing(operation.Operation);
             if (!_operations.Any(o => o.Operation == operation.Operation))
             {
                 _operations.Enqueue(operation);

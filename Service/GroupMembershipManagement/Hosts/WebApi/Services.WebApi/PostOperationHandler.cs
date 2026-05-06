@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -15,15 +16,15 @@ namespace Services.WebApi
 {
     public class PostOperationHandler : RequestHandlerBase<PostOperationRequest, PostOperationResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<PostOperationHandler> _logger;
         private readonly IServiceStatusRepository _serviceStatusRepository;
         private readonly IOperationsTaskQueue _backgroundTaskService;
 
-        public PostOperationHandler(ILogger<PostOperationHandler> logger, ILoggingRepository loggingRepository,
+        public PostOperationHandler(ILogger<PostOperationHandler> logger,
                                 IServiceStatusRepository serviceStatusRepository,
                                 IOperationsTaskQueue backgroundTaskService) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceStatusRepository = serviceStatusRepository ?? throw new ArgumentNullException(nameof(serviceStatusRepository));
             _backgroundTaskService = backgroundTaskService ?? throw new ArgumentNullException(nameof(backgroundTaskService));
         }
@@ -32,19 +33,13 @@ namespace Services.WebApi
         {
             try
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Processing operation {request.Operation}."
-                });
+                _logger.OperationProcessing(request.Operation);
 
                 var currentStatus = await _serviceStatusRepository.GetCurrentServiceStatusAsync();
 
                 if (request.Operation == Operations.Stop && currentStatus != ServiceStatuses.Running)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Operation {request.Operation}. Service is already {currentStatus}"
-                    });
+                    _logger.OperationServiceAlreadyInStatus(request.Operation, currentStatus);
 
                     return new PostOperationResponse
                     {
@@ -55,10 +50,7 @@ namespace Services.WebApi
 
                 if (request.Operation == Operations.Reset && currentStatus == ServiceStatuses.Resetting)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Operation {request.Operation}. Service is already {currentStatus}"
-                    });
+                    _logger.OperationServiceAlreadyInStatus(request.Operation, currentStatus);
 
                     return new PostOperationResponse
                     {
@@ -69,10 +61,7 @@ namespace Services.WebApi
 
                 if (request.Operation == Operations.Start && currentStatus == ServiceStatuses.Running)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Operation {request.Operation}. Service is already {currentStatus}"
-                    });
+                    _logger.OperationServiceAlreadyInStatus(request.Operation, currentStatus);
 
                     return new PostOperationResponse
                     {
@@ -108,10 +97,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error in {nameof(PostOperationHandler)} with operation {request.Operation}\n{ex.Message}"
-                });
+                _logger.PostOperationHandlerFailed(request.Operation, ex);
 
                 return new PostOperationResponse
                 {

@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Extensions.Logging;
+using Models;
 using Models.Notifications;
 using System;
 
@@ -85,5 +86,29 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 93003, Level = LogLevel.Error,
             Message = "Failed to send notification for type {NotificationType} (RunId={RunId})")]
         public static partial void NotificationSendFailed(this ILogger logger, Guid? runId, NotificationMessageType notificationType, Exception exception);
+
+        // ── PostOperationHandler (91450-91499) ──
+
+        [LoggerMessage(EventId = 91450, Level = LogLevel.Information,
+            Message = "Processing operation {Operation}.")]
+        public static partial void OperationProcessing(this ILogger logger, Operations operation);
+
+        [LoggerMessage(EventId = 91451, Level = LogLevel.Information,
+            Message = "Operation {Operation}. Service is already {CurrentStatus}")]
+        public static partial void OperationServiceAlreadyInStatus(this ILogger logger, Operations operation, ServiceStatuses currentStatus);
+
+        [LoggerMessage(EventId = 91452, Level = LogLevel.Error,
+            Message = "Error in PostOperationHandler with operation {Operation}")]
+        public static partial void PostOperationHandlerFailed(this ILogger logger, Operations operation, Exception exception);
+
+        // ── OperationsTaskQueue (93050-93099) ──
+
+        [LoggerMessage(EventId = 93050, Level = LogLevel.Information,
+            Message = "Dequeued operation {Operation}")]
+        public static partial void OperationDequeued(this ILogger logger, Operations operation);
+
+        [LoggerMessage(EventId = 93051, Level = LogLevel.Information,
+            Message = "Queuing operation {Operation}")]
+        public static partial void OperationQueueing(this ILogger logger, Operations operation);
     }
 }

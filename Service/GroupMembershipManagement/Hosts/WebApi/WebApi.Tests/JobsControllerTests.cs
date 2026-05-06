@@ -233,7 +233,7 @@ namespace Services.Tests
             _databaseSyncJobsRepository.Setup(repo => repo.CreateSyncJobAsync(It.IsAny<SyncJob>()))
                 .ReturnsAsync(Guid.NewGuid());
 
-            _postResetRequestHandler = new PostOperationHandler(NullLogger<PostOperationHandler>.Instance, _loggingRepository.Object,
+            _postResetRequestHandler = new PostOperationHandler(NullLogger<PostOperationHandler>.Instance,
                                                                 _serviceStatusRepository.Object,
                                                                 _backgroundTaskService.Object);
 

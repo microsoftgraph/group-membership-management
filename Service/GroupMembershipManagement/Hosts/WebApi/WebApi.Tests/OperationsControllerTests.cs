@@ -37,7 +37,7 @@ namespace WebApi.Tests
             _serviceStatusRepository = new Mock<IServiceStatusRepository>();
             _backgroundTaskService = new Mock<IOperationsTaskQueue>();
 
-            _postResetRequestHandler = new PostOperationHandler(NullLogger<PostOperationHandler>.Instance, _loggingRepository.Object,
+            _postResetRequestHandler = new PostOperationHandler(NullLogger<PostOperationHandler>.Instance,
                                                                 _serviceStatusRepository.Object,
                                                                 _backgroundTaskService.Object);
 
