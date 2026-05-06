@@ -248,5 +248,183 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 93111, Level = LogLevel.Warning,
             Message = "Failed to get ADF run ID")]
         public static partial void CopilotAdfRunIdFetchFailed(this ILogger logger, Exception exception);
+
+        // ── OperationsBackgroundService (92000-92099) ──
+
+        [LoggerMessage(EventId = 92000, Level = LogLevel.Information,
+            Message = "Reset operation completed.")]
+        public static partial void OperationsResetCompleted(this ILogger logger);
+
+        [LoggerMessage(EventId = 92001, Level = LogLevel.Information,
+            Message = "Stop operation completed.")]
+        public static partial void OperationsStopCompleted(this ILogger logger);
+
+        [LoggerMessage(EventId = 92002, Level = LogLevel.Information,
+            Message = "Start operation completed.")]
+        public static partial void OperationsStartCompleted(this ILogger logger);
+
+        [LoggerMessage(EventId = 92003, Level = LogLevel.Error,
+            Message = "Unexpected error in OperationsBackgroundService")]
+        public static partial void OperationsLoopUnexpectedError(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 92004, Level = LogLevel.Information,
+            Message = "{EntityName} drain starting (startRemaining={StartRemaining}, expectedIterations={ExpectedIterations}, maxIterations={MaxIterations}).")]
+        public static partial void DrainStarting(this ILogger logger, string entityName, string startRemaining, int expectedIterations, int maxIterations);
+
+        [LoggerMessage(EventId = 92005, Level = LogLevel.Warning,
+            Message = "{EntityName} transient receive error ({Reason}); retrying (iteration {Iteration}).")]
+        public static partial void DrainTransientReceiveError(this ILogger logger, string entityName, string reason, int iteration);
+
+        [LoggerMessage(EventId = 92006, Level = LogLevel.Information,
+            Message = "{EntityName} drained after {Iteration} iterations. Total received: {TotalReceived}")]
+        public static partial void DrainCompleted(this ILogger logger, string entityName, int iteration, long totalReceived);
+
+        [LoggerMessage(EventId = 92007, Level = LogLevel.Information,
+            Message = "{EntityName} runtime indicates {Remaining} messages remain after an empty batch; continuing...")]
+        public static partial void DrainRuntimeIndicatesRemaining(this ILogger logger, string entityName, long remaining);
+
+        [LoggerMessage(EventId = 92008, Level = LogLevel.Warning,
+            Message = "WARNING: {EntityName} stopping due to stagnation (remaining still {Remaining}) after {StagnantEmptyIterations} stagnant empty polls. Total received: {TotalReceived}")]
+        public static partial void DrainStallDetected(this ILogger logger, string entityName, long remaining, int stagnantEmptyIterations, long totalReceived);
+
+        [LoggerMessage(EventId = 92009, Level = LogLevel.Information,
+            Message = "{EntityName} drained (runtime unavailable) after {Iteration} iterations. Total received: {TotalReceived}")]
+        public static partial void DrainCompletedRuntimeUnavailable(this ILogger logger, string entityName, int iteration, long totalReceived);
+
+        [LoggerMessage(EventId = 92010, Level = LogLevel.Information,
+            Message = "{EntityName} drained (no runtime verification) after {Iteration} iterations. Total received: {TotalReceived}")]
+        public static partial void DrainCompletedNoRuntimeVerification(this ILogger logger, string entityName, int iteration, long totalReceived);
+
+        [LoggerMessage(EventId = 92011, Level = LogLevel.Information,
+            Message = "{EntityName} progress: received {BatchCount} (total {TotalReceived}). Remaining (approx): {Remaining}")]
+        public static partial void DrainProgressWithRemaining(this ILogger logger, string entityName, int batchCount, long totalReceived, string remaining);
+
+        [LoggerMessage(EventId = 92012, Level = LogLevel.Information,
+            Message = "{EntityName} progress: received {BatchCount} (total {TotalReceived}).")]
+        public static partial void DrainProgress(this ILogger logger, string entityName, int batchCount, long totalReceived);
+
+        [LoggerMessage(EventId = 92013, Level = LogLevel.Warning,
+            Message = "WARNING: {EntityName} reached dynamic iteration cap {Iteration}/{MaxIterations}. Total received: {TotalReceived}. Remaining(est)={LastRemaining}")]
+        public static partial void DrainIterationCapReached(this ILogger logger, string entityName, int iteration, int maxIterations, long totalReceived, string lastRemaining);
+
+        [LoggerMessage(EventId = 92014, Level = LogLevel.Information,
+            Message = "PURGE-SUMMARY entity=\"{EntityName}\" totalRemoved={TotalRemoved} iterations={Iterations}")]
+        public static partial void PurgeSummary(this ILogger logger, string entityName, long totalRemoved, int iterations);
+
+        [LoggerMessage(EventId = 92015, Level = LogLevel.Information,
+            Message = "Clearing queue {QueueName}")]
+        public static partial void ClearQueueStarted(this ILogger logger, string queueName);
+
+        [LoggerMessage(EventId = 92016, Level = LogLevel.Information,
+            Message = "Clearing queue {QueueName} completed")]
+        public static partial void ClearQueueCompleted(this ILogger logger, string queueName);
+
+        [LoggerMessage(EventId = 92017, Level = LogLevel.Information,
+            Message = "Clearing topic {TopicName} subscription {SubscriptionName}")]
+        public static partial void ClearTopicStarted(this ILogger logger, string topicName, string subscriptionName);
+
+        [LoggerMessage(EventId = 92018, Level = LogLevel.Information,
+            Message = "Clearing topic {TopicName} subscription {SubscriptionName} completed")]
+        public static partial void ClearTopicCompleted(this ILogger logger, string topicName, string subscriptionName);
+
+        [LoggerMessage(EventId = 92019, Level = LogLevel.Information,
+            Message = "Processing deferred messages in {EntityName} (remaining: {Remaining})")]
+        public static partial void DeferredMessagesProcessing(this ILogger logger, string entityName, long remaining);
+
+        [LoggerMessage(EventId = 92020, Level = LogLevel.Warning,
+            Message = "Transient error peeking {EntityName}: {Reason}. Retrying...")]
+        public static partial void DeferredPeekTransientError(this ILogger logger, string entityName, string reason);
+
+        [LoggerMessage(EventId = 92021, Level = LogLevel.Information,
+            Message = "Deferred progress {EntityName}: cleared={TotalCleared}, failed={TotalFailed}, rate={RatePerSecond:F1}/sec")]
+        public static partial void DeferredProgress(this ILogger logger, string entityName, long totalCleared, long totalFailed, double ratePerSecond);
+
+        [LoggerMessage(EventId = 92022, Level = LogLevel.Information,
+            Message = "DEFERRED-SUMMARY entity=\"{EntityName}\" cleared={TotalCleared} failed={TotalFailed} duration={DurationSeconds:F1}s")]
+        public static partial void DeferredSummary(this ILogger logger, string entityName, long totalCleared, long totalFailed, double durationSeconds);
+
+        [LoggerMessage(EventId = 92023, Level = LogLevel.Information,
+            Message = "Some deferred messages not found in {EntityName} (may have expired)")]
+        public static partial void DeferredMessagesNotFound(this ILogger logger, string entityName);
+
+        [LoggerMessage(EventId = 92024, Level = LogLevel.Warning,
+            Message = "Transient error processing deferred batch in {EntityName} (attempt {Attempt}/{MaxRetries}): {Reason}")]
+        public static partial void DeferredBatchTransientError(this ILogger logger, string entityName, int attempt, int maxRetries, string reason);
+
+        [LoggerMessage(EventId = 92025, Level = LogLevel.Error,
+            Message = "Failed to process deferred batch in {EntityName} after {MaxRetries} attempts")]
+        public static partial void DeferredBatchFailed(this ILogger logger, string entityName, int maxRetries, Exception exception);
+
+        [LoggerMessage(EventId = 92026, Level = LogLevel.Information,
+            Message = "Clearing (session-enabled) topic {TopicName} subscription {SubscriptionName}")]
+        public static partial void ClearSessionTopicStarted(this ILogger logger, string topicName, string subscriptionName);
+
+        [LoggerMessage(EventId = 92027, Level = LogLevel.Warning,
+            Message = "Failed to accept next session for {TopicName}/{SubscriptionName}.")]
+        public static partial void AcceptSessionFailed(this ILogger logger, string topicName, string subscriptionName, Exception exception);
+
+        [LoggerMessage(EventId = 92028, Level = LogLevel.Information,
+            Message = "Clearing session {SessionId} for {TopicName}/{SubscriptionName}")]
+        public static partial void ClearSessionMessages(this ILogger logger, string sessionId, string topicName, string subscriptionName);
+
+        [LoggerMessage(EventId = 92029, Level = LogLevel.Warning,
+            Message = "Error while clearing session {SessionId} for {TopicName}/{SubscriptionName}.")]
+        public static partial void ClearSessionFailed(this ILogger logger, string sessionId, string topicName, string subscriptionName, Exception exception);
+
+        [LoggerMessage(EventId = 92030, Level = LogLevel.Information,
+            Message = "Clearing (session-enabled) topic {TopicName} subscription {SubscriptionName} completed. Sessions processed: {SessionsCleared}")]
+        public static partial void ClearSessionTopicCompleted(this ILogger logger, string topicName, string subscriptionName, int sessionsCleared);
+
+        [LoggerMessage(EventId = 92031, Level = LogLevel.Information,
+            Message = "Clearing topics and their subscriptions...")]
+        public static partial void ClearAllTopicsStarting(this ILogger logger);
+
+        [LoggerMessage(EventId = 92032, Level = LogLevel.Information,
+            Message = "Clearing function's internal tables and queues...")]
+        public static partial void ClearInternalTablesAndQueuesStarting(this ILogger logger);
+
+        [LoggerMessage(EventId = 92033, Level = LogLevel.Information,
+            Message = "Deleted table {TableName} from account {StorageAccountName} used by {FunctionName}")]
+        public static partial void InternalTableDeleted(this ILogger logger, string tableName, string storageAccountName, string functionName);
+
+        [LoggerMessage(EventId = 92034, Level = LogLevel.Warning,
+            Message = "Failed to delete table {TableName} from account {StorageAccountName} used by {FunctionName}.")]
+        public static partial void InternalTableDeleteFailed(this ILogger logger, string tableName, string storageAccountName, string functionName, Exception exception);
+
+        [LoggerMessage(EventId = 92035, Level = LogLevel.Information,
+            Message = "Cleared queue {QueueName} from account {StorageAccountName} used by {FunctionName}")]
+        public static partial void InternalQueueCleared(this ILogger logger, string queueName, string storageAccountName, string functionName);
+
+        [LoggerMessage(EventId = 92036, Level = LogLevel.Warning,
+            Message = "Failed to clear queue {QueueName} from account {StorageAccountName} used by {FunctionName}.")]
+        public static partial void InternalQueueClearFailed(this ILogger logger, string queueName, string storageAccountName, string functionName, Exception exception);
+
+        [LoggerMessage(EventId = 92037, Level = LogLevel.Information,
+            Message = "ResetJobsInProgressAsync: Starting bulk reset of InProgress jobs to Idle.")]
+        public static partial void ResetJobsInProgressStarting(this ILogger logger);
+
+        [LoggerMessage(EventId = 92038, Level = LogLevel.Information,
+            Message = "ResetJobsInProgressAsync: Successfully reset {Count} InProgress jobs to Idle.")]
+        public static partial void ResetJobsInProgressCompleted(this ILogger logger, int count);
+
+        [LoggerMessage(EventId = 92039, Level = LogLevel.Warning,
+            Message = "ResetJobsInProgressAsync failed or timed out. Proceeding with operation.")]
+        public static partial void ResetJobsInProgressFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 92040, Level = LogLevel.Warning,
+            Message = "Failed to call JobScheduler ({StatusCode}). Retrying... {Retry}")]
+        public static partial void JobSchedulerCallRetry(this ILogger logger, System.Net.HttpStatusCode statusCode, int retry);
+
+        [LoggerMessage(EventId = 92041, Level = LogLevel.Information,
+            Message = "Calling JobScheduler...")]
+        public static partial void JobSchedulerCalling(this ILogger logger);
+
+        [LoggerMessage(EventId = 92042, Level = LogLevel.Information,
+            Message = "JobScheduler response: {StatusCode}.\n{ResponseContent}")]
+        public static partial void JobSchedulerResponse(this ILogger logger, System.Net.HttpStatusCode statusCode, string responseContent);
+
+        [LoggerMessage(EventId = 92043, Level = LogLevel.Error,
+            Message = "Failed to call JobScheduler.")]
+        public static partial void JobSchedulerFailed(this ILogger logger, Exception exception);
     }
 }

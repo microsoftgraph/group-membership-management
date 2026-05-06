@@ -95,7 +95,7 @@
     "overrides": {
       "@remix-run/router": ">=1.23.2",
       "ajv": ">=8.18.0",
-      "axios": ">=1.15.2",
+      "axios": ">=1.16.0",
       "body-parser": ">=1.20.3",
       "brace-expansion@5": ">=5.0.5",
       "braces": ">=3.0.3",
@@ -135,7 +135,7 @@
     "x-override-notes": {
       "@remix-run/router>=1.23.2": "Security fix - Open redirect via basename parameter",
       "ajv>=8.18.0": "Precautionary version floor - prototype pollution hardening (CVE-2020-15366 affected 6.x)",
-      "axios>=1.15.2": "CVE-2025-27152 - SSRF via absolute URL bypass of baseURL",
+      "axios>=1.16.0": "CVE-2025-27152 - SSRF via absolute URL bypass of baseURL",
       "body-parser>=1.20.3": "CVE-2024-45590 - Asymmetric DoS via malformed URL-encoded payload",
       "brace-expansion@5>=5.0.5": "Security fix - ReDoS in brace pattern expansion (5.0.0-5.0.4 affected)",
       "braces>=3.0.3": "CVE-2024-4068 - Memory exhaustion via unbalanced braces",

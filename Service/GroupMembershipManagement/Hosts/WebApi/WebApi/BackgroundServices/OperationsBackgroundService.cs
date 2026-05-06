@@ -6,7 +6,9 @@ using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Messaging.ServiceBus.Administration;
 using Azure.Storage.Queues;
+using Hosts.WebApi;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.Logging;
 using Models;
 using Polly;
 using Repositories.Contracts;
@@ -27,7 +29,7 @@ namespace WebApi.BackgroundServices
         private readonly OperationsSettings _operationsSettings;
         private readonly IResourceManagerService _resourceManagerService;
         private readonly IOperationsTaskQueue _backgroundTaskQueue;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<OperationsBackgroundService> _logger;
         private readonly IServiceProvider _services;
         private readonly ServiceBusClient _serviceBusClient;
         private readonly ServiceBusAdministrationClient _sbAdministrationClient;
@@ -36,13 +38,13 @@ namespace WebApi.BackgroundServices
         public OperationsBackgroundService(OperationsSettings operationsSettings,
                                            IResourceManagerService resourceManagerService,
                                            IOperationsTaskQueue backgroundTaskQueue,
-                                           ILoggingRepository loggingRepository,
+                                           ILogger<OperationsBackgroundService> logger,
                                            IServiceProvider services)
         {
             _operationsSettings = operationsSettings ?? throw new ArgumentNullException(nameof(operationsSettings));
             _resourceManagerService = resourceManagerService ?? throw new ArgumentNullException(nameof(resourceManagerService));
             _backgroundTaskQueue = backgroundTaskQueue ?? throw new ArgumentNullException(nameof(backgroundTaskQueue));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _services = services ?? throw new ArgumentNullException(nameof(services));
 
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
@@ -86,11 +88,7 @@ namespace WebApi.BackgroundServices
                             await CallJobSchedulerAsync(operationDetails.RequestorId, cancellationToken);
                             await StartGMMAsync(operationDetails, cancellationToken);
 
-                            await _loggingRepository
-                                    .LogMessageAsync(new LogMessage
-                                    {
-                                        Message = "Reset operation completed."
-                                    });
+                            _logger.OperationsResetCompleted();
                         }
                         else if (operationDetails.Operation == Operations.Stop)
                         {
@@ -101,20 +99,12 @@ namespace WebApi.BackgroundServices
                             await ClearAllTopicsAsync(cancellationToken);
                             await ResetJobsInProgressAsync();
                             await SetStatusAsync(ServiceStatuses.Stopped, operationDetails.RequestorId);
-                            await _loggingRepository
-                                    .LogMessageAsync(new LogMessage
-                                    {
-                                        Message = "Stop operation completed."
-                                    });
+                            _logger.OperationsStopCompleted();
                         }
                         else if (operationDetails.Operation == Operations.Start)
                         {
                             await StartGMMAsync(operationDetails, cancellationToken);
-                            await _loggingRepository
-                                    .LogMessageAsync(new LogMessage
-                                    {
-                                        Message = "Start operation completed."
-                                    });
+                            _logger.OperationsStartCompleted();
                         }
                         else if (operationDetails.Operation == Operations.Reschedule)
                         {
@@ -131,11 +121,7 @@ namespace WebApi.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository
-                            .LogMessageAsync(new LogMessage
-                            {
-                                Message = $"Unexpected error in {nameof(OperationsBackgroundService)}\n{ex.Message}"
-                            });
+                    _logger.OperationsLoopUnexpectedError(ex);
 
                     await SetStatusAsync(ServiceStatuses.Error, operationDetails?.RequestorId ?? Guid.Empty);
                     await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
@@ -193,7 +179,7 @@ namespace WebApi.BackgroundServices
             int emptyStreak = 0;
             int iteration = 0;
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drain starting (startRemaining={startRemaining?.ToString() ?? "?"}, expectedIterations={expectedIterations}, maxIterations={maxIterations})." });
+            _logger.DrainStarting(entityName, startRemaining?.ToString() ?? "?", expectedIterations, maxIterations);
 
             while (true)
             {
@@ -205,7 +191,7 @@ namespace WebApi.BackgroundServices
                 }
                 catch (ServiceBusException sbEx) when (sbEx.IsTransient)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} transient receive error ({sbEx.Reason}); retrying (iteration {iteration})." });
+                    _logger.DrainTransientReceiveError(entityName, sbEx.Reason.ToString(), iteration);
                     continue;
                 }
 
@@ -223,13 +209,13 @@ namespace WebApi.BackgroundServices
                         {
                             if (remaining == 0 && emptyStreak >= consecutiveEmptyThreshold)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained after {iteration} iterations. Total received: {totalReceived}" });
+                                _logger.DrainCompleted(entityName, iteration, totalReceived);
                                 break;
                             }
 
                             if (remaining > 0 && emptyStreak == 1)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} runtime indicates {remaining} messages remain after an empty batch; continuing..." });
+                                _logger.DrainRuntimeIndicatesRemaining(entityName, remaining);
                             }
 
                             // Stagnation detection: remaining not changing while empties accumulate
@@ -242,20 +228,20 @@ namespace WebApi.BackgroundServices
 
                             if (stagnantEmptyIterations >= StagnantEmptyLimit)
                             {
-                                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"WARNING: {entityName} stopping due to stagnation (remaining still {remaining}) after {stagnantEmptyIterations} stagnant empty polls. Total received: {totalReceived}" });
+                                _logger.DrainStallDetected(entityName, remaining, stagnantEmptyIterations, totalReceived);
                                 break;
                             }
                         }
                         else if (emptyStreak >= consecutiveEmptyThreshold)
                         {
                             // Can't read runtime; trust empties
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained (runtime unavailable) after {iteration} iterations. Total received: {totalReceived}" });
+                            _logger.DrainCompletedRuntimeUnavailable(entityName, iteration, totalReceived);
                             break;
                         }
                     }
                     else if (emptyStreak >= consecutiveEmptyThreshold)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} drained (no runtime verification) after {iteration} iterations. Total received: {totalReceived}" });
+                        _logger.DrainCompletedNoRuntimeVerification(entityName, iteration, totalReceived);
                         break;
                     }
                 }
@@ -272,11 +258,11 @@ namespace WebApi.BackgroundServices
                             long remaining;
                             try { remaining = await remainingMessageCountProvider(cancellationToken); }
                             catch { remaining = -1; }
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} progress: received {messages.Count} (total {totalReceived}). Remaining (approx): {(remaining >= 0 ? remaining.ToString() : "?")}" });
+                            _logger.DrainProgressWithRemaining(entityName, messages.Count, totalReceived, remaining >= 0 ? remaining.ToString() : "?");
                         }
                         else
                         {
-                            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{entityName} progress: received {messages.Count} (total {totalReceived})." });
+                            _logger.DrainProgress(entityName, messages.Count, totalReceived);
                         }
                     }
                 }
@@ -286,21 +272,18 @@ namespace WebApi.BackgroundServices
                 // Dynamic iteration cap safeguard
                 if (iteration >= maxIterations)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"WARNING: {entityName} reached dynamic iteration cap {iteration}/{maxIterations}. Total received: {totalReceived}. Remaining(est)={lastRemaining?.ToString() ?? "?"}" });
+                    _logger.DrainIterationCapReached(entityName, iteration, maxIterations, totalReceived, lastRemaining?.ToString() ?? "?");
                     break;
                 }
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"PURGE-SUMMARY entity=\"{entityName}\" totalRemoved={totalReceived} iterations={iteration}" });
+            _logger.PurgeSummary(entityName, totalReceived, iteration);
             return totalReceived;
         }
 
         private async Task ClearQueueAsync(string queueName, CancellationToken cancellationToken)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Clearing queue {queueName}"
-            });
+            _logger.ClearQueueStarted(queueName);
 
             var receiver = _serviceBusClient.CreateReceiver(queueName, new ServiceBusReceiverOptions { ReceiveMode = ServiceBusReceiveMode.ReceiveAndDelete });
 
@@ -321,18 +304,12 @@ namespace WebApi.BackgroundServices
                 cancellationToken: cancellationToken);
 
             await receiver.CloseAsync();
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Clearing queue {queueName} completed"
-            });
+            _logger.ClearQueueCompleted(queueName);
         }
 
         private async Task ClearTopicAsync(string topicName, string subscriptionName, CancellationToken cancellationToken)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Clearing topic {topicName} subscription {subscriptionName}"
-            });
+            _logger.ClearTopicStarted(topicName, subscriptionName);
 
             await ClearDeferredMessagesAsync(topicName, subscriptionName, cancellationToken);
 
@@ -357,10 +334,7 @@ namespace WebApi.BackgroundServices
 
             await receiver.CloseAsync();
             
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Clearing topic {topicName} subscription {subscriptionName} completed"
-            });
+            _logger.ClearTopicCompleted(topicName, subscriptionName);
         }
 
         private async Task ClearDeferredMessagesAsync(string topicName, string subscriptionName, CancellationToken cancellationToken)
@@ -373,10 +347,7 @@ namespace WebApi.BackgroundServices
             }
 
             var entityName = $"{topicName}/{subscriptionName}";
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Processing deferred messages in {entityName} (remaining: {runtime.Value.ActiveMessageCount})"
-            });
+            _logger.DeferredMessagesProcessing(entityName, runtime.Value.ActiveMessageCount);
 
             // Configuration for high-throughput processing
             const int peekBatchSize = 100;
@@ -412,10 +383,7 @@ namespace WebApi.BackgroundServices
                     }
                     catch (ServiceBusException sbEx) when (sbEx.IsTransient)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Transient error peeking {entityName}: {sbEx.Reason}. Retrying..."
-                        });
+                        _logger.DeferredPeekTransientError(entityName, sbEx.Reason.ToString());
                         await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
                         continue;
                     }
@@ -460,10 +428,7 @@ namespace WebApi.BackgroundServices
                         if (totalDeferredCleared > 0 && totalDeferredCleared % progressLogInterval == 0)
                         {
                             var rate = totalDeferredCleared / stopwatch.Elapsed.TotalSeconds;
-                            await _loggingRepository.LogMessageAsync(new LogMessage
-                            {
-                                Message = $"Deferred progress {entityName}: cleared={totalDeferredCleared}, failed={totalFailed}, rate={rate:F1}/sec"
-                            });
+                            _logger.DeferredProgress(entityName, totalDeferredCleared, totalFailed, rate);
                         }
                     }
                 }
@@ -472,10 +437,7 @@ namespace WebApi.BackgroundServices
 
                 if (totalDeferredCleared > 0 || totalFailed > 0)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"DEFERRED-SUMMARY entity=\"{entityName}\" cleared={totalDeferredCleared} failed={totalFailed} duration={stopwatch.Elapsed.TotalSeconds:F1}s"
-                    });
+                    _logger.DeferredSummary(entityName, totalDeferredCleared, totalFailed, stopwatch.Elapsed.TotalSeconds);
                 }
             }
             finally
@@ -523,28 +485,19 @@ namespace WebApi.BackgroundServices
                 catch (ServiceBusException ex) when (ex.Reason == ServiceBusFailureReason.MessageNotFound)
                 {
                     // Messages may have expired or been processed - not a failure
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Some deferred messages not found in {entityName} (may have expired)"
-                    });
+                    _logger.DeferredMessagesNotFound(entityName);
                     return (completed, failed);
                 }
                 catch (ServiceBusException ex) when (ex.IsTransient && attempt < maxRetries)
                 {
                     // Exponential backoff for transient errors
                     var delay = TimeSpan.FromMilliseconds(Math.Pow(2, attempt) * 100);
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Transient error processing deferred batch in {entityName} (attempt {attempt}/{maxRetries}): {ex.Reason}"
-                    });
+                    _logger.DeferredBatchTransientError(entityName, attempt, maxRetries, ex.Reason.ToString());
                     await Task.Delay(delay, cancellationToken);
                 }
                 catch (Exception ex) when (attempt == maxRetries)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Failed to process deferred batch in {entityName} after {maxRetries} attempts: {ex.Message}"
-                    });
+                    _logger.DeferredBatchFailed(entityName, maxRetries, ex);
                     failed += sequenceNumbers.Length;
                     return (completed, failed);
                 }
@@ -555,10 +508,7 @@ namespace WebApi.BackgroundServices
 
         private async Task ClearSessionEnabledTopicAsync(string topicName, string subscriptionName, CancellationToken cancellationToken)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Clearing (session-enabled) topic {topicName} subscription {subscriptionName}"
-            });
+            _logger.ClearSessionTopicStarted(topicName, subscriptionName);
 
             int sessionsCleared = 0;
             while (true)
@@ -582,7 +532,7 @@ namespace WebApi.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to accept next session for {topicName}/{subscriptionName}.\n{ex}" });
+                    _logger.AcceptSessionFailed(topicName, subscriptionName, ex);
                     break;
                 }
 
@@ -593,7 +543,7 @@ namespace WebApi.BackgroundServices
 
                 sessionsCleared++;
                 var sessionEntityName = $"Topic {topicName}/Subscription {subscriptionName}/Session {sessionReceiver.SessionId}";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Clearing session {sessionReceiver.SessionId} for {topicName}/{subscriptionName}" });
+                _logger.ClearSessionMessages(sessionReceiver.SessionId, topicName, subscriptionName);
 
                 try
                 {
@@ -612,7 +562,7 @@ namespace WebApi.BackgroundServices
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Error while clearing session {sessionReceiver.SessionId} for {topicName}/{subscriptionName}.\n{ex}" });
+                    _logger.ClearSessionFailed(sessionReceiver.SessionId, topicName, subscriptionName, ex);
                 }
                 finally
                 {
@@ -620,18 +570,12 @@ namespace WebApi.BackgroundServices
                 }
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"Clearing (session-enabled) topic {topicName} subscription {subscriptionName} completed. Sessions processed: {sessionsCleared}"
-            });
+            _logger.ClearSessionTopicCompleted(topicName, subscriptionName, sessionsCleared);
         }
 
         private async Task ClearAllTopicsAsync(CancellationToken cancellationToken)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = "Clearing topics and their subscriptions..."
-            });
+            _logger.ClearAllTopicsStarting();
 
             var topics = _sbAdministrationClient.GetTopicsAsync();
             var clearTopicTasks = new List<Task>();
@@ -666,35 +610,21 @@ namespace WebApi.BackgroundServices
 
         private async Task ClearInternalTablesAndQueuesAsync(CancellationToken cancellationToken)
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = "Clearing function's internal tables and queues..."
-            });
+            _logger.ClearInternalTablesAndQueuesStarting();
 
-            if (string.IsNullOrWhiteSpace(_operationsSettings.FunctionsStorageAccountName))
+            var storageAccounts = await _resourceManagerService.GetWebSitesStorageAccountsAsync(cancellationToken);
+            foreach (var storageAccount in storageAccounts)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = "Settings:functionsStorageAccountName is not configured; internal tables/queues cannot be cleared."
-                });
-
-                throw new InvalidOperationException("Missing required setting: Settings:functionsStorageAccountName");
+                await ClearInternalQueuesAsync(storageAccount.Value, storageAccount.Key);
+                await DeleteInternalTablesAsync(storageAccount.Value, storageAccount.Key);
             }
-
-            await ClearInternalQueuesAsync(_operationsSettings.FunctionsStorageAccountName);
-            await DeleteInternalTablesAsync(_operationsSettings.FunctionsStorageAccountName);
 
             // Deleting a table takes at least 40 seconds, so we need to wait a bit before restarting the functions
             // reference: https://learn.microsoft.com/en-us/rest/api/storageservices/delete-table#remarks
             await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken);
-
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = "Clearing function's internal tables and queues completed."
-            });
         }
 
-        private async Task DeleteInternalTablesAsync(string storageAccountName)
+        private async Task DeleteInternalTablesAsync(string storageAccountName, string functionName)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
@@ -711,22 +641,16 @@ namespace WebApi.BackgroundServices
 
                     await tableServiceClient.DeleteTableAsync(table.Name);
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Deleted table {table.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount"
-                    });
+                    _logger.InternalTableDeleted(table.Name, storageAccountName, functionName);
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Failed to delete table {table.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount.\n{ex}"
-                    });
+                    _logger.InternalTableDeleteFailed(table.Name, storageAccountName, functionName, ex);
                 }
             }
         }
 
-        private async Task ClearInternalQueuesAsync(string storageAccountName)
+        private async Task ClearInternalQueuesAsync(string storageAccountName, string functionName)
         {
             DefaultAzureCredential credential = new(DefaultAzureCredential.DefaultEnvironmentVariableName);
 
@@ -743,28 +667,19 @@ namespace WebApi.BackgroundServices
                     var individualClient = queueClient.GetQueueClient(queue.Name);
                     await individualClient.ClearMessagesAsync();
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Cleared queue {queue.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount"
-                    });
+                    _logger.InternalQueueCleared(queue.Name, storageAccountName, functionName);
 
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Failed to clear queue {queue.Name} from account {storageAccountName} used by SharedFunctionsStorageAccount.\n{ex}"
-                    });
+                    _logger.InternalQueueClearFailed(queue.Name, storageAccountName, functionName, ex);
                 }
             }
         }
 
         private async Task ResetJobsInProgressAsync()
         {
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = "ResetJobsInProgressAsync: Starting bulk reset of InProgress jobs to Idle."
-            });
+            _logger.ResetJobsInProgressStarting();
 
             try
             {
@@ -775,17 +690,11 @@ namespace WebApi.BackgroundServices
                 var count = await databaseSyncJobsRepository.BulkResetJobStatusAsync(
                     SyncStatus.InProgress, SyncStatus.Idle, cts.Token);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"ResetJobsInProgressAsync: Successfully reset {count} InProgress jobs to Idle."
-                });
+                _logger.ResetJobsInProgressCompleted(count);
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"ResetJobsInProgressAsync failed or timed out. Proceeding with operation. Error: {ex.Message}"
-                });
+                _logger.ResetJobsInProgressFailed(ex);
             }
         }
 
@@ -796,13 +705,13 @@ namespace WebApi.BackgroundServices
                 var retryPolicy = Policy.HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
                     .WaitAndRetryAsync(5,
                                        retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
-                                       onRetry: async (response, timespan, retry, context) =>
+                                       onRetry: (response, timespan, retry, context) =>
                                        {
-                                           await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to call JobScheduler (${response.Result.StatusCode}). Retrying... {retry}" });
+                                           _logger.JobSchedulerCallRetry(response.Result.StatusCode, retry);
                                        });
 
                 await _resourceManagerService.StartWebSiteAsync(requestorId, $"{_operationsSettings.ComputeResourceGroupName}-JobScheduler", cancellationToken);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = "Calling JobScheduler..." });
+                _logger.JobSchedulerCalling();
                 var jobSchedulerUrl = $"{_operationsSettings.JobSchedulerFunctionBaseUrl}/api/PipelineInvocationStarterFunction?code={_operationsSettings.JobSchedulerFunctionKey}";
 
                 // Acquire token for JobScheduler function app with platform authentication
@@ -817,13 +726,13 @@ namespace WebApi.BackgroundServices
                     request.Content = new StringContent(JsonSerializer.Serialize(new { DelayForDeploymentInMinutes = 5 }), Encoding.UTF8, "application/json");
                     var response = await _httpClient.SendAsync(request);
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"JobScheduler response: {response.StatusCode}.\n{responseContent}" });
+                    _logger.JobSchedulerResponse(response.StatusCode, responseContent);
                     return response;
                 });
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Failed to call JobScheduler.\n{ex}" });
+                _logger.JobSchedulerFailed(ex);
             }
         }
     }
