@@ -60,19 +60,13 @@ namespace Repositories.Mail
             var requestor    = GetParam(emailMessage, RequestorIndex);
 
             var rows = await BuildBaseRowsAsync(groupId, requestor);
-            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                _localizationRepository.TranslateSetting("FallbackDetailsRow.MembersAdded"),
-                System.Net.WebUtility.HtmlEncode(addedCount), "font-weight:600;color:#107c10;"));
-            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                _localizationRepository.TranslateSetting("FallbackDetailsRow.MembersRemoved"),
-                System.Net.WebUtility.HtmlEncode(removedCount), "font-weight:600;color:#a4262c;"));
 
             return FormatTemplate(
                 HtmlTemplates.SyncCompletedTemplate,
                 prefix: "SyncCompletedFallback",
                 groupName: destinationGroupName,
                 headerText: destinationGroupName ?? string.Empty,
-                description: _localizationRepository.TranslateSetting("SyncCompletedFallback.Description"),
+                description: _localizationRepository.TranslateSetting("SyncCompletedFallback.Description", destinationGroupName ?? string.Empty, groupId ?? string.Empty),
                 calloutBody: _localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutBody", addedCount, removedCount, destinationGroupName ?? string.Empty),
                 rows: rows,
                 jobUrl: jobUrl,
@@ -92,7 +86,7 @@ namespace Repositories.Mail
                 prefix: "SyncDisabledFallback",
                 groupName: destinationGroupName,
                 headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
-                description: _localizationRepository.TranslateSetting($"SyncDisabledFallback.Description.{disableReason}", requestor),
+                description: _localizationRepository.TranslateSetting($"SyncDisabledFallback.Description.{disableReason}", requestor, groupId ?? string.Empty),
                 calloutBody: _localizationRepository.TranslateSetting($"SyncDisabledFallback.CalloutBody.{disableReason}"),
                 rows: rows,
                 jobUrl: jobUrl,
@@ -110,12 +104,6 @@ namespace Repositories.Mail
             var requestor       = GetParam(emailMessage, RejectionRequestorIndex);
 
             var rows = await BuildBaseRowsAsync(groupId, requestor);
-            if (!string.IsNullOrWhiteSpace(rejectionReason))
-            {
-                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                    _localizationRepository.TranslateSetting("FallbackDetailsRow.RejectionReason"),
-                    System.Net.WebUtility.HtmlEncode(rejectionReason), ""));
-            }
 
             return FormatTemplate(
                 HtmlTemplates.SubmissionRejectedTemplate,
@@ -123,7 +111,7 @@ namespace Repositories.Mail
                 groupName: destinationGroupName,
                 headerText: destinationGroupName ?? string.Empty,
                 description: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.Description"),
-                calloutBody: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.CalloutBody"),
+                calloutBody: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.CalloutBody", string.IsNullOrWhiteSpace(rejectionReason) ? "(not provided)" : rejectionReason),
                 rows: rows,
                 jobUrl: jobUrl,
                 sentDate: sentDate
@@ -141,7 +129,7 @@ namespace Repositories.Mail
             string headerText, string description, string calloutBody,
             StringBuilder rows, string jobUrl, string sentDate)
         {
-            var name = groupName ?? string.Empty;
+            var name = string.IsNullOrWhiteSpace(groupName) ? "N/A" : groupName;
             return string.Format(
                 template,
                 _localizationRepository.TranslateSetting($"{prefix}.Badge"),             // {0} badge
@@ -238,7 +226,7 @@ namespace Repositories.Mail
             }
             rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
                 _localizationRepository.TranslateSetting("FallbackDetailsRow.ObjectId"),
-                encode(groupId), "font-family:Consolas,'Courier New',monospace;font-size:13px;"));
+                encode(groupId), ""));
             if (!string.IsNullOrEmpty(requestor))
             {
                 rows.Append(string.Format(HtmlTemplates.DetailsTableRow,

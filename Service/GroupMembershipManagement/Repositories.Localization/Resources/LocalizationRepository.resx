@@ -1317,13 +1317,13 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>AWARENESS</value>
   </data>
   <data name="SyncCompletedFallback.Description" xml:space="preserve">
-    <value>GMM has finished synchronizing the membership for this group. The changes below have been applied.</value>
+    <value>The group **{0}** with Id: **{1}** has completed its initial sync.</value>
   </data>
   <data name="SyncCompletedFallback.CalloutTitle" xml:space="preserve">
     <value>SYNC SUMMARY</value>
   </data>
   <data name="SyncCompletedFallback.CalloutBody" xml:space="preserve">
-    <value>**{0}** users were added and **{1}** users were removed from **{2}**. Review the updated membership in the GMM portal.</value>
+    <value>During the initial sync, **{0}** users were added and **{1}** users were removed from **{2}**.</value>
   </data>
   <data name="SyncCompletedFallback.CtaLabel" xml:space="preserve">
     <value>View group in GMM UI</value>
@@ -1365,7 +1365,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>GMM has paused this membership sync because one or more source group IDs are **not valid security groups**. The sync process cannot continue until the source configuration is corrected.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoOwner" xml:space="preserve">
-    <value>GMM has paused this membership sync because **GMM is not an owner**. GMM requires owner permissions to manage group membership. Please add GMM as an owner to re-enable syncing.</value>
+    <value>GMM has paused this membership sync because **GMM is not an owner**. GMM requires owner permissions to manage group membership. If you believe this group should be managed by GMM, please [add GMM as an owner](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) to re-enable syncing.</value>
   </data>
   <data name="SyncDisabledFallback.Description.GuestUsers" xml:space="preserve">
     <value>GMM has paused this membership sync because **guest users** were detected in the membership source. GMM does not support adding guest users to groups and cannot continue with the current configuration.</value>
@@ -1389,7 +1389,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>Group membership cannot be synced until the invalid source group IDs are replaced with valid security groups in the sync configuration.</value>
   </data>
   <data name="SyncDisabledFallback.CalloutBody.NoOwner" xml:space="preserve">
-    <value>GMM cannot update group memberships until owner permissions are granted to the GMM service account.</value>
+    <value>GMM is not altering this group's membership. If GMM is not added as an owner, GMM will eventually remove this group from management and you will receive a separate notification when that happens.</value>
   </data>
   <data name="SyncDisabledFallback.CalloutBody.GuestUsers" xml:space="preserve">
     <value>Group membership cannot be synced because GMM cannot add guest users to groups. The configuration must be updated to exclude guest users.</value>
@@ -1404,7 +1404,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>Review in GMM UI</value>
   </data>
   <data name="SyncDisabledFallback.FooterExplanation" xml:space="preserve">
-    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for critical events that require attention.</value>
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
   </data>
   <data name="FallbackGroupType.M365Group" xml:space="preserve">
     <value>M365 Group</value>
@@ -1413,7 +1413,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>M365 Group &#8212; Viva Engage</value>
   </data>
   <data name="FallbackGroupType.SecurityGroup" xml:space="preserve">
-    <value>Security Group</value>
+    <value>Cloud Security Group</value>
   </data>
   <data name="FallbackDetailsRow.GroupAlias" xml:space="preserve">
     <value>GROUP ALIAS</value>
@@ -1437,7 +1437,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>REJECTION REASON</value>
   </data>
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
-    <value>SUBMISSION REJECTED</value>
+    <value>ACTION REQUIRED</value>
   </data>
   <data name="SubmissionRejectedFallback.Description" xml:space="preserve">
     <value>Your request to update the membership sync configuration for this group has been reviewed and was not approved. See the details below for the reason provided.</value>
@@ -1446,12 +1446,14 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>WHAT CAN YOU DO?</value>
   </data>
   <data name="SubmissionRejectedFallback.CalloutBody" xml:space="preserve">
-    <value>Review the rejection reason above and consider revising your request. You can resubmit a new configuration change through the GMM portal. If you believe this decision is incorrect, reach out to your GMM reviewer for clarification.</value>
+    <value>**Rejection reason:** {0}
+
+Consider revising your request and resubmitting a new configuration change through the GMM portal. If you believe this decision is incorrect, reach out to your GMM reviewer for clarification.</value>
   </data>
   <data name="SubmissionRejectedFallback.CtaLabel" xml:space="preserve">
     <value>Go to GMM Portal</value>
   </data>
   <data name="SubmissionRejectedFallback.FooterExplanation" xml:space="preserve">
-    <value>This email was sent because you submitted a membership sync configuration change for the group **{0}**, which is managed by GMM.</value>
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
   </data>
 </root>

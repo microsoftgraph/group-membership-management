@@ -93,11 +93,11 @@ namespace Repositories.Mail
         private const string BlueBadgeStyle =
             "display:inline-block;background:#e8f4fd;color:#0078d4;font-size:11px;font-weight:700;padding:3px 8px;border-radius:3px;letter-spacing:0.5px;";
         private const string OrangePillBadgeStyle =
-            "display:inline-block;background:#fde7d9;border:1px solid #f3bf9b;color:#d83b01;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
+            "display:inline-block;background:#fff4ce;border:1px solid #e6c89a;color:#603900;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
         private const string BlueCalloutTableStyle =
             "border-left:5px solid #0078d4;background:#deecf9;border-radius:0 4px 4px 0;";
         private const string OrangeCalloutTableStyle =
-            "border-left:5px solid #d83b01;background:#fff4ce;border-radius:0 4px 4px 0;";
+            "border-left:5px solid #603900;background:#fff4ce;border-radius:0 4px 4px 0;";
         private const string BlueCalloutTitleStyle =
             "font-size:13px;font-weight:700;color:#004578;letter-spacing:0.5px;margin-bottom:8px;";
         private const string OrangeCalloutTitleStyle =
@@ -137,32 +137,32 @@ namespace Repositories.Mail
         </tr>";
 
         private const string SyncDisabledHeaderHtml = @"
-        <!-- Header bar - Blue with pause icon -->
+        <!-- Header bar - Light amber to match callout palette -->
         <tr>
-          <td style=""background:#0078d4;padding:14px 24px;"">
+          <td style=""background:#fff4ce;padding:14px 24px;"">
             <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
               <td style=""padding-right:12px;vertical-align:middle;"">
-                <img src=""data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAA6ElEQVR4Ad3BQY7CQBAEwcwR32seSz+wlgMHQJaxhYHRRnCEJMVBZKckxUZqs5NskKR4k9psIC8kKQ6iNi/IiiTFwdRmhSxIUnyY2iwYTEaeJCm+RG2eyJ0kxZepzR25SVL8iNrcDCZzYr8Lj848uvDozA6DqyTFDyUpbgaTGUxmMJnBZEaSYgJJiquhNhNQm6vBZAaTGUxmMJnBldr8kNrcDCZzYr8z6868Qe4kKb5Mbe7IkyTFl6jNE1mQpPgwtVkwmIysSFIcTG1WyAtJioOozQuyQZLiTWqzgeyUpNhIbX4hSfFf/QF0HVVo7Poh9wAAAABJRU5ErkJggg=="" width=""36"" height=""36"" alt=""Pause icon"" style=""display:block;border:0;"" />
+                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#603900;color:#ffffff;border-radius:50%;font-size:18px;font-weight:700;"">&#x23F8;</span>
               </td>
               <td style=""vertical-align:middle;"">
-                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Sync paused - {1}</span><br />
-                <span style=""color:#ffffff;font-size:13px;"">Group Membership Management</span>
+                <span style=""color:#603900;font-size:16px;font-weight:600;"">Sync paused - {1}</span><br />
+                <span style=""color:#603900cc;font-size:13px;"">Group Membership Management</span>
               </td>
             </tr></table>
           </td>
         </tr>";
 
         private const string SubmissionRejectedHeaderHtml = @"
-        <!-- Header bar - Red for rejection -->
+        <!-- Header bar - Light amber to match callout palette -->
         <tr>
-          <td style=""background:#a4262c;padding:14px 24px;"">
+          <td style=""background:#fff4ce;padding:14px 24px;"">
             <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
               <td style=""padding-right:12px;vertical-align:middle;"">
-                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:rgba(255,255,255,0.2);color:#ffffff;border-radius:50%;font-size:20px;font-weight:700;"">&#x2715;</span>
+                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#603900;color:#ffffff;border-radius:50%;font-size:20px;font-weight:700;"">&#x2715;</span>
               </td>
               <td style=""vertical-align:middle;"">
-                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">Submission Rejected</span><br />
-                <span style=""color:#ffffff;font-size:13px;"">Group Membership Management</span>
+                <span style=""color:#603900;font-size:16px;font-weight:600;"">Submission Rejected</span><br />
+                <span style=""color:#603900cc;font-size:13px;"">Group Membership Management</span>
               </td>
             </tr></table>
           </td>
@@ -183,7 +183,7 @@ namespace Repositories.Mail
         /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
         /// in the header bar (e.g. "Sync paused - {1}") with the localized disable reason.</summary>
         public static string SyncDisabledTemplate =>
-            BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, BlueCalloutTableStyle, BlueCalloutTitleStyle);
+            BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, OrangeCalloutTableStyle, OrangeCalloutTitleStyle);
 
         /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate.</summary>
         public static string SubmissionRejectedTemplate =>
