@@ -1,28 +1,27 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Repositories.Contracts;
+using Hosts.WebApi;
+using Microsoft.Extensions.Logging;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi.Contracts;
 using System.Net;
-using Microsoft.Extensions.Logging;
 
 namespace Services.WebApi
 {
     public class CopilotChatHandler : RequestHandlerBase<CopilotChatRequest, CopilotChatResponse>
     {
         private readonly ICopilotService _copilotService;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<CopilotChatHandler> _logger;
 
         public CopilotChatHandler(
             ILogger<CopilotChatHandler> logger,
-            ICopilotService copilotService,
-            ILoggingRepository loggingRepository) : base(logger)
+            ICopilotService copilotService) : base(logger)
         {
             _copilotService = copilotService ?? throw new ArgumentNullException(nameof(copilotService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         protected override async Task<CopilotChatResponse> ExecuteCoreAsync(CopilotChatRequest request)
@@ -39,10 +38,7 @@ namespace Services.WebApi
                     return response;
                 }
 
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    Message = $"CopilotChatHandler: Processing chat message"
-                });
+                _logger.CopilotChatProcessing();
 
                 var result = await _copilotService.GetChatResponseAsync(
                     request.UserMessage, 
@@ -54,17 +50,11 @@ namespace Services.WebApi
                 response.ResponseMessage = result.ResponseMessage;
                 response.SourceParts = result.SourceParts;
 
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    Message = $"CopilotChatHandler: Successfully generated response (SourcePart: {(result.SourcePart != null ? "included" : "none")})"
-                });
+                _logger.CopilotChatResponseGenerated(result.SourcePart != null);
             }
             catch (TimeoutException ex)
             {
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    Message = $"CopilotChatHandler: Request timed out - {ex.Message}"
-                });
+                _logger.CopilotChatTimeout(ex);
 
                 response.StatusCode = HttpStatusCode.RequestTimeout;
                 response.ErrorCode = "Timeout";
@@ -72,10 +62,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    Message = $"CopilotChatHandler: Error processing request - {ex.Message}"
-                });
+                _logger.CopilotChatFailed(ex);
 
                 response.StatusCode = HttpStatusCode.InternalServerError;
                 response.ErrorCode = "InternalError";

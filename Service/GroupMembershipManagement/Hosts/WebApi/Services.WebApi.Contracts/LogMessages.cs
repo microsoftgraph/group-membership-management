@@ -180,5 +180,23 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91116, Level = LogLevel.Error,
             Message = "GenerateTitles request failed with unexpected error")]
         public static partial void GenerateTitlesUnexpectedError(this ILogger logger, Exception exception);
+
+        // ── CopilotChatHandler (91500-91549) ──
+
+        [LoggerMessage(EventId = 91500, Level = LogLevel.Information,
+            Message = "CopilotChatHandler: Processing chat message")]
+        public static partial void CopilotChatProcessing(this ILogger logger);
+
+        [LoggerMessage(EventId = 91501, Level = LogLevel.Information,
+            Message = "CopilotChatHandler: Successfully generated response (SourcePartIncluded: {SourcePartIncluded})")]
+        public static partial void CopilotChatResponseGenerated(this ILogger logger, bool sourcePartIncluded);
+
+        [LoggerMessage(EventId = 91502, Level = LogLevel.Warning,
+            Message = "CopilotChatHandler: Request timed out")]
+        public static partial void CopilotChatTimeout(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91503, Level = LogLevel.Error,
+            Message = "CopilotChatHandler: Error processing request")]
+        public static partial void CopilotChatFailed(this ILogger logger, Exception exception);
     }
 }

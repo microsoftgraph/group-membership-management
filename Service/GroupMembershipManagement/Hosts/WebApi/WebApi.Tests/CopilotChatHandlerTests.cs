@@ -1,14 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Repositories.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using Services.WebApi;
 using Services.WebApi.Contracts;
 using System.Net;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace WebApi.Tests
 {
@@ -16,15 +15,13 @@ namespace WebApi.Tests
     public class CopilotChatHandlerTests
     {
         private Mock<ICopilotService> _mockCopilotService = null!;
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private CopilotChatHandler _handler = null!;
 
         [TestInitialize]
         public void Initialize()
         {
             _mockCopilotService = new Mock<ICopilotService>();
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
-            _handler = new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, _mockCopilotService.Object, _mockLoggingRepository.Object);
+            _handler = new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, _mockCopilotService.Object);
         }
 
         [TestMethod]
@@ -338,14 +335,14 @@ namespace WebApi.Tests
         public void Constructor_WithNullCopilotService_ThrowsArgumentNullException()
         {
             Assert.ThrowsException<ArgumentNullException>(
-                () => new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, null!, _mockLoggingRepository.Object));
+                () => new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, null!));
         }
 
         [TestMethod]
-        public void Constructor_WithNullLoggingRepository_ThrowsArgumentNullException()
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             Assert.ThrowsException<ArgumentNullException>(
-                () => new CopilotChatHandler(NullLogger<CopilotChatHandler>.Instance, _mockCopilotService.Object, null!));
+                () => new CopilotChatHandler(null!, _mockCopilotService.Object));
         }
     }
 }
