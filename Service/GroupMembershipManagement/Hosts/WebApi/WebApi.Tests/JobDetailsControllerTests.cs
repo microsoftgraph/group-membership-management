@@ -55,7 +55,6 @@ namespace Services.Tests
         private GetJobChangesHandler _getJobChangesHandler = null!;
         private GetSyncJobHistoryHandler _getSyncJobHistoryHandler = null!;
         private RemoveGMMHandler _removeGMMHandler = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
         private Mock<IDatabaseGroupsRepository> _groupRepository = null!;
         private Mock<IDatabaseChannelsRepository> _channelRepository = null!;
@@ -107,7 +106,6 @@ namespace Services.Tests
         public void Initialize()
         {
             _httpContextAccessor = new Mock<IHttpContextAccessor>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _groupRepository = new Mock<IDatabaseGroupsRepository>();
             _groupRepository = new Mock<IDatabaseGroupsRepository>();
@@ -115,7 +113,7 @@ namespace Services.Tests
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _syncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _blobStorageRepository = new Mock<IBlobStorageRepository>();
-            _getMembershipDownloadHandler = new GetMembershipDownloadHandler(NullLogger<GetMembershipDownloadHandler>.Instance, _loggingRepository.Object, _syncJobRepository.Object, _blobStorageRepository.Object);
+            _getMembershipDownloadHandler = new GetMembershipDownloadHandler(NullLogger<GetMembershipDownloadHandler>.Instance, _syncJobRepository.Object, _blobStorageRepository.Object);
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
             _settingsRepository = new Mock<IDatabaseSettingsRepository>();
             _notificationService = new Mock<INotificationService>();
@@ -275,7 +273,7 @@ namespace Services.Tests
 
             _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>()));
 
-            _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance, _loggingRepository.Object,
+            _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance,
                                                              _syncJobRepository.Object,
                                                              _syncJobChangeRepository.Object,
                                                              _titlesRepository.Object,
@@ -284,7 +282,7 @@ namespace Services.Tests
                                                              _httpContextAccessor.Object,
                                                              _handleInactiveJobsConfig.Object);
 
-            _patchJobHandler = new PatchJobHandler(NullLogger<PatchJobHandler>.Instance, _loggingRepository.Object,
+            _patchJobHandler = new PatchJobHandler(NullLogger<PatchJobHandler>.Instance,
                                                    _graphGroupRepository.Object,
                                                    _syncJobRepository.Object,
                                                    _syncJobChangeRepository.Object,
@@ -293,7 +291,7 @@ namespace Services.Tests
                                                    _notificationService.Object,
                                                    _thresholdConfig.Object);
 
-            _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance, _loggingRepository.Object,
+            _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance,
                                                     _graphGroupRepository.Object,
                                                    _syncJobRepository.Object);
 
@@ -304,7 +302,7 @@ namespace Services.Tests
                                                             _graphGroupRepository.Object,
                                                             _httpContextAccessor.Object);
 
-            _getChannelHandler = new GetChannelHandler(NullLogger<GetChannelHandler>.Instance, _loggingRepository.Object,
+            _getChannelHandler = new GetChannelHandler(NullLogger<GetChannelHandler>.Instance,
                                                             _syncJobRepository.Object,
                                                             _channelRepository.Object,
                                                             _titlesRepository.Object,
@@ -312,10 +310,10 @@ namespace Services.Tests
                                                             _graphGroupRepository.Object,
                                                             _httpContextAccessor.Object);
 
-            _getJobChangesHandler = new GetJobChangesHandler(NullLogger<GetJobChangesHandler>.Instance, _loggingRepository.Object,
+            _getJobChangesHandler = new GetJobChangesHandler(NullLogger<GetJobChangesHandler>.Instance,
                                                             _syncJobChangeRepository.Object);
 
-            _getSyncJobHistoryHandler = new GetSyncJobHistoryHandler(NullLogger<GetSyncJobHistoryHandler>.Instance, _loggingRepository.Object,
+            _getSyncJobHistoryHandler = new GetSyncJobHistoryHandler(NullLogger<GetSyncJobHistoryHandler>.Instance,
                                                                     _syncJobHistoryRepository.Object);
 
             _notificationRepository = new Mock<INotificationRepository>();
@@ -567,7 +565,6 @@ namespace Services.Tests
 
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      NullLogger<GetJobDetailsHandler>.Instance,
-                                     _loggingRepository.Object,
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
                                      _titlesRepository.Object,
@@ -662,7 +659,6 @@ namespace Services.Tests
 
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      NullLogger<GetJobDetailsHandler>.Instance,
-                                     _loggingRepository.Object,
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
                                      _titlesRepository.Object,
@@ -706,7 +702,6 @@ namespace Services.Tests
 
             _getJobDetailsHandler = new GetJobDetailsHandler(
                                      NullLogger<GetJobDetailsHandler>.Instance,
-                                     _loggingRepository.Object,
                                      _syncJobRepository.Object,
                                      _syncJobChangeRepository.Object,
                                      _titlesRepository.Object,
@@ -1615,7 +1610,7 @@ namespace Services.Tests
 
             _httpContextAccessor.Setup(x => x.HttpContext).Returns(context);
 
-            _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance, _loggingRepository.Object, _graphGroupRepository.Object, _syncJobRepository.Object);
+            _removeGMMHandler = new RemoveGMMHandler(NullLogger<RemoveGMMHandler>.Instance, _graphGroupRepository.Object, _syncJobRepository.Object);
             _jobDetailsController = new JobDetailsController(_getJobDetailsHandler, _removeGMMHandler, _patchJobHandler, _getGroupHandler, _getChannelHandler, _getJobChangesHandler, _getSyncJobHistoryHandler, _getMembershipDownloadHandler, _getThresholdNotificationHandlerMock.Object);
 
             _syncJobRepository.Setup(x => x.DeleteSyncJobAsync(It.IsAny<SyncJob>())).ThrowsAsync(new Exception());

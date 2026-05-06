@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Azure;
+using Hosts.WebApi;
 using Models;
 using Repositories.Contracts;
 using Services.Contracts;
@@ -9,23 +10,22 @@ using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
 using Microsoft.Extensions.Logging;
-using LogMessage = Models.LogMessage;
 
 namespace Services
 {
     public class RemoveGMMHandler : RequestHandlerBase<RemoveGMMRequest, RemoveGMMResponse>
     {
+        private readonly ILogger<RemoveGMMHandler> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
-        private readonly ILoggingRepository _loggingRepository;
 
-        public RemoveGMMHandler(ILogger<RemoveGMMHandler> logger, ILoggingRepository loggingRepository,
+        public RemoveGMMHandler(ILogger<RemoveGMMHandler> logger,
                               IGraphGroupRepository graphGroupRepository,
                               IDatabaseSyncJobsRepository syncJobRepository) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<RemoveGMMResponse> ExecuteCoreAsync(RemoveGMMRequest request)
@@ -73,11 +73,7 @@ namespace Services
                 };
             } catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error removing GMM from job:\n{ex.Message}",
-                    RunId = null
-                });
+                _logger.RemoveGMMFailed(ex);
 
                 return new RemoveGMMResponse
                 {

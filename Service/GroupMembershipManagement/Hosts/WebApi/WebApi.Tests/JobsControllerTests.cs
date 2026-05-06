@@ -51,7 +51,6 @@ namespace Services.Tests
         private GetJobDetailsHandler _getJobDetailsHandler = null!;
         private TelemetryClient _telemetryClient = null!;
         private Mock<IRequestAdapter> _requestAdapter = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _databaseSyncJobsRepository = null!;
         private Mock<ISyncJobChangeRepository> _syncJobChangeRepository = null!;
         private Mock<IDatabaseTitlesRepository> _titlesRepository = null!;
@@ -76,7 +75,6 @@ namespace Services.Tests
             _groups = new List<AzureADGroup>();
             _context = new DefaultHttpContext();
             _requestAdapter = new Mock<IRequestAdapter>();
-            _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSyncJobsRepository = new Mock<IDatabaseSyncJobsRepository>();
             _syncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
             _titlesRepository = new Mock<IDatabaseTitlesRepository>();
@@ -252,13 +250,12 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
                                                  _serviceBusQueueRepository.Object);
 
-            _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance, _loggingRepository.Object,
+            _getJobDetailsHandler = new GetJobDetailsHandler(NullLogger<GetJobDetailsHandler>.Instance,
                                                 _databaseSyncJobsRepository.Object,
                                                 _syncJobChangeRepository.Object,
                                                 _titlesRepository.Object,
@@ -409,7 +406,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -456,7 +452,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -520,7 +515,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -568,7 +562,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -609,7 +602,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -647,7 +639,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -688,7 +679,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -732,7 +722,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1469,7 +1458,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1528,7 +1516,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1587,7 +1574,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1638,7 +1624,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1704,7 +1689,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1765,7 +1749,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1825,7 +1808,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1885,7 +1867,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -1946,7 +1927,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2006,7 +1986,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2076,7 +2055,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2138,7 +2116,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2192,7 +2169,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2250,7 +2226,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2324,7 +2299,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2397,7 +2371,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2460,7 +2433,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2520,7 +2492,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2574,7 +2545,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2627,7 +2597,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,
@@ -2654,13 +2623,6 @@ namespace Services.Tests
 
             // Verify that a message was sent to the service bus queue for configuration
             _serviceBusQueueRepository.Verify(x => x.SendMessageAsync(It.IsAny<ServiceBusMessage>()), Times.Once);
-
-            // Verify sending of service bus message was logged
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                It.Is<LogMessage>(log => log.Message.Contains("to configuration queue")),
-                It.IsAny<VerbosityLevel>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()), Times.Once);
         }
 
         [TestMethod]
@@ -2693,7 +2655,6 @@ namespace Services.Tests
                                                  _destinationAttributesRepository.Object,
                                                  _titlesRepository.Object,
                                                  _graphGroupRepository.Object,
-                                                 _loggingRepository.Object,
                                                  _syncJobChangeRepository.Object,
                                                  _databaseSettingsRepository.Object,
                                                  _pendingConfigurationConfig.Object,

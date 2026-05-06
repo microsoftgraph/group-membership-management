@@ -548,5 +548,106 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91710, Level = LogLevel.Warning,
             Message = "No SqlMembershipObtainer pipeline run has been found")]
         public static partial void SqlMembershipAdfRunIdNotFound(this ILogger logger);
+
+        // ── Jobs CRUD handlers (91600-91699) ──
+        // PostJobHandler, PatchJobHandler, GetJobDetailsHandler, GetSyncJobHistoryHandler,
+        // GetJobChangesHandler, GetChannelHandler, GetMembershipDownloadHandler,
+        // RemoveGMMHandler, SearchSyncHistoryByUserHandler.
+
+        [LoggerMessage(EventId = 91600, Level = LogLevel.Information,
+            Message = "Job auto-approved based on configured auto-approval criteria")]
+        public static partial void JobAutoApproved(this ILogger logger);
+
+        [LoggerMessage(EventId = 91601, Level = LogLevel.Information,
+            Message = "Created sync job {SyncJobId}")]
+        public static partial void JobCreated(this ILogger logger, Guid syncJobId);
+
+        [LoggerMessage(EventId = 91602, Level = LogLevel.Information,
+            Message = "Sent message {MessageId} to configuration queue")]
+        public static partial void JobConfigurationMessageSent(this ILogger logger, string messageId);
+
+        [LoggerMessage(EventId = 91603, Level = LogLevel.Warning,
+            Message = "Failed to create sync job: CreateSyncJobAsync returned an empty Guid")]
+        public static partial void JobCreationReturnedEmptyId(this ILogger logger);
+
+        [LoggerMessage(EventId = 91604, Level = LogLevel.Error,
+            Message = "Unexpected error during job creation")]
+        public static partial void JobCreationFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91605, Level = LogLevel.Warning,
+            Message = "Auto-approval check failed")]
+        public static partial void AutoApprovalCheckFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91606, Level = LogLevel.Information,
+            Message = "Auto-approval granted: all {SourceGroupCount} source groups have acceptable visibility")]
+        public static partial void GroupMembershipAutoApprovalGranted(this ILogger logger, int sourceGroupCount);
+
+        [LoggerMessage(EventId = 91607, Level = LogLevel.Warning,
+            Message = "GroupMembership auto-approval check failed")]
+        public static partial void GroupMembershipAutoApprovalCheckFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91608, Level = LogLevel.Information,
+            Message = "Auto-approval granted: single SqlMembership query with manager ID matching requestor's onPremisesImmutableId")]
+        public static partial void SqlMembershipAutoApprovalGranted(this ILogger logger);
+
+        [LoggerMessage(EventId = 91609, Level = LogLevel.Warning,
+            Message = "SqlMembership auto-approval check failed")]
+        public static partial void SqlMembershipAutoApprovalCheckFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91610, Level = LogLevel.Warning,
+            Message = "Failed to retrieve user onPremisesImmutableId")]
+        public static partial void OnPremisesImmutableIdRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91611, Level = LogLevel.Warning,
+            Message = "Failed to retrieve group-based auto-approval setting")]
+        public static partial void GroupBasedAutoApprovalSettingRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91612, Level = LogLevel.Warning,
+            Message = "Failed to retrieve org leader auto-approval setting")]
+        public static partial void OrgLeaderAutoApprovalSettingRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91613, Level = LogLevel.Warning,
+            Message = "Failed to retrieve AI title setting")]
+        public static partial void AITitleSettingRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91614, Level = LogLevel.Warning,
+            Message = "Failed to apply patch document for SyncJobId {SyncJobId}")]
+        public static partial void PatchDocumentApplyFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        [LoggerMessage(EventId = 91615, Level = LogLevel.Warning,
+            Message = "Unable to retrieve group endpoints for job details")]
+        public static partial void JobDetailsGroupEndpointsRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91616, Level = LogLevel.Warning,
+            Message = "Unable to retrieve Viva Engage URL")]
+        public static partial void VivaEngageUrlRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91617, Level = LogLevel.Warning,
+            Message = "Failed to parse sync job query for hidden membership sources")]
+        public static partial void HiddenMembershipSourcesParseFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91618, Level = LogLevel.Warning,
+            Message = "Failed to retrieve sync job history")]
+        public static partial void SyncJobHistoryRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91619, Level = LogLevel.Warning,
+            Message = "Failed to retrieve job changes")]
+        public static partial void JobChangesRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91620, Level = LogLevel.Warning,
+            Message = "Unable to retrieve group endpoints for channel")]
+        public static partial void ChannelGroupEndpointsRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91621, Level = LogLevel.Warning,
+            Message = "Failed to download membership data for SyncJobId {SyncJobId}, RunId {RunId}")]
+        public static partial void MembershipDownloadFailed(this ILogger logger, Guid syncJobId, Guid runId, Exception exception);
+
+        [LoggerMessage(EventId = 91622, Level = LogLevel.Warning,
+            Message = "Failed to remove GMM from sync job")]
+        public static partial void RemoveGMMFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91623, Level = LogLevel.Warning,
+            Message = "Failed to search run history for SyncJobId {SyncJobId}, UserObjectId {UserObjectId}")]
+        public static partial void SearchSyncHistoryByUserFailed(this ILogger logger, Guid syncJobId, Guid userObjectId, Exception exception);
     }
 }

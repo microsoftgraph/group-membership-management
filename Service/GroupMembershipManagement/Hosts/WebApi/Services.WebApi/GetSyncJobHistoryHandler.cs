@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
+using Hosts.WebApi;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -13,14 +13,14 @@ namespace Services
 {
     public class GetSyncJobHistoryHandler : RequestHandlerBase<GetSyncJobHistoryRequest, GetSyncJobHistoryResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetSyncJobHistoryHandler> _logger;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
 
-        public GetSyncJobHistoryHandler(ILogger<GetSyncJobHistoryHandler> logger, ILoggingRepository loggingRepository,
+        public GetSyncJobHistoryHandler(ILogger<GetSyncJobHistoryHandler> logger,
                                         ISyncJobHistoryRepository syncJobHistoryRepository) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<GetSyncJobHistoryResponse> ExecuteCoreAsync(GetSyncJobHistoryRequest request)
@@ -39,10 +39,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error getting sync job history: {ex.Message}",
-                });
+                _logger.SyncJobHistoryRetrievalFailed(ex);
 
                 response.StatusCode = HttpStatusCode.InternalServerError;
             }

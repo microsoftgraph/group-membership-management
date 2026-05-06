@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -17,15 +18,15 @@ namespace Services
 {
     public class GetChannelHandler : RequestHandlerBase<GetChannelRequest, GetChannelResponse>
     {
+        private readonly ILogger<GetChannelHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
-        public GetChannelHandler(ILogger<GetChannelHandler> logger, ILoggingRepository loggingRepository,
+        public GetChannelHandler(ILogger<GetChannelHandler> logger,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IDatabaseChannelsRepository databaseChannelsRepository,
                               IDatabaseTitlesRepository titlesRepository,
@@ -33,12 +34,12 @@ namespace Services
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         }
 
@@ -64,10 +65,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve group endpoints\n{ex.GetBaseException()}"
-                });
+                _logger.ChannelGroupEndpointsRetrievalFailed(ex);
             }
 
             var type = job.MembershipType;

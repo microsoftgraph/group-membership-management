@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.AspNetCore.JsonPatch;
 using Models;
 using Models.SyncJobChange;
@@ -16,7 +17,6 @@ using System.Net;
 using System.Text.Json;
 using WebApi.Models.DTOs;
 using Microsoft.Extensions.Logging;
-using LogMessage = Models.LogMessage;
 using SyncJob = Models.SyncJob;
 using SyncJobChange = Models.SyncJobChange.SyncJobChange;
 
@@ -24,7 +24,7 @@ namespace Services.WebApi
 {
     public class PatchJobHandler : RequestHandlerBase<PatchJobRequest, PatchJobResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<PatchJobHandler> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
@@ -35,7 +35,6 @@ namespace Services.WebApi
 
         public PatchJobHandler(
             ILogger<PatchJobHandler> logger,
-            ILoggingRepository loggingRepository,
             IGraphGroupRepository graphGroupRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
@@ -45,7 +44,7 @@ namespace Services.WebApi
             IThresholdConfig thresholdConfig)
             : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
@@ -272,10 +271,7 @@ namespace Services.WebApi
                 }
                 catch (Exception ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Error applying patch document for SyncJobId {request.SyncJobId}: {ex.Message}"
-                    });
+                    _logger.PatchDocumentApplyFailed(request.SyncJobId, ex);
                     throw;
                 }
             }
@@ -334,10 +330,7 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving AI title setting: {ex.Message}"
-                });
+                _logger.AITitleSettingRetrievalFailed(ex);
                 return false;
             }
         }

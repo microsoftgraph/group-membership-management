@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
@@ -19,7 +20,7 @@ namespace Services
     {
         private const int ProgressUpdateIntervalRuns = 25;
 
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<SearchSyncHistoryByUserHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
@@ -28,14 +29,13 @@ namespace Services
 
         public SearchSyncHistoryByUserHandler(
             ILogger<SearchSyncHistoryByUserHandler> logger,
-            ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             ISyncJobHistoryRepository syncJobHistoryRepository,
             IBlobStorageRepository blobStorageRepository,
             IGraphGroupRepository graphGroupRepository,
             IHubContext<SignalRService> hubContext) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
@@ -109,10 +109,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error searching run history for SyncJobId={request.SyncJobId}, UserObjectId={request.UserObjectId}: {ex.Message}",
-                });
+                _logger.SearchSyncHistoryByUserFailed(request.SyncJobId, request.UserObjectId, ex);
 
                 response.StatusCode = HttpStatusCode.InternalServerError;
             }

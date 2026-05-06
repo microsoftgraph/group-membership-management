@@ -15,7 +15,6 @@ namespace WebApi.Tests
     [TestClass]
     public class GetMembershipDownloadHandlerTests
     {
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
         private GetMembershipDownloadHandler _handler = null!;
@@ -28,13 +27,11 @@ namespace WebApi.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
 
             _handler = new GetMembershipDownloadHandler(
                 NullLogger<GetMembershipDownloadHandler>.Instance,
-                _mockLoggingRepository.Object,
                 _mockSyncJobRepository.Object,
                 _mockBlobStorageRepository.Object);
 

@@ -23,7 +23,6 @@ namespace WebApi.Tests
     [TestClass]
     public class PatchJobHandlerNotificationTests
     {
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<ISyncJobChangeRepository> _mockSyncJobChangeRepository = null!;
@@ -38,7 +37,6 @@ namespace WebApi.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobChangeRepository = new Mock<ISyncJobChangeRepository>();
@@ -52,7 +50,6 @@ namespace WebApi.Tests
 
             _patchJobHandler = new PatchJobHandler(
                 NullLogger<PatchJobHandler>.Instance,
-                _mockLoggingRepository.Object,
                 _mockGraphGroupRepository.Object,
                 _mockSyncJobRepository.Object,
                 _mockSyncJobChangeRepository.Object,

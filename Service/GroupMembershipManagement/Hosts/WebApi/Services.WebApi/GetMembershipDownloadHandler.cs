@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Models;
 using Models.Helpers;
 using Repositories.Contracts;
@@ -15,17 +16,16 @@ namespace Services
 {
     public class GetMembershipDownloadHandler : RequestHandlerBase<GetMembershipDownloadRequest, GetMembershipDownloadResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetMembershipDownloadHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IBlobStorageRepository _blobStorageRepository;
 
         public GetMembershipDownloadHandler(
             ILogger<GetMembershipDownloadHandler> logger,
-            ILoggingRepository loggingRepository,
             IDatabaseSyncJobsRepository databaseSyncJobsRepository,
             IBlobStorageRepository blobStorageRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _blobStorageRepository = blobStorageRepository ?? throw new ArgumentNullException(nameof(blobStorageRepository));
         }
@@ -68,10 +68,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error downloading membership data for SyncJobId={request.SyncJobId}, RunId={request.RunId}: {ex.Message}",
-                });
+                _logger.MembershipDownloadFailed(request.SyncJobId, request.RunId, ex);
                 response.StatusCode = HttpStatusCode.InternalServerError;
             }
 

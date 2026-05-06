@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Models;
 using Models.ServiceBus;
 using Models.SyncJobChange;
@@ -21,11 +22,11 @@ namespace Services
     public class PostJobHandler : RequestHandlerBase<PostJobRequest, PostJobResponse>
     {
         private const int DEFAULT_PERIOD = 24;
+        private readonly ILogger<PostJobHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly IDatabaseDestinationAttributesRepository _destinationAttributesRepository;
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IDatabaseSettingsRepository _databaseSettingsRepository;
         private readonly IPendingConfigurationConfig _pendingConfigurationConfig;
@@ -37,17 +38,16 @@ namespace Services
             IDatabaseDestinationAttributesRepository destinationAttributesRepository,
             IDatabaseTitlesRepository titlesRepository,
             IGraphGroupRepository graphGroupRepository,
-            ILoggingRepository loggingRepository,
             ISyncJobChangeRepository syncJobChangeRepository,
             IDatabaseSettingsRepository databaseSettingsRepository,
             IPendingConfigurationConfig pendingConfigurationConfig,
             IServiceBusQueueRepository serviceBusQueueRepository) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _destinationAttributesRepository = destinationAttributesRepository ?? throw new ArgumentNullException(nameof(destinationAttributesRepository));
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _databaseSettingsRepository = databaseSettingsRepository ?? throw new ArgumentNullException(nameof(databaseSettingsRepository));
             _pendingConfigurationConfig = pendingConfigurationConfig ?? throw new ArgumentNullException(nameof(pendingConfigurationConfig));
@@ -86,10 +86,7 @@ namespace Services
                             newSyncJobEntity.StartDate = DateTime.UtcNow.AddHours(24);
                         }
 
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Job auto-approved based on configured auto-approval criteria."
-                        });
+                        _logger.JobAutoApproved();
                     }
                 }
 
@@ -113,10 +110,7 @@ namespace Services
                     response.StatusCode = HttpStatusCode.Created;
                     response.NewSyncJobId = newSyncJobId;
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"PostJobHandler created job: {response.NewSyncJobId}."
-                    });
+                    _logger.JobCreated(newSyncJobId);
 
                     var destinationName = await _graphGroupRepository.GetGroupNameAsync(destinationId);
                     var destinationEmail = await _graphGroupRepository.GetGroupEmailAsync(destinationId);
@@ -180,10 +174,7 @@ namespace Services
 
                         await _serviceBusQueueRepository.SendMessageAsync(message);
 
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Sent message {message.MessageId} to configuration queue",
-                        });
+                        _logger.JobConfigurationMessageSent(message.MessageId);
                     }
 
                     if (isAITitleEnabled && request.NewSyncJob.Titles != null)
@@ -196,19 +187,13 @@ namespace Services
                 {
                     response.StatusCode = HttpStatusCode.BadRequest;
                     response.ErrorCode = "JobCreationFailed";
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"PostJobHandler failed to create job request: {request}."
-                    });
+                    _logger.JobCreationReturnedEmptyId();
                 }
             }
             catch (Exception ex)
             {
                 response.StatusCode = HttpStatusCode.InternalServerError;
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"An error occurred during job creation: {ex.Message}"
-                });
+                _logger.JobCreationFailed(ex);
             }
 
             return response;
@@ -238,10 +223,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error during auto-approval check: {ex.Message}"
-                });
+                _logger.AutoApprovalCheckFailed(ex);
                 return false;
             }
         }
@@ -267,19 +249,13 @@ namespace Services
                     return false;
                 }
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Auto-approval granted: All {groupIds.Count} source groups have acceptable visibility."
-                });
+                _logger.GroupMembershipAutoApprovalGranted(groupIds.Count);
 
                 return true;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error during GroupMembership auto-approval check: {ex.Message}"
-                });
+                _logger.GroupMembershipAutoApprovalCheckFailed(ex);
                 return false;
             }
         }
@@ -300,19 +276,13 @@ namespace Services
                 if (!JsonParser.IsSingleSqlMembershipQueryWithManagerId(query, userImmutableId))
                     return false;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Auto-approval granted: Single SqlMembership query with manager ID matching requestor's onPremisesImmutableId."
-                });
+                _logger.SqlMembershipAutoApprovalGranted();
 
                 return true;
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error during SqlMembership auto-approval check: {ex.Message}"
-                });
+                _logger.SqlMembershipAutoApprovalCheckFailed(ex);
                 return false;
             }
         }
@@ -326,10 +296,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving user onPremisesImmutableId: {ex.Message}"
-                });
+                _logger.OnPremisesImmutableIdRetrievalFailed(ex);
                 return null;
             }
         }
@@ -343,10 +310,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving auto-approval setting: {ex.Message}"
-                });
+                _logger.GroupBasedAutoApprovalSettingRetrievalFailed(ex);
                 return false;
             }
         }
@@ -360,10 +324,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving org leader auto-approval setting: {ex.Message}"
-                });
+                _logger.OrgLeaderAutoApprovalSettingRetrievalFailed(ex);
                 return false;
             }
         }
@@ -377,10 +338,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error retrieving AI title setting: {ex.Message}"
-                });
+                _logger.AITitleSettingRetrievalFailed(ex);
                 return false;
             }
         }

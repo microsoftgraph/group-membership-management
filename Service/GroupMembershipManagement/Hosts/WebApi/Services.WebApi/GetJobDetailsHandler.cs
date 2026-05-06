@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.WebApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Models;
@@ -19,16 +20,16 @@ namespace Services
 {
     public class GetJobDetailsHandler : RequestHandlerBase<GetJobDetailsRequest, GetJobDetailsResponse>
     {
+        private readonly ILogger<GetJobDetailsHandler> _logger;
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly ISyncJobChangeRepository _syncJobChangesRepository;
         private readonly IDatabaseTitlesRepository _titlesRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ITeamsChannelRepository _teamsChannelRepository;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
-        public GetJobDetailsHandler(ILogger<GetJobDetailsHandler> logger, ILoggingRepository loggingRepository,
+        public GetJobDetailsHandler(ILogger<GetJobDetailsHandler> logger,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               ISyncJobChangeRepository syncJobChangesRepository,
                               IDatabaseTitlesRepository titlesRepository,
@@ -37,12 +38,12 @@ namespace Services
                               IHttpContextAccessor httpContextAccessor,
                               IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
             _titlesRepository = titlesRepository ?? throw new ArgumentNullException(nameof(titlesRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
         }
@@ -72,10 +73,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve group endpoints\n{ex.GetBaseException()}"
-                });
+                _logger.JobDetailsGroupEndpointsRetrievalFailed(ex);
             }
 
             string? vivaEngageUrl = null;
@@ -85,10 +83,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Unable to retrieve Viva Engage URL\n{ex.GetBaseException()}"
-                });
+                _logger.VivaEngageUrlRetrievalFailed(ex);
             }
 
 
@@ -262,10 +257,7 @@ namespace Services
             }
             catch (JsonException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Failed to parse sync job query for hidden membership sources. {ex.GetBaseException()}"
-                });
+                _logger.HiddenMembershipSourcesParseFailed(ex);
                 return new List<Guid>();
             }
         }

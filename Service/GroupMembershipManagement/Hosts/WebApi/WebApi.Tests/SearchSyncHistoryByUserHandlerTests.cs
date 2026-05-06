@@ -17,7 +17,6 @@ namespace WebApi.Tests
     [TestClass]
     public class SearchSyncHistoryByUserHandlerTests
     {
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _mockSyncJobRepository = null!;
         private Mock<ISyncJobHistoryRepository> _mockSyncJobHistoryRepository = null!;
         private Mock<IBlobStorageRepository> _mockBlobStorageRepository = null!;
@@ -34,7 +33,6 @@ namespace WebApi.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockSyncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
             _mockSyncJobHistoryRepository = new Mock<ISyncJobHistoryRepository>();
             _mockBlobStorageRepository = new Mock<IBlobStorageRepository>();
@@ -57,7 +55,6 @@ namespace WebApi.Tests
 
             _handler = new SearchSyncHistoryByUserHandler(
                 NullLogger<SearchSyncHistoryByUserHandler>.Instance,
-                _mockLoggingRepository.Object,
                 _mockSyncJobRepository.Object,
                 _mockSyncJobHistoryRepository.Object,
                 _mockBlobStorageRepository.Object,
@@ -229,13 +226,6 @@ namespace WebApi.Tests
             var response = await _handler.ExecuteAsync(new SearchSyncHistoryByUserRequest(_syncJobId, _userObjectId, "req-err"));
 
             Assert.AreEqual(HttpStatusCode.InternalServerError, response.StatusCode);
-            _mockLoggingRepository.Verify(
-                x => x.LogMessageAsync(
-                    It.Is<global::Models.LogMessage>(m => m.Message.Contains("Error searching run history")),
-                    It.IsAny<VerbosityLevel>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>()),
-                Times.Once);
         }
 
         [TestMethod]

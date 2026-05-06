@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-using Models;
+using Hosts.WebApi;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -14,14 +14,14 @@ namespace Services
 {
     public class GetJobChangesHandler : RequestHandlerBase<GetJobChangesRequest, GetJobChangesResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetJobChangesHandler> _logger;
         private readonly ISyncJobChangeRepository _syncJobChangesRepository;
 
-        public GetJobChangesHandler(ILogger<GetJobChangesHandler> logger, ILoggingRepository loggingRepository,
+        public GetJobChangesHandler(ILogger<GetJobChangesHandler> logger,
                                     ISyncJobChangeRepository syncJobChangesRepository) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobChangesRepository = syncJobChangesRepository ?? throw new ArgumentNullException(nameof(syncJobChangesRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
         }
 
         protected override async Task<GetJobChangesResponse> ExecuteCoreAsync(GetJobChangesRequest request)
@@ -42,10 +42,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error getting job changes: {ex.Message}",
-                });
+                _logger.JobChangesRetrievalFailed(ex);
 
                 response.StatusCode = HttpStatusCode.InternalServerError;
             }
