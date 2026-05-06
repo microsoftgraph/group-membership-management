@@ -21,7 +21,6 @@ namespace Services.Tests
     [TestClass]
     public class SqlMembershipSourcesControllerTests
     {
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IDatabaseSqlMembershipSourcesRepository> _databaseSqlMembershipSourcesRepository = null!;
         private Mock<IDataFactoryRepository> _dataFactoryRepository = null!;
         private Mock<ISqlMembershipRepository> _sqlMembershipRepository = null!;
@@ -38,18 +37,17 @@ namespace Services.Tests
         [TestInitialize]
         public void Initialize()
         {
-            _loggingRepository = new Mock<ILoggingRepository>();
             _databaseSqlMembershipSourcesRepository = new Mock<IDatabaseSqlMembershipSourcesRepository>();
             _dataFactoryRepository = new Mock<IDataFactoryRepository>();
             _sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
 
             _getDefaultSqlMembershipSourceHandler = new GetDefaultSqlMembershipSourceHandler(NullLogger<GetDefaultSqlMembershipSourceHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
-            _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributesHandler>.Instance, _loggingRepository.Object, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
-            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeValuesHandler>.Instance, _loggingRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributesHandler = new GetDefaultSqlMembershipSourceAttributesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeMappingsHandler = new GetDefaultSqlMembershipSourceAttributeMappingsHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
+            _getDefaultSqlMembershipSourceAttributeValuesHandler = new GetDefaultSqlMembershipSourceAttributeValuesHandler(NullLogger<GetDefaultSqlMembershipSourceAttributeValuesHandler>.Instance, _dataFactoryRepository.Object, _sqlMembershipRepository.Object);
             _patchDefaultSqlMembershipSourceCustomLabelHandler = new PatchDefaultSqlMembershipSourceCustomLabelHandler(NullLogger<PatchDefaultSqlMembershipSourceCustomLabelHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
             _patchDefaultSqlMembershipSourceAttributesHandler = new PatchDefaultSqlMembershipSourceAttributesHandler(NullLogger<PatchDefaultSqlMembershipSourceAttributesHandler>.Instance, _databaseSqlMembershipSourcesRepository.Object);
-            _getSqlValidationHandler = new GetSqlValidationHandler(NullLogger<GetSqlValidationHandler>.Instance, _loggingRepository.Object, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
+            _getSqlValidationHandler = new GetSqlValidationHandler(NullLogger<GetSqlValidationHandler>.Instance, _sqlMembershipRepository.Object, _dataFactoryRepository.Object);
 
             _sqlMembershipSourcesController = new SqlMembershipSourcesController(_getDefaultSqlMembershipSourceHandler,
                 _getDefaultSqlMembershipSourceAttributesHandler,
@@ -325,12 +323,6 @@ namespace Services.Tests
 
             Assert.IsNotNull(internalServerErrorResponse);
             Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                            It.Is<LogMessage>(m => m.Message.StartsWith("Unable to retrieve Sql Filter Attribute Mappings")),
-                                            It.IsAny<VerbosityLevel>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>()), Times.Once());
         }
 
         [TestMethod]
@@ -363,12 +355,6 @@ namespace Services.Tests
 
             Assert.IsNotNull(internalServerErrorResponse);
             Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                            It.Is<LogMessage>(m => m.Message.StartsWith("Unable to retrieve Sql Filter Attribute Values")),
-                                            It.IsAny<VerbosityLevel>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>()), Times.Once());
         }
 
         [TestMethod]
@@ -443,12 +429,6 @@ namespace Services.Tests
 
             Assert.IsNotNull(internalServerErrorResponse);
             Assert.AreEqual(internalServerErrorResponse.StatusCode, (int)HttpStatusCode.InternalServerError);
-
-            _loggingRepository.Verify(x => x.LogMessageAsync(
-                                            It.Is<LogMessage>(m => m.Message.StartsWith("Unable to validate Sql filter")),
-                                            It.IsAny<VerbosityLevel>(),
-                                            It.IsAny<string>(),
-                                            It.IsAny<string>()), Times.Once());
         }
 
         private ControllerContext CreateControllerContext(List<Claim> claims)

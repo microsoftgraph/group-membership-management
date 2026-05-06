@@ -502,5 +502,51 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 93210, Level = LogLevel.Information,
             Message = "Getting websites...")]
         public static partial void GettingWebsites(this ILogger logger);
+
+        // ── SqlMembership handlers (91700-91799) ──
+
+        [LoggerMessage(EventId = 91700, Level = LogLevel.Warning,
+            Message = "Unable to retrieve Sql Filter Attributes")]
+        public static partial void SqlFilterAttributesRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91701, Level = LogLevel.Warning,
+            Message = "Unable to retrieve SQL membership attributes. The ADF HR data table '{TableName}' does not exist or has no columns.")]
+        public static partial void SqlMembershipAttributesTableMissing(this ILogger logger, string tableName);
+
+        [LoggerMessage(EventId = 91702, Level = LogLevel.Warning,
+            Message = "An exception was thrown while attempting to get the columns of Destination table '{TableName}'")]
+        public static partial void SqlColumnDetailsRetrievalFailed(this ILogger logger, string tableName, Exception exception);
+
+        [LoggerMessage(EventId = 91703, Level = LogLevel.Warning,
+            Message = "Unable to retrieve Sql Filter Attribute Mappings")]
+        public static partial void SqlFilterAttributeMappingsRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91704, Level = LogLevel.Warning,
+            Message = "An exception was thrown while attempting to get Sql Filter Attribute Mappings from mappings table '{TableName}'")]
+        public static partial void SqlAttributeMappingsRetrievalFailed(this ILogger logger, string tableName, Exception exception);
+
+        [LoggerMessage(EventId = 91705, Level = LogLevel.Warning,
+            Message = "An exception was thrown while checking if mappings table '{TableName}' exists")]
+        public static partial void SqlMappingsTableExistsCheckFailed(this ILogger logger, string tableName, Exception exception);
+
+        [LoggerMessage(EventId = 91706, Level = LogLevel.Warning,
+            Message = "Unable to retrieve Sql Filter Attribute Values")]
+        public static partial void SqlFilterAttributeValuesRetrievalFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91707, Level = LogLevel.Warning,
+            Message = "An exception was thrown while attempting to get Sql Filter Attribute Values from table '{TableName}'")]
+        public static partial void SqlAttributeValuesRetrievalFailed(this ILogger logger, string tableName, Exception exception);
+
+        [LoggerMessage(EventId = 91708, Level = LogLevel.Warning,
+            Message = "Unable to validate Sql filter")]
+        public static partial void SqlFilterValidationFailed(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91709, Level = LogLevel.Warning,
+            Message = "An exception was thrown while checking if table '{TableName}' exists")]
+        public static partial void SqlTableExistsCheckFailed(this ILogger logger, string tableName, Exception exception);
+
+        [LoggerMessage(EventId = 91710, Level = LogLevel.Warning,
+            Message = "No SqlMembershipObtainer pipeline run has been found")]
+        public static partial void SqlMembershipAdfRunIdNotFound(this ILogger logger);
     }
 }

@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.Data.SqlClient;
-using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -14,15 +14,15 @@ namespace Services
 {
     public class GetDefaultSqlMembershipSourceAttributeMappingsHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributeMappingsRequest, GetDefaultSqlMembershipSourceAttributeMappingsResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler> _logger;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
-        public GetDefaultSqlMembershipSourceAttributeMappingsHandler(ILogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler> logger, ILoggingRepository loggingRepository,
+        public GetDefaultSqlMembershipSourceAttributeMappingsHandler(ILogger<GetDefaultSqlMembershipSourceAttributeMappingsHandler> logger,
                               IDataFactoryRepository dataFactoryRepository,
                               ISqlMembershipRepository sqlMembershipRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
         }
@@ -43,7 +43,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve Sql Filter Attribute Mappings: {ex.Message}" });
+                _logger.SqlFilterAttributeMappingsRetrievalFailed(ex);
                 throw ex;
             }
         }
@@ -65,7 +65,7 @@ namespace Services
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get Sql Filter Attribute Mappings from mappings table '{tableName}': {ex.Message}" });
+                _logger.SqlAttributeMappingsRetrievalFailed(tableName, ex);
                 throw ex;
             }
 
@@ -91,7 +91,7 @@ namespace Services
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while checking if table '{tableName}' exists: {ex.Message}" });
+                _logger.SqlMappingsTableExistsCheckFailed(tableName, ex);
                 throw ex;
             }
 
@@ -104,9 +104,8 @@ namespace Services
 
             if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
             {
-                var message = $"No SqlMembershipObtainer pipeline run has been found";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get the latest ADF pipeline run: {message}" });
-                throw new ArgumentException(message);
+                _logger.SqlMembershipAdfRunIdNotFound();
+                throw new ArgumentException("No SqlMembershipObtainer pipeline run has been found");
             }
 
             return lastSqlMembershipRunId;

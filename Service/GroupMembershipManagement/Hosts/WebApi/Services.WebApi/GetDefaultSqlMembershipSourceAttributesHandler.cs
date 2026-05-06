@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.WebApi;
 using Microsoft.Data.SqlClient;
 using Models;
 using Repositories.Contracts;
@@ -13,19 +14,19 @@ namespace Services
 {
     public class GetDefaultSqlMembershipSourceAttributesHandler : RequestHandlerBase<GetDefaultSqlMembershipSourceAttributesRequest, GetDefaultSqlMembershipSourceAttributesResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetDefaultSqlMembershipSourceAttributesHandler> _logger;
         private readonly IDatabaseSqlMembershipSourcesRepository _databaseSqlMembershipSourcesRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
 
         private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
 
-        public GetDefaultSqlMembershipSourceAttributesHandler(ILogger<GetDefaultSqlMembershipSourceAttributesHandler> logger, ILoggingRepository loggingRepository,
+        public GetDefaultSqlMembershipSourceAttributesHandler(ILogger<GetDefaultSqlMembershipSourceAttributesHandler> logger,
                               IDatabaseSqlMembershipSourcesRepository databaseSqlMembershipSourcesRepository,
                               IDataFactoryRepository dataFactoryRepository,
                               ISqlMembershipRepository sqlMembershipRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _databaseSqlMembershipSourcesRepository = databaseSqlMembershipSourcesRepository ?? throw new ArgumentNullException(nameof(databaseSqlMembershipSourcesRepository));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
             _sqlMembershipRepository = sqlMembershipRepository;
@@ -62,7 +63,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to retrieve Sql Filter Attributes: {ex.Message}" });
+                _logger.SqlFilterAttributesRetrievalFailed(ex);
                 throw ex;
             }
         }
@@ -74,9 +75,8 @@ namespace Services
 
             if (columns.Count == 0)
             {
-                var message = $"Unable to retrieve SQL membership attributes. The ADF HR data table '{tableName}' does not exist or has no columns.";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
-                throw new InvalidOperationException(message);
+                _logger.SqlMembershipAttributesTableMissing(tableName);
+                throw new InvalidOperationException($"Unable to retrieve SQL membership attributes. The ADF HR data table '{tableName}' does not exist or has no columns.");
             }
 
             var attributes = columns.Select(column =>
@@ -115,7 +115,7 @@ namespace Services
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get the columns of Destination table '{tableName}': {ex.Message}" });
+                _logger.SqlColumnDetailsRetrievalFailed(tableName, ex);
                 throw ex;
             }
 
@@ -141,7 +141,7 @@ namespace Services
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while checking if table '{tableName}' exists: {ex.Message}" });
+                _logger.SqlTableExistsCheckFailed(tableName, ex);
                 throw ex;
             }
 
@@ -158,9 +158,8 @@ namespace Services
 
             if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
             {
-                var message = $"No SqlMembershipObtainer pipeline run has been found";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get the laterst ADF pipeline run: {message}" });
-                throw new ArgumentException(message);
+                _logger.SqlMembershipAdfRunIdNotFound();
+                throw new ArgumentException("No SqlMembershipObtainer pipeline run has been found");
             }
 
             return lastSqlMembershipRunId;

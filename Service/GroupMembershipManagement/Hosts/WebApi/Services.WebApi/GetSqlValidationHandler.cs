@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Hosts.WebApi;
 using Microsoft.Data.SqlClient;
-using Models;
 using Repositories.Contracts;
 using Services.Contracts;
 using Services.Messages.Requests;
@@ -12,17 +12,17 @@ namespace Services
 {
     public class GetSqlValidationHandler : RequestHandlerBase<GetSqlValidationRequest, GetSqlValidationResponse>
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<GetSqlValidationHandler> _logger;
         private readonly ISqlMembershipRepository _sqlMembershipRepository;
         private readonly IDataFactoryRepository _dataFactoryRepository;
 
         private SemaphoreSlim _adfRunIdSemaphore = new SemaphoreSlim(1, 1);
 
-        public GetSqlValidationHandler(ILogger<GetSqlValidationHandler> logger, ILoggingRepository loggingRepository,
+        public GetSqlValidationHandler(ILogger<GetSqlValidationHandler> logger,
                                 ISqlMembershipRepository sqlMembershipRepository,
                                 IDataFactoryRepository dataFactoryRepository) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _sqlMembershipRepository = sqlMembershipRepository ?? throw new ArgumentNullException(nameof(sqlMembershipRepository));
             _dataFactoryRepository = dataFactoryRepository ?? throw new ArgumentNullException(nameof(dataFactoryRepository));
         }
@@ -51,7 +51,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Unable to validate Sql filter: {ex.Message}" });
+                _logger.SqlFilterValidationFailed(ex);
                 throw;
             }
         }
@@ -75,7 +75,7 @@ namespace Services
             }
             catch (SqlException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while checking if table '{tableName}' exists: {ex.Message}" });
+                _logger.SqlTableExistsCheckFailed(tableName, ex);
                 throw;
             }
 
@@ -92,9 +92,8 @@ namespace Services
 
             if (string.IsNullOrWhiteSpace(lastSqlMembershipRunId))
             {
-                var message = $"No SqlMembershipObtainer pipeline run has been found";
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"An exception was thrown while attempting to get the laterst ADF pipeline run: {message}" });
-                throw new ArgumentException(message);
+                _logger.SqlMembershipAdfRunIdNotFound();
+                throw new ArgumentException("No SqlMembershipObtainer pipeline run has been found");
             }
 
             return lastSqlMembershipRunId;
