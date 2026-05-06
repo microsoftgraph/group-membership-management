@@ -110,5 +110,75 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 93051, Level = LogLevel.Information,
             Message = "Queuing operation {Operation}")]
         public static partial void OperationQueueing(this ILogger logger, Operations operation);
+
+        // ── OpenAIController (91100-91149) ──
+
+        [LoggerMessage(EventId = 91100, Level = LogLevel.Information,
+            Message = "GenerateTitles request failed: Parts list cannot be null or empty")]
+        public static partial void GenerateTitlesPartsNullOrEmpty(this ILogger logger);
+
+        [LoggerMessage(EventId = 91101, Level = LogLevel.Information,
+            Message = "GenerateTitles request failed: {InvalidPartCount} parts have invalid data")]
+        public static partial void GenerateTitlesInvalidParts(this ILogger logger, int invalidPartCount);
+
+        [LoggerMessage(EventId = 91102, Level = LogLevel.Information,
+            Message = "Calling OpenAI service for {PartsCount} parts")]
+        public static partial void CallingOpenAIService(this ILogger logger, int partsCount);
+
+        [LoggerMessage(EventId = 91103, Level = LogLevel.Information,
+            Message = "OpenAI service returned response. Duration: {DurationMs} ms")]
+        public static partial void OpenAIServiceResponseReceived(this ILogger logger, double durationMs);
+
+        [LoggerMessage(EventId = 91104, Level = LogLevel.Warning,
+            Message = "OpenAI service returned empty response")]
+        public static partial void OpenAIEmptyResponse(this ILogger logger);
+
+        [LoggerMessage(EventId = 91105, Level = LogLevel.Warning,
+            Message = "OpenAI response could not be deserialized or was empty")]
+        public static partial void OpenAIResponseDeserializationEmpty(this ILogger logger);
+
+        [LoggerMessage(EventId = 91106, Level = LogLevel.Information,
+            Message = "Successfully deserialized {TitleCount} titles from OpenAI response")]
+        public static partial void OpenAITitlesDeserialized(this ILogger logger, int titleCount);
+
+        [LoggerMessage(EventId = 91107, Level = LogLevel.Warning,
+            Message = "OpenAI returned {ReturnedCount} titles but expected {ExpectedCount}")]
+        public static partial void OpenAITitleCountMismatch(this ILogger logger, int returnedCount, int expectedCount);
+
+        [LoggerMessage(EventId = 91108, Level = LogLevel.Warning,
+            Message = "OpenAI response missing titles for {MissingCount} parts: {MissingPartIds}")]
+        public static partial void OpenAIMissingTitles(this ILogger logger, int missingCount, string missingPartIds);
+
+        [LoggerMessage(EventId = 91109, Level = LogLevel.Warning,
+            Message = "OpenAI response contains {EmptyCount} empty titles")]
+        public static partial void OpenAIEmptyTitles(this ILogger logger, int emptyCount);
+
+        [LoggerMessage(EventId = 91110, Level = LogLevel.Information,
+            Message = "GenerateTitles request completed successfully for {TitleCount} parts")]
+        public static partial void GenerateTitlesSucceeded(this ILogger logger, int titleCount);
+
+        [LoggerMessage(EventId = 91111, Level = LogLevel.Error,
+            Message = "Failed to parse OpenAI response as JSON. Full response: {FullResponse}")]
+        public static partial void OpenAIResponseJsonParseFailed(this ILogger logger, string fullResponse, Exception exception);
+
+        [LoggerMessage(EventId = 91112, Level = LogLevel.Warning,
+            Message = "GenerateTitles request failed with ArgumentException")]
+        public static partial void GenerateTitlesArgumentException(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91113, Level = LogLevel.Error,
+            Message = "GenerateTitles request failed with InvalidOperationException")]
+        public static partial void GenerateTitlesInvalidOperation(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91114, Level = LogLevel.Warning,
+            Message = "GenerateTitles request failed due to OpenAI rate limiting (HTTP 429)")]
+        public static partial void OpenAIRateLimited(this ILogger logger, Exception exception);
+
+        [LoggerMessage(EventId = 91115, Level = LogLevel.Error,
+            Message = "GenerateTitles request failed with Azure RequestFailedException (Status: {Status})")]
+        public static partial void OpenAIRequestFailed(this ILogger logger, int status, Exception exception);
+
+        [LoggerMessage(EventId = 91116, Level = LogLevel.Error,
+            Message = "GenerateTitles request failed with unexpected error")]
+        public static partial void GenerateTitlesUnexpectedError(this ILogger logger, Exception exception);
     }
 }

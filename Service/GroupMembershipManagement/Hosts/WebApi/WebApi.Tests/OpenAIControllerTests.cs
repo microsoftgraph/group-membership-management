@@ -2,10 +2,10 @@
 // Licensed under the MIT license.
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using WebApi.Controllers.v1.OpenAI;
 using WebApi.BackgroundServices;
-using Repositories.Contracts;
 using System.Text.Json;
 using Models;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +18,6 @@ namespace WebApi.Tests
     public class OpenAIControllerTests
     {
         private Mock<IOpenAIService> _mockOpenAIService = null!;
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private OpenAIController _controller = null!;
 
         [TestInitialize]
@@ -32,8 +31,7 @@ namespace WebApi.Tests
             Environment.SetEnvironmentVariable("AZURE_TENANT_ID", "00000000-0000-0000-000000000000");
 
             _mockOpenAIService = new Mock<IOpenAIService>();
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
-            _controller = new OpenAIController(_mockOpenAIService.Object, _mockLoggingRepository.Object);
+            _controller = new OpenAIController(_mockOpenAIService.Object, NullLogger<OpenAIController>.Instance);
         }
 
         [TestCleanup]
@@ -50,11 +48,11 @@ namespace WebApi.Tests
         [TestMethod]
         public void Constructor_WithNullService_ThrowsArgumentNullException()
         {
-            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(null!, _mockLoggingRepository.Object));
+            Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(null!, NullLogger<OpenAIController>.Instance));
         }
 
         [TestMethod]
-        public void Constructor_WithNullLoggingRepository_ThrowsArgumentNullException()
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             Assert.ThrowsException<ArgumentNullException>(() => new OpenAIController(_mockOpenAIService.Object, null!));
         }
@@ -67,7 +65,7 @@ namespace WebApi.Tests
             mockConfiguration.Setup(x => x["Settings:OpenAIEndpoint"]).Returns("https://test-endpoint.com");
 
             var openAIService = new OpenAIService(mockConfiguration.Object);
-            var controller = new OpenAIController(openAIService, _mockLoggingRepository.Object);
+            var controller = new OpenAIController(openAIService, NullLogger<OpenAIController>.Instance);
             Assert.IsNotNull(controller, "Controller should be created successfully with valid OpenAI service");
         }
 

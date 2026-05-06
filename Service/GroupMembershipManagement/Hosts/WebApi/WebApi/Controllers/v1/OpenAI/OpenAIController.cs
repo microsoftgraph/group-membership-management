@@ -1,12 +1,13 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 using Models;
-using System.Text.Json;
-using Repositories.Contracts;
 using Services.WebApi.Contracts;
+using System.Text.Json;
 
 namespace WebApi.Controllers.v1.OpenAI
 {
@@ -16,14 +17,14 @@ namespace WebApi.Controllers.v1.OpenAI
     public class OpenAIController : ControllerBase
     {
         private readonly IOpenAIService _openAIService;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<OpenAIController> _logger;
 
         public OpenAIController(
             IOpenAIService openAIService,
-            ILoggingRepository loggingRepository)
+            ILogger<OpenAIController> logger)
         {
             _openAIService = openAIService ?? throw new ArgumentNullException(nameof(openAIService));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         [Authorize()]
@@ -56,46 +57,31 @@ namespace WebApi.Controllers.v1.OpenAI
             {
                 if (parts == null || !parts.Any())
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = "GenerateTitles request failed: Parts list cannot be null or empty."
-                    });
+                    _logger.GenerateTitlesPartsNullOrEmpty();
                     return BadRequest(new { error = "Parts list cannot be null or empty." });
                 }
 
                 var invalidParts = parts.Where(p => p.PartId == Guid.Empty || !p.HasValidFilter()).ToList();
                 if (invalidParts.Any())
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"GenerateTitles request failed: {invalidParts.Count} parts have invalid data."
-                    });
+                    _logger.GenerateTitlesInvalidParts(invalidParts.Count);
                     return BadRequest(new { error = $"Invalid parts detected. All parts must have valid PartId and non-empty Filter." });
                 }
 
                 var partsJson = JsonSerializer.Serialize(parts);
                 var prompt = BuildTitlesPrompt(partsJson);
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Calling OpenAI service for {parts.Count} parts"
-                });
+                _logger.CallingOpenAIService(parts.Count);
 
                 var apiStartTime = DateTime.UtcNow;
                 var result = await _openAIService.GetTitleAsync(prompt);
                 var apiDuration = DateTime.UtcNow - apiStartTime;
 
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"OpenAI service returned response. Duration: {apiDuration.TotalMilliseconds} ms"
-                });
+                _logger.OpenAIServiceResponseReceived(apiDuration.TotalMilliseconds);
 
                 if (string.IsNullOrWhiteSpace(result))
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = "OpenAI service returned empty response."
-                    });
+                    _logger.OpenAIEmptyResponse();
                     return StatusCode(500, new { error = "No response received from OpenAI service." });
                 }
 
@@ -110,24 +96,15 @@ namespace WebApi.Controllers.v1.OpenAI
                     var titles = JsonSerializer.Deserialize<List<Part>>(result, jsonOptions);
                     if (titles == null || !titles.Any())
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = "OpenAI response could not be deserialized or was empty."
-                        });
+                        _logger.OpenAIResponseDeserializationEmpty();
                         return StatusCode(500, new { error = "Invalid response format from OpenAI service." });
                     }
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Successfully deserialized {titles.Count} titles from OpenAI response."
-                    });
+                    _logger.OpenAITitlesDeserialized(titles.Count);
 
                     if (titles.Count != parts.Count)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"OpenAI returned {titles.Count} titles but expected {parts.Count}."
-                        });
+                        _logger.OpenAITitleCountMismatch(titles.Count, parts.Count);
                         return StatusCode(500, new { error = $"Expected {parts.Count} titles but received {titles.Count}." });
                     }
 
@@ -136,61 +113,40 @@ namespace WebApi.Controllers.v1.OpenAI
                     var missingPartIds = inputPartIds.Except(returnedPartIds).ToList();
                     if (missingPartIds.Any())
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"OpenAI response missing titles for {missingPartIds.Count} parts: {string.Join(", ", missingPartIds)}."
-                        });
+                        _logger.OpenAIMissingTitles(missingPartIds.Count, string.Join(", ", missingPartIds));
                         return StatusCode(500, new { error = "OpenAI response is missing titles for some parts." });
                     }
 
                     var emptyTitles = titles.Where(t => !t.HasTitle()).ToList();
                     if (emptyTitles.Any())
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"OpenAI response contains {emptyTitles.Count} empty titles."
-                        });
+                        _logger.OpenAIEmptyTitles(emptyTitles.Count);
                         return StatusCode(500, new { error = "OpenAI response contains empty titles." });
                     }
 
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"GenerateTitles request completed successfully for {titles.Count} parts."
-                    });
+                    _logger.GenerateTitlesSucceeded(titles.Count);
 
                     return Ok(titles);
                 }
                 catch (JsonException ex)
                 {
-                    await _loggingRepository.LogMessageAsync(new LogMessage
-                    {
-                        Message = $"Failed to parse OpenAI response as JSON: {ex.Message}. Full response: {result}"
-                    });
+                    _logger.OpenAIResponseJsonParseFailed(result, ex);
                     return StatusCode(500, new { error = "Failed to parse OpenAI response as valid JSON.", details = ex.Message });
                 }
             }
             catch (ArgumentException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"GenerateTitles request failed with ArgumentException: {ex.Message}"
-                });
+                _logger.GenerateTitlesArgumentException(ex);
                 return BadRequest(new { error = "Invalid request parameters.", details = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"GenerateTitles request failed with InvalidOperationException: {ex.Message}"
-                });
+                _logger.GenerateTitlesInvalidOperation(ex);
                 return StatusCode(500, new { error = "OpenAI service is not properly configured.", details = ex.Message });
             }
             catch (Azure.RequestFailedException ex) when (ex.Status == 429)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"GenerateTitles request failed due to OpenAI rate limiting (HTTP 429): {ex.Message}. This indicates high API usage - retry logic should handle this automatically."
-                });
+                _logger.OpenAIRateLimited(ex);
                 return StatusCode(503, new {
                     error = "OpenAI service is temporarily unavailable due to rate limiting.",
                     details = "Please try again in a few moments.",
@@ -199,18 +155,12 @@ namespace WebApi.Controllers.v1.OpenAI
             }
             catch (Azure.RequestFailedException ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"GenerateTitles request failed with Azure RequestFailedException (Status: {ex.Status}): {ex.Message}"
-                });
+                _logger.OpenAIRequestFailed(ex.Status, ex);
                 return StatusCode(500, new { error = "OpenAI service request failed.", details = ex.Message });
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"GenerateTitles request failed with unexpected error: {ex.Message}. Stack trace: {ex.StackTrace}"
-                });
+                _logger.GenerateTitlesUnexpectedError(ex);
                 return StatusCode(500, new { error = "An error occurred while generating titles." });
             }
         }
