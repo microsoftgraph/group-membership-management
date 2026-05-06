@@ -19,6 +19,7 @@ namespace DIConcreteTypes
             "Services.",
             "Repositories.",
             "Hosts.",
+            "WebApi.",
             "SqlMembershipObtainer.",
             "JobTrigger.",
             "JobScheduler.",

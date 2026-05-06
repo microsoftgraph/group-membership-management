@@ -14,6 +14,8 @@ namespace DIConcreteTypes.Tests
         [DataRow("Services.ResolveNotificationHandler")]
         [DataRow("Repositories.GraphGroupRepository")]
         [DataRow("Hosts.GraphUpdater.GraphUpdaterFunction")]
+        [DataRow("WebApi.Controllers.v1.OpenAI.OpenAIController")]
+        [DataRow("WebApi.BackgroundServices.OperationsBackgroundService")]
         public void TelemetryInitializerTagsAllowedCategoryAsGmm(string categoryName)
         {
             var initializer = new TelemetryInitializer(new TelemetryInitializerConfig());
