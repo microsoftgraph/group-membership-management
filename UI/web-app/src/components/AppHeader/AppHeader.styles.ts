@@ -46,7 +46,7 @@ export const getStyles = (props: IAppHeaderStyleProps): IAppHeaderStyles => {
       lineHeight: 32,
       padding: '8px 0px'
     },
-    settingsContainer: {
+    headerControls: {
       display: 'flex',
       justifyContent: 'flex-end',
     },

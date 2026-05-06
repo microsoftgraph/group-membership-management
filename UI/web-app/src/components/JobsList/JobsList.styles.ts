@@ -87,6 +87,7 @@ export const getStyles = (props: IJobsListStyleProps): IJobsListStyles => {
     },
     header: {
       display: 'flex',
+      gap: 8,
       marginBottom: '10px'
     },
     manageMembershipButton: {

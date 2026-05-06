@@ -40,6 +40,7 @@ import {
   IconButton,
   IIconProps,
   PrimaryButton,
+  DefaultButton,
   IContextualMenuProps,
   IContextualMenuItem
 } from '@fluentui/react';
@@ -622,10 +623,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
             <div className={classNames.header}>
               {isTenantJobWriter &&
                 <div>
-                  <PrimaryButton
+                  <DefaultButton
                     text={jobsToDownloadLoading ? strings.ManageMembership.downloadingButton : strings.ManageMembership.downloadButton}
+                    iconProps={{ iconName: 'Download' }}
                     onClick={handleDownloadButtonClick}
                     disabled={selectedItems.length === 0 || jobsToDownloadLoading}
+                    styles={{ root: { borderRadius: 4 } }}
                   />
                 <>
                   <input
@@ -700,6 +703,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
                     text={strings.ManageMembership.manageMembershipButton}
                     menuProps={menuProps}
                     persistMenu={true}
+                    styles={{ root: { borderRadius: 4 }, splitButtonContainer: { borderRadius: 4 } }}
                   />
                 </div>
               }

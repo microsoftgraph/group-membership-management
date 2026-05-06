@@ -98,8 +98,6 @@ export type IStrings = {
       title: string;
       settings: string;
       reviewDisclaimer: string;
-    },
-    AppFooter: {
       switchToLightMode: string;
       switchToDarkMode: string;
     },

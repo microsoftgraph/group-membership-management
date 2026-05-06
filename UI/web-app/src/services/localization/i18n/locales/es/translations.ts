@@ -100,9 +100,7 @@ export const strings: IStrings = {
     AppHeader: {
       title: 'Membership Management',
       settings: 'Configuración',
-      reviewDisclaimer: 'Revisar aviso'
-    },
-    AppFooter: {
+      reviewDisclaimer: 'Revisar aviso',
       switchToLightMode: 'Cambiar al modo claro',
       switchToDarkMode: 'Cambiar al modo oscuro',
     },
