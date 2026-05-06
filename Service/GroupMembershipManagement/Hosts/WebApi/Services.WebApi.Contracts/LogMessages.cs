@@ -456,5 +456,51 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91206, Level = LogLevel.Information,
             Message = "Current service status is {Status}.")]
         public static partial void ServiceStatusCurrent(this ILogger logger, string status);
+
+        // ── ResourceManagerService (93200-93299) ──
+
+        [LoggerMessage(EventId = 93200, Level = LogLevel.Information,
+            Message = "Stopping GMM...")]
+        public static partial void GmmStopping(this ILogger logger);
+
+        [LoggerMessage(EventId = 93201, Level = LogLevel.Information,
+            Message = "Stopped {WebsiteName}")]
+        public static partial void WebsiteStopped(this ILogger logger, string websiteName);
+
+        [LoggerMessage(EventId = 93202, Level = LogLevel.Information,
+            Message = "Starting GMM...")]
+        public static partial void GmmStarting(this ILogger logger);
+
+        [LoggerMessage(EventId = 93203, Level = LogLevel.Information,
+            Message = "Started {WebsiteName}")]
+        public static partial void WebsiteStarted(this ILogger logger, string websiteName);
+
+        [LoggerMessage(EventId = 93204, Level = LogLevel.Information,
+            Message = "Starting {WebsiteName}...")]
+        public static partial void WebsiteStartingNamed(this ILogger logger, string websiteName);
+
+        [LoggerMessage(EventId = 93205, Level = LogLevel.Information,
+            Message = "{WebsiteName} responded with code: {StatusCode}.")]
+        public static partial void WebsiteStartResponseStatus(this ILogger logger, string websiteName, int statusCode);
+
+        [LoggerMessage(EventId = 93206, Level = LogLevel.Information,
+            Message = "{WebsiteName} is now {State}.")]
+        public static partial void WebsiteStateAfterStart(this ILogger logger, string websiteName, string state);
+
+        [LoggerMessage(EventId = 93207, Level = LogLevel.Warning,
+            Message = "{WebsiteName} was not found.")]
+        public static partial void WebsiteNotFound(this ILogger logger, string websiteName);
+
+        [LoggerMessage(EventId = 93208, Level = LogLevel.Error,
+            Message = "Failed to start {WebsiteName}.")]
+        public static partial void WebsiteStartFailed(this ILogger logger, string websiteName, Exception exception);
+
+        [LoggerMessage(EventId = 93209, Level = LogLevel.Information,
+            Message = "Getting storage account names...")]
+        public static partial void GettingStorageAccountNames(this ILogger logger);
+
+        [LoggerMessage(EventId = 93210, Level = LogLevel.Information,
+            Message = "Getting websites...")]
+        public static partial void GettingWebsites(this ILogger logger);
     }
 }

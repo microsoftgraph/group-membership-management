@@ -456,8 +456,8 @@ namespace WebApi
             builder.Services.AddSingleton<IResourceManagerService, ResourceManagerService>(services =>
             {
                 var settings = services.GetRequiredService<IOptions<ResourceManagerServiceConfiguration>>();
-                var loggingRepository = services.GetRequiredService<ILoggingRepository>();
-                return new ResourceManagerService(settings.Value, loggingRepository);
+                var logger = services.GetRequiredService<ILogger<ResourceManagerService>>();
+                return new ResourceManagerService(settings.Value, logger);
             });
 
             builder.Services.AddOptions<OperationsSettings>().Configure<IConfiguration, IServiceProvider>((settings, configuration, services) =>
