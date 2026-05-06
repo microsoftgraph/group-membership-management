@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging.Abstractions;
 using Models;
 using Models.Notifications;
 using Models.ServiceBus;
@@ -17,7 +18,6 @@ namespace WebApi.Tests
     public class NotificationServiceTests
     {
         private Mock<IServiceBusQueueRepository> _mockServiceBusQueueRepository = null!;
-        private Mock<ILoggingRepository> _mockLoggingRepository = null!;
         private Mock<IGraphGroupRepository> _mockGraphGroupRepository = null!;
         private NotificationService _notificationService = null!;
         private SyncJob _testSyncJob = null!;
@@ -27,12 +27,11 @@ namespace WebApi.Tests
         public void Initialize()
         {
             _mockServiceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
-            _mockLoggingRepository = new Mock<ILoggingRepository>();
             _mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
 
             _notificationService = new NotificationService(
                 _mockServiceBusQueueRepository.Object,
-                _mockLoggingRepository.Object,
+                NullLogger<NotificationService>.Instance,
                 _mockGraphGroupRepository.Object);
 
             _testSyncJob = new SyncJob
@@ -192,11 +191,11 @@ namespace WebApi.Tests
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(
-                () => new NotificationService(null!, _mockLoggingRepository.Object, _mockGraphGroupRepository.Object));
+                () => new NotificationService(null!, NullLogger<NotificationService>.Instance, _mockGraphGroupRepository.Object));
         }
 
         [TestMethod]
-        public void Constructor_WithNullLoggingRepository_ThrowsArgumentNullException()
+        public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             // Act & Assert
             Assert.ThrowsException<ArgumentNullException>(

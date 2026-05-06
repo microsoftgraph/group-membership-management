@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.ApplicationInsights;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.SyncJobChange;
 using Models.ThresholdNotifications;
@@ -10,22 +12,21 @@ using Services.Contracts;
 using Services.Contracts.Notifications;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using Microsoft.Extensions.Logging;
 
 namespace Services
 {
     public class ResolveNotificationHandler : RequestHandlerBase<ResolveNotificationRequest, ResolveNotificationResponse>
     {
+        private readonly ILogger<ResolveNotificationHandler> _logger;
         private readonly INotificationRepository _notificationRepository;
         private readonly IDatabaseSyncJobsRepository _syncJobRepository;
         private readonly ISyncJobChangeRepository _syncJobChangeRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly IThresholdNotificationService _thresholdNotificationService;
         private readonly TelemetryClient _telemetryClient;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly IGMMEmailReceivers _gmmEmailReceivers;
 
-        public ResolveNotificationHandler(ILogger<ResolveNotificationHandler> logger, ILoggingRepository loggingRepository,
+        public ResolveNotificationHandler(ILogger<ResolveNotificationHandler> logger,
                               INotificationRepository notificationRepository,
                               IDatabaseSyncJobsRepository syncJobRepository,
                               ISyncJobChangeRepository syncJobChangeRepository,
@@ -34,13 +35,13 @@ namespace Services
                               IThresholdNotificationService thresholdNotificationService,
                               IGMMEmailReceivers gmmEmailReceivers) : base(logger)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _thresholdNotificationService = thresholdNotificationService ?? throw new ArgumentNullException(nameof(thresholdNotificationService));
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _gmmEmailReceivers = gmmEmailReceivers ?? throw new ArgumentNullException(nameof(gmmEmailReceivers));
         }
 
@@ -49,11 +50,7 @@ namespace Services
             var response = new ResolveNotificationResponse();
             var thresholdNotification = await _notificationRepository.GetThresholdNotificationByIdAsync(request.ThresholdNotificationId);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"ResolveNotificationHandler request: " +
-                $"ThresholdNotificationId: {request.ThresholdNotificationId}, TargetOfficeGroupId: {thresholdNotification?.TargetOfficeGroupId}"
-            });
+            _logger.ResolveNotificationRequestReceived(request.ThresholdNotificationId, thresholdNotification?.TargetOfficeGroupId);
             if (thresholdNotification == null)
             {
                 response.CardJson = _thresholdNotificationService.CreateNotFoundNotificationCard(request.ThresholdNotificationId);
@@ -90,10 +87,7 @@ namespace Services
                     }
                     catch(Exception e)
                     {
-                        await _loggingRepository.LogMessageAsync(new LogMessage
-                        {
-                            Message = $"Error getting group name: {e.Message}"
-                        });
+                        _logger.GroupNameRetrievalFailed(_gmmEmailReceivers.ActionableMessageViewerGroupId, e);
                         resolvedByValue = "GMM Support";
                     }
                 }
@@ -131,14 +125,14 @@ namespace Services
                 job.Status = SyncStatus.Idle.ToString();
                 changeReason = SyncJobChangeReason.IgnoreThresholdOnce.ToString();
                 await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.Idle);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync back to Idle." });
+                _logger.NotificationResolvedSyncStatusUpdated("Idle");
             }
             else if (notification.Resolution == ThresholdNotificationResolution.Paused)
             {
                 job.Status = SyncStatus.CustomerPaused.ToString();
                 changeReason = SyncJobChangeReason.StatusUpdate.ToString();
                 await _syncJobRepository.UpdateSyncJobFromNotificationAsync(job, SyncStatus.CustomerPaused);
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"Resolved Notification. Setting the status of the sync to CustomerPaused." });
+                _logger.NotificationResolvedSyncStatusUpdated("CustomerPaused");
             }
 
             var syncJobChange = new SyncJobChange

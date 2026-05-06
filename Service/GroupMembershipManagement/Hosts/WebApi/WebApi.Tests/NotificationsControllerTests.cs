@@ -42,7 +42,6 @@ namespace Services.Tests
         private List<AzureADGroup> _groups = null!;
         private Dictionary<Guid, string> _groupNames = null!;
         private List<string> _groupTypes = null!;
-        private Mock<ILoggingRepository> _loggingRepository = null!;
         private Mock<IGraphGroupRepository> _graphGroupRepository = null!;
         private Mock<INotificationRepository> _notificationRepository = null!;
         private Mock<IDatabaseSyncJobsRepository> _syncJobRepository = null!;
@@ -79,7 +78,6 @@ namespace Services.Tests
             var localizer = new StringLocalizer<LocalizationRepository>(factory);
             _localizationRepository = new LocalizationRepository(localizer);
 
-            _loggingRepository = new Mock<ILoggingRepository>();
             _graphGroupRepository = new Mock<IGraphGroupRepository>();
             _notificationRepository = new Mock<INotificationRepository>();
             _syncJobRepository = new Mock<IDatabaseSyncJobsRepository>();
@@ -182,7 +180,7 @@ namespace Services.Tests
             _thresholdNotificationService = new ThresholdNotificationService(Options.Create(_thresholdNotificationServiceConfig), _graphGroupRepository.Object, _localizationRepository, _handleInactiveJobsConfig, _thresholdConfig.Object, _syncJobRepository.Object);
             _gmmEmailReceivers = new GMMEmailReceivers(Guid.NewGuid());
 
-            _resolveNotificationsHandler = new ResolveNotificationHandler(NullLogger<ResolveNotificationHandler>.Instance, _loggingRepository.Object,
+            _resolveNotificationsHandler = new ResolveNotificationHandler(NullLogger<ResolveNotificationHandler>.Instance,
                 _notificationRepository.Object,
                 _syncJobRepository.Object,
                 _syncJobChangeRepository.Object,

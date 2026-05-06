@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 using Microsoft.Extensions.Logging;
+using Models.Notifications;
 using System;
 
 namespace Hosts.WebApi
@@ -46,5 +47,43 @@ namespace Hosts.WebApi
         [LoggerMessage(EventId = 91302, Level = LogLevel.Error,
             Message = "Unexpected error while retrieving support email addresses")]
         public static partial void SupportEmailRetrievalFailed(this ILogger logger, Exception exception);
+
+        // ── ResolveNotificationHandler (91350-91399) ──
+
+        [LoggerMessage(EventId = 91350, Level = LogLevel.Information,
+            Message = "ResolveNotificationHandler request: ThresholdNotificationId: {ThresholdNotificationId}, TargetOfficeGroupId: {TargetOfficeGroupId}")]
+        public static partial void ResolveNotificationRequestReceived(this ILogger logger, Guid thresholdNotificationId, Guid? targetOfficeGroupId);
+
+        [LoggerMessage(EventId = 91351, Level = LogLevel.Warning,
+            Message = "Failed to retrieve group name for group {GroupId}")]
+        public static partial void GroupNameRetrievalFailed(this ILogger logger, Guid groupId, Exception exception);
+
+        [LoggerMessage(EventId = 91352, Level = LogLevel.Information,
+            Message = "Resolved notification. Setting sync status to {NewStatus}")]
+        public static partial void NotificationResolvedSyncStatusUpdated(this ILogger logger, string newStatus);
+
+        // ── GetThresholdNotificationHandler (91400-91449) ──
+
+        [LoggerMessage(EventId = 91400, Level = LogLevel.Error,
+            Message = "Error getting threshold notification for SyncJobId {SyncJobId}")]
+        public static partial void ThresholdNotificationRetrievalFailed(this ILogger logger, Guid syncJobId, Exception exception);
+
+        // ── NotificationService (93000-93049) ──
+
+        [LoggerMessage(EventId = 93000, Level = LogLevel.Warning,
+            Message = "Failed to retrieve group name for Group ID {TargetGroupId} (RunId={RunId})")]
+        public static partial void NotificationGroupNameRetrievalFailed(this ILogger logger, Guid? runId, Guid targetGroupId, Exception exception);
+
+        [LoggerMessage(EventId = 93001, Level = LogLevel.Warning,
+            Message = "Key conflict detected: {Key} already exists in messageContent and will not be overwritten (RunId={RunId})")]
+        public static partial void NotificationMessageContentKeyConflict(this ILogger logger, Guid? runId, string key);
+
+        [LoggerMessage(EventId = 93002, Level = LogLevel.Information,
+            Message = "Sent notification message {MessageId} to service bus notifications queue for notification type {NotificationType} (RunId={RunId})")]
+        public static partial void NotificationMessageSent(this ILogger logger, Guid? runId, string messageId, NotificationMessageType notificationType);
+
+        [LoggerMessage(EventId = 93003, Level = LogLevel.Error,
+            Message = "Failed to send notification for type {NotificationType} (RunId={RunId})")]
+        public static partial void NotificationSendFailed(this ILogger logger, Guid? runId, NotificationMessageType notificationType, Exception exception);
     }
 }

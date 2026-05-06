@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Models;
 using Models.Notifications;
 using Models.ServiceBus;
@@ -15,16 +17,16 @@ namespace Services.WebApi
     public class NotificationService : INotificationService
     {
         private readonly IServiceBusQueueRepository _serviceBusQueueRepository;
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<NotificationService> _logger;
         private readonly IGraphGroupRepository _graphGroupRepository;
 
         public NotificationService(
             [FromKeyedServices("Notifications")] IServiceBusQueueRepository serviceBusQueueRepository,
-            ILoggingRepository loggingRepository,
+            ILogger<NotificationService> logger,
             IGraphGroupRepository graphGroupRepository)
         {
             _serviceBusQueueRepository = serviceBusQueueRepository ?? throw new ArgumentNullException(nameof(serviceBusQueueRepository));
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
         }
 
@@ -59,11 +61,7 @@ namespace Services.WebApi
             catch (Exception ex)
             {
                 groupName = "<Group name could not be retrieved>";
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    RunId = syncJob.RunId,
-                    Message = $"Failed to retrieve group name for Group ID {syncJob.TargetOfficeGroupId}. Error: {ex.Message}"
-                });
+                _logger.NotificationGroupNameRetrievalFailed(syncJob.RunId, syncJob.TargetOfficeGroupId, ex);
             }
 
             var isRejection = notificationType == NotificationMessageType.SubmissionRejectedNotification;
@@ -121,11 +119,7 @@ namespace Services.WebApi
                         else
                         {
                             // Handle the conflict, e.g., log a warning or throw an exception
-                            await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                            {
-                                RunId = syncJob.RunId,
-                                Message = $"Key conflict detected: {property.Key} already exists in messageContent and will not be overwritten."
-                            });
+                            _logger.NotificationMessageContentKeyConflict(syncJob.RunId, property.Key);
                         }
                     }
                 }
@@ -142,32 +136,11 @@ namespace Services.WebApi
 
                 await _serviceBusQueueRepository.SendMessageAsync(message);
 
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    RunId = syncJob.RunId,
-                    Message = $"Sent notification message {messageId} to service bus notifications queue for notification type {notificationType}"
-                });
+                _logger.NotificationMessageSent(syncJob.RunId, messageId, notificationType);
             }
             catch (Exception ex)
             {
-                var fullErrorMessage = $"Failed to send notification for type {notificationType}. Error: {ex.Message}";
-                if (ex.InnerException != null)
-                {
-                    fullErrorMessage += $" Inner Exception: {ex.InnerException.Message}";
-                }
-                // Avoid logging full stack trace to prevent exposure of sensitive information
-                _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    RunId = syncJob.RunId,
-                    Message = $"StackTrace: {ex.StackTrace}"
-                });
-
-                await _loggingRepository.LogMessageAsync(new Models.LogMessage
-                {
-                    RunId = syncJob.RunId,
-                    Message = fullErrorMessage
-                });
-
+                _logger.NotificationSendFailed(syncJob.RunId, notificationType, ex);
                 throw;
             }
         }

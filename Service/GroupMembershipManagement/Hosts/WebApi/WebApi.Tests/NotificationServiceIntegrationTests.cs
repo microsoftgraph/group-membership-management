@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Microsoft.Extensions.Logging.Abstractions;
 using Models;
 using Models.Notifications;
 using Models.ServiceBus;
@@ -20,13 +21,12 @@ namespace WebApi.Tests
         {
             // Arrange
             var mockServiceBusRepository = new Mock<IServiceBusQueueRepository>();
-            var mockLoggingRepository = new Mock<ILoggingRepository>();
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
 
             // Act
             var notificationService = new NotificationService(
                 mockServiceBusRepository.Object,
-                mockLoggingRepository.Object,
+                NullLogger<NotificationService>.Instance,
                 mockGraphGroupRepository.Object);
 
             // Assert
@@ -38,7 +38,6 @@ namespace WebApi.Tests
         {
             // Arrange
             var mockServiceBusRepository = new Mock<IServiceBusQueueRepository>();
-            var mockLoggingRepository = new Mock<ILoggingRepository>();
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
 
             ServiceBusMessage capturedMessage = null!;
@@ -49,7 +48,7 @@ namespace WebApi.Tests
 
             var notificationService = new NotificationService(
                 mockServiceBusRepository.Object,
-                mockLoggingRepository.Object,
+                NullLogger<NotificationService>.Instance,
                 mockGraphGroupRepository.Object);
 
             var syncJob = new SyncJob
@@ -79,13 +78,12 @@ namespace WebApi.Tests
         {
             // This test ensures that the NotificationService correctly depends on the expected interfaces
             var mockServiceBusRepository = new Mock<IServiceBusQueueRepository>();
-            var mockLoggingRepository = new Mock<ILoggingRepository>();
             var mockGraphGroupRepository = new Mock<IGraphGroupRepository>();
 
             // This should not throw any exceptions
             var notificationService = new NotificationService(
                 mockServiceBusRepository.Object,
-                mockLoggingRepository.Object,
+                NullLogger<NotificationService>.Instance,
                 mockGraphGroupRepository.Object);
 
             Assert.IsNotNull(notificationService);

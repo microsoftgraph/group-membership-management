@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
+using Hosts.WebApi;
+using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
@@ -8,21 +10,20 @@ using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
 using System.Net;
-using Microsoft.Extensions.Logging;
 
 namespace Services
 {
     public class GetThresholdNotificationHandler : RequestHandlerBase<GetThresholdNotificationRequest, GetThresholdNotificationResponse>
     {
+        private readonly ILogger<GetThresholdNotificationHandler> _logger;
         private readonly INotificationRepository _notificationRepository;
-        private readonly ILoggingRepository _loggingRepository;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
-        public GetThresholdNotificationHandler(ILogger<GetThresholdNotificationHandler> logger, ILoggingRepository loggingRepository,
+        public GetThresholdNotificationHandler(ILogger<GetThresholdNotificationHandler> logger,
                                                INotificationRepository notificationRepository,
                                                IHandleInactiveJobsConfig handleInactiveJobsConfig) : base(logger)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _notificationRepository = notificationRepository ?? throw new ArgumentNullException(nameof(notificationRepository));
             _handleInactiveJobsConfig = handleInactiveJobsConfig ?? throw new ArgumentNullException(nameof(handleInactiveJobsConfig));
         }
@@ -53,11 +54,7 @@ namespace Services
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = $"Error getting threshold notification for SyncJobId {request.SyncJobId}: {ex.Message}"
-                });
-
+                _logger.ThresholdNotificationRetrievalFailed(request.SyncJobId, ex);
                 response.StatusCode = HttpStatusCode.InternalServerError;
             }
 
