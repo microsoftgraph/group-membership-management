@@ -19,6 +19,11 @@ namespace Repositories.Mail
         private const int RejectionReasonIndex = 2;
         private const int RejectionRequestorIndex = 3;
 
+        // SyncDisabled NotOwner AdditionalContentParams indices
+        // (set by JobTrigger SubOrchestratorFunction for NotOwnerNotification):
+        // [0]=GroupId, [1]=DestinationName, [2]=StatusDescription, [3]=GMMOwnerAppName
+        private const int GmmOwnerNameIndex = 3;
+
 
         // JobPurgingWarning AdditionalContentParams indices (set by AzureMaintenanceService.SendWarningEmailAsync):
         // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
@@ -89,13 +94,14 @@ namespace Repositories.Mail
             var requestor    = GetParam(emailMessage, RequestorIndex);
             var rows         = await BuildBaseRowsAsync(groupId, requestor);
             var disableReason = GetDisableReason(emailMessage.Content);
+            var gmmOwnerName = GetParam(emailMessage, GmmOwnerNameIndex);
 
             return FormatTemplate(
                 HtmlTemplates.SyncDisabledTemplate,
                 prefix: "SyncDisabledFallback",
                 groupName: destinationGroupName,
                 headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
-                description: _localizationRepository.TranslateSetting($"SyncDisabledFallback.Description.{disableReason}", requestor, groupId ?? string.Empty),
+                description: _localizationRepository.TranslateSetting($"SyncDisabledFallback.Description.{disableReason}", requestor, groupId ?? string.Empty, gmmOwnerName),
                 calloutBody: _localizationRepository.TranslateSetting($"SyncDisabledFallback.CalloutBody.{disableReason}"),
                 rows: rows,
                 jobUrl: jobUrl,

@@ -161,6 +161,8 @@ namespace Hosts.FunctionBase
                                 configuration.GetSection("graphCredentials").Bind(settings);
                                 var authenticationType = Common.DependencyInjection.ServiceCollectionExtensions.MapStringToAuthenticationType(configuration["GraphAPI:AuthenticationType"]);
                                 settings.AuthenticationType = authenticationType;
+                                settings.AppRegistrationName = configuration["GraphAPI:GraphAppName"];
+                                settings.UAMIName = configuration["GraphAPI:GraphUAMIName"];
                             });
 
             builder.Services.AddScopedMailRepository();

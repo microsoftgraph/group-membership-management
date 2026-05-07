@@ -1365,7 +1365,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>GMM has paused this membership sync because one or more source group IDs are **not valid security groups**. The sync process cannot continue until the source configuration is corrected.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoOwner" xml:space="preserve">
-    <value>GMM has paused this membership sync because **GMM is not an owner**. GMM requires owner permissions to manage group membership. If you believe this group should be managed by GMM, please [add GMM as an owner](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) to re-enable syncing.</value>
+    <value>To manage this group's membership GMM must be an owner of the group. [Click here](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and manually add **{2}** as a group owner.</value>
   </data>
   <data name="SyncDisabledFallback.Description.GuestUsers" xml:space="preserve">
     <value>GMM has paused this membership sync because **guest users** were detected in the membership source. GMM does not support adding guest users to groups and cannot continue with the current configuration.</value>

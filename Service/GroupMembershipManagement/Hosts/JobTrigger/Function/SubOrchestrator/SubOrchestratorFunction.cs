@@ -1,10 +1,12 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
+using Common.DependencyInjection;
 using JobTrigger.Activity.EmailSender;
 using JobTrigger.Activity.SchemaValidator;
 using Microsoft.ApplicationInsights;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.Extensions.Options;
 using Models;
 using Models.Notifications;
 using Repositories.Contracts.Helpers;
@@ -25,14 +27,17 @@ namespace Hosts.JobTrigger
         private readonly TelemetryClient _telemetryClient = null;
         private readonly IEmailSenderRecipient _emailSenderAndRecipients;
         private readonly IGMMResources _gmmResources;
+        private readonly string _gmmOwnerAppName;
 
         public SubOrchestratorFunction(TelemetryClient telemetryClient,
                                        IEmailSenderRecipient emailSenderAndRecipients,
-                                       IGMMResources gmmResources)
+                                       IGMMResources gmmResources,
+                                       IOptions<GraphCredentials> graphCredentials = null)
         {
             _telemetryClient = telemetryClient ?? throw new ArgumentNullException(nameof(telemetryClient));
             _gmmResources = gmmResources ?? throw new ArgumentNullException(nameof(gmmResources));
             _emailSenderAndRecipients = emailSenderAndRecipients;
+            _gmmOwnerAppName = graphCredentials?.Value?.GMMOwnerAppName ?? string.Empty;
         }
 
         [Function(nameof(SubOrchestratorFunction))]
@@ -232,7 +237,8 @@ namespace Hosts.JobTrigger
                                                         {
                                                         groupId.ToString(),
                                                         destinationName,
-                                                        DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotOwnerNotification]
+                                                        DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotOwnerNotification],
+                                                        _gmmOwnerAppName
                                                         }
                                                     });
 

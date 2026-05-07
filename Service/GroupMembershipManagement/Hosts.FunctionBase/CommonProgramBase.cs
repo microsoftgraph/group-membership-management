@@ -150,6 +150,8 @@ namespace Hosts.FunctionBase
                                 config.GetSection("graphCredentials").Bind(settings);
                                 var authenticationType = Common.DependencyInjection.ServiceCollectionExtensions.MapStringToAuthenticationType(GetValueOrDefaultBase(config, "GraphAPI:AuthenticationType"));
                                 settings.AuthenticationType = authenticationType;
+                                settings.AppRegistrationName = config["GraphAPI:GraphAppName"];
+                                settings.UAMIName = config["GraphAPI:GraphUAMIName"];
                             });
 
             services.AddScopedMailRepository();
