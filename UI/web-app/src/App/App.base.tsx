@@ -45,6 +45,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const isFetchingRoles = useSelector(selectIsFetchingRoles);
   const operationStatusError = useSelector(selectOperationError);
   const dashboardUrl = useSelector(selectDashboardUrl);
+  const trimmedDashboardUrl = dashboardUrl?.trim() ?? '';
+  const isSafeDashboardUrl = /^https?:\/\//i.test(trimmedDashboardUrl);
 
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(() => {
     return localStorage.getItem('disclaimerSubmitted') !== 'true';
@@ -118,11 +120,11 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
             </> :
             <div className={classNames.permissionDenied}>
               <Text>
-                {dashboardUrl
+                {isSafeDashboardUrl
                   ? jsxFormat(
                       strings.noOwnedGroupsAccessGuidance,
                       <a
-                        href={dashboardUrl}
+                        href={trimmedDashboardUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: theme.palette.themePrimary, textDecoration: 'underline' }}

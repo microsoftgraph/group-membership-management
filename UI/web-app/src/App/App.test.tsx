@@ -276,3 +276,25 @@ test('renders access guidance with dashboard link when user has no access and da
   expect(link?.getAttribute('target')).toBe('_blank');
   expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
 });
+
+test('renders existing permissionDenied message when dashboardUrl uses an unsafe scheme', async () => {
+  const authenticationService = new OfflineAuthenticationService();
+  const rolesResponse = buildNoAccessRoles();
+  const dashboardSettings = [
+    { settingKey: SettingKey.DashboardUrl, settingValue: 'javascript:alert(1)' },
+  ];
+  const preloadedState = buildPreloadedState(authenticationService, rolesResponse);
+  const gmmApiMock = buildGmmApiMock(rolesResponse, dashboardSettings);
+
+  const store = setupStore(preloadedState, { authenticationService }, { gmmApi: gmmApiMock });
+
+  const { container } = renderWithProviders(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <App />
+    </MemoryRouter>,
+    { store }
+  );
+
+  expect(await screen.findByText(defaultStrings.permissionDenied)).toBeInTheDocument();
+  expect(container.querySelector('a[href^="javascript:"]')).toBeNull();
+});
