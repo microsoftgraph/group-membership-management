@@ -24,6 +24,12 @@ namespace Repositories.Mail
         // [0]=GroupId, [1]=DestinationName, [2]=StatusDescription, [3]=GMMOwnerAppName
         private const int GmmOwnerNameIndex = 3;
 
+        // SyncDisabled NestedGroupsFound AdditionalContentParams indices
+        // (set by GroupMembershipObtainer SubOrchestratorFunction for NestedGroupsFoundNotification):
+        // [0]=GroupId, [1]=DestinationName, [2]=NestedGroupsCount, [3]=NestedGroupsInfo, [4]=StatusDescription
+        private const int NestedGroupsCountIndex = 2;
+        private const int NestedGroupsListIndex = 3;
+
 
         // JobPurgingWarning AdditionalContentParams indices (set by AzureMaintenanceService.SendWarningEmailAsync):
         // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
@@ -91,17 +97,50 @@ namespace Repositories.Mail
         public async Task<string> BuildSyncDisabledFallbackAsync(
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
         {
-            var requestor    = GetParam(emailMessage, RequestorIndex);
-            var rows         = await BuildBaseRowsAsync(groupId, requestor);
             var disableReason = GetDisableReason(emailMessage.Content);
             var gmmOwnerName = GetParam(emailMessage, GmmOwnerNameIndex);
+
+            // For NestedGroupsFound the producer (GroupMembershipObtainer SubOrchestratorFunction)
+            // populates AdditionalContentParams as [groupId, destName, count, list, statusDescription]
+            // — there is no requestor at index 4, so suppress the "Requested by" row to avoid
+            // surfacing the status description as a person's name. The nested groups themselves
+            // are intentionally not enumerated in the table because the list can be very large;
+            // the in-product job page is the source of truth for the full list.
+            var requestor = disableReason == "NestedGroupsFound"
+                ? string.Empty
+                : GetParam(emailMessage, RequestorIndex);
+            var rows = await BuildBaseRowsAsync(groupId, requestor);
+
+            // {3} carries the nested-groups count so the NestedGroupsFound description can
+            // surface it inline. Other reasons ignore the extra arg, which is harmless to
+            // string.Format when the resx value contains no {3} token.
+            var nestedGroupsCount = disableReason == "NestedGroupsFound"
+                ? GetParam(emailMessage, NestedGroupsCountIndex)
+                : string.Empty;
+
+            var description = _localizationRepository.TranslateSetting(
+                $"SyncDisabledFallback.Description.{disableReason}",
+                requestor, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount);
+
+            // For NestedGroupsFound, append the bullet list of detected nested groups directly
+            // into the description body. The producer sends it as plain markdown lines
+            // ("- name (objectId)\n- ..."); ConvertContentToHtml turns \n into <br>, which gives
+            // us a readable inline list without needing a separate "Nested Groups" table row.
+            if (disableReason == "NestedGroupsFound")
+            {
+                var list = GetParam(emailMessage, NestedGroupsListIndex);
+                if (!string.IsNullOrWhiteSpace(list))
+                {
+                    description += "\n\n**Nested groups detected:**\n" + list.TrimEnd();
+                }
+            }
 
             return FormatTemplate(
                 HtmlTemplates.SyncDisabledTemplate,
                 prefix: "SyncDisabledFallback",
                 groupName: destinationGroupName,
                 headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
-                description: _localizationRepository.TranslateSetting($"SyncDisabledFallback.Description.{disableReason}", requestor, groupId ?? string.Empty, gmmOwnerName),
+                description: description,
                 calloutBody: _localizationRepository.TranslateSetting($"SyncDisabledFallback.CalloutBody.{disableReason}"),
                 rows: rows,
                 jobUrl: jobUrl,
@@ -301,6 +340,7 @@ namespace Repositories.Mail
                 "SyncDisabledNoOwnerEmailBody" => "NoOwner",
                 "SyncDisabledNoValidGroupIds" => "NotValidSource",
                 "GuestUserFailureEmailBody" => "GuestUsers",
+                "NestedGroupsFoundEmailBody" => "NestedGroupsFound",
                 "SyncPurgedForInactivityEmailBody" => "PurgedForInactivity",
                 "NoDataEmailContent" => "NoData",
                 "SyncJobDisabledEmailBody" => "Generic",
@@ -312,12 +352,11 @@ namespace Repositories.Mail
         {
             Func<string, string> encode = System.Net.WebUtility.HtmlEncode;
             var rows = new StringBuilder();
-            if (!string.IsNullOrEmpty(groupAlias))
-            {
-                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                    _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
-                    encode(groupAlias), ""));
-            }
+            // Always render Group Alias for consistency across all fallback templates;
+            // fall back to "N/A" when the destination has no mail (e.g. security groups).
+            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
+                string.IsNullOrEmpty(groupAlias) ? "N/A" : encode(groupAlias), ""));
             if (!string.IsNullOrEmpty(groupType))
             {
                 rows.Append(string.Format(HtmlTemplates.DetailsTableRow,

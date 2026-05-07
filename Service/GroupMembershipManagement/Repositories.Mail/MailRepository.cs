@@ -402,7 +402,8 @@ namespace Repositories.Mail
 
             return contentType.Contains("Disabled", StringComparison.OrdinalIgnoreCase)
                 || contentType.Contains("Failure", StringComparison.OrdinalIgnoreCase)
-                || contentType.Contains("NoData", StringComparison.OrdinalIgnoreCase);
+                || contentType.Contains("NoData", StringComparison.OrdinalIgnoreCase)
+                || contentType.Contains("NestedGroupsFound", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
