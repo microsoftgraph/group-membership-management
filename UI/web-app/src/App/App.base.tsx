@@ -16,6 +16,7 @@ import { useStrings } from '../store/hooks';
 import { selectProfile } from '../store/profile.slice';
 import { setLanguage } from '../store/localization.api';
 import { fetchSettings } from '../store/settings.api';
+import { selectDashboardUrl } from '../store/settings.slice';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
 import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
@@ -43,6 +44,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   const hasAccess = useSelector(selectHasAccess);
   const isFetchingRoles = useSelector(selectIsFetchingRoles);
   const operationStatusError = useSelector(selectOperationError);
+  const dashboardUrl = useSelector(selectDashboardUrl);
 
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(() => {
     return localStorage.getItem('disclaimerSubmitted') !== 'true';
@@ -115,7 +117,21 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
               <Outlet />
             </> :
             <div className={classNames.permissionDenied}>
-              <Text>{strings.permissionDenied}</Text>
+              <Text>
+                {dashboardUrl
+                  ? jsxFormat(
+                      strings.noOwnedGroupsAccessGuidance,
+                      <a
+                        href={dashboardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: theme.palette.themePrimary, textDecoration: 'underline' }}
+                      >
+                        {strings.noOwnedGroupsAccessGuidanceLinkLabel}
+                      </a>
+                    )
+                  : strings.permissionDenied}
+              </Text>
             </div>
           )
         }
