@@ -14,6 +14,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
+using System.Text.RegularExpressions;
 
 namespace Repositories.SqlMembershipRepository
 {
@@ -22,25 +23,39 @@ namespace Repositories.SqlMembershipRepository
 
         private readonly string _sqlServerConnectionString = null;
 
+        // Matches only valid SQL identifiers: letters, digits, underscores, and hyphens
+        private static readonly Regex ValidIdentifierPattern = new(@"^[A-Za-z_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
+
         public SqlMembershipRepository(IKeyVaultSecret<ISqlMembershipRepository> sqlServerConnectionString)
         {
             _sqlServerConnectionString = sqlServerConnectionString?.Secret ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
         }
 
+        private static void ValidateIdentifier(string identifier, string parameterName)
+        {
+            if (string.IsNullOrWhiteSpace(identifier))
+                throw new ArgumentException($"'{parameterName}' cannot be null or empty.", parameterName);
+
+            if (!ValidIdentifierPattern.IsMatch(identifier))
+                throw new ArgumentException($"'{parameterName}' contains invalid characters. Only letters, digits, underscores, and hyphens are allowed.", parameterName);
+        }
+
         public async Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var children = new List<PersonEntity>();
             var retryPolicy = GetRetryPolicyAsync();
 
             try
             {
-                var depthQuery = depth <= 0 ? "WHERE Depth > 0" : $" WHERE Depth <= {depth}";
+                var depthQuery = depth <= 0 ? "WHERE Depth > 0" : " WHERE Depth <= @Depth";
                 var filterQuery = string.IsNullOrWhiteSpace(filter) ? "" : $" AND ({filter})";
                 var selectQuery = @$"
                         WITH emp AS (
                               SELECT *, 1 AS Depth
                               FROM [users].[{tableName}]
-                              WHERE EmployeeId = {personnelNumber}
+                              WHERE EmployeeId = @PersonnelNumber
 
                               UNION ALL
 
@@ -58,6 +73,12 @@ namespace Repositories.SqlMembershipRepository
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@PersonnelNumber", SqlDbType.Int) { Value = personnelNumber });
+                            if (depth > 0)
+                            {
+                                cmd.Parameters.Add(new SqlParameter("@Depth", SqlDbType.Int) { Value = depth });
+                            }
+
                             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
                                 int id = reader.GetOrdinal("EmployeeId");
@@ -89,6 +110,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, int id)> GetOrgLeaderDetailsAsync(string azureObjectId, string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
             int employeeId = 0;
@@ -99,7 +122,7 @@ namespace Repositories.SqlMembershipRepository
                     WITH emp AS (
                             SELECT *, 1 AS Depth
                             FROM [users].[{tableName}]
-                            WHERE AzureObjectId = '{azureObjectId}'
+                            WHERE AzureObjectId = @AzureObjectId
 
                             UNION ALL
 
@@ -111,7 +134,7 @@ namespace Repositories.SqlMembershipRepository
                     FROM emp e
                 ";
 
-                var selectIdQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = '{azureObjectId}'";
+                var selectIdQuery = $"SELECT EmployeeId FROM [users].[{tableName}] WHERE AzureObjectId = @AzureObjectId";
 
                 await retryPolicy.ExecuteAsync(async () =>
                 {
@@ -120,6 +143,8 @@ namespace Repositories.SqlMembershipRepository
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectDepthQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@AzureObjectId", SqlDbType.NVarChar, 128) { Value = azureObjectId });
+
                             using (var reader = await cmd.ExecuteReaderAsync())
                             {
                                 int maxDepthOrdinal = reader.GetOrdinal("MaxDepth");
@@ -134,6 +159,8 @@ namespace Repositories.SqlMembershipRepository
 
                         using (var cmd = new SqlCommand(selectIdQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@AzureObjectId", SqlDbType.NVarChar, 128) { Value = azureObjectId });
+
                             using (var reader = cmd.ExecuteReader())
                             {
                                 int idOrdinal = reader.GetOrdinal("EmployeeId");
@@ -160,6 +187,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var filteredChildren = new List<PersonEntity>();
             var retryPolicy = GetRetryPolicyAsync();
             try
@@ -203,6 +232,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<bool> CheckIfTableExistsAsync(string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             bool tableExists = false;
             var retryPolicy = GetRetryPolicyAsync();
             try
@@ -212,9 +243,10 @@ namespace Repositories.SqlMembershipRepository
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         await conn.OpenAsync();
-                        var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = 'users'";
+                        var selectQuery = "SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @TableName AND TABLE_SCHEMA = 'users'";
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@TableName", SqlDbType.NVarChar, 128) { Value = tableName });
                             var result = (int)cmd.ExecuteScalar();
                             tableExists = result > 0;
                         }
@@ -232,6 +264,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<string>> GetColumnNamesAsync(string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var HRColumns = new List<string>();
             var retryPolicy = GetRetryPolicyAsync();
             try
@@ -271,6 +305,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
             string azureObjectId = "";
@@ -281,7 +317,7 @@ namespace Repositories.SqlMembershipRepository
                     WITH emp AS (
                             SELECT EmployeeId, 1 AS Depth
                             FROM [users].[{tableName}]
-                            WHERE EmployeeId = {employeeId}
+                            WHERE EmployeeId = @EmployeeId
 
                             UNION ALL
 
@@ -293,7 +329,7 @@ namespace Repositories.SqlMembershipRepository
                     FROM emp e
                 ";
 
-                var selectIdQuery = $"SELECT AzureObjectId FROM [users].[{tableName}] WHERE EmployeeId = {employeeId}";
+                var selectIdQuery = $"SELECT AzureObjectId FROM [users].[{tableName}] WHERE EmployeeId = @EmployeeId";
 
                 await retryPolicy.ExecuteAsync(async () =>
                 {
@@ -302,6 +338,8 @@ namespace Repositories.SqlMembershipRepository
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectDepthQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@EmployeeId", SqlDbType.Int) { Value = employeeId });
+
                             using (var reader = await cmd.ExecuteReaderAsync())
                             {
                                 int maxDepthOrdinal = reader.GetOrdinal("MaxDepth");
@@ -316,6 +354,8 @@ namespace Repositories.SqlMembershipRepository
 
                         using (var cmd = new SqlCommand(selectIdQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@EmployeeId", SqlDbType.Int) { Value = employeeId });
+
                             using (var reader = cmd.ExecuteReader())
                             {
                                 int idOrdinal = reader.GetOrdinal("AzureObjectId");
@@ -342,6 +382,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var columnDetails = new List<(string Name, string Type)>();
             var retryPolicy = GetRetryPolicyAsync();
             try
@@ -388,6 +430,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<bool> CheckIfMappingsTableExistsAsync(string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             bool tableExists = false;
             var retryPolicy = GetRetryPolicyAsync();
             try
@@ -397,9 +441,10 @@ namespace Repositories.SqlMembershipRepository
                     using (var conn = new SqlConnection(_sqlServerConnectionString))
                     {
                         await conn.OpenAsync();
-                        var selectQuery = $"SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = '{tableName}' AND TABLE_SCHEMA = 'mappings'";
+                        var selectQuery = "SELECT count(TABLE_NAME) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = @TableName AND TABLE_SCHEMA = 'mappings'";
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@TableName", SqlDbType.NVarChar, 128) { Value = tableName });
                             var result = (int)cmd.ExecuteScalar();
                             tableExists = result > 0;
                         }
@@ -417,12 +462,15 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateIdentifier(attribute, nameof(attribute));
+
             var attributeMappings = new List<(string Code, string Description)>();
             var retryPolicy = GetRetryPolicyAsync();
 
             try
             {
-                var selectQuery = $"SELECT DISTINCT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = '{attribute}'";
+                var selectQuery = $"SELECT DISTINCT Code, Description FROM [mappings].[{tableName}] WHERE ColumnName = @Attribute";
 
                 await retryPolicy.ExecuteAsync(async () =>
                 {
@@ -431,6 +479,7 @@ namespace Repositories.SqlMembershipRepository
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
+                            cmd.Parameters.Add(new SqlParameter("@Attribute", SqlDbType.NVarChar, 128) { Value = attribute });
                             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
                                 int codeOrdinal = reader.GetOrdinal("Code");
@@ -460,16 +509,19 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateIdentifier(attribute, nameof(attribute));
+
             var attributeValues = new List<string>();
             var retryPolicy = GetRetryPolicyAsync();
 
             var schema = hasMapping ? "mappings" : "users";
             var column = hasMapping ? "Description" : $"{attribute}";
-            var whereClause = hasMapping ? $" WHERE ColumnName = '{attribute}'" : "";
+            var whereClause = hasMapping ? " WHERE ColumnName = @Attribute" : "";
 
             try
             {
-                var selectQuery = $"SELECT DISTINCT TOP(10) {column} FROM [{schema}].[{tableName}]" + whereClause;
+                var selectQuery = $"SELECT DISTINCT TOP(10) [{column}] FROM [{schema}].[{tableName}]" + whereClause;
 
                 await retryPolicy.ExecuteAsync(async () =>
                 {
@@ -478,6 +530,11 @@ namespace Repositories.SqlMembershipRepository
                         await conn.OpenAsync();
                         using (var cmd = new SqlCommand(selectQuery, conn))
                         {
+                            if (hasMapping)
+                            {
+                                cmd.Parameters.Add(new SqlParameter("@Attribute", SqlDbType.NVarChar, 128) { Value = attribute });
+                            }
+
                             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
                             {
                                 int valueOrdinal = reader.GetOrdinal($"{column}");
@@ -507,6 +564,8 @@ namespace Repositories.SqlMembershipRepository
         }
         public async Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName)
         {
+            ValidateIdentifier(tableName, nameof(tableName));
+
             var exceptionsList = new ConcurrentDictionary<int, string>();
             var validColumnNames = await GetColumnNamesAsync(tableName);
 
