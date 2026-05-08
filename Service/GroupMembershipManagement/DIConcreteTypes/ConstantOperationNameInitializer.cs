@@ -5,7 +5,7 @@ using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.DataContracts;
 using Microsoft.ApplicationInsights.Extensibility;
 
-namespace Hosts.FunctionBase
+namespace DIConcreteTypes
 {
     public sealed class ConstantOperationNameInitializer : ITelemetryInitializer
     {

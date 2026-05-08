@@ -128,16 +128,6 @@ namespace WebApi
                 return new GMMEmailReceivers(services.GetService<IOptions<GMMEmailReceivers>>().Value.ActionableMessageViewerGroupId);
             });
 
-            builder.Services.AddSingleton(sp =>
-            {
-                var telemetryConfiguration = new TelemetryConfiguration();
-                telemetryConfiguration.InstrumentationKey = builder.Configuration.GetValue<string>("APPINSIGHTS_INSTRUMENTATIONKEY");
-                telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
-                var tc = new TelemetryClient(telemetryConfiguration);
-                tc.Context.Operation.Name = "WebAPI";
-                return tc;
-            });
-
             builder.Services
                 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApi(azureAdConfigSection);
@@ -272,6 +262,7 @@ namespace WebApi
                 return config.Value;
             });
             builder.Services.AddApplicationInsightsTelemetry();
+            builder.Services.AddSingleton<ITelemetryInitializer>(sp => new ConstantOperationNameInitializer("WebAPI"));
             builder.Services.AddSingleton<ITelemetryInitializer, TelemetryInitializer>();
             builder.Services.AddApplicationInsightsTelemetryProcessor<TelemetryProcessor>();
 

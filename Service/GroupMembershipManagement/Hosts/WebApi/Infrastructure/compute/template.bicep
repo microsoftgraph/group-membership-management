@@ -79,7 +79,6 @@ param featureFlags object = {
 }
 
 var subscriptionId = subscription().subscriptionId
-var appInsightsInstrumentationKey = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'appInsightsInstrumentationKey')
 var webapiClientId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webapiClientId')
 var webApiTenantId = resourceId(subscription().subscriptionId, prereqsResourceGroup, 'Microsoft.KeyVault/vaults/secrets', prereqsKeyVaultName, 'webApiTenantId')
 var jobsStorageAccountConnectionString = resourceId(subscription().subscriptionId, dataResourceGroup, 'Microsoft.KeyVault/vaults/secrets', dataKeyVaultName, 'jobsStorageAccountConnectionString')
@@ -126,10 +125,6 @@ var appSettings = [
   {
     name: 'AZURE_TOKEN_CREDENTIALS'
     value:'ManagedIdentityCredential'
-  }
-  {
-    name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-    value:'@Microsoft.KeyVault(SecretUri=${reference(appInsightsInstrumentationKey, '2019-09-01').secretUriWithVersion})'
   }
   {
     name: 'AzureAd:ClientId'
