@@ -205,11 +205,11 @@ namespace Hosts.WebApi
             Message = "Retry {RetryCount} after {DelaySeconds}s")]
         public static partial void CopilotChatRetryAttempt(this ILogger logger, int retryCount, double delaySeconds, Exception exception);
 
-        [LoggerMessage(EventId = 93101, Level = LogLevel.Debug,
+        [LoggerMessage(EventId = 93101, Level = LogLevel.Information,
             Message = "Tool call iteration {Iteration}/{Max}: {Tools}")]
         public static partial void CopilotToolCallIteration(this ILogger logger, int iteration, int max, string tools);
 
-        [LoggerMessage(EventId = 93102, Level = LogLevel.Debug,
+        [LoggerMessage(EventId = 93102, Level = LogLevel.Information,
             Message = "Chat completed with {ToolCalls} tool calls, {SourceParts} source parts")]
         public static partial void CopilotChatLoopCompleted(this ILogger logger, int toolCalls, int sourceParts);
 
