@@ -100,6 +100,8 @@ export type IStrings = {
       title: string;
       settings: string;
       reviewDisclaimer: string;
+    },
+    AppFooter: {
       switchToLightMode: string;
       switchToDarkMode: string;
     },
@@ -676,5 +678,34 @@ export type IStrings = {
     flatList: string;
       membersAutoFollowGroupConversationsOption: string;
       myGroupsUI: string;
+  };
+  Copilot: {
+      title: string;
+      subtitle: string;
+      welcomeMessage: string;
+      welcomeDescription: string;
+      welcomeStep1Bold: string;
+      welcomeStep1: string;
+      welcomeStep2Bold: string;
+      welcomeStep2: string;
+      welcomeStep3Bold: string;
+      welcomeStep3: string;
+      inputPlaceholder: string;
+      sendButton: string;
+      closeButton: string;
+      thinking: string;
+      generating: string;
+      errorMessage: string;
+      triggerButton: string;
+      triggerButtonResume: string;
+      acceptChanges: string;
+      acceptChangesHint: string;
+      generateFilter: string;
+      generateFilterHint: string;
+      acceptAndApply: string;
+      newConversation: string;
+      leaderPrompt: string;
+      leaderInputPlaceholder: string;
+      leaderSubmit: string;
   };
 };

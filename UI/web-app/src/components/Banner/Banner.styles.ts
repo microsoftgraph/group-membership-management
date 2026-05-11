@@ -11,8 +11,8 @@ export const getStyles = (props: IBannerStyleProps): IBannerStyles => {
       {
         display: 'flex',
         ...theme.fonts.medium, // 14
-        backgroundColor: theme.palette.neutralLight,
-        color: theme.semanticColors.bodyText,
+        backgroundColor: theme.palette.themeLight,
+        color: theme.palette.themeDarker,
         padding: 10,
         justifyContent: 'flex-end',
         alignItems: 'center',
@@ -30,19 +30,19 @@ export const getStyles = (props: IBannerStyleProps): IBannerStyles => {
       textAlign: 'right',
       paddingRight: 10,
       borderRight: '1px solid',
-      borderRightColor: theme.semanticColors.variantBorder
+      borderRightColor: theme.palette.themePrimary
     },
     messageContainer: {
       display: 'flex',
       gap: 10,
     },
     toggle: {
-      color: theme.semanticColors.bodyText,
+      color: theme.palette.themeDarker,
       height: 24,
       width: 24
     },
     link: {
-      color: theme.palette.themePrimary
+      color: theme.palette.themeDarker
     }
   };
 };

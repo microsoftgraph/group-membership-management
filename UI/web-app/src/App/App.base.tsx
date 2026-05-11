@@ -20,6 +20,7 @@ import { selectDashboardUrl } from '../store/settings.slice';
 import { AppFooter } from '../components/AppFooter';
 import { fetchDefaultSqlMembershipSource, fetchDefaultSqlMembershipSourceAttributes } from '../store/sqlMembershipSources.api';
 import { selectHasAccess, selectIsFetchingRoles } from '../store/roles.slice';
+import { fetchMyProfile } from '../store/userProfile.api';
 import { Disclaimer } from '../components/Disclaimer';
 import { jsxFormat } from '../utils/stringUtils';
 import { fetchServiceStatus } from '../store/operations.api';
@@ -60,10 +61,8 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   useEffect(() => {
     if (!loggedIn) {
       dispatch(loginAsync());
-    } else {
-      // Only fetch service status after login completes.
-      dispatch(fetchServiceStatus());
     }
+      dispatch(fetchServiceStatus());
   }, [dispatch, loggedIn]);
 
   useEffect(() => {
@@ -71,6 +70,7 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
       dispatch(fetchSettings());
       dispatch(fetchDefaultSqlMembershipSource());
       dispatch(fetchDefaultSqlMembershipSourceAttributes());
+      dispatch(fetchMyProfile());
     }
   }, [dispatch, loggedIn]);
 

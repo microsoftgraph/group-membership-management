@@ -31,7 +31,12 @@ import {
         fontWeight: 600,
         fontSize: 20,
         fontFamily: 'Segoe UI',
-        marginBottom: 8
+      },
+      stepTitleRow: {
+        display: 'flex',
+        alignItems: 'center',
+        marginBottom: 8,
+        gap: 16
       },
       stepDescription: {
         fontWeight: 400,

@@ -13,7 +13,7 @@ export interface IAppHeaderStyles {
   mainButton: IStyle;
   appIcon: IStyle;
   appTitle: IStyle;
-  headerControls: IStyle;
+  settingsContainer: IStyle;
   settingsIcon: IStyle;
   titleContainer: IStyle;
   userPersona: IStyle;

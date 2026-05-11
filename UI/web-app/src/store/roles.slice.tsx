@@ -19,6 +19,8 @@ export type Roles = {
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;
   isGeneralSettingsAdministrator: boolean;
+  isAIOnboardingChat: boolean;
+  isAISettingsAdministrator: boolean;
   isFetchingRoles: boolean;
 }
 
@@ -36,6 +38,8 @@ const initialState: Roles = {
   isCustomMembershipProviderAdministrator: false,
   isOperationsResetAdministrator: false,
   isGeneralSettingsAdministrator: false,
+  isAIOnboardingChat: false,
+  isAISettingsAdministrator: false,
   isFetchingRoles: false,
 };
 
@@ -50,7 +54,6 @@ export const rolesSlice = createSlice({
     builder.addCase(getAllRoles.fulfilled, (state, action) => {
         Object.assign(state, action.payload);
         state.isFetchingRoles = false;
-        console.log('Roles fetched successfully:', action.payload);
     });
     builder.addCase(getAllRoles.rejected, (state) => {
         state.isFetchingRoles = false;
@@ -70,6 +73,8 @@ export const selectIsHyperlinkAdministrator = (state: RootState) => state.roles.
 export const selectIsCustomMembershipProviderAdministrator = (state: RootState) => state.roles.isCustomMembershipProviderAdministrator;
 export const selectIsOperationsResetAdministrator = (state: RootState) => state.roles.isOperationsResetAdministrator;
 export const selectIsGeneralSettingsAdministrator = (state: RootState) => state.roles.isGeneralSettingsAdministrator;
+export const selectIsAIOnboardingChat = (state: RootState) => state.roles.isAIOnboardingChat;
+export const selectIsAISettingsAdministrator = (state: RootState) => state.roles.isAISettingsAdministrator;
 
 export const selectHasAccess = (state: RootState) => {
   return state.roles.isJobOwnerReader || state.roles.isJobOwnerWriter || state.roles.isJobTenantReader || state.roles.isJobTenantWriter;
@@ -87,7 +92,8 @@ export const selectHasAdminCenterPermissions = (state: RootState) => {
   return state.roles.isHyperlinkAdministrator ||
           state.roles.isCustomMembershipProviderAdministrator ||
           state.roles.isOperationsResetAdministrator ||
-          state.roles.isGeneralSettingsAdministrator;
+          state.roles.isGeneralSettingsAdministrator ||
+          state.roles.isAISettingsAdministrator;
 };
 
 export default rolesSlice.reducer;

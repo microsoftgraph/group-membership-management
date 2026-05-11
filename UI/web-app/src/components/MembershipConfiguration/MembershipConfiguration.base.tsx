@@ -1,13 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { ActionButton, classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle } from '@fluentui/react';
+import { ActionButton, classNamesFunction, DefaultButton, IProcessedStyleSet, Toggle, Spinner, SpinnerSize } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { v4 as uuidv4 } from 'uuid';
 import { MembershipConfigurationStyleProps, MembershipConfigurationStyles, MembershipConfigurationProps } from './MembershipConfiguration.types';
 import { AdvancedQuery } from '../AdvancedQuery';
+import { CopilotPanel } from '../CopilotPanel';
 import { AppDispatch } from '../../store';
 import {
   addSourcePart,
@@ -27,6 +28,7 @@ import {
   updateSourcePart,
   manageMembershipIsEditingExistingJob,
 } from '../../store/manageMembership.slice';
+import { selectAttributes, selectAreAttributeMappingsLoading } from '../../store/sqlMembershipSources.slice';
 import { SourcePart } from '../SourcePart';
 import { useStrings, useQueryValidation } from '../../store/hooks';
 import { HRSourcePartSource } from '../../models/HRSourcePart';
@@ -36,11 +38,14 @@ import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.sl
 import { selectGeneratedTitlesYet, selectSelectedJobDetails, selectSelectedJobWithNoTitles, setGeneratedTitlesYet, setTitles} from '../../store/jobs.slice';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
+import { closePanel, openPanel, selectIsPanelOpen } from '../../store/copilot.slice';
+import { fetchOrgLeaderDetails } from '../../store/orgLeaderDetails.api';
 import { fetchGroupDetailsAndGenerateTitle, fetchOrgLeaderDetailsAndGenerateHRTitle, generateTitles } from '../../store/title.api';
 import { HRPart } from '../../models/HRPart';
 import { selectGeneratedGroupParts, selectGeneratedHRParts, selectTitles } from '../../store/title.slice';
 import { selectIsAITitleEnabled } from '../../store/settings.slice';
 import { useTitleProcessing } from '../../hooks/useTitleProcessing';
+import { selectUserProfile } from '../../store/userProfile.slice';
 
 const getClassNames = classNamesFunction<MembershipConfigurationStyleProps, MembershipConfigurationStyles>();
 
@@ -70,12 +75,103 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
   const titles = useSelector(selectTitles);
   const generatedHRParts = useSelector(selectGeneratedHRParts);
   const generatedGroupParts = useSelector(selectGeneratedGroupParts);
+  const hrAttributes = useSelector(selectAttributes);
+  const userProfile = useSelector(selectUserProfile);
 
   const getAllSourcePartsExpanded = useCallback(() => {
     return sourceParts.every(part => part.isExpanded);
   }, [sourceParts]);
 
   const [allSourcePartsExpanded, setAllSourcePartsExpanded] = useState(() => getAllSourcePartsExpanded());
+  const isCopilotPanelOpen = useSelector(selectIsPanelOpen);
+  const [activeSourcePartId, setActiveSourcePartId] = useState<string | null>(null);
+  const [isCopilotApplying, setIsCopilotApplying] = useState(false);
+  const [copilotUsedPartIds, setCopilotUsedPartIds] = useState<Set<string>>(new Set());
+  const copilotApplyStartTimeRef = useRef<number>(0);
+  const copilotNeedsOrgLeaderRef = useRef(false);
+  const areAttributeMappingsLoading = useSelector(selectAreAttributeMappingsLoading);
+
+  // Reset panel state on mount (prevents auto-open from stale Redux state)
+  useEffect(() => {
+    dispatch(closePanel());
+  }, [dispatch]);
+
+  // When panel opens from the step header button, auto-select first HR source part
+  useEffect(() => {
+    if (isCopilotPanelOpen && !activeSourcePartId) {
+      const firstHRPart = sourceParts.find(p => p.query.type === SourcePartType.HR);
+      if (firstHRPart) {
+        setActiveSourcePartId(firstHRPart.id);
+      }
+    }
+  }, [isCopilotPanelOpen, activeSourcePartId, sourceParts]);
+
+  const handleCopilotSourcePartsGenerated = useCallback((generatedParts: ISourcePart[]) => {
+    // Start loading overlay - track start time for minimum display duration
+    setIsCopilotApplying(true);
+    copilotApplyStartTimeRef.current = Date.now();
+    const anyUseOrgStructure = generatedParts.some(p => p.useOrgStructure);
+    copilotNeedsOrgLeaderRef.current = anyUseOrgStructure;
+
+    // Fire org leader API call immediately for the FIRST part that has an objectId
+    // so it runs in parallel with React re-renders
+    const firstOrgPart = generatedParts.find(p => p.useOrgStructure && p.managerToAutoSelect?.objectId);
+    const targetPartId = activeSourcePartId || generatedParts[0]?.id;
+    if (firstOrgPart?.managerToAutoSelect?.objectId && targetPartId) {
+      dispatch(fetchOrgLeaderDetails({
+        objectId: firstOrgPart.managerToAutoSelect.objectId,
+        key: 0,
+        text: firstOrgPart.managerToAutoSelect.displayName,
+        partId: targetPartId
+      }));
+    }
+    
+    if (activeSourcePartId && generatedParts.length > 0) {
+      // Update the specific source part that was active when Copilot was opened
+      // Each part already carries its own useOrgStructure, managerToAutoSelect, depthToAutoSelect
+      const updatedPart = {
+        ...generatedParts[0],
+        id: activeSourcePartId, // Keep the original ID
+        isExpanded: true, // Keep expanded so user sees the applied filters
+      };
+      dispatch(updateSourcePart(updatedPart));
+      
+      // If multiple parts were generated, add the rest as new source parts
+      generatedParts.slice(1).forEach(part => dispatch(addSourcePart({...part, isExpanded: true})));
+    } else {
+      // No active source part - add all generated parts as new
+      generatedParts.forEach(part => dispatch(addSourcePart({...part, isExpanded: true})));
+    }
+    setActiveSourcePartId(null);
+    setCopilotUsedPartIds(prev => {
+      const next = new Set(prev);
+      if (activeSourcePartId) next.add(activeSourcePartId);
+      return next;
+    });
+    dispatch(closePanel());
+  }, [dispatch, activeSourcePartId]);
+
+  // Hide copilot apply overlay when data loading completes (with minimum display time)
+  // For org structure flows, also wait until the org leader picker is populated
+  useEffect(() => {
+    if (!isCopilotApplying) return;
+
+    const attributesReady = !areAttributeMappingsLoading;
+    const orgLeaderReady = !copilotNeedsOrgLeaderRef.current || orgLeaderDataReturned === true;
+
+    if (attributesReady && orgLeaderReady) {
+      const elapsed = Date.now() - copilotApplyStartTimeRef.current;
+      const minDisplayTime = 800; // Show overlay for at least 800ms for smooth UX
+      const remainingTime = Math.max(0, minDisplayTime - elapsed);
+      
+      const timer = setTimeout(() => {
+        setIsCopilotApplying(false);
+        copilotNeedsOrgLeaderRef.current = false;
+      }, remainingTime);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isCopilotApplying, areAttributeMappingsLoading, orgLeaderDataReturned]);
 
   useEffect(() => {
     setAllSourcePartsExpanded(getAllSourcePartsExpanded());
@@ -311,7 +407,31 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
               {allSourcePartsExpanded ? strings.ManageMembership.labels.collapseAll : strings.ManageMembership.labels.expandAll}
             </ActionButton>
         </div>
-        <div>
+        <div style={{ position: 'relative' }}>
+          {/* Loading overlay when Copilot is applying filters */}
+          {isCopilotApplying && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100,
+              borderRadius: '4px',
+              minHeight: '200px',
+              gap: '12px'
+            }}>
+              <Spinner size={SpinnerSize.large} />
+              <span style={{ fontSize: '14px', color: '#323130', fontWeight: 500 }}>
+                Setting up your membership query...
+              </span>
+            </div>
+          )}
           {sourceParts.map((part) => (
             <SourcePart
               key={part.id}
@@ -344,6 +464,19 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         />
       </div>
       )}
+      <CopilotPanel
+        isOpen={isCopilotPanelOpen}
+        dismissPanel={() => dispatch(closePanel())}
+        onSourcePartsGenerated={handleCopilotSourcePartsGenerated}
+        hrAttributes={hrAttributes?.filter(attr => attr.enabled).map(attr => ({
+          name: attr.name,
+          hasMapping: attr.hasMapping,
+          customLabel: attr.customLabel,
+          description: attr.description
+        }))}
+        sourcePartId={activeSourcePartId || undefined}
+        userProfile={userProfile}
+      />
     </div>
   );
 };

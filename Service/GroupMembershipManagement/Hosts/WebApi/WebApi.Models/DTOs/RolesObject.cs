@@ -22,5 +22,7 @@ namespace WebApi.Models.DTOs
         public bool IsCustomMembershipProviderAdministrator { get; set; }
         public bool IsOperationsResetAdministrator { get; set; }
         public bool IsGeneralSettingsAdministrator { get; set; }
+        public bool IsAIOnboardingChat { get; set; }
+        public bool IsAISettingsAdministrator { get; set; }
     }
 }

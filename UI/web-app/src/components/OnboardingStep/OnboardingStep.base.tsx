@@ -24,7 +24,7 @@ const getClassNames = classNamesFunction<
 >();
 
 export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> = (props) => {
-  const { className, styles, children, stepTitle, stepDescription } = props;
+  const { className, styles, children, stepTitle, stepDescription, headerAction } = props;
   const strings = useStrings();
 
   const classNames: IProcessedStyleSet<IOnboardingStepStyles> = getClassNames(
@@ -45,7 +45,10 @@ export const OnboardingStepBase: React.FunctionComponent<IOnboardingStepProps> =
         <PageSection>
           <div className={classNames.title}>{strings.ManageMembership.labels.pageTitle}</div>
           {(destinationType && destinationName) && (<div className={classNames.destination}>{destinationTypeLabel}: {destinationName}</div>)}
-          <div className={classNames.stepTitle}>{stepTitle}</div>
+          <div className={classNames.stepTitleRow}>
+            <div className={classNames.stepTitle}>{stepTitle}</div>
+            {headerAction}
+          </div>
           <div className={classNames.stepDescription}>{stepDescription}</div>
         </PageSection>
       </div>

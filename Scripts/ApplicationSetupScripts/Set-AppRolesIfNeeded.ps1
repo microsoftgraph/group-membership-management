@@ -167,6 +167,22 @@ function Set-AppRolesIfNeeded {
             Id                 = [Guid]::NewGuid().ToString()
             IsEnabled          = $True
             AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "AI Onboarding Chat"
+            Description        = "Can access the AI-powered onboarding chat assistant."
+            Value              = "AI.Onboarding.Chat"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
+        },
+        @{
+            DisplayName        = "AI Settings Administrator"
+            Description        = "Can manage AI settings including prompts, temperature, and feature toggles."
+            Value              = "AISettings.ReadWrite.All"
+            Id                 = [Guid]::NewGuid().ToString()
+            IsEnabled          = $True
+            AllowedMemberTypes = @($memberTypes)
         }
 
     )

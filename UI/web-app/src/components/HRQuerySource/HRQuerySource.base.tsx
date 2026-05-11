@@ -48,7 +48,7 @@ export const getClassNames = classNamesFunction<HRQuerySourceStyleProps, HRQuery
 
 export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (props: HRQuerySourceProps) => {
 
-  const { className, styles, partId, onSourceChange, onEnableEdit, isEditable } = props;
+  const { className, styles, partId, onSourceChange, onEnableEdit, isEditable, useOrgStructure, managerToAutoSelect, depthToAutoSelect } = props;
   const classNames: IProcessedStyleSet<HRQuerySourceStyles> = getClassNames(styles, {
     className,
     theme: useTheme(),
@@ -110,6 +110,8 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
   const [localTitle, setLocalTitle] = useState<string>("");
   const orgLeaderDataReturned = useSelector(selectOrgLeaderDataReturned);
+  const orgLeaderDetailsRef = React.useRef(orgLeaderDetails);
+  orgLeaderDetailsRef.current = orgLeaderDetails;
   const email = useSelector(selectSupportEmail);
   const emailLoading = useSelector(selectSupportEmailLoading);
   const emailError = useSelector(selectSupportEmailError);
@@ -122,6 +124,11 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   useEffect(() => {
     dispatch(getSupportEmailAddress());
   }, [dispatch]);
+
+  // Sync local source state when props.source changes (e.g., from Copilot applying filters)
+  useEffect(() => {
+    setSource(props.source);
+  }, [props.source]);
 
   useEffect(() => {
     if (!groupingEnabled) {
@@ -176,6 +183,57 @@ export const HRQuerySourceBase: React.FunctionComponent<HRQuerySourceProps> = (p
   useEffect(() => {
     if (!includeOrg) { setOrgErrorMessage(''); }
   }, [includeOrg]);
+
+  // Auto-enable org structure toggle when Copilot detects hierarchy is needed
+  useEffect(() => {
+    if (useOrgStructure === true && !includeOrg) {
+      setIncludeOrg(true);
+    }
+  }, [useOrgStructure, includeOrg]);
+
+  // Auto-select manager as org leader when Copilot provides manager info
+  const [managerAutoSelectDone, setManagerAutoSelectDone] = useState(false);
+  useEffect(() => {
+    const autoSelectManager = async () => {
+      if (useOrgStructure && managerToAutoSelect && !managerAutoSelectDone && includeOrg) {
+        try {
+          let objectId: string;
+          let displayName: string = managerToAutoSelect.displayName;
+
+          if (managerToAutoSelect.objectId) {
+            objectId = managerToAutoSelect.objectId;
+          } else {
+            const searchTerm = managerToAutoSelect.email || displayName;
+            const action = await dispatch(getPeoplePickerSuggestions(searchTerm));
+            const suggestions = action.payload as IPersonaProps[] ?? [];
+
+            if (suggestions.length === 0) {
+              return;
+            }
+            objectId = suggestions[0].id as string;
+            displayName = suggestions[0].text as string;
+          }
+
+          setOrgLeaderUpdated(true);
+
+          const currentOrgLeaderDetails = orgLeaderDetailsRef.current;
+          if (!(currentOrgLeaderDetails.employeeId > 0 && currentOrgLeaderDetails.partId === partId)) {
+            dispatch(fetchOrgLeaderDetails({
+              objectId,
+              key: 0,
+              text: displayName,
+              partId: partId as string
+            }));
+          }
+          setManagerAutoSelectDone(true);
+        } catch (err) {
+          setManagerAutoSelectDone(false);
+        }
+      }
+    };
+    
+    autoSelectManager();
+  }, [useOrgStructure, managerToAutoSelect, managerAutoSelectDone, includeOrg, dispatch, partId]);
 
 
   useEffect(() => {
@@ -578,6 +636,7 @@ const getOptions = (
         setItemsBasedOnGroups(groups);
         setGroups(groups);
         setGroupingEnabled(true);
+        setIncludeFilter(true); // Show filter section when filter is parsed
       }
 
       if (isParsingFilter) {
@@ -596,6 +655,7 @@ const getOptions = (
           setChildren(childFilters.map(filter => ({
             filter: filter.trim()
           })));
+          setIncludeFilter(true); // Show filter section when filter is parsed
         }
       }
     }
@@ -608,18 +668,20 @@ const getOptions = (
   useEffect(() => {
     if (orgLeaderUpdated && orgLeaderDetails.employeeId > 0 && partId === orgLeaderDetails.partId) {
       const id: number = orgLeaderDetails.employeeId;
+      const depth = depthToAutoSelect ?? undefined;
       const newSource = {
         ...props.source,
         manager: {
           ...props.source.manager,
-          id: id
+          id: id,
+          depth: depth
         }
       };
       const updatedTitle = localTitle || props.title || "";
       setSource(newSource);
       onSourceChange(newSource, partId, updatedTitle);
     }
-  }, [objectIdEmployeeIdMapping]);
+  }, [objectIdEmployeeIdMapping, orgLeaderUpdated, orgLeaderDetails]);
 
   useEffect(() => {
     if (source?.manager?.id) {
@@ -2320,7 +2382,7 @@ const getOptions = (
       <Stack horizontal verticalAlign="center" tokens={stackTokens}>
         <Stack.Item align="start">
           <OrgLeader
-            selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled && orgLeaderDataReturned && orgLeaderDetails.employeeId > 0? [
+            selectedItems={source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id] && !isDisabled ? [
               {
                 key: objectIdEmployeeIdMapping[source.manager.id]?.objectId?.toString() || "",
                 text: objectIdEmployeeIdMapping[source.manager.id]?.text?.toString() || ""
@@ -2330,7 +2392,7 @@ const getOptions = (
             onInputChange={handleOrgLeaderInputChange}
             onChange={handleOrgLeaderChange}
             disabled={!isJobWriter || !isEditable}
-            showError={!!(source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id].text == undefined)}
+            showError={!!(source?.manager?.id && objectIdEmployeeIdMapping[source.manager.id]?.text == undefined)}
           />
         </Stack.Item>
 
@@ -2354,7 +2416,6 @@ const getOptions = (
         </Stack.Item>
       </Stack>
        )}
-
 
       <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
         {orgLeaderDataReturned && orgLeaderDetails.employeeId === 0 && partId === orgLeaderDetails.partId && orgErrorMessage}
@@ -2497,9 +2558,12 @@ const getOptions = (
         ) : null
       }
 
-      <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
-        {filterErrorMessage}
-      </div>
+      {/* Only render alert div when there's an actual error */}
+      {filterErrorMessage && (
+        <div className={classNames.error} role="alert" aria-live="assertive" aria-atomic="true">
+          {filterErrorMessage}
+        </div>
+      )}
     </div>
   );
 };

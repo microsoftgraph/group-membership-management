@@ -75,7 +75,7 @@ import { OnboardingSteps } from '../../models/OnboardingSteps';
 import { selectSelectedJobDetails, selectSelectedJobLoading, selectSelectedJobWithNoTitles } from '../../store/jobs.slice';
 import { fetchJobDetails, patchJobDetails } from '../../store/jobDetails.api';
 import { Loader } from '../../components/Loader';
-import { selectIsJobTenantWriter, selectIsJobWriter } from '../../store/roles.slice';
+import { selectIsJobTenantWriter, selectIsJobWriter, selectIsAIOnboardingChat } from '../../store/roles.slice';
 import { PostGroupResponse, SyncStatus } from '../../models';
 import { SyncJobQuery } from '../../models/SyncJobQuery';
 import { PatchJobRequest } from '../../models/PatchJobRequest';
@@ -86,6 +86,111 @@ import { selectIsBusinessJustificationRequired } from '../../store/settings.slic
 import { DestinationType } from '../../models/DestinationType';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 import { GroupSettings } from '../../models/GroupSettings';
+import { openPanel, selectIsPanelOpen, selectCopilotMessages } from '../../store/copilot.slice';
+import { mergeStyles, keyframes } from '@fluentui/react';
+
+const sparkleAnimation1 = keyframes({
+  '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+  '50%': { opacity: 0.2, transform: 'scale(0.5)' },
+});
+
+const sparkleAnimation2 = keyframes({
+  '0%, 100%': { opacity: 0.3, transform: 'scale(0.5)' },
+  '50%': { opacity: 1, transform: 'scale(1)' },
+});
+
+const sparkleClass1 = mergeStyles({
+  animationName: sparkleAnimation1,
+  animationDuration: '2s',
+  animationTimingFunction: 'ease-in-out',
+  animationIterationCount: 'infinite',
+  transformOrigin: 'center',
+  transformBox: 'fill-box',
+});
+
+const sparkleClass2 = mergeStyles({
+  animationName: sparkleAnimation2,
+  animationDuration: '2s',
+  animationTimingFunction: 'ease-in-out',
+  animationIterationCount: 'infinite',
+  transformOrigin: 'center',
+  transformBox: 'fill-box',
+});
+
+const copilotButtonClass = mergeStyles({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '10px',
+  borderRadius: '28px',
+  padding: '6px 16px 6px 6px',
+  border: '1px solid #edebe9',
+  cursor: 'pointer',
+  transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+  background: '#ffffff',
+  selectors: {
+    ':hover': {
+      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
+      borderColor: '#c8c6c4',
+    },
+    ':disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+    },
+  },
+});
+
+const CopilotTriggerButton: React.FunctionComponent = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const strings = useStrings();
+  const isJobWriter = useSelector(selectIsJobWriter);
+  const isAIOnboardingChat = useSelector(selectIsAIOnboardingChat);
+  const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
+
+  if (!isAIOnboardingChat) return null;
+
+  return (
+    <button
+      onClick={() => dispatch(openPanel())}
+      disabled={!isJobWriter}
+      className={copilotButtonClass}
+    >
+      <div style={{
+        width: '34px',
+        height: '34px',
+        borderRadius: '50%',
+        backgroundColor: '#0078d4',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        position: 'relative',
+      }}>
+        <Icon iconName="Contact" style={{ color: '#ffffff', fontSize: '15px' }} />
+        <svg
+          width="16" height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          style={{ position: 'absolute', top: '-6px', right: '-6px' }}
+        >
+          {/* Larger 4-pointed star */}
+          <path className={sparkleClass1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill="#0078d4" />
+          {/* Smaller 4-pointed star */}
+          <path className={sparkleClass2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill="#0078d4" />
+        </svg>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+        <span style={{ color: '#323130', fontWeight: 600, fontSize: '13px', lineHeight: '18px' }}>
+          {strings.Copilot?.title || 'GMM Copilot'}
+        </span>
+        <span style={{ color: '#605e5c', fontSize: '11px', fontWeight: 400, lineHeight: '16px' }}>
+          {hasCopilotHistory
+            ? (strings.Copilot?.triggerButtonResume || 'Let GMM resume building for you')
+            : (strings.Copilot?.triggerButton || 'Let GMM build it for you')}
+        </span>
+      </div>
+    </button>
+  );
+};
 
 const getClassNames = classNamesFunction<
   IManageMembershipStyleProps,
@@ -522,6 +627,9 @@ export const ManageMembershipBase: React.FunctionComponent<IManageMembershipProp
             stepDescription={strings.ManageMembership.labels.step3description}
             destinationType={selectedDestination?.type}
             destinationName={selectedDestination?.name}
+            headerAction={
+              <CopilotTriggerButton />
+            }
             children={
               <MembershipConfiguration isEditable={true} />
             }

@@ -17,7 +17,6 @@ import logo from '../../logo.svg';
 import { useStrings } from '../../store/hooks';
 import { selectHasAdminCenterPermissions } from '../../store/roles.slice';
 import { selectIsDisclaimerEnabled } from '../../store/settings.slice';
-import { toggleTheme, selectIsDarkMode } from '../../store/theme.slice';
 import { Disclaimer } from '../Disclaimer';
 import { jsxFormat } from '../../utils/stringUtils';
 
@@ -44,7 +43,6 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
   const profilePhoto = useSelector(selectProfilePhoto);
   const canViewSettings = useSelector(selectHasAdminCenterPermissions);
   const isDisclaimerEnabled = useSelector(selectIsDisclaimerEnabled);
-  const isDarkMode = useSelector(selectIsDarkMode);
 
   useEffect(() => {
     if (!profilePhoto) {
@@ -60,10 +58,6 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
 
   const onLogoClicked = () => {
     navigate('/', { replace: false, state: { item: 1 } });
-  };
-
-  const handleThemeToggle = () => {
-    dispatch(toggleTheme());
   };
 
   const [isDisclaimerOpen, setIsDisclaimerOpen] = useState(false);
@@ -99,34 +93,27 @@ export const AppHeaderBase: React.FunctionComponent<IAppHeaderProps> = (
             <div className={classNames.appTitle}>{strings.membershipManagement}</div>
           </div>
         </a>
-        <div className={classNames.headerControls}>
-          <IconButton
-            iconProps={{ iconName: isDarkMode ? 'Sunny' : 'ClearNight' }}
-            title={isDarkMode ? strings.Components.AppHeader.switchToLightMode : strings.Components.AppHeader.switchToDarkMode}
-            ariaLabel={isDarkMode ? strings.Components.AppHeader.switchToLightMode : strings.Components.AppHeader.switchToDarkMode}
-            className={classNames.settingsIcon}
-            styles={buttonStyles}
-            onClick={handleThemeToggle}
-          />
-          {canViewSettings && (
+        {
+          canViewSettings &&
+          <div className={classNames.settingsContainer}>
             <IconButton
               title={strings.Components.AppHeader.settings}
               iconProps={{ iconName: 'settings' }}
               className={classNames.settingsIcon}
               styles={buttonStyles}
               onClick={onSettingsButtonClicked} />
-          )}
-          {isDisclaimerEnabled && (
-            <IconButton
-              title={strings.Components.AppHeader.reviewDisclaimer}
-              iconProps={{ iconName: 'Info' }}
-              className={classNames.settingsIcon}
-              styles={buttonStyles}
-              onClick={onReviewDisclaimerClicked}
-            />
-          )}
-          <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
-        </div>
+            <Persona size={PersonaSize.size32} className={classNames.userPersona} {...personaProps} />
+            {isDisclaimerEnabled && (
+              <IconButton
+                title={strings.Components.AppHeader.reviewDisclaimer}
+                iconProps={{ iconName: 'Info' }}
+                className={classNames.settingsIcon}
+                styles={buttonStyles}
+                onClick={onReviewDisclaimerClicked}
+              />
+            )}
+          </div>
+        }
       </header>
       <>
         {isDisclaimerEnabled && isDisclaimerOpen && (

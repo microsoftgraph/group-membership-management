@@ -96,10 +96,8 @@ const container = document.getElementById('root');
 if (container) {
   const root = createRoot(container);
   root.render(
-    <React.StrictMode>
-      <Provider store={store}>
-        <ThemedApp />
-      </Provider>
-    </React.StrictMode>
+    <Provider store={store}>
+      <ThemedApp />
+    </Provider>
   );
 }

@@ -13,8 +13,6 @@ export interface IPagingBarStyles {
     rightLabelMessage: IStyle;
     divContainer: IStyle;
     mainContainer: IStyle;
-    navSection: IStyle;
-    displaySection: IStyle;
 }
 
 export interface IPagingBarStyleProps {

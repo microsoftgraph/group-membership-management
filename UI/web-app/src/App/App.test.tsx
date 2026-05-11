@@ -38,6 +38,8 @@ test('renders header after login', async () => {
     isCustomMembershipProviderAdministrator: false,
     isOperationsResetAdministrator: false,
     isGeneralSettingsAdministrator: false,
+    isAIOnboardingChat: false,
+    isAISettingsAdministrator: false,
     isFetchingRoles: false,
   };
 

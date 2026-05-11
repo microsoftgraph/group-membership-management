@@ -25,7 +25,7 @@ namespace WebApi.Controllers.v1.Copilot
             _copilotChatHandler = copilotChatHandler ?? throw new ArgumentNullException(nameof(copilotChatHandler));
         }
 
-        [Authorize()]
+        [Authorize(Roles = Models.Roles.AI_ONBOARDING_CHAT)]
         [HttpPost("chat")]
         [ProducesResponseType(typeof(CopilotChatResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]

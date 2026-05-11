@@ -72,6 +72,8 @@ describe('AppHeader', () => {
             isCustomMembershipProviderAdministrator: false,
             isOperationsResetAdministrator: false,
             isGeneralSettingsAdministrator: true,
+            isAIOnboardingChat: false,
+            isAISettingsAdministrator: false,
             isFetchingRoles: false,
           },
           settings: {

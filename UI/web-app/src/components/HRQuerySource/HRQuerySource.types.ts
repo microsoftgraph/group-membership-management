@@ -60,4 +60,20 @@ export type HRQuerySourceProps = React.AllHTMLAttributes<HTMLDivElement> & {
   onSourceChange: (source: HRSourcePartSource, partId: string, title?: string) => void;
   onEnableEdit: (isEditEnabled: boolean) => void;
   isEditable?: boolean;
+  /**
+   * Whether to auto-enable the org structure toggle (set by Copilot when it detects hierarchy is needed)
+   */
+  useOrgStructure?: boolean;
+  /**
+   * Manager info to auto-select as org leader (when useOrgStructure is true). objectId is optional when AI extracts name from query.
+   */
+  managerToAutoSelect?: {
+    objectId?: string;
+    displayName: string;
+    email?: string;
+  };
+  /**
+   * Depth to auto-select for org hierarchy (when useOrgStructure is true). undefined = all levels.
+   */
+  depthToAutoSelect?: number;
 };

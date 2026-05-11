@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { User } from '../models/User';
+import { UserProfile } from '../models/UserProfile';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
 
 export interface IGraphApi {
@@ -10,4 +11,5 @@ export interface IGraphApi {
   getProfilePhotoUrl(user: User): Promise<string>;
   getPeoplePickerSuggestions(input: string): Promise<PeoplePickerPersona[]>;
   getProfilePhotoUrlUsingUserId(userId: string): Promise<string>;
+  getMyProfile(): Promise<UserProfile>;
 };

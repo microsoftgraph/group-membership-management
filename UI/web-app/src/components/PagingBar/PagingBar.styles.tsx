@@ -25,23 +25,8 @@ export const getStyles = (props: IPagingBarStyleProps): IPagingBarStyles => {
         },
         mainContainer: {
             display: "flex",
-            alignItems: "center",
-            position: "relative",
-            width: "100%",
-            padding: "0 36px",
-            boxSizing: "border-box"
-        },
-        navSection: {
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            alignItems: "center"
-        },
-        displaySection: {
-            marginLeft: "auto",
-            display: "flex",
-            alignItems: "center"
+            justifyContent: "flex-end",
+            marginRight: 36
         }
     };
 };

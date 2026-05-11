@@ -332,6 +332,9 @@ export const SourcePartBase: React.FunctionComponent<SourcePartProps> = (props: 
                 onSourceChange={handleSourceChange}
                 onEnableEdit={handleEnableEdit}
                 isEditable={isEditable}
+                useOrgStructure={part.useOrgStructure}
+                managerToAutoSelect={part.managerToAutoSelect}
+                depthToAutoSelect={part.depthToAutoSelect}
               />
             </div>
           )}

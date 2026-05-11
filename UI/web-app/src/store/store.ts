@@ -4,6 +4,7 @@
 import { PreloadedState, combineReducers, configureStore } from '@reduxjs/toolkit';
 
 import accountReducer from './account.slice';
+import copilotReducer from './copilot.slice';
 import groupPartReducer from './groupPart.slice';
 import jobsReducer from './jobs.slice';
 import localizationReducer from './localization.slice';
@@ -18,6 +19,7 @@ import sqlMembershipSourcesReducer from './sqlMembershipSources.slice';
 import operationsReducer from './operations.slice';
 import titleReducer from './title.slice';
 import themeReducer from './theme.slice';
+import userProfileReducer from './userProfile.slice';
 
 import { Services } from '../services';
 import { MsalAuthenticationService, TokenType } from '../services/auth';
@@ -52,6 +54,7 @@ const apis: Apis = {
 
 const rootReducer = combineReducers({
   account: accountReducer,
+  copilot: copilotReducer,
   groupPart: groupPartReducer,
   jobs: jobsReducer,
   localization: localizationReducer,
@@ -65,6 +68,7 @@ const rootReducer = combineReducers({
   sqlMembershipSources: sqlMembershipSourcesReducer,
   operations: operationsReducer,
   title: titleReducer,
+  userProfile: userProfileReducer,
   theme: themeReducer
 });
 

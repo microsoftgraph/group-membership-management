@@ -58,7 +58,6 @@ import {
   IconButton,
   IIconProps,
   PrimaryButton,
-  DefaultButton,
   IContextualMenuProps,
   IContextualMenuItem,
   ContextualMenu
@@ -804,12 +803,10 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               />
               {isTenantJobWriter &&
                 <div>
-                  <DefaultButton
+                  <PrimaryButton
                     text={jobsToDownloadLoading ? strings.ManageMembership.downloadingButton : strings.ManageMembership.downloadButton}
-                    iconProps={{ iconName: 'Download' }}
                     onClick={handleDownloadButtonClick}
                     disabled={selectedItems.length === 0 || jobsToDownloadLoading}
-                    styles={{ root: { borderRadius: 4 } }}
                   />
                 <>
                   <input

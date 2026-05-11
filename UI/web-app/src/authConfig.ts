@@ -30,6 +30,7 @@ const appServiceBaseUri = process.env.REACT_APP_PLAYWRIGHT_MOCK_MODE === 'true'
 
 // endpoints
 export const config = {
+  copilotChat: `${appServiceBaseUri}/api/v1/Copilot/chat`,
   getTitle: `${appServiceBaseUri}/api/v1/OpenAI/generateTitle`,
   generateTitles: `${appServiceBaseUri}/api/v1/OpenAI/generateTitles`,
   getJobs: `${appServiceBaseUri}/api/v1/jobs`,

@@ -31,7 +31,7 @@ import {
       rightControls: {
         display: 'flex',
         alignItems: 'center',
-        flex: 1,
+        marginLeft: 'auto',
       },
       themeToggle: {
         padding: '20px 36px 20px 0',

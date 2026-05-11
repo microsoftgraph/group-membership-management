@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 
 import { User } from '../models/User';
+import { UserProfile } from '../models/UserProfile';
 import { ApiBase } from './ApiBase';
 import { IGraphApi } from './IGraphApi';
 import { PeoplePickerPersona } from '../models/PeoplePickerPersona';
@@ -104,6 +105,46 @@ export class GraphApi extends ApiBase implements IGraphApi {
       } catch {
         return 'ErrorNonExistentStorage';
       }
+    }
+  }
+
+
+  public async getMyProfile(): Promise<UserProfile> {
+    try {
+      const profileResponse = await this.httpClient.get<any>('/me', {
+        params: {
+          $select: 'id,displayName,department,companyName,jobTitle'
+        }
+      });
+
+      let manager: { id: string; displayName: string; mail?: string; mailNickname?: string } | undefined;
+      try {
+        const managerResponse = await this.httpClient.get<any>('/me/manager', {
+          params: {
+            $select: 'id,displayName,mail,mailNickname,userPrincipalName'
+          }
+        });
+        manager = {
+          id: managerResponse.data.id,
+          displayName: managerResponse.data.displayName,
+          mail: managerResponse.data.userPrincipalName || managerResponse.data.mail,
+          mailNickname: managerResponse.data.mailNickname
+        };
+      } catch {
+        manager = undefined;
+      }
+
+      return {
+        id: profileResponse.data.id,
+        displayName: profileResponse.data.displayName,
+        department: profileResponse.data.department,
+        companyName: profileResponse.data.companyName,
+        jobTitle: profileResponse.data.jobTitle,
+        manager
+      };
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      throw error;
     }
   }
 };

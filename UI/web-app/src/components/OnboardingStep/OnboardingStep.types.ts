@@ -12,6 +12,7 @@ import {
     root: IStyle;
     titleCard: IStyle;
     title: IStyle;
+    stepTitleRow: IStyle;
     stepTitle: IStyle;
     stepDescription: IStyle;
     destination: IStyle;
@@ -36,6 +37,7 @@ import {
     styles?: IStyleFunctionOrObject<IOnboardingStepStyleProps, IOnboardingStepStyles>;
     stepTitle: string;
     stepDescription: string;
+    headerAction?: React.ReactNode;
     destinationType?: string;
     destinationName?: string;
   };

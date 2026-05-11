@@ -75,7 +75,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
 
     return (
         <div className={classNames.mainContainer}>
-            <div className={classNames.navSection}>
+            <div className={classNames.divContainer}>
                 <IconButton
                     iconProps={{ iconName: 'ChevronLeft' }}
                     title={strings.JobsList.PagingBar.previousPage as string}
@@ -87,8 +87,7 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                     <label className={classNames.leftLabelMessage}>{strings.JobsList.PagingBar.page}</label>
                     <TextField
                         ariaLabel={strings.JobsList.PagingBar.pageNumberAriaLabel}
-                        style={{ width: 44 }}
-                        styles={{ fieldGroup: { borderRadius: 4 } }}
+                        style={{ width: 55 }}
                         value={pageNumber.toString()}
                         onChange={onPageNumberChanged}
                     />
@@ -102,14 +101,13 @@ export const PagingBarBase: React.FunctionComponent<IPagingBarProps> = (
                     disabled={totalNumberOfPages === undefined || pageNumber >= totalNumberOfPages}
                 />
             </div>
-            <div className={classNames.displaySection}>
+            <div className={classNames.divContainer}>
                 <label className={classNames.leftLabelMessage}>{strings.JobsList.PagingBar.display}</label>
                 <Dropdown
                     title={strings.JobsList.PagingBar.pageSizeAriaLabel}
                     options={pageSizeOptions}
                     defaultSelectedKey={pageSize}
                     onChange={onPageSizeChanged}
-                    styles={{ title: { borderRadius: 4 } }}
                 />
                 <label className={classNames.rightLabelMessage}>{strings.JobsList.PagingBar.items}</label>
             </div>

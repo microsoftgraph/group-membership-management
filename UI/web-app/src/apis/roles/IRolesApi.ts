@@ -14,6 +14,8 @@ export interface Roles {
   isCustomMembershipProviderAdministrator: boolean;
   isOperationsResetAdministrator: boolean;
   isGeneralSettingsAdministrator: boolean;
+  isAIOnboardingChat: boolean;
+  isAISettingsAdministrator: boolean;
   isFetchingRoles: boolean;
 }
 
