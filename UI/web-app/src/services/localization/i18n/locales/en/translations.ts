@@ -103,8 +103,6 @@ export const strings: IStrings = {
       title: 'Group Membership Management',
       settings: 'Settings',
       reviewDisclaimer: 'Review disclaimer',
-    },
-    AppFooter: {
       switchToLightMode: 'Switch to light mode',
       switchToDarkMode: 'Switch to dark mode',
     },
