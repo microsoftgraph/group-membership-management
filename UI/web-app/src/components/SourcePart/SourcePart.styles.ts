@@ -43,7 +43,8 @@ export const getStyles = (props: SourcePartStyleProps): SourcePartStyles => {
             fontFamily: 'Segoe UI',
             marginRight: 'auto',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: 12
         },
         existingTitle: {
             fontWeight: 600
