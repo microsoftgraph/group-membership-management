@@ -402,7 +402,7 @@ export const strings: IStrings = {
     notFoundWithoutPurgeDate: 'The destination group with object ID {0} could not be found and may have been recently deleted. As a result, sync has been disabled and can no longer be reviewed or edited. To remove the affiliation with GMM immediately, use the Remove GMM Management button below.',
   },
   JobsList: {
-    listOfMemberships: 'Managed memberships',
+    listOfMemberships: 'List of memberships',
     ShimmeredDetailsList: {
       toggleSelection: 'Toggle selection',
       toggleAllSelection: 'Toggle selection for all items',

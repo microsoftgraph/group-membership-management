@@ -54,6 +54,7 @@ export const rolesSlice = createSlice({
     builder.addCase(getAllRoles.fulfilled, (state, action) => {
         Object.assign(state, action.payload);
         state.isFetchingRoles = false;
+        console.log('Roles fetched successfully:', action.payload);
     });
     builder.addCase(getAllRoles.rejected, (state) => {
         state.isFetchingRoles = false;

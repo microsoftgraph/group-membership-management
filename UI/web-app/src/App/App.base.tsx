@@ -61,8 +61,10 @@ export const AppBase: React.FunctionComponent<IAppProps> = (props: IAppProps) =>
   useEffect(() => {
     if (!loggedIn) {
       dispatch(loginAsync());
-    }
+    } else {
+      // Only fetch service status after login completes.
       dispatch(fetchServiceStatus());
+    }
   }, [dispatch, loggedIn]);
 
   useEffect(() => {
