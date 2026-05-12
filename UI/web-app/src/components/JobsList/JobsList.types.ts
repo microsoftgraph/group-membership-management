@@ -20,7 +20,6 @@ export interface IJobsListStyles {
   tabContent: IStyle;
   refresh: IStyle;
   jobsList: IStyle;
-  jobsListFilter: IStyle;
   footer: IStyle;
   noMembershipsFoundText: IStyle;
   errorMessageBar: IStyle;
@@ -32,6 +31,12 @@ export interface IJobsListStyles {
   jobsHeader: IStyle;
   approvedJobsLabel: IStyle;
   totalJobsLabel: IStyle;
+  ownerPicker: IStyle;
+  ownerPickerText: IStyle;
+  ownerPickerContainer: IStyle;
+  searchBox: IStyle;
+  searchBoxContainer: IStyle;
+  inputIcon: IStyle;
 }
 
 export interface IJobsListStyleProps {

@@ -8,10 +8,11 @@ import {
   IDetailsRowProps,
   ISelection,
   SelectionMode,
+  ColumnActionsMode,
 } from '@fluentui/react/lib/DetailsList';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { approveJobs, downloadJobs, fetchJobs } from '../../store/jobs.api';
+import { approveJobs, downloadJobs, fetchJobs, getPeoplePickerSuggestions } from '../../store/jobs.api';
 import {
   selectAllJobs,
   selectGetJobsError,
@@ -26,11 +27,28 @@ import {
   selectApproveJobsError,
   setApproveJobsResponse,
   setApproveJobsLoading,
-  selectJobsLoading
+  selectJobsLoading,
+  selectPeoplePickerSuggestions
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
-import { Selection, IObjectWithKey, Stack, Label, ProgressIndicator, Panel, PanelType, Spinner, SpinnerSize, Icon } from '@fluentui/react';
+import {
+  Selection,
+  IObjectWithKey,
+  Stack,
+  Label,
+  ProgressIndicator,
+  Panel,
+  PanelType,
+  Spinner,
+  SpinnerSize,
+  Icon,
+  SearchBox,
+  NormalPeoplePicker,
+  DirectionalHint,
+  Checkbox
+} from '@fluentui/react';
+import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useNavigate } from 'react-router-dom';
 import {
   classNamesFunction,
@@ -42,7 +60,8 @@ import {
   PrimaryButton,
   DefaultButton,
   IContextualMenuProps,
-  IContextualMenuItem
+  IContextualMenuItem,
+  ContextualMenu
 } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { Text } from '@fluentui/react/lib/Text';
@@ -59,17 +78,25 @@ import {
   ErrorBadgeIcon,
   HourGlassIcon,
 } from '@fluentui/react-icons-mdl2';
-import { JobsListFilter } from '../JobsListFilter/JobsListFilter';
 import { ActionRequired, SyncStatus } from '../../models';
 import { useStrings } from '../../store/hooks';
 import {
   selectPagingOptions,
   selectPagingBarSortKey,
   selectPagingBarIsSortedDescending,
+  selectPagingBarfilterDestinationName,
+  selectPagingBarfilterDestinationOwnerPersona,
   setSortKey,
   setIsSortedDescending,
   setPagingBarVisible,
   setCustomSortBy,
+  setFilterDestinationName,
+  setFilterDestinationOwnerPersona,
+  setFilterStatus,
+  setFilterActionRequired,
+  selectPagingBarFilterStatus,
+  selectPagingBarFilterActionRequired,
+  resetFilters,
 } from '../../store/pagingBar.slice';
 import { resetManageMembership } from '../../store/manageMembership.slice';
 
@@ -92,11 +119,12 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 ) => {
   const { className, styles } = props;
 
+  const theme = useTheme();
   const classNames: IProcessedStyleSet<IJobsListStyles> = getClassNames(
     styles,
     {
       className,
-      theme: useTheme(),
+      theme,
     }
   );
 
@@ -122,6 +150,57 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const numberOfApprovedJobs = useSelector(selectNumberOfApprovedJobs);
   const numberOfJobs = useSelector(selectNumberOfJobs);
   const approveJobsError = useSelector(selectApproveJobsError);
+
+  // Filter state
+  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
+  const persistedFilterDestinationName = useSelector(selectPagingBarfilterDestinationName);
+  const persistedFilterDestinationOwnerPersona = useSelector(selectPagingBarfilterDestinationOwnerPersona);
+  const [searchValue, setSearchValue] = useState<string>(persistedFilterDestinationName || '');
+  const [selectedOwners, setSelectedOwners] = useState<IPersonaProps[]>(() => {
+    return persistedFilterDestinationOwnerPersona ? [persistedFilterDestinationOwnerPersona] : [];
+  });
+
+  const handleSearchChanged = (_event?: React.ChangeEvent<HTMLInputElement>, newValue?: string): void => {
+    setSearchValue(newValue || '');
+    dispatch(setFilterDestinationName(newValue || ''));
+  };
+
+  const handleSearchClear = (): void => {
+    setSearchValue('');
+    dispatch(setFilterDestinationName(''));
+  };
+
+  const handleOwnersChanged = (items?: IPersonaProps[] | undefined) => {
+    if (items !== undefined && items.length > 0) {
+      setSelectedOwners(items);
+      const persona = items[0];
+      const personaKey = typeof persona.key === 'number' ? persona.key : parseInt(persona.key as string, 10);
+      dispatch(setFilterDestinationOwnerPersona({
+        key: personaKey,
+        text: persona.text || '',
+        secondaryText: persona.secondaryText || '',
+        id: persona.id as string
+      }));
+    } else {
+      setSelectedOwners([]);
+      dispatch(setFilterDestinationOwnerPersona(undefined));
+    }
+  };
+
+  const getPickerSuggestions = async (filterText: string): Promise<IPersonaProps[]> => {
+    if (!filterText) return [];
+    const action = await dispatch(getPeoplePickerSuggestions(filterText));
+    if (getPeoplePickerSuggestions.rejected.match(action)) {
+      return ownerPickerSuggestions ?? [];
+    }
+    return (action.payload as IPersonaProps[]) ?? [];
+  };
+
+  const clearFilters = () => {
+    dispatch(resetFilters());
+    setSearchValue('');
+    setSelectedOwners([]);
+  };
 
   const selectionRef = useRef<ISelection<IObjectWithKey>>(
     new Selection<IItem>({
@@ -182,9 +261,11 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     }
   }, [jobsLoading]);
 
-  const navigate = useNavigate();
+   const navigate = useNavigate();
 
   const [isShimmerEnabled, setIsShimmerEnabled] = useState(false);
+  const [columnMenuTarget, setColumnMenuTarget] = useState<HTMLElement | null>(null);
+  const [columnMenuColumn, setColumnMenuColumn] = useState<IColumn | null>(null);
   const items: IItem[] = (jobs || []).map(job => ({
     ...job,
     key: job.syncJobId,
@@ -195,7 +276,7 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'targetDestinationType',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.type,
       fieldName: 'targetDestinationType',
-      minWidth: 100,
+      minWidth: 60,
       maxWidth: 100,
       isMultiline: false,
       isResizable: true,
@@ -211,18 +292,18 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       key: 'targetGroupName',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.name,
       fieldName: 'targetGroupName',
-      minWidth: 220,
+      minWidth: 300,
       isMultiline: false,
       isResizable: true,
       isSorted: sortKey === 'targetGroupName',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
+      columnActionsMode: ColumnActionsMode.hasDropdown,
     },
     {
       key: 'email',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.email,
       fieldName: 'email',
-      minWidth: 220,
+      minWidth: 300,
       isMultiline: false,
       isResizable: true,
       isSorted: sortKey === 'email',
@@ -230,73 +311,65 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
       columnActionsMode: 0,
     },
     {
+      key: 'lastModifiedTime',
+      name: strings.JobsList.ShimmeredDetailsList.columnNames.lastModified,
+      fieldName: 'lastModifiedTime',
+      minWidth: 150,
+      maxWidth: 170,
+      isMultiline: true,
+      isResizable: true,
+      isSorted: sortKey === 'lastModifiedTime',
+      isSortedDescending,
+      columnActionsMode: ColumnActionsMode.hasDropdown,
+    },
+    {
       key: 'lastSuccessfulRunTime',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.lastRun,
       fieldName: 'lastSuccessfulRunTime',
-      minWidth: 100,
-      maxWidth: 100,
+      minWidth: 150,
+      maxWidth: 170,
       isMultiline: true,
       isResizable: true,
       isSorted: sortKey === 'lastSuccessfulRunTime',
       isSortedDescending,
-      showSortIconWhenUnsorted: true,
+      columnActionsMode: ColumnActionsMode.hasDropdown,
     },
     {
       key: 'estimatedNextRunTime',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.nextRun,
       fieldName: 'estimatedNextRunTime',
-      minWidth: 100,
-      maxWidth: 100,
+      minWidth: 150,
+      maxWidth: 170,
       isMultiline: true,
       isResizable: true,
       isSorted: sortKey === 'estimatedNextRunTime',
       isSortedDescending,
-      columnActionsMode: 0,
-    },
-    {
-      key: 'lastModifiedTime',
-      name: strings.JobsList.ShimmeredDetailsList.columnNames.lastModified,
-      fieldName: 'lastModifiedTime',
-      minWidth: 160,
-      maxWidth: 180,
-      isMultiline: true,
-      isResizable: true,
-      isSorted: sortKey === 'lastModifiedTime',
-      isSortedDescending,
-      showSortIconWhenUnsorted: true,
+      columnActionsMode: ColumnActionsMode.hasDropdown,
     },
     {
       key: 'enabledOrNot',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.status,
       fieldName: 'enabledOrNot',
       minWidth: 100,
-      maxWidth: 100,
+      maxWidth: 150,
       isMultiline: false,
       isResizable: true,
       isSorted: sortKey === 'enabledOrNot',
       isSortedDescending,
-      columnActionsMode: 0,
+      columnActionsMode: ColumnActionsMode.hasDropdown,
     },
     {
       key: 'actionRequired',
       name: strings.JobsList.ShimmeredDetailsList.columnNames.actionRequired,
       fieldName: 'actionRequired',
-      minWidth: 150,
+      minWidth: 200,
+      maxWidth: 250,
       isMultiline: false,
       isResizable: true,
       isSorted: sortKey === 'actionRequired',
       isSortedDescending,
-      columnActionsMode: 0,
-    },
-    {
-      key: 'arrow',
-      name: '',
-      fieldName: '',
-      minWidth: 50,
-      isMultiline: false,
-      isResizable: true,
-      columnActionsMode: 0,
-    },
+      columnActionsMode: ColumnActionsMode.hasDropdown,
+    }
   ];
 
   const onContextualItemClicked = (
@@ -314,19 +387,52 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     }
   };
 
+  const dropdownSortColumns = ['targetGroupName', 'lastSuccessfulRunTime', 'estimatedNextRunTime', 'lastModifiedTime'];
+  const dropdownColumns = [...dropdownSortColumns, 'enabledOrNot', 'actionRequired'];
+
+  const persistedFilterStatus = useSelector(selectPagingBarFilterStatus);
+  const persistedFilterActionRequired = useSelector(selectPagingBarFilterActionRequired);
+  const hasActiveFilter = !!(persistedFilterDestinationName || persistedFilterDestinationOwnerPersona || persistedFilterStatus || persistedFilterActionRequired);
+
   function onColumnHeaderClick(event?: any, column?: IColumn) {
     if (column) {
+      if (dropdownColumns.includes(column.key)) {
+        setColumnMenuTarget(event?.currentTarget as HTMLElement);
+        setColumnMenuColumn(column);
+        return;
+      }
+
       const isSortedDescending: boolean = !!column.isSorted && !column.isSortedDescending;
       dispatch(setSortKey(column.key));
       dispatch(setIsSortedDescending(isSortedDescending));
-
-      if (column.key === 'targetGroupName' || column.key === 'lastModifiedTime') {
-        dispatch(setCustomSortBy(column.key));
-        // Enable shimmer when custom sorting starts
-        setIsShimmerEnabled(true);
-      }
     }
   }
+
+  const applyColumnSort = (column: IColumn, descending: boolean) => {
+    dispatch(setSortKey(column.key));
+    dispatch(setIsSortedDescending(descending));
+    if (column.key === 'targetGroupName' || column.key === 'lastModifiedTime') {
+      dispatch(setCustomSortBy(column.key));
+    }
+    setIsShimmerEnabled(true);
+    setColumnMenuTarget(null);
+    setColumnMenuColumn(null);
+  };
+
+  const applyStatusFilter = (status: string) => {
+    dispatch(setFilterStatus(status));
+    setColumnMenuTarget(null);
+    setColumnMenuColumn(null);
+  };
+
+  const applyActionRequiredFilter = (actionRequired: string) => {
+    dispatch(setFilterActionRequired(actionRequired));
+    setColumnMenuTarget(null);
+    setColumnMenuColumn(null);
+  };
+
+  const isDateColumn = (key: string) =>
+    key === 'lastSuccessfulRunTime' || key === 'estimatedNextRunTime' || key === 'lastModifiedTime';
 
   const error = useSelector(selectGetJobsError);
 
@@ -389,35 +495,41 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     dispatch(fetchJobs());
   };
 
+
+  const checkboxIconStyle = { styles: { root: { color: theme.semanticColors.bodyText, borderRadius: 2 } } };
+
+  const roundedCheckboxStyles = {
+    checkbox: { borderRadius: 4, width: 16, height: 16 },
+    checkmark: { fontSize: 12 },
+    root: { pointerEvents: 'none' as const },
+  };
+
+  const renderCheckboxIcon = (checked: boolean) => () => (
+    <Checkbox checked={checked} styles={roundedCheckboxStyles} />
+  );
+
   const menuProps: IContextualMenuProps = {
-    items: [
-      {
-        key: 'addSync',
-        text: strings.ManageMembership.addSyncButton,
-        iconProps: { iconName: 'AddFriend' },
-        onClick: onContextualItemClicked
-      },
-    ],
+    items: [],
     directionalHintFixed: true,
     alignTargetEdge: true
   };
 
   if (isTenantJobWriter) {
-    menuProps.items[1] = {
+    menuProps.items.push({
       key: 'bulkAddSyncs',
       text: strings.ManageMembership.bulkAddSyncsButton,
       iconProps: { iconName: 'AddGroup' },
       disabled: true
-    };
+    });
   }
 
   if (isSubmissionReviewer) {
-    menuProps.items[2] = {
+    menuProps.items.push({
       key: 'bulkApproveSyncs',
       text: strings.ManageMembership.bulkApproveSyncsButton,
       iconProps: { iconName: 'CheckMark' },
       onClick: onContextualItemClicked
-    };
+    });
   }
 
   const refreshIcon: IIconProps = { iconName: 'Refresh' };
@@ -436,15 +548,15 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         const spaceIndex = isEmpty ? -1 : fieldContent.indexOf(' ');
         const lastOrNextRunDate = isEmpty
           ? '-'
-          : fieldContent.substring(0, spaceIndex);
+          : fieldContent.substring(0, spaceIndex).replace(',', '');
         const hoursAgoOrHoursLeft = isEmpty
           ? ''
-          : fieldContent.substring(spaceIndex + 1);
+          : fieldContent.substring(spaceIndex + 1).replace(',', '');
 
         return (
           <div>
             <div>{lastOrNextRunDate}</div>
-            <div>{hoursAgoOrHoursLeft}</div>
+            <div style={{ color: theme.palette.neutralTertiary, fontSize: 10 }}>{hoursAgoOrHoursLeft}</div>
           </div>
         );
       }
@@ -456,12 +568,20 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
         }
 
         try {
-          // Ensure the datetime is treated as UTC by appending 'Z' if not present
           const utcDate = fieldContent.endsWith('Z') ? fieldContent : `${fieldContent}Z`;
           const date = new Date(utcDate);
-          const localDateTime = date.toLocaleString();
+          const now = new Date();
+          const diffMs = now.getTime() - date.getTime();
+          const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+          const dateStr = `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+          const hoursAgo = diffHours <= 0 ? strings.JobsList.JobsListFilter.columnMenu.justNow : strings.JobsList.JobsListFilter.columnMenu.hrsAgo.replace('{0}', String(diffHours));
 
-          return <div>{localDateTime}</div>;
+          return (
+            <div>
+              <div>{dateStr}</div>
+              <div style={{ color: theme.palette.neutralTertiary, fontSize: 10 }}>{hoursAgo}</div>
+            </div>
+          );
         } catch {
           return <div>{fieldContent}</div>;
         }
@@ -600,9 +720,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
 
   return (
     <div className={classNames.root}>
-      <div className={classNames.jobsListFilter}>
-        <JobsListFilter />
-      </div>
       <div className={classNames.jobsList}>
         <div>
           {error && (
@@ -621,6 +738,70 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               <Text variant="xLarge">{strings.JobsList.listOfMemberships}</Text>
             </div>
             <div className={classNames.header}>
+              {(isTenantJobWriter || isSubmissionReviewer) && (
+                <div className={classNames.ownerPickerContainer}>
+                  <NormalPeoplePicker
+                    onResolveSuggestions={getPickerSuggestions}
+                    pickerSuggestionsProps={{
+                      suggestionsHeaderText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.suggestionsHeaderText,
+                      noResultsFoundText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.noResultsFoundText,
+                      loadingText: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.loadingText,
+                    }}
+                    key={'normal'}
+                    aria-label={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.label}
+                    selectionAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.selectionAriaLabel}
+                    removeButtonAriaLabel={strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.removeButtonAriaLabel}
+                    resolveDelay={300}
+                    itemLimit={1}
+                    selectedItems={selectedOwners}
+                    onChange={handleOwnersChanged}
+                    inputProps={{
+                      placeholder: strings.JobsList.JobsListFilter.filters.ownerPeoplePicker.label,
+                      style: { paddingRight: 28 },
+                    }}
+                    styles={{
+                      root: classNames.ownerPicker,
+                      text: classNames.ownerPickerText,
+                    }}
+                    pickerCalloutProps={{
+                      directionalHint: DirectionalHint.bottomAutoEdge,
+                      calloutWidth: 300,
+                    }}
+                  />
+                  <Icon iconName="Contact" className={classNames.inputIcon} />
+                </div>
+              )}
+              <div className={classNames.searchBoxContainer}>
+                <SearchBox
+                  placeholder={strings.JobsList.JobsListFilter.filters.destinationName.placeholder}
+                  value={searchValue}
+                  onChange={handleSearchChanged}
+                  onClear={handleSearchClear}
+                  iconProps={{ iconName: '' }}
+                  styles={{
+                    root: classNames.searchBox,
+                    icon: { display: 'none' },
+                    field: { paddingRight: 28 },
+                  }}
+                />
+                <Icon iconName="Search" className={classNames.inputIcon} />
+              </div>
+              <DefaultButton
+                iconProps={{ iconName: 'ClearFilter' }}
+                text={strings.JobsList.JobsListFilter.clearButtonTooltip}
+                onClick={clearFilters}
+                disabled={!hasActiveFilter}
+                styles={{
+                  root: {
+                    borderRadius: 4,
+                    borderColor: hasActiveFilter ? theme.palette.themePrimary : theme.palette.neutralTertiaryAlt,
+                    color: hasActiveFilter ? theme.palette.themePrimary : theme.palette.neutralTertiary,
+                  },
+                  icon: {
+                    color: hasActiveFilter ? theme.palette.themePrimary : theme.palette.neutralTertiary,
+                  },
+                }}
+              />
               {isTenantJobWriter &&
                 <div>
                   <DefaultButton
@@ -698,13 +879,39 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               }
               {isJobWriter &&
                 <div className={classNames.manageMembershipButton}>
-                  <PrimaryButton
-                    id="manage-membership-button"
-                    text={strings.ManageMembership.manageMembershipButton}
-                    menuProps={menuProps}
-                    persistMenu={true}
-                    styles={{ root: { borderRadius: 4 }, splitButtonContainer: { borderRadius: 4 } }}
-                  />
+                  {(isTenantJobWriter || isSubmissionReviewer) ? (
+                    <PrimaryButton
+                      id="manage-membership-button"
+                      text={strings.ManageMembership.manageMembershipButton}
+                      menuProps={menuProps}
+                      split={true}
+                      onClick={() => {
+                        dispatch(resetManageMembership());
+                        dispatch(clearJob());
+                        navigate('/ManageMembership', { replace: false, state: { item: 1 } });
+                      }}
+                      persistMenu={true}
+                      styles={{
+                        root: { borderRadius: '4px 0 0 4px' },
+                        splitButtonContainer: { borderRadius: 4 },
+                        splitButtonMenuButton: { borderRadius: '0 4px 4px 0' },
+                        splitButtonDivider: { backgroundColor: theme.palette.themeLight },
+                      }}
+                    />
+                  ) : (
+                    <PrimaryButton
+                      id="manage-membership-button"
+                      text={strings.ManageMembership.manageMembershipButton}
+                      onClick={() => {
+                        dispatch(resetManageMembership());
+                        dispatch(clearJob());
+                        navigate('/ManageMembership', { replace: false, state: { item: 1 } });
+                      }}
+                      styles={{
+                        root: { borderRadius: 4 },
+                      }}
+                    />
+                  )}
                 </div>
               }
             </div>
@@ -725,8 +932,8 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
               ariaLabelForSelectAllCheckbox={strings.JobsList.ShimmeredDetailsList.toggleAllSelection}
               checkButtonAriaLabel={strings.JobsList.ShimmeredDetailsList.selectRow}
               onRenderItemColumn={_renderItemColumn}
-              onItemInvoked={onItemInvoked} // Handle tab and enter key navigation
-              onRenderRow={onRenderRow} // Handle row click
+              onItemInvoked={onItemInvoked}
+              onRenderRow={onRenderRow}
               selection={selectionRef.current}
             />
 
@@ -738,6 +945,106 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
           </div>
         </div>
       </div>
+      {columnMenuTarget && columnMenuColumn && columnMenuColumn.key === 'enabledOrNot' && (
+        <ContextualMenu
+          target={columnMenuTarget}
+          onDismiss={() => { setColumnMenuTarget(null); setColumnMenuColumn(null); }}
+          styles={{ root: { fontSize: 12 }, subComponentStyles: { menuItem: { root: { fontSize: 12 } }, callout: {} } }}
+          items={[
+            {
+              key: 'selectAll',
+              text: strings.JobsList.JobsListFilter.columnMenu.selectAll,
+              style: { color: theme.palette.themePrimary, paddingLeft: 4 },
+              iconProps: { iconName: '', styles: { root: { display: 'none' } } },
+              onClick: () => applyStatusFilter(''),
+            },
+            {
+              key: 'divider',
+              itemType: 1,
+            },
+            {
+              key: 'enabled',
+              text: strings.JobsList.JobsListFilter.filters.status.options.enabled,
+              onRenderIcon: renderCheckboxIcon(persistedFilterStatus === 'Enabled'),
+              onClick: () => applyStatusFilter(persistedFilterStatus === 'Enabled' ? '' : 'Enabled'),
+            },
+            {
+              key: 'disabled',
+              text: strings.JobsList.JobsListFilter.filters.status.options.disabled,
+              onRenderIcon: renderCheckboxIcon(persistedFilterStatus === 'Disabled'),
+              onClick: () => applyStatusFilter(persistedFilterStatus === 'Disabled' ? '' : 'Disabled'),
+            },
+          ]}
+          directionalHint={DirectionalHint.bottomLeftEdge}
+        />
+      )}
+      {columnMenuTarget && columnMenuColumn && columnMenuColumn.key === 'actionRequired' && (
+        <ContextualMenu
+          target={columnMenuTarget}
+          onDismiss={() => { setColumnMenuTarget(null); setColumnMenuColumn(null); }}
+          styles={{ root: { fontSize: 12 }, subComponentStyles: { menuItem: { root: { fontSize: 12 } }, callout: {} } }}
+          items={[
+            {
+              key: 'selectAll',
+              text: strings.JobsList.JobsListFilter.columnMenu.selectAll,
+              style: { color: theme.palette.themePrimary, paddingLeft: 4 },
+              iconProps: { iconName: '', styles: { root: { display: 'none' } } },
+              onClick: () => applyActionRequiredFilter(''),
+            },
+            {
+              key: 'divider',
+              itemType: 1,
+            },
+            {
+              key: SyncStatus.PendingReview,
+              text: strings.JobsList.JobsListFilter.filters.actionRequired.options.pendingReview,
+              onRenderIcon: renderCheckboxIcon(persistedFilterActionRequired === SyncStatus.PendingReview),
+              onClick: () => applyActionRequiredFilter(persistedFilterActionRequired === SyncStatus.PendingReview ? '' : SyncStatus.PendingReview),
+            },
+            {
+              key: SyncStatus.ThresholdExceeded,
+              text: strings.JobsList.JobsListFilter.filters.actionRequired.options.thresholdExceeded,
+              onRenderIcon: renderCheckboxIcon(persistedFilterActionRequired === SyncStatus.ThresholdExceeded),
+              onClick: () => applyActionRequiredFilter(persistedFilterActionRequired === SyncStatus.ThresholdExceeded ? '' : SyncStatus.ThresholdExceeded),
+            },
+            {
+              key: SyncStatus.MembershipDataNotFound,
+              text: strings.JobsList.JobsListFilter.filters.actionRequired.options.membershipDataNotFound,
+              onRenderIcon: renderCheckboxIcon(persistedFilterActionRequired === SyncStatus.MembershipDataNotFound),
+              onClick: () => applyActionRequiredFilter(persistedFilterActionRequired === SyncStatus.MembershipDataNotFound ? '' : SyncStatus.MembershipDataNotFound),
+            },
+            {
+              key: SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup,
+              text: strings.JobsList.JobsListFilter.filters.actionRequired.options.guestUsersCannotBeAddedToUnifiedGroup,
+              onRenderIcon: renderCheckboxIcon(persistedFilterActionRequired === SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup),
+              onClick: () => applyActionRequiredFilter(persistedFilterActionRequired === SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup ? '' : SyncStatus.GuestUsersCannotBeAddedToUnifiedGroup),
+            },
+          ]}
+          directionalHint={DirectionalHint.bottomLeftEdge}
+        />
+      )}
+      {columnMenuTarget && columnMenuColumn && dropdownSortColumns.includes(columnMenuColumn.key) && (
+        <ContextualMenu
+          target={columnMenuTarget}
+          onDismiss={() => { setColumnMenuTarget(null); setColumnMenuColumn(null); }}
+          styles={{ root: { fontSize: 12 }, subComponentStyles: { menuItem: { root: { fontSize: 12 } }, callout: {} } }}
+          items={[
+            {
+              key: 'sortAsc',
+              text: isDateColumn(columnMenuColumn.key) ? strings.JobsList.JobsListFilter.columnMenu.sortOlderToNewer : strings.JobsList.JobsListFilter.columnMenu.sortAtoZ,
+              iconProps: { iconName: 'SortUp', ...checkboxIconStyle },
+              onClick: () => applyColumnSort(columnMenuColumn, false),
+            },
+            {
+              key: 'sortDesc',
+              text: isDateColumn(columnMenuColumn.key) ? strings.JobsList.JobsListFilter.columnMenu.sortNewerToOlder : strings.JobsList.JobsListFilter.columnMenu.sortZtoA,
+              iconProps: { iconName: 'SortDown', ...checkboxIconStyle },
+              onClick: () => applyColumnSort(columnMenuColumn, true),
+            },
+          ]}
+          directionalHint={DirectionalHint.bottomLeftEdge}
+        />
+      )}
     </div>
   );
 };

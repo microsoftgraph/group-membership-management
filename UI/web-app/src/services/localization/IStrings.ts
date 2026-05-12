@@ -468,6 +468,15 @@ export type IStrings = {
       };
       filterButtonText: string;
       clearButtonTooltip: string;
+      columnMenu: {
+        selectAll: string;
+        sortAtoZ: string;
+        sortZtoA: string;
+        sortOlderToNewer: string;
+        sortNewerToOlder: string;
+        justNow: string;
+        hrsAgo: string;
+      };
     };
     NoResults: string;
   };
