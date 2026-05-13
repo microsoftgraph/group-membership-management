@@ -137,8 +137,8 @@ test.describe('Job Details Tests', () => {
     await page.goto(url);
     await page.waitForTimeout(10000);
 
-    await page.getByRole('button', { name: 'Add' }).click();
-    await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+    // Click the Add button to navigate to ManageMembership
+    await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
     await page.getByPlaceholder('Enter the name of the group').click();
 
@@ -227,8 +227,8 @@ test.describe('Job Details Tests', () => {
     await page.goto(url);
     await page.waitForTimeout(10000);
 
-    await page.getByRole('button', { name: 'Add' }).click();
-    await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+    // Click the Add button to navigate to ManageMembership
+    await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
     await page.getByPlaceholder('Enter the name of the group').click();
 
@@ -297,8 +297,8 @@ test.describe('Job Details Tests', () => {
     await page.goto(url);
     await page.waitForTimeout(10000);
 
-    await page.getByRole('button', { name: 'Add' }).click();
-    await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+    // Click the Add button to navigate to ManageMembership
+    await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
     await page.getByPlaceholder('Enter the name of the group').click();
 
@@ -371,8 +371,8 @@ test.describe('Job Details Tests', () => {
 
     await page.goto(url);
     await page.waitForTimeout(10000);
-    await page.getByRole('button', { name: 'Add' }).click();
-    await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+    // Click the Add button to navigate to ManageMembership
+    await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
     await page.getByPlaceholder('Enter the name of the group').click();
     const groupName = `pw-test-${uuidv4().replace(/-/g, '').slice(0, 10)}`;
@@ -597,8 +597,8 @@ test.describe('Job Details Tests', () => {
     await page.goto(url);
     await page.waitForTimeout(10000);
 
-    await page.getByRole('button', { name: 'Add' }).click();
-    await page.getByRole('menuitem', { name: 'Add Sync', exact: true }).click();
+    // Click the Add button to navigate to ManageMembership
+    await page.locator('#manage-membership-button').click();
     await page.getByText('Create a new group').click();
     await page.getByPlaceholder('Enter the name of the group').click();
 

@@ -17,7 +17,7 @@ test('Test Title Pattern Recognition', { tag: '@title' }, async ({ page }) => {
   await page.goto(url);
   await page.waitForTimeout(3000);
 
-  await page.getByRole('button', { name: /Add/i }).click();
+  await page.locator('#manage-membership-button').click();
   await page.waitForTimeout(3000);
 
   try {
