@@ -686,6 +686,7 @@ export const strings: IStrings = {
     leaderPrompt: '¡Entendido! ¿De la organización de quién debo obtener {0}? Proporciona el alias o nombre del líder.',
     leaderInputPlaceholder: 'Escribe un alias o nombre',
     leaderSubmit: 'Continuar',
+    tryOneOfTheseToGetStarted: 'PRUEBA UNO DE ESTOS PARA EMPEZAR',
   },
   excludePrefix: 'Excluir',
   copy: 'Copiar',

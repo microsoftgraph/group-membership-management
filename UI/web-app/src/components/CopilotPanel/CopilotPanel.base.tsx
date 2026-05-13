@@ -221,8 +221,8 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                         )}
                         <IconButton
                             iconProps={{ iconName: 'Cancel' }}
-                            title="Close"
-                            ariaLabel="Close"
+                            title={strings.Copilot?.closeButton || 'Close'}
+                            ariaLabel={strings.Copilot?.closeButton || 'Close'}
                             onClick={dismissPanel}
                             styles={{
                                 root: {
@@ -281,7 +281,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                     {suggestedPrompts.length > 0 && (
                     <div className={classNames.suggestedPromptsContainer}>
                         <div className={classNames.suggestedPromptsHeader}>
-                            {'TRY ONE OF THESE TO GET STARTED'}
+                            {strings.Copilot?.tryOneOfTheseToGetStarted || 'TRY ONE OF THESE TO GET STARTED'}
                         </div>
                         {suggestedPrompts.map((prompt) => (
                             <button
@@ -454,7 +454,7 @@ export const CopilotPanelBase: React.FunctionComponent<ICopilotPanelProps> = (
                             <div className={`${classNames.messageRow} ${classNames.botMessage}`}>
                                 {renderBotAvatar()}
                                 <div className={classNames.messageContent} style={{ backgroundColor: theme.semanticColors.errorBackground, color: theme.semanticColors.errorText }}>
-                                    {error || strings.Copilot?.errorMessage || 'Sorry, something went wrong. Please try again.'}
+                                    {strings.Copilot?.errorMessage || 'Sorry, something went wrong. Please try again.'}
                                 </div>
                             </div>
                         )}

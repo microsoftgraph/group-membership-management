@@ -69,7 +69,8 @@ const copilotSlice = createSlice({
             })
             .addCase(sendCopilotMessage.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.error.message || 'An error occurred';
+                const payload = action.payload as { message?: string } | undefined;
+                state.error = payload?.message || action.error.message || 'An error occurred';
             });
     },
 });

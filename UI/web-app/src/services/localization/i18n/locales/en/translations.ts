@@ -684,6 +684,7 @@ export const strings: IStrings = {
     leaderPrompt: "Got it! Whose org should I pull {0} from? Please provide the leader's alias or name.",
     leaderInputPlaceholder: 'Type an alias or name',
     leaderSubmit: 'Continue',
+    tryOneOfTheseToGetStarted: 'TRY ONE OF THESE TO GET STARTED',
   },
   excludePrefix: 'Exclude',
   copy: 'Copy',

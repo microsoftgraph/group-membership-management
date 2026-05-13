@@ -80,7 +80,7 @@ export interface SendMessagePayload {
 
 export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessagePayload, ThunkConfig>(
     'copilot/sendMessage',
-    async ({ message: userMessage, userContext, hrAttributes, currentFilter }, { extra, getState }) => {
+    async ({ message: userMessage, userContext, hrAttributes, currentFilter }, { extra, getState, rejectWithValue }) => {
         const { authenticationService } = extra.services;
         const token = await authenticationService.getTokenAsync(TokenType.GMM);
         const headers = new Headers();
@@ -111,12 +111,27 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
 
         try {
             const response = await fetch(config.copilotChat, options);
+            const responseText = await response.text();
 
             if (!response.ok) {
-                throw new Error('Failed to send message to Copilot');
+                return rejectWithValue({
+                    message: 'Failed to send message to Copilot',
+                    status: response.status,
+                    statusText: response.statusText,
+                    body: responseText,
+                });
             }
 
-            const data: CopilotApiResponse = await response.json();
+            let data: CopilotApiResponse;
+            try {
+                data = JSON.parse(responseText) as CopilotApiResponse;
+            } catch (parseError) {
+                return rejectWithValue({
+                    message: 'Failed to parse Copilot response',
+                    body: responseText,
+                    error: parseError instanceof Error ? parseError.message : String(parseError),
+                });
+            }
 
             const assistantMessage: IChatMessage = {
                 id: uuidv4(),
@@ -134,7 +149,10 @@ export const sendCopilotMessage = createAsyncThunk<CopilotResponse, SendMessageP
                 useOrgStructure: sourceParts.some(p => p.useOrgStructure),
             };
         } catch (error) {
-            throw new Error('Failed to communicate with GMM Copilot. Please try again.');
+            return rejectWithValue({
+                message: 'Failed to communicate with GMM Copilot. Please try again.',
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
     }
 );
