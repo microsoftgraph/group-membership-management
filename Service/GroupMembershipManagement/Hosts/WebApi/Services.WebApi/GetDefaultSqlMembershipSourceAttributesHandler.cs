@@ -55,6 +55,7 @@ namespace Services
                     sqlAttribute.CustomLabel = storedAttribute?.CustomLabel ?? "";
                     sqlAttribute.Description = storedAttribute?.Description ?? "";
                     sqlAttribute.Enabled = storedAttribute?.Enabled ?? true;
+                    sqlAttribute.NullThreshold = storedAttribute?.NullThreshold;
                     return sqlAttribute;
 
                 }).ToList();

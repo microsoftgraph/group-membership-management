@@ -304,7 +304,8 @@ namespace Services
                                             {
                                                 _loggingRepository.LogMessageAsync(new LogMessage { Message = $"NullThreshold for '{attr.Name}' was out of range ({attr.NullThreshold.Value}), clamped to {clampedThreshold}." }, VerbosityLevel.INFO).GetAwaiter().GetResult();
                                             }
-                                            thresholds[attr.Name] = clampedThreshold;
+                                            var columnName = attr.HasMapping ? attr.Name + "_Code" : attr.Name;
+                                            thresholds[columnName] = clampedThreshold;
                                         }
                                     }
                                 }
