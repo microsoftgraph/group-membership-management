@@ -10,6 +10,9 @@ param isManagedApplication bool = false
 param appConfigurationName string
 param setRBACPermissions bool
 
+@description('When true, networking resources (private endpoints) under \'webApiComputeResources\' are skipped.')
+param skipNetworkingDeployment bool = true
+
 // UI parameters
 param customDomainName string = ''
 param apiServiceBaseUri string
@@ -732,6 +735,7 @@ module webApiComputeResources '../Service/GroupMembershipManagement/Hosts/WebApi
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     apiHostname: resolvedApiHostname
+    skipNetworkingDeployment: skipNetworkingDeployment
   }
   dependsOn: [
     sqlMembershipObtainerComputeResources

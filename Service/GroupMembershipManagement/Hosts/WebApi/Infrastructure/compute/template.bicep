@@ -70,6 +70,9 @@ param signalrCORS array = ['https://microsoft.com']
 @description('Location for the OpenAI resource.')
 param aiLocation string
 
+@description('When true, networking resources (private endpoints, DCR, DCR association) are skipped.')
+param skipNetworkingDeployment bool = true
+
 param featureFlags object = {
   enableTeamsChannel: false
   enableOpenAI: false
@@ -385,7 +388,7 @@ resource signalR 'Microsoft.SignalRService/signalR@2023-08-01-preview' = {
 var networkingResourceGroup = '${solutionAbbreviation}-networking-${environmentAbbreviation}'
 var privateLinkVnetName = '${solutionAbbreviation}-networking-${environmentAbbreviation}-privatelink-vnet'
 
-module signalRPrivateEndpoint 'privateEndpoint.bicep' = {
+module signalRPrivateEndpoint 'privateEndpoint.bicep' = if (!skipNetworkingDeployment) {
   name: 'deploy-signalr-pe'
   scope: resourceGroup(networkingResourceGroup)
   params: {
