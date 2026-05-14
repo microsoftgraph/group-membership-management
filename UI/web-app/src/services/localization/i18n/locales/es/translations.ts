@@ -21,6 +21,8 @@ export const strings: IStrings = {
   maintenanceTitle: 'Esta aplicación está en mantenimiento',
   maintenanceMessage: 'La IU de GMM está en mantenimiento. Por favor intente de nuevo más tarde. Gracias por su paciencia.',
   permissionDenied: 'No tiene permiso para ver esta pagina. Por favor contacte a su administrador.',
+  noOwnedGroupsAccessGuidance: 'Actualmente no es propietario de ningún grupo administrado por esta aplicación. Visite {0} para más información.',
+  noOwnedGroupsAccessGuidanceLinkLabel: 'el panel de control',
   HROnboarding: {
     orgLeader: "Líder de la organización",
     provideOrgLeader: "Proporcionar líder de la organización",

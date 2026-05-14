@@ -3,6 +3,7 @@
 import { Fragment, ReactNode } from 'react';
 
 export function jsxFormat(template: string, ...components: ReactNode[]): ReactNode {
+    if (!template) return <>{template}</>;
     const parts = template.split(/(\{\d+\})/g); // split by placeholders like {0}, {1}
     return (<>
         {parts.map((part, index) => {
