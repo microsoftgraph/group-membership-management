@@ -227,6 +227,13 @@ namespace Services.WebApi
                 if (result != null) return result;
             }
 
+            // Handle ScheduleNow
+            if (request.ChangeReason == SyncJobChangeReason.ScheduledNow.ToString())
+            {
+                var result = await ValidateAndUpdateSyncJob(request, syncJob, syncJobChange, syncJob.Status);
+                if (result != null) return result;
+            }
+
             // Handle General Update
             if (request.ChangeReason == SyncJobChangeReason.Update.ToString())
             {
@@ -263,7 +270,7 @@ namespace Services.WebApi
 
             var response = new PatchJobResponse();
 
-            if(request.ChangeReason == SyncJobChangeReason.Update.ToString())
+            if(request.ChangeReason == SyncJobChangeReason.Update.ToString() || request.ChangeReason == SyncJobChangeReason.ScheduledNow.ToString())
             {
                 try
                 {
