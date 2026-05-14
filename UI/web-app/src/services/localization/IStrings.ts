@@ -18,8 +18,6 @@ export type IStrings = {
   maintenanceTitle: string;
   maintenanceMessage: string;
   permissionDenied: string;
-  noOwnedGroupsAccessGuidance: string;
-  noOwnedGroupsAccessGuidanceLinkLabel: string;
   HROnboarding: {
     orgLeader: string;
     provideOrgLeader: string;
@@ -264,6 +262,16 @@ export type IStrings = {
       removeGMM: string;
       removeGMMWarning: string;
       removeGMMConfirmation: string;
+      syncNow: string;
+      syncNowDialogTitle: string;
+      syncNowDialogMessage: string;
+      syncNowDialogSubMessage: string;
+      syncNowIgnoreThresholdCheckbox: string;
+      syncNowConfirm: string;
+      syncNowCancel: string;
+      syncNowUsageLimit: string;
+      syncNowUsageUnavailable: string;
+      syncNowButtonAriaLabel: string;
     };
     descriptions: {
       requestedBy: string;
@@ -291,6 +299,8 @@ export type IStrings = {
       submitterNotOwner: string;
       reviewerCannotReviewOwnSubmission: string;
       rejectionError: string;
+      syncNowError: string;
+      syncNowLimitExceeded: string;
     };
     Panel: {
       dismissButtonAriaLabel: string;
@@ -329,6 +339,7 @@ export type IStrings = {
       ignoreThresholdOnce: string;
       businessJustification: string;
       groupSettings: string;
+      scheduledNow: string;
       takeAction: string;
       changesAppliedSuccess: string;
       syncPausedSuccess: string;
@@ -348,6 +359,7 @@ export type IStrings = {
         pauseSync: string;
         pauseSyncDescription: string;
       };
+      scheduledNow: string;
       RunHistoryStatus: {
         idle: string;
         failed: string;

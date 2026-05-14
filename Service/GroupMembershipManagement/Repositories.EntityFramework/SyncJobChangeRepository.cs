@@ -146,6 +146,15 @@ namespace Repositories.EntityFramework
             return entity == null ? null : MapEntityToModel(entity);
         }
 
+        public async Task<int> GetScheduleNowCountByUserAsync(Guid userObjectId, DateTime since)
+        {
+            var scheduledNowReason = SyncJobChangeReason.ScheduledNow.ToString();
+            return await _readContext.SyncJobChanges
+                .CountAsync(s => s.ChangedByObjectId == userObjectId
+                    && s.ChangeReason == scheduledNowReason
+                    && s.ChangeTime >= since);
+        }
+
         // TODO: Add 'override' keyword to the following methods once the RepositoryBase is added.
         private static SyncJobChange MapEntityToModel(Entities.SyncJobChange entity)
         {

@@ -9,5 +9,6 @@ export const enum SyncJobChangeReason {
     SubmissionApproved = 'SubmissionApproved',
     SubmissionRejected = 'SubmissionRejected',
     IgnoreThresholdOnce = 'IgnoreThresholdOnce',
-    GroupSettings = 'GroupSettings'
+    GroupSettings = 'GroupSettings',
+    ScheduledNow = 'ScheduledNow'
 }

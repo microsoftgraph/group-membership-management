@@ -36,6 +36,8 @@ export const config = {
   getJobDetails: `${appServiceBaseUri}/api/v1/jobDetails/job`,
   getJobChanges: `${appServiceBaseUri}/api/v1/jobDetails/history/configuration`,
   getSyncJobHistory: `${appServiceBaseUri}/api/v1/jobDetails/history/sync`,
+  getThresholdNotification: (syncJobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${encodeURIComponent(syncJobId)}/threshold-notification`,
+  searchSyncHistoryUser: (syncJobId: string, userObjectId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/search-user/${userObjectId}`,
   downloadMembershipChanges: (syncJobId: string, runId: string) => `${appServiceBaseUri}/api/v1/jobDetails/history/sync/${syncJobId}/runs/${runId}/download`,
   getOrgLeaderDetails: `${appServiceBaseUri}/api/v1/orgLeaderDetails`,
   settings: `${appServiceBaseUri}/api/v1/settings`,
@@ -43,6 +45,8 @@ export const config = {
   patchEnableJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/enable`,
   patchReviewJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/review`,
   patchUpdateJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/update`,
+  patchScheduleNowJob: (jobId: string) => `${appServiceBaseUri}/api/v1/jobDetails/${jobId}/scheduleNow`,
+  getScheduleNowUsage: `${appServiceBaseUri}/api/v1/jobDetails/scheduleNow/usage`,
   postJob: `${appServiceBaseUri}/api/v1/jobs`,
   downloadJobs: `${appServiceBaseUri}/api/v1/jobs/bulkDownload`,
   destinations: `${appServiceBaseUri}/api/v1/destinations`,
@@ -57,4 +61,5 @@ export const config = {
   getGroupDetails: (groupId: string) => `${appServiceBaseUri}/api/v1/jobDetails/group/${groupId}`,
   getChannelDetails: (teamId: string, channelId: string) => `${appServiceBaseUri}/api/v1/jobDetails/groups/${teamId}/channels/${channelId}`,
   removeGMM: (syncJobId: string) =>`${appServiceBaseUri}/api/v1/jobDetails/${syncJobId}/removeGmm`,
+  resolveNotification: (notificationId: string) => `${appServiceBaseUri}/api/v1/notifications/${encodeURIComponent(notificationId)}/resolve`,
 };

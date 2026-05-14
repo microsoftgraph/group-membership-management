@@ -137,6 +137,9 @@ export const patchJobDetails = createAsyncThunk<
     case SyncJobChangeReason.Update:
       patchJobDetailsApiUrl = `${config.patchUpdateJob(request.syncJobId)}`;
       break;
+    case SyncJobChangeReason.ScheduledNow:
+      patchJobDetailsApiUrl = `${config.patchScheduleNowJob(request.syncJobId)}`;
+      break;
     default:
       throw new Error('Invalid change reason');
   }
@@ -168,6 +171,30 @@ export const patchJobDetails = createAsyncThunk<
   } catch (error) {
     throw new Error('InternalError');
   }
+});
+
+export interface ScheduleNowUsage {
+  count: number;
+  limit: number;
+  remaining: number;
+}
+
+export const fetchSyncNowUsage = createAsyncThunk<
+  ScheduleNowUsage,
+  void,
+  ThunkConfig
+>('jobs/fetchSyncNowUsage', async (_, { extra }) => {
+  const { authenticationService } = extra.services;
+  const token = await authenticationService.getTokenAsync(TokenType.GMM);
+  const headers = new Headers({
+    'Authorization': `Bearer ${token}`,
+  });
+
+  const response = await fetch(config.getScheduleNowUsage, { method: 'GET', headers });
+  if (response.ok) {
+    return await response.json();
+  }
+  return { count: -1, limit: -1, remaining: -1 };
 });
 
 export const removeGMM = createAsyncThunk<

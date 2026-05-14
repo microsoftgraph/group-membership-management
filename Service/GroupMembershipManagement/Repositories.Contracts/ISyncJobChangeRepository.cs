@@ -46,5 +46,11 @@ namespace Repositories.Contracts
         Task<SyncJobChange> GetLastSyncJobRecordBySyncJobIdAsync(Guid syncJobId);
         Task<SyncJobChange> GetLastSyncJobChangeWithOnboardingOrUpdateBySyncJobIdAsync(Guid syncJobId);
         Task<SyncJobChange> GetRecentGroupSettingsBySyncJobIdAsync(Guid syncJobId);
+
+        /// <summary>
+        /// Counts the number of ScheduledNow changes made by a specific user since the given time.
+        /// Used for enforcing the per-user rate limit on Sync Now operations.
+        /// </summary>
+        Task<int> GetScheduleNowCountByUserAsync(Guid userObjectId, DateTime since);
     }
 }

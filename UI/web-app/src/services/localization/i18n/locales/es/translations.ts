@@ -21,8 +21,6 @@ export const strings: IStrings = {
   maintenanceTitle: 'Esta aplicación está en mantenimiento',
   maintenanceMessage: 'La IU de GMM está en mantenimiento. Por favor intente de nuevo más tarde. Gracias por su paciencia.',
   permissionDenied: 'No tiene permiso para ver esta pagina. Por favor contacte a su administrador.',
-  noOwnedGroupsAccessGuidance: 'No es propietario de ningún grupo administrado por GMM. Revise la {0} para obtener orientación sobre cómo solicitar acceso, navegar la herramienta y encontrar recursos de capacitación.',
-  noOwnedGroupsAccessGuidanceLinkLabel: 'página de información de GMM',
   HROnboarding: {
     orgLeader: "Líder de la organización",
     provideOrgLeader: "Proporcionar líder de la organización",
@@ -268,6 +266,16 @@ export const strings: IStrings = {
       removeGMM: 'Dejar de administrar con GMM',
       removeGMMWarning: '¿Estás seguro de que deseas dejar de administrar este grupo con GMM? Deberás eliminar manualmente a GMM de los dueños del grupo.',
       removeGMMConfirmation: 'Confirmar (Liga se abrirá en una nueva pestaña.)',
+      syncNow: 'Sincronizar ahora',
+      syncNowDialogTitle: 'Sincronizar ahora',
+      syncNowDialogMessage: '¿Deseas ejecutar una sincronización para "{0}"?',
+      syncNowDialogSubMessage: 'Comenzará dentro de los próximos cinco minutos.',
+      syncNowIgnoreThresholdCheckbox: 'Ignorar límites de porcentaje para esta sincronización',
+      syncNowConfirm: 'Ejecutar sincronización',
+      syncNowCancel: 'Cancelar',
+      syncNowUsageLimit: 'Has utilizado {0} de {1} sincronizaciones manuales del inquilino para hoy.',
+      syncNowUsageUnavailable: 'La información de uso no está disponible en este momento.',
+      syncNowButtonAriaLabel: 'Ejecutar una sincronización ahora',
     },
     descriptions: {
       requestedBy: 'Usuario que realizó el cambio a este trabajo.',
@@ -298,6 +306,8 @@ export const strings: IStrings = {
       submitterNotOwner: 'Esta solicitud fue rechazada ya que el solicitante ya no era propietario cuando se revisó la solicitud.',
       reviewerCannotReviewOwnSubmission: 'Esto no puede ser completado ya que no está permitido revisar revisar tu propia solicitud.',
       rejectionError: 'Error al rechazar la solicitud. Por favor, inténtelo de nuevo.',
+      syncNowError: 'Error al activar la sincronización. Por favor, inténtelo de nuevo.',
+      syncNowLimitExceeded: 'Has excedido el límite diario de 3 operaciones de "Sincronizar ahora". Por favor, inténtelo de nuevo mañana.',
     },
     Panel: {
       dismissButtonAriaLabel: 'Cerrar panel de historial',
@@ -355,6 +365,7 @@ export const strings: IStrings = {
         pauseSync: 'Pausar sincronización',
         pauseSyncDescription: 'Pausar esta sincronización y editar más tarde.',
       },
+      scheduledNow: 'Programado ahora',
       RunHistoryStatus: {
         idle: 'Completado',
         failed: 'Fallido',

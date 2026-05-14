@@ -23,7 +23,8 @@ import {
   Label,
   TextField,
   Spinner,
-  SpinnerSize
+  SpinnerSize,
+  Checkbox
 } from '@fluentui/react';
 
 import {
@@ -37,7 +38,7 @@ import { InfoLabel } from '../../components/InfoLabel';
 import { PageHeader } from '../../components/PageHeader';
 import { type Job } from '../../models/Job';
 import { type AppDispatch } from '../../store';
-import { fetchJobChanges, fetchJobDetails, getChannelDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
+import { fetchJobChanges, fetchJobDetails, fetchSyncNowUsage, getChannelDetails, getGroupDetails, patchJobDetails, removeGMM } from '../../store/jobDetails.api';
 import {
   selectSelectedJobDetails,
   setGetJobDetailsError,
@@ -460,6 +461,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
 ) => {
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
+  const theme = useTheme();
   const { job, resolveReview, classNames } = props;
   const { jobId } = useParams<{ jobId: string }>();
   const isSubmissionReviewer = useSelector(selectIsSubmissionReviewer);
@@ -497,6 +499,13 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
   // Double-click guard for Approve.
   const [isSubmittingApproval, setIsSubmittingApproval] = useState(false);
   const [rejectionError, setRejectionError] = useState<string | null>(null);
+  const [showSyncNowDialog, setShowSyncNowDialog] = useState(false);
+  const [ignoreThresholdOnce, setIgnoreThresholdOnce] = useState(false);
+  const [isSyncingNow, setIsSyncingNow] = useState(false);
+  const [syncNowError, setSyncNowError] = useState<string | null>(null);
+  const [syncNowUsageCount, setSyncNowUsageCount] = useState(0);
+  const [syncNowLimit, setSyncNowLimit] = useState(3);
+  const canScheduleNow = isSubmissionReviewer;
 
   // Re-fetch the job-changes feed whenever the route's jobId (or the loaded
   // selectedJob's syncJobId) changes. We deliberately depend on the *id*, not
@@ -521,6 +530,97 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       dispatch(getProfilePhotoUsingId({ id: jobDetails.lastModifiedOnBehalfOfObjectId, type: 'lastModifiedOnBehalfOf' }));
     }
   }, [dispatch, jobDetails]);
+
+  // Fetch sync now usage from server
+  useEffect(() => {
+    if (canScheduleNow) {
+      dispatch(fetchSyncNowUsage()).then((result) => {
+        if (fetchSyncNowUsage.fulfilled.match(result)) {
+          setSyncNowUsageCount(result.payload.count);
+          setSyncNowLimit(result.payload.limit);
+        }
+      });
+    }
+  }, [dispatch, canScheduleNow]);
+
+  const refreshSyncNowUsage = async () => {
+    const result = await dispatch(fetchSyncNowUsage());
+    if (fetchSyncNowUsage.fulfilled.match(result)) {
+      setSyncNowUsageCount(result.payload.count);
+      setSyncNowLimit(result.payload.limit);
+    }
+  };
+
+  const handleSyncNowClick = () => {
+    if (syncNowUsageCount >= 0 && syncNowLimit >= 0 && syncNowUsageCount >= syncNowLimit) {
+      setSyncNowError(strings.JobDetails.Errors.syncNowLimitExceeded);
+      return;
+    }
+    setShowSyncNowDialog(true);
+    setIgnoreThresholdOnce(false);
+  };
+
+  const handleSyncNowDialogClose = () => {
+    setShowSyncNowDialog(false);
+    setIgnoreThresholdOnce(false);
+  };
+
+  const handleConfirmSyncNow = async () => {
+    if (syncNowUsageCount >= 0 && syncNowLimit >= 0 && syncNowUsageCount >= syncNowLimit) {
+      setSyncNowError(strings.JobDetails.Errors.syncNowLimitExceeded);
+      setShowSyncNowDialog(false);
+      return;
+    }
+
+    setIsSyncingNow(true);
+    setSyncNowError(null);
+
+    try {
+      // Calculate scheduledDate to be 5 minutes from now
+      const scheduledDate = new Date();
+      scheduledDate.setMinutes(scheduledDate.getMinutes() + 5);
+      
+      const patchOperation: Array<{ op: string; path: string; value: string | boolean }> = [
+        {
+          op: "replace",
+          path: "/ScheduledDate",
+          value: scheduledDate.toISOString()
+        }
+      ];
+
+      if (ignoreThresholdOnce) {
+        patchOperation.push({
+          op: "replace",
+          path: "/IgnoreThresholdOnce",
+          value: true
+        });
+      }
+
+      const patchRequest: PatchJobRequest = {
+        syncJobId: jobId ?? job.syncJobId,
+        patchOperation,
+        changeReason: SyncJobChangeReason.ScheduledNow,
+        businessJustification: 'Sync triggered to run in the next five minutes'
+      };
+
+      const response = await dispatch(patchJobDetails(patchRequest)).unwrap();
+      if (response.ok) {
+        await refreshSyncNowUsage();
+        setShowSyncNowDialog(false);
+        // Refresh job details to show updated schedule
+        dispatch(fetchJobDetails({ syncJobId: jobId ?? job.syncJobId }));
+      } else if (response.statusCode === 429 || response.errorCode === 'ScheduleNowLimitExceeded') {
+        setSyncNowError(strings.JobDetails.Errors.syncNowLimitExceeded);
+        await refreshSyncNowUsage();
+      } else {
+        setSyncNowError(strings.JobDetails.Errors.syncNowError);
+      }
+    } catch (error) {
+      setSyncNowError(strings.JobDetails.Errors.syncNowError);
+    } finally {
+      setIsSyncingNow(false);
+    }
+  };
 
   const updateJobStatus = async (
     newStatus: string,
@@ -669,6 +769,16 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
       <div className={classNames.membershipStatusMessage}>
         <div>
           {!patchResponse?.ok && (displayMessage(patchResponse))}
+          {syncNowError && (
+            <MessageBar
+              messageBarType={MessageBarType.error}
+              isMultiline={false}
+              onDismiss={() => setSyncNowError(null)}
+              dismissButtonAriaLabel={strings.close}
+            >
+              {syncNowError}
+            </MessageBar>
+          )}
         </div>
         {(jobStatus === SyncStatus.PendingReview || jobStatus === SyncStatus.PendingConfiguration) && (
           <Stack>
@@ -724,6 +834,17 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
           </div>
         )}
       </div>
+      {canScheduleNow && isJobEnabled && jobStatus === SyncStatus.Idle && (
+        <ActionButton
+          className={classNames.syncNowButton}
+          iconProps={{ iconName: 'Sync', styles: { root: { color: theme.palette.themePrimary } } }}
+          title={strings.JobDetails.labels.syncNowButtonAriaLabel}
+          ariaLabel={strings.JobDetails.labels.syncNowButtonAriaLabel}
+          text={strings.JobDetails.labels.syncNow}
+          onClick={handleSyncNowClick}
+          disabled={isSyncingNow}
+        />
+      )}
 
       <div className={classNames.requestor}>
       {(isSubmissionReviewer || isSubmissionRejector) && (jobStatus === SyncStatus.PendingReview) && jobDetails && jobDetails.lastModifiedByObjectId && (
@@ -842,6 +963,55 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
               <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
             )}
             {isSubmittingRejection ? strings.JobDetails.labels.submittingRejection : strings.JobDetails.labels.submitRejection}
+          </PrimaryButton>
+        </DialogFooter>
+      </Dialog>
+      {/* Sync Now Dialog */}
+      <Dialog
+        hidden={!showSyncNowDialog}
+        onDismiss={isSyncingNow ? undefined : handleSyncNowDialogClose}
+        dialogContentProps={{
+          type: DialogType.normal,
+          title: strings.JobDetails.labels.syncNowDialogTitle,
+        }}
+        modalProps={{
+          isBlocking: true
+        }}
+        minWidth={480}
+        maxWidth={600}
+      >
+        <Text block style={{ marginBottom: 4 }}>
+          {format(strings.JobDetails.labels.syncNowDialogMessage, job.targetGroupName)}
+        </Text>
+        <Text block style={{ marginBottom: 12 }}>
+          {strings.JobDetails.labels.syncNowDialogSubMessage}
+        </Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, color: theme.palette.neutralSecondary, fontSize: 12 }}>
+          <Icon iconName="Info" styles={{ root: { fontSize: 14 } }} />
+          <Text variant="small">
+            {syncNowUsageCount >= 0
+              ? format(strings.JobDetails.labels.syncNowUsageLimit, syncNowUsageCount.toString(), syncNowLimit.toString())
+              : strings.JobDetails.labels.syncNowUsageUnavailable}
+          </Text>
+        </div>
+        <Checkbox
+          label={strings.JobDetails.labels.syncNowIgnoreThresholdCheckbox}
+          checked={ignoreThresholdOnce}
+          onChange={(_, checked) => setIgnoreThresholdOnce(checked || false)}
+          disabled={isSyncingNow}
+          styles={{ checkbox: { borderRadius: 4 } }}
+        />
+        <DialogFooter>
+          <DefaultButton onClick={handleSyncNowDialogClose} text={strings.JobDetails.labels.syncNowCancel} disabled={isSyncingNow} styles={{ root: { borderRadius: 4 } }} />
+          <PrimaryButton
+            onClick={handleConfirmSyncNow}
+            disabled={isSyncingNow}
+            styles={{ root: { borderRadius: 4 } }}
+          >
+            {isSyncingNow && (
+              <Spinner size={SpinnerSize.xSmall} style={{ marginRight: 8 }} />
+            )}
+            {strings.JobDetails.labels.syncNowConfirm}
           </PrimaryButton>
         </DialogFooter>
       </Dialog>
