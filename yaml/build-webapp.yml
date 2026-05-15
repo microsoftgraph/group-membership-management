@@ -123,6 +123,18 @@ stages:
           pnpm exec playwright test --project=ui-mock
         pwsh: true
 
+    - task: PowerShell@2
+      displayName: 'Clean node_modules from staging after Playwright'
+      condition: and(succeeded(), eq(variables['BuildConfiguration'], 'debug'))
+      inputs:
+        targetType: inline
+        workingDirectory: '$(build.artifactstagingdirectory)/webapp_package/web-app'
+        script: |
+          Remove-Item -Path node_modules -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path test-results -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path playwright-report -Recurse -Force -ErrorAction SilentlyContinue
+        pwsh: true
+
     - task: CopyFiles@2
       displayName: 'Copy GmmUI webapp arm templates'
       inputs:
