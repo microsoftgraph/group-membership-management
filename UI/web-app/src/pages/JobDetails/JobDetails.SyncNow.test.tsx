@@ -285,4 +285,47 @@ describe('JobDetails - Sync Now feature', () => {
       expect(screen.getByText(/ignore percentage limits/i)).toBeInTheDocument();
     });
   });
+
+  it('sends PATCH request with ScheduledNow change reason when confirmed', async () => {
+    const fetchMock = createFetchMock({ count: 0, limit: 3, remaining: 3 });
+    renderJobDetails(createBaseState(), fetchMock);
+    const button = await screen.findByRole('button', { name: /run a sync now/i });
+    await act(async () => { await new Promise(r => setTimeout(r, 50)); });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(screen.getByText(/will start within the next five minutes/i)).toBeInTheDocument();
+    });
+
+    // Click the confirm button
+    const confirmButton = screen.getByRole('button', { name: /run sync now/i });
+    await act(async () => {
+      fireEvent.click(confirmButton);
+      await new Promise(r => setTimeout(r, 100));
+    });
+
+    // Verify a PATCH call was made with scheduleNow in the URL
+    const patchCalls = fetchMock.mock.calls.filter(
+      ([url, opts]: [string, RequestInit | undefined]) =>
+        opts?.method === 'PATCH' && String(url).includes('scheduleNow')
+    );
+    expect(patchCalls.length).toBe(1);
+
+    const body = JSON.parse(patchCalls[0][1]?.body as string);
+    expect(body.changeReason).toBe('ScheduledNow');
+  });
+
+  it('closes dialog when cancel is clicked', async () => {
+    renderJobDetails(createBaseState());
+    const button = await screen.findByRole('button', { name: /run a sync now/i });
+    fireEvent.click(button);
+    await waitFor(() => {
+      expect(screen.getByText(/will start within the next five minutes/i)).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByRole('button', { name: /^cancel$/i });
+    fireEvent.click(cancelButton);
+    await waitFor(() => {
+      expect(screen.queryByText(/will start within the next five minutes/i)).not.toBeInTheDocument();
+    });
+  });
 });
