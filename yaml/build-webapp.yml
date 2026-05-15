@@ -83,7 +83,12 @@ stages:
       displayName: 'Copy GmmUI webapp package'
       inputs:
         SourceFolder:  UI
-        Contents: '**\web-app\**'
+        Contents: |
+          **\web-app\**
+          !**\web-app\node_modules\**
+          !**\web-app\coverage\**
+          !**\web-app\test-results\**
+          !**\web-app\playwright-report\**
         TargetFolder: '$(build.artifactstagingdirectory)/webapp_package/'
 
     - task: PowerShell@2
