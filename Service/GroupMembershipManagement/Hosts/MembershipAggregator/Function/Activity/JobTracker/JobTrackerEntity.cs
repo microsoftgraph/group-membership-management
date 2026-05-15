@@ -1,47 +1,76 @@
 // Copyright(c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.DurableTask.Entities;
 using System.Threading.Tasks;
 
 namespace Hosts.MembershipAggregator
 {
-    public class JobTrackerEntity : IJobTracker
+    public class JobTrackerEntity : TaskEntity<JobState>, IJobTracker
     {
-        public JobState JobState { get; set; } = new JobState();
-
-        public Task AddCompletedPart(string filePath)
+        public JobTrackerEntity()
         {
-            if (!JobState.CompletedParts.Contains(filePath))
-                JobState.CompletedParts.Add(filePath);
-
-            return Task.CompletedTask;
+            // Required for tests that instantiate the entity directly.
+            State = new JobState();
         }
 
-        public Task SetDestinationPart(string filePath)
+        protected override JobState InitializeState(TaskEntityOperation operation)
         {
-            JobState.DestinationPart = filePath;
-            return Task.CompletedTask;
+            return new JobState();
+        }
+
+        // Atomic register-and-check.
+        public Task<JobTrackerCompletionResult> RegisterPartAndCheckComplete(JobTrackerRegistration registration)
+        {
+            if (registration == null)
+            {
+                return Task.FromResult(new JobTrackerCompletionResult
+                {
+                    IsComplete = false,
+                    CompletedCount = State.CompletedParts.Count,
+                    TotalParts = State.TotalParts
+                });
+            }
+
+            if (State.TotalParts == 0)
+            {
+                State.TotalParts = registration.TotalParts;
+            }
+
+            // Register by PartNumber. Dictionary semantics make double-registration
+            // safe and let us carry the blob path on the same key.
+            State.CompletedParts[registration.PartNumber] = registration.FilePath;
+
+            if (registration.IsDestinationPart)
+            {
+                State.DestinationPart = registration.FilePath;
+            }
+
+            var observedCount = State.CompletedParts.Count;
+            var allPartsPresent = State.TotalParts > 0 && observedCount >= State.TotalParts;
+
+            // Single-writer completion claim: only the first caller that observes
+            // all parts present ever gets IsComplete=true.
+            var isComplete = false;
+            if (allPartsPresent && !State.CompletionClaimed)
+            {
+                State.CompletionClaimed = true;
+                isComplete = true;
+            }
+
+            return Task.FromResult(new JobTrackerCompletionResult
+            {
+                TotalParts = State.TotalParts,
+                CompletedCount = observedCount,
+                IsComplete = isComplete
+            });
         }
 
         public Task<JobState> GetState()
         {
-            return Task.FromResult(JobState);
+            return Task.FromResult(State);
         }
 
-        public Task<bool> IsComplete()
-        {
-            var allPartsCompleted = JobState.TotalParts > 0
-                                    && JobState.CompletedParts.Count == JobState.TotalParts;
-
-            return Task.FromResult(allPartsCompleted);
-        }
-
-        public Task SetTotalParts(int totalParts)
-        {
-            JobState.TotalParts = totalParts;
-            return Task.CompletedTask;
-        }
-      
         [Function(nameof(JobTrackerEntity))]
         public static Task RunEntityAsync([EntityTrigger] TaskEntityDispatcher ctx)
         {
@@ -49,3 +78,4 @@ namespace Hosts.MembershipAggregator
         }
     }
 }
+

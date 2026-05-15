@@ -156,23 +156,24 @@ namespace Services.Tests
                            });
 
             
-            _entityFeature.Setup(x => x.LockEntitiesAsync(It.IsAny<IEnumerable<EntityInstanceId>>())).ReturnsAsync(Mock.Of<IAsyncDisposable>());
-            _entityFeature.Setup(x => x.CallEntityAsync<bool>(
+            _entityFeature.Setup(x => x.CallEntityAsync<JobTrackerCompletionResult>(
                         It.IsAny<EntityInstanceId>(),
-                        nameof(JobTrackerEntity.IsComplete),
-                        It.IsAny<object>(),
-                        It.IsAny<CallEntityOptions>()
-                       )).ReturnsAsync(() => _hasSourceCompleted);
-
-            _entityFeature.Setup(x => x.CallEntityAsync(
-                        It.IsAny<EntityInstanceId>(),
-                        nameof(JobTrackerEntity.SetDestinationPart),
+                        nameof(JobTrackerEntity.RegisterPartAndCheckComplete),
                         It.IsAny<object>(),
                         It.IsAny<CallEntityOptions>()
                        ))
-                    .Callback<EntityInstanceId, string, object, CallEntityOptions>((entityId, operationName, input, options) => 
+                    .Returns<EntityInstanceId, string, object, CallEntityOptions>(async (entityId, operationName, input, options) =>
                     {
-                        _jobTrackerEntity.SetDestinationPart(input as string);
+                        var registration = input as JobTrackerRegistration;
+                        var realResult = await _jobTrackerEntity.RegisterPartAndCheckComplete(registration);
+                        // Tests use _hasSourceCompleted to simulate the "partial" case
+                        // (multi-part jobs where not all parts have arrived yet).
+                        return new JobTrackerCompletionResult
+                        {
+                            TotalParts = realResult.TotalParts,
+                            CompletedCount = realResult.CompletedCount,
+                            IsComplete = _hasSourceCompleted
+                        };
                     });
 
             _durableContext.Setup(x => x.Entities).Returns(() => _entityFeature.Object);
@@ -199,7 +200,7 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNull(_jobTrackerEntity.JobState.DestinationPart);
+            Assert.IsNull((await _jobTrackerEntity.GetState()).DestinationPart);
             _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
@@ -220,7 +221,7 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNull(_jobTrackerEntity.JobState.DestinationPart);
+            Assert.IsNull((await _jobTrackerEntity.GetState()).DestinationPart);
             _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Never());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }
@@ -240,8 +241,8 @@ namespace Services.Tests
             var orchestratorFunction = new OrchestratorFunction();
             await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object);
 
-            Assert.IsNotNull(_jobTrackerEntity.JobState.DestinationPart);
-            Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, _jobTrackerEntity.JobState.DestinationPart);
+            Assert.IsNotNull((await _jobTrackerEntity.GetState()).DestinationPart);
+            Assert.AreEqual(_membershipAggregatorHttpRequest.FilePath, (await _jobTrackerEntity.GetState()).DestinationPart);
             _durableContext.Verify(x => x.CallActivityAsync(nameof(TopicMessageSenderFunction), It.IsAny<TopicMessageSenderRequest>(), It.IsAny<TaskOptions>()), Times.Once());
             _syncJobStatusService.Verify(x => x.UpdateJobStatusAsync(It.IsAny<SyncJob>(), It.IsAny<SyncStatus?>(), It.IsAny<SyncJobHistory>(), It.IsAny<string>()), Times.Never());
         }

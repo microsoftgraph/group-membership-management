@@ -59,7 +59,9 @@ namespace Hosts.MembershipAggregator
 
             var membershipExtractionRequest = new MembershipExtractionRequest
             {
-                CompletedParts = state.CompletedParts?.ToList() ?? new List<string>(),
+                CompletedParts = state.CompletedParts == null
+                    ? new List<string>()
+                    : state.CompletedParts.OrderBy(kv => kv.Key).Select(kv => kv.Value).ToList(),
                 DestinationPart = state.DestinationPart,
                 SyncJob = request.SyncJob,
                 CurrentPart = currentPart,

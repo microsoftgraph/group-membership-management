@@ -68,18 +68,38 @@ namespace Hosts.MembershipAggregator
 
             try
             {
+                if (currentPart <= 0 || totalParts <= 0 || string.IsNullOrEmpty(request.FilePath))
+                {
+                    logger.InvalidPartRegistration(request.SyncJob.Id, currentPart, totalParts, request.FilePath);
+                    throw new ArgumentException(
+                        $"Invalid part registration: PartNumber={currentPart}, " +
+                        $"TotalParts={totalParts}, FilePath='{request.FilePath}'.");
+                }
+
                 logger.GroupIdRetrieved(request.SyncJob.Id, groupId);
 
-                await using (await context.Entities.LockEntitiesAsync(new List<EntityInstanceId> { entityInstanceId }))
+                // Single atomic entity op.
+                var registration = new JobTrackerRegistration
                 {
-                    await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.SetTotalParts), input: request.PartsCount);
-                    await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.AddCompletedPart), input: request.FilePath);
+                    PartNumber        = request.PartNumber,
+                    TotalParts        = request.PartsCount,
+                    FilePath          = request.FilePath,
+                    IsDestinationPart = request.IsDestinationPart
+                };
 
-                    if (request.IsDestinationPart)
-                        await context.Entities.CallEntityAsync(entityInstanceId, nameof(JobTrackerEntity.SetDestinationPart), input: request.FilePath);
+                var completion = await context.Entities.CallEntityAsync<JobTrackerCompletionResult>(
+                    entityInstanceId,
+                    nameof(JobTrackerEntity.RegisterPartAndCheckComplete),
+                    input: registration);
 
-                    hasSourceCompleted = await context.Entities.CallEntityAsync<bool>(entityInstanceId, nameof(JobTrackerEntity.IsComplete));
-                }
+                hasSourceCompleted = completion.IsComplete;
+
+                logger.PartRegistered(
+                    request.SyncJob.Id,
+                    request.PartNumber,
+                    completion.CompletedCount,
+                    completion.TotalParts,
+                    completion.IsComplete);
 
                 if (hasSourceCompleted)
                 {

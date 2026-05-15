@@ -196,20 +196,27 @@ namespace Services.Tests
 
             _jobState = new JobState
             {
-                CompletedParts = new List<string>
+                CompletedParts = new Dictionary<int, string>
                 {
-                    "http://file-path-1",
-                    "http://file-path-2",
-                    "http://file-path-3"
+                    { 1, "http://file-path-1" },
+                    { 2, "http://file-path-2" },
+                    { 3, "http://file-path-3" }
                 },
                 DestinationPart = "http://file-path-3",
                 TotalParts = 3
             };
 
-            _jobTrackerEntity = new JobTrackerEntity
+            _jobTrackerEntity = new JobTrackerEntity();
+            foreach (var kv in _jobState.CompletedParts)
             {
-                JobState = _jobState
-            };
+                _jobTrackerEntity.RegisterPartAndCheckComplete(new JobTrackerRegistration
+                {
+                    PartNumber = kv.Key,
+                    TotalParts = _jobState.TotalParts,
+                    FilePath = kv.Value,
+                    IsDestinationPart = kv.Value == _jobState.DestinationPart
+                }).Wait();
+            }
 
             _blobStorageRepository.Setup(x => x.DownloadFileAsync(It.Is<string>(x => x.StartsWith("http://file-path"))))
                                     .Callback<string>(path =>
@@ -365,7 +372,7 @@ namespace Services.Tests
                        nameof(JobTrackerEntity.GetState),
                        It.IsAny<object>(),
                        It.IsAny<CallEntityOptions>()
-                      )).ReturnsAsync(() => _jobTrackerEntity.JobState);
+                      )).ReturnsAsync(() => _jobState);
 
             _durableContext.Setup(x => x.Entities).Returns(() => _entityFeature.Object);
         }
@@ -875,9 +882,9 @@ namespace Services.Tests
                         .Callback<string>(path =>
                         {
                             List<AzureADUser> users = null;
-                            if (path == _jobState.CompletedParts[0])
+                            if (path == _jobState.CompletedParts[1])
                                 users = usersFromQueryPart1;
-                            else if (path == _jobState.CompletedParts[1])
+                            else if (path == _jobState.CompletedParts[2])
                                 users = usersFromQueryPart2;
                             else if (path == _jobState.DestinationPart)
                                 users = usersFromDestination;

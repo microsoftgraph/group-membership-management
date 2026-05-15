@@ -46,6 +46,19 @@ namespace Hosts.MembershipAggregator
             Message = "Unexpected exception in orchestrator")]
         public static partial void OrchestratorUnexpectedException(this ILogger logger, Exception exception);
 
+        [LoggerMessage(EventId = 30024, Level = LogLevel.Information,
+            Message = "Part registered for job {SyncJobId}: PartNumber={PartNumber}, " +
+                      "CompletedCount={CompletedCount}/{TotalParts}, IsComplete={IsComplete}")]
+        public static partial void PartRegistered(this ILogger logger,
+            Guid syncJobId, int partNumber, int completedCount, int totalParts, bool isComplete);
+
+        [LoggerMessage(EventId = 30025, Level = LogLevel.Error,
+            Message = "Invalid part registration for job {SyncJobId}: " +
+                      "PartNumber={PartNumber}, TotalParts={TotalParts}, FilePath='{FilePath}'. " +
+                      "Marking job Error and skipping entity registration.")]
+        public static partial void InvalidPartRegistration(this ILogger logger,
+            Guid syncJobId, int partNumber, int totalParts, string filePath);
+
         // ── MembershipSubOrchestratorFunction ──
 
         [LoggerMessage(EventId = 30030, Level = LogLevel.Warning,
