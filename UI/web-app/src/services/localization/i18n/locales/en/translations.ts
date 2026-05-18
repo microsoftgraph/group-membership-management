@@ -346,7 +346,7 @@ export const strings: IStrings = {
       ignoreThresholdOnce: 'Ignore Threshold Once',
       businessJustification: 'Business Justification',
       groupSettings: 'Group Settings',
-      scheduledNow: 'Scheduled Now',
+      syncNowJustification: 'Sync scheduled to run in the next five minutes',
       takeAction: 'Take action',
       changesAppliedSuccess: 'Changes will be applied. This sync will run in the next scheduled cycle.',
       syncPausedSuccess: 'The sync has been paused.',

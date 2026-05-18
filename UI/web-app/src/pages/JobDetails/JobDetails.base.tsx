@@ -600,7 +600,7 @@ const MembershipStatusContent: React.FunctionComponent<IStatusContentProps> = (
         syncJobId: jobId ?? job.syncJobId,
         patchOperation,
         changeReason: SyncJobChangeReason.ScheduledNow,
-        businessJustification: 'Sync triggered to run in the next five minutes'
+        businessJustification: strings.JobDetails.Panel.syncNowJustification
       };
 
       const response = await dispatch(patchJobDetails(patchRequest)).unwrap();

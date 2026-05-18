@@ -348,6 +348,7 @@ export const strings: IStrings = {
       ignoreThresholdOnce: 'Ignorar umbral una vez',
       businessJustification: 'Justificación del cambio',
       groupSettings: 'Configuración del grupo',
+      syncNowJustification: 'Sincronización programada para ejecutarse en los próximos cinco minutos',
       takeAction: 'Tomar acción',
       changesAppliedSuccess: 'Se aplicarán los cambios. Esta sincronización se ejecutará en el próximo ciclo programado.',
       syncPausedSuccess: 'La sincronización ha sido pausada.',

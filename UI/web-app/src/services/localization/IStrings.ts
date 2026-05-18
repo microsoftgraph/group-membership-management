@@ -341,7 +341,7 @@ export type IStrings = {
       ignoreThresholdOnce: string;
       businessJustification: string;
       groupSettings: string;
-      scheduledNow: string;
+      syncNowJustification: string;
       takeAction: string;
       changesAppliedSuccess: string;
       syncPausedSuccess: string;
