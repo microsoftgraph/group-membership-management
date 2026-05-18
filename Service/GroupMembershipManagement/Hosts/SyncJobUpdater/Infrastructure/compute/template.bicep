@@ -21,6 +21,7 @@ param tenantId string
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'SyncJobUpdater'),0,8)}'
@@ -175,6 +176,7 @@ module functionAppTemplate_SyncJobUpdater 'functionApp.bicep' = {
     appSettings: appSettings
     appPackageContainerName: appPackageContainerName
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

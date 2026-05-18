@@ -21,6 +21,7 @@ param tenantId string
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Name of the resource group where the \'prereqs\' key vault is located.')
 param prereqsKeyVaultName string = '${solutionAbbreviation}-prereqs-${environmentAbbreviation}'
@@ -192,6 +193,7 @@ module functionAppTemplate_DestinationAttributesUpdater 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     appSettings: appSettings
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

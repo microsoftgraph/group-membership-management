@@ -21,6 +21,7 @@ param tenantId string
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Instance identifier')
 @allowed([
@@ -172,6 +173,7 @@ module functionAppTemplate_MessageSplitter 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     appSettings: baseAppSettings
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

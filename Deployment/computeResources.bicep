@@ -5,6 +5,7 @@ param environmentAbbreviation string
 param solutionAbbreviation string
 param tenantId string
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 param managedResourceGroupName string = ''
 param isManagedApplication bool = false
 param appConfigurationName string
@@ -78,6 +79,7 @@ module jobTriggerComputeResources '../Service/GroupMembershipManagement/Hosts/Jo
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -107,6 +109,7 @@ module destinationAttributesUpdaterComputeResources '../Service/GroupMembershipM
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -136,6 +139,7 @@ module groupMembershipObtainerComputeResources '../Service/GroupMembershipManage
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -164,6 +168,7 @@ module sqlMembershipObtainerComputeResources '../Service/GroupMembershipManageme
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     authority: 'https://login.windows.net/${tenantId}'
@@ -195,6 +200,7 @@ module groupOwnershipObtainerComputeResources '../Service/GroupMembershipManagem
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -223,6 +229,7 @@ module placeMembershipObtainerComputeResources '../Service/GroupMembershipManage
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -251,6 +258,7 @@ module teamsChannelMembershipObtainerComputeResources '../Service/GroupMembershi
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -279,6 +287,7 @@ module membershipAggregatorComputeResources '../Service/GroupMembershipManagemen
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -315,6 +324,7 @@ module graphUpdaterComputeResources '../Service/GroupMembershipManagement/Hosts/
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -348,6 +358,7 @@ module teamsChannelUpdaterComputeResources '../Service/GroupMembershipManagement
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -381,6 +392,7 @@ module nonProdServiceComputeResources '../Service/GroupMembershipManagement/Host
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     nonProdServiceDataResources
@@ -411,6 +423,7 @@ module azureUserReaderComputeResources '../Service/GroupMembershipManagement/Hos
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     azureUserReaderDataResources
@@ -441,6 +454,7 @@ module notifierComputeResources '../Service/GroupMembershipManagement/Hosts/Noti
     featureFlags: featureFlags
     apiHostname: resolvedApiHostname
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     notifierDataResources
@@ -469,6 +483,7 @@ module autoApproverComputeResources '../Service/GroupMembershipManagement/Hosts/
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     autoApproverDataResources
@@ -498,6 +513,7 @@ module jobSchedulerComputeResources '../Service/GroupMembershipManagement/Hosts/
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     jobSchedulerDataResources
@@ -523,6 +539,7 @@ module syncJobUpdaterComputeResources '../Service/GroupMembershipManagement/Host
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -557,6 +574,7 @@ module messageSplitterComputeResources '../Service/GroupMembershipManagement/Hos
     solutionAbbreviation: solutionAbbreviation
     tenantId: tenantId
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     prereqsKeyVaultResourceGroup: prereqsResourceGroupName
     dataKeyVaultResourceGroup: dataResourceGroupName
     setRBACPermissions: setRBACPermissions
@@ -588,6 +606,7 @@ module azureMaintenanceComputeResources '../Service/GroupMembershipManagement/Ho
     tenantId: tenantId
     setRBACPermissions: setRBACPermissions
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     azureMaintenanceDataResources
@@ -620,6 +639,7 @@ module sqlDataCheckerComputeResources '../Service/GroupMembershipManagement/Host
     setRBACPermissions: setRBACPermissions
     featureFlags: featureFlags
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     sqlDataCheckerDataResources

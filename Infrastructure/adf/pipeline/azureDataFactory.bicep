@@ -31,6 +31,9 @@ param storageAccountName string
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
 
+@description('Enable function authentication.')
+param enableFunctionAuthentication bool = false
+
 var dataFactoryName = factoryName
 var azureBlobStorageLinkedService = 'AzureBlobStorage_${resourceSuffix}'
 var destinationDatabaseLinkedService = 'DestinationDatabase_${resourceSuffix}'
@@ -87,7 +90,7 @@ resource linkedService_DestinationDatabase 'Microsoft.DataFactory/factories/link
   }
 }
 
-resource linkedService_AzureUserReader 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = {
+resource linkedService_AzureUserReader 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = if (enableFunctionAuthentication) {
   parent: dataFactory
   name: azureUserReaderLinkedService
   properties: {
@@ -97,6 +100,23 @@ resource linkedService_AzureUserReader 'Microsoft.DataFactory/factories/linkedSe
       functionAppUrl: azureUserReaderUrl
       authentication: 'MSI'
       resourceId: 'api://${functionAuthAppClientId}'
+      functionKey: {
+        type: 'SecureString'
+        value: azureUserReaderFunctionKey
+      }
+    }
+  }
+  dependsOn: []
+}
+
+resource linkedService_AzureUserReader_NoAuth 'Microsoft.DataFactory/factories/linkedServices@2018-06-01' = if (!enableFunctionAuthentication) {
+  parent: dataFactory
+  name: azureUserReaderLinkedService
+  properties: {
+    annotations: []
+    type: 'AzureFunction'
+    typeProperties: {
+      functionAppUrl: azureUserReaderUrl
       functionKey: {
         type: 'SecureString'
         value: azureUserReaderFunctionKey

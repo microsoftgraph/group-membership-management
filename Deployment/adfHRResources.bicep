@@ -3,6 +3,7 @@ param environmentAbbreviation string
 param solutionAbbreviation string
 param tenantId string
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 var sqlServerName = '${solutionAbbreviation}-data-${environmentAbbreviation}'
 var sqlDataBaseName = '${solutionAbbreviation}-data-${environmentAbbreviation}-adf'
@@ -29,6 +30,7 @@ module adfForHRData '../Infrastructure/adf/pipeline/template.bicep' = {
     sqlServerName: sqlServerName
     sqlDatabaseName: sqlDataBaseName
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
   }
   dependsOn: [
     sqlForHRData

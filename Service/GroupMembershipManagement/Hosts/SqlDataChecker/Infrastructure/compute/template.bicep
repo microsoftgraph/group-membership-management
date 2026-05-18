@@ -86,6 +86,7 @@ param featureFlags object = {
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Maximum instance count.')
 param maxInstanceCount int = 500
@@ -211,6 +212,7 @@ module functionAppTemplate_SqlDataChecker 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     appSettings: appSettings
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

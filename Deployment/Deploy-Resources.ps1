@@ -713,18 +713,28 @@ function Set-ComputeResources {
         -KeyVaultName $dataResourceGroup `
         -SecretNames $secrets
 
-    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $functionAuthAppClientId = Get-KeyVaultSecretWithFirewallRetry `
-                                -VaultName $prereqsResourceGroup `
-                                -ResourceGroup $prereqsResourceGroup `
-                                -SecretName "functionAuthAppClientId" `
-                                -AsPlainText
-    
-    if ([string]::IsNullOrWhiteSpace($functionAuthAppClientId)) {
-        throw "Function Auth App Client Id secret is not set in the Key Vault '$prereqsResourceGroup'. Please set the secret and re-run the deployment."
+    $enableFunctionAuthentication = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
+
+    if ($enableFunctionAuthentication -eq $true) {
+        $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+        $functionAuthAppClientId = Get-KeyVaultSecretWithFirewallRetry `
+                                    -VaultName $prereqsResourceGroup `
+                                    -ResourceGroup $prereqsResourceGroup `
+                                    -SecretName "functionAuthAppClientId" `
+                                    -AsPlainText
+        
+        if ([string]::IsNullOrWhiteSpace($functionAuthAppClientId)) {
+            throw "Function Auth App Client Id secret is not set in the Key Vault '$prereqsResourceGroup'. Please set the secret and re-run the deployment."
+        }
+
+        $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
+    }
+    else {
+        Write-Host "  ⏭ Skipping function authentication setup (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        $ParameterHashtable["functionAuthAppClientId"] = @{ value = '' }
     }
 
-    $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
+    $ParameterHashtable["enableFunctionAuthentication"] = @{ value = $enableFunctionAuthentication }
 
     Write-Host "`nCreating compute resources"
     $computeResourceGroup = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation"
@@ -768,18 +778,28 @@ function Set-ADFResources {
         -KeyVaultName $dataResourceGroup `
         -SecretNames $adfDataSecrets
 
-    $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
-    $functionAuthAppClientId = Get-KeyVaultSecretWithFirewallRetry `
-                                -VaultName $prereqsResourceGroup `
-                                -ResourceGroup $prereqsResourceGroup `
-                                -SecretName "functionAuthAppClientId" `
-                                -AsPlainText
-    
-    if ([string]::IsNullOrWhiteSpace($functionAuthAppClientId)) {
-        throw "Function Auth App Client Id secret is not set in the Key Vault '$prereqsResourceGroup'. Please set the secret and re-run the deployment."
+    $enableFunctionAuthentication = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
+
+    if ($enableFunctionAuthentication -eq $true) {
+        $prereqsResourceGroup = "$SolutionAbbreviation-prereqs-$EnvironmentAbbreviation"
+        $functionAuthAppClientId = Get-KeyVaultSecretWithFirewallRetry `
+                                    -VaultName $prereqsResourceGroup `
+                                    -ResourceGroup $prereqsResourceGroup `
+                                    -SecretName "functionAuthAppClientId" `
+                                    -AsPlainText
+        
+        if ([string]::IsNullOrWhiteSpace($functionAuthAppClientId)) {
+            throw "Function Auth App Client Id secret is not set in the Key Vault '$prereqsResourceGroup'. Please set the secret and re-run the deployment."
+        }
+
+        $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
+    }
+    else {
+        Write-Host "  ⏭ Skipping function authentication for ADF (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+        $ParameterHashtable["functionAuthAppClientId"] = @{ value = '' }
     }
 
-    $ParameterHashtable["functionAuthAppClientId"] = @{ value = $functionAuthAppClientId }
+    $ParameterHashtable["enableFunctionAuthentication"] = @{ value = $enableFunctionAuthentication }
     
     # Deploy ADF resources
     Write-Host "`nCreating ADF resources"
@@ -1149,6 +1169,7 @@ function Set-GMMResources {
     # Store the app registration secrets
     if ($ParameterHashtable.skipAppRegistrationSecretStorage.value -ne $true) {
         $isClientSecretAuth = if ($ParameterHashtable.authenticationType.value -eq "ClientSecret") { $true } else { $false }
+        $enableFunctionAuthentication = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
         Save-GMMAppRegistrationSecrets `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
@@ -1157,7 +1178,8 @@ function Set-GMMResources {
             -GraphAppCertificateName $graphAppCertificateName `
             -TeamsChannelAppCertificateName $teamsChannelAppCertificateName `
             -SkipPrivilegedDirectoryActions $ParameterHashtable.skipPrivilegedDirectoryActions.value `
-            -IsClientSecretAuth $isClientSecretAuth
+            -IsClientSecretAuth $isClientSecretAuth `
+            -EnableFunctionAuthentication $enableFunctionAuthentication
             
         Start-Sleep -Seconds 10
     }
@@ -1227,11 +1249,18 @@ function Set-GMMResources {
         Write-Host "`nSkipping Azure Data Factory deployment as per configuration [skipAzureDataFactoryDeployment = $skipAzureDataFactoryDeployment]."
     }
 
-    Set-FunctionAuthenticationAllowedIdentities `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -SubscriptionId $SubscriptionId `
-        -SkipAzureDataFactoryDeployment $skipAzureDataFactoryDeployment
+    $enableFunctionAuthentication = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
+
+    if ($enableFunctionAuthentication -eq $true) {
+        Set-FunctionAuthenticationAllowedIdentities `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -SubscriptionId $SubscriptionId `
+            -SkipAzureDataFactoryDeployment $skipAzureDataFactoryDeployment
+    }
+    else {
+        Write-Host "`n  ⏭ Skipping function authentication allowed identities (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+    }
 
     Write-Host "`nResources deployed"
 }
@@ -1912,7 +1941,9 @@ function Save-GMMAppRegistrationSecrets {
         [Parameter(Mandatory = $False)]
         [string] $GraphAppCertificateName,
         [Parameter(Mandatory = $False)]
-        [string] $TeamsChannelAppCertificateName
+        [string] $TeamsChannelAppCertificateName,
+        [Parameter(Mandatory = $false)]
+        [boolean]$EnableFunctionAuthentication = $false
     )
 
     Write-Host "`n🔐 Saving App Registration Secrets to Key Vault" -ForegroundColor Cyan
@@ -1963,15 +1994,21 @@ function Save-GMMAppRegistrationSecrets {
     }
     Write-Host "  ✓ Teams Channel App ID: $teamsChannelAppId" -ForegroundColor Gray
 
-    $functionAuthAppId = (Invoke-WithRetry `
-        -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'" } `
-        -OperationName "Get FunctionAuth app registration" `
-        -MaxAttempts 3 -BaseDelaySeconds 2).AppId
-    if (-not $functionAuthAppId) {
-        Write-Error "FunctionAuth Application '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation' not found"
-        return
+    $functionAuthAppId = $null
+    if ($EnableFunctionAuthentication -eq $true) {
+        $functionAuthAppId = (Invoke-WithRetry `
+            -Operation { Get-MgApplication -Filter "displayName eq '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation'" } `
+            -OperationName "Get FunctionAuth app registration" `
+            -MaxAttempts 3 -BaseDelaySeconds 2).AppId
+        if (-not $functionAuthAppId) {
+            Write-Error "FunctionAuth Application '$SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation' not found"
+            return
+        }
+        Write-Host "  ✓ FunctionAuth App ID: $functionAuthAppId" -ForegroundColor Gray
     }
-    Write-Host "  ✓ FunctionAuth App ID: $functionAuthAppId" -ForegroundColor Gray
+    else {
+        Write-Host "  ⏭ Skipping FunctionAuth app (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+    }
 
     $createNewSecrets = $false
     $askForSecretInput = $false
@@ -2127,18 +2164,23 @@ function Save-GMMAppRegistrationSecrets {
     Write-Host "✅ Teams Channel Application secrets saved" -ForegroundColor Green
 
     # FunctionAuth Application Secrets
-    Write-Host "`n📝 Saving FunctionAuth Application secrets..." -ForegroundColor Yellow
+    if ($EnableFunctionAuthentication -eq $true -and $null -ne $functionAuthAppId) {
+        Write-Host "`n📝 Saving FunctionAuth Application secrets..." -ForegroundColor Yellow
 
-    $functionAuthScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-FunctionAuthApplication.ps1"
-    . $functionAuthScriptPath
+        $functionAuthScriptPath = Join-Path $applicationSetupScriptsDirectory "Set-FunctionAuthApplication.ps1"
+        . $functionAuthScriptPath
 
-    Set-FunctionAuthKeyVaultSecrets `
-        -SolutionAbbreviation $SolutionAbbreviation `
-        -EnvironmentAbbreviation $EnvironmentAbbreviation `
-        -AppTenantId $AppTenantId `
-        -FunctionAuthAppClientId $functionAuthAppId
+        Set-FunctionAuthKeyVaultSecrets `
+            -SolutionAbbreviation $SolutionAbbreviation `
+            -EnvironmentAbbreviation $EnvironmentAbbreviation `
+            -AppTenantId $AppTenantId `
+            -FunctionAuthAppClientId $functionAuthAppId
 
-    Write-Host "✅ FunctionAuth Application secrets saved" -ForegroundColor Green
+        Write-Host "✅ FunctionAuth Application secrets saved" -ForegroundColor Green
+    }
+    else {
+        Write-Host "`n  ⏭ Skipping FunctionAuth secrets (enableFunctionAuthentication = false)" -ForegroundColor Yellow
+    }
 
     Write-Host "`n✅ All app registration secrets have been saved to Key Vault" -ForegroundColor Green
     Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
@@ -2156,7 +2198,9 @@ function Set-GMMAppRegistrationsManually {
         [Parameter(Mandatory = $true)]
         [boolean]$IsClientSecretAuth,
         [Parameter(Mandatory = $false)]
-        [string]$DirectoryTenantId
+        [string]$DirectoryTenantId,
+        [Parameter(Mandatory = $false)]
+        [boolean]$EnableFunctionAuthentication = $false
     )
 
     Write-Host "`n⚠️  MANUAL APP REGISTRATION SETUP REQUIRED" -ForegroundColor Yellow
@@ -2170,7 +2214,9 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "   2. WebAPI Application      ($SolutionAbbreviation-webapi-$EnvironmentAbbreviation)" -ForegroundColor White
     Write-Host "   3. Graph Application       ($SolutionAbbreviation-Graph-$EnvironmentAbbreviation)" -ForegroundColor White
     Write-Host "   4. Teams Channel App       ($SolutionAbbreviation-TeamsChannel-$EnvironmentAbbreviation)" -ForegroundColor White
-    Write-Host "   5. FunctionAuth App        ($SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation)" -ForegroundColor White
+    if ($EnableFunctionAuthentication) {
+        Write-Host "   5. FunctionAuth App        ($SolutionAbbreviation-FunctionAuth-$EnvironmentAbbreviation)" -ForegroundColor White
+    }
 
     Write-Host "`n📖 Manual Setup Documentation:" -ForegroundColor Cyan
     Write-Host "   Please refer to the following documentation for manual setup steps:" -ForegroundColor White
@@ -2178,7 +2224,9 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/WebAPI-Application-Creation-Instructions.md" -ForegroundColor Gray
     Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/GraphCredentials-Application-Creation-Instructions.md" -ForegroundColor Gray
     Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/TeamsChannel-Application-Creation-Instructions.md" -ForegroundColor Gray
-    Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/FunctionAuth-Application-Creation-Instructions.md" -ForegroundColor Gray
+    if ($EnableFunctionAuthentication) {
+        Write-Host "   - $ScriptsDirectory/ApplicationSetupScripts/Manual Setup Documentation/FunctionAuth-Application-Creation-Instructions.md" -ForegroundColor Gray
+    }
 
     Write-Host "`n🔧 PowerShell Script Signatures:" -ForegroundColor Cyan
     Write-Host "   If you prefer to run the setup scripts, use these commands in a separate" -ForegroundColor White
@@ -2242,15 +2290,17 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
     Write-Host "       -Clean `$false`n" -ForegroundColor Gray
 
-    Write-Host "   # 5. FunctionAuth Application" -ForegroundColor Green
-    Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1`"" -ForegroundColor Gray
-    Write-Host "   Set-FunctionAuthApplication ``" -ForegroundColor Gray
-    Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
-    Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
-    Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
-    Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
-    Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+    if ($EnableFunctionAuthentication) {
+        Write-Host "   # 5. FunctionAuth Application" -ForegroundColor Green
+        Write-Host "   . `"$ScriptsDirectory/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1`"" -ForegroundColor Gray
+        Write-Host "   Set-FunctionAuthApplication ``" -ForegroundColor Gray
+        Write-Host "       -SolutionAbbreviation `"$SolutionAbbreviation`" ``" -ForegroundColor Gray
+        Write-Host "       -EnvironmentAbbreviation `"$EnvironmentAbbreviation`" ``" -ForegroundColor Gray
+        Write-Host "       -AppTenantId `"$DirectoryTenantId`" ``" -ForegroundColor Gray
+        Write-Host "       -SaveToKeyVault `$false ``" -ForegroundColor Gray
+        Write-Host "       -SkipIfApplicationExists `$false ``" -ForegroundColor Gray
+        Write-Host "       -Clean `$false`n" -ForegroundColor Gray
+    }
 
     if ($IsClientSecretAuth -eq $true) {
         Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
@@ -2284,14 +2334,18 @@ function Set-GMMAppRegistrationsManually {
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-WebApiAzureADApplication.ps1')
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-GraphCredentialsAzureADApplication.ps1')
     . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-TeamsChannelAzureADApplication.ps1')
-    . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1')
+    if ($EnableFunctionAuthentication) {
+        . ($ScriptsDirectory + '/ApplicationSetupScripts/Set-FunctionAuthApplication.ps1')
+    }
 
     # Validate each application
     $uiValid = Test-UIApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $webApiValid = Test-WebApiApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $graphValid = Test-GraphCredentialsApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
     $teamsChannelValid = Test-TeamsChannelApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
-    $functionAuthValid = Test-FunctionAuthApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    $functionAuthValid = if ($EnableFunctionAuthentication) {
+        Test-FunctionAuthApplication -SolutionAbbreviation $SolutionAbbreviation -EnvironmentAbbreviation $EnvironmentAbbreviation
+    } else { $true }
 
     Write-Host "`n═══════════════════════════════════════════════════════════════════════════" -ForegroundColor Cyan
     Write-Host "📊 Validation Summary:" -ForegroundColor Cyan
@@ -2299,7 +2353,11 @@ function Set-GMMAppRegistrationsManually {
     Write-Host "   WebAPI Application:       $(if ($webApiValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($webApiValid) { 'Green' } else { 'Red' })
     Write-Host "   Graph Application:        $(if ($graphValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($graphValid) { 'Green' } else { 'Red' })
     Write-Host "   Teams Channel Application: $(if ($teamsChannelValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($teamsChannelValid) { 'Green' } else { 'Red' })
-    Write-Host "   FunctionAuth Application: $(if ($functionAuthValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($functionAuthValid) { 'Green' } else { 'Red' })
+    if ($EnableFunctionAuthentication) {
+        Write-Host "   FunctionAuth Application: $(if ($functionAuthValid) { '✅ PASS' } else { '❌ FAIL' })" -ForegroundColor $(if ($functionAuthValid) { 'Green' } else { 'Red' })
+    } else {
+        Write-Host "   FunctionAuth Application: ⏭️  SKIPPED (enableFunctionAuthentication = false)" -ForegroundColor Gray
+    }
     Write-Host "═══════════════════════════════════════════════════════════════════════════`n" -ForegroundColor Cyan
 
     if (-not ($uiValid -and $webApiValid -and $graphValid -and $teamsChannelValid -and $functionAuthValid)) {
@@ -2377,7 +2435,9 @@ function Set-GMMAppRegistrations {
         [Parameter(Mandatory = $false)]
         [string]$DirectoryTenantId,
         [Parameter(Mandatory = $true)]
-        [boolean] $SkipPrivilegedDirectoryActions
+        [boolean] $SkipPrivilegedDirectoryActions,
+        [Parameter(Mandatory = $false)]
+        [boolean] $EnableFunctionAuthentication = $false
     )
 
     Write-Host "`n╔════════════════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
@@ -2392,15 +2452,21 @@ function Set-GMMAppRegistrations {
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -ScriptsDirectory $ScriptsDirectory `
             -IsClientSecretAuth $IsClientSecretAuth `
-            -DirectoryTenantId $DirectoryTenantId
+            -DirectoryTenantId $DirectoryTenantId `
+            -EnableFunctionAuthentication $EnableFunctionAuthentication
     }
     else {
         # Normal flow - create app registrations programmatically
+        $skipFunctionAuthAppParam = @{}
+        if ($EnableFunctionAuthentication -eq $false) {
+            $skipFunctionAuthAppParam = @{ SkipFunctionAuthApp = $true }
+        }
         $appCreationResult = Set-GMMAppRegistrationsProgrammatically `
             -SolutionAbbreviation $SolutionAbbreviation `
             -EnvironmentAbbreviation $EnvironmentAbbreviation `
             -ScriptsDirectory $ScriptsDirectory `
-            -DirectoryTenantId $DirectoryTenantId
+            -DirectoryTenantId $DirectoryTenantId `
+            @skipFunctionAuthAppParam
     }
 
     Write-Host "✅ App registrations created successfully!`n" -ForegroundColor Green
@@ -3156,6 +3222,7 @@ function Deploy-Resources {
     $skipModuleInstallation                         = $parameterHashtable.skipModuleInstallation.value
     $skipNetworkingDeployment                       = Get-Default -Value $ParameterHashtable['skipNetworkingDeployment'].value -Default $true
     $skipAuthentication                             = Get-Default -Value $ParameterHashtable['skipAuthentication'].value -Default $false
+    $enableFunctionAuthentication                   = Get-Default -Value $ParameterHashtable['enableFunctionAuthentication'].value -Default $false
 
     $setRBACPermissions             = Get-Default -Value $ParameterHashtable['setRBACPermissions'].value      -Default $false
     $skipSqlServerPermissionSetup   = Get-Default -Value $ParameterHashtable['skipSqlServerPermissionSetup'].value -Default $false
@@ -3191,7 +3258,8 @@ function Deploy-Resources {
                                         -ScriptsDirectory $scriptsDirectory `
                                         -IsClientSecretAuth $isClientSecretAuth `
                                         -DirectoryTenantId $directoryTenantId `
-                                        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions
+                                        -SkipPrivilegedDirectoryActions $skipPrivilegedDirectoryActions `
+                                        -EnableFunctionAuthentication $enableFunctionAuthentication
     }
     else {
         Write-Host "`nSkipping App Registration setup as per configuration [skipAppRegistrationSetup = $($parameterHashtable.skipAppRegistrationSetup.value)]." -ForegroundColor Yellow

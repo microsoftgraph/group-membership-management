@@ -156,10 +156,17 @@
         "required": false
       }
     },
+    "enableFunctionAuthentication": {
+      "value": false,
+      "metadata": {
+        "description": "When set to true, enables function authentication on Azure Function apps. Requires functionAuthAppClientId to be set or auto-created. When false, function authentication is disabled.",
+        "required": false
+      }
+    },
     "functionAuthAppClientId": {
       "value": "",
       "metadata": {
-        "description": "The client id of the function authentication app registration. If left empty, the script will create it and store/retrieve it from the keyvault.",
+        "description": "The client id of the function authentication app registration. Required when enableFunctionAuthentication is true. If left empty when enabled, the script will create it and store/retrieve it from the keyvault.",
         "required": false
       }
     },

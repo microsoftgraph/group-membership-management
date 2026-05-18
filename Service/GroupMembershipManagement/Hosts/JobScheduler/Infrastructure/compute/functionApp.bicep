@@ -61,6 +61,7 @@ param featureFlags object
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
   name: storageAccountName
@@ -148,7 +149,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
   ]
 }
 
-resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = {
+resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = if (enableFunctionAuthentication) {
   parent: functionApp
   name: 'authsettingsV2'
   properties: {

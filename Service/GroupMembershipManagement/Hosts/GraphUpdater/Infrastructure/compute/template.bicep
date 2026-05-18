@@ -21,6 +21,7 @@ param tenantId string
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Instance identifier')
 @allowed([
@@ -219,6 +220,7 @@ module functionAppTemplate_GraphUpdater 'functionApp.bicep' = {
     dataKeyVaultResourceGroup: dataKeyVaultResourceGroup
     appSettings: appSettings
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }

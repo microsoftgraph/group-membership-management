@@ -16,6 +16,7 @@ param location string
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Service plan name.')
 @minLength(1)
@@ -127,7 +128,7 @@ module functionAppRBAC 'functionAppRBAC.bicep' = {
   }
 }
 
-resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = {
+resource authSettings 'Microsoft.Web/sites/config@2022-09-01' = if (enableFunctionAuthentication) {
   parent: functionApp
   name: 'authsettingsV2'
   properties: {

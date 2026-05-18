@@ -21,6 +21,7 @@ param tenantId string
 
 @description('Function authentication app client id.')
 param functionAuthAppClientId string
+param enableFunctionAuthentication bool = false
 
 @description('Service plan name.')
 param servicePlanName string = '${solutionAbbreviation}-${resourceGroupClassification}-${environmentAbbreviation}-${substring(uniqueString(subscription().id,'MembershipAggregator'),0,8)}'
@@ -174,6 +175,7 @@ module functionAppTemplate_MembershipAggregator 'functionApp.bicep' = {
     servicePlanName: servicePlanName
     appSettings: appSettings
     functionAuthAppClientId: functionAuthAppClientId
+    enableFunctionAuthentication: enableFunctionAuthentication
     userManagedIdentities:{
       '${graphUAMI.id}' : {}
     }
