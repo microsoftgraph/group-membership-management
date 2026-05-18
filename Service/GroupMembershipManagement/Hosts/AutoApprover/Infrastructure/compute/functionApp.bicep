@@ -57,7 +57,7 @@ param setRBACPermissions bool
 param storageAccountName string
 
 @description('Maximum instance count.')
-param maxInstanceCount int = 40
+param maxInstanceCount int = 500
 
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 2048

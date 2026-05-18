@@ -54,7 +54,7 @@ param storageAccountName string
 param appPackageContainerName string = ''
 
 @description('Maximum instance count for Flex Consumption.')
-param maxInstanceCount int = 40
+param maxInstanceCount int = 500
 
 @description('Instance memory in MB for Flex Consumption.')
 param instanceMemoryMB int = 4096

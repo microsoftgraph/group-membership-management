@@ -44,7 +44,7 @@ param functionAppName string = '${solutionAbbreviation}-${resourceGroupClassific
 param functionAppKind string = 'functionapp,linux'
 
 @description('Maximum instance count.')
-param maxInstanceCount int = 40
+param maxInstanceCount int = 500
 
 @description('Instance memory in MB.')
 param instanceMemoryMB int = 4096
