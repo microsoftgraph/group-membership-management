@@ -3,11 +3,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { fetchJobChanges, fetchJobDetails, getChannelDetails, getGroupDetails } from './jobDetails.api';
-import { fetchJobs } from './jobs.api';
+import { fetchJobChanges, fetchJobDetails, getChannelDetails, getGroupDetails, patchJobDetails, removeGMM } from './jobDetails.api';
+import { fetchJobs, postJob, downloadJobs, approveJobs, getPeoplePickerSuggestions } from './jobs.api';
 import jobsReducer from './jobs.slice';
 import type { Job } from '../models/Job';
-import type { SyncJobChange } from '../models';
+import type { SyncJobChange, PatchJobResponse, RemoveGMMResponse } from '../models';
+import type { PeoplePickerPersona } from '../models/PeoplePickerPersona';
 
 // Minimal Job factory; only fields the reducer reads (titles for
 // selectedJobWithNoTitles + an identifier so test assertions are obvious).
@@ -184,5 +185,218 @@ describe('jobs.slice — removeJobFromList (optimistic remove for Bug 1)', () =>
     });
     const next = jobsReducer(seeded, { type: 'jobs/removeJobFromList', payload: 'missing' });
     expect(next.jobs?.map(j => j.syncJobId)).toEqual(['a', 'b']);
+  });
+});
+
+describe('jobs.slice — setSelectedJobEnabled', () => {
+  it('updates enabledOrNot on selectedJob', () => {
+    let state = jobsReducer(initial, fetchJobDetails.pending('req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, fetchJobDetails.fulfilled(makeJob('a', { enabledOrNot: true } as any), 'req1', { syncJobId: 'a' }));
+    expect((state.selectedJob as any)?.enabledOrNot).toBe(true);
+
+    state = jobsReducer(state, { type: 'jobs/setSelectedJobEnabled', payload: false });
+    expect((state.selectedJob as any)?.enabledOrNot).toBe(false);
+  });
+
+  it('is a no-op when selectedJob is undefined', () => {
+    const state = jobsReducer(initial, { type: 'jobs/setSelectedJobEnabled', payload: true });
+    expect(state.selectedJob).toBeUndefined();
+  });
+});
+
+describe('jobs.slice — setSelectedJobStatus', () => {
+  it('updates status on selectedJob', () => {
+    let state = jobsReducer(initial, fetchJobDetails.pending('req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, fetchJobDetails.fulfilled(makeJob('a'), 'req1', { syncJobId: 'a' }));
+
+    state = jobsReducer(state, { type: 'jobs/setSelectedJobStatus', payload: 'CustomerPaused' });
+    expect(state.selectedJob?.status).toBe('CustomerPaused');
+  });
+
+  it('is a no-op when selectedJob is undefined', () => {
+    const state = jobsReducer(initial, { type: 'jobs/setSelectedJobStatus', payload: 'Idle' });
+    expect(state.selectedJob).toBeUndefined();
+  });
+});
+
+describe('jobs.slice — setTitles', () => {
+  it('sets titles and selectedJobWithNoTitles to false when titles have names', () => {
+    let state = jobsReducer(initial, fetchJobDetails.pending('req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, fetchJobDetails.fulfilled(makeJob('a'), 'req1', { syncJobId: 'a' }));
+
+    state = jobsReducer(state, { type: 'jobs/setTitles', payload: [{ name: 'Title 1' }] });
+    expect(state.selectedJob?.titles).toHaveLength(1);
+    expect(state.selectedJobWithNoTitles).toBe(false);
+  });
+
+  it('sets selectedJobWithNoTitles to true when all titles are empty', () => {
+    let state = jobsReducer(initial, fetchJobDetails.pending('req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, fetchJobDetails.fulfilled(makeJob('a'), 'req1', { syncJobId: 'a' }));
+
+    state = jobsReducer(state, { type: 'jobs/setTitles', payload: [{ name: '' }, { name: '  ' }] });
+    expect(state.selectedJobWithNoTitles).toBe(true);
+  });
+});
+
+describe('jobs.slice — patchJobDetails extraReducers', () => {
+  it('clears response and error on pending', () => {
+    const state = jobsReducer(initial, patchJobDetails.pending('req1', {} as any));
+    expect(state.patchJobDetailsResponse).toBeUndefined();
+    expect(state.patchJobDetailsError).toBeUndefined();
+  });
+
+  it('sets response and clears jobIdSet on fulfilled', () => {
+    const seeded = jobsReducer(initial, { type: 'jobs/setJobId', payload: 'some-id' });
+    const response = { ok: true, statusCode: 200 } as PatchJobResponse;
+    const state = jobsReducer(seeded, patchJobDetails.fulfilled(response, 'req1', {} as any));
+    expect(state.patchJobDetailsResponse).toEqual(response);
+    expect(state.jobIdSet).toBe('');
+  });
+
+  it('sets error on rejected', () => {
+    const state = jobsReducer(initial, patchJobDetails.rejected(new Error('patch fail'), 'req1', {} as any));
+    expect(state.patchJobDetailsError).toBe('patch fail');
+  });
+});
+
+describe('jobs.slice — postJob extraReducers', () => {
+  it('sets loading on pending', () => {
+    const state = jobsReducer(initial, postJob.pending('req1', {} as any));
+    expect(state.postJobLoading).toBe(true);
+    expect(state.postJobError).toBeUndefined();
+  });
+
+  it('clears loading on fulfilled', () => {
+    const state = jobsReducer(initial, postJob.fulfilled(undefined as any, 'req1', {} as any));
+    expect(state.postJobLoading).toBe(false);
+  });
+
+  it('sets error on rejected', () => {
+    const state = jobsReducer(initial, postJob.rejected(new Error('post fail'), 'req1', {} as any));
+    expect(state.postJobLoading).toBe(false);
+    expect(state.postJobError).toBe('post fail');
+  });
+});
+
+describe('jobs.slice — removeGMM extraReducers', () => {
+  it('sets loading on pending', () => {
+    const state = jobsReducer(initial, removeGMM.pending('req1', { syncJobId: 'a' }));
+    expect(state.removeGMMLoading).toBe(true);
+    expect(state.removeGMMResponse).toBeUndefined();
+    expect(state.removeGMMError).toBeUndefined();
+  });
+
+  it('sets response on fulfilled', () => {
+    const response = { ok: true, statusCode: 200 } as RemoveGMMResponse;
+    const state = jobsReducer(initial, removeGMM.fulfilled(response, 'req1', { syncJobId: 'a' }));
+    expect(state.removeGMMLoading).toBe(false);
+    expect(state.removeGMMResponse).toEqual(response);
+  });
+
+  it('sets error on rejected', () => {
+    const state = jobsReducer(initial, removeGMM.rejected(new Error('remove fail'), 'req1', { syncJobId: 'a' }));
+    expect(state.removeGMMLoading).toBe(false);
+    expect(state.removeGMMError).toBe('remove fail');
+  });
+});
+
+describe('jobs.slice — downloadJobs extraReducers', () => {
+  it('sets loading on pending', () => {
+    const state = jobsReducer(initial, downloadJobs.pending('req1', undefined as any));
+    expect(state.downloadJobsLoading).toBe(true);
+  });
+
+  it('sets jobsToDownload on fulfilled', () => {
+    const jobs = [makeJob('d1')];
+    const state = jobsReducer(initial, downloadJobs.fulfilled(jobs, 'req1', undefined as any));
+    expect(state.downloadJobsLoading).toBe(false);
+    expect(state.jobsToDownload).toEqual(jobs);
+  });
+
+  it('sets error on rejected', () => {
+    const state = jobsReducer(initial, downloadJobs.rejected(new Error('dl fail'), 'req1', undefined as any));
+    expect(state.downloadJobsLoading).toBe(false);
+    expect(state.downloadJobsError).toBe('dl fail');
+  });
+});
+
+describe('jobs.slice — approveJobs extraReducers', () => {
+  it('sets loading on pending', () => {
+    const state = jobsReducer(initial, approveJobs.pending('req1', undefined as any));
+    expect(state.approveJobsLoading).toBe(true);
+  });
+
+  it('sets totals on fulfilled', () => {
+    const payload = { totalNumberOfApprovedJobs: 5, totalNumberOfJobs: 10 };
+    const state = jobsReducer(initial, approveJobs.fulfilled(payload as any, 'req1', undefined as any));
+    expect(state.approveJobsLoading).toBe(false);
+    expect(state.totalNumberOfApprovedJobs).toBe(5);
+    expect(state.totalNumberOfJobs).toBe(10);
+  });
+
+  it('sets error on rejected', () => {
+    const state = jobsReducer(initial, approveJobs.rejected(new Error('approve fail'), 'req1', undefined as any));
+    expect(state.approveJobsLoading).toBe(false);
+    expect(state.approveJobsError).toBe('approve fail');
+  });
+});
+
+describe('jobs.slice — simple reducers', () => {
+  it('setGetJobsError clears error', () => {
+    const seeded = jobsReducer({ ...initial, getJobsError: 'some error' } as any, { type: '@@SEED' });
+    // Direct approach: use the actual initial with error set
+    let state = jobsReducer(initial, fetchJobs.rejected(new Error('err'), 'req1', undefined as never));
+    state = jobsReducer(state, { type: 'jobs/setGetJobsError' });
+    expect(state.getJobsError).toBeUndefined();
+  });
+
+  it('setGetJobDetailsError clears error', () => {
+    let state = jobsReducer(initial, fetchJobDetails.pending('req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, fetchJobDetails.rejected(new Error('err'), 'req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, { type: 'jobs/setGetJobDetailsError' });
+    expect(state.getJobDetailsError).toBeUndefined();
+  });
+
+  it('clearJob clears selectedJob', () => {
+    let state = jobsReducer(initial, fetchJobDetails.pending('req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, fetchJobDetails.fulfilled(makeJob('a'), 'req1', { syncJobId: 'a' }));
+    state = jobsReducer(state, { type: 'jobs/clearJob' });
+    expect(state.selectedJob).toBeUndefined();
+  });
+
+  it('clearJobsToDownload clears jobsToDownload', () => {
+    const jobs = [makeJob('a')];
+    let state = jobsReducer(initial, downloadJobs.fulfilled(jobs, 'req1', undefined as any));
+    state = jobsReducer(state, { type: 'jobs/clearJobsToDownload' });
+    expect(state.jobsToDownload).toBeUndefined();
+  });
+
+  it('updateJobOwnerFilterSuggestions clears suggestions', () => {
+    const state = jobsReducer(initial, { type: 'jobs/updateJobOwnerFilterSuggestions' });
+    expect(state.jobOwnerFilterSuggestions).toEqual([]);
+  });
+
+  it('setGeneratedTitlesYet updates flag', () => {
+    const state = jobsReducer(initial, { type: 'jobs/setGeneratedTitlesYet', payload: true });
+    expect(state.generatedTitlesYet).toBe(true);
+  });
+
+  it('setJobId updates jobIdSet', () => {
+    const state = jobsReducer(initial, { type: 'jobs/setJobId', payload: 'job-123' });
+    expect(state.jobIdSet).toBe('job-123');
+  });
+
+  it('setApproveJobsLoading clears loading', () => {
+    let state = jobsReducer(initial, approveJobs.pending('req1', undefined as any));
+    state = jobsReducer(state, { type: 'jobs/setApproveJobsLoading' });
+    expect(state.approveJobsLoading).toBe(false);
+  });
+
+  it('setApproveJobsResponse clears totals', () => {
+    const payload = { totalNumberOfApprovedJobs: 5, totalNumberOfJobs: 10 };
+    let state = jobsReducer(initial, approveJobs.fulfilled(payload as any, 'req1', undefined as any));
+    state = jobsReducer(state, { type: 'jobs/setApproveJobsResponse' });
+    expect(state.totalNumberOfApprovedJobs).toBeUndefined();
+    expect(state.totalNumberOfJobs).toBeUndefined();
   });
 });
