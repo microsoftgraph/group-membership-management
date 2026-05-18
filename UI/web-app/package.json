@@ -130,7 +130,7 @@
       "webpack": ">=5.97.1",
       "webpack-dev-middleware": ">=5.3.4",
       "webpack-dev-server": ">=4.15.3",
-      "ws": ">=8.17.1"
+      "ws": ">=8.20.1"
     },
     "x-override-notes": {
       "@remix-run/router>=1.23.2": "Security fix - Open redirect via basename parameter",
