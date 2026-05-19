@@ -568,16 +568,21 @@ namespace WebApi
             app.UseStaticFiles();
             app.UseRouting();
 
-            var allowedOrigins = new[] { "https://*.microsoft.com", "http://localhost:3000" };
-            app.UseCors(x => x
-                .SetIsOriginAllowedToAllowWildcardSubdomains()
-                .WithOrigins(allowedOrigins)
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials()
-                .WithExposedHeaders("x-total-pages", "x-current-page")
-                .Build()
-            );
+            if (app.Environment.IsDevelopment())
+            {
+                var devCorsOrigins = builder.Configuration
+                    .GetSection("Cors:AllowedOrigins")
+                    .Get<string[]>() ?? [];
+
+                if (devCorsOrigins.Length > 0)
+                {
+                    app.UseCors(policy => policy
+                        .WithOrigins(devCorsOrigins)
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials());
+                }
+            }
 
             app.UseAuthentication();
             app.UseAuthorization();

@@ -165,3 +165,120 @@ Finally, you will need to update your App registration to include this custom do
 
 ## Using the default domain
 If you do not wish to set up a custom domain, you can leverage the one included in the F1 service plan, remove the `apiHostname` parameter file to use the default `<solutionAbbreviation>-compute-<solutionAbbreviation>-webapi.azurewebsites.net`
+
+## CORS configuration
+
+The WebAPI's allowed origins are configured differently for **production-like environments** (INT/UA/Prod) versus **local development**. There is no hardcoded CORS allowlist in `Program.cs` for non-Development environments.
+
+### Production-like environments — App Service CORS blade
+
+For any deployed environment, the WebAPI's allowed origins live in the App Service's CORS blade — surfaced in the Azure Portal at **App Service → API → CORS**, and represented in ARM as `siteConfig.cors.allowedOrigins` on the WebAPI's `Microsoft.Web/sites` resource.
+
+Origins are populated **automatically as part of the deploy pipeline** by the `Set-ConfigureWebApiCors` PowerShell function in `Deployment/Set-ConfigureWebApiCors.ps1`. The function:
+
+1. Queries the deployed UI Static Web App for its default hostname (`<solutionAbbreviation>-ui` by default, or a custom `StaticWebAppName` argument).
+2. Adds the UI's custom domain hostname too, if one is configured.
+3. Writes the resulting `https://` origins to the WebAPI's `siteConfig.cors.allowedOrigins`, preserving any pre-existing entries.
+4. Mirrors the same origins onto the SignalR service's `AllowedOrigin` list (used for the `/servicestatus` hub).
+
+No bicep parameter or per-env parameter file change is needed when a new origin must be added — the function re-discovers the UI hostnames every deploy. To add a one-off origin out-of-band (e.g. to allow a temporary preview deployment to call the API), edit the App Service's CORS blade in the Portal directly; the next pipeline run will preserve your manual addition.
+
+ASP.NET Core CORS middleware (`app.UseCors(...)`) is **not** registered in non-Development environments. The App Service CORS blade is the only CORS gate. This is deliberate — Microsoft's guidance is explicit:
+
+> "Don't try to use App Service CORS and your own CORS code together. If you try to use them together, App Service CORS takes precedence and your own CORS code has no effect."
+> — `learn.microsoft.com/en-us/azure/app-service/app-service-web-tutorial-rest-api`
+
+`supportCredentials: true` is set in `Infrastructure/compute/appService.bicep` and persists across deploys.
+
+### Local development — `appsettings.Development.json`
+
+For local `dotnet run`, the React UI on `http://localhost:3000` is allowed via an `IsDevelopment()`-gated `app.UseCors(...)` block in `Program.cs` that reads its origin list from configuration:
+
+```json
+// appsettings.Development.json
+{
+  "Cors": {
+    "AllowedOrigins": [ "http://localhost:3000" ]
+  }
+}
+```
+
+To add a second local origin (e.g. `http://localhost:5173` for a Vite dev server), append it to that array. Do **not** add origins here that should be available outside local development — `appsettings.Development.json` is loaded only when `ASPNETCORE_ENVIRONMENT=Development`.
+
+## Debugging the deployed WebAPI
+
+The recommended workflow for investigating issues on a deployed WebAPI is **Application Insights** — not flipping `ASPNETCORE_ENVIRONMENT=Development` on the App Service.
+
+### Why not flip `ASPNETCORE_ENVIRONMENT=Development` on prod?
+
+Setting that env var on a deployed App Service unlocks **every** `if (app.Environment.IsDevelopment())` block in `Program.cs` in lockstep — currently four distinct concerns:
+
+| What gets activated | Effect |
+|---|---|
+| `IdentityModelEventSource.ShowPII = true` | PII is written into request traces and forwarded to telemetry |
+| `app.UseDeveloperExceptionPage()` | Stack traces are returned in HTTP response bodies — visible to whoever called the API |
+| `app.UseSwaggerUI()` + `app.UseSwagger()` | The entire API surface becomes browsable at `/swagger` |
+| `app.UseCors(...)` reading `appsettings.Development.json` | `http://localhost:3000` is allowed to make credentialed calls against the deployed API |
+
+### Workflow 1 — Exception investigation
+
+Application Insights captures every unhandled exception that bubbles through the ASP.NET Core pipeline (via `AddApplicationInsightsTelemetry()` at `Program.cs`), with the full parsed stack trace, the inbound request, and any correlated outbound dependencies. The `ApplicationInsights:ConnectionString` is wired in by `Infrastructure/compute/template.bicep` for every environment.
+
+To investigate an exception:
+
+1. **Azure Portal** → App Insights resource for the environment (`<solutionAbbreviation>-data-<environmentAbbreviation>`) → **Failures** blade. Exceptions are grouped by `problemId`; click into one for the full stack trace and correlated request.
+2. **Logs** blade, paste the following KQL:
+   ```kusto
+   exceptions
+   | where timestamp > ago(1h)
+   | where cloud_RoleName has "webapi"
+   | order by timestamp desc
+   | project timestamp, type, outerMessage, operation_Name, problemId, details
+   ```
+3. **From the command line:**
+   ```powershell
+   az monitor app-insights query `
+     --app <solutionAbbreviation>-data-<environmentAbbreviation> `
+     --resource-group <solutionAbbreviation>-data-<environmentAbbreviation> `
+     --analytics-query 'exceptions | where cloud_RoleName has "webapi" | order by timestamp desc | take 10' `
+     --offset 1d
+   ```
+4. **For live repro / "watch a fix get deployed":** App Insights → **Live Metrics** — full sampled stack traces appear within ~1 second, no cost.
+
+### Workflow 2 — Endpoint testing
+
+When you want to call deployed endpoints to verify behaviour, use an out-of-process HTTP client with a bearer token, not Swagger UI:
+
+```powershell
+# Get a bearer token scoped to the WebAPI app registration
+$token = az account get-access-token `
+  --resource api://<solutionAbbreviation>-webapi-<environmentAbbreviation> `
+  --query accessToken -o tsv
+
+# Call any endpoint
+curl https://<solutionAbbreviation>-compute-<environmentAbbreviation>-webapi.azurewebsites.net/api/v1/jobs `
+  -H "Authorization: Bearer $token"
+```
+
+Equivalent flows in **Bruno** (file-based, can be checked into the repo as `.bru` files), **Postman**, **Insomnia**, or **VS Code REST Client** (`.http` files) are all preferred over enabling Swagger UI on a deployed App Service. The OpenAPI spec is available locally — run the WebAPI on your dev box and point your client at `http://localhost:<port>/swagger/v1/swagger.json` — so you don't lose the API discoverability that Swagger UI normally provides.
+
+### Workflow 3 — Verbose logging (no env change)
+
+If you need richer log output from `ILogger.LogInformation` / `LogDebug` calls that are normally filtered out of telemetry, raise the App Insights log-level filter via an App Setting (no redeploy required):
+
+```powershell
+az webapp config appsettings set `
+  --name <solutionAbbreviation>-compute-<environmentAbbreviation>-webapi `
+  --resource-group <solutionAbbreviation>-compute-<environmentAbbreviation> `
+  --settings Logging__ApplicationInsights__LogLevel__Default=Debug
+```
+
+Revert to `Warning` (the default in `appsettings.json`) when you're done. App Service restarts automatically when settings change.
+
+`az webapp log tail` is also available for streaming stdout/stderr including unhandled exception messages in real-time:
+
+```powershell
+az webapp log tail `
+  --name <solutionAbbreviation>-compute-<environmentAbbreviation>-webapi `
+  --resource-group <solutionAbbreviation>-compute-<environmentAbbreviation>
+```
