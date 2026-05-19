@@ -401,7 +401,6 @@ namespace WebApi
             builder.Services.AddScoped<IActionableMessageTokenValidator, ActionableMessageTokenValidator>();
             builder.Services.AddScoped<IThresholdNotificationService, ThresholdNotificationService>();
             builder.Services.AddScoped<IDataFactoryRepository, DataFactoryRepository>();
-            builder.Services.AddScoped<IDatabaseMigrationsRepository, DatabaseMigrationsRepository>();
             builder.Services.AddScoped<IDatabaseSyncJobsRepository, DatabaseSyncJobsRepository>();
             builder.Services.AddSingleton<IBlobStorageRepository>(sp =>
             {

@@ -54,7 +54,7 @@ The deployment script automates the complete setup of the GMM environment. At a 
    - Builds and deploys the React UI to the Static Web App
 
 10. **Runs Database Migrations**
-    - Triggers Entity Framework migrations via the WebAPI
+    - Entity Framework Core migrations are applied automatically as part of the deployment; operators do not run them manually.
 
 For a complete list of all Azure resources created, see the [GMM Resource Overview](../../Documentation/Architecture/GMM_Resources.md).
 
