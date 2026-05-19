@@ -130,12 +130,16 @@ function Set-ConfigureWebApiCors {
 
     # Set CORS for the WebAPI App Service.
     #
-    # Strategy: snapshot the existing cors object, compute the desired union of
-    # origins, and only issue a Set-AzResource if the set actually changed. This
-    # keeps the operation idempotent (no spurious writes on every deploy) and
-    # preserves any pre-existing fields we don't explicitly manage
-    # (supportCredentials, future Azure CORS settings, etc.) by modifying the
-    # existing cors object in place instead of replacing it wholesale.
+    # Strategy: snapshot the existing cors object via Get-AzWebApp, compute the
+    # desired union of origins, and only issue a PATCH if the set actually
+    # changed. This keeps the operation idempotent (no spurious writes on every
+    # deploy) and preserves supportCredentials by reading it from the snapshot.
+    #
+    # The write itself uses Invoke-AzRestMethod PATCH against /config/web with
+    # only the cors subkey. We deliberately avoid Set-AzResource / Set-AzWebApp
+    # because both round-trip the entire SiteConfig, which Azure rejects on
+    # lower-SKU App Service plans (Free/Basic) — it auto-populates fields like
+    # EndToEndEncryption that are not writable on those SKUs.
     #
     # The entire block is wrapped in try/catch so a missing WebAPI, an Azure
     # API blip, or an RBAC failure never fails the deployment — CORS misconfig
@@ -189,32 +193,36 @@ function Set-ConfigureWebApiCors {
             Write-Host "WebAPI CORS already up to date ($($currentCORs.Count) origin(s)); skipping write." -ForegroundColor Gray
         }
         else {
-            $apiResourceParams = @{
-                ResourceName      = $webApiName
-                ResourceType      = "Microsoft.Web/sites"
-                ResourceGroupName = $computeResourceGroup
+            # Preserve supportCredentials from the existing CORS settings;
+            # default to $true if none exist (matches appService.bicep default).
+            $supportCredentials = $true
+            if ($null -ne $webApi.SiteConfig.Cors -and $null -ne $webApi.SiteConfig.Cors.SupportCredentials) {
+                $supportCredentials = [bool]$webApi.SiteConfig.Cors.SupportCredentials
             }
 
-            $webApiResource = Invoke-WithRetry `
-                -Operation { Get-AzResource @apiResourceParams } `
-                -OperationName "Get WebAPI resource for CORS" `
-                -MaxAttempts 3 -BaseDelaySeconds 2
-
-            # Mutate the existing cors object in place so supportCredentials and
-            # any other fields survive. If no cors block exists yet, create one
-            # with supportCredentials defaulted to $true to match appService.bicep.
-            if ($null -eq $webApiResource.Properties.siteConfig.cors) {
-                $webApiResource.Properties.siteConfig.cors = @{
-                    allowedOrigins     = $desiredCORs
-                    supportCredentials = $true
+            # PATCH only the cors subkey via the App Service REST API. Using
+            # Set-AzResource / Set-AzWebApp would round-trip the entire
+            # SiteConfig, which fails on Free / Basic plans because Azure
+            # auto-populates SKU-restricted fields (e.g. EndToEndEncryption)
+            # that aren't writable on lower SKUs. PATCH avoids that entirely.
+            $corsPatchPath = "$($webApi.Id)/config/web?api-version=2023-12-01"
+            $corsPatchPayload = @{
+                properties = @{
+                    cors = @{
+                        allowedOrigins     = $desiredCORs
+                        supportCredentials = $supportCredentials
+                    }
                 }
-            }
-            else {
-                $webApiResource.Properties.siteConfig.cors.allowedOrigins = $desiredCORs
-            }
+            } | ConvertTo-Json -Depth 10 -Compress
 
             $null = Invoke-WithRetry `
-                -Operation { $webApiResource | Set-AzResource -Force } `
+                -Operation {
+                    $response = Invoke-AzRestMethod -Method PATCH -Path $corsPatchPath -Payload $corsPatchPayload
+                    if ($response.StatusCode -ge 400) {
+                        throw "PATCH WebAPI siteConfig returned status $($response.StatusCode): $($response.Content)"
+                    }
+                    $response
+                } `
                 -OperationName "Update WebAPI CORS settings" `
                 -MaxAttempts 3 -BaseDelaySeconds 2
 
