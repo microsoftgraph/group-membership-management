@@ -19,6 +19,6 @@
     "LoadTesting:SyncJobChangePercent": 10,
     "LoadTesting:SyncJobProbabilityOfChangePercent": 50,
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": ""
   }
 }

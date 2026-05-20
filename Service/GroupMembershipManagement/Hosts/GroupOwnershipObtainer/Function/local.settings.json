@@ -8,7 +8,7 @@
     "graphCredentials:KeyVaultName": "",
     "graphCredentials:KeyVaultTenantId": "",
     "appConfigurationEndpoint": "",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "serviceBusSyncJobTopic": "syncJobs",
     "gmmServiceBus__fullyQualifiedNamespace": "<service_bus_namespace>.servicebus.windows.net",
     "graphCredentials:ClientCertificateName": "not-set",

@@ -11,6 +11,6 @@
     "ConnectionStrings:JobsContextReadOnly": "",
     "jobSchedulerSchedule": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": ""
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": ""
   }
 }

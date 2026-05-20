@@ -5,7 +5,7 @@
     "AzureWebJobsSecretStorageType": "files",
     "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
     "appConfigurationEndpoint": "",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "FUNCTIONS_EXTENSION_VERSION": "~4",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "graphCredentials__ClientCertificateName": "",

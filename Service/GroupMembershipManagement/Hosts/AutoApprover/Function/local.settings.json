@@ -7,7 +7,7 @@
     "logAnalyticsCustomerId": "",
     "logAnalyticsPrimarySharedKey": "",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "gmmServiceBus__fullyQualifiedNamespace": "",
     "ConnectionStrings__JobsContext": "",
     "ConnectionStrings__JobsContextReadOnly": "",

@@ -28,7 +28,7 @@
     "teamsGraphCredentials:TenantId": "<demo-tenant-id>",
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
     "serviceBusNotificationsQueue": "",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "actionableEmailProviderId": "",
     "enableTeamsChannel": false
   }

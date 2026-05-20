@@ -27,7 +27,7 @@
     "maxExceptionHandlingAttempts": 2,
     "maxRetryAfterAttempts": 4,
     "appConfigurationEndpoint": "https://gmm-appconfig-<env>.azconfig.io",
-    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
     "dryRunEnabled": false
   }
 }

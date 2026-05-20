@@ -3,7 +3,7 @@
     "Values": {
         "AZURE_TOKEN_CREDENTIALS": "VisualStudioCredential",
         "appConfigurationEndpoint": "",
-        "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+        "APPLICATIONINSIGHTS_CONNECTION_STRING": "",
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "ConnectionStrings__JobsContext": "",
         "ConnectionStrings__JobsContextReadOnly": "",
