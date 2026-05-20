@@ -1308,7 +1308,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>GMM is working on populating members based on the rules you set up. You'll receive a follow-up notification once the sync is completed.</value>
   </data>
   <data name="SyncStartedFallback.CtaLabel" xml:space="preserve">
-    <value>View group in GMM UI</value>
+    <value>View in GMM UI</value>
   </data>
   <data name="SyncStartedFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
@@ -1317,16 +1317,18 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>AWARENESS</value>
   </data>
   <data name="SyncCompletedFallback.Description" xml:space="preserve">
-    <value>The group **{0}** with Id: **{1}** has completed its initial sync.</value>
+    <value>The initial sync for this group is complete. This group is now managed by GMM, and no action is required from you.</value>
   </data>
   <data name="SyncCompletedFallback.CalloutTitle" xml:space="preserve">
-    <value>SYNC SUMMARY</value>
+    <value>MANAGEMENT SUMMARY</value>
   </data>
   <data name="SyncCompletedFallback.CalloutBody" xml:space="preserve">
-    <value>During the initial sync, **{0}** users were added and **{1}** users were removed from **{2}**.</value>
+    <value>**Initial sync result:** {0} users were added and {1} users were removed.
+
+**Going forward:** GMM will continue to evaluate the defined membership rules on the configured cadence. You can use the GMM UI to review sync details and configuration at any time.</value>
   </data>
   <data name="SyncCompletedFallback.CtaLabel" xml:space="preserve">
-    <value>View group in GMM UI</value>
+    <value>View in GMM UI</value>
   </data>
   <data name="SyncCompletedFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
@@ -1421,11 +1423,14 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="FallbackGroupType.M365GroupVivaEngage" xml:space="preserve">
     <value>M365 Group &#8212; Viva Engage</value>
   </data>
+  <data name="FallbackGroupType.M365GroupTeams" xml:space="preserve">
+    <value>M365 Group &#8212; Teams</value>
+  </data>
   <data name="FallbackGroupType.SecurityGroup" xml:space="preserve">
     <value>Cloud Security Group</value>
   </data>
   <data name="FallbackDetailsRow.GroupAlias" xml:space="preserve">
-    <value>GROUP ALIAS</value>
+    <value>GROUP EMAIL</value>
   </data>
   <data name="FallbackDetailsRow.GroupType" xml:space="preserve">
     <value>GROUP TYPE</value>

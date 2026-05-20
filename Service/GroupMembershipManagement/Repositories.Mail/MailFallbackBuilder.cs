@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
 using System;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -86,8 +87,8 @@ namespace Repositories.Mail
                 prefix: "SyncCompletedFallback",
                 groupName: destinationGroupName,
                 headerText: destinationGroupName ?? string.Empty,
-                description: _localizationRepository.TranslateSetting("SyncCompletedFallback.Description", destinationGroupName ?? string.Empty, groupId ?? string.Empty),
-                calloutBody: _localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutBody", addedCount, removedCount, destinationGroupName ?? string.Empty),
+                description: _localizationRepository.TranslateSetting("SyncCompletedFallback.Description"),
+                calloutBody: _localizationRepository.TranslateSetting("SyncCompletedFallback.CalloutBody", addedCount, removedCount),
                 rows: rows,
                 jobUrl: jobUrl,
                 sentDate: sentDate
@@ -309,9 +310,12 @@ namespace Repositories.Mail
                     if (endpoints.Contains("Outlook"))
                     {
                         var vivaEngageUrl = await _graphGroupRepository.GetGroupVivaEngageUrlAsync(gid);
-                        groupType = !string.IsNullOrEmpty(vivaEngageUrl)
-                            ? _localizationRepository.TranslateSetting("FallbackGroupType.M365GroupVivaEngage")
-                            : _localizationRepository.TranslateSetting("FallbackGroupType.M365Group");
+                        if (!string.IsNullOrEmpty(vivaEngageUrl))
+                            groupType = _localizationRepository.TranslateSetting("FallbackGroupType.M365GroupVivaEngage");
+                        else if (endpoints.Any(e => string.Equals(e, "MicrosoftTeams", StringComparison.OrdinalIgnoreCase)))
+                            groupType = _localizationRepository.TranslateSetting("FallbackGroupType.M365GroupTeams");
+                        else
+                            groupType = _localizationRepository.TranslateSetting("FallbackGroupType.M365Group");
                     }
                     else if (endpoints.Contains("SecurityGroup"))
                     {
