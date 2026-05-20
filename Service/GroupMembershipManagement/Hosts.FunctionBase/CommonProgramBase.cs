@@ -180,7 +180,7 @@ namespace Hosts.FunctionBase
 
             services.AddApplicationInsightsTelemetryWorkerService(options =>
             {
-                options.InstrumentationKey = GetValueOrThrowBase(configuration, "APPINSIGHTS_INSTRUMENTATIONKEY");
+                options.ConnectionString = GetValueOrThrowBase(configuration, "APPLICATIONINSIGHTS_CONNECTION_STRING");
             });
 
             // The Application Insights SDK adds a default logging filter that instructs ILogger to capture only Warning

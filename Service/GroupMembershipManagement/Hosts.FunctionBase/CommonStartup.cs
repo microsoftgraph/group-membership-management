@@ -182,7 +182,7 @@ namespace Hosts.FunctionBase
             builder.Services.AddSingleton(sp =>
             {
                 var telemetryConfiguration = new TelemetryConfiguration();
-                telemetryConfiguration.InstrumentationKey = Environment.GetEnvironmentVariable("APPINSIGHTS_INSTRUMENTATIONKEY");
+                telemetryConfiguration.ConnectionString = Environment.GetEnvironmentVariable("APPLICATIONINSIGHTS_CONNECTION_STRING");
                 telemetryConfiguration.TelemetryInitializers.Add(new OperationCorrelationTelemetryInitializer());
                 var tc = new TelemetryClient(telemetryConfiguration);
                 tc.Context.Operation.Name = FunctionName;
