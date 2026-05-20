@@ -35,7 +35,7 @@ describe('isSourcePartValid', () => {
     });
 
     it('returns true with a valid filter', () => {
-      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: 'dept eq Sales' }))).toBe(true);
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "dept = 'Sales'" }))).toBe(true);
     });
 
     it('returns false with empty filter and no manager', () => {
@@ -51,7 +51,15 @@ describe('isSourcePartValid', () => {
     });
 
     it('returns true with both manager and filter', () => {
-      expect(isSourcePartValid(makePart(SourcePartType.HR, { manager: { id: 1 }, filter: 'x' }))).toBe(true);
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { manager: { id: 1 }, filter: "dept = 'Eng'" }))).toBe(true);
+    });
+
+    it('returns false when filter is missing equality operator', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { filter: "EmployeeType_Code 'FTE' 'Intern'" }))).toBe(false);
+    });
+
+    it('returns false when filter has attribute and value but no operator', () => {
+      expect(isSourcePartValid(makePart(SourcePartType.HR, { manager: { id: 1 }, filter: "dept Sales" }))).toBe(false);
     });
   });
 
