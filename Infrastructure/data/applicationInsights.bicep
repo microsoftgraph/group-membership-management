@@ -35,9 +35,9 @@ module secureSecretsTemplate 'keyVaultSecretsSecure.bicep' = {
     keyVaultName: keyVaultName
     keyVaultSecrets: {
       secrets: [
-        { 
-          name: 'appInsightsInstrumentationKey'
-          value: reference(applicationInsights.id, '2015-05-01').InstrumentationKey
+        {
+          name: 'appInsightsConnectionString'
+          value: applicationInsights.properties.ConnectionString
         }
       ]
     }
