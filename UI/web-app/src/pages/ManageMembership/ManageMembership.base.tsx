@@ -117,20 +117,20 @@ const sparkleClass2 = mergeStyles({
   transformBox: 'fill-box',
 });
 
-const copilotButtonClass = mergeStyles({
+const getCopilotButtonClass = (theme: ReturnType<typeof useTheme>) => mergeStyles({
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
   borderRadius: '28px',
   padding: '6px 16px 6px 6px',
-  border: '1px solid #edebe9',
+  border: `1px solid ${theme.palette.neutralLight}`,
   cursor: 'pointer',
   transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
-  background: '#ffffff',
+  background: theme.palette.white,
   selectors: {
     ':hover': {
       boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
-      borderColor: '#c8c6c4',
+      borderColor: theme.palette.neutralTertiaryAlt,
     },
     ':disabled': {
       opacity: 0.5,
@@ -142,6 +142,7 @@ const copilotButtonClass = mergeStyles({
 const CopilotTriggerButton: React.FunctionComponent = () => {
   const dispatch = useDispatch<AppDispatch>();
   const strings = useStrings();
+  const theme = useTheme();
   const isJobWriter = useSelector(selectIsJobWriter);
   const isAIOnboardingChat = useSelector(selectIsAIOnboardingChat);
   const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
@@ -152,20 +153,20 @@ const CopilotTriggerButton: React.FunctionComponent = () => {
     <button
       onClick={() => dispatch(openPanel())}
       disabled={!isJobWriter}
-      className={copilotButtonClass}
+      className={getCopilotButtonClass(theme)}
     >
       <div style={{
         width: '34px',
         height: '34px',
         borderRadius: '50%',
-        backgroundColor: '#0078d4',
+        backgroundColor: theme.palette.themePrimary,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
         position: 'relative',
       }}>
-        <Icon iconName="Contact" style={{ color: '#ffffff', fontSize: '15px' }} />
+        <Icon iconName="Contact" style={{ color: theme.palette.white, fontSize: '15px' }} />
         <svg
           width="16" height="16"
           viewBox="0 0 16 16"
@@ -173,16 +174,16 @@ const CopilotTriggerButton: React.FunctionComponent = () => {
           style={{ position: 'absolute', top: '-6px', right: '-6px' }}
         >
           {/* Larger 4-pointed star */}
-          <path className={sparkleClass1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill="#0078d4" />
+          <path className={sparkleClass1} d="M8 4 L9 7 L12 8 L9 9 L8 12 L7 9 L4 8 L7 7 Z" fill={theme.palette.themePrimary} />
           {/* Smaller 4-pointed star */}
-          <path className={sparkleClass2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill="#0078d4" />
+          <path className={sparkleClass2} d="M13 1 L13.5 2.5 L15 3 L13.5 3.5 L13 5 L12.5 3.5 L11 3 L12.5 2.5 Z" fill={theme.palette.themePrimary} />
         </svg>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-        <span style={{ color: '#323130', fontWeight: 600, fontSize: '13px', lineHeight: '18px' }}>
+        <span style={{ color: theme.palette.neutralPrimary, fontWeight: 600, fontSize: '13px', lineHeight: '18px' }}>
           {strings.Copilot?.title || 'GMM Copilot'}
         </span>
-        <span style={{ color: '#605e5c', fontSize: '11px', fontWeight: 400, lineHeight: '16px' }}>
+        <span style={{ color: theme.palette.neutralSecondary, fontSize: '11px', fontWeight: 400, lineHeight: '16px' }}>
           {hasCopilotHistory
             ? (strings.Copilot?.triggerButtonResume || 'Let GMM resume building for you')
             : (strings.Copilot?.triggerButton || 'Let GMM build it for you')}

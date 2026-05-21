@@ -154,6 +154,7 @@ test.describe('Job Details Tests', () => {
 
     await typeIntoPicker(page, pickerInput, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
+    await page.waitForTimeout(1000);
 
     await typeIntoPicker(page, pickerInput, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
@@ -242,6 +243,7 @@ test.describe('Job Details Tests', () => {
     await pickerInputUnsupported.click();
     await typeIntoPicker(page, pickerInputUnsupported, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
+    await page.waitForTimeout(1000);
     await typeIntoPicker(page, pickerInputUnsupported, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
@@ -312,6 +314,7 @@ test.describe('Job Details Tests', () => {
     await pickerInputInclusionary.click();
     await typeIntoPicker(page, pickerInputInclusionary, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
+    await page.waitForTimeout(1000);
     await typeIntoPicker(page, pickerInputInclusionary, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
 
@@ -385,6 +388,7 @@ test.describe('Job Details Tests', () => {
     await pickerInputOnboarding.click();
     await typeIntoPicker(page, pickerInputOnboarding, 'adele');
     await page.getByRole('option', { name: 'Adele Vance' }).click();
+    await page.waitForTimeout(1000);
     await typeIntoPicker(page, pickerInputOnboarding, 'alex');
     await page.getByRole('option', { name: 'Alex Wilber' }).first().click();
     // Create group
