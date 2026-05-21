@@ -68,7 +68,10 @@ namespace Hosts.MembershipAggregator
 
             try
             {
-                if (currentPart <= 0 || totalParts <= 0 || string.IsNullOrEmpty(request.FilePath))
+                if (currentPart <= 0 ||
+                    totalParts <= 0 ||
+                    currentPart > totalParts ||
+                    string.IsNullOrEmpty(request.FilePath))
                 {
                     logger.InvalidPartRegistration(request.SyncJob.Id, currentPart, totalParts, request.FilePath);
                     throw new ArgumentException(

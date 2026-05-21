@@ -248,6 +248,55 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task RejectInvalidPartRegistrationWhenPartNumberExceedsPartsCountAsync()
+        {
+            // Defense-in-depth: the orchestrator is the only legitimate producer of
+            // JobTrackerRegistration, so it must reject PartNumber > PartsCount.
+            // A malformed request (e.g., PartNumber=3, PartsCount=2) would otherwise
+            // inflate State.CompletedParts.Count past State.TotalParts and could
+            // trigger premature completion before all legitimate parts arrive.
+            _membershipAggregatorHttpRequest = new MembershipAggregatorHttpRequest
+            {
+                FilePath = "/file-path.json",
+                SyncJob = _syncJob,
+                PartNumber = 3,
+                PartsCount = 2,
+                IsDestinationPart = false
+            };
+
+            var orchestratorFunction = new OrchestratorFunction();
+
+            await Assert.ThrowsExceptionAsync<ArgumentException>(
+                async () => await orchestratorFunction.RunOrchestratorAsync(_durableContext.Object));
+
+            var state = await _jobTrackerEntity.GetState();
+            Assert.AreEqual(0, state.CompletedParts.Count,
+                "Invalid registration must not touch the JobTracker entity.");
+            Assert.IsNull(state.DestinationPart);
+            Assert.IsFalse(state.CompletionClaimed,
+                "Invalid registration must not claim completion.");
+
+            _entityFeature.Verify(x => x.CallEntityAsync<JobTrackerCompletionResult>(
+                                                It.IsAny<EntityInstanceId>(),
+                                                nameof(JobTrackerEntity.RegisterPartAndCheckComplete),
+                                                It.IsAny<object>(),
+                                                It.IsAny<CallEntityOptions>()),
+                                    Times.Never());
+
+            _durableContext.Verify(x => x.CallActivityAsync(
+                                                nameof(TopicMessageSenderFunction),
+                                                It.IsAny<TopicMessageSenderRequest>(),
+                                                It.IsAny<TaskOptions>()),
+                                    Times.Never());
+
+            _durableContext.Verify(x => x.CallActivityAsync(
+                                                nameof(JobStatusUpdaterFunction),
+                                                It.Is<JobStatusUpdaterRequest>(req => req.Status == SyncStatus.Error),
+                                                It.IsAny<TaskOptions>()),
+                                    Times.Once());
+        }
+
+        [TestMethod]
         public async Task TestNotSuccessMembershipDeltaStatusAsync()
         {
             _membershipSubOrchestratorResponse.MembershipDeltaStatus = MembershipDeltaStatus.Error;
