@@ -29,6 +29,11 @@ namespace Repositories.Mail
         private const int GmmOwnerNameIndex = 3;
         private const int NoOwnerPausedAtIndex = 4;
 
+        // SyncDisabled NoData AdditionalContentParams indices
+        // (set by MembershipAggregator MembershipSubOrchestratorFunction for NoDataNotification):
+        // [0]=GroupId, [1]=DestinationName, [2]=PausedAtUtc (ISO 8601)
+        private const int NoDataPausedAtIndex = 2;
+
         // SyncDisabled NestedGroupsFound AdditionalContentParams indices
         // (set by GroupMembershipObtainer SubOrchestratorFunction for NestedGroupsFoundNotification):
         // [0]=GroupId, [1]=DestinationName, [2]=NestedGroupsCount, [3]=NestedGroupsInfo, [4]=StatusDescription
@@ -51,13 +56,14 @@ namespace Repositories.Mail
         // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
         // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
         private static readonly HashSet<string> _compactDetailReasons =
-            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner" };
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData" };
 
         private static int GetPausedAtIndex(string disableReason) => disableReason switch
         {
             "NoDestinationGroup" => NoDestinationGroupPausedAtIndex,
             "NoSourceGroup" => NoSourceGroupPausedAtIndex,
             "NoOwner" => NoOwnerPausedAtIndex,
+            "NoData" => NoDataPausedAtIndex,
             _ => -1
         };
 

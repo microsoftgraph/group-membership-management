@@ -1382,7 +1382,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>Sync has been disabled for this group. The sync process configured by **{0}** is no longer running and members will not be updated.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoData" xml:space="preserve">
-    <value>GMM has paused this membership sync because the membership definition **returns no users**. As a safety precaution, GMM paused syncing to prevent inadvertent removal of all members. Please review your membership definition to ensure it is correct.</value>
+    <value>This sync is paused because the current membership rules **returned zero users**. To prevent unexpectedly emptying the destination group, GMM did not apply this change.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NestedGroupsFound" xml:space="preserve">
     <value>GMM has paused this membership sync because **{3} nested group(s)** were detected in the destination group. GMM cannot manage a destination group that contains nested groups (groups added as members). Remove the nested groups from the destination via [Entra ID](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{1}) and re-enable membership sync from the GMM UI.</value>
@@ -1474,6 +1474,9 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SyncDisabledFallback.ActionChecklist.NoOwner.Body" xml:space="preserve">
     <value>1. [Click here](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and manually add `{0}` as a group owner. If the GMM owner was removed intentionally, no further action is needed.
 2. Return to the GMM UI and re-enable the sync for this group.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.NoData.Body" xml:space="preserve">
+    <value>Review the membership rules in the GMM UI and submit any needed change. If returning no users is expected right now, no action is required and you can come back later to re-enable the group when users are expected again.</value>
   </data>
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>

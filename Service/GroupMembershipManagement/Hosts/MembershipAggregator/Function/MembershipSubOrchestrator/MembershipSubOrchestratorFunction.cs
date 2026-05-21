@@ -182,7 +182,12 @@ namespace Hosts.MembershipAggregator
                                                     CurrentPart = currentPart,
                                                     TotalParts = totalParts,
                                                     NotificationType = NotificationMessageType.NoDataNotification,
-                                                    AdditionalContentParams = new[] { request.GroupId.ToString(), groupInformation.Name },
+                                                    AdditionalContentParams = new[]
+                                                    {
+                                                        request.GroupId.ToString(),
+                                                        groupInformation.Name,
+                                                        DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+                                                    },
                                                 });
 
                 return new MembershipSubOrchestratorResponse
