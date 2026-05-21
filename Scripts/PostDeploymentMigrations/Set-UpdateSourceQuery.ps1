@@ -1,4 +1,8 @@
 function Set-UpdateSourceQuery {
+    # IMPORTANT: All query JSON must be compact (no extra whitespace between keys/values).
+    # Use ConvertTo-Json -Compress or string literals without spaces after colons.
+    # The WebApi serializer (JsonSerializer with WriteIndented=false) produces compact JSON,
+    # and any mismatch causes unnecessary re-processing on subsequent migration runs.
     [CmdletBinding()]
 	param(
         [Parameter(Mandatory=$True)]
@@ -119,7 +123,7 @@ function Set-UpdateSourceQuery {
                     if($part.type -eq "GroupMembership" -and $part.source) {
                         foreach($id in $part.source) {
                             if($part.exclusionary -eq $true) {
-                                    $newQueryPart = '{"type":"GroupMembership","source":"' + $id + '", "exclusionary": true}'
+                                    $newQueryPart = '{"type":"GroupMembership","source":"' + $id + '","exclusionary":true}'
                             }
                             else {
                                 $newQueryPart = '{"type":"GroupMembership","source":"' + $id + '"}'
@@ -136,7 +140,7 @@ function Set-UpdateSourceQuery {
                                 $sourceAsString = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($sourceAsString, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
 
                                 if($part.exclusionary -eq $true) {
-                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ', "exclusionary": true}'
+                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ',"exclusionary":true}'
                                 }
                                 else {
                                     $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + '}'
@@ -177,7 +181,7 @@ function Set-UpdateSourceQuery {
                                 $sourceAsString = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($sourceAsString, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
 
                                 if($part.exclusionary -eq $true) {
-                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ', "exclusionary": true}'
+                                    $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ',"exclusionary":true}'
                                 }
                                 else {
                                     $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + '}'

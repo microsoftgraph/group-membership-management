@@ -61,7 +61,7 @@ function Set-UpdateSqlMembershipQuery {
                             $sourceAsString = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($sourceAsString, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
 
                             if($part.exclusionary -eq $true) {
-                                $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ', "exclusionary": true}'
+                                $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ',"exclusionary":true}'
                             }
                             else {
                                 $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + '}'
@@ -103,7 +103,7 @@ function Set-UpdateSqlMembershipQuery {
                             $sourceAsString = ([regex]'(?i)\\u([0-9a-h]{4})').Replace($sourceAsString, {param($Match) "$([char][int64]"0x$($Match.Groups[1].Value)")"})
 
                             if($part.exclusionary -eq $true) {
-                                $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ', "exclusionary": true}'
+                                $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + ',"exclusionary":true}'
                             }
                             else {
                                 $newQueryPart = '{"type":"SqlMembership","source":' + $sourceAsString + '}'

@@ -68,7 +68,9 @@ namespace Hosts.NonProdService
                         var offset = (int)Math.Ceiling(groupSize * ((decimal)options.SyncJobChangePercent / 100));
                         var offsetProbabilityAsMS = (int)(1000 * ((decimal)options.SyncJobProbabilityOfChangePercent / 100));
                         var filter = $"(EmployeeId > 0 AND EmployeeId <= {groupSize} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2*P}) < {P}) OR (EmployeeId > {offset} AND EmployeeId <= {groupSize + offset} AND ({jobIndex % (2 * P)} + DATEPART(dayofyear, GETDATE())) % ({2 * P}) >= {P})";
-                        var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\": \"" + filter + "\"}}]";
+                        // Query must be compact JSON (no extra whitespace) to match the format
+                        // expected by post-deployment migrations and the WebApi serializer.
+                        var query = "[{\"type\":\"SqlMembership\",\"source\":{\"filter\":\"" + filter + "\"}}]";
 
                         nextJobTime = nextJobTime.AddMinutes(minutesBetweenJobs);
 
