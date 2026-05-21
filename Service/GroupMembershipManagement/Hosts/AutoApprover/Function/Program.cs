@@ -4,6 +4,7 @@
 using Azure.Identity;
 using Common.DependencyInjection;
 using Hosts.FunctionBase;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,8 +37,10 @@ namespace Hosts.AutoApprover
                     var functionName = "AutoApprover";
                     var dryRunSettingName = string.Empty;
                     var rootPath = context.HostingEnvironment.ContentRootPath;
-                    
+
                     CommonServices.ConfigureCommonServices(services, configuration, functionName, dryRunSettingName, rootPath);
+
+                    services.ConfigureFunctionsApplicationInsights();
 
                     if (CommonServices.GetBoolSettingBase(configuration, "AutoApprover:IsEnabled", false))
                     {

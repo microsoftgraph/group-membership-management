@@ -8,50 +8,38 @@ using Azure.Messaging.ServiceBus;
 using Hosts.FunctionBase;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
-using Models;
-using Repositories.Contracts;
+using Microsoft.Extensions.Logging;
 
 namespace Hosts.AutoApprover
 {
     public class StarterFunction
     {
-        private readonly ILoggingRepository _loggingRepository;
+        private readonly ILogger<StarterFunction> _logger;
         private readonly IConfiguration _configuration;
 
-        public StarterFunction(ILoggingRepository loggingRepository, IConfiguration configuration)
+        public StarterFunction(ILogger<StarterFunction> logger, IConfiguration configuration)
         {
-            _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         [Function(nameof(StarterFunction))]
-        public async Task RunAsync(
+        public Task Run(
             [ServiceBusTrigger("%serviceBusAutoApproverQueue%", Connection = "gmmServiceBus")] ServiceBusReceivedMessage message)
         {
             if (!CommonServices.GetBoolSettingBase(_configuration, "AutoApprover:IsEnabled", false))
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage
-                {
-                    Message = "AutoApprover is disabled. Skipping message processing."
-                }, VerbosityLevel.DEBUG);
-                return;
+                _logger.AutoApproverDisabled();
+                return Task.CompletedTask;
             }
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(StarterFunction)} function started"
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionStarted(nameof(StarterFunction));
 
             var messageBody = Encoding.UTF8.GetString(message.Body.ToArray());
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"AutoApprover message received. MessageId: {message.MessageId}. BodyLength: {messageBody.Length}"
-            }, VerbosityLevel.DEBUG);
+            _logger.MessageReceived(message.MessageId, messageBody.Length);
 
-            await _loggingRepository.LogMessageAsync(new LogMessage
-            {
-                Message = $"{nameof(StarterFunction)} function completed"
-            }, VerbosityLevel.DEBUG);
+            _logger.FunctionCompleted(nameof(StarterFunction));
+            return Task.CompletedTask;
         }
     }
 }
