@@ -23,26 +23,37 @@ namespace Repositories.SqlMembershipRepository
 
         private readonly string _sqlServerConnectionString = null;
 
-        // Matches only valid SQL identifiers: letters, digits, underscores, and hyphens
-        private static readonly Regex ValidIdentifierPattern = new(@"^[A-Za-z_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
+        // Table names can start with a letter, digit, or underscore (e.g. GUID-based names)
+        private static readonly Regex ValidTableNamePattern = new(@"^[A-Za-z0-9_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
+        // Attribute names must start with a letter or underscore (standard SQL column identifiers)
+        private static readonly Regex ValidAttributeNamePattern = new(@"^[A-Za-z_][A-Za-z0-9_\-]*$", RegexOptions.Compiled);
 
         public SqlMembershipRepository(IKeyVaultSecret<ISqlMembershipRepository> sqlServerConnectionString)
         {
             _sqlServerConnectionString = sqlServerConnectionString?.Secret ?? throw new ArgumentNullException(nameof(sqlServerConnectionString));
         }
 
-        private static void ValidateIdentifier(string identifier, string parameterName)
+        private static void ValidateTableName(string tableName, string parameterName)
         {
-            if (string.IsNullOrWhiteSpace(identifier))
+            if (string.IsNullOrWhiteSpace(tableName))
                 throw new ArgumentException($"'{parameterName}' cannot be null or empty.", parameterName);
 
-            if (!ValidIdentifierPattern.IsMatch(identifier))
+            if (!ValidTableNamePattern.IsMatch(tableName))
                 throw new ArgumentException($"'{parameterName}' contains invalid characters. Only letters, digits, underscores, and hyphens are allowed.", parameterName);
+        }
+
+        private static void ValidateAttributeName(string attribute, string parameterName)
+        {
+            if (string.IsNullOrWhiteSpace(attribute))
+                throw new ArgumentException($"'{parameterName}' cannot be null or empty.", parameterName);
+
+            if (!ValidAttributeNamePattern.IsMatch(attribute))
+                throw new ArgumentException($"'{parameterName}' contains invalid characters. Only letters, digits, underscores, and hyphens are allowed, and must start with a letter or underscore.", parameterName);
         }
 
         public async Task<List<PersonEntity>> GetChildEntitiesAsync(string filter, int personnelNumber, string tableName, int depth)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var children = new List<PersonEntity>();
             var retryPolicy = GetRetryPolicyAsync();
@@ -110,7 +121,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, int id)> GetOrgLeaderDetailsAsync(string azureObjectId, string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
@@ -187,7 +198,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<PersonEntity>> FilterChildEntitiesAsync(string query, string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var filteredChildren = new List<PersonEntity>();
             var retryPolicy = GetRetryPolicyAsync();
@@ -232,7 +243,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<bool> CheckIfTableExistsAsync(string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             bool tableExists = false;
             var retryPolicy = GetRetryPolicyAsync();
@@ -264,7 +275,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<string>> GetColumnNamesAsync(string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var HRColumns = new List<string>();
             var retryPolicy = GetRetryPolicyAsync();
@@ -305,7 +316,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<(int maxDepth, string azureObjectId)> GetOrgLeaderAsync(int employeeId, string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var retryPolicy = GetRetryPolicyAsync();
             int maxDepth = 0;
@@ -382,7 +393,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<(string Name, string Type)>> GetColumnDetailsAsync(string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var columnDetails = new List<(string Name, string Type)>();
             var retryPolicy = GetRetryPolicyAsync();
@@ -430,7 +441,7 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<bool> CheckIfMappingsTableExistsAsync(string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             bool tableExists = false;
             var retryPolicy = GetRetryPolicyAsync();
@@ -462,8 +473,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<(string Code, string Description)>> GetAttributeMappingsAsync(string attribute, string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
-            ValidateIdentifier(attribute, nameof(attribute));
+            ValidateTableName(tableName, nameof(tableName));
+            ValidateAttributeName(attribute, nameof(attribute));
 
             var attributeMappings = new List<(string Code, string Description)>();
             var retryPolicy = GetRetryPolicyAsync();
@@ -509,8 +520,8 @@ namespace Repositories.SqlMembershipRepository
 
         public async Task<List<string>> GetAttributeValuesAsync(string attribute, bool hasMapping, string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
-            ValidateIdentifier(attribute, nameof(attribute));
+            ValidateTableName(tableName, nameof(tableName));
+            ValidateAttributeName(attribute, nameof(attribute));
 
             var attributeValues = new List<string>();
             var retryPolicy = GetRetryPolicyAsync();
@@ -564,7 +575,7 @@ namespace Repositories.SqlMembershipRepository
         }
         public async Task<Dictionary<int, string>> ValidateFiltersAsync(Dictionary<int, string> sqlFilters, string tableName)
         {
-            ValidateIdentifier(tableName, nameof(tableName));
+            ValidateTableName(tableName, nameof(tableName));
 
             var exceptionsList = new ConcurrentDictionary<int, string>();
             var validColumnNames = await GetColumnNamesAsync(tableName);
