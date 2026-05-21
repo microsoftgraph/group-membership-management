@@ -39,7 +39,6 @@ namespace Tests.Services
         private Mock<TaskOrchestrationContext> _durableOrchestrationContext;
         private Mock<IConfigurationRefresherProvider> _configurationRefresherProvider;
         private Mock<IDatabaseDestinationAttributesRepository> _databaseDestinationAttributesRepository;
-        private Mock<Microsoft.Azure.WebJobs.ExecutionContext> _executionContext;
         private Mock<ISyncJobStatusService> _syncJobStatusService;
         private int _usersToReturn;
         private QuerySample _querySample;
@@ -63,7 +62,6 @@ namespace Tests.Services
             _durableOrchestrationContext = new Mock<TaskOrchestrationContext>();
             _durableOrchestrationContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             _configurationRefresherProvider = new Mock<IConfigurationRefresherProvider>();
-            _executionContext = new Mock<Microsoft.Azure.WebJobs.ExecutionContext>();
             _telemetryClient = new TelemetryClient(new TelemetryConfiguration());
             _serviceBusQueueRepository = new Mock<IServiceBusQueueRepository>();
             _databaseDestinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>();
