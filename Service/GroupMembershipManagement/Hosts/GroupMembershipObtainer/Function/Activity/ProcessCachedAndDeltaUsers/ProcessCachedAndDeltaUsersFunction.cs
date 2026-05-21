@@ -114,9 +114,9 @@ namespace Hosts.GroupMembershipObtainer
 
                         _logger.DeltaLinkCacheUploaded(cachedUsers.Count, request.DeltaUrl, request.SourceGroupId);
 
-                        // Delete blobs for adds and removes
-                        await _blobStorageRepository.DeleteFileAsync(prefixAdds);
-                        await _blobStorageRepository.DeleteFileAsync(prefixRemoves);
+                        // Delete blobs for adds and removes using prefix, not exact names
+                        await _blobStorageRepository.DeleteFilesAsync(prefixAdds);
+                        await _blobStorageRepository.DeleteFilesAsync(prefixRemoves);
                     }
                     else
                     {
