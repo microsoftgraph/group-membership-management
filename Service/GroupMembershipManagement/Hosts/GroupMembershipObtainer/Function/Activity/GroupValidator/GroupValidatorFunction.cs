@@ -57,7 +57,8 @@ namespace Hosts.GroupMembershipObtainer
                                                                     request.GroupId.ToString(),
                                                                     targetGroupName,
                                                                     request.ObjectId.ToString(),
-                                                                    DisabledNotificationType.StatusDescriptions[NotificationMessageType.SourceNotExistNotification]
+                                                                    DisabledNotificationType.StatusDescriptions[NotificationMessageType.SourceNotExistNotification],
+                                                                    DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                                                                     });
                         }
                         else if (groupExistsResult.FaultType == FaultType.ExceptionHandledByThisPolicy)

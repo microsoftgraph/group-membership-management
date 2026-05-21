@@ -4,7 +4,10 @@
 using Microsoft.Extensions.Logging;
 using Models;
 using Repositories.Contracts;
+using Repositories.Contracts.InjectConfig;
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -31,6 +34,30 @@ namespace Repositories.Mail
         private const int NestedGroupsCountIndex = 2;
         private const int NestedGroupsListIndex = 3;
 
+        // SyncDisabled NoDestinationGroup AdditionalContentParams indices
+        // (set by JobTrigger SubOrchestratorFunction and GraphUpdater GroupValidatorFunction for
+        // DestinationNotExistNotification):
+        // [0]=GroupId, [1]=DestinationName|SupportEmail, [2]=StatusDescription, [3]=PausedAtUtc (ISO 8601)
+        private const int NoDestinationGroupPausedAtIndex = 3;
+
+        // SyncDisabled NoSourceGroup AdditionalContentParams indices
+        // (set by GroupMembershipObtainer GroupValidatorFunction for SourceNotExistNotification):
+        // [0]=GroupId, [1]=TargetGroupName, [2]=SourceObjectId, [3]=StatusDescription, [4]=PausedAtUtc (ISO 8601)
+        private const int NoSourceGroupPausedAtIndex = 4;
+
+        // SyncDisabled compact-detail reasons share the same layout: 2-3 row details table
+        // (Group Email/Type when available, Paused At), suppressed requestor row, and the orange
+        // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
+        // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
+        private static readonly HashSet<string> _compactDetailReasons =
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup" };
+
+        private static int GetPausedAtIndex(string disableReason) => disableReason switch
+        {
+            "NoDestinationGroup" => NoDestinationGroupPausedAtIndex,
+            "NoSourceGroup" => NoSourceGroupPausedAtIndex,
+            _ => -1
+        };
 
         // JobPurgingWarning AdditionalContentParams indices (set by AzureMaintenanceService.SendWarningEmailAsync):
         // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
@@ -43,15 +70,18 @@ namespace Repositories.Mail
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILocalizationRepository _localizationRepository;
         private readonly ILogger<MailFallbackBuilder> _logger;
+        private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
 
         public MailFallbackBuilder(
             IGraphGroupRepository graphGroupRepository,
             ILocalizationRepository localizationRepository,
-            ILogger<MailFallbackBuilder> logger)
+            ILogger<MailFallbackBuilder> logger,
+            IHandleInactiveJobsConfig handleInactiveJobsConfig = null)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _handleInactiveJobsConfig = handleInactiveJobsConfig;
         }
 
         public async Task<string> BuildSyncStartedFallbackAsync(
@@ -106,11 +136,17 @@ namespace Repositories.Mail
             // — there is no requestor at index 4, so suppress the "Requested by" row to avoid
             // surfacing the status description as a person's name. The nested groups themselves
             // are intentionally not enumerated in the table because the list can be very large;
-            // the in-product job page is the source of truth for the full list.
-            var requestor = disableReason == "NestedGroupsFound"
+            // NestedGroupsFound and compact-detail reasons (NoDestinationGroup / NoSourceGroup)
+            // do not carry a requestor in their AdditionalContentParams (the slot is reused
+            // for PausedAtUtc or omitted), so suppress the "Requested By" row in those cases.
+            var isCompactDetail = _compactDetailReasons.Contains(disableReason);
+            var requestor = (disableReason == "NestedGroupsFound" || isCompactDetail)
                 ? string.Empty
                 : GetParam(emailMessage, RequestorIndex);
-            var rows = await BuildBaseRowsAsync(groupId, requestor);
+
+            var rows = isCompactDetail
+                ? await BuildCompactDetailRowsAsync(disableReason, groupId, emailMessage)
+                : await BuildBaseRowsAsync(groupId, requestor);
 
             // {3} carries the nested-groups count so the NestedGroupsFound description can
             // surface it inline. Other reasons ignore the extra arg, which is harmless to
@@ -139,13 +175,21 @@ namespace Repositories.Mail
             return FormatTemplate(
                 HtmlTemplates.SyncDisabledTemplate,
                 prefix: "SyncDisabledFallback",
-                groupName: destinationGroupName,
+                groupName: disableReason == "NoDestinationGroup" && !string.IsNullOrWhiteSpace(destinationGroupName)
+                    ? _localizationRepository.TranslateSetting("SyncDisabledFallback.PreviouslyNamedPrefix") + destinationGroupName
+                    : destinationGroupName,
                 headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
                 description: description,
-                calloutBody: _localizationRepository.TranslateSetting($"SyncDisabledFallback.CalloutBody.{disableReason}"),
+                // Compact-detail reasons share the PausedShared callout body to avoid duplication.
+                calloutBody: _localizationRepository.TranslateSetting(
+                    isCompactDetail
+                        ? "SyncDisabledFallback.CalloutBody.PausedShared"
+                        : $"SyncDisabledFallback.CalloutBody.{disableReason}",
+                    ActionByDays.ToString(CultureInfo.InvariantCulture)),
                 rows: rows,
                 jobUrl: jobUrl,
-                sentDate: sentDate
+                sentDate: sentDate,
+                actionChecklistHtml: BuildActionChecklistHtml(disableReason, emailMessage)
             );
         }
 
@@ -268,7 +312,8 @@ namespace Repositories.Mail
         private string FormatTemplate(
             string template, string prefix, string groupName,
             string headerText, string description, string calloutBody,
-            StringBuilder rows, string jobUrl, string sentDate)
+            StringBuilder rows, string jobUrl, string sentDate,
+            string actionChecklistHtml = "")
         {
             var name = string.IsNullOrWhiteSpace(groupName) ? "N/A" : groupName;
             return string.Format(
@@ -283,7 +328,8 @@ namespace Repositories.Mail
                 _localizationRepository.TranslateSetting($"{prefix}.CtaLabel"),          // {7} CTA label
                 System.Net.WebUtility.HtmlEncode(SanitizeUrl(jobUrl)),                   // {8} CTA url
                 ConvertContentToHtml(_localizationRepository.TranslateSetting($"{prefix}.FooterExplanation", name)), // {9} footer
-                sentDate                                                                  // {10} sent date
+                sentDate,                                                                 // {10} sent date
+                actionChecklistHtml ?? string.Empty                                       // {11} optional action checklist row
             );
         }
 
@@ -292,6 +338,149 @@ namespace Repositories.Mail
             return emailMessage.AdditionalContentParams?.Length > index
                 ? emailMessage.AdditionalContentParams[index]
                 : defaultValue;
+        }
+
+        // Parse the producer-formatted PausedAt string (ISO 8601 round-trip / "o"). Returns null
+        // on parse failure so the caller can suppress the row rather than rendering a misleading
+        // timestamp. Result is always a UTC DateTime regardless of the offset present in the input.
+        private DateTime? TryParseIsoUtc(string isoUtc)
+        {
+            if (string.IsNullOrWhiteSpace(isoUtc))
+                return null;
+
+            if (DateTime.TryParse(
+                    isoUtc,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out var parsed))
+            {
+                return parsed;
+            }
+
+            _logger.LogWarning(
+                "Could not parse PausedAt '{PausedAt}' as ISO 8601 UTC; suppressing PAUSED AT row.",
+                isoUtc);
+            return null;
+        }
+
+        // Convert a UTC timestamp to Pacific Time. America/Los_Angeles is the IANA id and
+        // resolves on Windows and Linux Function hosts via .NET's built-in fallback.
+        private static DateTime ConvertToPacific(DateTime utc) =>
+            TimeZoneInfo.ConvertTimeFromUtc(
+                DateTime.SpecifyKind(utc, DateTimeKind.Utc),
+                TimeZoneInfo.FindSystemTimeZoneById("America/Los_Angeles"));
+
+        // Format the UTC pause time in Pacific Time for the PAUSED AT row, e.g.
+        // "May 6, 2026 · 8:42 AM PT". The "PT" suffix is intentionally generic (not PST/PDT) so
+        // the label reads correctly in both standard and daylight time.
+        private static string FormatPausedAtPacific(DateTime pausedAtUtc) =>
+            ConvertToPacific(pausedAtUtc).ToString(
+                "MMM d, yyyy \u00B7 h:mm tt 'PT'",
+                CultureInfo.InvariantCulture);
+
+        // Compact details table for "destination/source not found" reasons.
+        // NoSourceGroup: GROUP EMAIL + GROUP TYPE (Graph lookup on the still-valid destination) + PAUSED AT.
+        // NoDestinationGroup: PAUSED AT only — Graph cannot resolve a deleted group and the
+        // producer-supplied value at index 1 is a name (not an email), already shown in the header.
+        private async Task<StringBuilder> BuildCompactDetailRowsAsync(string disableReason, string groupId, EmailMessage emailMessage)
+        {
+            Func<string, string> encode = System.Net.WebUtility.HtmlEncode;
+            var rows = new StringBuilder();
+
+            if (disableReason != "NoDestinationGroup")
+            {
+                var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
+
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
+                    string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+
+                if (!string.IsNullOrEmpty(groupType))
+                {
+                    rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                        _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupType"),
+                        encode(groupType), ""));
+                }
+            }
+
+            var pausedAtParam = GetParam(emailMessage, GetPausedAtIndex(disableReason));
+            var pausedAtUtc = TryParseIsoUtc(pausedAtParam);
+            if (pausedAtUtc.HasValue)
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.PausedAt"),
+                    encode(FormatPausedAtPacific(pausedAtUtc.Value)), ""));
+            }
+
+            return rows;
+        }
+
+        // Days a paused job remains affiliated with GMM before purging. Sourced from
+        // AzureMaintenance:NumberOfDaysBeforePurging (IHandleInactiveJobsConfig). Falls back
+        // to 30 if the config isn't registered (e.g., in hosts that don't run purging logic).
+        private int ActionByDays => _handleInactiveJobsConfig?.NumberOfDaysBeforePurging ?? 30;
+
+        // Build the optional orange "What to do" action-checklist HTML block injected between
+        // the description and the details table. Only emitted for reasons that have a body in
+        // resx ("SyncDisabledFallback.ActionChecklist.<reason>.Body"); returns empty otherwise
+        // so existing templates render unchanged. The deadline span is shown when a valid
+        // PausedAt was supplied by the producer (PausedAt + ActionByDays, Pacific Time).
+        private string BuildActionChecklistHtml(string disableReason, EmailMessage emailMessage)
+        {
+            var bodyKey = $"SyncDisabledFallback.ActionChecklist.{disableReason}.Body";
+            var body = _localizationRepository.TranslateSetting(bodyKey);
+            if (string.IsNullOrWhiteSpace(body) || body == bodyKey)
+                return string.Empty;
+
+            string deadlineSpan = string.Empty;
+            var pausedIdx = GetPausedAtIndex(disableReason);
+            if (pausedIdx >= 0)
+            {
+                var pausedAtUtc = TryParseIsoUtc(GetParam(emailMessage, pausedIdx));
+                if (pausedAtUtc.HasValue)
+                {
+                    var deadline = ConvertToPacific(pausedAtUtc.Value).AddDays(ActionByDays);
+                    var formatted = deadline.ToString("ddd, MMM d, yyyy", CultureInfo.InvariantCulture);
+                    deadlineSpan = "&middot; by " + System.Net.WebUtility.HtmlEncode(formatted);
+                }
+            }
+
+            var title = _localizationRepository.TranslateSetting("SyncDisabledFallback.ActionChecklist.Title");
+            return string.Format(
+                HtmlTemplates.OrangeActionChecklistHtml,
+                System.Net.WebUtility.HtmlEncode(title),
+                deadlineSpan,
+                RenderActionChecklistBody(body));
+        }
+
+        // Render the action-checklist body. If the body's lines start with "1. ", "2. ", ...
+        // (matching the markdown ordered-list convention in resx), emit a real <ol><li> block
+        // so the steps render as a numbered list. Otherwise fall back to the standard
+        // markdown-to-HTML conversion (which supports **bold**, [text](url), and \n -> <br>).
+        private static string RenderActionChecklistBody(string body)
+        {
+            if (string.IsNullOrWhiteSpace(body))
+                return string.Empty;
+
+            var lines = body.Replace("\r\n", "\n").Split('\n');
+            var itemRegex = new Regex(@"^\s*\d+\.\s+(.+)$");
+            if (lines.Length > 1 && lines.All(l => string.IsNullOrWhiteSpace(l) || itemRegex.IsMatch(l)))
+            {
+                var sb = new StringBuilder();
+                sb.Append("<ol style=\"margin:0;padding-left:20px;color:#4A3100;\">");
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    var match = itemRegex.Match(line);
+                    sb.Append("<li style=\"margin:4px 0;\">")
+                      .Append(ConvertContentToHtml(match.Groups[1].Value))
+                      .Append("</li>");
+                }
+                sb.Append("</ol>");
+                return sb.ToString();
+            }
+
+            return ConvertContentToHtml(body);
         }
 
         private async Task<(string alias, string type)> FetchGroupMetaAsync(string groupId)

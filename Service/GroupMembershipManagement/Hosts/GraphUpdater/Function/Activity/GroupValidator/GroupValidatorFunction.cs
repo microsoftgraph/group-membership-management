@@ -44,7 +44,7 @@ namespace Hosts.GraphUpdater
                     await _graphUpdaterService.SendEmailAsync(
                         syncJob,
                         NotificationMessageType.DestinationNotExistNotification,
-                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses, DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification] }
+                        new[] { request.GroupId.ToString(), _emailSenderAndRecipients.SupportEmailAddresses, DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification], DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture) }
                         );
             }
 

@@ -215,7 +215,8 @@ namespace Hosts.JobTrigger
                                                         {
                                                         groupId.ToString(),
                                                         destinationName,
-                                                        DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification]
+                                                        DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification],
+                                                        DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                                                         }
                                                     });
 

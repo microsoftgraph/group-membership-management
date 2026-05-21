@@ -93,7 +93,7 @@ namespace Repositories.Mail
         private const string BlueBadgeStyle =
             "display:inline-block;background:#e8f4fd;border:1px solid #c7e0f4;color:#0078d4;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
         private const string OrangePillBadgeStyle =
-            "display:inline-block;background:#fff4ce;border:1px solid #e6c89a;color:#603900;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
+            "display:inline-block;background:#FFE8D6;border:1px solid #F4C9A6;color:#C75300;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
         private const string OrangeCalloutTableStyle =
             "border-left:5px solid #603900;background:#fff4ce;border-radius:0 4px 4px 0;";
         private const string GrayCalloutTableStyle =
@@ -145,16 +145,24 @@ namespace Repositories.Mail
         </tr>";
 
         private const string SyncDisabledHeaderHtml = @"
-        <!-- Header bar - Light amber to match callout palette -->
+        <!-- Header bar - Soft amber (Action required) matching reference design -->
         <tr>
-          <td style=""background:#fff4ce;padding:14px 24px;"">
+          <td bgcolor=""#FBE9C0"" style=""background:#FBE9C0;padding:14px 24px;border-bottom:1px solid #F2D9A8;"">
             <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
               <td style=""padding-right:12px;vertical-align:middle;"">
-                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#603900;color:#ffffff;border-radius:50%;font-size:18px;font-weight:700;"">&#x23F8;</span>
+                <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+                  <td width=""36"" height=""36"" align=""center"" valign=""middle"" bgcolor=""#4A3100"" style=""background:#4A3100;width:36px;height:36px;border-radius:50%;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                    <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+                      <td width=""4"" height=""14"" bgcolor=""#FFFFFF"" style=""background:#FFFFFF;width:4px;height:14px;border-radius:1px;line-height:0;font-size:0;"">&nbsp;</td>
+                      <td width=""4"" style=""width:4px;line-height:0;font-size:0;"">&nbsp;</td>
+                      <td width=""4"" height=""14"" bgcolor=""#FFFFFF"" style=""background:#FFFFFF;width:4px;height:14px;border-radius:1px;line-height:0;font-size:0;"">&nbsp;</td>
+                    </tr></table>
+                  </td>
+                </tr></table>
               </td>
               <td style=""vertical-align:middle;"">
-                <span style=""color:#603900;font-size:16px;font-weight:600;"">Sync paused - {1}</span><br />
-                <span style=""color:#603900cc;font-size:13px;"">Group Membership Management</span>
+                <span style=""color:#6B4500;font-size:15px;font-weight:600;"">Sync paused &mdash; {1}</span><br />
+                <span style=""color:#4A3100;opacity:0.75;font-size:12.5px;"">Group Membership Management</span>
               </td>
             </tr></table>
           </td>
@@ -207,7 +215,7 @@ namespace Repositories.Mail
         /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
         /// in the header bar (e.g. "Sync paused - {1}") with the localized disable reason.</summary>
         public static string SyncDisabledTemplate =>
-            BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, OrangeCalloutTableStyle, OrangeCalloutTitleStyle);
+            BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
         /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate.</summary>
         public static string SubmissionRejectedTemplate =>
@@ -265,6 +273,9 @@ namespace Repositories.Mail
             {{3}}
           </td>
         </tr>
+
+        <!-- Optional Action Checklist (orange callout) -->
+        {{11}}
 
         <!-- Details Table -->
         <tr>
@@ -334,6 +345,27 @@ namespace Repositories.Mail
         /// A single row for the details table in the SyncStarted/SyncCompleted templates.
         /// Tokens: {0}=label, {1}=value, {2}=optional style override for value cell
         /// </summary>
+        // ── Action checklist (orange "What to do" callout) ─────────────────────────
+        // Email-safe orange-tinted callout placed between description and details table.
+        // Tokens: {0}=title, {1}=deadline span (already-formatted HTML or empty),
+        //         {2}=body HTML.
+        public const string OrangeActionChecklistHtml = @"
+        <tr>
+          <td style=""padding:0 24px 16px;"">
+            <div style=""border:1px solid #F2D9A8;border-radius:4px;overflow:hidden;"">
+              <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"">
+                <tr>
+                  <td width=""3"" bgcolor=""#C75300"" style=""background:#C75300;width:3px;line-height:0;font-size:0;"">&nbsp;</td>
+                  <td bgcolor=""#FFF8F0"" style=""background:#FFF8F0;padding:14px 16px;"">
+                    <div style=""font-size:13px;font-weight:700;color:#6B4500;letter-spacing:0.3px;margin-bottom:6px;"">{0}<span style=""font-weight:400;color:#8A6D3B;letter-spacing:0;""> {1}</span></div>
+                    <div style=""font-size:13.5px;line-height:1.55;color:#4A3100;"">{2}</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>";
+
         public const string DetailsTableRow= @"<tr>
                 <td style=""padding:12px 16px;font-size:12px;font-weight:600;color:#605e5c;text-transform:uppercase;letter-spacing:0.3px;border-right:1px solid #E1DFDD;border-bottom:1px solid #E1DFDD;width:180px;vertical-align:top;"">{0}</td>
                 <td style=""padding:12px 16px;font-size:13.5px;color:#242424;border-bottom:1px solid #E1DFDD;{2}"">{1}</td>

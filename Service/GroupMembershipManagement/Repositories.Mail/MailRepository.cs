@@ -235,20 +235,31 @@ namespace Repositories.Mail
             {
                 string styledFallback = null;
 
+                string fallbackDestinationGroupName = destinationGroupName;
+                if (string.IsNullOrEmpty(fallbackDestinationGroupName)
+                    && string.Equals(emailMessage?.Content, NotificationConstants.DestinationNotExistContent, StringComparison.OrdinalIgnoreCase))
+                {
+                    var cachedName = GetParamSafe(emailMessage, 1);
+                    if (!string.IsNullOrEmpty(cachedName) && !string.Equals(cachedName, "NAME NOT FOUND", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fallbackDestinationGroupName = cachedName;
+                    }
+                }
+
                 if (string.Equals(emailMessage?.Content, "SyncStartedEmailBody", StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSyncStartedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, "SyncCompletedEmailBody", StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))
-                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))
-                    styledFallback = await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, destinationGroupName, groupId, jobUrl, sentDate);
+                    styledFallback = await _mailFallbackBuilder.BuildSubmissionRejectedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
 
                 if (styledFallback != null)
                 {
-                    htmlContent = WrapStyledFallback(styledFallback, destinationGroupName, adaptiveCard);
+                    htmlContent = WrapStyledFallback(styledFallback, fallbackDestinationGroupName, adaptiveCard);
                 }
                 else
                 {

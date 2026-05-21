@@ -60,7 +60,8 @@ namespace Common.DependencyInjection
             services.AddScoped<IMailFallbackBuilder>(provider => new MailFallbackBuilder(
                 provider.GetService<IGraphGroupRepository>(),
                 provider.GetService<ILocalizationRepository>(),
-                provider.GetRequiredService<ILogger<MailFallbackBuilder>>()
+                provider.GetRequiredService<ILogger<MailFallbackBuilder>>(),
+                provider.GetService<IHandleInactiveJobsConfig>()
             ));
 
             services.AddScoped<IMailRepository>(provider =>

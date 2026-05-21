@@ -1336,11 +1336,14 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>
   </data>
+  <data name="SyncDisabledFallback.PreviouslyNamedPrefix" xml:space="preserve">
+    <value>Previously named: </value>
+  </data>
   <data name="SyncDisabledFallback.HeaderReason.NoDestinationGroup" xml:space="preserve">
-    <value>Destination Does Not Exist</value>
+    <value>destination group not found</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.NoSourceGroup" xml:space="preserve">
-    <value>Source Does Not Exist</value>
+    <value>source group not found</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.NotValidSource" xml:space="preserve">
     <value>Source Not Valid</value>
@@ -1361,10 +1364,10 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>Attention Required</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoDestinationGroup" xml:space="preserve">
-    <value>GMM has paused this membership sync because the target group **no longer exists**. Members will not be updated until the group is restored or the sync configuration is updated.</value>
+    <value>This sync is paused because GMM could **no longer find the destination group**. The group may have been deleted.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoSourceGroup" xml:space="preserve">
-    <value>GMM has paused this membership sync because its configured source group **no longer exists**. The sync process cannot continue until the source is restored or the configuration is updated.</value>
+    <value>This sync is paused because GMM could **no longer find one of the source groups** referenced by this group's membership rules in GMM.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NotValidSource" xml:space="preserve">
     <value>GMM has paused this membership sync because one or more source group IDs are **not valid security groups**. The sync process cannot continue until the source configuration is corrected.</value>
@@ -1387,11 +1390,10 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncDisabledFallback.CalloutTitle" xml:space="preserve">
     <value>WHAT HAPPENS IF YOU DO NOTHING</value>
   </data>
-  <data name="SyncDisabledFallback.CalloutBody.NoDestinationGroup" xml:space="preserve">
-    <value>Group membership will not be updated or managed until the group is restored or the sync configuration is updated.</value>
-  </data>
-  <data name="SyncDisabledFallback.CalloutBody.NoSourceGroup" xml:space="preserve">
-    <value>Membership for this group cannot be updated or managed until the source is restored or the configuration is changed.</value>
+  <data name="SyncDisabledFallback.CalloutBody.PausedShared" xml:space="preserve">
+    <value>GMM is not changing this group's membership while the job is paused. The group remains fully usable, but membership updates must be managed outside of GMM.
+
+For paused jobs older than {0} days, the GMM affiliation will be removed. This does not delete the group, and the group will continue to function normally. You can onboard it to GMM again at any time. A warning notification will be sent before the GMM affiliation is removed.</value>
   </data>
   <data name="SyncDisabledFallback.CalloutBody.NotValidSource" xml:space="preserve">
     <value>Group membership cannot be synced until the invalid source group IDs are replaced with valid security groups in the sync configuration.</value>
@@ -1412,7 +1414,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>Group membership will not be updated until this issue is resolved. Contact support for assistance.</value>
   </data>
   <data name="SyncDisabledFallback.CtaLabel" xml:space="preserve">
-    <value>Review in GMM UI</value>
+    <value>View in GMM UI</value>
   </data>
   <data name="SyncDisabledFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
@@ -1455,6 +1457,19 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="FallbackDetailsRow.NestedGroupsList" xml:space="preserve">
     <value>NESTED GROUPS</value>
+  </data>
+  <data name="FallbackDetailsRow.PausedAt" xml:space="preserve">
+    <value>PAUSED AT</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.Title" xml:space="preserve">
+    <value>WHAT TO DO</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.NoDestinationGroup.Body" xml:space="preserve">
+    <value>You can confirm whether the group exists via [My Groups](https://myaccount.microsoft.com/groups). If you restored it, go to the GMM UI to re-enable the sync for this group. If the deletion is planned, no further action is needed.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.NoSourceGroup.Body" xml:space="preserve">
+    <value>1. Review the membership rules in the GMM UI to identify which rule contains the non-existent source group.
+2. Replace it with a valid source group, or delete the empty rule altogether, then re-submit.</value>
   </data>
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>
