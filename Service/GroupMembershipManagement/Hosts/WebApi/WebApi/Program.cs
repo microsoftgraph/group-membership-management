@@ -9,6 +9,9 @@ using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.AspNetCore.OData;
@@ -250,6 +253,65 @@ namespace WebApi
             });
 
             builder.Services.AddCors();
+
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                {
+                    // Exclude SignalR hub from rate limiting
+                    if (httpContext.Request.Path.StartsWithSegments("/servicestatus"))
+                    {
+                        return RateLimitPartition.GetNoLimiter("signalr");
+                    }
+
+                    // Partition authenticated users by their object ID for fairness
+                    var userId = httpContext.User?.FindFirstValue("http://schemas.microsoft.com/identity/claims/objectidentifier");
+                    if (!string.IsNullOrEmpty(userId))
+                    {
+                        return RateLimitPartition.GetSlidingWindowLimiter(
+                            partitionKey: $"user_{userId}",
+                            factory: _ => new SlidingWindowRateLimiterOptions
+                            {
+                                PermitLimit = 200,
+                                Window = TimeSpan.FromMinutes(1),
+                                SegmentsPerWindow = 4,
+                                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                                QueueLimit = 0
+                            });
+                    }
+
+                    // Stricter limit for unauthenticated requests (bot probes, scanners)
+                    var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetSlidingWindowLimiter(
+                        partitionKey: $"ip_{clientIp}",
+                        factory: _ => new SlidingWindowRateLimiterOptions
+                        {
+                            PermitLimit = 30,
+                            Window = TimeSpan.FromMinutes(1),
+                            SegmentsPerWindow = 4,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                            QueueLimit = 0
+                        });
+                });
+
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.Headers.RetryAfter = "60";
+
+                    var logger = context.HttpContext.RequestServices.GetService<ILogger<Program>>();
+                    logger?.LogWarning(
+                        "Rate limit exceeded: {Method} {Path} from {RemoteIp}",
+                        context.HttpContext.Request.Method,
+                        context.HttpContext.Request.Path,
+                        context.HttpContext.Connection.RemoteIpAddress);
+
+                    await context.HttpContext.Response.WriteAsync(
+                        "Too many requests. Please try again later.",
+                        cancellationToken);
+                };
+            });
 
             builder.Services.ConfigureOptions<ConfigureSwaggerOptions>();
             builder.Services.AddOptions<TelemetryInitializerConfig>().Configure<IConfiguration>((settings, configuration) =>
@@ -584,6 +646,7 @@ namespace WebApi
             }
 
             app.UseAuthentication();
+            app.UseRateLimiter();
             app.UseAuthorization();
 
             app.MapHub<SignalRService>("/servicestatus");
