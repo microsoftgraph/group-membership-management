@@ -43,6 +43,7 @@ overrides:
   webpack-dev-middleware: '>=5.3.4'
   webpack-dev-server: '>=4.15.3'
   ws: '>=8.20.1'
+  '@nevware21/ts-utils': '>=0.14.0'
 
 importers:
 
@@ -863,8 +864,8 @@ packages:
   '@nevware21/ts-async@0.5.5':
     resolution: {integrity: sha512-vwqaL05iJPjLeh5igPi8MeeAu10i+Aq7xko1fbo9F5Si6MnVN5505qaV7AhSdk5MCBJVT/UYMk3kgInNjDb4Ig==}
 
-  '@nevware21/ts-utils@0.13.0':
-    resolution: {integrity: sha512-F3mD+DsUn9OiZmZc5tg0oKqrJCtiCstwx+wE+DNzFYh2cCRUuzTYdK9zGGP/au2BWvbOQ6Tqlbjr2+dT1P3AlQ==}
+  '@nevware21/ts-utils@0.14.0':
+    resolution: {integrity: sha512-WoeqTIXQ8WPhl+lD2NbMHoAQ4sJl0n7EoRoDmVJui//Usg512enl9q1fdbVobuZt3omnxnmVsDrNIvPBvFgddQ==}
 
   '@noble/hashes@2.0.1':
     resolution: {integrity: sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==}
@@ -3732,7 +3733,7 @@ snapshots:
       '@microsoft/applicationinsights-core-js': 3.0.5(tslib@2.6.2)
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-cfgsync-js@3.0.5(tslib@2.6.2)':
@@ -3742,7 +3743,7 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-channel-js@3.0.5(tslib@2.6.2)':
@@ -3752,7 +3753,7 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-common@3.0.5(tslib@2.6.2)':
@@ -3760,7 +3761,7 @@ snapshots:
       '@microsoft/applicationinsights-core-js': 3.0.5(tslib@2.6.2)
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-common@3.3.11(tslib@2.6.2)':
@@ -3768,7 +3769,7 @@ snapshots:
       '@microsoft/applicationinsights-core-js': 3.3.11(tslib@2.6.2)
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-core-js@3.0.5(tslib@2.6.2)':
@@ -3776,7 +3777,7 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-core-js@3.3.11(tslib@2.6.2)':
@@ -3784,7 +3785,7 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-dependencies-js@3.0.5(tslib@2.6.2)':
@@ -3794,7 +3795,7 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-properties-js@3.0.5(tslib@2.6.2)':
@@ -3803,7 +3804,7 @@ snapshots:
       '@microsoft/applicationinsights-core-js': 3.0.5(tslib@2.6.2)
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-react-js@17.0.2(history@5.3.0)(react@18.2.0)(tslib@2.6.2)':
@@ -3812,14 +3813,14 @@ snapshots:
       '@microsoft/applicationinsights-core-js': 3.0.5(tslib@2.6.2)
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       history: 5.3.0
       react: 18.2.0
       tslib: 2.6.2
 
   '@microsoft/applicationinsights-shims@3.0.1':
     dependencies:
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
 
   '@microsoft/applicationinsights-web@3.0.5(tslib@2.6.2)':
     dependencies:
@@ -3833,12 +3834,12 @@ snapshots:
       '@microsoft/applicationinsights-shims': 3.0.1
       '@microsoft/dynamicproto-js': 2.0.3
       '@nevware21/ts-async': 0.5.5
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
       tslib: 2.6.2
 
   '@microsoft/dynamicproto-js@2.0.3':
     dependencies:
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
 
   '@microsoft/load-themed-styles@1.10.295': {}
 
@@ -3863,9 +3864,9 @@ snapshots:
 
   '@nevware21/ts-async@0.5.5':
     dependencies:
-      '@nevware21/ts-utils': 0.13.0
+      '@nevware21/ts-utils': 0.14.0
 
-  '@nevware21/ts-utils@0.13.0': {}
+  '@nevware21/ts-utils@0.14.0': {}
 
   '@noble/hashes@2.0.1': {}
 
