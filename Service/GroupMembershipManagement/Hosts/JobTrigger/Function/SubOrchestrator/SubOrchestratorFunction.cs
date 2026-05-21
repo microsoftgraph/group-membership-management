@@ -239,7 +239,8 @@ namespace Hosts.JobTrigger
                                                         groupId.ToString(),
                                                         destinationName,
                                                         DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotOwnerNotification],
-                                                        _gmmOwnerAppName
+                                                        _gmmOwnerAppName,
+                                                        DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                                                         }
                                                     });
 

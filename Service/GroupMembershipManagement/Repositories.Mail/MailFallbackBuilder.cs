@@ -25,8 +25,9 @@ namespace Repositories.Mail
 
         // SyncDisabled NotOwner AdditionalContentParams indices
         // (set by JobTrigger SubOrchestratorFunction for NotOwnerNotification):
-        // [0]=GroupId, [1]=DestinationName, [2]=StatusDescription, [3]=GMMOwnerAppName
+        // [0]=GroupId, [1]=DestinationName, [2]=StatusDescription, [3]=GMMOwnerAppName, [4]=PausedAtUtc (ISO 8601)
         private const int GmmOwnerNameIndex = 3;
+        private const int NoOwnerPausedAtIndex = 4;
 
         // SyncDisabled NestedGroupsFound AdditionalContentParams indices
         // (set by GroupMembershipObtainer SubOrchestratorFunction for NestedGroupsFoundNotification):
@@ -50,12 +51,13 @@ namespace Repositories.Mail
         // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
         // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
         private static readonly HashSet<string> _compactDetailReasons =
-            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup" };
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner" };
 
         private static int GetPausedAtIndex(string disableReason) => disableReason switch
         {
             "NoDestinationGroup" => NoDestinationGroupPausedAtIndex,
             "NoSourceGroup" => NoSourceGroupPausedAtIndex,
+            "NoOwner" => NoOwnerPausedAtIndex,
             _ => -1
         };
 
@@ -378,8 +380,8 @@ namespace Repositories.Mail
                 "MMM d, yyyy \u00B7 h:mm tt 'PT'",
                 CultureInfo.InvariantCulture);
 
-        // Compact details table for "destination/source not found" reasons.
-        // NoSourceGroup: GROUP EMAIL + GROUP TYPE (Graph lookup on the still-valid destination) + PAUSED AT.
+        // Compact details table for compact-detail reasons.
+        // NoSourceGroup / NoOwner: GROUP EMAIL + GROUP TYPE (Graph lookup on the still-valid destination) + PAUSED AT.
         // NoDestinationGroup: PAUSED AT only — Graph cannot resolve a deleted group and the
         // producer-supplied value at index 1 is a name (not an email), already shown in the header.
         private async Task<StringBuilder> BuildCompactDetailRowsAsync(string disableReason, string groupId, EmailMessage emailMessage)
@@ -425,10 +427,21 @@ namespace Repositories.Mail
         // resx ("SyncDisabledFallback.ActionChecklist.<reason>.Body"); returns empty otherwise
         // so existing templates render unchanged. The deadline span is shown when a valid
         // PausedAt was supplied by the producer (PausedAt + ActionByDays, Pacific Time).
+        private static string[] GetActionChecklistArgs(string disableReason, EmailMessage emailMessage) =>
+            disableReason switch
+            {
+                "NoOwner" => new[]
+                {
+                    GetParam(emailMessage, GmmOwnerNameIndex),
+                    GetParam(emailMessage, 0) // groupId — for the Entra Owners deep-link
+                },
+                _ => Array.Empty<string>()
+            };
+
         private string BuildActionChecklistHtml(string disableReason, EmailMessage emailMessage)
         {
             var bodyKey = $"SyncDisabledFallback.ActionChecklist.{disableReason}.Body";
-            var body = _localizationRepository.TranslateSetting(bodyKey);
+            var body = _localizationRepository.TranslateSetting(bodyKey, GetActionChecklistArgs(disableReason, emailMessage));
             if (string.IsNullOrWhiteSpace(body) || body == bodyKey)
                 return string.Empty;
 

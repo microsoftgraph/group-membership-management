@@ -1373,7 +1373,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>GMM has paused this membership sync because one or more source group IDs are **not valid security groups**. The sync process cannot continue until the source configuration is corrected.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoOwner" xml:space="preserve">
-    <value>To manage this group's membership GMM must be an owner of the group. [Click here](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and manually add **{2}** as a group owner.</value>
+    <value>This sync is paused because **GMM isn't an owner** of this group.</value>
   </data>
   <data name="SyncDisabledFallback.Description.GuestUsers" xml:space="preserve">
     <value>GMM has paused this membership sync because **guest users** were detected in the membership source. GMM does not support adding guest users to groups and cannot continue with the current configuration.</value>
@@ -1470,6 +1470,10 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SyncDisabledFallback.ActionChecklist.NoSourceGroup.Body" xml:space="preserve">
     <value>1. Review the membership rules in the GMM UI to identify which rule contains the non-existent source group.
 2. Replace it with a valid source group, or delete the empty rule altogether, then re-submit.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.NoOwner.Body" xml:space="preserve">
+    <value>1. [Click here](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and manually add `{0}` as a group owner. If the GMM owner was removed intentionally, no further action is needed.
+2. Return to the GMM UI and re-enable the sync for this group.</value>
   </data>
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>
