@@ -5371,6 +5371,130 @@ resource name_resource 'Microsoft.Portal/dashboards@2015-08-01-preview' = {
               }
             }
           }
+          '58': {
+            position: {
+              x: 7
+              y: 48
+              colSpan: 6
+              rowSpan: 4
+            }
+            metadata: {
+              inputs: [
+                {
+                  name: 'resourceTypeMode'
+                  isOptional: true
+                }
+                {
+                  name: 'ComponentId'
+                  isOptional: true
+                }
+                {
+                  name: 'Scope'
+                  value: {
+                    resourceIds: [
+                      '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroup}/providers/microsoft.insights/components/${resourceGroup}'
+                    ]
+                  }
+                  isOptional: true
+                }
+                {
+                  name: 'PartId'
+                  value: '5e5f1234-0001-4b5e-a5e5-b1c2d3e4f058'
+                  isOptional: true
+                }
+                {
+                  name: 'Version'
+                  value: '2.0'
+                  isOptional: true
+                }
+                {
+                  name: 'TimeRange'
+                  isOptional: true
+                }
+                {
+                  name: 'DashboardId'
+                  isOptional: true
+                }
+                {
+                  name: 'DraftRequestParameters'
+                  isOptional: true
+                }
+                {
+                  name: 'Query'
+                  value: 'let bin_t = 5m;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (5-min sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 35000.0, series = "App quota (35K / 5 min)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
+                  isOptional: true
+                }
+                {
+                  name: 'ControlType'
+                  value: 'AnalyticsGrid'
+                  isOptional: true
+                }
+                {
+                  name: 'SpecificChart'
+                  isOptional: true
+                }
+                {
+                  name: 'PartTitle'
+                  value: 'Analytics'
+                  isOptional: true
+                }
+                {
+                  name: 'PartSubTitle'
+                  value: resourceGroup
+                  isOptional: true
+                }
+                {
+                  name: 'Dimensions'
+                  isOptional: true
+                }
+                {
+                  name: 'LegendOptions'
+                  isOptional: true
+                }
+                {
+                  name: 'IsQueryContainTimeRange'
+                  value: false
+                  isOptional: true
+                }
+              ]
+              type: 'Extension/Microsoft_OperationsManagementSuite_Workspace/PartType/LogsDashboardPart'
+              settings: {
+                content: {
+                  Query: 'let bin_t = 5m;\nlet bins = customMetrics\n| where name == "WriteRequests"\n| extend customMetric_valueSum = iif(itemType == \'customMetric\', valueSum, todouble(\'\'))\n| summarize [\'customMetrics/WriteRequests_sum\'] = sum(customMetric_valueSum) by bin(timestamp, bin_t);\nunion\n(bins | extend series = "WriteRequests (5-min sum)"),\n(bins | extend [\'customMetrics/WriteRequests_sum\'] = 35000.0, series = "App quota (35K / 5 min)")\n| project timestamp, [\'customMetrics/WriteRequests_sum\'], series\n'
+                  ControlType: 'FrameControlChart'
+                  SpecificChart: 'Line'
+                  PartTitle: 'HTTPWriteRequests per 5 min'
+                  Dimensions: {
+                    xAxis: {
+                      name: 'timestamp'
+                      type: 'datetime'
+                    }
+                    yAxis: [
+                      {
+                        name: 'customMetrics/WriteRequests_sum'
+                        type: 'real'
+                      }
+                    ]
+                    splitBy: [
+                      {
+                        name: 'series'
+                        type: 'string'
+                      }
+                    ]
+                    aggregation: 'Sum'
+                  }
+                  LegendOptions: {
+                    isEnabled: true
+                    position: 'Bottom'
+                  }
+                }
+              }
+              partHeader: {
+                title: 'HTTPWriteRequests per 5 min'
+                subtitle: ''
+              }
+            }
+          }
         }
       }
     }
