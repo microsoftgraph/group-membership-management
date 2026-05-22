@@ -1003,6 +1003,15 @@ var defaultAppConfigurationKeyData = [
     }
     description: 'Name of the user assigned managed identity for Graph API.'
   }
+  {
+    key: 'Mail:NestedGroupsDisplayLimit'
+    value: '5'
+    contentType: 'string'
+    tag: {
+      tag1: 'Mail'
+    }
+    description: 'Maximum number of nested-group names rendered in the SyncDisabled NestedGroupsFound fallback email.'
+  }
 ]
 
 module appConfigurationTemplate 'appConfiguration.bicep' = {

@@ -1486,7 +1486,7 @@ If guest users are required for this group, they'll need to be managed outside o
     <value>NESTED GROUPS DETECTED &#183; {0} TOTAL</value>
   </data>
   <data name="SyncDisabledFallback.NestedGroupsFound.ListNote" xml:space="preserve">
-    <value>GMM lists up to 5 examples here.</value>
+    <value>GMM lists up to {0} examples here.</value>
   </data>
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>

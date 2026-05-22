@@ -48,11 +48,9 @@ namespace Repositories.Mail
         private const int NestedGroupsListIndex = 3;
         private const int NestedGroupsFoundPausedAtIndex = 5;
 
-        // Cap the number of nested-group names rendered in the fallback email to match the
-        // GMM UI (SelectDestination.base.tsx slices groupMembers.groups at [0,5)). When the
-        // total nested-group count exceeds this limit, the builder appends the resx note
-        // "SyncDisabledFallback.NestedGroupsFound.ListNote".
-        private const int NestedGroupsDisplayLimit = 5;
+        // Cap on nested-group names rendered; overridable via App Config "Mail:NestedGroupsDisplayLimit".
+        private const int DefaultNestedGroupsDisplayLimit = 5;
+        private readonly int _nestedGroupsDisplayLimit;
 
         // SyncDisabled NoDestinationGroup AdditionalContentParams indices
         // (set by JobTrigger SubOrchestratorFunction and GraphUpdater GroupValidatorFunction for
@@ -100,12 +98,14 @@ namespace Repositories.Mail
             IGraphGroupRepository graphGroupRepository,
             ILocalizationRepository localizationRepository,
             ILogger<MailFallbackBuilder> logger,
-            IHandleInactiveJobsConfig handleInactiveJobsConfig = null)
+            IHandleInactiveJobsConfig handleInactiveJobsConfig = null,
+            int nestedGroupsDisplayLimit = DefaultNestedGroupsDisplayLimit)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _handleInactiveJobsConfig = handleInactiveJobsConfig;
+            _nestedGroupsDisplayLimit = nestedGroupsDisplayLimit > 0 ? nestedGroupsDisplayLimit : DefaultNestedGroupsDisplayLimit;
         }
 
         public async Task<string> BuildSyncStartedFallbackAsync(
@@ -353,6 +353,14 @@ namespace Repositories.Mail
         // description and the action checklist for NestedGroupsFound. Returns string.Empty for
         // other disable reasons or when no nested-group list is available. Styling matches the
         // shared PausedShared callout so both gray boxes look identical (per reference design).
+        private static readonly Regex _nestedGroupsObjectIdSuffixRegex =
+            new Regex(@"\s*\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\)\s*$",
+                RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+        private static readonly Regex _nestedGroupsLeadingBulletRegex =
+            new Regex(@"^\s*[-*\u2022]\s*",
+                RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
         private string BuildNestedGroupsCalloutHtml(string disableReason, EmailMessage emailMessage)
         {
             if (disableReason != "NestedGroupsFound")
@@ -362,11 +370,9 @@ namespace Repositories.Mail
             if (string.IsNullOrWhiteSpace(list))
                 return string.Empty;
 
-            var objectIdSuffix = new Regex(@"\s*\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\)\s*$");
-            var leadingBullet = new Regex(@"^\s*[-*\u2022]\s*");
             var lines = list.Replace("\r\n", "\n").Split('\n')
                 .Where(l => !string.IsNullOrWhiteSpace(l))
-                .Select(l => objectIdSuffix.Replace(leadingBullet.Replace(l, string.Empty), string.Empty).Trim())
+                .Select(l => _nestedGroupsObjectIdSuffixRegex.Replace(_nestedGroupsLeadingBulletRegex.Replace(l, string.Empty), string.Empty).Trim())
                 .Where(l => l.Length > 0)
                 .ToArray();
             if (lines.Length == 0)
@@ -378,7 +384,7 @@ namespace Repositories.Mail
 
             var listHtml = new StringBuilder();
             listHtml.Append("<ul style=\"margin:0;padding-left:18px;\">");
-            foreach (var l in lines.Take(NestedGroupsDisplayLimit))
+            foreach (var l in lines.Take(_nestedGroupsDisplayLimit))
             {
                 listHtml.Append("<li style=\"margin:2px 0;\">")
                         .Append(System.Net.WebUtility.HtmlEncode(l))
@@ -386,11 +392,13 @@ namespace Repositories.Mail
             }
             listHtml.Append("</ul>");
 
-            if (totalCount > NestedGroupsDisplayLimit)
+            if (totalCount > _nestedGroupsDisplayLimit)
             {
                 listHtml.Append("<p style=\"margin:8px 0 0;font-size:13.5px;line-height:1.5;color:#605E5C;\">")
                         .Append(System.Net.WebUtility.HtmlEncode(
-                            _localizationRepository.TranslateSetting("SyncDisabledFallback.NestedGroupsFound.ListNote")))
+                            _localizationRepository.TranslateSetting(
+                                "SyncDisabledFallback.NestedGroupsFound.ListNote",
+                                _nestedGroupsDisplayLimit.ToString(CultureInfo.InvariantCulture))))
                         .Append("</p>");
             }
 

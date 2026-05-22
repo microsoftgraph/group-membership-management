@@ -57,12 +57,18 @@ namespace Common.DependencyInjection
                     configuration.GetValue("Mail:EnableStyledFallbackEmails", false));
             });
 
-            services.AddScoped<IMailFallbackBuilder>(provider => new MailFallbackBuilder(
-                provider.GetService<IGraphGroupRepository>(),
-                provider.GetService<ILocalizationRepository>(),
-                provider.GetRequiredService<ILogger<MailFallbackBuilder>>(),
-                provider.GetService<IHandleInactiveJobsConfig>()
-            ));
+            services.AddScoped<IMailFallbackBuilder>(provider =>
+            {
+                var nestedGroupsDisplayLimit = provider.GetRequiredService<IConfiguration>()
+                    .GetValue("Mail:NestedGroupsDisplayLimit", 5);
+                return new MailFallbackBuilder(
+                    provider.GetService<IGraphGroupRepository>(),
+                    provider.GetService<ILocalizationRepository>(),
+                    provider.GetRequiredService<ILogger<MailFallbackBuilder>>(),
+                    provider.GetService<IHandleInactiveJobsConfig>(),
+                    nestedGroupsDisplayLimit
+                );
+            });
 
             services.AddScoped<IMailRepository>(provider =>
             {
