@@ -18,16 +18,6 @@ namespace Services.Tests.Helpers
                             .Select(x => new OrganizationLevel { LevelId = x.Key, Entities = x.SelectMany(e => e.Entities).ToList() })
                             .ToList();
 
-            foreach (var level in levels.OrderBy(x => x.LevelId))
-            {
-                foreach (var entity in level.Entities)
-                {
-                    var childCount = levels.Where(l => l.LevelId == (level.LevelId + 1)).SelectMany(e => e.Entities).Count(e => e.ReportsToPersonnelNbr == entity.PersonnelNumber);
-                    entity.Childcount = childCount;
-                    entity.HaschildrenInd = childCount > 0 ? "1" : "0";
-                }
-            }
-
             return levels;
         }
 
@@ -44,7 +34,7 @@ namespace Services.Tests.Helpers
             return newNumber.ToString();
         }
 
-        private List<OrganizationLevel> GenerateOrganizationHierarchyLevel(int currentLevel, int maxLevel = 10, string managerId = null)
+        private List<OrganizationLevel> GenerateOrganizationHierarchyLevel(int currentLevel, int maxLevel = 10)
         {
             if (maxLevel == 0 || currentLevel > maxLevel)
             {
@@ -55,18 +45,17 @@ namespace Services.Tests.Helpers
 
             if (currentLevel == 1)
             {
-                var partitionKey = "0";
                 var rowKey = GetNextId();
                 var azureObjectId = Guid.NewGuid().ToString();
                 var rootLevel = new OrganizationLevel
                 {
                     LevelId = 1,
-                    Entities = new List<PersonEntity> { new PersonEntity(partitionKey, rowKey) { AzureObjectId = azureObjectId } }
+                    Entities = new List<PersonEntity> { new PersonEntity { PersonnelNumber = rowKey, AzureObjectId = azureObjectId } }
                 };
 
                 levels.Add(rootLevel);
 
-                var childLevels = GenerateOrganizationHierarchyLevel(rootLevel.LevelId + 1, maxLevel, rowKey);
+                var childLevels = GenerateOrganizationHierarchyLevel(rootLevel.LevelId + 1, maxLevel);
                 if (childLevels != null)
                     levels.AddRange(childLevels.Where(x => x != null));
 
@@ -83,14 +72,14 @@ namespace Services.Tests.Helpers
             {
                 var rowKey = GetNextId();
                 var azureObjectId = Guid.NewGuid().ToString();
-                level.Entities.Add(new PersonEntity(managerId, rowKey) { AzureObjectId = azureObjectId });
+                level.Entities.Add(new PersonEntity { PersonnelNumber = rowKey, AzureObjectId = azureObjectId });
             }
 
             levels.Add(level);
 
             foreach (var entity in level.Entities)
             {
-                var childLevels = GenerateOrganizationHierarchyLevel(currentLevel + 1, maxLevel, entity.PersonnelNumber);
+                var childLevels = GenerateOrganizationHierarchyLevel(currentLevel + 1, maxLevel);
                 if (childLevels != null)
                     levels.AddRange(childLevels.Where(x => x != null));
             }
