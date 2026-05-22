@@ -38,6 +38,8 @@ export interface IJobHistoryPanelStyles {
     userSuggestionRow: IStyle;
     userSuggestionPrimaryText: IStyle;
     userSuggestionSecondaryText: IStyle;
+    highlightedAddedCell: IStyle;
+    highlightedRemovedCell: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

@@ -179,6 +179,22 @@ export const getStyles = (props: IJobHistoryPanelStyleProps): IJobHistoryPanelSt
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
         },
+        highlightedAddedCell: {
+            fontWeight: 700,
+            color: '#107c10',
+            backgroundColor: '#dff6dd',
+            borderRadius: '2px',
+            padding: '2px 6px',
+            display: 'inline-block',
+        },
+        highlightedRemovedCell: {
+            fontWeight: 700,
+            color: '#a80000',
+            backgroundColor: '#fde7e9',
+            borderRadius: '2px',
+            padding: '2px 6px',
+            display: 'inline-block',
+        },
     };
 };
 

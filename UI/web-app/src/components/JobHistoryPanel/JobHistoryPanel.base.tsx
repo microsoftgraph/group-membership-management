@@ -42,6 +42,7 @@ import { SyncJobChange } from '../../models/SyncJobChange';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { SyncJobHistory } from '../../models/SyncJobHistory';
 import { SyncHistorySearchProgressUpdate } from '../../models/SyncHistorySearchProgressUpdate';
+import { MembershipChangeType, SearchSyncHistoryByUserRunMembershipChange } from '../../models/SearchSyncHistoryByUserResult';
 import { ThresholdNotificationData } from '../../models/ThresholdNotificationData';
 import { selectIsJobTenantReader, selectIsJobTenantWriter } from '../../store/roles.slice';
 import { renderMultilineHeader } from '../../utils/stringUtils';
@@ -128,6 +129,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [showProgressUnavailableMessage, setShowProgressUnavailableMessage] = useState(false);
     const [searchProgressText, setSearchProgressText] = useState<string | null>(null);
     const [userPickerSuggestions, setUserPickerSuggestions] = useState<IPersonaProps[]>([]);
+    const [runMembershipChangeMap, setRunMembershipChangeMap] = useState<Map<string, MembershipChangeType> | null>(null);
 
     const syncHistorySearchSignalRServiceRef = useRef<SignalRSyncHistorySearchService>(new SignalRSyncHistorySearchService());
     const activeSearchRequestIdRef = useRef<string | null>(null);
@@ -274,6 +276,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setSelectedUser([]);
         setUserPickerSuggestions([]);
         setMatchingRunIds(null);
+        setRunMembershipChangeMap(null);
         setIsUserSearchLoading(false);
         setUserSearchError(null);
         setUserSearchInfo(null);
@@ -320,8 +323,33 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         return normalizedInput;
     };
 
+    const getMostRecentMembershipChange = (
+        changes: SearchSyncHistoryByUserRunMembershipChange[],
+    ): SearchSyncHistoryByUserRunMembershipChange | null => {
+        if (changes.length === 0) {
+            return null;
+        }
+
+        let bestChange = changes[0];
+        let bestTime = -1;
+
+        for (const change of changes) {
+            const historyItem = syncHistoryItems.find(
+                (item) => item.runId === change.runId,
+            );
+            const time = getUtcTimestampMillis(historyItem?.endTime ?? historyItem?.startTime ?? null);
+            if (time > bestTime) {
+                bestTime = time;
+                bestChange = change;
+            }
+        }
+
+        return bestChange;
+    };
+
     const searchHistoryForUser = async (userObjectId: string): Promise<void> => {
         setMatchingRunIds(null);
+        setRunMembershipChangeMap(null);
         setSyncPageNumber(1);
         setUserSearchError(null);
         setUserSearchInfo(null);
@@ -361,11 +389,36 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
 
             setMatchingRunIds(new Set(result.matchingRunIds));
 
-            if (result.matchingRunIds.length === 0 && result.checkedCurrentGroupMembership) {
-                if (result.userInCurrentGroup) {
-                    setUserSearchInfo(strings.JobDetails.Panel.userAddedPriorToHistoryMessage);
+            const changeMap = new Map<string, MembershipChangeType>();
+            for (const change of result.runMembershipChanges) {
+                changeMap.set(change.runId, change.membershipChangeType);
+            }
+            setRunMembershipChangeMap(changeMap);
+
+            if (result.matchingRunIds.length > 0) {
+                const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
+                const inferredInGroup = mostRecentChange?.membershipChangeType === MembershipChangeType.Added;
+
+                if (inferredInGroup) {
+                    setUserSearchInfo(strings.JobDetails.Panel.userCurrentlyInGroupMessage);
                 } else {
-                    setUserSearchInfo(strings.JobDetails.Panel.userNeverInGroupOrRemovedPriorToHistoryMessage);
+                    setUserSearchInfo(strings.JobDetails.Panel.userNotInGroupMessage);
+                }
+            } else if (result.checkedCurrentGroupMembership) {
+                if (result.userInCurrentGroup) {
+                    let message = strings.JobDetails.Panel.userCurrentlyInGroupMessage;
+                    const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
+                    if (mostRecentChange?.membershipChangeType === MembershipChangeType.Removed) {
+                        message += ` ${strings.JobDetails.Panel.userManuallyAddedNote}`;
+                    }
+                    setUserSearchInfo(message);
+                } else {
+                    let message = strings.JobDetails.Panel.userNotInGroupMessage;
+                    const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
+                    if (mostRecentChange?.membershipChangeType === MembershipChangeType.Added) {
+                        message += ` ${strings.JobDetails.Panel.userManuallyRemovedNote}`;
+                    }
+                    setUserSearchInfo(message);
                 }
             }
         } catch {
@@ -374,6 +427,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }
 
             setMatchingRunIds(new Set());
+            setRunMembershipChangeMap(null);
             setUserSearchError(strings.JobDetails.Panel.searchUserError);
         } finally {
             if (signalRSubscribedRequestId) {
@@ -414,6 +468,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             ignoreNextEmptyUserInputRef.current = false;
             activeSearchRequestIdRef.current = null;
             setMatchingRunIds(new Set());
+            setRunMembershipChangeMap(null);
             setUserPickerSuggestions([]);
             setIsUserSearchLoading(false);
             setSearchProgressText(null);
@@ -474,6 +529,34 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         return <span>{value ?? strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
     };
 
+    const renderHighlightedCount = (
+        item: CombinedHistoryListItem,
+        value: number | null,
+        highlightChangeType: MembershipChangeType,
+    ): JSX.Element => {
+        const runId = item.syncHistory?.runId;
+        const changeType = runId && runMembershipChangeMap ? runMembershipChangeMap.get(runId) : undefined;
+        const isHighlighted = changeType === highlightChangeType;
+
+        if (isHighlighted && value !== null) {
+            const highlightClass = highlightChangeType === MembershipChangeType.Added
+                ? classNames.highlightedAddedCell
+                : classNames.highlightedRemovedCell;
+            return (
+                <span
+                    className={highlightClass}
+                    aria-label={highlightChangeType === MembershipChangeType.Added
+                        ? `${value} (user was added in this sync)`
+                        : `${value} (user was removed in this sync)`}
+                >
+                    {value}
+                </span>
+            );
+        }
+
+        return <span>{value ?? strings.JobDetails.Panel.emptyValuePlaceholder}</span>;
+    };
+
     const canRenderDownloadLink = (item: CombinedHistoryListItem): boolean => {
         if (!canDownloadMembershipChanges || item.eventType !== 'sync' || !item.syncHistory) {
             return false;
@@ -530,6 +613,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             setIsThresholdDataLoading(false);
             setSelectedUser([]);
             setMatchingRunIds(null);
+            setRunMembershipChangeMap(null);
             setIsUserSearchLoading(false);
             setUserSearchError(null);
             setUserSearchInfo(null);
@@ -993,7 +1077,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isSorted: syncSortKey === 'usersAdded',
             isSortedDescending: isSyncSortDescending,
             onColumnClick: onSyncColumnHeaderClick,
-            onRender: (item: CombinedHistoryListItem) => renderCount(item.usersAdded),
+            onRender: (item: CombinedHistoryListItem) => renderHighlightedCount(item, item.usersAdded, MembershipChangeType.Added),
         },
         {
             key: 'usersRemoved',
@@ -1004,7 +1088,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             isSorted: syncSortKey === 'usersRemoved',
             isSortedDescending: isSyncSortDescending,
             onColumnClick: onSyncColumnHeaderClick,
-            onRender: (item: CombinedHistoryListItem) => renderCount(item.usersRemoved),
+            onRender: (item: CombinedHistoryListItem) => renderHighlightedCount(item, item.usersRemoved, MembershipChangeType.Removed),
         },
         {
             key: 'afterSyncUserCount',

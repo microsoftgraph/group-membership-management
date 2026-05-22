@@ -387,6 +387,10 @@ export type IStrings = {
       searchUserProgressUnavailableMessage: string;
       userAddedPriorToHistoryMessage: string;
       userNeverInGroupOrRemovedPriorToHistoryMessage: string;
+      userCurrentlyInGroupMessage: string;
+      userNotInGroupMessage: string;
+      userManuallyAddedNote: string;
+      userManuallyRemovedNote: string;
     };
     notFound: string;
     notFoundWithoutPurgeDate: string;
