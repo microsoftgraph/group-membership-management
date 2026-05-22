@@ -42,9 +42,17 @@ namespace Repositories.Mail
 
         // SyncDisabled NestedGroupsFound AdditionalContentParams indices
         // (set by GroupMembershipObtainer SubOrchestratorFunction for NestedGroupsFoundNotification):
-        // [0]=GroupId, [1]=DestinationName, [2]=NestedGroupsCount, [3]=NestedGroupsInfo, [4]=StatusDescription
+        // [0]=GroupId, [1]=DestinationName, [2]=NestedGroupsCount, [3]=NestedGroupsInfo,
+        // [4]=StatusDescription, [5]=PausedAtUtc (ISO 8601)
         private const int NestedGroupsCountIndex = 2;
         private const int NestedGroupsListIndex = 3;
+        private const int NestedGroupsFoundPausedAtIndex = 5;
+
+        // Cap the number of nested-group names rendered in the fallback email to match the
+        // GMM UI (SelectDestination.base.tsx slices groupMembers.groups at [0,5)). When the
+        // total nested-group count exceeds this limit, the builder appends the resx note
+        // "SyncDisabledFallback.NestedGroupsFound.ListNote".
+        private const int NestedGroupsDisplayLimit = 5;
 
         // SyncDisabled NoDestinationGroup AdditionalContentParams indices
         // (set by JobTrigger SubOrchestratorFunction and GraphUpdater GroupValidatorFunction for
@@ -62,7 +70,7 @@ namespace Repositories.Mail
         // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
         // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
         private static readonly HashSet<string> _compactDetailReasons =
-            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData", "GuestUsers" };
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData", "GuestUsers", "NestedGroupsFound" };
 
         private static int GetPausedAtIndex(string disableReason) => disableReason switch
         {
@@ -71,6 +79,7 @@ namespace Repositories.Mail
             "NoOwner" => NoOwnerPausedAtIndex,
             "NoData" => NoDataPausedAtIndex,
             "GuestUsers" => GuestUsersPausedAtIndex,
+            "NestedGroupsFound" => NestedGroupsFoundPausedAtIndex,
             _ => -1
         };
 
@@ -146,22 +155,13 @@ namespace Repositories.Mail
             var disableReason = GetDisableReason(emailMessage.Content);
             var gmmOwnerName = GetParam(emailMessage, GmmOwnerNameIndex);
 
-            // For NestedGroupsFound the producer (GroupMembershipObtainer SubOrchestratorFunction)
-            // populates AdditionalContentParams as [groupId, destName, count, list, statusDescription]
-            // — there is no requestor at index 4, so suppress the "Requested by" row to avoid
-            // surfacing the status description as a person's name. The nested groups themselves
-            // are intentionally not enumerated in the table because the list can be very large;
-            // NestedGroupsFound and compact-detail reasons (NoDestinationGroup / NoSourceGroup)
-            // do not carry a requestor in their AdditionalContentParams (the slot is reused
-            // for PausedAtUtc or omitted), so suppress the "Requested By" row in those cases.
+            // Requestor row is suppressed for all Sync Disabled fallbacks. Compact-detail
+            // reasons additionally render a "Paused At" row via BuildCompactDetailRowsAsync;
+            // the paused-at timestamp index per reason is defined in GetPausedAtIndex.
             var isCompactDetail = _compactDetailReasons.Contains(disableReason);
-            var requestor = (disableReason == "NestedGroupsFound" || isCompactDetail)
-                ? string.Empty
-                : GetParam(emailMessage, RequestorIndex);
-
             var rows = isCompactDetail
                 ? await BuildCompactDetailRowsAsync(disableReason, groupId, emailMessage)
-                : await BuildBaseRowsAsync(groupId, requestor);
+                : await BuildBaseRowsAsync(groupId, requestor: string.Empty);
 
             // {3} carries the nested-groups count so the NestedGroupsFound description can
             // surface it inline. Other reasons ignore the extra arg, which is harmless to
@@ -183,20 +183,7 @@ namespace Repositories.Mail
 
             var description = _localizationRepository.TranslateSetting(
                 $"SyncDisabledFallback.Description.{disableReason}",
-                requestor, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount, addedCount, removedCount);
-
-            // For NestedGroupsFound, append the bullet list of detected nested groups directly
-            // into the description body. The producer sends it as plain markdown lines
-            // ("- name (objectId)\n- ..."); ConvertContentToHtml turns \n into <br>, which gives
-            // us a readable inline list without needing a separate "Nested Groups" table row.
-            if (disableReason == "NestedGroupsFound")
-            {
-                var list = GetParam(emailMessage, NestedGroupsListIndex);
-                if (!string.IsNullOrWhiteSpace(list))
-                {
-                    description += "\n\n**Nested groups detected:**\n" + list.TrimEnd();
-                }
-            }
+                string.Empty, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount, addedCount, removedCount);
 
             return FormatTemplate(
                 HtmlTemplates.SyncDisabledTemplate,
@@ -215,7 +202,8 @@ namespace Repositories.Mail
                 rows: rows,
                 jobUrl: jobUrl,
                 sentDate: sentDate,
-                actionChecklistHtml: BuildActionChecklistHtml(disableReason, emailMessage)
+                actionChecklistHtml: BuildActionChecklistHtml(disableReason, emailMessage),
+                extraCalloutHtml: BuildNestedGroupsCalloutHtml(disableReason, emailMessage)
             );
         }
 
@@ -339,7 +327,8 @@ namespace Repositories.Mail
             string template, string prefix, string groupName,
             string headerText, string description, string calloutBody,
             StringBuilder rows, string jobUrl, string sentDate,
-            string actionChecklistHtml = "")
+            string actionChecklistHtml = "",
+            string extraCalloutHtml = "")
         {
             var name = string.IsNullOrWhiteSpace(groupName) ? "N/A" : groupName;
             return string.Format(
@@ -355,8 +344,64 @@ namespace Repositories.Mail
                 System.Net.WebUtility.HtmlEncode(SanitizeUrl(jobUrl)),                   // {8} CTA url
                 ConvertContentToHtml(_localizationRepository.TranslateSetting($"{prefix}.FooterExplanation", name)), // {9} footer
                 sentDate,                                                                 // {10} sent date
-                actionChecklistHtml ?? string.Empty                                       // {11} optional action checklist row
+                actionChecklistHtml ?? string.Empty,                                      // {11} optional action checklist row
+                extraCalloutHtml ?? string.Empty                                          // {12} optional extra gray callout (e.g. nested groups)
             );
+        }
+
+        // Builds the gray "Nested groups detected · N total" callout that sits between the
+        // description and the action checklist for NestedGroupsFound. Returns string.Empty for
+        // other disable reasons or when no nested-group list is available. Styling matches the
+        // shared PausedShared callout so both gray boxes look identical (per reference design).
+        private string BuildNestedGroupsCalloutHtml(string disableReason, EmailMessage emailMessage)
+        {
+            if (disableReason != "NestedGroupsFound")
+                return string.Empty;
+
+            var list = GetParam(emailMessage, NestedGroupsListIndex);
+            if (string.IsNullOrWhiteSpace(list))
+                return string.Empty;
+
+            var objectIdSuffix = new Regex(@"\s*\([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\)\s*$");
+            var leadingBullet = new Regex(@"^\s*[-*\u2022]\s*");
+            var lines = list.Replace("\r\n", "\n").Split('\n')
+                .Where(l => !string.IsNullOrWhiteSpace(l))
+                .Select(l => objectIdSuffix.Replace(leadingBullet.Replace(l, string.Empty), string.Empty).Trim())
+                .Where(l => l.Length > 0)
+                .ToArray();
+            if (lines.Length == 0)
+                return string.Empty;
+
+            var totalCount = int.TryParse(
+                GetParam(emailMessage, NestedGroupsCountIndex),
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) ? n : lines.Length;
+
+            var listHtml = new StringBuilder();
+            listHtml.Append("<ul style=\"margin:0;padding-left:18px;\">");
+            foreach (var l in lines.Take(NestedGroupsDisplayLimit))
+            {
+                listHtml.Append("<li style=\"margin:2px 0;\">")
+                        .Append(System.Net.WebUtility.HtmlEncode(l))
+                        .Append("</li>");
+            }
+            listHtml.Append("</ul>");
+
+            if (totalCount > NestedGroupsDisplayLimit)
+            {
+                listHtml.Append("<p style=\"margin:8px 0 0;font-size:13.5px;line-height:1.5;color:#605E5C;\">")
+                        .Append(System.Net.WebUtility.HtmlEncode(
+                            _localizationRepository.TranslateSetting("SyncDisabledFallback.NestedGroupsFound.ListNote")))
+                        .Append("</p>");
+            }
+
+            var title = _localizationRepository.TranslateSetting(
+                "SyncDisabledFallback.NestedGroupsFound.ListHeading",
+                totalCount.ToString(CultureInfo.InvariantCulture));
+
+            return string.Format(
+                HtmlTemplates.GrayExtraCalloutHtml,
+                System.Net.WebUtility.HtmlEncode(title),
+                listHtml.ToString());
         }
 
         private static string GetParam(EmailMessage emailMessage, int index, string defaultValue = "")
@@ -458,6 +503,10 @@ namespace Repositories.Mail
                 {
                     GetParam(emailMessage, GmmOwnerNameIndex),
                     GetParam(emailMessage, 0) // groupId — for the Entra Owners deep-link
+                },
+                "NestedGroupsFound" => new[]
+                {
+                    GetParam(emailMessage, 0) // groupId — for the Entra Members deep-link
                 },
                 _ => Array.Empty<string>()
             };

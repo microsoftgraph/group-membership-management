@@ -1358,7 +1358,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>No Data Found</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.NestedGroupsFound" xml:space="preserve">
-    <value>Nested Groups Found</value>
+    <value>nested group in destination not supported</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.Generic" xml:space="preserve">
     <value>Attention Required</value>
@@ -1385,7 +1385,7 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>This sync is paused because the current membership rules **returned zero users**. To prevent unexpectedly emptying the destination group, GMM did not apply this change.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NestedGroupsFound" xml:space="preserve">
-    <value>GMM has paused this membership sync because **{3} nested group(s)** were detected in the destination group. GMM cannot manage a destination group that contains nested groups (groups added as members). Remove the nested groups from the destination via [Entra ID](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{1}) and re-enable membership sync from the GMM UI.</value>
+    <value>This sync is paused because the destination group **contains nested group(s)**. GMM does not support nested groups in the destination and cannot safely reconcile membership.</value>
   </data>
   <data name="SyncDisabledFallback.CalloutTitle" xml:space="preserve">
     <value>WHAT HAPPENS IF YOU DO NOTHING</value>
@@ -1403,9 +1403,6 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="SyncDisabledFallback.CalloutBody.NoData" xml:space="preserve">
     <value>No membership changes will be applied until the membership definition is corrected to return users. Verify your query filters and source group configurations.</value>
-  </data>
-  <data name="SyncDisabledFallback.CalloutBody.NestedGroupsFound" xml:space="preserve">
-    <value>Group membership cannot be synced while the destination contains nested groups. Once the nested groups are removed and sync is re-enabled, GMM will resume managing membership based on your configured rules. If you intentionally require nested groups, GMM will not be able to manage this group.</value>
   </data>
   <data name="SyncDisabledFallback.CalloutBody.Generic" xml:space="preserve">
     <value>Group membership will not be updated until this issue is resolved. Contact support for assistance.</value>
@@ -1480,6 +1477,16 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
 2. Return to the GMM UI and re-enable the sync for this group.
 
 If guest users are required for this group, they'll need to be managed outside of GMM.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.NestedGroupsFound.Body" xml:space="preserve">
+    <value>1. Open the destination group in [Microsoft Entra](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{0}) and remove any nested groups from its members list.
+2. Return to the GMM UI and re-enable the sync for this group.</value>
+  </data>
+  <data name="SyncDisabledFallback.NestedGroupsFound.ListHeading" xml:space="preserve">
+    <value>NESTED GROUPS DETECTED &#183; {0} TOTAL</value>
+  </data>
+  <data name="SyncDisabledFallback.NestedGroupsFound.ListNote" xml:space="preserve">
+    <value>GMM lists up to 5 examples here.</value>
   </data>
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>

@@ -274,6 +274,9 @@ namespace Repositories.Mail
           </td>
         </tr>
 
+        <!-- Optional Extra Callout (e.g. nested groups detected) -->
+        {{12}}
+
         <!-- Optional Action Checklist (orange callout) -->
         {{11}}
 
@@ -370,5 +373,26 @@ namespace Repositories.Mail
                 <td style=""padding:12px 16px;font-size:12px;font-weight:600;color:#605e5c;text-transform:uppercase;letter-spacing:0.3px;border-right:1px solid #E1DFDD;border-bottom:1px solid #E1DFDD;width:180px;vertical-align:top;"">{0}</td>
                 <td style=""padding:12px 16px;font-size:13.5px;color:#242424;border-bottom:1px solid #E1DFDD;{2}"">{1}</td>
               </tr>";
+
+        // ── Extra gray callout (same styling as "What happens if you do nothing") ────
+        // Used to render the inline "Nested groups detected · N total" block under
+        // the description in the Sync Disabled (NestedGroupsFound) fallback.
+        // Tokens: {0}=callout title (HTML-encoded), {1}=callout body HTML (e.g. <ul><li>...</li></ul>).
+        public const string GrayExtraCalloutHtml = @"
+        <tr>
+          <td style=""padding:0 24px 16px;"">
+            <div style=""border:1px solid #E0E0E0;border-radius:4px;overflow:hidden;"">
+              <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"">
+                <tr>
+                  <td width=""3"" bgcolor=""#8A8A8A"" style=""background:#8A8A8A;width:3px;line-height:0;font-size:0;"">&nbsp;</td>
+                  <td bgcolor=""#F5F5F5"" style=""background:#F5F5F5;padding:14px 16px;"">
+                    <div style=""font-size:13px;font-weight:700;color:#323130;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;"">{0}</div>
+                    <div style=""font-size:13.5px;line-height:1.55;color:#605E5C;"">{1}</div>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>";
     }
 }

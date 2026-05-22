@@ -12,6 +12,7 @@ using Repositories.Contracts.Helpers;
 using Repositories.Contracts.InjectConfig;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
@@ -97,7 +98,8 @@ namespace Hosts.GroupMembershipObtainer
                                 destinationName.ToString(),
                                 nestedGroups.Count.ToString(),
                                 nestedGroupsInfo,
-                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.NestedGroupsFoundNotification]
+                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.NestedGroupsFoundNotification],
+                                context.CurrentUtcDateTime.ToString("o", CultureInfo.InvariantCulture)
                             };
                             await context.CallActivityAsync(nameof(EmailSenderFunction), new EmailSenderRequest
                             {
