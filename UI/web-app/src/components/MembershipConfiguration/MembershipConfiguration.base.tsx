@@ -136,9 +136,17 @@ export const MembershipConfigurationBase: React.FunctionComponent<MembershipConf
         if (part.query.type === SourcePartType.GroupMembership && existing.query.type === SourcePartType.GroupMembership) {
           return part.query.source === existing.query.source;
         }
-        // For HR/org: same org leader email + same filter
-        if (part.useOrgStructure && existing.useOrgStructure) {
-          return part.managerToAutoSelect?.email === existing.managerToAutoSelect?.email;
+        // For HR/org: same leader identity + same depth + same filter
+        if (part.useOrgStructure && existing.useOrgStructure &&
+            part.query.type === SourcePartType.HR && existing.query.type === SourcePartType.HR) {
+          const partLeader = part.managerToAutoSelect?.objectId ?? part.managerToAutoSelect?.email?.toLowerCase();
+          const existingLeader = existing.managerToAutoSelect?.objectId ?? existing.managerToAutoSelect?.email?.toLowerCase();
+          const partFilter = part.query.source.filter ?? '';
+          const existingFilter = existing.query.source.filter ?? '';
+
+          return partLeader === existingLeader &&
+                 part.depthToAutoSelect === existing.depthToAutoSelect &&
+                 partFilter === existingFilter;
         }
         // For HR filter-only: same filter string
         if (part.query.type === SourcePartType.HR && existing.query.type === SourcePartType.HR) {

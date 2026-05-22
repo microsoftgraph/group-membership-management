@@ -588,6 +588,7 @@ namespace Services.WebApi
 
         private async Task<string> ExecuteSearchGroupToolAsync(string argumentsJson)
         {
+            var searchQuery = string.Empty;
             try
             {
                 var args = JsonSerializer.Deserialize<SearchGroupArgs>(argumentsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
@@ -596,7 +597,7 @@ namespace Services.WebApi
                     return JsonSerializer.Serialize(new { error = "No search query specified" });
                 }
 
-                var searchQuery = args.SearchQuery.Trim();
+                searchQuery = args.SearchQuery.Trim();
                 var searchSafe = searchQuery.Replace("'", "''");
 
                 using var scope = _serviceScopeFactory.CreateScope();
@@ -641,7 +642,11 @@ namespace Services.WebApi
             }
             catch (Exception ex)
             {
-                return JsonSerializer.Serialize(new { error = $"Failed to search groups: {ex.Message}" });
+                _logger.LogError(ex, "Search group tool failed for query '{SearchQuery}'", searchQuery);
+                return JsonSerializer.Serialize(new
+                {
+                    error = "We couldn't find groups matching your query right now. Try a different name or try again."
+                });
             }
         }
 
