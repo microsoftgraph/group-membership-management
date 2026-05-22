@@ -186,7 +186,7 @@ namespace Hosts.MembershipAggregator
                                                     {
                                                         request.GroupId.ToString(),
                                                         groupInformation.Name,
-                                                        DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+                                                        currentUtcDateTime.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                                                     },
                                                 });
 

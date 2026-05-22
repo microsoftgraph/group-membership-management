@@ -216,7 +216,7 @@ namespace Hosts.JobTrigger
                                                         groupId.ToString(),
                                                         destinationName,
                                                         DisabledNotificationType.StatusDescriptions[NotificationMessageType.DestinationNotExistNotification],
-                                                        DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+                                                        context.CurrentUtcDateTime.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                                                         }
                                                     });
 
@@ -240,7 +240,7 @@ namespace Hosts.JobTrigger
                                                         destinationName,
                                                         DisabledNotificationType.StatusDescriptions[NotificationMessageType.NotOwnerNotification],
                                                         _gmmOwnerAppName,
-                                                        DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+                                                        context.CurrentUtcDateTime.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                                                         }
                                                     });
 
