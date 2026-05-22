@@ -774,7 +774,7 @@ namespace Services.WebApi
             {
                 try
                 {
-                    JsonDocument.Parse(trimmed);
+                    using var _ = JsonDocument.Parse(trimmed);
                 }
                 catch (JsonException)
                 {
