@@ -165,7 +165,8 @@ namespace Hosts.GraphUpdater
                                 groupName,
                                 membersAddedResponse.SuccessCount.ToString(),
                                 membersRemovedResponse.SuccessCount.ToString(),
-                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.GuestUserFailureNotification]
+                                DisabledNotificationType.StatusDescriptions[NotificationMessageType.GuestUserFailureNotification],
+                                context.CurrentUtcDateTime.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
                     };
 
                     await context.CallActivityAsync(nameof(EmailSenderFunction),

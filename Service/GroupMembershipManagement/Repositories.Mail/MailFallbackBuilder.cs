@@ -34,6 +34,12 @@ namespace Repositories.Mail
         // [0]=GroupId, [1]=DestinationName, [2]=PausedAtUtc (ISO 8601)
         private const int NoDataPausedAtIndex = 2;
 
+        // SyncDisabled GuestUsers AdditionalContentParams indices
+        // (set by GraphUpdater Orchestrator / OrchestratorMultiLane for GuestUserFailureNotification):
+        // [0]=GroupId, [1]=DestinationName, [2]=MembersAddedCount, [3]=MembersRemovedCount,
+        // [4]=StatusDescription, [5]=PausedAtUtc (ISO 8601)
+        private const int GuestUsersPausedAtIndex = 5;
+
         // SyncDisabled NestedGroupsFound AdditionalContentParams indices
         // (set by GroupMembershipObtainer SubOrchestratorFunction for NestedGroupsFoundNotification):
         // [0]=GroupId, [1]=DestinationName, [2]=NestedGroupsCount, [3]=NestedGroupsInfo, [4]=StatusDescription
@@ -56,7 +62,7 @@ namespace Repositories.Mail
         // "What to do" action-checklist with a PausedAt + NumberOfDaysBeforePurging deadline.
         // Add a reason here to opt into the shared rendering; per-reason knob is GetPausedAtIndex.
         private static readonly HashSet<string> _compactDetailReasons =
-            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData" };
+            new HashSet<string>(StringComparer.Ordinal) { "NoDestinationGroup", "NoSourceGroup", "NoOwner", "NoData", "GuestUsers" };
 
         private static int GetPausedAtIndex(string disableReason) => disableReason switch
         {
@@ -64,6 +70,7 @@ namespace Repositories.Mail
             "NoSourceGroup" => NoSourceGroupPausedAtIndex,
             "NoOwner" => NoOwnerPausedAtIndex,
             "NoData" => NoDataPausedAtIndex,
+            "GuestUsers" => GuestUsersPausedAtIndex,
             _ => -1
         };
 
@@ -163,9 +170,20 @@ namespace Repositories.Mail
                 ? GetParam(emailMessage, NestedGroupsCountIndex)
                 : string.Empty;
 
+            // {4}/{5} surface the added/removed user counts for the GuestUsers description
+            // ("Before pausing, GMM finished this sync with X users added and Y users removed.").
+            // Other reasons' descriptions do not reference {4}/{5}, so the extra args are ignored
+            // by string.Format.
+            var addedCount = disableReason == "GuestUsers"
+                ? GetParam(emailMessage, AddedCountIndex, defaultValue: "0")
+                : string.Empty;
+            var removedCount = disableReason == "GuestUsers"
+                ? GetParam(emailMessage, RemovedCountIndex, defaultValue: "0")
+                : string.Empty;
+
             var description = _localizationRepository.TranslateSetting(
                 $"SyncDisabledFallback.Description.{disableReason}",
-                requestor, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount);
+                requestor, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount, addedCount, removedCount);
 
             // For NestedGroupsFound, append the bullet list of detected nested groups directly
             // into the description body. The producer sends it as plain markdown lines
