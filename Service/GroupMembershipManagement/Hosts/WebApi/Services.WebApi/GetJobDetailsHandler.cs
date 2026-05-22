@@ -82,7 +82,7 @@ namespace Services
 
             var targetChannelId = job.Channel?.ChannelId;
             var targetChannelName = job.MembershipType == MembershipTypes.TeamsChannelMembership.ToString() ?
-                    await _teamsChannelRepository.GetTeamsChannelNameAsync(new Models.Entities.AzureADTeamsChannel { ChannelId = job.Channel!.ChannelId }) : null;
+                    await _teamsChannelRepository.GetTeamsChannelNameAsync(new Models.Entities.AzureADTeamsChannel { ObjectId = groupId, ChannelId = job.Channel!.ChannelId }) : null;
 
             var hiddenMembershipSourceIds = await GetHiddenMembershipSourceIdsAsync(job.Query);
                
