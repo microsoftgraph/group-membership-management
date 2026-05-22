@@ -18,6 +18,7 @@ namespace Services
     {
         private readonly IDatabaseSyncJobsRepository _databaseSyncJobsRepository;
         private readonly IDatabaseChannelsRepository _databaseChannelsRepository;
+        private readonly ITeamsChannelRepository _teamsChannelRepository;
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILoggingRepository _loggingRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
@@ -25,11 +26,13 @@ namespace Services
         public GetChannelHandler(ILoggingRepository loggingRepository,
                               IDatabaseSyncJobsRepository databaseSyncJobsRepository,
                               IDatabaseChannelsRepository databaseChannelsRepository,
+                              ITeamsChannelRepository teamsChannelRepository,
                               IGraphGroupRepository graphGroupRepository,
                               IHttpContextAccessor httpContextAccessor) : base(loggingRepository)
         {
             _databaseSyncJobsRepository = databaseSyncJobsRepository ?? throw new ArgumentNullException(nameof(databaseSyncJobsRepository));
             _databaseChannelsRepository = databaseChannelsRepository ?? throw new ArgumentNullException(nameof(databaseChannelsRepository));
+            _teamsChannelRepository = teamsChannelRepository ?? throw new ArgumentNullException(nameof(teamsChannelRepository));
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _loggingRepository = loggingRepository ?? throw new ArgumentNullException(nameof(loggingRepository));
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
@@ -65,6 +68,8 @@ namespace Services
 
             var type = job.MembershipType;
             var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(request.GroupId);
+            var targetChannelName = await _teamsChannelRepository.GetTeamsChannelNameAsync(
+                new Models.Entities.AzureADTeamsChannel { ChannelId = request.ChannelId });
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
@@ -103,6 +108,8 @@ namespace Services
                 SyncJobId = job.Id,
                 TargetGroupId = request.GroupId,
                 TargetGroupName = targetGroupName,
+                TargetChannelId = request.ChannelId,
+                TargetChannelName = targetChannelName,
                 TargetDestinationType = type,
                 LastSuccessfulRunTime = job.LastSuccessfulRunTime,
                 EstimatedNextRunTime = estimatedNextRunTime,
