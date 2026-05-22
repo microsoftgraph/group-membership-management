@@ -56,6 +56,7 @@ namespace Repositories.Contracts
         Task<int> GetUsersCountAsync(Guid objectId);
         Task<List<AzureADGroup>> GetGroupsAsync(List<Guid> groupIds);
         Task<List<AzureADGroup>> SearchDestinationsAsync(string query);
+        Task<List<AzureADGroup>> SearchDestinationsBySearchAsync(string search);
         Task<List<AzureADGroup>> GetGroupsByFilterAsync(string query);
         Task<Dictionary<Guid, string>> GetAllGroupNamesAsync();
         Task<Guid> GetObjectIdFromAppIdAsync(Guid userIdentifier, Guid? runId);

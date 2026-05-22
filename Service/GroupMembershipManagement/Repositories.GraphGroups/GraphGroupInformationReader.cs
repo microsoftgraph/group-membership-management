@@ -929,6 +929,71 @@ namespace Repositories.GraphGroups
             }
         }
 
+        public async Task<List<AzureADGroup>> SearchGroupsBySearchAsync(string search)
+        {
+            try
+            {
+                var results = new List<AzureADGroup>();
+                var nativeResponseHandler = new NativeResponseHandler();
+
+                await _graphServiceClient.Groups
+                                   .GetAsync(requestConfiguration =>
+                                   {
+                                       requestConfiguration
+                                        .Headers.Add("ConsistencyLevel", "eventual");
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Search = search;
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Count = true;
+                                       requestConfiguration
+                                        .QueryParameters
+                                        .Top = MaxGroupResultCount;
+                                       requestConfiguration.Options.Add(new ResponseHandlerOption { ResponseHandler = nativeResponseHandler });
+                                   });
+
+                var nativeResponse = nativeResponseHandler.Value as HttpResponseMessage;
+
+                if (nativeResponse == null)
+                {
+                    return results;
+                }
+
+                var headers = nativeResponse.Headers.ToImmutableDictionary(x => x.Key, x => x.Value);
+                await _graphGroupMetricTracker.TrackMetricsAsync(headers, QueryType.Other, runId: null);
+
+                if (!nativeResponse.IsSuccessStatusCode)
+                {
+                    throw new HttpRequestException($"Failed to search for groups. Status code: {nativeResponse.StatusCode}");
+                }
+
+                var groupCollectionPage = await DeserializeResponseAsync(nativeResponse, GroupCollectionResponse.CreateFromDiscriminatorValue);
+
+                if (groupCollectionPage?.Value?.Count > 0)
+                {
+                    foreach (var group in groupCollectionPage.Value)
+                    {
+                        var azureAdGroup = new AzureADGroup
+                        {
+                            ObjectId = new Guid(group.Id),
+                            Name = group.DisplayName,
+                            Email = group.Mail
+                        };
+
+                        results.Add(azureAdGroup);
+                    }
+                }
+
+                return results;
+            }
+            catch (Exception e)
+            {
+                _graphGroupInformationRepositoryLogger.LogErrorWithRunId(null, $"Error searching for groups by search: {e}", e);
+                throw;
+            }
+        }
+
         public async Task<List<AzureADGroup>> GetGroupsByFilterAsync(string filter)
         {
             try

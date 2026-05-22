@@ -215,6 +215,11 @@ namespace Tests.FunctionApps.Mocks
             throw new NotImplementedException();
         }
 
+        public Task<List<AzureADGroup>> SearchDestinationsBySearchAsync(string search)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<Dictionary<Guid, List<Guid>>> GetDestinationOwnersAsync(List<Guid> objectIds)
         {
             throw new NotImplementedException();

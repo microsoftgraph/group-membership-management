@@ -14,6 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Polly;
 using Services.WebApi.Contracts;
 using Repositories.Contracts;
+using Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Graph;
 
@@ -603,18 +604,18 @@ namespace Services.WebApi
                 using var scope = _serviceScopeFactory.CreateScope();
                 var graphGroupRepository = scope.ServiceProvider.GetRequiredService<IGraphGroupRepository>();
 
-                // Build filter: search by displayName prefix, mail prefix, or exact id
-                string filter;
+                // Search by exact id (filter) or displayName/mail (search)
+                List<AzureADGroup> groups;
                 if (Guid.TryParse(searchQuery, out _))
                 {
-                    filter = $"id eq '{searchQuery}'";
+                    var filter = $"id eq '{searchQuery}'";
+                    groups = await graphGroupRepository.SearchDestinationsAsync(filter);
                 }
                 else
                 {
-                    filter = $"startswith(displayName,'{searchSafe}') or startswith(mail,'{searchSafe}') or startswith(mailNickname,'{searchSafe}')";
+                    var search = $"\"displayName:{searchSafe}\" OR \"mail:{searchSafe}\" OR \"mailNickname:{searchSafe}\"";
+                    groups = await graphGroupRepository.SearchDestinationsBySearchAsync(search);
                 }
-
-                var groups = await graphGroupRepository.SearchDestinationsAsync(filter);
 
                 if (groups == null || groups.Count == 0)
                 {
