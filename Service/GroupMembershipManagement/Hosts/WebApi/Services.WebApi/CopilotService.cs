@@ -30,6 +30,7 @@ namespace Services.WebApi
         private readonly IAsyncPolicy _retryPolicy;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<CopilotService> _logger;
+        private readonly IDatabaseSettingsRepository _settingsRepository;
 
         // Stores the Graph objectIds of validated org leaders (per request), keyed by email
         private readonly ConcurrentDictionary<string, string> _validatedOrgLeaders = new(StringComparer.OrdinalIgnoreCase);
@@ -146,10 +147,15 @@ namespace Services.WebApi
 
         #endregion
 
-        public CopilotService(IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, ILogger<CopilotService> logger)
+        public CopilotService(
+            IConfiguration configuration,
+            IServiceScopeFactory serviceScopeFactory,
+            IDatabaseSettingsRepository settingsRepository,
+            ILogger<CopilotService> logger)
         {
             var endpoint = configuration["Settings:OpenAIEndpoint"];
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
+            _settingsRepository = settingsRepository ?? throw new ArgumentNullException(nameof(settingsRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             if (string.IsNullOrWhiteSpace(endpoint))
@@ -1207,9 +1213,6 @@ namespace Services.WebApi
 
             try
             {
-                using var scope = _serviceScopeFactory.CreateScope();
-                var settingsRepo = scope.ServiceProvider.GetRequiredService<IDatabaseSettingsRepository>();
-
                 var settings = new Dictionary<SettingKey, string>();
                 var keysToLoad = new[] { SettingKey.IsAICopilotEnabled, SettingKey.CopilotTemperature, SettingKey.CopilotTopP };
 
@@ -1217,7 +1220,7 @@ namespace Services.WebApi
                 {
                     try
                     {
-                        var setting = await settingsRepo.GetSettingByKeyAsync(key);
+                        var setting = await _settingsRepository.GetSettingByKeyAsync(key);
                         if (setting != null)
                         {
                             settings[key] = setting.SettingValue;
@@ -1231,11 +1234,11 @@ namespace Services.WebApi
 
                 lock (_aiSettingsLock)
                 {
-                    _aiSettingsCache = settings;
+                    _aiSettingsCache = new Dictionary<SettingKey, string>(settings);
                     _aiSettingsCacheExpiry = DateTime.UtcNow.Add(_aiSettingsCacheDuration);
                 }
 
-                return settings;
+                return new Dictionary<SettingKey, string>(settings);
             }
             catch (Exception ex)
             {
@@ -1243,10 +1246,10 @@ namespace Services.WebApi
                 var defaultSettings = new Dictionary<SettingKey, string>();
                 lock (_aiSettingsLock)
                 {
-                    _aiSettingsCache = defaultSettings;
+                    _aiSettingsCache = new Dictionary<SettingKey, string>(defaultSettings);
                     _aiSettingsCacheExpiry = DateTime.UtcNow.Add(_aiSettingsCacheDuration);
                 }
-                return defaultSettings;
+                return new Dictionary<SettingKey, string>(defaultSettings);
             }
         }
 
@@ -1262,9 +1265,7 @@ namespace Services.WebApi
 
             try
             {
-                using var scope = _serviceScopeFactory.CreateScope();
-                var settingsRepo = scope.ServiceProvider.GetRequiredService<IDatabaseSettingsRepository>();
-                var setting = await settingsRepo.GetSettingByKeyAsync(SettingKey.CopilotInstructions);
+                var setting = await _settingsRepository.GetSettingByKeyAsync(SettingKey.CopilotInstructions);
 
                 if (setting != null && !string.IsNullOrWhiteSpace(setting.SettingValue))
                 {
