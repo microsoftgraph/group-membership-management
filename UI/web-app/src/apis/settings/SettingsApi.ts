@@ -39,4 +39,10 @@ export class SettingsApi extends ApiBase implements ISettingsApi {
     this.ensureSuccessStatusCode(response);
     return response.data;
   }
+
+  public async getDefaultAIPrompt(): Promise<string> {
+    const response = await this.httpClient.get<string>('aiPrompt/defaults');
+    this.ensureSuccessStatusCode(response);
+    return response.data;
+  }
 };

@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { fetchSettingByKey, fetchSettings, patchSetting, getSupportEmailAddress } from './settings.api';
+import { fetchSettingByKey, fetchSettings, patchSetting, getSupportEmailAddress, fetchDefaultAIPrompt } from './settings.api';
 import type { RootState } from './store';
 import { Setting } from '../models/Setting';
 import { SettingKey } from '../models/SettingKey';
@@ -19,6 +19,8 @@ export interface SettingsState {
   supportEmail: string;
   supportEmailLoading: boolean;
   supportEmailError: string | undefined;
+  defaultAIPrompt: string;
+  defaultAIPromptLoading: boolean;
 }
 
 const initialState: SettingsState = {
@@ -33,6 +35,8 @@ const initialState: SettingsState = {
   supportEmail: '',
   supportEmailLoading: false,
   supportEmailError: undefined,
+  defaultAIPrompt: '',
+  defaultAIPromptLoading: false,
 };
 
 const settingsSlice = createSlice({
@@ -46,7 +50,6 @@ const settingsSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(fetchSettings.pending, (state) => {
       state.isLoading = true;
-      state.settings = undefined;
     });
     builder.addCase(fetchSettings.fulfilled, (state, action) => {
       state.isLoading = false;
@@ -97,6 +100,16 @@ const settingsSlice = createSlice({
     builder.addCase(getSupportEmailAddress.rejected, (state, action) => {
       state.supportEmailLoading = false;
       state.supportEmailError = action.error.message;
+    });
+    builder.addCase(fetchDefaultAIPrompt.pending, (state) => {
+      state.defaultAIPromptLoading = true;
+    });
+    builder.addCase(fetchDefaultAIPrompt.fulfilled, (state, action) => {
+      state.defaultAIPromptLoading = false;
+      state.defaultAIPrompt = action.payload;
+    });
+    builder.addCase(fetchDefaultAIPrompt.rejected, (state) => {
+      state.defaultAIPromptLoading = false;
     });
   },
 });
@@ -205,6 +218,34 @@ export const selectIsAITitleEnabled = (state: RootState) => {
   return isAITitleEnabledSetting ? isAITitleEnabledSetting.settingValue === 'true' : undefined;
 }
 
+export const selectIsAICopilotEnabled = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return undefined;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.IsAICopilotEnabled);
+  return setting ? setting.settingValue === 'true' : undefined;
+}
+
+export const selectCopilotTemperature = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return undefined;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.CopilotTemperature);
+  return setting ? setting.settingValue : undefined;
+}
+
+export const selectCopilotTopP = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return undefined;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.CopilotTopP);
+  return setting ? setting.settingValue : undefined;
+}
+
+export const selectCopilotInstructions = (state: RootState) => {
+  const settingsArray = state.settings.settings;
+  if (!settingsArray) return undefined;
+  const setting = settingsArray.find((s) => s.settingKey === SettingKey.CopilotInstructions);
+  return setting ? setting.settingValue : undefined;
+}
+
 export const selectPatchSettingResponse = (state: RootState) => state.settings.patchSettingResponse;
 export const selectPatchSettingError = (state: RootState) => state.settings.patchSettingError;
 
@@ -214,3 +255,5 @@ export default settingsSlice.reducer;
 export const selectSupportEmail = (state: RootState) => state.settings.supportEmail;
 export const selectSupportEmailLoading = (state: RootState) => state.settings.supportEmailLoading;
 export const selectSupportEmailError = (state: RootState) => state.settings.supportEmailError;
+export const selectDefaultAIPrompt = (state: RootState) => state.settings.defaultAIPrompt;
+export const selectDefaultAIPromptLoading = (state: RootState) => state.settings.defaultAIPromptLoading;

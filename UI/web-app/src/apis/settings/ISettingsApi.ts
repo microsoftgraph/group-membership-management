@@ -8,4 +8,5 @@ export interface ISettingsApi {
   fetchSettingByKey(settingKey: string): Promise<Setting>;
   patchSetting(setting: Setting): Promise<Setting>;
   getSupportEmailAddress(): Promise<string>;
+  getDefaultAIPrompt(): Promise<string>;
 };

@@ -56,3 +56,16 @@ export const getSupportEmailAddress = createAsyncThunk<string, void, ThunkConfig
     }
   }
 );
+
+export const fetchDefaultAIPrompt = createAsyncThunk<string, void, ThunkConfig>(
+  'settings/fetchDefaultAIPrompt',
+  async (_, { extra }) => {
+    const { gmmApi } = extra.apis;
+
+    try {
+      return await gmmApi.settings.getDefaultAIPrompt();
+    } catch (error) {
+      throw new Error('Failed to fetch default AI prompt!');
+    }
+  }
+);

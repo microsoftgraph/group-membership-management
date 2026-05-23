@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown } from '@fluentui/react';
+import { classNamesFunction, Toggle, IProcessedStyleSet, Pivot, PivotItem, PrimaryButton, TextField, Text, IColumn, SelectionMode, ShimmeredDetailsList, Dropdown, Spinner, IRenderFunction, ISelectableDroppableTextProps, IDropdown, Slider, Icon } from '@fluentui/react';
 import { useTheme } from '@fluentui/react/lib/Theme';
 import {
   AdminConfigStyleProps,
@@ -13,7 +13,8 @@ import {
   CustomSourceSettingsProps,
   HyperlinkSettingsProps,
   OperationsProps,
-  GeneralSettingsProps } from './AdminConfig.types';
+  GeneralSettingsProps,
+  AISettingsProps } from './AdminConfig.types';
 import { PageSection } from '../../components/PageSection';
 import { HyperlinkSetting } from '../../components/HyperlinkSetting';
 import { Operation } from '../../components/Operation';
@@ -30,7 +31,9 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
     isHyperlinkAdmin,
     isCustomMembershipProviderAdmin,
     isOperationsResetAdministrator,
-    isGeneralSettingsAdministrator } = props;
+    isGeneralSettingsAdministrator,
+    isAISettingsAdministrator,
+    defaultAIPrompt } = props;
 
   // generate class names
   const classNames: IProcessedStyleSet<AdminConfigStyles> = getClassNames(styles, {
@@ -144,6 +147,22 @@ export const AdminConfigView: React.FunctionComponent<AdminConfigViewProps> = (p
                     setSettings={setNewSettings} />
                 </PivotItem>
               }
+              {isAISettingsAdministrator &&
+                <PivotItem
+                  headerText={strings.AISettings.labels.aiSettings}
+                  headerButtonProps={{
+                    'data-order': 5,
+                    'data-title': strings.AISettings.labels.aiSettings,
+                  }}
+                >
+                  <AISettings
+                    classNames={classNames}
+                    strings={strings}
+                    settings={newSettings}
+                    setSettings={setNewSettings}
+                    defaultAIPrompt={defaultAIPrompt} />
+                </PivotItem>
+              }
             </Pivot>
           </PageSection>
         </div>
@@ -223,13 +242,6 @@ const GeneralSettings: React.FunctionComponent<GeneralSettingsProps> = (props: G
         onGeneralSettingChange={handleSettingChange(SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled)}
         generalSettingValue={settings[SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]}
       />
-      <GeneralSetting
-        id={SettingKeyMap[SettingKey.IsAITitleEnabled]}
-        title={strings.GeneralSettings.labels.isAITitleEnabledTitle}
-        description={strings.GeneralSettings.labels.isAITitleEnabledDescription}
-        onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
-        generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
-      />
     </div>
   );
 }
@@ -249,7 +261,11 @@ const HyperlinkSettings: React.FunctionComponent<HyperlinkSettingsProps> = (prop
     [SettingKey.IsDisclaimerEnabled]: true,
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: true,
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: true,
-    [SettingKey.IsAITitleEnabled]: true
+    [SettingKey.IsAITitleEnabled]: true,
+    [SettingKey.IsAICopilotEnabled]: true,
+    [SettingKey.CopilotTemperature]: true,
+    [SettingKey.CopilotTopP]: true,
+    [SettingKey.CopilotInstructions]: true,
   });
 
   useEffect(() => {
@@ -594,3 +610,114 @@ const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
     />
   );
 });
+
+const AISettings: React.FunctionComponent<AISettingsProps> = (props: AISettingsProps) => {
+  const { strings, settings, setSettings, defaultAIPrompt } = props;
+  const [showDefaults, setShowDefaults] = useState(false);
+
+  const handleSettingChange = (settingKey: SettingKey) => (newValue: string) => {
+    setSettings((settings) => ({ ...settings, [settingKey]: newValue }));
+  };
+
+  return (
+    <div>
+      <div style={{ marginBottom: '16px' }}>
+        <Text variant="medium">{strings.AISettings.labels.description}</Text>
+      </div>
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAITitleEnabled]}
+        title={strings.AISettings.labels.isAITitleEnabledTitle}
+        description={strings.AISettings.labels.isAITitleEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAITitleEnabled)}
+        generalSettingValue={settings[SettingKey.IsAITitleEnabled]}
+      />
+      <GeneralSetting
+        id={SettingKeyMap[SettingKey.IsAICopilotEnabled]}
+        title={strings.AISettings.labels.isAICopilotEnabledTitle}
+        description={strings.AISettings.labels.isAICopilotEnabledDescription}
+        onGeneralSettingChange={handleSettingChange(SettingKey.IsAICopilotEnabled)}
+        generalSettingValue={settings[SettingKey.IsAICopilotEnabled]}
+      />
+      <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+        <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.copilotInstructionsPromptTitle}</Text>
+        <Text variant="small" block style={{ marginBottom: '8px' }}>{strings.AISettings.labels.copilotInstructionsPromptDescription}</Text>
+        <Text variant="small" block style={{ marginBottom: '12px', fontStyle: 'italic', color: '#605e5c' }}>
+          {strings.AISettings.labels.leaveEmptyNote}
+        </Text>
+        {defaultAIPrompt && (
+          <div style={{
+            marginBottom: '12px',
+            border: '1px solid #edebe9',
+            borderRadius: '4px',
+            overflow: 'hidden',
+          }}>
+            <button
+              onClick={() => setShowDefaults(!showDefaults)}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#faf9f8',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: '#323130',
+              }}
+            >
+              <Icon iconName={showDefaults ? 'ChevronDown' : 'ChevronRight'} style={{ fontSize: '12px' }} />
+              {strings.AISettings.labels.currentDefaultInstructions}
+            </button>
+            {showDefaults && (
+              <div style={{
+                padding: '12px 14px',
+                backgroundColor: '#f3f2f1',
+                whiteSpace: 'pre-wrap',
+                fontSize: '12px',
+                fontFamily: 'Consolas, monospace',
+                color: '#323130',
+                maxHeight: '300px',
+                overflowY: 'auto',
+              }}>
+                {defaultAIPrompt}
+              </div>
+            )}
+          </div>
+        )}
+        <TextField
+          multiline
+          rows={12}
+          value={settings[SettingKey.CopilotInstructions]}
+          placeholder={strings.AISettings.labels.copilotInstructionsPromptPlaceholder}
+          onChange={(_, newValue) => handleSettingChange(SettingKey.CopilotInstructions)(newValue ?? '')}
+        />
+      </div>
+      <div style={{ marginTop: '20px' }}>
+        <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.copilotTemperatureTitle}</Text>
+        <Text variant="small" block style={{ marginBottom: '8px' }}>{strings.AISettings.labels.copilotTemperatureDescription}</Text>
+        <Slider
+          min={0}
+          max={1}
+          step={0.05}
+          value={parseFloat(settings[SettingKey.CopilotTemperature]) || 0.7}
+          showValue
+          onChange={(value) => handleSettingChange(SettingKey.CopilotTemperature)(value.toString())}
+        />
+      </div>
+      <div style={{ marginTop: '20px' }}>
+        <Text variant="mediumPlus" style={{ fontWeight: 600 }}>{strings.AISettings.labels.copilotTopPTitle}</Text>
+        <Text variant="small" block style={{ marginBottom: '8px' }}>{strings.AISettings.labels.copilotTopPDescription}</Text>
+        <Slider
+          min={0}
+          max={1}
+          step={0.05}
+          value={parseFloat(settings[SettingKey.CopilotTopP]) || 0.9}
+          showValue
+          onChange={(value) => handleSettingChange(SettingKey.CopilotTopP)(value.toString())}
+        />
+      </div>
+    </div>
+  );
+}

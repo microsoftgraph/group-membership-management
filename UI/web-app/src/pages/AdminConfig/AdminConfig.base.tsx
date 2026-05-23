@@ -16,9 +16,14 @@ import {
   selectIsDisclaimerEnabled,
   selectIsAutoApprovalForGroupBasedSyncsEnabled,
   selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled,
-  selectIsAITitleEnabled
+  selectIsAITitleEnabled,
+  selectIsAICopilotEnabled,
+  selectCopilotTemperature,
+  selectCopilotTopP,
+  selectCopilotInstructions,
+  selectDefaultAIPrompt,
 } from '../../store/settings.slice';
-import { patchSetting } from '../../store/settings.api';
+import { patchSetting, fetchDefaultAIPrompt, fetchSettings } from '../../store/settings.api';
 import { AppDispatch } from '../../store';
 import { AdminConfigView } from './AdminConfig.view';
 import { useStrings } from '../../store/hooks';
@@ -33,6 +38,7 @@ import {
   selectIsOperationsResetAdministrator,
   selectIsGeneralSettingsAdministrator,
   selectHasAdminCenterPermissions,
+  selectIsAISettingsAdministrator,
 } from '../../store/roles.slice';
 import { MessageBar, MessageBarType } from '@fluentui/react';
 
@@ -41,6 +47,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const dispatch = useDispatch<AppDispatch>();
   useEffect(() => {
     dispatch(setPagingBarVisible(false));
+    dispatch(fetchDefaultAIPrompt());
   }, [dispatch]);
 
   // get the settings data from the store
@@ -55,6 +62,11 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const IsAutoApprovalForGroupBasedSyncsEnabled = useSelector(selectIsAutoApprovalForGroupBasedSyncsEnabled);
   const IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = useSelector(selectIsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled);
   const isAITitleEnabled = useSelector(selectIsAITitleEnabled);
+  const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
+  const copilotTemperature = useSelector(selectCopilotTemperature);
+  const copilotTopP = useSelector(selectCopilotTopP);
+  const copilotInstructions = useSelector(selectCopilotInstructions);
+  const defaultAIPrompt = useSelector(selectDefaultAIPrompt);
   const sqlMembershipSource = useSelector(selectSource);
   const sqlMembershipSourceAttributes = useSelector(selectAttributes);
   const isSourceSaving = useSelector(selectIsSourceSaving);
@@ -64,6 +76,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
   const isCustomMembershipProviderAdmin = useSelector(selectIsCustomMembershipProviderAdministrator);
   const isOperationsResetAdministrator = useSelector(selectIsOperationsResetAdministrator);
   const isGeneralSettingsAdministrator = useSelector(selectIsGeneralSettingsAdministrator);
+  const isAISettingsAdministrator = useSelector(selectIsAISettingsAdministrator);
   const canViewSettings = useSelector(selectHasAdminCenterPermissions);
 
   const strings = useStrings().AdminConfig;
@@ -79,14 +92,18 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
     [SettingKey.IsDisclaimerEnabled]: IsDisclaimerEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: IsAutoApprovalForGroupBasedSyncsEnabled ? 'true' : 'false',
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled ? 'true' : 'false',
-    [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false'
+    [SettingKey.IsAITitleEnabled]: isAITitleEnabled ? 'true' : 'false',
+    [SettingKey.IsAICopilotEnabled]: isAICopilotEnabled ? 'true' : 'false',
+    [SettingKey.CopilotTemperature]: copilotTemperature ?? '0.7',
+    [SettingKey.CopilotTopP]: copilotTopP ?? '0.9',
+    [SettingKey.CopilotInstructions]: copilotInstructions ?? '',
   });
 
   const [settings, setSettings] = useState<{ readonly [key in SettingKey]: string }>(generateSettings());
 
   useEffect(() => {
     setSettings(generateSettings())
-  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled]);
+  }, [dashboardUrl, outlookWarningUrl, privacyPolicyUrl, canReviewOwnSubmissions, createGroupFeatureEnabled, isBusinessJustificationRequired, IsDisclaimerEnabled, IsAutoApprovalForGroupBasedSyncsEnabled, IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled, isAITitleEnabled, isAICopilotEnabled, copilotTemperature, copilotTopP, copilotInstructions]);
 
   const handleGetValues = (attribute: SqlMembershipAttribute) => {
     dispatch(fetchAttributeValues(attribute));
@@ -101,6 +118,7 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       [SettingKey.IsBusinessJustificationRequired]: newSettings[SettingKey.IsBusinessJustificationRequired] === 'true' ? 'true' : 'false',
       [SettingKey.IsDisclaimerEnabled]: newSettings[SettingKey.IsDisclaimerEnabled] === 'true' ? 'true' : 'false',
       [SettingKey.IsAITitleEnabled]: newSettings[SettingKey.IsAITitleEnabled] === 'true' ? 'true' : 'false',
+      [SettingKey.IsAICopilotEnabled]: newSettings[SettingKey.IsAICopilotEnabled] === 'true' ? 'true' : 'false',
     };
 
     if (JSON.stringify(formattedSettings) !== JSON.stringify(settings)) {
@@ -164,6 +182,30 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
           settingValue: formattedSettings[SettingKey.IsAITitleEnabled]
         })
       );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.IsAICopilotEnabled,
+          settingValue: formattedSettings[SettingKey.IsAICopilotEnabled]
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CopilotTemperature,
+          settingValue: formattedSettings[SettingKey.CopilotTemperature]
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CopilotTopP,
+          settingValue: formattedSettings[SettingKey.CopilotTopP]
+        })
+      );
+      dispatch(
+        patchSetting({
+          settingKey: SettingKey.CopilotInstructions,
+          settingValue: formattedSettings[SettingKey.CopilotInstructions]
+        })
+      );
     }
 
     if (JSON.stringify(newSqlMembershipSource) !== JSON.stringify(sqlMembershipSource)) {
@@ -186,6 +228,9 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       );
     }
     // there is a Toast notification in fluent/react-components (v9) that we should be using for save notifications.
+
+    // Refetch settings so Redux store reflects saved values
+    setTimeout(() => dispatch(fetchSettings()), 1000);
   };
 
   if (!canViewSettings) {
@@ -211,6 +256,8 @@ export const AdminConfigBase: React.FunctionComponent<AdminConfigProps> = (props
       isCustomMembershipProviderAdmin={isCustomMembershipProviderAdmin}
       isOperationsResetAdministrator={isOperationsResetAdministrator}
       isGeneralSettingsAdministrator={isGeneralSettingsAdministrator}
+      isAISettingsAdministrator={isAISettingsAdministrator}
+      defaultAIPrompt={defaultAIPrompt}
     />
   );
 };

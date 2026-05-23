@@ -57,6 +57,8 @@ export type AdminConfigViewProps = AdminConfigProps & {
   isCustomMembershipProviderAdmin: boolean;
   isOperationsResetAdministrator: boolean;
   isGeneralSettingsAdministrator: boolean;
+  isAISettingsAdministrator: boolean;
+  defaultAIPrompt: string;
 };
 
 export type HyperlinkSettingsProps = {
@@ -77,6 +79,14 @@ export type GeneralSettingsProps = {
   strings: IStrings['AdminConfig'];
   settings: { readonly [key in SettingKey]: string };
   setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+};
+
+export type AISettingsProps = {
+  classNames: IProcessedStyleSet<AdminConfigStyles>;
+  strings: IStrings['AdminConfig'];
+  settings: { readonly [key in SettingKey]: string };
+  setSettings: React.Dispatch<React.SetStateAction<{ readonly [key in SettingKey]: string }>>;
+  defaultAIPrompt: string;
 };
 
 export type CustomSourceSettingsProps = {

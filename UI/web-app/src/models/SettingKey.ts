@@ -12,7 +12,11 @@ export const enum SettingKey {
     IsDisclaimerEnabled = 7,
     IsAutoApprovalForGroupBasedSyncsEnabled = 8,
     IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = 9,
-    IsAITitleEnabled = 10
+    IsAITitleEnabled = 10,
+    IsAICopilotEnabled = 11,
+    CopilotTemperature = 12,
+    CopilotTopP = 13,
+    CopilotInstructions = 14
 }
 
 export const SettingKeyMap: Record<SettingKey, string> = {
@@ -26,5 +30,9 @@ export const SettingKeyMap: Record<SettingKey, string> = {
     [SettingKey.IsDisclaimerEnabled]: 'IsDisclaimerEnabled',
     [SettingKey.IsAutoApprovalForGroupBasedSyncsEnabled]: 'IsAutoApprovalForGroupBasedSyncsEnabled',
     [SettingKey.IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled]: 'IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled',
-    [SettingKey.IsAITitleEnabled]: 'IsAITitleEnabled'
+    [SettingKey.IsAITitleEnabled]: 'IsAITitleEnabled',
+    [SettingKey.IsAICopilotEnabled]: 'IsAICopilotEnabled',
+    [SettingKey.CopilotTemperature]: 'CopilotTemperature',
+    [SettingKey.CopilotTopP]: 'CopilotTopP',
+    [SettingKey.CopilotInstructions]: 'CopilotInstructions'
 };
