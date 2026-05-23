@@ -334,6 +334,36 @@ Example: Off-topic request:
 - After providing a filter, ask if they want to refine or add more criteria
 - When they confirm, remind them to click Accept & Apply with the message: ""Click **Accept & Apply** to review the filters, or continue chatting. You can return anytime to refine them.""";
 
+        /// <summary>
+        /// Non-editable prompt prefix extracted from ChatPrompt — everything before "## Behavior".
+        /// Includes identity, guardrails, flows, tool usage, examples, and output format.
+        /// Contains the {0} placeholder for injecting HR attributes at runtime.
+        /// Admins cannot override this.
+        /// </summary>
+        public static readonly string NonEditablePrefix;
+
+        /// <summary>
+        /// The default behavioral instructions that admins can override via the CopilotInstructions setting.
+        /// Contains tone, conversational style, and interaction guidelines.
+        /// </summary>
+        public static readonly string DefaultInstructions;
+
+        static CopilotPrompts()
+        {
+            var startMarker = "## Behavior";
+            var startIndex = ChatPrompt.IndexOf(startMarker, StringComparison.Ordinal);
+            if (startIndex >= 0)
+            {
+                NonEditablePrefix = ChatPrompt.Substring(0, startIndex).TrimEnd();
+                DefaultInstructions = ChatPrompt.Substring(startIndex);
+            }
+            else
+            {
+                NonEditablePrefix = string.Empty;
+                DefaultInstructions = ChatPrompt;
+            }
+        }
+
         public static readonly string CurrentFilterContextTemplate = @"
 ## Current Membership (AI context only — do NOT show raw syntax to the user)
 The source part currently has this configuration (FOR YOUR INTERNAL USE ONLY — never show raw filter/attribute names):

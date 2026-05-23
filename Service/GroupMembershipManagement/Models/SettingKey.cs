@@ -15,6 +15,10 @@ namespace Models
         IsDisclaimerEnabled = 7,
         IsAutoApprovalForGroupBasedSyncsEnabled = 8,
         IsAutoApprovalForRequestorIsOrgLeaderSyncsEnabled = 9,
-        IsAITitleEnabled = 10
+        IsAITitleEnabled = 10,
+        IsAICopilotEnabled = 11,
+        CopilotTemperature = 12,
+        CopilotTopP = 13,
+        CopilotInstructions = 14
     }
 }

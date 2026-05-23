@@ -1,13 +1,12 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 using Models;
 using Services.Contracts;
 using Services.Messages.Requests;
 using Services.Messages.Responses;
-using WebApi.Models.DTOs;
+using Services.WebApi;
 
 namespace WebApi.Controllers.v1.Settings
 {
@@ -67,7 +66,7 @@ namespace WebApi.Controllers.v1.Settings
             }
         }
 
-        [Authorize(Roles = $"{Models.Roles.HYPERLINK_ADMINISTRATOR}, {Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR}")]
+        [Authorize(Roles = $"{Models.Roles.HYPERLINK_ADMINISTRATOR}, {Models.Roles.GENERAL_SETTINGS_ADMINISTRATOR}, {Models.Roles.AI_SETTINGS_ADMINISTRATOR}")]
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
@@ -93,6 +92,13 @@ namespace WebApi.Controllers.v1.Settings
             var request = new GetSupportEmailRequest();
             var response = await _getSupportEmailRequestHandler.ExecuteAsync(request);
             return Ok(response.SupportEmailAddress);
+        }
+
+        [Authorize(Roles = Models.Roles.AI_SETTINGS_ADMINISTRATOR)]
+        [HttpGet("aiPrompt/defaults")]
+        public IActionResult GetDefaultAIPrompt()
+        {
+            return Ok(CopilotPrompts.DefaultInstructions);
         }
     }
 }

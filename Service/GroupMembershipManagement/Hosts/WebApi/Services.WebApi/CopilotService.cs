@@ -7,10 +7,12 @@ using Hosts.WebApi;
 using OpenAI.Chat;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Models;
 using Polly;
 using Services.WebApi.Contracts;
 using Repositories.Contracts;
@@ -128,6 +130,22 @@ namespace Services.WebApi
 
         #endregion
 
+        #region AI Settings Cache
+
+        // Cache for AI settings from DB (IsAICopilotEnabled, Temperature, TopP)
+        private static Dictionary<SettingKey, string>? _aiSettingsCache = null;
+        private static DateTime _aiSettingsCacheExpiry = DateTime.MinValue;
+        private static readonly object _aiSettingsLock = new();
+        private static readonly TimeSpan _aiSettingsCacheDuration = TimeSpan.FromMinutes(5);
+
+        // Cache for AI prompt from settings DB
+        private static string? _aiPromptCache = null;
+        private static DateTime _aiPromptCacheExpiry = DateTime.MinValue;
+        private static readonly object _aiPromptLock = new();
+        private static readonly TimeSpan _aiPromptCacheDuration = TimeSpan.FromMinutes(5);
+
+        #endregion
+
         public CopilotService(IConfiguration configuration, IServiceScopeFactory serviceScopeFactory, ILogger<CopilotService> logger)
         {
             var endpoint = configuration["Settings:OpenAIEndpoint"];
@@ -166,10 +184,30 @@ namespace Services.WebApi
             CopilotUserContext? userContext = null,
             string? currentFilter = null)
         {
+            // Check kill switch
+            var aiSettings = await GetCachedAISettingsAsync();
+            if (aiSettings.TryGetValue(SettingKey.IsAICopilotEnabled, out var copilotEnabledStr)
+                && copilotEnabledStr.Equals("false", StringComparison.OrdinalIgnoreCase))
+            {
+                return new CopilotChatResult
+                {
+                    ResponseMessage = "The AI Copilot is currently disabled by your administrator.",
+                    SourceParts = new List<CopilotSourcePartResult>()
+                };
+            }
+
+            // Load dynamic temperature and topP
+            var temperature = 0.7f;
+            var topP = 0.9f;
+            if (aiSettings.TryGetValue(SettingKey.CopilotTemperature, out var tempStr) && float.TryParse(tempStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedTemp))
+                temperature = Math.Clamp(parsedTemp, 0.0f, 1.0f);
+            if (aiSettings.TryGetValue(SettingKey.CopilotTopP, out var topPStr) && float.TryParse(topPStr, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedTopP))
+                topP = Math.Clamp(parsedTopP, 0.0f, 1.0f);
+
             var requestOptions = new ChatCompletionOptions()
             {
-                Temperature = 0.7f,
-                TopP = 0.9f,
+                Temperature = temperature,
+                TopP = topP,
                 FrequencyPenalty = 0.3f,
                 PresencePenalty = 0.0f,
                 ResponseFormat = ChatResponseFormat.CreateJsonObjectFormat()
@@ -186,10 +224,12 @@ namespace Services.WebApi
 
             // Fetch HR attributes from database (cached)
             var hrAttributes = await GetHrAttributesAsync();
-
-            // Build system prompt with rich attribute info (name, label, description)
             var attributesText = BuildAttributesText(hrAttributes);
-            var systemPrompt = CopilotPrompts.ChatPrompt.Replace("{0}", attributesText);
+
+            // Build system prompt: non-editable prefix (with attributes injected) + editable behavior
+            var editableInstructions = await GetCachedPromptAsync();
+            var prefixWithAttributes = CopilotPrompts.NonEditablePrefix.Replace("{0}", attributesText);
+            var systemPrompt = prefixWithAttributes + "\n\n" + editableInstructions;
 
             // Add user context if available
             if (userContext != null)
@@ -1149,6 +1189,105 @@ namespace Services.WebApi
             _attributeValueCache.TryAdd(cacheKey, result);
 
             return result;
+        }
+
+        #endregion
+
+        #region AI Settings and Prompt Helpers
+
+        private async Task<Dictionary<SettingKey, string>> GetCachedAISettingsAsync()
+        {
+            lock (_aiSettingsLock)
+            {
+                if (_aiSettingsCache != null && DateTime.UtcNow < _aiSettingsCacheExpiry)
+                {
+                    return new Dictionary<SettingKey, string>(_aiSettingsCache);
+                }
+            }
+
+            try
+            {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var settingsRepo = scope.ServiceProvider.GetRequiredService<IDatabaseSettingsRepository>();
+
+                var settings = new Dictionary<SettingKey, string>();
+                var keysToLoad = new[] { SettingKey.IsAICopilotEnabled, SettingKey.CopilotTemperature, SettingKey.CopilotTopP };
+
+                foreach (var key in keysToLoad)
+                {
+                    try
+                    {
+                        var setting = await settingsRepo.GetSettingByKeyAsync(key);
+                        if (setting != null)
+                        {
+                            settings[key] = setting.SettingValue;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to load AI setting {SettingKey}", key);
+                    }
+                }
+
+                lock (_aiSettingsLock)
+                {
+                    _aiSettingsCache = settings;
+                    _aiSettingsCacheExpiry = DateTime.UtcNow.Add(_aiSettingsCacheDuration);
+                }
+
+                return settings;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load AI settings from database, using defaults");
+                var defaultSettings = new Dictionary<SettingKey, string>();
+                lock (_aiSettingsLock)
+                {
+                    _aiSettingsCache = defaultSettings;
+                    _aiSettingsCacheExpiry = DateTime.UtcNow.Add(_aiSettingsCacheDuration);
+                }
+                return defaultSettings;
+            }
+        }
+
+        private async Task<string> GetCachedPromptAsync()
+        {
+            lock (_aiPromptLock)
+            {
+                if (_aiPromptCache != null && DateTime.UtcNow < _aiPromptCacheExpiry)
+                {
+                    return _aiPromptCache;
+                }
+            }
+
+            try
+            {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var settingsRepo = scope.ServiceProvider.GetRequiredService<IDatabaseSettingsRepository>();
+                var setting = await settingsRepo.GetSettingByKeyAsync(SettingKey.CopilotInstructions);
+
+                if (setting != null && !string.IsNullOrWhiteSpace(setting.SettingValue))
+                {
+                    lock (_aiPromptLock)
+                    {
+                        _aiPromptCache = setting.SettingValue;
+                        _aiPromptCacheExpiry = DateTime.UtcNow.Add(_aiPromptCacheDuration);
+                    }
+                    return setting.SettingValue;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load AI prompt from database, using default");
+            }
+
+            var defaultPrompt = CopilotPrompts.DefaultInstructions;
+            lock (_aiPromptLock)
+            {
+                _aiPromptCache = defaultPrompt;
+                _aiPromptCacheExpiry = DateTime.UtcNow.Add(_aiPromptCacheDuration);
+            }
+            return defaultPrompt;
         }
 
         #endregion
