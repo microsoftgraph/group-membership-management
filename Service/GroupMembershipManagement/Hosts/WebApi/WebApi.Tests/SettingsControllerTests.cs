@@ -89,6 +89,48 @@ namespace Services.Tests
         }
 
         [TestMethod]
+        public async Task GetSettingByKeyWhenAISettingAndUserLacksAISettingsRoleReturnsForbidTestAsync()
+        {
+            var aiSettingKey = SettingKey.CopilotInstructions;
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.GetSettingByKeyAsync(aiSettingKey);
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.GetSettingByKeyAsync(It.IsAny<SettingKey>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task GetSettingByKeyWhenAISettingAndUserHasAISettingsRoleReturnsOkTestAsync()
+        {
+            var aiSettingKey = SettingKey.CopilotInstructions;
+            var aiSettingEntity = new Setting { SettingKey = aiSettingKey, SettingValue = "ai prompt" };
+            _settingsRepository.Setup(x => x.GetSettingByKeyAsync(aiSettingKey)).ReturnsAsync(aiSettingEntity);
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.GetSettingByKeyAsync(aiSettingKey);
+
+            Assert.IsInstanceOfType(response, typeof(OkObjectResult));
+            _settingsRepository.Verify(x => x.GetSettingByKeyAsync(aiSettingKey), Times.Once());
+        }
+
+        [TestMethod]
         public async Task GetSettingByKeyNotFoundTestAsync()
         {
             _settingsRepository.Setup(x => x.GetSettingByKeyAsync(_settingKey)).ReturnsAsync(() => null);
@@ -113,6 +155,67 @@ namespace Services.Tests
             var settingsResult = okResult.Value as List<SettingDTO>;
             Assert.IsNotNull(settingsResult);
             Assert.AreEqual(settingsResult.Count, _settings.Count);
+        }
+
+        [TestMethod]
+        public async Task GetAllSettingsWhenUserLacksAISettingsRoleFiltersOutAISettingsTestAsync()
+        {
+            var mixedSettings = new List<Setting>
+            {
+                new Setting { SettingKey = SettingKey.DashboardUrl, SettingValue = "dashboard" },
+                new Setting { SettingKey = SettingKey.CopilotInstructions, SettingValue = "sensitive prompt" },
+                new Setting { SettingKey = SettingKey.IsAICopilotEnabled, SettingValue = "true" }
+            };
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync()).ReturnsAsync(mixedSettings);
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.HYPERLINK_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.GetAllSettingsAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var settingsResult = okResult.Value as List<SettingDTO>;
+            Assert.IsNotNull(settingsResult);
+            Assert.AreEqual(1, settingsResult.Count);
+            Assert.AreEqual(SettingKey.DashboardUrl, settingsResult[0].SettingKey);
+        }
+
+        [TestMethod]
+        public async Task GetAllSettingsWhenUserHasAISettingsRoleReturnsAISettingsTestAsync()
+        {
+            var mixedSettings = new List<Setting>
+            {
+                new Setting { SettingKey = SettingKey.DashboardUrl, SettingValue = "dashboard" },
+                new Setting { SettingKey = SettingKey.CopilotInstructions, SettingValue = "sensitive prompt" },
+                new Setting { SettingKey = SettingKey.IsAICopilotEnabled, SettingValue = "true" }
+            };
+            _settingsRepository.Setup(x => x.GetAllSettingsAsync()).ReturnsAsync(mixedSettings);
+
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.GetAllSettingsAsync();
+
+            var okResult = response as OkObjectResult;
+            Assert.IsNotNull(okResult);
+            var settingsResult = okResult.Value as List<SettingDTO>;
+            Assert.IsNotNull(settingsResult);
+            Assert.AreEqual(3, settingsResult.Count);
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.CopilotInstructions));
+            Assert.IsTrue(settingsResult.Any(setting => setting.SettingKey == SettingKey.IsAICopilotEnabled));
         }
 
         [TestMethod]
@@ -168,6 +271,75 @@ namespace Services.Tests
             Assert.IsInstanceOfType(response, typeof(NoContentResult));
 
             _settingsRepository.Verify(x => x.PatchSettingAsync(_settingKey, "updatedValue"), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PatchAISettingWhenUserLacksAISettingsRoleReturnsForbidTestAsync()
+        {
+            var response = await _settingsController.PatchSettingAsync(SettingKey.CopilotInstructions, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [TestMethod]
+        public async Task PatchAISettingWhenUserHasAISettingsRoleReturnsNoContentTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.AI_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.CopilotInstructions, "updatedValue"))
+                               .Returns(Task.CompletedTask);
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.CopilotInstructions, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(SettingKey.CopilotInstructions, "updatedValue"), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PatchNonAISettingWhenUserHasGeneralSettingsRoleReturnsNoContentTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            _settingsRepository.Setup(x => x.PatchSettingAsync(SettingKey.CreateGroupFeatureEnabled, "true"))
+                               .Returns(Task.CompletedTask);
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.CreateGroupFeatureEnabled, "true");
+
+            Assert.IsInstanceOfType(response, typeof(NoContentResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(SettingKey.CreateGroupFeatureEnabled, "true"), Times.Once());
+        }
+
+        [TestMethod]
+        public async Task PatchAISettingWhenUserHasGeneralSettingsRoleReturnsForbidTestAsync()
+        {
+            _settingsController = new SettingsController(_getSettingHandler, _getAllSettingsHandler, _patchSettingHandler, _getSupportEmailHandler)
+            {
+                ControllerContext = CreateControllerContext(new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, "user@domain.com"),
+                    new Claim(ClaimTypes.Role, Roles.GENERAL_SETTINGS_ADMINISTRATOR)
+                })
+            };
+
+            var response = await _settingsController.PatchSettingAsync(SettingKey.CopilotInstructions, "updatedValue");
+
+            Assert.IsInstanceOfType(response, typeof(ForbidResult));
+            _settingsRepository.Verify(x => x.PatchSettingAsync(It.IsAny<SettingKey>(), It.IsAny<string>()), Times.Never());
         }
 
         [TestMethod]

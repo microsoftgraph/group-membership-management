@@ -15,6 +15,14 @@ namespace WebApi.Controllers.v1.Settings
     [Route("api/v{version:apiVersion}/settings")]
     public class SettingsController : ControllerBase
     {
+        private static readonly HashSet<SettingKey> AISettingKeys = new()
+        {
+            SettingKey.IsAICopilotEnabled,
+            SettingKey.CopilotTemperature,
+            SettingKey.CopilotTopP,
+            SettingKey.CopilotInstructions
+        };
+
         private readonly IRequestHandler<GetSettingRequest, GetSettingResponse> _getSettingRequestHandler;
         private readonly IRequestHandler<GetAllSettingsRequest, GetAllSettingsResponse> _getAllSettingsRequestHandler;
         private readonly IRequestHandler<PatchSettingRequest, NullResponse> _patchSettingRequestHandler;
@@ -36,6 +44,11 @@ namespace WebApi.Controllers.v1.Settings
         [HttpGet("{settingKey}")]
         public async Task<IActionResult> GetSettingByKeyAsync(SettingKey settingKey)
         {
+            if (AISettingKeys.Contains(settingKey) && !User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
+            {
+                return Forbid();
+            }
+
             try
             {
                 var response = await _getSettingRequestHandler.ExecuteAsync(new GetSettingRequest(settingKey));
@@ -58,7 +71,13 @@ namespace WebApi.Controllers.v1.Settings
             try
             {
                 var response = await _getAllSettingsRequestHandler.ExecuteAsync(new GetAllSettingsRequest());
-                return Ok(response.Settings);
+                var settings = response.Settings;
+                if (!User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
+                {
+                    settings = settings.Where(setting => !AISettingKeys.Contains(setting.SettingKey)).ToList();
+                }
+
+                return Ok(settings);
             }
             catch (Exception ex)
             {
@@ -70,6 +89,11 @@ namespace WebApi.Controllers.v1.Settings
         [HttpPatch("{settingKey}")]
         public async Task<IActionResult> PatchSettingAsync(SettingKey settingKey, [FromBody] string settingValue)
         {
+            if (AISettingKeys.Contains(settingKey) && !User.IsInRole(Models.Roles.AI_SETTINGS_ADMINISTRATOR))
+            {
+                return Forbid();
+            }
+
             try
             {
                 await _patchSettingRequestHandler.ExecuteAsync(new PatchSettingRequest(settingKey, settingValue));
