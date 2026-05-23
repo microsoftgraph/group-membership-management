@@ -208,8 +208,25 @@ export const strings: IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Automatically approve sync jobs when all source parts are GroupMembership type with acceptable visibility (not HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "Is auto-approval for requestor as org leader syncs enabled?",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Automatically approve single SqlMembership sync jobs when the manager ID matches the requestor's onPremisesImmutableId.",
+      }
+    },
+    AISettings: {
+      labels: {
+        aiSettings: "AI Settings",
+        description: "Configure AI features for your organization, including title generation, copilot chat, LLM parameters, and instruction prompts.",
         isAITitleEnabledTitle: "Is AI Title enabled?",
         isAITitleEnabledDescription: "Enable AI Title generation to help users create descriptive titles for their membership syncs.",
+        isAICopilotEnabledTitle: "Is AI Copilot enabled?",
+        isAICopilotEnabledDescription: "Enable the AI Copilot chat assistant to help users build filters and configure memberships.",
+        copilotInstructionsPromptTitle: "Copilot Instructions Prompt",
+        copilotInstructionsPromptDescription: "Customize the behavioral instructions for the AI Copilot. These instructions guide how the copilot responds to users.",
+        copilotInstructionsPromptPlaceholder: "Enter custom instructions for the AI Copilot...",
+        copilotTemperatureTitle: "Temperature",
+        copilotTemperatureDescription: "Controls randomness in AI responses. Lower values (e.g., 0.2) produce more focused and deterministic outputs. Higher values (e.g., 0.8) produce more creative and varied outputs.",
+        copilotTopPTitle: "Top P",
+        copilotTopPDescription: "Controls diversity via nucleus sampling. Lower values (e.g., 0.5) limit to more likely tokens. Higher values (e.g., 0.95) allow broader token selection.",
+        leaveEmptyNote: "Leave empty to use the built-in default instructions. Custom instructions will override the defaults.",
+        currentDefaultInstructions: "View current default instructions",
       }
     }
   },

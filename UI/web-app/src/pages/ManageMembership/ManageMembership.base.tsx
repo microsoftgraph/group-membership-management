@@ -82,7 +82,7 @@ import { PatchJobRequest } from '../../models/PatchJobRequest';
 import { SyncJobChangeReason } from '../../models/SyncJobChangeReason';
 import { selectOrgLeaderDataReturned } from '../../store/orgLeaderDetails.slice';
 import { createGroup } from '../../store/groups.api';
-import { selectIsBusinessJustificationRequired } from '../../store/settings.slice';
+import { selectIsBusinessJustificationRequired, selectIsAICopilotEnabled } from '../../store/settings.slice';
 import { DestinationType } from '../../models/DestinationType';
 import { ChannelOnboardingStatusRequest } from '../../models/ChannelOnboardingStatusRequest';
 import { GroupSettings } from '../../models/GroupSettings';
@@ -145,9 +145,10 @@ const CopilotTriggerButton: React.FunctionComponent = () => {
   const theme = useTheme();
   const isJobWriter = useSelector(selectIsJobWriter);
   const isAIOnboardingChat = useSelector(selectIsAIOnboardingChat);
+  const isAICopilotEnabled = useSelector(selectIsAICopilotEnabled);
   const hasCopilotHistory = useSelector(selectCopilotMessages).length > 0;
 
-  if (!isAIOnboardingChat) return null;
+  if (!isAIOnboardingChat || isAICopilotEnabled === false) return null;
 
   return (
     <button

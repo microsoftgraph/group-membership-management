@@ -209,8 +209,25 @@ export const strings: IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización cuando todas las partes de origen son del tipo GroupMembership con visibilidad aceptable (no HiddenMembership).",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: "¿Está habilitada la auto-aprobación para solicitante como líder organizacional?",
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: "Aprobar automáticamente trabajos de sincronización SqlMembership únicos cuando el ID del gerente coincide con el onPremisesImmutableId del solicitante.",
+      }
+    },
+    AISettings: {
+      labels: {
+        aiSettings: "Configuración de IA",
+        description: "Configure las funciones de IA para su organización, incluyendo generación de títulos, chat de copiloto, parámetros LLM e instrucciones de prompt.",
         isAITitleEnabledTitle: "¿Está habilitado el título de IA?",
-        isAITitleEnabledDescription: "Habilitar la generación de títulos de IA para ayudar a los usuarios a crear títulos descriptivos para sus sincronizaciones de membresía."
+        isAITitleEnabledDescription: "Habilitar la generación de títulos de IA para ayudar a los usuarios a crear títulos descriptivos para sus sincronizaciones de membresía.",
+        isAICopilotEnabledTitle: "¿Está habilitado el Copiloto de IA?",
+        isAICopilotEnabledDescription: "Habilitar el asistente de chat de IA Copiloto para ayudar a los usuarios a construir filtros y configurar membresías.",
+        copilotInstructionsPromptTitle: "Instrucciones del Copiloto",
+        copilotInstructionsPromptDescription: "Personalice las instrucciones de comportamiento para el Copiloto de IA. Estas instrucciones guían cómo el copiloto responde a los usuarios.",
+        copilotInstructionsPromptPlaceholder: "Ingrese instrucciones personalizadas para el Copiloto de IA...",
+        copilotTemperatureTitle: "Temperatura",
+        copilotTemperatureDescription: "Controla la aleatoriedad en las respuestas de IA. Valores más bajos (ej. 0.2) producen resultados más enfocados y deterministas. Valores más altos (ej. 0.8) producen resultados más creativos y variados.",
+        copilotTopPTitle: "Top P",
+        copilotTopPDescription: "Controla la diversidad mediante muestreo de núcleo. Valores más bajos (ej. 0.5) limitan a tokens más probables. Valores más altos (ej. 0.95) permiten una selección más amplia de tokens.",
+        leaveEmptyNote: "Deje vacío para usar las instrucciones predeterminadas. Las instrucciones personalizadas anularán las predeterminadas.",
+        currentDefaultInstructions: "Ver instrucciones predeterminadas actuales",
       }
     }
   },

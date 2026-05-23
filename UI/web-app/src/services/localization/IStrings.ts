@@ -205,8 +205,25 @@ export type IStrings = {
         isAutoApprovalForGroupBasedSyncsEnabledDescription: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledTitle: string;
         isAutoApprovalForRequestorIsOrgLeaderSyncsEnabledDescription: string;
+      }
+    },
+    AISettings: {
+      labels: {
+        aiSettings: string;
+        description: string;
         isAITitleEnabledTitle: string;
         isAITitleEnabledDescription: string;
+        isAICopilotEnabledTitle: string;
+        isAICopilotEnabledDescription: string;
+        copilotInstructionsPromptTitle: string;
+        copilotInstructionsPromptDescription: string;
+        copilotInstructionsPromptPlaceholder: string;
+        copilotTemperatureTitle: string;
+        copilotTemperatureDescription: string;
+        copilotTopPTitle: string;
+        copilotTopPDescription: string;
+        leaveEmptyNote: string;
+        currentDefaultInstructions: string;
       }
     }
   },
