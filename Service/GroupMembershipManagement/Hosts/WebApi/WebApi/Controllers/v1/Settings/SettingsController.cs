@@ -15,7 +15,7 @@ namespace WebApi.Controllers.v1.Settings
     [Route("api/v{version:apiVersion}/settings")]
     public class SettingsController : ControllerBase
     {
-        private static readonly HashSet<SettingKey> AISettingKeys = new()
+        private static readonly IReadOnlySet<SettingKey> AISettingKeys = new HashSet<SettingKey>
         {
             SettingKey.IsAICopilotEnabled,
             SettingKey.CopilotTemperature,
