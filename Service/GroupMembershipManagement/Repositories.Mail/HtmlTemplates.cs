@@ -225,7 +225,7 @@ namespace Repositories.Mail
         /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
         /// in the header bar with a localized title (e.g. "Sync job will be purged soon").</summary>
         public static string JobPurgingWarningTemplate =>
-            BuildEmailBodyTemplate(JobPurgingWarningHeaderHtml, OrangePillBadgeStyle, OrangeCalloutTableStyle, OrangeCalloutTitleStyle);
+            BuildEmailBodyTemplate(JobPurgingWarningHeaderHtml, OrangePillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
         // ── Shared HTML body builder ───────────────────────────────────────────────
         private static string BuildEmailBodyTemplate(

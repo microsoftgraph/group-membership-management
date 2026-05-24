@@ -82,13 +82,22 @@ namespace Repositories.Mail
             _ => -1
         };
 
-        // JobPurgingWarning AdditionalContentParams indices (set by AzureMaintenanceService.SendWarningEmailAsync):
-        // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
+        // JobPurgingWarning AdditionalContentParams indices (AzureMaintenanceService.SendWarningEmailAsync):
+        // [0]Status [1]InactivitySince [2]NumberOfDaysBeforePurging [3]ScheduledPurgeDate
+        // [4]GroupId [5]GroupName [6]InactivitySinceUtc(ISO) [7]ScheduledPurgeDateUtc(ISO).
+        // [8]LastSuccessfulRunTimeUtc(ISO, SubmissionRejected only) [9]RejectionReason (SubmissionRejected only).
+        // [10]GmmOwnerAppName (NotOwnerOfDestinationGroup only).
+        // [6]–[10] are optional; missing values degrade gracefully.
         private const int PurgeWarningStatusIndex = 0;
         private const int PurgeWarningInactiveSinceIndex = 1;
         private const int PurgeWarningDaysBeforePurgingIndex = 2;
         private const int PurgeWarningScheduledPurgeDateIndex = 3;
         private const int PurgeWarningGroupNameIndex = 5;
+        private const int PurgeWarningInactiveSinceUtcIndex = 6;
+        private const int PurgeWarningScheduledPurgeDateUtcIndex = 7;
+        private const int PurgeWarningLastSuccessfulRunTimeUtcIndex = 8;
+        private const int PurgeWarningRejectionReasonIndex = 9;
+        private const int PurgeWarningGmmOwnerAppNameIndex = 10;
 
         private readonly IGraphGroupRepository _graphGroupRepository;
         private readonly ILocalizationRepository _localizationRepository;
@@ -320,55 +329,206 @@ namespace Repositories.Mail
             }
 
             var statusKey = ResolvePurgeWarningStatusKey(status);
+            var warningDays = WarningDays.ToString(CultureInfo.InvariantCulture);
 
-            // Status-aware description and callout body. Uses positional tokens consistent with
-            // the existing JobPurgingWarningEmailBody resource: {0}=Status, {1}=InactiveSince,
-            // {2}=NumberOfDaysBeforePurging, {3}=ScheduledPurgeDate, {5}=GroupName.
+            // Prefer ISO UTC timestamps (params [6]/[7]) so we can format dates with time + PT
+            // suffix exactly like the Sync Disabled "PAUSED AT" row. Fall back to the plain
+            // date-string params [1]/[3] when the producer hasn't been updated yet.
+            var inactiveSinceUtc = TryParseIsoUtc(GetParam(emailMessage, PurgeWarningInactiveSinceUtcIndex));
+            var scheduledPurgeUtc = TryParseIsoUtc(GetParam(emailMessage, PurgeWarningScheduledPurgeDateUtcIndex));
+
+            var pausedAtDisplay = inactiveSinceUtc.HasValue
+                ? FormatPausedAtPacific(inactiveSinceUtc.Value)
+                : ReformatDateOnly(inactiveSince);
+
+            var purgeDateDisplay = scheduledPurgeUtc.HasValue
+                ? ConvertToPacific(scheduledPurgeUtc.Value).ToString("ddd, MMM d, yyyy", CultureInfo.InvariantCulture)
+                : FormatPurgeDateForDisplay(scheduledPurgeDate);
+
+            var headerText = _localizationRepository.TranslateSetting(
+                "JobPurgingWarningFallback.HeaderReason", warningDays);
+
+            var priorNotificationTitle = ResolvePriorNotificationTitle(statusKey);
+            string descriptionKey;
+            if (statusKey == "Generic")
+                descriptionKey = "JobPurgingWarningFallback.Description.Generic";
+            else if (string.IsNullOrEmpty(priorNotificationTitle))
+                descriptionKey = "JobPurgingWarningFallback.Description.StatusOnly";
+            else
+                descriptionKey = "JobPurgingWarningFallback.Description.PreviousNotification";
+
             var description = _localizationRepository.TranslateSetting(
-                $"JobPurgingWarningFallback.Description.{statusKey}",
-                status, inactiveSince, daysBeforePurging, scheduledPurgeDate, string.Empty, groupName);
-            var calloutBody = _localizationRepository.TranslateSetting(
-                $"JobPurgingWarningFallback.CalloutBody.{statusKey}");
+                descriptionKey,
+                status, inactiveSince, daysBeforePurging, purgeDateDisplay,
+                string.Empty, groupName, warningDays, priorNotificationTitle);
 
-            var rows = await BuildBaseRowsAsync(groupId, requestor: string.Empty);
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                    _localizationRepository.TranslateSetting("FallbackDetailsRow.Status"),
-                    System.Net.WebUtility.HtmlEncode(status),
-                    "font-weight:600;color:#603900;"));
-            }
-            if (!string.IsNullOrWhiteSpace(inactiveSince))
-            {
-                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                    _localizationRepository.TranslateSetting("FallbackDetailsRow.InactiveSince"),
-                    System.Net.WebUtility.HtmlEncode(inactiveSince), ""));
-            }
-            if (!string.IsNullOrWhiteSpace(scheduledPurgeDate))
-            {
-                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                    _localizationRepository.TranslateSetting("FallbackDetailsRow.ScheduledPurgeDate"),
-                    System.Net.WebUtility.HtmlEncode(scheduledPurgeDate),
-                    "font-weight:600;color:#603900;"));
-            }
+            var calloutBody = _localizationRepository.TranslateSetting(
+                "JobPurgingWarningFallback.CalloutBody", purgeDateDisplay);
+
+            var rows = await BuildJobPurgingWarningRowsAsync(groupId, statusKey, pausedAtDisplay, emailMessage);
+
+            var rejectionReason = statusKey == "SubmissionRejected"
+                ? GetParam(emailMessage, PurgeWarningRejectionReasonIndex, defaultValue: string.Empty)
+                : string.Empty;
+            var reviewerFeedbackHtml = BuildReviewerFeedbackHtml(rejectionReason);
+
+            var gmmOwnerAppName = GetParam(emailMessage, PurgeWarningGmmOwnerAppNameIndex, defaultValue: string.Empty);
+            if (string.IsNullOrWhiteSpace(gmmOwnerAppName))
+                gmmOwnerAppName = "GMM";
 
             return FormatTemplate(
                 HtmlTemplates.JobPurgingWarningTemplate,
                 prefix: "JobPurgingWarningFallback",
-                groupName: destinationGroupName,
-                headerText: _localizationRepository.TranslateSetting("JobPurgingWarningFallback.HeaderReason"),
+                groupName: groupName,
+                headerText: headerText,
                 description: description,
                 calloutBody: calloutBody,
                 rows: rows,
                 jobUrl: jobUrl,
-                sentDate: sentDate
+                sentDate: sentDate,
+                actionChecklistHtml: BuildJobPurgingWarningActionChecklistHtml(statusKey, purgeDateDisplay, groupId, gmmOwnerAppName) + reviewerFeedbackHtml,
+                extraCalloutHtml: string.Empty
             );
         }
 
-        // Normalizes the raw status string from the email message into the canonical PascalCase
-        // SyncStatus name used in resx keys (JobPurgingWarningFallback.Description.{Status} /
-        // .CalloutBody.{Status}). Round-tripping through the enum protects against case-mismatch
-        // resx misses for inputs like "customerpaused".
+        // Variant 2 (8 non-SubmissionRejected statuses): GROUP EMAIL + GROUP TYPE + PAUSED AT.
+        // Variant 1 (SubmissionRejected): adds LAST SYNC as a 4th row.
+        private async Task<StringBuilder> BuildJobPurgingWarningRowsAsync(string groupId, string statusKey, string inactiveSince, EmailMessage emailMessage)
+        {
+            Func<string, string> encode = System.Net.WebUtility.HtmlEncode;
+            var rows = new StringBuilder();
+
+            var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
+
+            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
+                string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+
+            if (!string.IsNullOrEmpty(groupType))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupType"),
+                    encode(groupType), ""));
+            }
+
+            if (!string.IsNullOrWhiteSpace(inactiveSince))
+            {
+                var labelKey = statusKey == "SubmissionRejected"
+                    ? "FallbackDetailsRow.RejectedOn"
+                    : "FallbackDetailsRow.PausedAt";
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting(labelKey),
+                    encode(inactiveSince), ""));
+            }
+
+            if (statusKey == "SubmissionRejected")
+            {
+                var lastSuccessfulRunUtc = TryParseIsoUtc(
+                    GetParam(emailMessage, PurgeWarningLastSuccessfulRunTimeUtcIndex));
+                if (lastSuccessfulRunUtc.HasValue)
+                {
+                    var lastSyncDisplay = FormatPausedAtPacific(lastSuccessfulRunUtc.Value);
+                    rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                        _localizationRepository.TranslateSetting("FallbackDetailsRow.LastSync"),
+                        encode(lastSyncDisplay), ""));
+                }
+            }
+
+            return rows;
+        }
+
+        private string BuildJobPurgingWarningActionChecklistHtml(string statusKey, string purgeDateDisplay, string groupId, string gmmOwnerAppName)
+        {
+            // For statuses that already have a Sync Disabled / Submission Rejected fallback,
+            // reuse that email's WHAT TO DO body verbatim so wording stays consistent.
+            // CustomerPaused / ThresholdExceeded keep their PurgingWarning-specific bodies.
+            string bodyKey;
+            string[] args = Array.Empty<string>();
+            switch (statusKey)
+            {
+                case "DestinationGroupNotFound":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.NoDestinationGroup.Body"; break;
+                case "SecurityGroupNotFound":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.NoSourceGroup.Body"; break;
+                case "NotOwnerOfDestinationGroup":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.NoOwner.Body";
+                    args = new[] { gmmOwnerAppName ?? "GMM", groupId ?? string.Empty };
+                    break;
+                case "MembershipDataNotFound":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.NoData.Body"; break;
+                case "GuestUsersCannotBeAddedToUnifiedGroup":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.GuestUsers.Body"; break;
+                case "NestedGroupsFound":
+                    bodyKey = "SyncDisabledFallback.ActionChecklist.NestedGroupsFound.Body";
+                    args = new[] { groupId ?? string.Empty };
+                    break;
+                case "SubmissionRejected":
+                    bodyKey = "SubmissionRejectedFallback.ActionChecklist.Body"; break;
+                default:
+                    bodyKey = $"JobPurgingWarningFallback.ActionChecklist.Body.{statusKey}"; break;
+            }
+
+            var body = _localizationRepository.TranslateSetting(bodyKey, args);
+            if (string.IsNullOrWhiteSpace(body) || body == bodyKey)
+                return string.Empty;
+
+            string deadlineSpan = string.Empty;
+            if (!string.IsNullOrWhiteSpace(purgeDateDisplay))
+            {
+                deadlineSpan = "&middot; by " + System.Net.WebUtility.HtmlEncode(purgeDateDisplay);
+            }
+
+            var title = _localizationRepository.TranslateSetting("JobPurgingWarningFallback.ActionChecklist.Title");
+            var checklistHtml = string.Format(
+                HtmlTemplates.OrangeActionChecklistHtml,
+                System.Net.WebUtility.HtmlEncode(title),
+                deadlineSpan,
+                RenderActionChecklistBody(body));
+
+            // GuestUsers reuses the SyncDisabled FootNote (advisory paragraph rendered
+            // outside the orange box, matching the reference design).
+            var footNoteKey = statusKey == "GuestUsersCannotBeAddedToUnifiedGroup"
+                ? "SyncDisabledFallback.ActionChecklist.GuestUsers.FootNote"
+                : null;
+            return footNoteKey != null
+                ? checklistHtml + BuildActionChecklistFootNoteHtml(footNoteKey)
+                : checklistHtml;
+        }
+
+        private static string FormatPurgeDateForDisplay(string producerDate)
+        {
+            if (string.IsNullOrWhiteSpace(producerDate)) return string.Empty;
+            if (DateTime.TryParseExact(producerDate, "MMMM dd, yyyy",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            {
+                return parsed.ToString("ddd, MMM d, yyyy", CultureInfo.InvariantCulture);
+            }
+            if (DateTime.TryParse(producerDate, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out parsed))
+            {
+                return parsed.ToString("ddd, MMM d, yyyy", CultureInfo.InvariantCulture);
+            }
+            return producerDate;
+        }
+
+        private static string ReformatDateOnly(string producerDate)
+        {
+            if (string.IsNullOrWhiteSpace(producerDate)) return string.Empty;
+            if (DateTime.TryParseExact(producerDate, "MMMM dd, yyyy",
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            {
+                return parsed.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+            }
+            if (DateTime.TryParse(producerDate, CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out parsed))
+            {
+                return parsed.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+            }
+            return producerDate;
+        }
+
+        private int WarningDays => _handleInactiveJobsConfig?.NumberOfDaysBeforePurgingToSendWarning ?? 7;
+
         private string ResolvePurgeWarningStatusKey(string status)
         {
             if (Enum.TryParse<SyncStatus>(status, ignoreCase: true, out var parsed)
@@ -384,6 +544,40 @@ namespace Repositories.Mail
                     status);
             }
             return "Generic";
+        }
+
+        // Maps a Purging Warning statusKey to the prior fallback email's header line so the lede
+        // quotes the real subject. CustomerPaused / ThresholdExceeded return null (no system
+        // email was sent) and fall back to the StatusOnly lede.
+        private string ResolvePriorNotificationTitle(string statusKey)
+        {
+            string syncDisabledReason = statusKey switch
+            {
+                "DestinationGroupNotFound"            => "NoDestinationGroup",
+                "SecurityGroupNotFound"               => "NoSourceGroup",
+                "NotOwnerOfDestinationGroup"          => "NoOwner",
+                "MembershipDataNotFound"              => "NoData",
+                "GuestUsersCannotBeAddedToUnifiedGroup" => "GuestUsers",
+                "NestedGroupsFound"                   => "NestedGroupsFound",
+                _ => null
+            };
+
+            if (syncDisabledReason != null)
+            {
+                var reasonFragment = _localizationRepository.TranslateSetting(
+                    $"SyncDisabledFallback.HeaderReason.{syncDisabledReason}");
+                if (!string.IsNullOrWhiteSpace(reasonFragment))
+                {
+                    return "Sync paused \u2014 " + reasonFragment;
+                }
+            }
+
+            if (statusKey == "SubmissionRejected")
+            {
+                return _localizationRepository.TranslateSetting("SubmissionRejectedFallback.HeaderTitle");
+            }
+
+            return null;
         }
 
         private async Task<StringBuilder> BuildBaseRowsAsync(string groupId, string requestor)
@@ -609,11 +803,27 @@ namespace Repositories.Mail
             }
 
             var title = _localizationRepository.TranslateSetting("SyncDisabledFallback.ActionChecklist.Title");
-            return string.Format(
+            var checklistHtml = string.Format(
                 HtmlTemplates.OrangeActionChecklistHtml,
                 System.Net.WebUtility.HtmlEncode(title),
                 deadlineSpan,
                 RenderActionChecklistBody(body));
+
+            return checklistHtml + BuildActionChecklistFootNoteHtml(
+                $"SyncDisabledFallback.ActionChecklist.{disableReason}.FootNote");
+        }
+
+        // Italic footnote paragraph rendered immediately after the orange action-checklist box.
+        // Used to surface advisory text (e.g. "If guest users are required, they'll need to be
+        // managed outside of GMM.") that the reference design places outside the box.
+        private string BuildActionChecklistFootNoteHtml(string footNoteKey)
+        {
+            var footNote = _localizationRepository.TranslateSetting(footNoteKey);
+            if (string.IsNullOrWhiteSpace(footNote) || footNote == footNoteKey)
+                return string.Empty;
+            return "<tr><td style=\"padding:0 24px 12px;font-size:13.5px;line-height:1.55;font-style:italic;color:#6b6b6b;\">"
+                + ConvertContentToHtml(footNote)
+                + "</td></tr>";
         }
 
         // Render the action-checklist body. If the body's lines start with "1. ", "2. ", ...

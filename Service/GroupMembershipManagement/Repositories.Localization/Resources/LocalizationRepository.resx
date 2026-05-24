@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <!-- 
     Microsoft ResX Schema 
@@ -1455,6 +1455,12 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="FallbackDetailsRow.PausedAt" xml:space="preserve">
     <value>PAUSED AT</value>
   </data>
+  <data name="FallbackDetailsRow.RejectedOn" xml:space="preserve">
+    <value>REJECTED ON</value>
+  </data>
+  <data name="FallbackDetailsRow.LastSync" xml:space="preserve">
+    <value>LAST SYNC</value>
+  </data>
   <data name="FallbackDetailsRow.SubmittedBy" xml:space="preserve">
     <value>SUBMITTED BY</value>
   </data>
@@ -1469,7 +1475,7 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
 2. Replace it with a valid source group, or delete the empty rule altogether, then re-submit.</value>
   </data>
   <data name="SyncDisabledFallback.ActionChecklist.NoOwner.Body" xml:space="preserve">
-    <value>1. [Click here](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and manually add `{0}` as a group owner. If the GMM owner was removed intentionally, no further action is needed.
+    <value>1. Go to [Microsoft Entra](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Owners/groupId/{1}/menuId/) and add `{0}` as an owner. If the GMM owner was removed intentionally, no further action is needed.
 2. Return to the GMM UI and re-enable the sync for this group.</value>
   </data>
   <data name="SyncDisabledFallback.ActionChecklist.NoData.Body" xml:space="preserve">
@@ -1477,9 +1483,10 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="SyncDisabledFallback.ActionChecklist.GuestUsers.Body" xml:space="preserve">
     <value>1. Remove guest users from the membership source(s) if you want GMM to continue managing this group.
-2. Return to the GMM UI and re-enable the sync for this group.
-
-If guest users are required for this group, they'll need to be managed outside of GMM.</value>
+2. Return to the GMM UI and re-enable the sync for this group.</value>
+  </data>
+  <data name="SyncDisabledFallback.ActionChecklist.GuestUsers.FootNote" xml:space="preserve">
+    <value>If guest users are required for this group, they&#8217;ll need to be managed outside of GMM.</value>
   </data>
   <data name="SyncDisabledFallback.ActionChecklist.NestedGroupsFound.Body" xml:space="preserve">
     <value>1. Open the destination group in [Microsoft Entra](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Members/groupId/{0}) and remove any nested groups from its members list.
@@ -1535,77 +1542,44 @@ If guest users are required for this group, they'll need to be managed outside o
     <value>WARNING</value>
   </data>
   <data name="JobPurgingWarningFallback.HeaderReason" xml:space="preserve">
-    <value>Sync job will be purged soon</value>
+    <value>Action needed within {0} days &#8212; group will be removed from GMM</value>
   </data>
   <data name="JobPurgingWarningFallback.CalloutTitle" xml:space="preserve">
     <value>WHAT HAPPENS IF YOU DO NOTHING</value>
   </data>
+  <data name="JobPurgingWarningFallback.CalloutBody" xml:space="preserve">
+    <value>On **{0}**, GMM will remove its affiliation with this group. Existing members will remain and the group will continue to function normally. You can always come back later and onboard the group to GMM again.</value>
+  </data>
+  <data name="JobPurgingWarningFallback.ActionChecklist.Title" xml:space="preserve">
+    <value>WHAT TO DO</value>
+  </data>
   <data name="JobPurgingWarningFallback.CtaLabel" xml:space="preserve">
-    <value>Go to GMM UI</value>
+    <value>View in GMM UI</value>
   </data>
   <data name="JobPurgingWarningFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for critical events that require attention.</value>
   </data>
-  <!-- Per-status descriptions. Tokens: {0}=Status, {1}=InactiveSince, {2}=NumberOfDaysBeforePurging, {3}=ScheduledPurgeDate, {5}=GroupName -->
-  <data name="JobPurgingWarningFallback.Description.CustomerPaused" xml:space="preserve">
-    <value>This sync has been **paused by the owner** since **{1}**. GMM only retains paused jobs for **{2} days**. Unless the sync is resumed, the job for **{5}** will be permanently purged on **{3}**.</value>
+  <!-- JobPurgingWarning shared lede. Tokens: {0}=Status, {1}=InactiveSince, {6}=WarningDays, {7}=PriorNotificationTitle. -->
+  <data name="JobPurgingWarningFallback.Description.PreviousNotification" xml:space="preserve">
+    <value>In **{6} days**, GMM will remove its affiliation with this group because the previous notification of &#8220;{7}&#8221; was not addressed. The group itself will not be deleted.</value>
   </data>
-  <data name="JobPurgingWarningFallback.Description.MembershipDataNotFound" xml:space="preserve">
-    <value>GMM has been unable to find membership data for **{5}** since **{1}**. Jobs in the **MembershipDataNotFound** state are retained for **{2} days**. Unless the underlying data source is restored, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.DestinationGroupNotFound" xml:space="preserve">
-    <value>The destination group for **{5}** has not been found since **{1}**. Jobs whose destination group is missing are retained for **{2} days**. Unless the group is restored, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.SecurityGroupNotFound" xml:space="preserve">
-    <value>One or more configured source security groups for **{5}** have not been found since **{1}**. Jobs in this state are retained for **{2} days**. Unless the configuration is updated, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.NotOwnerOfDestinationGroup" xml:space="preserve">
-    <value>GMM has not been an owner of the destination group for **{5}** since **{1}**. GMM requires owner permissions to manage membership and only retains jobs in this state for **{2} days**. Unless GMM is re-added as an owner, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.ThresholdExceeded" xml:space="preserve">
-    <value>A drastic membership change for **{5}** has been awaiting owner approval since **{1}**. Jobs blocked on threshold approval are retained for **{2} days**. Unless the change is approved or the configuration is updated, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.SubmissionRejected" xml:space="preserve">
-    <value>The most recent configuration submission for **{5}** was rejected on **{1}** and has not been resubmitted. Rejected submissions are retained for **{2} days**. Unless a new submission is approved, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.GuestUsersCannotBeAddedToUnifiedGroup" xml:space="preserve">
-    <value>Guest users have been detected in the source for **{5}** since **{1}**. GMM cannot add guest users to a Unified group, and only retains jobs in this state for **{2} days**. Unless the source configuration is corrected, the job will be permanently purged on **{3}**.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.Description.NestedGroupsFound" xml:space="preserve">
-    <value>Nested groups have been detected in the source for **{5}** since **{1}**. GMM does not support nested groups and only retains jobs in this state for **{2} days**. Unless the source is flattened, the job will be permanently purged on **{3}**.</value>
+  <data name="JobPurgingWarningFallback.Description.StatusOnly" xml:space="preserve">
+    <value>In **{6} days**, GMM will remove its affiliation with this group because your job has been in **{0}** status since **{1}**. The group itself will not be deleted.</value>
   </data>
   <data name="JobPurgingWarningFallback.Description.Generic" xml:space="preserve">
-    <value>The job for **{5}** has been in **{0}** status since **{1}**. GMM only retains jobs in this state for **{2} days**. Unless this issue is resolved, the job will be permanently purged on **{3}**.</value>
+    <value>In **{6} days**, GMM will remove its affiliation with this group because the prior **{0}** status notification was not addressed. The group itself will not be deleted.</value>
   </data>
-  <!-- Per-status callout bodies (action guidance). -->
-  <data name="JobPurgingWarningFallback.CalloutBody.CustomerPaused" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch to restore membership management. **Resume the sync from the GMM UI** to keep the job active.</value>
+  <!-- Per-status "What to do" action checklist bodies. Numbered (1./2./...) lines render as a real ordered list. -->
+  <data name="JobPurgingWarningFallback.ActionChecklist.Body.CustomerPaused" xml:space="preserve">
+    <value>1. Resume the sync from the GMM UI to keep the job active.
+2. If the pause was intentional and you no longer need GMM to manage this group, no action is needed.</value>
   </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.MembershipDataNotFound" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Verify your source data and membership definition in the GMM UI before the purge date.</value>
+  <data name="JobPurgingWarningFallback.ActionChecklist.Body.ThresholdExceeded" xml:space="preserve">
+    <value>1. Open the pending threshold approval card in the GMM UI and review the proposed membership change.
+2. Approve the change, or adjust the membership rules so the change falls within the configured threshold.</value>
   </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.DestinationGroupNotFound" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Restore the destination group or update the sync configuration before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.SecurityGroupNotFound" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Update the source group configuration in the GMM UI before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.NotOwnerOfDestinationGroup" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Add GMM back as an owner of the destination group before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.ThresholdExceeded" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Approve the pending threshold change or adjust your membership definition before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.SubmissionRejected" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Resubmit a corrected configuration through the GMM UI before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.GuestUsersCannotBeAddedToUnifiedGroup" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Update the source configuration to exclude guest users before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.NestedGroupsFound" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Replace nested groups in the source with flat membership lists before the purge date.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.CalloutBody.Generic" xml:space="preserve">
-    <value>The job will be permanently removed and you will need to re-onboard from scratch. Take one of the following actions before the purge date: resume the sync, update the configuration, or contact support for assistance.</value>
+  <data name="JobPurgingWarningFallback.ActionChecklist.Body.Generic" xml:space="preserve">
+    <value>1. Review the previous notification for this group in your inbox to identify what action GMM needs from you.
+2. Take the action described there, or reply to [GMMSupport@service.microsoft.com](mailto:GMMSupport@service.microsoft.com) if you need help.</value>
   </data>
 </root>

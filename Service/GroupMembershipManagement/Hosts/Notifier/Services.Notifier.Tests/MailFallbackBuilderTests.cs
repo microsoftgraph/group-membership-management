@@ -442,7 +442,9 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task BuildJobPurgingWarningFallbackAsync_ContainsGroupId()
         {
-            var email = MakeJobPurgingWarningEmail();
+            // NestedGroupsFound now reuses the Sync Disabled action checklist, which embeds
+            // the groupId in a deep-link to the destination group's Members blade.
+            var email = MakeJobPurgingWarningEmail(status: "NestedGroupsFound");
             var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             StringAssert.Contains(html, GroupId);
         }
@@ -464,16 +466,18 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildJobPurgingWarningFallbackAsync_ContainsStatusInactiveSinceAndPurgeDate()
+        public async Task BuildJobPurgingWarningFallbackAsync_ContainsInactiveSinceAndPurgeDate()
         {
             var email = MakeJobPurgingWarningEmail(
                 status: "CustomerPaused",
                 inactiveSince: "April 07, 2026",
                 scheduledPurgeDate: "May 07, 2026");
             var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            StringAssert.Contains(html, "CustomerPaused");
+            // Inactive-since renders as-is in the "PAUSED AT" details row.
             StringAssert.Contains(html, "April 07, 2026");
-            StringAssert.Contains(html, "May 07, 2026");
+            // Scheduled purge date is reformatted to "ddd, MMM d, yyyy" (e.g. "Thu, May 7, 2026")
+            // for the deadline span and the "What happens if you do nothing" callout body.
+            StringAssert.Contains(html, "May 7, 2026");
         }
 
         [TestMethod]
@@ -574,14 +578,15 @@ namespace Services.Notifier.Tests
         public async Task BuildJobPurgingWarningFallbackAsync_StatusKeyLookupIsCaseInsensitive(string status)
         {
             // ResolvePurgeWarningStatusKey round-trips through SyncStatus enum (ignoreCase: true)
-            // so any casing should hit the CustomerPaused-specific description, not Generic.
+            // so any casing should hit the CustomerPaused branch (StatusOnly description),
+            // not the Generic description.
             var email = MakeJobPurgingWarningEmail(status: status);
             var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
 
-            // Generic description begins "The job for ... has been in {0} status since"; the
-            // CustomerPaused description begins "This sync has been **paused by the owner**".
-            // Any non-Generic match for a known status proves canonicalization worked.
-            StringAssert.Contains(html, "paused by the owner");
+            // StatusOnly description: "...your job has been in <strong>CustomerPaused</strong> status since..."
+            // Generic description doesn't mention "your job has been in".
+            StringAssert.Contains(html, "your job has been in");
+            StringAssert.Contains(html, "status since");
         }
 
         [TestMethod]
@@ -608,17 +613,17 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildJobPurgingWarningFallbackAsync_DiffersInCalloutBody_BetweenStatuses()
+        public async Task BuildJobPurgingWarningFallbackAsync_DiffersInActionChecklist_BetweenStatuses()
         {
-            // Each status should produce a distinct CalloutBody.{Status} resource. This is the
-            // owner-action-guidance counterpart to the Description-uniqueness test above.
+            // CustomerPaused keeps its PurgingWarning-specific body; NestedGroupsFound now
+            // reuses the Sync Disabled body so wording matches that email exactly.
             var pausedHtml = await _builder.BuildJobPurgingWarningFallbackAsync(
                 MakeJobPurgingWarningEmail(status: "CustomerPaused"), GroupName, GroupId, JobUrl, SentDate);
             var nestedHtml = await _builder.BuildJobPurgingWarningFallbackAsync(
                 MakeJobPurgingWarningEmail(status: "NestedGroupsFound"), GroupName, GroupId, JobUrl, SentDate);
 
             StringAssert.Contains(pausedHtml, "Resume the sync");
-            StringAssert.Contains(nestedHtml, "flat membership");
+            StringAssert.Contains(nestedHtml, "remove any nested groups");
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────────

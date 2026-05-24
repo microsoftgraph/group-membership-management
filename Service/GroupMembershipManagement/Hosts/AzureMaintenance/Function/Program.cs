@@ -84,6 +84,7 @@ namespace Hosts.AzureMaintenance
                     });
 
                     services.AddScoped<INotificationRepository, NotificationRepository>();
+                    services.AddScoped<ISyncJobChangeRepository, SyncJobChangeRepository>();
 
                     services
                         .AddGraphAPIClient()
@@ -107,7 +108,9 @@ namespace Hosts.AzureMaintenance
                             services.GetService<INotificationRepository>(),
                             notificationsQueueRepository,
                             services.GetService<ILogger<AzureMaintenanceService>>(),
-                            services.GetService<ISyncJobHistoryRepository>());
+                            services.GetService<ISyncJobHistoryRepository>(),
+                            services.GetService<ISyncJobChangeRepository>(),
+                            services.GetService<IOptions<GraphCredentials>>()?.Value?.GMMOwnerAppName);
                     });
                 }).Build();
 

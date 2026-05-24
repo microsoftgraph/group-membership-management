@@ -35,6 +35,12 @@ namespace Repositories.Contracts
         /// Retrieves the last sync job change by its sync job id.
         /// </summary>
         Task<SyncJobChange> GetLastSyncJobChangeBySyncJobIdAsync(Guid syncJobId);
+
+        /// <summary>
+        /// Retrieves the most recent SubmissionRejected change for a sync job (carries the
+        /// rejection reason in BusinessJustification).
+        /// </summary>
+        Task<SyncJobChange> GetLatestSubmissionRejectedChangeBySyncJobIdAsync(Guid syncJobId);
         
         /// <summary>
         /// Retrieves the most recent sync job change record (ANY reason) by its sync job id.

@@ -38,6 +38,8 @@ namespace Services
         private readonly IServiceBusQueueRepository _notificationsQueueRepository;
         private readonly ILogger<AzureMaintenanceService> _logger;
         private readonly ISyncJobHistoryRepository _syncJobHistoryRepository;
+        private readonly ISyncJobChangeRepository _syncJobChangeRepository;
+        private readonly string _gmmOwnerAppName;
 
         public AzureMaintenanceService(
             IDatabaseSyncJobsRepository syncJobRepository,
@@ -49,7 +51,9 @@ namespace Services
             INotificationRepository notificationRepository,
             IServiceBusQueueRepository notificationQueueRepository,
             ILogger<AzureMaintenanceService> logger,
-            ISyncJobHistoryRepository syncJobHistoryRepository)
+            ISyncJobHistoryRepository syncJobHistoryRepository,
+            ISyncJobChangeRepository syncJobChangeRepository,
+            string gmmOwnerAppName = null)
         {
             _syncJobRepository = syncJobRepository ?? throw new ArgumentNullException(nameof(syncJobRepository));
             _databaseGroupsRepository = databaseGroupsRepository ?? throw new ArgumentNullException(nameof(databaseGroupsRepository));
@@ -61,6 +65,8 @@ namespace Services
             _notificationsQueueRepository = notificationQueueRepository ?? throw new ArgumentNullException(nameof(notificationQueueRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _syncJobHistoryRepository = syncJobHistoryRepository ?? throw new ArgumentNullException(nameof(syncJobHistoryRepository));
+            _syncJobChangeRepository = syncJobChangeRepository ?? throw new ArgumentNullException(nameof(syncJobChangeRepository));
+            _gmmOwnerAppName = gmmOwnerAppName ?? string.Empty;
         }
 
         public async Task<List<SyncJob>> GetSyncJobsAsync()
@@ -123,6 +129,31 @@ namespace Services
                 inactivitySince = DateTime.UtcNow; // Fallback to current date if both are sentinel
             }
             var purgeDate = inactivitySince.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
+
+            string lastSuccessfulRunTimeIso = string.Empty;
+            string rejectionReason = string.Empty;
+            if (string.Equals(job.Status, "SubmissionRejected", StringComparison.OrdinalIgnoreCase))
+            {
+                if (job.LastSuccessfulRunTime > _minRealDate)
+                {
+                    lastSuccessfulRunTimeIso = job.LastSuccessfulRunTime.ToString(
+                        "o", System.Globalization.CultureInfo.InvariantCulture);
+                }
+
+                try
+                {
+                    var lastRejection = await _syncJobChangeRepository
+                        .GetLatestSubmissionRejectedChangeBySyncJobIdAsync(job.Id);
+                    rejectionReason = lastRejection?.BusinessJustification ?? string.Empty;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to load latest SubmissionRejected change for SyncJob {SyncJobId}.",
+                        job.Id);
+                }
+            }
+
             additionalContentParams = new[]
             {
                 job.Status,
@@ -130,7 +161,15 @@ namespace Services
                 _handleInactiveJobsConfig.NumberOfDaysBeforePurging.ToString(),
                 purgeDate.ToString("MMMM dd, yyyy"),
                 job.TargetOfficeGroupId.ToString(),
-                groupName
+                groupName,
+                // [6]/[7] ISO UTC timestamps for the fallback HTML email; adaptive card keeps using [1]/[3].
+                inactivitySince.ToString("o", System.Globalization.CultureInfo.InvariantCulture),
+                purgeDate.ToString("o", System.Globalization.CultureInfo.InvariantCulture),
+                // [8]/[9] SubmissionRejected-only fallback enrichments; empty for all other statuses.
+                lastSuccessfulRunTimeIso,
+                rejectionReason,
+                // [10] GMM owner app name for the NotOwnerOfDestinationGroup action-checklist token.
+                _gmmOwnerAppName
             };
 
             var messageContent = new Dictionary<string, Object>
