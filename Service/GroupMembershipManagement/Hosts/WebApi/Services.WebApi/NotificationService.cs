@@ -73,7 +73,8 @@ namespace Services.WebApi
                     syncJob.TargetOfficeGroupId.ToString(),                      // {0} - Group ID
                     groupName,                                                     // {1} - Group Name
                     businessJustification!,                                        // {2} - Rejection Reason
-                    syncJob.Requestor ?? string.Empty                             // {3} - Requestor email
+                    syncJob.Requestor ?? string.Empty,                            // {3} - Requestor email
+                    DateTime.UtcNow.ToString("o", System.Globalization.CultureInfo.InvariantCulture) // {4} - RejectedAtUtc (ISO 8601)
                 }
                 : new string[]
                 {

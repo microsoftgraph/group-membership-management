@@ -177,7 +177,7 @@ namespace Repositories.Mail
                 <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#603900;color:#ffffff;border-radius:50%;font-size:20px;font-weight:700;"">&#x2715;</span>
               </td>
               <td style=""vertical-align:middle;"">
-                <span style=""color:#603900;font-size:16px;font-weight:600;"">Submission Rejected</span><br />
+                <span style=""color:#603900;font-size:16px;font-weight:600;"">{1}</span><br />
                 <span style=""color:#603900cc;font-size:13px;"">Group Membership Management</span>
               </td>
             </tr></table>
@@ -217,9 +217,10 @@ namespace Repositories.Mail
         public static string SyncDisabledTemplate =>
             BuildEmailBodyTemplate(SyncDisabledHeaderHtml, OrangePillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
-        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate.</summary>
+        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is
+        /// rendered in the header bar (e.g. "Submission rejected — revision required").</summary>
         public static string SubmissionRejectedTemplate =>
-            BuildEmailBodyTemplate(SubmissionRejectedHeaderHtml, OrangePillBadgeStyle, OrangeCalloutTableStyle, OrangeCalloutTitleStyle);
+            BuildEmailBodyTemplate(SubmissionRejectedHeaderHtml, OrangePillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
         /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
         /// in the header bar with a localized title (e.g. "Sync job will be purged soon").</summary>

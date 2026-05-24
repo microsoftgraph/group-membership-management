@@ -200,11 +200,13 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildSyncDisabledFallbackAsync_ContainsGroupId()
+        public async Task BuildSyncDisabledFallbackAsync_DoesNotThrow_WithValidGroupId()
         {
+            // Compact-detail design intentionally omits an Object Id row, so just verify
+            // the renderer produces non-empty HTML for a valid GroupId.
             var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            StringAssert.Contains(html, GroupId);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
         }
 
         [TestMethod]
@@ -242,17 +244,21 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task BuildSyncDisabledFallbackAsync_ContainsGroupAlias_WhenGraphReturnsEmail()
         {
-            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            // NoDestinationGroup deliberately omits the alias row (deleted group cannot be resolved
+            // via Graph). Use NoSourceGroup which renders GROUP EMAIL from FetchGroupMetaAsync.
+            var email = MakeSyncDisabledEmail("SyncDisabledNoSourceGroupEmailBody");
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             StringAssert.Contains(html, "testgroup@contoso.com");
         }
 
         [TestMethod]
-        public async Task BuildSyncDisabledFallbackAsync_ContainsRequestor_WhenProvided()
+        public async Task BuildSyncDisabledFallbackAsync_DoesNotThrow_WhenRequestorProvided()
         {
+            // Compact-detail design intentionally omits a Requested By row. Just verify rendering
+            // does not break when a requestor is supplied in AdditionalContentParams.
             var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody", requestor: "owner@contoso.com");
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            StringAssert.Contains(html, "owner@contoso.com");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
         }
 
         [TestMethod]
@@ -306,11 +312,13 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildSubmissionRejectedFallbackAsync_ContainsGroupId()
+        public async Task BuildSubmissionRejectedFallbackAsync_DoesNotThrow_WithValidGroupId()
         {
+            // The reference design renders only Email / Type / Submitted by — no Object Id row.
+            // This test confirms a valid groupId is accepted without throwing.
             var email = MakeSubmissionRejectedEmail();
             var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            StringAssert.Contains(html, GroupId);
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
         }
 
         [TestMethod]
@@ -347,12 +355,12 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildSubmissionRejectedFallbackAsync_OmitsRejectionReasonRow_WhenReasonIsEmpty()
+        public async Task BuildSubmissionRejectedFallbackAsync_OmitsReviewerFeedback_WhenReasonIsEmpty()
         {
             var email = MakeSubmissionRejectedEmail(reason: "");
             var html = await _builder.BuildSubmissionRejectedFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            // The row label should not appear when reason is empty
-            Assert.IsFalse(html.Contains("Rejection Reason"), "Rejection Reason row should be absent when reason is empty");
+            // The reviewer-feedback label should not appear when the reason is empty.
+            Assert.IsFalse(html.Contains("REVIEWER'S FEEDBACK"), "Reviewer's feedback block should be absent when reason is empty");
         }
 
         [TestMethod]

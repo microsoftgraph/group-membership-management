@@ -22,6 +22,7 @@ namespace Repositories.Mail
         private const int RequestorIndex = 4;
         private const int RejectionReasonIndex = 2;
         private const int RejectionRequestorIndex = 3;
+        private const int SubmissionRejectedRejectedAtIndex = 4;
 
         // SyncDisabled NotOwner AdditionalContentParams indices
         // (set by JobTrigger SubOrchestratorFunction for NotOwnerNotification):
@@ -216,19 +217,87 @@ namespace Repositories.Mail
             var rejectionReason = GetParam(emailMessage, RejectionReasonIndex);
             var requestor       = GetParam(emailMessage, RejectionRequestorIndex);
 
-            var rows = await BuildBaseRowsAsync(groupId, requestor);
+            var rows = await BuildSubmissionRejectedRowsAsync(groupId, requestor);
 
             return FormatTemplate(
                 HtmlTemplates.SubmissionRejectedTemplate,
                 prefix: "SubmissionRejectedFallback",
                 groupName: destinationGroupName,
-                headerText: destinationGroupName ?? string.Empty,
+                headerText: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.HeaderTitle"),
                 description: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.Description"),
-                calloutBody: _localizationRepository.TranslateSetting("SubmissionRejectedFallback.CalloutBody", string.IsNullOrWhiteSpace(rejectionReason) ? "(not provided)" : rejectionReason),
+                calloutBody: _localizationRepository.TranslateSetting(
+                    "SubmissionRejectedFallback.CalloutBody",
+                    ActionByDays.ToString(CultureInfo.InvariantCulture)),
                 rows: rows,
                 jobUrl: jobUrl,
-                sentDate: sentDate
+                sentDate: sentDate,
+                actionChecklistHtml: BuildSubmissionRejectedActionChecklistHtml(emailMessage) + BuildReviewerFeedbackHtml(rejectionReason),
+                extraCalloutHtml: string.Empty
             );
+        }
+
+        private async Task<StringBuilder> BuildSubmissionRejectedRowsAsync(string groupId, string requestor)
+        {
+            Func<string, string> encode = System.Net.WebUtility.HtmlEncode;
+            var rows = new StringBuilder();
+
+            var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
+
+            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
+                string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+
+            if (!string.IsNullOrEmpty(groupType))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupType"),
+                    encode(groupType), ""));
+            }
+
+            if (!string.IsNullOrWhiteSpace(requestor))
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.SubmittedBy"),
+                    encode(requestor), ""));
+            }
+
+            return rows;
+        }
+
+        private string BuildSubmissionRejectedActionChecklistHtml(EmailMessage emailMessage)
+        {
+            var body = _localizationRepository.TranslateSetting("SubmissionRejectedFallback.ActionChecklist.Body");
+            if (string.IsNullOrWhiteSpace(body) || body == "SubmissionRejectedFallback.ActionChecklist.Body")
+                return string.Empty;
+
+            var rejectedAtUtc = TryParseIsoUtc(GetParam(emailMessage, SubmissionRejectedRejectedAtIndex)) ?? DateTime.UtcNow;
+            var deadline = ConvertToPacific(rejectedAtUtc).AddDays(ActionByDays);
+            var formatted = deadline.ToString("ddd, MMM d, yyyy", CultureInfo.InvariantCulture);
+            string deadlineSpan = "&middot; by " + System.Net.WebUtility.HtmlEncode(formatted);
+
+            var title = _localizationRepository.TranslateSetting("SyncDisabledFallback.ActionChecklist.Title");
+            return string.Format(
+                HtmlTemplates.OrangeActionChecklistHtml,
+                System.Net.WebUtility.HtmlEncode(title),
+                deadlineSpan,
+                RenderActionChecklistBody(body));
+        }
+
+        private string BuildReviewerFeedbackHtml(string rejectionReason)
+        {
+            if (string.IsNullOrWhiteSpace(rejectionReason))
+                return string.Empty;
+
+            var bodyHtml = new StringBuilder();
+            bodyHtml.Append("<p style=\"margin:0;\">")
+                    .Append(System.Net.WebUtility.HtmlEncode(rejectionReason))
+                    .Append("</p>");
+
+            var title = _localizationRepository.TranslateSetting("SubmissionRejectedFallback.ReviewerFeedbackLabel");
+            return string.Format(
+                HtmlTemplates.GrayExtraCalloutHtml,
+                System.Net.WebUtility.HtmlEncode(title),
+                bodyHtml.ToString());
         }
 
         public async Task<string> BuildJobPurgingWarningFallbackAsync(
@@ -688,13 +757,13 @@ namespace Repositories.Mail
             // Convert **bold** to <strong>
             html = Regex.Replace(html, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
 
-            // Convert [text](url) to <a href="url">text</a>, but only allow http/https schemes
+            // Convert [text](url) to <a href="url">text</a>, but only allow http/https/mailto schemes
             html = Regex.Replace(html, @"\[(.+?)\]\((.+?)\)", match =>
             {
                 var text = match.Groups[1].Value;
                 var url = System.Net.WebUtility.HtmlDecode(match.Groups[2].Value);
                 if (Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
-                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
+                    (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeMailto))
                 {
                     return $"<a href=\"{System.Net.WebUtility.HtmlEncode(url)}\" style=\"color:#0078d4;text-decoration:underline;\">{text}</a>";
                 }

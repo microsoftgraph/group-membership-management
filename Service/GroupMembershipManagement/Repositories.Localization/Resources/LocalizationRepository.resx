@@ -1455,6 +1455,9 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="FallbackDetailsRow.PausedAt" xml:space="preserve">
     <value>PAUSED AT</value>
   </data>
+  <data name="FallbackDetailsRow.SubmittedBy" xml:space="preserve">
+    <value>SUBMITTED BY</value>
+  </data>
   <data name="SyncDisabledFallback.ActionChecklist.Title" xml:space="preserve">
     <value>WHAT TO DO</value>
   </data>
@@ -1491,19 +1494,27 @@ If guest users are required for this group, they'll need to be managed outside o
   <data name="SubmissionRejectedFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>
   </data>
+  <data name="SubmissionRejectedFallback.HeaderTitle" xml:space="preserve">
+    <value>Submission rejected — revision required</value>
+  </data>
   <data name="SubmissionRejectedFallback.Description" xml:space="preserve">
-    <value>Your request to update the membership sync configuration for this group has been reviewed and was not approved. See the details below for the reason provided.</value>
+    <value>Your submission for this group's membership configuration was reviewed and **requires a revision**. The reviewer's feedback is below. Update the configuration and resubmit to continue.</value>
+  </data>
+  <data name="SubmissionRejectedFallback.ActionChecklist.Body" xml:space="preserve">
+    <value>1. Read the reviewer's feedback below and update the membership configuration in the GMM UI accordingly.
+2. Resubmit the configuration for review. If you need to discuss the feedback before revising, reply to [GMMSupport@service.microsoft.com](mailto:GMMSupport@service.microsoft.com).</value>
+  </data>
+  <data name="SubmissionRejectedFallback.ReviewerFeedbackLabel" xml:space="preserve">
+    <value>REVIEWER'S FEEDBACK</value>
   </data>
   <data name="SubmissionRejectedFallback.CalloutTitle" xml:space="preserve">
-    <value>WHAT CAN YOU DO?</value>
+    <value>WHAT HAPPENS IF YOU DO NOTHING</value>
   </data>
   <data name="SubmissionRejectedFallback.CalloutBody" xml:space="preserve">
-    <value>**Rejection reason:** {0}
-
-Consider revising your request and resubmitting a new configuration change through the GMM portal. If you believe this decision is incorrect, reach out to your GMM reviewer for clarification.</value>
+    <value>The group's current sync configuration remains unchanged. If the rejected submission is not revised and resubmitted within {0} days, GMM will discard the pending submission. You'll receive a warning notification before that happens.</value>
   </data>
   <data name="SubmissionRejectedFallback.CtaLabel" xml:space="preserve">
-    <value>Go to GMM Portal</value>
+    <value>Revise and resubmit</value>
   </data>
   <data name="SubmissionRejectedFallback.FooterExplanation" xml:space="preserve">
     <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
