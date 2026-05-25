@@ -51,14 +51,25 @@ namespace Hosts.AzureMaintenance
                     {
                         await context.CallActivityAsync(nameof(RemoveInactiveJobsFunction), inactiveSyncJobs);
 
+                        // Pair each PurgedSyncJob with its original SyncJob (by TargetOfficeGroupId) so the email
+                        // sender can look up the original SyncJob.Id in SyncJobChanges (PurgedSyncJob.Id is a new
+                        // GUID and the SyncJobs row is already deleted at this point).
+                        var originalIdByGroupId = new Dictionary<System.Guid, System.Guid>();
+                        foreach (var original in inactiveSyncJobs)
+                        {
+                            originalIdByGroupId[original.TargetOfficeGroupId] = original.Id;
+                        }
+
                         var processingTasks = new List<Task>();
                         foreach (var backUpJob in backUpJobs)
                         {
+                            originalIdByGroupId.TryGetValue(backUpJob.TargetOfficeGroupId, out var originalId);
                             var processTask = context.CallActivityAsync(nameof(PurgingEmailSenderFunction), new PurgingEmailSenderRequest
                             {
                                 RunId = runId,
                                 SyncJob = backUpJob,
-                                NotificationType = Models.Notifications.NotificationMessageType.InactiveSyncJobNotification
+                                NotificationType = Models.Notifications.NotificationMessageType.InactiveSyncJobNotification,
+                                OriginalSyncJobId = originalId
                             });
                             processingTasks.Add(processTask);
                         }

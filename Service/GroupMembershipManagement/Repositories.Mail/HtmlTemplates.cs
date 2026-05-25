@@ -94,6 +94,8 @@ namespace Repositories.Mail
             "display:inline-block;background:#e8f4fd;border:1px solid #c7e0f4;color:#0078d4;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
         private const string OrangePillBadgeStyle =
             "display:inline-block;background:#FFE8D6;border:1px solid #F4C9A6;color:#C75300;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
+        private const string RedPillBadgeStyle =
+            "display:inline-block;background:#FDE7E9;border:1px solid #F1B0B7;color:#A4262C;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:0.5px;";
         private const string OrangeCalloutTableStyle =
             "border-left:5px solid #603900;background:#fff4ce;border-radius:0 4px 4px 0;";
         private const string GrayCalloutTableStyle =
@@ -200,6 +202,25 @@ namespace Repositories.Mail
           </td>
         </tr>";
 
+        // Final Notice - dark red header indicating GMM affiliation has been removed.
+        // The white stop / power-off glyph is rendered as a Unicode codepoint so the email
+        // does not depend on an external image asset (consistent with the warning header).
+        private const string FinalNoticeHeaderHtml = @"
+        <!-- Header bar - Dark red (Final notice / affiliation removed) -->
+        <tr>
+          <td bgcolor=""#A4262C"" style=""background:#A4262C;padding:14px 24px;"">
+            <table cellpadding=""0"" cellspacing=""0"" role=""presentation""><tr>
+              <td style=""padding-right:12px;vertical-align:middle;"">
+                <span style=""display:inline-block;width:36px;height:36px;line-height:36px;text-align:center;background:#ffffff33;color:#ffffff;border:1px solid #ffffff66;border-radius:50%;font-size:20px;font-weight:700;"">&#x23FB;</span>
+              </td>
+              <td style=""vertical-align:middle;"">
+                <span style=""color:#ffffff;font-size:16px;font-weight:600;"">{1}</span><br />
+                <span style=""color:#ffffffd9;font-size:13px;"">Group Membership Management</span>
+              </td>
+            </tr></table>
+          </td>
+        </tr>";
+
         // ── Public template properties ─────────────────────────────────────────────
 
         /// <summary>Body-only fragment. Tokens: {0}=badge, {1}=headerText (only rendered by SyncDisabled header),
@@ -227,6 +248,13 @@ namespace Repositories.Mail
         public static string JobPurgingWarningTemplate =>
             BuildEmailBodyTemplate(JobPurgingWarningHeaderHtml, OrangePillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor);
 
+        /// <summary>Body-only fragment. Same tokens as SyncStartedTemplate. Token {1}=headerText is rendered
+        /// in the dark red header bar (e.g. "Final notice — GMM's affiliation with this group is removed").
+        /// Final Notice does NOT render the gray "what happens if you do nothing" callout - the action
+        /// checklist already explains next steps - so the {5}/{6} callout slots are omitted.</summary>
+        public static string FinalNoticeTemplate =>
+            BuildEmailBodyTemplate(FinalNoticeHeaderHtml, RedPillBadgeStyle, GrayCalloutTableStyle, GrayCalloutTitleStyle, GrayCalloutBgColor, GrayCalloutBorderColor, includeCallout: false);
+
         // ── Shared HTML body builder ───────────────────────────────────────────────
         private static string BuildEmailBodyTemplate(
             string headerHtml,
@@ -247,7 +275,8 @@ namespace Repositories.Mail
             string calloutTableStyle,
             string calloutTitleStyle,
             string calloutBgColor,
-            string calloutBorderColor) =>
+            string calloutBorderColor,
+            bool includeCallout = true) =>
             $@"<table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#f3f2f1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">
     <tr><td align=""center"" style=""padding:32px 16px;"">
 
@@ -291,7 +320,7 @@ namespace Repositories.Mail
             </div>
           </td>
         </tr>
-
+{(includeCallout ? $@"
         <!-- Callout Box: two-cell layout so Outlook keeps the colored left bar + fill -->
         <tr>
           <td style=""padding:0 24px 24px;"">
@@ -307,7 +336,7 @@ namespace Repositories.Mail
               </table>
             </div>
           </td>
-        </tr>
+        </tr>" : string.Empty)}
 
         <!-- CTA Button -->
         <tr>

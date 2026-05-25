@@ -1310,9 +1310,6 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   <data name="SyncStartedFallback.CtaLabel" xml:space="preserve">
     <value>View in GMM UI</value>
   </data>
-  <data name="SyncStartedFallback.FooterExplanation" xml:space="preserve">
-    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
-  </data>
   <data name="SyncCompletedFallback.Badge" xml:space="preserve">
     <value>AWARENESS</value>
   </data>
@@ -1329,9 +1326,6 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="SyncCompletedFallback.CtaLabel" xml:space="preserve">
     <value>View in GMM UI</value>
-  </data>
-  <data name="SyncCompletedFallback.FooterExplanation" xml:space="preserve">
-    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
   </data>
   <data name="SyncDisabledFallback.Badge" xml:space="preserve">
     <value>ACTION REQUIRED</value>
@@ -1410,9 +1404,6 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SyncDisabledFallback.CtaLabel" xml:space="preserve">
     <value>View in GMM UI</value>
   </data>
-  <data name="SyncDisabledFallback.FooterExplanation" xml:space="preserve">
-    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
-  </data>
   <data name="FallbackGroupType.M365Group" xml:space="preserve">
     <value>M365 Group</value>
   </data>
@@ -1460,6 +1451,9 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="FallbackDetailsRow.LastSync" xml:space="preserve">
     <value>LAST SYNC</value>
+  </data>
+  <data name="FallbackDetailsRow.AffiliationRemoved" xml:space="preserve">
+    <value>AFFILIATION REMOVED</value>
   </data>
   <data name="FallbackDetailsRow.SubmittedBy" xml:space="preserve">
     <value>SUBMITTED BY</value>
@@ -1523,9 +1517,6 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SubmissionRejectedFallback.CtaLabel" xml:space="preserve">
     <value>Revise and resubmit</value>
   </data>
-  <data name="SubmissionRejectedFallback.FooterExplanation" xml:space="preserve">
-    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
-  </data>
   <data name="FallbackDetailsRow.Status" xml:space="preserve">
     <value>STATUS</value>
   </data>
@@ -1537,6 +1528,16 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="FallbackUnknownGroupName" xml:space="preserve">
     <value>your group</value>
+  </data>
+  <!-- Shared footer/recipient-note used by every fallback email template. Single source of truth.
+       Token: {0} = group display name. The reference HTML uses identical wording across all variants. -->
+  <data name="Fallback.FooterExplanation" xml:space="preserve">
+    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for awareness and to act when needed.</value>
+  </data>
+  <!-- Shared "Last sync" placeholder used by every fallback template when a job has never
+       successfully synced (LastSuccessfulRunTime is the SQL sentinel ~ SqlDateTime.MinValue). -->
+  <data name="Fallback.LastSyncNeverNewOnboarding" xml:space="preserve">
+    <value>Never &#8212; new onboarding attempt</value>
   </data>
   <data name="JobPurgingWarningFallback.Badge" xml:space="preserve">
     <value>WARNING</value>
@@ -1555,9 +1556,6 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="JobPurgingWarningFallback.CtaLabel" xml:space="preserve">
     <value>View in GMM UI</value>
-  </data>
-  <data name="JobPurgingWarningFallback.FooterExplanation" xml:space="preserve">
-    <value>**Why am I getting this?** You're listed as an owner of **{0}**. Owners receive GMM notifications for critical events that require attention.</value>
   </data>
   <!-- JobPurgingWarning shared lede. Tokens: {0}=Status, {1}=InactiveSince, {6}=WarningDays, {7}=PriorNotificationTitle. -->
   <data name="JobPurgingWarningFallback.Description.PreviousNotification" xml:space="preserve">
@@ -1581,5 +1579,30 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="JobPurgingWarningFallback.ActionChecklist.Body.Generic" xml:space="preserve">
     <value>1. Review the previous notification for this group in your inbox to identify what action GMM needs from you.
 2. Take the action described there, or reply to [GMMSupport@service.microsoft.com](mailto:GMMSupport@service.microsoft.com) if you need help.</value>
+  </data>
+  <!-- ===================== Final Notice (affiliation removed) ===================== -->
+  <data name="FinalNoticeFallback.Badge" xml:space="preserve">
+    <value>FINAL NOTICE</value>
+  </data>
+  <data name="FinalNoticeFallback.HeaderTitle" xml:space="preserve">
+    <value>Final notice &#8212; GMM&#8217;s affiliation with this group is removed</value>
+  </data>
+  <data name="FinalNoticeFallback.Description.Generic" xml:space="preserve">
+    <value>This group remained paused for **{0} days** because the previous notification was not addressed. As a result, GMM has removed its affiliation with this group.</value>
+  </data>
+  <data name="FinalNoticeFallback.Description.SubmissionRejected" xml:space="preserve">
+    <value>This group&#8217;s membership configuration was previously rejected, and that notification was not addressed within **{0} days**. As a result, GMM has removed its affiliation with this group.</value>
+  </data>
+  <data name="FinalNoticeFallback.ActionChecklist.Title" xml:space="preserve">
+    <value>WHAT YOU CAN DO</value>
+  </data>
+  <data name="FinalNoticeFallback.ActionChecklist.Body.Generic" xml:space="preserve">
+    <value>Existing members of this group remain in place. If you&#8217;d like GMM to manage this group again, you can re-onboard it through the GMM UI at any time.</value>
+  </data>
+  <data name="FinalNoticeFallback.ActionChecklist.Body.SubmissionRejected" xml:space="preserve">
+    <value>Existing members of this group remain in place. If you&#8217;d like GMM to manage this group, please start with a new onboarding.</value>
+  </data>
+  <data name="FinalNoticeFallback.CtaLabel" xml:space="preserve">
+    <value>Start a new onboarding</value>
   </data>
 </root>

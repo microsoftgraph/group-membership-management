@@ -31,7 +31,7 @@ namespace Hosts.AzureMaintenance
                 {
                     _logger.FunctionStarted(nameof(PurgingEmailSenderFunction));
                     
-                    await _azureMaintenanceService.SendPurgingEmailAsync(request.SyncJob, request.NotificationType);
+                    await _azureMaintenanceService.SendPurgingEmailAsync(request.SyncJob, request.NotificationType, request.OriginalSyncJobId);
                     
                     _logger.FunctionCompleted(nameof(PurgingEmailSenderFunction));
                 }

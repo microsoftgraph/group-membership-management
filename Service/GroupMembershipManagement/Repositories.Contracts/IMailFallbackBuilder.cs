@@ -22,5 +22,8 @@ namespace Repositories.Contracts
 
         Task<string> BuildJobPurgingWarningFallbackAsync(
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate);
+
+        Task<string> BuildFinalNoticeFallbackAsync(
+            EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate);
     }
 }

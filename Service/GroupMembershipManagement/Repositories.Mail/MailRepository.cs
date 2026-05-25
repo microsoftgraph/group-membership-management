@@ -252,6 +252,8 @@ namespace Repositories.Mail
                     styledFallback = await _mailFallbackBuilder.BuildSyncCompletedFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.JobPurgingWarningEmailBody, StringComparison.OrdinalIgnoreCase))
                     styledFallback = await _mailFallbackBuilder.BuildJobPurgingWarningFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
+                else if (string.Equals(emailMessage?.Content, NotificationConstants.SyncPurgedForInactivityEmailBody, StringComparison.OrdinalIgnoreCase))
+                    styledFallback = await _mailFallbackBuilder.BuildFinalNoticeFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (IsSyncDisabledNotification(emailMessage?.Content))
                     styledFallback = await _mailFallbackBuilder.BuildSyncDisabledFallbackAsync(emailMessage, fallbackDestinationGroupName, groupId, jobUrl, sentDate);
                 else if (string.Equals(emailMessage?.Content, NotificationConstants.SubmissionRejectedEmailBody, StringComparison.OrdinalIgnoreCase))

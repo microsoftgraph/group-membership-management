@@ -98,14 +98,54 @@ namespace Services
             return await _graphGroupRepository.GetGroupNameAsync(groupId);
         }
 
-        public async Task SendPurgingEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType)
+        public async Task SendPurgingEmailAsync(PurgedSyncJob job, NotificationMessageType notificationType, Guid originalSyncJobId = default)
         {
             var groupName = await GetGroupNameAsync(job.TargetOfficeGroupId);
+
+            // [4]/[5] ISO UTC timestamps power the styled Final Notice fallback. The legacy
+            // adaptive card keeps reading [2] (the deletion date string).
+            var affiliationRemovedUtcIso = DateTime.UtcNow.ToString(
+                "o", System.Globalization.CultureInfo.InvariantCulture);
+            var lastSuccessfulRunIso = job.LastSuccessfulRunTime > _minRealDate
+                ? job.LastSuccessfulRunTime.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+                : string.Empty;
+
+            // [6] Rejection timestamp for the SubmissionRejected variant. Look up the latest
+            // SubmissionRejected change for the ORIGINAL SyncJob.Id (the SyncJobs row is already
+            // deleted at this point, but SyncJobChanges rows survive — there is no FK/cascade).
+            string rejectedOnUtcIso = string.Empty;
+            if (originalSyncJobId != Guid.Empty &&
+                string.Equals(job.Status, "SubmissionRejected", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var lastRejection = await _syncJobChangeRepository
+                        .GetLatestSubmissionRejectedChangeBySyncJobIdAsync(originalSyncJobId);
+                    if (lastRejection != null && lastRejection.ChangeTime > _minRealDate)
+                    {
+                        rejectedOnUtcIso = DateTime.SpecifyKind(lastRejection.ChangeTime, DateTimeKind.Utc)
+                            .ToString("o", System.Globalization.CultureInfo.InvariantCulture);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Failed to load latest SubmissionRejected change for original SyncJob {SyncJobId} during Final Notice email.",
+                        originalSyncJobId);
+                }
+            }
+
             var additionalContentParams = new[]
             {
                 job.TargetOfficeGroupId.ToString(),
                 groupName,
-                DateTime.UtcNow.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion).ToString()
+                DateTime.UtcNow.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforeDeletion).ToString(),
+                // [3] Prior status drives the Generic vs SubmissionRejected variant in the fallback.
+                job.Status ?? string.Empty,
+                affiliationRemovedUtcIso,
+                lastSuccessfulRunIso,
+                // [6] Rejected-on ISO UTC (SubmissionRejected variant only; empty otherwise).
+                rejectedOnUtcIso
             };
 
             var messageContent = new Dictionary<string, Object>
@@ -130,16 +170,16 @@ namespace Services
             }
             var purgeDate = inactivitySince.AddDays(_handleInactiveJobsConfig.NumberOfDaysBeforePurging);
 
-            string lastSuccessfulRunTimeIso = string.Empty;
+            // Always emit LastSuccessfulRunTimeIso so the fallback can render the Last Sync row
+            // (PST timestamp when set, otherwise "Never - new onboarding attempt"). RejectionReason
+            // stays SubmissionRejected-only because it's only meaningful for that variant.
+            string lastSuccessfulRunTimeIso = job.LastSuccessfulRunTime > _minRealDate
+                ? job.LastSuccessfulRunTime.ToString("o", System.Globalization.CultureInfo.InvariantCulture)
+                : string.Empty;
+
             string rejectionReason = string.Empty;
             if (string.Equals(job.Status, "SubmissionRejected", StringComparison.OrdinalIgnoreCase))
             {
-                if (job.LastSuccessfulRunTime > _minRealDate)
-                {
-                    lastSuccessfulRunTimeIso = job.LastSuccessfulRunTime.ToString(
-                        "o", System.Globalization.CultureInfo.InvariantCulture);
-                }
-
                 try
                 {
                     var lastRejection = await _syncJobChangeRepository
@@ -165,7 +205,9 @@ namespace Services
                 // [6]/[7] ISO UTC timestamps for the fallback HTML email; adaptive card keeps using [1]/[3].
                 inactivitySince.ToString("o", System.Globalization.CultureInfo.InvariantCulture),
                 purgeDate.ToString("o", System.Globalization.CultureInfo.InvariantCulture),
-                // [8]/[9] SubmissionRejected-only fallback enrichments; empty for all other statuses.
+                // [8] LastSuccessfulRunTimeUtc (ISO 8601, empty when never run); always emitted so
+                //     the fallback can render the Last Sync row for every status. [9] is rejection
+                //     reason (SubmissionRejected only; empty otherwise).
                 lastSuccessfulRunTimeIso,
                 rejectionReason,
                 // [10] GMM owner app name for the NotOwnerOfDestinationGroup action-checklist token.
