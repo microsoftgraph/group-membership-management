@@ -40,14 +40,16 @@ namespace SqlDataChecker
             }
             catch (Exception ex)
             {
-                await _loggingRepository.LogMessageAsync(new LogMessage { Message = $"{nameof(ThresholdReaderFunction)} failed to read column thresholds: {ex.Message}. Falling back to default thresholds." }, VerbosityLevel.INFO);
+                await _loggingRepository.LogMessageAsync(
+                    new LogMessage { Message = $"{nameof(ThresholdReaderFunction)} failed to read column thresholds: {ex.Message}. Failing pipeline to avoid running with incomplete configuration." },
+                    VerbosityLevel.ERROR);
+
                 _telemetryClient.TrackException(ex, new Dictionary<string, string>
                 {
-                    { "Function", nameof(ThresholdReaderFunction) },
-                    { "Fallback", "EmptyDictionary" }
+                    { "Function", nameof(ThresholdReaderFunction) }
                 });
 
-                return new Dictionary<string, double>();
+                throw;
             }
         }
     }
