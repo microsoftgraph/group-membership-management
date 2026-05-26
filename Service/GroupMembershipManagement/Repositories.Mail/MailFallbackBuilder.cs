@@ -105,6 +105,7 @@ namespace Repositories.Mail
         // [3]=PriorStatus, [4]=AffiliationRemovedUtc (ISO 8601),
         // [5]=LastSuccessfulRunTimeUtc (ISO 8601, optional),
         // [6]=RejectedOnUtc (ISO 8601, SubmissionRejected variant only).
+        private const int FinalNoticeGroupNameIndex = 1;
         private const int FinalNoticePriorStatusIndex = 3;
         private const int FinalNoticeAffiliationRemovedUtcIndex = 4;
         private const int FinalNoticeLastSuccessfulRunUtcIndex = 5;
@@ -218,12 +219,17 @@ namespace Repositories.Mail
                 $"SyncDisabledFallback.Description.{disableReason}",
                 string.Empty, groupId ?? string.Empty, gmmOwnerName, nestedGroupsCount, addedCount, removedCount);
 
+            var displayGroupName = !string.IsNullOrWhiteSpace(destinationGroupName)
+                ? destinationGroupName
+                : _localizationRepository.TranslateSetting("FallbackUnknownGroupName");
+            var syncDisabledGroupName = disableReason == "NoDestinationGroup" && !string.IsNullOrWhiteSpace(destinationGroupName)
+                ? _localizationRepository.TranslateSetting("SyncDisabledFallback.PreviouslyNamedPrefix") + destinationGroupName
+                : displayGroupName;
+
             return FormatTemplate(
                 HtmlTemplates.SyncDisabledTemplate,
                 prefix: "SyncDisabledFallback",
-                groupName: disableReason == "NoDestinationGroup" && !string.IsNullOrWhiteSpace(destinationGroupName)
-                    ? _localizationRepository.TranslateSetting("SyncDisabledFallback.PreviouslyNamedPrefix") + destinationGroupName
-                    : destinationGroupName,
+                groupName: syncDisabledGroupName,
                 headerText: _localizationRepository.TranslateSetting($"SyncDisabledFallback.HeaderReason.{disableReason}"),
                 description: description,
                 // Compact-detail reasons share the PausedShared callout body to avoid duplication.
@@ -434,9 +440,22 @@ namespace Repositories.Mail
 
             var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
 
-            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
-                string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+            if (statusKey == "DestinationGroupNotFound")
+            {
+                var cachedEmail = await TryGetCachedDestinationEmailAsync(emailMessage);
+                if (!string.IsNullOrWhiteSpace(cachedEmail))
+                {
+                    rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                        _localizationRepository.TranslateSetting("FallbackDetailsRow.LastKnownEmail"),
+                        encode(cachedEmail), ""));
+                }
+            }
+            else
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
+                    string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+            }
 
             if (!string.IsNullOrEmpty(groupType))
             {
@@ -551,9 +570,18 @@ namespace Repositories.Mail
             var variantKey = ResolveFinalNoticeVariantKey(priorStatus);
             var actionByDays = ActionByDays.ToString(CultureInfo.InvariantCulture);
 
-            var groupName = string.IsNullOrWhiteSpace(destinationGroupName)
-                ? _localizationRepository.TranslateSetting("FallbackUnknownGroupName")
-                : destinationGroupName;
+            var groupName = !string.IsNullOrWhiteSpace(destinationGroupName)
+                ? destinationGroupName
+                : GetParam(emailMessage, FinalNoticeGroupNameIndex, defaultValue: string.Empty);
+            var hasRealGroupName = !string.IsNullOrWhiteSpace(groupName);
+            if (!hasRealGroupName)
+            {
+                groupName = _localizationRepository.TranslateSetting("FallbackUnknownGroupName");
+            }
+
+            var displayGroupName = (statusKey == "DestinationGroupNotFound" && hasRealGroupName)
+                ? _localizationRepository.TranslateSetting("SyncDisabledFallback.PreviouslyNamedPrefix") + groupName
+                : groupName;
 
             // Description routing mirrors the JobPurgingWarning lede choices:
             //   SubmissionRejected  -> dedicated variant text (existing).
@@ -582,12 +610,12 @@ namespace Repositories.Mail
             var description = _localizationRepository.TranslateSetting(
                 descriptionKey, actionByDays, priorNotificationTitle ?? string.Empty);
 
-            var rows = await BuildFinalNoticeRowsAsync(groupId, variantKey, emailMessage);
+            var rows = await BuildFinalNoticeRowsAsync(groupId, variantKey, statusKey, emailMessage);
 
             return FormatTemplate(
                 HtmlTemplates.FinalNoticeTemplate,
                 prefix: "FinalNoticeFallback",
-                groupName: groupName,
+                groupName: displayGroupName,
                 headerText: _localizationRepository.TranslateSetting("FinalNoticeFallback.HeaderTitle"),
                 description: description,
                 // The reference design has no gray "what happens if you do nothing" callout for the
@@ -621,16 +649,29 @@ namespace Repositories.Mail
         // 3. AFFILIATION REMOVED (always when producer supplied a parseable timestamp)
         // 4. LAST SYNC (formatted Pacific timestamp; renders "Never - new onboarding attempt"
         //    for the SubmissionRejected variant when no successful run is on record).
-        private async Task<StringBuilder> BuildFinalNoticeRowsAsync(string groupId, string variantKey, EmailMessage emailMessage)
+        private async Task<StringBuilder> BuildFinalNoticeRowsAsync(string groupId, string variantKey, string statusKey, EmailMessage emailMessage)
         {
             Func<string, string> encode = System.Net.WebUtility.HtmlEncode;
             var rows = new StringBuilder();
 
             var (groupAlias, groupType) = await FetchGroupMetaAsync(groupId);
 
-            rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
-                _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
-                string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+            if (statusKey == "DestinationGroupNotFound")
+            {
+                var cachedEmail = await TryGetCachedDestinationEmailAsync(emailMessage);
+                if (!string.IsNullOrWhiteSpace(cachedEmail))
+                {
+                    rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                        _localizationRepository.TranslateSetting("FallbackDetailsRow.LastKnownEmail"),
+                        encode(cachedEmail), ""));
+                }
+            }
+            else
+            {
+                rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                    _localizationRepository.TranslateSetting("FallbackDetailsRow.GroupAlias"),
+                    string.IsNullOrWhiteSpace(groupAlias) ? "N/A" : encode(groupAlias), ""));
+            }
 
             if (!string.IsNullOrEmpty(groupType))
             {
@@ -684,9 +725,9 @@ namespace Repositories.Mail
         // templates with an empty deadline span so the layout stays consistent.
         private string BuildFinalNoticeActionChecklistHtml(string variantKey)
         {
-            var body = _localizationRepository.TranslateSetting(
-                $"FinalNoticeFallback.ActionChecklist.Body.{variantKey}");
-            if (string.IsNullOrWhiteSpace(body))
+            var bodyKey = $"FinalNoticeFallback.ActionChecklist.Body.{variantKey}";
+            var body = _localizationRepository.TranslateSetting(bodyKey);
+            if (string.IsNullOrWhiteSpace(body) || body == bodyKey)
                 return string.Empty;
 
             var title = _localizationRepository.TranslateSetting("FinalNoticeFallback.ActionChecklist.Title");

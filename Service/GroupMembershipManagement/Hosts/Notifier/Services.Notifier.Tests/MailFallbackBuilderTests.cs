@@ -690,7 +690,7 @@ namespace Services.Notifier.Tests
 
             Assert.IsFalse(html.Contains("****"), "Empty bold pair (****) should not appear in output");
             Assert.IsFalse(html.Contains("** **"), "Empty bold pair (** **) should not appear in output");
-            StringAssert.Contains(html, "your group");
+            StringAssert.Contains(html, "N/A");
         }
 
         [TestMethod]

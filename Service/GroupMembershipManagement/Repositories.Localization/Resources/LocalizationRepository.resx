@@ -1497,7 +1497,7 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
     <value>Revise and resubmit</value>
   </data>
   <data name="FallbackUnknownGroupName" xml:space="preserve">
-    <value>your group</value>
+    <value>N/A</value>
   </data>
   <!-- Shared footer/recipient-note used by every fallback email template. Single source of truth.
        Token: {0} = group display name. The reference HTML uses identical wording across all variants. -->
