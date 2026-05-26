@@ -186,6 +186,7 @@ export const strings: IStrings = {
         customLabelInputPlaceHolder: "Entre un nombre personalizado",
         valuesColumn: "Valores",
         valuesDropdownSpinnerLabel: "Cargando valores",
+        valuesDropdownNoValuesLabel: "No se encontraron valores",
         valuesDropdownPlaceholder: "Ver valores",
         valuesDropdownTitle: "Seleccione un valor",
         descriptionColumn: "Descripción",

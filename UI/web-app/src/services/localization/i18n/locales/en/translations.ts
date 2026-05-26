@@ -185,6 +185,7 @@ export const strings: IStrings = {
         customLabelInputPlaceHolder: "Enter a custom label",
         valuesColumn: "Values",
         valuesDropdownSpinnerLabel: "Loading values...",
+        valuesDropdownNoValuesLabel: "No values found",
         valuesDropdownPlaceholder: "View values",
         valuesDropdownTitle: "Select a value",
         descriptionColumn: "Description",

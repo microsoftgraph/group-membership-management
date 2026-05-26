@@ -585,17 +585,29 @@ const AttributeValuesCell = React.memo((props: AttributeValuesCellProps) => {
     });
   }
 
+  const isLoading = values === undefined || values === null;
+
   const onRenderList: IRenderFunction<ISelectableDroppableTextProps<IDropdown, HTMLDivElement>> = (props, defaultRender) => {
 
-    const isLoading = props?.options?.length === 0;
+    if (isLoading) {
+      return (
+        <div>
+          <Spinner styles={{ root: classNames.valuesDropdownSpinner }} label={strings.CustomSourceSettings.labels.valuesDropdownSpinnerLabel} />
+        </div>
+      );
+    }
+
+    if (props?.options?.length === 0) {
+      return (
+        <div style={{ padding: '8px 12px' }}>
+          {strings.CustomSourceSettings.labels.valuesDropdownNoValuesLabel}
+        </div>
+      );
+    }
 
     return (
-      <div >
-        {isLoading ? (
-                <Spinner styles={{ root: classNames.valuesDropdownSpinner }} label={strings.CustomSourceSettings.labels.valuesDropdownSpinnerLabel} />
-            ) : (
-                defaultRender!(props)
-            )}
+      <div>
+        {defaultRender!(props)}
       </div>
     );
 };

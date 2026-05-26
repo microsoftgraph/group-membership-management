@@ -182,6 +182,7 @@ export type IStrings = {
         customLabelInputPlaceHolder: string;
         valuesColumn: string;
         valuesDropdownSpinnerLabel: string;
+        valuesDropdownNoValuesLabel: string;
         valuesDropdownPlaceholder: string;
         valuesDropdownTitle: string;
         descriptionColumn: string;
