@@ -305,6 +305,7 @@ namespace Services.Tests
             _getChannelHandler = new GetChannelHandler(_loggingRepository.Object,
                                                             _syncJobRepository.Object,
                                                             _channelRepository.Object,
+                                                            _teamsChannelRepository.Object,
                                                             _graphGroupRepository.Object,
                                                             _httpContextAccessor.Object);
 
