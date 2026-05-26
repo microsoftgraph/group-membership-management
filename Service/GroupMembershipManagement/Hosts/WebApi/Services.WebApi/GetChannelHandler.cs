@@ -67,9 +67,34 @@ namespace Services
             }
 
             var type = job.MembershipType;
-            var targetGroupName = await _graphGroupRepository.GetGroupNameAsync(request.GroupId);
-            var targetChannelName = await _teamsChannelRepository.GetTeamsChannelNameAsync(
-                new Models.Entities.AzureADTeamsChannel { ChannelId = request.ChannelId });
+
+            string? targetGroupName = null;
+            try
+            {
+                targetGroupName = await _graphGroupRepository.GetGroupNameAsync(request.GroupId);
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Unable to retrieve group name for GroupId {request.GroupId}\n{ex.GetBaseException()}"
+                });
+            }
+
+            string? targetChannelName = null;
+            try
+            {
+                targetChannelName = await _teamsChannelRepository.GetTeamsChannelNameAsync(
+                    new Models.Entities.AzureADTeamsChannel { ObjectId = request.GroupId, ChannelId = request.ChannelId });
+            }
+            catch (Exception ex)
+            {
+                await _loggingRepository.LogMessageAsync(new LogMessage
+                {
+                    Message = $"Unable to retrieve channel name for ChannelId {request.ChannelId}\n{ex.GetBaseException()}"
+                });
+            }
+
             var currentTime = DateTime.UtcNow;
             var jobStartsInFuture = currentTime < job.StartDate;
             var jobScheduledForFuture = currentTime < job.ScheduledDate;
