@@ -61,16 +61,16 @@ namespace Services
 
         private async Task<(string latest, string previous)> GetADFRunIdsAsync()
         {
-            var pipelineRunIds = await _dataFactoryRepository.GetTwoRecentSucceededRunIdsAsync();
+            var pipelineRunIds = await _dataFactoryRepository.GetCurrentRunAndPreviousSucceededRunIdsAsync();
 
-            if (string.IsNullOrWhiteSpace(pipelineRunIds.latest) || string.IsNullOrWhiteSpace(pipelineRunIds.previous))
+            if (string.IsNullOrWhiteSpace(pipelineRunIds.current) || string.IsNullOrWhiteSpace(pipelineRunIds.previousSucceeded))
             {
                 var message = $"Missing SqlDataChecker pipeline run(s)";
                 await _loggingRepository.LogMessageAsync(new LogMessage { Message = message });
                 throw new ArgumentException(message);
             }
 
-            return pipelineRunIds;
+            return (pipelineRunIds.current, pipelineRunIds.previousSucceeded);
         }
 
         public int GetRows(string tableName)

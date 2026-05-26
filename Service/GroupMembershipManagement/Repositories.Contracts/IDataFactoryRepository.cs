@@ -7,6 +7,6 @@ namespace Repositories.Contracts
     public interface IDataFactoryRepository
     {
         Task<string> GetMostRecentSucceededRunIdAsync();
-        Task<(string latest, string previous)> GetTwoRecentSucceededRunIdsAsync();
+        Task<(string current, string previousSucceeded)> GetCurrentRunAndPreviousSucceededRunIdsAsync();
     }
 }

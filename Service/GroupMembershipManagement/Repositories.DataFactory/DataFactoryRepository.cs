@@ -38,17 +38,25 @@ namespace Repositories.DataFactory
 
         public async Task<string> GetMostRecentSucceededRunIdAsync()
         {
-            var pipelineResponse = await GetDataFactoryPipelineRunsAsync();
-            return pipelineResponse.Count > 0 ? pipelineResponse[0].RunId?.ToString() : null;
+            var run = await GetMostRecentPipelineRunByStatusAsync("Succeeded");
+            return run?.RunId?.ToString();
         }
 
-        public async Task<(string latest, string previous)> GetTwoRecentSucceededRunIdsAsync()
+        public async Task<(string current, string previousSucceeded)> GetCurrentRunAndPreviousSucceededRunIdsAsync()
         {
-            var pipelineResponse = await GetDataFactoryPipelineRunsAsync();
-            return (pipelineResponse?.Count >= 2) ? (pipelineResponse[0]?.RunId?.ToString(), pipelineResponse[1]?.RunId?.ToString()) : (null, null);
+            var currentRun = await GetMostRecentPipelineRunByStatusAsync("InProgress");
+            var previousSucceededRun = await GetMostRecentPipelineRunByStatusAsync("Succeeded");
+
+            return (currentRun?.RunId?.ToString(), previousSucceededRun?.RunId?.ToString());
         }
 
-        private async Task<List<DataFactoryPipelineRunInfo>> GetDataFactoryPipelineRunsAsync()
+        private async Task<DataFactoryPipelineRunInfo> GetMostRecentPipelineRunByStatusAsync(string status)
+        {
+            var pipelineRuns = await GetDataFactoryPipelineRunsAsync(status);
+            return pipelineRuns.FirstOrDefault();
+        }
+
+        private async Task<List<DataFactoryPipelineRunInfo>> GetDataFactoryPipelineRunsAsync(string status = "Succeeded")
         {
             var dataFactory = _client.GetDataFactoryResource(_dataFactoryResourceId);
             RunFilterContent content = new RunFilterContent(DateTime.UtcNow.AddMonths(-1), DateTime.UtcNow)
@@ -56,7 +64,7 @@ namespace Repositories.DataFactory
                 Filters =
                 {
                     new RunQueryFilter(RunQueryFilterOperand.PipelineName, RunQueryFilterOperator.EqualsValue, new string[] { _pipeline }),
-                    new RunQueryFilter(RunQueryFilterOperand.Status, RunQueryFilterOperator.EqualsValue, new string[] { "Succeeded" })
+                    new RunQueryFilter(RunQueryFilterOperand.Status, RunQueryFilterOperator.EqualsValue, new string[] { status })
                 }
             };
 
@@ -66,7 +74,7 @@ namespace Repositories.DataFactory
                 pipelineRuns.Add(item);
             }
 
-            return pipelineRuns.OrderByDescending(x => x.RunEndOn).ToList();
+            return pipelineRuns.OrderByDescending(x => x.RunStartOn).ToList();
         }
     }
 }
