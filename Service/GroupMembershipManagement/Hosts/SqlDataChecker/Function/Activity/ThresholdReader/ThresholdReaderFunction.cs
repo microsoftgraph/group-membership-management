@@ -42,7 +42,7 @@ namespace SqlDataChecker
             {
                 await _loggingRepository.LogMessageAsync(
                     new LogMessage { Message = $"{nameof(ThresholdReaderFunction)} failed to read column thresholds: {ex.Message}. Failing pipeline to avoid running with incomplete configuration." },
-                    VerbosityLevel.ERROR);
+                    VerbosityLevel.DEBUG);
 
                 _telemetryClient.TrackException(ex, new Dictionary<string, string>
                 {
