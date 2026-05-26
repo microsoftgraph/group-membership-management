@@ -20,6 +20,7 @@ namespace Services.Notifier.Tests
     public class MailFallbackBuilderTests
     {
         private Mock<IGraphGroupRepository> _graphGroupRepository;
+        private Mock<IDatabaseDestinationAttributesRepository> _destinationAttributesRepository;
         private ILocalizationRepository _localizationRepository;
         private MailFallbackBuilder _builder;
 
@@ -49,7 +50,10 @@ namespace Services.Notifier.Tests
             _builder = new MailFallbackBuilder(
                 _graphGroupRepository.Object,
                 _localizationRepository,
-                NullLogger<MailFallbackBuilder>.Instance);
+                NullLogger<MailFallbackBuilder>.Instance,
+                handleInactiveJobsConfig: null,
+                nestedGroupsDisplayLimit: 5,
+                destinationAttributesRepository: (_destinationAttributesRepository = new Mock<IDatabaseDestinationAttributesRepository>()).Object);
         }
 
         // ── SyncStarted ──────────────────────────────────────────────────────────
@@ -232,13 +236,22 @@ namespace Services.Notifier.Tests
         [DataRow("SyncDisabledNoValidGroupIds")]
         [DataRow("GuestUserFailureEmailBody")]
         [DataRow("NoDataEmailContent")]
-        [DataRow("SyncJobDisabledEmailBody")]
-        [DataRow("UnknownContentType")]
         public async Task BuildSyncDisabledFallbackAsync_ReturnsNonEmptyHtml_ForAllDisableReasons(string contentType)
         {
             var email = MakeSyncDisabledEmail(contentType);
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             Assert.IsFalse(string.IsNullOrWhiteSpace(html), $"Expected non-empty HTML for contentType={contentType}");
+        }
+
+        [TestMethod]
+        [DataRow("SyncThresholdBothEmailBody")]   // Threshold -> actionable adaptive card only
+        [DataRow("SyncJobDisabledEmailBody")]     // Generic
+        [DataRow("UnknownContentType")]           // Generic
+        public async Task BuildSyncDisabledFallbackAsync_ReturnsNull_ForThresholdAndGeneric(string contentType)
+        {
+            var email = MakeSyncDisabledEmail(contentType);
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsNull(html, $"Expected null fallback for contentType={contentType}");
         }
 
         [TestMethod]
@@ -249,6 +262,70 @@ namespace Services.Notifier.Tests
             var email = MakeSyncDisabledEmail("SyncDisabledNoSourceGroupEmailBody");
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             StringAssert.Contains(html, "testgroup@contoso.com");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_RendersLastKnownEmail_ForNoDestinationGroup_WhenCachedEmailExists()
+        {
+            // Destination group is deleted in Entra, so the styled fallback surfaces the cached
+            // email from the DestinationEmail table as a "LAST KNOWN EMAIL" row.
+            var syncJobId = Guid.NewGuid();
+            _destinationAttributesRepository
+                .Setup(r => r.GetDestinationEmail(syncJobId))
+                .ReturnsAsync("ppcore@microsoft.com");
+
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            email.SyncJobId = syncJobId;
+
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            StringAssert.Contains(html, "LAST KNOWN EMAIL");
+            StringAssert.Contains(html, "ppcore@microsoft.com");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_OmitsLastKnownEmailRow_WhenCachedEmailMissing()
+        {
+            _destinationAttributesRepository
+                .Setup(r => r.GetDestinationEmail(It.IsAny<Guid>()))
+                .ReturnsAsync((string)null);
+
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            email.SyncJobId = Guid.NewGuid();
+
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(html.Contains("LAST KNOWN EMAIL"),
+                "LAST KNOWN EMAIL row must be omitted when no cached email is available.");
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_DoesNotQueryCachedEmail_ForReasonsOtherThanNoDestinationGroup()
+        {
+            var email = MakeSyncDisabledEmail("SyncDisabledNoSourceGroupEmailBody");
+            email.SyncJobId = Guid.NewGuid();
+
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(html.Contains("LAST KNOWN EMAIL"),
+                "LAST KNOWN EMAIL is only emitted for NoDestinationGroup; other reasons should render GROUP EMAIL.");
+            _destinationAttributesRepository.Verify(r => r.GetDestinationEmail(It.IsAny<Guid>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task BuildSyncDisabledFallbackAsync_TolerantOfCachedEmailFailure_ForNoDestinationGroup()
+        {
+            _destinationAttributesRepository
+                .Setup(r => r.GetDestinationEmail(It.IsAny<Guid>()))
+                .ThrowsAsync(new Exception("SQL unavailable"));
+
+            var email = MakeSyncDisabledEmail("SyncDisabledNoGroupEmailBody");
+            email.SyncJobId = Guid.NewGuid();
+
+            var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            Assert.IsFalse(html.Contains("LAST KNOWN EMAIL"));
         }
 
         [TestMethod]
@@ -278,7 +355,7 @@ namespace Services.Notifier.Tests
                 .Setup(g => g.GetGroupEmailAsync(It.IsAny<Guid>()))
                 .ThrowsAsync(new Exception("Graph unavailable"));
 
-            var email = MakeSyncDisabledEmail("SyncJobDisabledEmailBody");
+            var email = MakeSyncDisabledEmail("SyncDisabledNoSourceGroupEmailBody");
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             Assert.IsFalse(string.IsNullOrWhiteSpace(html));
             Assert.IsFalse(html.Contains("testgroup@contoso.com"));
@@ -288,7 +365,7 @@ namespace Services.Notifier.Tests
         public async Task BuildSyncDisabledFallbackAsync_BlocksNonHttpCtaUrl()
         {
             const string javascriptUrl = "javascript:alert(1)";
-            var email = MakeSyncDisabledEmail("SyncJobDisabledEmailBody");
+            var email = MakeSyncDisabledEmail("SyncDisabledNoSourceGroupEmailBody");
             var html = await _builder.BuildSyncDisabledFallbackAsync(email, GroupName, GroupId, javascriptUrl, SentDate);
             Assert.IsFalse(html.Contains("href=\"javascript:"), "javascript: URL must not appear as an href");
         }
@@ -486,12 +563,9 @@ namespace Services.Notifier.Tests
         [DataRow("DestinationGroupNotFound")]
         [DataRow("SecurityGroupNotFound")]
         [DataRow("NotOwnerOfDestinationGroup")]
-        [DataRow("ThresholdExceeded")]
         [DataRow("SubmissionRejected")]
         [DataRow("GuestUsersCannotBeAddedToUnifiedGroup")]
         [DataRow("NestedGroupsFound")]
-        [DataRow("UnknownStatus")]
-        [DataRow("")]
         public async Task BuildJobPurgingWarningFallbackAsync_ReturnsNonEmptyHtml_ForAllStatuses(string status)
         {
             var email = MakeJobPurgingWarningEmail(status: status);
@@ -500,12 +574,24 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildJobPurgingWarningFallbackAsync_UsesGenericDescription_WhenStatusIsUnknown()
+        public async Task BuildJobPurgingWarningFallbackAsync_ReturnsNull_ForThresholdExceeded()
         {
-            var email = MakeJobPurgingWarningEmail(status: "BogusStatus");
+            // ThresholdExceeded keeps its existing actionable adaptive card; no styled HTML fallback.
+            var email = MakeJobPurgingWarningEmail(status: "ThresholdExceeded");
             var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            // Generic description includes the literal status token in its body.
-            StringAssert.Contains(html, "BogusStatus");
+            Assert.IsNull(html);
+        }
+
+        [TestMethod]
+        [DataRow("BogusStatus")]
+        [DataRow("UnknownStatus")]
+        [DataRow("")]
+        public async Task BuildJobPurgingWarningFallbackAsync_ReturnsNull_ForUnknownOrMissingStatus(string status)
+        {
+            // Generic (unparseable) status keeps the actionable adaptive card; no styled HTML fallback.
+            var email = MakeJobPurgingWarningEmail(status: status);
+            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsNull(html);
         }
 
         [TestMethod]
@@ -533,15 +619,6 @@ namespace Services.Notifier.Tests
         }
 
         [TestMethod]
-        public async Task BuildJobPurgingWarningFallbackAsync_HtmlEncodesStatus()
-        {
-            var email = MakeJobPurgingWarningEmail(status: "<img src=x onerror=alert(1)>");
-            var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
-            Assert.IsFalse(html.Contains("<img"), "Raw <img> tag must not appear in output");
-            StringAssert.Contains(html, "&lt;img");
-        }
-
-        [TestMethod]
         public async Task BuildJobPurgingWarningFallbackAsync_BlocksNonHttpCtaUrl()
         {
             const string javascriptUrl = "javascript:alert(1)";
@@ -553,7 +630,11 @@ namespace Services.Notifier.Tests
         [TestMethod]
         public async Task BuildJobPurgingWarningFallbackAsync_ToleratesNullAdditionalParams()
         {
-            var email = new EmailMessage { Content = "JobPurgingWarningEmailBody" };
+            var email = new EmailMessage
+            {
+                Content = "JobPurgingWarningEmailBody",
+                AdditionalContentParams = new[] { "CustomerPaused" }
+            };
             var html = await _builder.BuildJobPurgingWarningFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
             Assert.IsFalse(string.IsNullOrWhiteSpace(html));
         }
@@ -626,6 +707,70 @@ namespace Services.Notifier.Tests
             StringAssert.Contains(nestedHtml, "remove any nested groups");
         }
 
+        // ── FinalNotice ──────────────────────────────────────────────────────────
+
+        [TestMethod]
+        public async Task BuildFinalNoticeFallbackAsync_ReturnsNull_ForThresholdExceeded()
+        {
+            // ThresholdExceeded keeps its actionable adaptive card; no styled HTML fallback.
+            var email = MakeFinalNoticeEmail(priorStatus: "ThresholdExceeded");
+            var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsNull(html);
+        }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("BogusStatus")]
+        public async Task BuildFinalNoticeFallbackAsync_ReturnsNull_ForUnknownOrMissingStatus(string priorStatus)
+        {
+            // Unknown / empty statuses collapse to "Generic" and skip the styled fallback so the
+            // legacy adaptive-card + plain-text path is used instead.
+            var email = MakeFinalNoticeEmail(priorStatus: priorStatus);
+            var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+            Assert.IsNull(html);
+        }
+
+        [TestMethod]
+        public async Task BuildFinalNoticeFallbackAsync_UsesCustomerPausedDescription()
+        {
+            var email = MakeFinalNoticeEmail(priorStatus: "CustomerPaused");
+            var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            StringAssert.Contains(html, "remained customer paused for");
+            StringAssert.Contains(html, "GMM has removed its affiliation");
+        }
+
+        [TestMethod]
+        [DataRow("DestinationGroupNotFound",          "destination group not found")]
+        [DataRow("SecurityGroupNotFound",             "source group not found")]
+        [DataRow("NotOwnerOfDestinationGroup",        "GMM Is Not an Owner")]
+        [DataRow("MembershipDataNotFound",            "membership rules returned no users")]
+        [DataRow("GuestUsersCannotBeAddedToUnifiedGroup", "guest users not supported")]
+        [DataRow("NestedGroupsFound",                 "nested group in destination not supported")]
+        public async Task BuildFinalNoticeFallbackAsync_QuotesPriorNotificationTitle_ForKnownStatuses(
+            string priorStatus, string expectedReasonFragment)
+        {
+            var email = MakeFinalNoticeEmail(priorStatus: priorStatus);
+            var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html), $"Expected non-empty HTML for status={priorStatus}");
+            StringAssert.Contains(html, "Sync paused");
+            StringAssert.Contains(html, expectedReasonFragment);
+            StringAssert.Contains(html, "was not addressed");
+        }
+
+        [TestMethod]
+        public async Task BuildFinalNoticeFallbackAsync_KeepsSubmissionRejectedDescription()
+        {
+            var email = MakeFinalNoticeEmail(priorStatus: "SubmissionRejected");
+            var html = await _builder.BuildFinalNoticeFallbackAsync(email, GroupName, GroupId, JobUrl, SentDate);
+
+            Assert.IsFalse(string.IsNullOrWhiteSpace(html));
+            // SubmissionRejected variant retains its dedicated wording.
+            StringAssert.Contains(html, "membership configuration was previously rejected");
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────────
 
         private static EmailMessage MakeSyncStartedEmail(string requestor = "admin@contoso.com")
@@ -677,6 +822,21 @@ namespace Services.Notifier.Tests
                 Content = "JobPurgingWarningEmailBody",
                 // [0]=Status, [1]=InactivitySince, [2]=NumberOfDaysBeforePurging, [3]=ScheduledPurgeDate, [4]=GroupId, [5]=GroupName
                 AdditionalContentParams = new[] { status, inactiveSince, daysBeforePurging, scheduledPurgeDate, GroupId, GroupName }
+            };
+        }
+
+        private static EmailMessage MakeFinalNoticeEmail(string priorStatus = "SecurityGroupNotFound")
+        {
+            return new EmailMessage
+            {
+                Content = "SyncPurgedForInactivityEmailBody",
+                // [0]=GroupId, [1]=GroupName, [2]=LegacyDeletionDate, [3]=PriorStatus,
+                // [4]=AffiliationRemovedUtc, [5]=LastSuccessfulRunTimeUtc, [6]=RejectedOnUtc
+                AdditionalContentParams = new[]
+                {
+                    GroupId, GroupName, "May 07, 2026", priorStatus,
+                    "2026-05-07T12:34:56Z", "2026-04-01T00:00:00Z", "2026-04-15T00:00:00Z"
+                }
             };
         }
     }

@@ -26,6 +26,13 @@ namespace Repositories.EntityFramework
             return destinationName?.Name;
         }
 
+        public async Task<string?> GetDestinationEmail(System.Guid syncJobId)
+        {
+            DestinationEmail? destinationEmail = await _readContext.DestinationEmail.SingleOrDefaultAsync(email => email.Id == syncJobId);
+
+            return destinationEmail?.Email;
+        }
+
         public async Task UpdateAttributes(DestinationAttributes destinationAttributes)
         {
 

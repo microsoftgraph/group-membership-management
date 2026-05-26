@@ -114,19 +114,22 @@ namespace Repositories.Mail
         private readonly ILocalizationRepository _localizationRepository;
         private readonly ILogger<MailFallbackBuilder> _logger;
         private readonly IHandleInactiveJobsConfig _handleInactiveJobsConfig;
+        private readonly IDatabaseDestinationAttributesRepository _destinationAttributesRepository;
 
         public MailFallbackBuilder(
             IGraphGroupRepository graphGroupRepository,
             ILocalizationRepository localizationRepository,
             ILogger<MailFallbackBuilder> logger,
             IHandleInactiveJobsConfig handleInactiveJobsConfig = null,
-            int nestedGroupsDisplayLimit = DefaultNestedGroupsDisplayLimit)
+            int nestedGroupsDisplayLimit = DefaultNestedGroupsDisplayLimit,
+            IDatabaseDestinationAttributesRepository destinationAttributesRepository = null)
         {
             _graphGroupRepository = graphGroupRepository ?? throw new ArgumentNullException(nameof(graphGroupRepository));
             _localizationRepository = localizationRepository ?? throw new ArgumentNullException(nameof(localizationRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _handleInactiveJobsConfig = handleInactiveJobsConfig;
             _nestedGroupsDisplayLimit = nestedGroupsDisplayLimit > 0 ? nestedGroupsDisplayLimit : DefaultNestedGroupsDisplayLimit;
+            _destinationAttributesRepository = destinationAttributesRepository;
         }
 
         public async Task<string> BuildSyncStartedFallbackAsync(
@@ -174,6 +177,15 @@ namespace Repositories.Mail
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
         {
             var disableReason = GetDisableReason(emailMessage.Content);
+
+            // Threshold (actionable adaptive card) and Generic / unknown content types fall
+            // through to the legacy adaptive-card + plain-text path rather than rendering a
+            // styled email with no useful per-reason detail.
+            if (disableReason == "Threshold" || disableReason == "Generic")
+            {
+                return null;
+            }
+
             var gmmOwnerName = GetParam(emailMessage, GmmOwnerNameIndex);
 
             // Requestor row is suppressed for all Sync Disabled fallbacks. Compact-detail
@@ -334,12 +346,27 @@ namespace Repositories.Mail
             var groupName = !string.IsNullOrWhiteSpace(destinationGroupName)
                 ? destinationGroupName
                 : GetParam(emailMessage, PurgeWarningGroupNameIndex, defaultValue: string.Empty);
-            if (string.IsNullOrWhiteSpace(groupName))
+            var hasRealGroupName = !string.IsNullOrWhiteSpace(groupName);
+            if (!hasRealGroupName)
             {
                 groupName = _localizationRepository.TranslateSetting("FallbackUnknownGroupName");
             }
 
             var statusKey = ResolvePurgeWarningStatusKey(status);
+
+            // ThresholdExceeded already has its own actionable adaptive card; Generic /
+            // unknown statuses also fall through to the legacy adaptive-card + plain-text
+            // path rather than rendering a styled email with no actionable detail.
+            if (statusKey == "ThresholdExceeded" || statusKey == "Generic")
+            {
+                return null;
+            }
+
+            // Mirror SyncDisabled NoDestinationGroup behaviour: when the destination group
+            // no longer exists, surface the cached name as "Previously named: <name>".
+            var displayGroupName = (statusKey == "DestinationGroupNotFound" && hasRealGroupName)
+                ? _localizationRepository.TranslateSetting("SyncDisabledFallback.PreviouslyNamedPrefix") + groupName
+                : groupName;
             var warningDays = WarningDays.ToString(CultureInfo.InvariantCulture);
 
             // Prefer ISO UTC timestamps (params [6]/[7]) so we can format dates with time + PT
@@ -360,13 +387,9 @@ namespace Repositories.Mail
                 "JobPurgingWarningFallback.HeaderReason", warningDays);
 
             var priorNotificationTitle = ResolvePriorNotificationTitle(statusKey);
-            string descriptionKey;
-            if (statusKey == "Generic")
-                descriptionKey = "JobPurgingWarningFallback.Description.Generic";
-            else if (string.IsNullOrEmpty(priorNotificationTitle))
-                descriptionKey = "JobPurgingWarningFallback.Description.StatusOnly";
-            else
-                descriptionKey = "JobPurgingWarningFallback.Description.PreviousNotification";
+            string descriptionKey = string.IsNullOrEmpty(priorNotificationTitle)
+                ? "JobPurgingWarningFallback.Description.StatusOnly"
+                : "JobPurgingWarningFallback.Description.PreviousNotification";
 
             var description = _localizationRepository.TranslateSetting(
                 descriptionKey,
@@ -390,7 +413,7 @@ namespace Repositories.Mail
             return FormatTemplate(
                 HtmlTemplates.JobPurgingWarningTemplate,
                 prefix: "JobPurgingWarningFallback",
-                groupName: groupName,
+                groupName: displayGroupName,
                 headerText: headerText,
                 description: description,
                 calloutBody: calloutBody,
@@ -514,15 +537,50 @@ namespace Repositories.Mail
         public async Task<string> BuildFinalNoticeFallbackAsync(
             EmailMessage emailMessage, string destinationGroupName, string groupId, string jobUrl, string sentDate)
         {
-            var variantKey = ResolveFinalNoticeVariantKey(GetParam(emailMessage, FinalNoticePriorStatusIndex));
+            var priorStatus = GetParam(emailMessage, FinalNoticePriorStatusIndex);
+            var statusKey = ResolvePurgeWarningStatusKey(priorStatus);
+
+            // ThresholdExceeded keeps its own actionable adaptive card; unknown/unsupported
+            // statuses also fall through to the legacy adaptive-card + plain-text path
+            // rather than rendering a generic styled email with no useful detail.
+            if (statusKey == "ThresholdExceeded" || statusKey == "Generic")
+            {
+                return null;
+            }
+
+            var variantKey = ResolveFinalNoticeVariantKey(priorStatus);
             var actionByDays = ActionByDays.ToString(CultureInfo.InvariantCulture);
 
             var groupName = string.IsNullOrWhiteSpace(destinationGroupName)
                 ? _localizationRepository.TranslateSetting("FallbackUnknownGroupName")
                 : destinationGroupName;
 
+            // Description routing mirrors the JobPurgingWarning lede choices:
+            //   SubmissionRejected  -> dedicated variant text (existing).
+            //   CustomerPaused      -> dedicated "remained customer paused" text (no prior email).
+            //   Statuses with a system-sent SyncDisabled fallback email
+            //                        -> quote the prior notification title verbatim.
+            //   Anything else fell through to the early null return above.
+            string descriptionKey;
+            string priorNotificationTitle = null;
+            if (statusKey == "SubmissionRejected")
+            {
+                descriptionKey = "FinalNoticeFallback.Description.SubmissionRejected";
+            }
+            else if (statusKey == "CustomerPaused")
+            {
+                descriptionKey = "FinalNoticeFallback.Description.CustomerPaused";
+            }
+            else
+            {
+                priorNotificationTitle = ResolvePriorNotificationTitle(statusKey);
+                descriptionKey = !string.IsNullOrEmpty(priorNotificationTitle)
+                    ? "FinalNoticeFallback.Description.PreviousNotification"
+                    : "FinalNoticeFallback.Description.Generic";
+            }
+
             var description = _localizationRepository.TranslateSetting(
-                $"FinalNoticeFallback.Description.{variantKey}", actionByDays);
+                descriptionKey, actionByDays, priorNotificationTitle ?? string.Empty);
 
             var rows = await BuildFinalNoticeRowsAsync(groupId, variantKey, emailMessage);
 
@@ -888,6 +946,20 @@ namespace Repositories.Mail
                         encode(groupType), ""));
                 }
             }
+            else
+            {
+                // Destination group has been deleted in Entra, so Graph cannot return a current
+                // email. Surface the cached email from the DestinationEmail table (populated by
+                // DestinationAttributesUpdater) as "LAST KNOWN EMAIL" — mirrors how the cached
+                // DestinationName is surfaced as "Previously named:".
+                var cachedEmail = await TryGetCachedDestinationEmailAsync(emailMessage);
+                if (!string.IsNullOrWhiteSpace(cachedEmail))
+                {
+                    rows.Append(string.Format(HtmlTemplates.DetailsTableRow,
+                        _localizationRepository.TranslateSetting("FallbackDetailsRow.LastKnownEmail"),
+                        encode(cachedEmail), ""));
+                }
+            }
 
             var pausedAtParam = GetParam(emailMessage, GetPausedAtIndex(disableReason));
             var pausedAtUtc = TryParseIsoUtc(pausedAtParam);
@@ -899,6 +971,21 @@ namespace Repositories.Mail
             }
 
             return rows;
+        }
+
+        private async Task<string> TryGetCachedDestinationEmailAsync(EmailMessage emailMessage)
+        {
+            if (_destinationAttributesRepository == null || emailMessage == null || emailMessage.SyncJobId == Guid.Empty)
+                return null;
+            try
+            {
+                return await _destinationAttributesRepository.GetDestinationEmail(emailMessage.SyncJobId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to read cached destination email for SyncJob {SyncJobId}; LAST KNOWN EMAIL row will be omitted.", emailMessage.SyncJobId);
+                return null;
+            }
         }
 
         // Days a paused job remains affiliated with GMM before purging. Sourced from

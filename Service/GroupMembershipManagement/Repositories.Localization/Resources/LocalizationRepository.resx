@@ -1349,13 +1349,10 @@ If you intentionally require nested groups, GMM will not be able to manage this 
     <value>guest users not supported</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.NoData" xml:space="preserve">
-    <value>No Data Found</value>
+    <value>membership rules returned no users</value>
   </data>
   <data name="SyncDisabledFallback.HeaderReason.NestedGroupsFound" xml:space="preserve">
     <value>nested group in destination not supported</value>
-  </data>
-  <data name="SyncDisabledFallback.HeaderReason.Generic" xml:space="preserve">
-    <value>Attention Required</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoDestinationGroup" xml:space="preserve">
     <value>This sync is paused because GMM could **no longer find the destination group**. The group may have been deleted.</value>
@@ -1371,9 +1368,6 @@ If you intentionally require nested groups, GMM will not be able to manage this 
   </data>
   <data name="SyncDisabledFallback.Description.GuestUsers" xml:space="preserve">
     <value>This sync is paused because the **membership source includes guest users**. GMM does not support adding guest users to groups. Before pausing, GMM finished this sync with **{4}** users added and **{5}** users removed.</value>
-  </data>
-  <data name="SyncDisabledFallback.Description.Generic" xml:space="preserve">
-    <value>Sync has been disabled for this group. The sync process configured by **{0}** is no longer running and members will not be updated.</value>
   </data>
   <data name="SyncDisabledFallback.Description.NoData" xml:space="preserve">
     <value>This sync is paused because the current membership rules **returned zero users**. To prevent unexpectedly emptying the destination group, GMM did not apply this change.</value>
@@ -1398,9 +1392,6 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SyncDisabledFallback.CalloutBody.NoData" xml:space="preserve">
     <value>No membership changes will be applied until the membership definition is corrected to return users. Verify your query filters and source group configurations.</value>
   </data>
-  <data name="SyncDisabledFallback.CalloutBody.Generic" xml:space="preserve">
-    <value>Group membership will not be updated until this issue is resolved. Contact support for assistance.</value>
-  </data>
   <data name="SyncDisabledFallback.CtaLabel" xml:space="preserve">
     <value>View in GMM UI</value>
   </data>
@@ -1417,10 +1408,10 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
     <value>Cloud Security Group</value>
   </data>
   <data name="FallbackDetailsRow.GroupAlias" xml:space="preserve">
-    <value>GROUP EMAIL</value>
+    <value>EMAIL</value>
   </data>
   <data name="FallbackDetailsRow.GroupType" xml:space="preserve">
-    <value>GROUP TYPE</value>
+    <value>TYPE</value>
   </data>
   <data name="FallbackDetailsRow.ObjectId" xml:space="preserve">
     <value>OBJECT ID</value>
@@ -1428,23 +1419,11 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="FallbackDetailsRow.RequestedBy" xml:space="preserve">
     <value>REQUESTED BY</value>
   </data>
-  <data name="FallbackDetailsRow.MembersAdded" xml:space="preserve">
-    <value>MEMBERS ADDED</value>
-  </data>
-  <data name="FallbackDetailsRow.MembersRemoved" xml:space="preserve">
-    <value>MEMBERS REMOVED</value>
-  </data>
-  <data name="FallbackDetailsRow.RejectionReason" xml:space="preserve">
-    <value>REJECTION REASON</value>
-  </data>
-  <data name="FallbackDetailsRow.NestedGroupsCount" xml:space="preserve">
-    <value>NESTED GROUPS DETECTED</value>
-  </data>
-  <data name="FallbackDetailsRow.NestedGroupsList" xml:space="preserve">
-    <value>NESTED GROUPS</value>
-  </data>
   <data name="FallbackDetailsRow.PausedAt" xml:space="preserve">
     <value>PAUSED AT</value>
+  </data>
+  <data name="FallbackDetailsRow.LastKnownEmail" xml:space="preserve">
+    <value>LAST KNOWN EMAIL</value>
   </data>
   <data name="FallbackDetailsRow.RejectedOn" xml:space="preserve">
     <value>REJECTED ON</value>
@@ -1517,15 +1496,6 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="SubmissionRejectedFallback.CtaLabel" xml:space="preserve">
     <value>Revise and resubmit</value>
   </data>
-  <data name="FallbackDetailsRow.Status" xml:space="preserve">
-    <value>STATUS</value>
-  </data>
-  <data name="FallbackDetailsRow.InactiveSince" xml:space="preserve">
-    <value>INACTIVE SINCE</value>
-  </data>
-  <data name="FallbackDetailsRow.ScheduledPurgeDate" xml:space="preserve">
-    <value>SCHEDULED PURGE DATE</value>
-  </data>
   <data name="FallbackUnknownGroupName" xml:space="preserve">
     <value>your group</value>
   </data>
@@ -1564,21 +1534,10 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   <data name="JobPurgingWarningFallback.Description.StatusOnly" xml:space="preserve">
     <value>In **{6} days**, GMM will remove its affiliation with this group because your job has been in **{0}** status since **{1}**. The group itself will not be deleted.</value>
   </data>
-  <data name="JobPurgingWarningFallback.Description.Generic" xml:space="preserve">
-    <value>In **{6} days**, GMM will remove its affiliation with this group because the prior **{0}** status notification was not addressed. The group itself will not be deleted.</value>
-  </data>
   <!-- Per-status "What to do" action checklist bodies. Numbered (1./2./...) lines render as a real ordered list. -->
   <data name="JobPurgingWarningFallback.ActionChecklist.Body.CustomerPaused" xml:space="preserve">
     <value>1. Resume the sync from the GMM UI to keep the job active.
 2. If the pause was intentional and you no longer need GMM to manage this group, no action is needed.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.ActionChecklist.Body.ThresholdExceeded" xml:space="preserve">
-    <value>1. Open the pending threshold approval card in the GMM UI and review the proposed membership change.
-2. Approve the change, or adjust the membership rules so the change falls within the configured threshold.</value>
-  </data>
-  <data name="JobPurgingWarningFallback.ActionChecklist.Body.Generic" xml:space="preserve">
-    <value>1. Review the previous notification for this group in your inbox to identify what action GMM needs from you.
-2. Take the action described there, or reply to [GMMSupport@service.microsoft.com](mailto:GMMSupport@service.microsoft.com) if you need help.</value>
   </data>
   <!-- ===================== Final Notice (affiliation removed) ===================== -->
   <data name="FinalNoticeFallback.Badge" xml:space="preserve">
@@ -1589,6 +1548,12 @@ For paused jobs older than {0} days, the GMM affiliation will be removed. This d
   </data>
   <data name="FinalNoticeFallback.Description.Generic" xml:space="preserve">
     <value>This group remained paused for **{0} days** because the previous notification was not addressed. As a result, GMM has removed its affiliation with this group.</value>
+  </data>
+  <data name="FinalNoticeFallback.Description.PreviousNotification" xml:space="preserve">
+    <value>This group remained paused for **{0} days** because the previous notification of &#8220;{1}&#8221; was not addressed. As a result, GMM has removed its affiliation with this group.</value>
+  </data>
+  <data name="FinalNoticeFallback.Description.CustomerPaused" xml:space="preserve">
+    <value>This group remained customer paused for **{0} days**. As a result, GMM has removed its affiliation with this group.</value>
   </data>
   <data name="FinalNoticeFallback.Description.SubmissionRejected" xml:space="preserve">
     <value>This group&#8217;s membership configuration was previously rejected, and that notification was not addressed within **{0} days**. As a result, GMM has removed its affiliation with this group.</value>

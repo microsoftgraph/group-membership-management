@@ -66,7 +66,8 @@ namespace Common.DependencyInjection
                     provider.GetService<ILocalizationRepository>(),
                     provider.GetRequiredService<ILogger<MailFallbackBuilder>>(),
                     provider.GetService<IHandleInactiveJobsConfig>(),
-                    nestedGroupsDisplayLimit
+                    nestedGroupsDisplayLimit,
+                    provider.GetService<IDatabaseDestinationAttributesRepository>()
                 );
             });
 
