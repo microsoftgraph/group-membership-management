@@ -8,7 +8,6 @@
     "pipeline": "",
     "dataFactoryName": "gmm-data-<env>-adf",
     "dataResourceGroup": "gmm-data-<env>",
-    "sqlMembershipStorageAccountName": "gmmsqldatachecker<env>",
     "sqlMembershipStorageAccountConnectionString": "<sqlMembershipStorageAccountConnectionString>",
     "subscriptionId": "<subscriptionId>",
     "tenantId": "<tenantId>",

@@ -688,7 +688,7 @@ function Set-ComputeResources {
     
     $storageAccountSecretName  = Get-DefaultString -Value $ParameterHashtable.storageAccountSecretName.value -Default "adfStorageAccountName"
     $dataResourceGroup = "$SolutionAbbreviation-data-$EnvironmentAbbreviation"
-    $secrets = @("sqlServerMSIConnectionString", $storageAccountSecretName)
+    $secrets = @("sqlServerMSIConnectionString", $storageAccountSecretName, "sqlServerBasicConnectionString")
     Set-DefaultSecretsIfMissing `
         -KeyVaultName $dataResourceGroup `
         -SecretNames $secrets
