@@ -85,7 +85,7 @@ export interface DebouncedFunction<T extends (...args: any[]) => void> {
 
 export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): DebouncedFunction<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
-  let lastThis: any;
+  let lastThis: ThisParameterType<T> | undefined;
   let lastArgs: Parameters<T> | undefined;
 
   const debounced = function (this: ThisParameterType<T>, ...args: Parameters<T>) {
@@ -94,10 +94,11 @@ export function debounce<T extends (...args: any[]) => void>(func: T, wait: numb
     if (timeout) clearTimeout(timeout);
     timeout = setTimeout(() => {
       timeout = undefined;
-      const argsToUse = lastArgs as Parameters<T>;
+      const argsToUse = lastArgs;
       const thisToUse = lastThis;
       lastArgs = undefined;
       lastThis = undefined;
+      if (!argsToUse) return;
       func.apply(thisToUse, argsToUse);
     }, wait);
   } as DebouncedFunction<T>;
