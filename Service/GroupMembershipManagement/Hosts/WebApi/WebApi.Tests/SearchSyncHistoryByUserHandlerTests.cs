@@ -126,11 +126,7 @@ namespace WebApi.Tests
             Assert.AreEqual(1, response.RunMembershipChanges.Count);
             Assert.AreEqual(runId, response.RunMembershipChanges[0].RunId);
             Assert.AreEqual(MembershipChangeType.Added, response.RunMembershipChanges[0].MembershipChangeType);
-            Assert.IsFalse(response.CheckedCurrentGroupMembership);
-
-            _mockGraphGroupRepository.Verify(
-                x => x.IsEmailRecipientMemberOfGroupAsync(It.IsAny<string>(), It.IsAny<Guid>()),
-                Times.Never);
+            Assert.IsTrue(response.CheckedCurrentGroupMembership);
         }
 
         [TestMethod]
@@ -349,7 +345,7 @@ namespace WebApi.Tests
             Assert.AreEqual(runMixedActions, response.MatchingRunIds[0]);
             Assert.AreEqual(1, response.RunMembershipChanges.Count);
             Assert.AreEqual(MembershipChangeType.Added, response.RunMembershipChanges[0].MembershipChangeType);
-            Assert.IsFalse(response.CheckedCurrentGroupMembership);
+            Assert.IsTrue(response.CheckedCurrentGroupMembership);
         }
 
         [TestMethod]

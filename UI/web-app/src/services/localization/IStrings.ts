@@ -385,12 +385,14 @@ export type IStrings = {
       searchUserLoading: string;
       searchUserError: string;
       searchUserProgressUnavailableMessage: string;
-      userAddedPriorToHistoryMessage: string;
-      userNeverInGroupOrRemovedPriorToHistoryMessage: string;
       userCurrentlyInGroupMessage: string;
       userNotInGroupMessage: string;
+      syncHistoryRetentionNote: string;
+      syncHistoryRetentionNoteLabel: string;
       userManuallyAddedNote: string;
       userManuallyRemovedNote: string;
+      userAddedInSyncAriaLabel: string;
+      userRemovedInSyncAriaLabel: string;
     };
     notFound: string;
     notFoundWithoutPurgeDate: string;

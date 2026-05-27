@@ -84,6 +84,30 @@ const mockGraphUsers = [
     userPrincipalName: 'playwright@contoso.com',
     mail: 'playwright@contoso.com',
   },
+  {
+    id: 'mock-user-001',
+    displayName: 'Mock User',
+    givenName: 'Mock',
+    surname: 'User',
+    userPrincipalName: 'mockuser@contoso.com',
+    mail: 'mockuser@contoso.com',
+  },
+  {
+    id: 'mock-user-002',
+    displayName: 'Mock User Not In Group',
+    givenName: 'Mock',
+    surname: 'User Not In Group',
+    userPrincipalName: 'mockuser2@contoso.com',
+    mail: 'mockuser2@contoso.com',
+  },
+  {
+    id: 'mock-user-003',
+    displayName: 'Mock User Manually Added',
+    givenName: 'Mock',
+    surname: 'User Manually Added',
+    userPrincipalName: 'mockuser3@contoso.com',
+    mail: 'mockuser3@contoso.com',
+  },
 ];
 
 const mockRoles = {
@@ -298,6 +322,31 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     return getJobDetailsById(syncJobId);
   };
 
+  await page.route('**/graph/v1.0/**', async (route) => {
+    const url = route.request().url();
+
+    if (url.includes('/users')) {
+      await fulfillJson(route, {
+        value: [
+          {
+            id: 'mock-user-001',
+            displayName: 'Mock User',
+            mail: 'mockuser@contoso.com',
+            userPrincipalName: 'mockuser@contoso.com',
+          },
+        ],
+      });
+      return;
+    }
+
+    if (url.includes('/photo')) {
+      await route.fulfill({ status: 404 });
+      return;
+    }
+
+    await route.fulfill({ status: 200, body: '{}' });
+  });
+
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const method = request.method();
@@ -309,6 +358,7 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
     const groupDetailsMatch = path.match(/\/api\/v1\/jobDetails\/group\/([^\/]+)$/);
     const channelDetailsMatch = path.match(/\/api\/v1\/jobDetails\/groups\/([^\/]+)\/channels\/([^\/]+)$/);
     const jobChangesMatch = path.match(/\/api\/v1\/jobDetails\/history\/configuration\/([^\/]+)$/);
+    const searchUserMatch = path.match(/\/api\/v1\/jobDetails\/history\/sync\/([^\/]+)\/search-user\/([^\/]+)$/);
     const syncHistoryMatch = path.match(/\/api\/v1\/jobDetails\/history\/sync\/([^\/]+)$/);
     const removeGmmMatch = path.match(/\/api\/v1\/jobDetails\/([^\/]+)\/removeGmm$/);
     const groupSearchMatch = path.match(/\/api\/v1\/destinations\/searchGroups\/([^\/]+)$/);
@@ -515,6 +565,48 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
       return;
     }
 
+    if (method === 'GET' && searchUserMatch) {
+      const userObjectId = searchUserMatch[2];
+
+      if (userObjectId === 'mock-user-001') {
+        await fulfillJson(route, {
+          matchingRunIds: ['run-001'],
+          runMembershipChanges: [{ runId: 'run-001', membershipChangeType: 'Added' }],
+          userInCurrentGroup: true,
+          checkedCurrentGroupMembership: true,
+        });
+        return;
+      }
+
+      if (userObjectId === 'mock-user-002') {
+        await fulfillJson(route, {
+          matchingRunIds: [],
+          runMembershipChanges: [],
+          userInCurrentGroup: false,
+          checkedCurrentGroupMembership: true,
+        });
+        return;
+      }
+
+      if (userObjectId === 'mock-user-003') {
+        await fulfillJson(route, {
+          matchingRunIds: ['run-001'],
+          runMembershipChanges: [{ runId: 'run-001', membershipChangeType: 'Removed' }],
+          userInCurrentGroup: true,
+          checkedCurrentGroupMembership: true,
+        });
+        return;
+      }
+
+      await fulfillJson(route, {
+        matchingRunIds: [],
+        runMembershipChanges: [],
+        userInCurrentGroup: false,
+        checkedCurrentGroupMembership: true,
+      });
+      return;
+    }
+
     if (method === 'GET' && syncHistoryMatch) {
       await fulfillJson(route, [
         {
@@ -677,6 +769,11 @@ export async function registerMockApiRoutes(page: Page): Promise<void> {
   await page.route('**/graph/v1.0/**', async (route) => {
     const requestUrl = new URL(route.request().url());
     const path = requestUrl.pathname;
+
+    if (path.includes('/photo/')) {
+      await route.fulfill({ status: 404 });
+      return;
+    }
 
     if (path.includes('/photos/48x48/$value')) {
       await route.fulfill({

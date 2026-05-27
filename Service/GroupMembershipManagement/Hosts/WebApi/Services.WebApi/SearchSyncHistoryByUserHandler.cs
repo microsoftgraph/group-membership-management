@@ -56,6 +56,11 @@ namespace Services
                     return response;
                 }
 
+                response.UserInCurrentGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(
+                    request.UserObjectId.ToString(),
+                    syncJob.TargetOfficeGroupId);
+                response.CheckedCurrentGroupMembership = true;
+
                 var allRuns = await GetAllHistoryAsync(request.SyncJobId);
                 var targetGroupId = syncJob.TargetOfficeGroupId.ToString();
                 var totalRuns = allRuns.Count;
@@ -94,14 +99,6 @@ namespace Services
                         lastPublishedProcessedRuns = processedRuns;
                         lastPublishedPercent = GetProgressPercent(processedRuns, totalRuns);
                     }
-                }
-
-                if (response.MatchingRunIds.Count == 0)
-                {
-                    response.UserInCurrentGroup = await _graphGroupRepository.IsEmailRecipientMemberOfGroupAsync(
-                        request.UserObjectId.ToString(),
-                        syncJob.TargetOfficeGroupId);
-                    response.CheckedCurrentGroupMembership = true;
                 }
 
                 response.StatusCode = HttpStatusCode.OK;

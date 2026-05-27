@@ -1,0 +1,500 @@
+import React from 'react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { JobHistoryPanelBase } from './JobHistoryPanel.base';
+import { MembershipChangeType } from '../../models/SearchSyncHistoryByUserResult';
+import { RunHistoryStatus } from '../../models/Status';
+import type { SyncJobHistory } from '../../models/SyncJobHistory';
+
+const mockTheme = {
+  palette: {
+    themePrimary: '#0078d4',
+    neutralPrimary: '#323130',
+    neutralLight: '#edebe9',
+  },
+  semanticColors: {
+    warningBackground: '#fff4ce',
+  },
+};
+
+const strings = {
+  close: 'Close',
+  JobsList: {
+    PagingBar: {
+      previousPage: 'Previous page',
+      nextPage: 'Next page',
+      page: 'Page',
+      of: 'of',
+      display: 'Display',
+      items: 'items',
+      pageNumberAriaLabel: 'Page number',
+      pageSizeAriaLabel: 'Page size',
+    },
+  },
+  JobDetails: {
+    Panel: {
+      history: 'History',
+      configurationPivotHeader: 'Configuration',
+      syncPivotHeader: 'Sync',
+      searchUserLabel: 'Search for a user',
+      searchUserPlaceholder: 'Search',
+      searchUserNoResults: 'No results',
+      searchUserLoading: 'Searching user history',
+      searchUserError: 'Unable to search user history',
+      searchUserProgressUnavailableMessage: 'Search progress unavailable',
+      endTimeColumnLabel: 'End time',
+      eventTypeColumnLabel: 'Event type',
+      statusColumnLabel: 'Status',
+      beforeSyncUserCountColumnLabel: 'Before sync user count',
+      usersAddedColumnLabel: 'Added',
+      usersRemovedColumnLabel: 'Removed',
+      afterSyncUserCountColumnLabel: 'After sync user count',
+      collapseRowAriaLabel: 'Collapse row',
+      expandRowAriaLabel: 'Expand row',
+      emptyValuePlaceholder: '-',
+      takeAction: 'Take action',
+      changesAppliedSuccess: 'Changes applied',
+      syncPausedSuccess: 'Sync paused',
+      userCurrentlyInGroupMessage: 'This user is currently part of the membership.',
+      userNotInGroupMessage: 'This user is not currently part of the membership.',
+      syncHistoryRetentionNote: 'Sync history is only retained for 30 days.',
+      syncHistoryRetentionNoteLabel: 'Note:',
+      userManuallyAddedNote: 'Someone must have manually added this user.',
+      userManuallyRemovedNote: 'Someone must have manually removed this user.',
+      userAddedInSyncAriaLabel: '{0} (user was added in this sync)',
+      userRemovedInSyncAriaLabel: '{0} (user was removed in this sync)',
+      runIdColumnLabel: 'Run ID',
+      changedByColumnLabel: 'Changed by',
+      businessJustification: 'Business justification',
+      openQuery: 'Open query',
+      changeDetailsColumnLabel: 'Change details',
+      viewDetails: 'View details',
+      changeTimeColumnLabel: 'Change time',
+      changeReasonColumnLabel: 'Change reason',
+      onboardingRequest: 'Onboarding request',
+      onboardingAutoApproved: 'Onboarding auto approved',
+      statusUpdate: 'Status update',
+      update: 'Update',
+      submissionApproved: 'Submission approved',
+      submissionRejected: 'Submission rejected',
+      groupSettings: 'Group settings',
+      ignoreThresholdOnce: 'Ignore threshold once',
+      downloadAriaLabel: 'Download {0}',
+      downloadingText: 'Downloading',
+      downloadLinkText: 'Download',
+      downloadError: 'Download error',
+      resolveError: 'Resolve error',
+    },
+  },
+} as const;
+
+const mockDispatch = vi.fn();
+const mockUseSelector = vi.fn();
+const fetchJobChangesMock = vi.fn((payload) => ({ __type: 'fetchJobChanges', payload }));
+const fetchSyncJobHistoryMock = vi.fn((payload) => ({ __type: 'fetchSyncJobHistory', payload }));
+const searchSyncHistoryByUserMock = vi.fn((payload) => ({ __type: 'searchSyncHistoryByUser', payload }));
+const downloadMembershipChangesMock = vi.fn((payload) => ({ __type: 'downloadMembershipChanges', payload }));
+const fetchThresholdNotificationMock = vi.fn((payload) => ({ __type: 'fetchThresholdNotification', payload }));
+const resolveNotificationMock = vi.fn((payload) => ({ __type: 'resolveNotification', payload }));
+const getPeoplePickerSuggestionsMock = vi.fn((payload) => ({ __type: 'getPeoplePickerSuggestions', payload }));
+const setSelectedJobEnabledMock = vi.fn((payload) => ({ type: 'jobs/setSelectedJobEnabled', payload }));
+
+let mockState: any;
+let mockSyncHistoryItems: SyncJobHistory[];
+let mockSearchResult: any;
+let mockSelectedPersona: any;
+
+vi.mock('../../store/hooks', () => ({
+  useStrings: () => strings,
+}));
+
+vi.mock('react-redux', () => ({
+  useDispatch: () => mockDispatch,
+  useSelector: (selector: (state: unknown) => unknown) => mockUseSelector(selector),
+}));
+
+vi.mock('@fluentui/react', async () => {
+  const React = await import('react');
+
+  const classNamesFunction = () => () =>
+    new Proxy(
+      {},
+      {
+        get: (_target, prop) => String(prop),
+      }
+    );
+
+  const Panel = ({ isOpen, children }: any) => (isOpen ? <div>{children}</div> : null);
+  const Pivot = ({ children }: any) => <div>{children}</div>;
+  const PivotItem = ({ children, headerText }: any) => (
+    <section aria-label={headerText}>{children}</section>
+  );
+  const Label = ({ children, className }: any) => <label className={className}>{children}</label>;
+  const Spinner = ({ label }: any) => <div>{label}</div>;
+  const MessageBar = ({ children }: any) => <div>{children}</div>;
+  const Dropdown = ({ ariaLabel, selectedKey, options, onChange }: any) => (
+    <select
+      aria-label={ariaLabel}
+      value={selectedKey}
+      onChange={(event) => {
+        const option = options.find((item: any) => String(item.key) === event.target.value);
+        onChange?.(event, option);
+      }}
+    >
+      {options.map((option: any) => (
+        <option key={option.key} value={option.key}>
+          {option.text}
+        </option>
+      ))}
+    </select>
+  );
+  const TextField = ({ ariaLabel, value, onChange, readOnly, multiline }: any) =>
+    multiline ? (
+      <textarea aria-label={ariaLabel} value={value} onChange={(event) => onChange?.(event, event.target.value)} readOnly={readOnly} />
+    ) : (
+      <input aria-label={ariaLabel} value={value} onChange={(event) => onChange?.(event, event.target.value)} readOnly={readOnly} />
+    );
+  const IconButton = ({ ariaLabel, title, onClick, disabled }: any) => (
+    <button aria-label={ariaLabel} title={title} onClick={onClick} disabled={disabled} type="button" />
+  );
+  const Icon = ({ iconName, className, style }: any) => (
+    <span data-icon-name={iconName} className={className} style={style} />
+  );
+  const Link = ({ children, onClick, disabled, 'aria-label': ariaLabel }: any) => (
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={ariaLabel}>
+      {children}
+    </button>
+  );
+  const Modal = ({ isOpen, children }: any) => (isOpen ? <div>{children}</div> : null);
+  const DetailsRow = ({ children }: any) => <div>{children}</div>;
+  const NormalPeoplePicker = ({ onChange, ariaLabel }: any) => (
+    <div>
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        data-testid="people-picker-select"
+        onClick={() => onChange?.(mockSelectedPersona ? [mockSelectedPersona] : [])}
+      >
+        Select user
+      </button>
+    </div>
+  );
+  const DetailsList = ({ items, columns, setKey }: any) => (
+    <div data-testid={`details-list-${setKey}`}>
+      {items.map((item: any, rowIndex: number) => {
+        const itemKey = item.id ?? item.runId ?? `${setKey}-${rowIndex}`;
+        return (
+          <div key={itemKey} data-testid={`row-${setKey}-${rowIndex}`}>
+            {columns.map((column: any) => (
+              <div key={column.key} data-testid={`cell-${itemKey}-${column.key}`}>
+                {column.onRender ? column.onRender(item) : column.fieldName ? item[column.fieldName] : null}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  return {
+    classNamesFunction,
+    DetailsList,
+    DetailsListLayoutMode: { justified: 'justified' },
+    DetailsRow,
+    Dropdown,
+    Icon,
+    IconButton,
+    Label,
+    Link,
+    MessageBar,
+    MessageBarType: { success: 'success', error: 'error', info: 'info' },
+    Modal,
+    NormalPeoplePicker,
+    Panel,
+    PanelType: { custom: 'custom' },
+    Pivot,
+    PivotItem,
+    Spinner,
+    SpinnerSize: { small: 'small' },
+    TextField,
+    DirectionalHint: { bottomLeftEdge: 'bottomLeftEdge' },
+    useTheme: () => mockTheme,
+  };
+});
+
+vi.mock('../../store/jobDetails.api', () => ({
+  downloadMembershipChanges: (...args: any[]) => downloadMembershipChangesMock(...args),
+  fetchJobChanges: (...args: any[]) => fetchJobChangesMock(...args),
+  fetchSyncJobHistory: (...args: any[]) => fetchSyncJobHistoryMock(...args),
+  fetchThresholdNotification: (...args: any[]) => fetchThresholdNotificationMock(...args),
+  resolveNotification: (...args: any[]) => resolveNotificationMock(...args),
+  searchSyncHistoryByUser: (...args: any[]) => searchSyncHistoryByUserMock(...args),
+}));
+
+vi.mock('../../store/jobs.api', () => ({
+  getPeoplePickerSuggestions: (...args: any[]) => getPeoplePickerSuggestionsMock(...args),
+}));
+
+vi.mock('../../store/jobs.slice', () => ({
+  selectSelectedJobChanges: (state: any) => state.jobs.selectedJobChanges,
+  selectSelectedJobDetails: (state: any) => state.jobs.selectedJobDetails,
+  setSelectedJobEnabled: (...args: any[]) => setSelectedJobEnabledMock(...args),
+}));
+
+vi.mock('../../store/roles.slice', () => ({
+  selectIsJobTenantReader: (state: any) => state.roles.isJobTenantReader,
+  selectIsJobTenantWriter: (state: any) => state.roles.isJobTenantWriter,
+}));
+
+vi.mock('../../services/signalR/SignalRSyncHistorySearchService', () => ({
+  SignalRSyncHistorySearchService: class {
+    onProgress: ((update: unknown) => void) | null = null;
+    startConnection = vi.fn().mockResolvedValue(undefined);
+    subscribe = vi.fn().mockResolvedValue(undefined);
+    unsubscribe = vi.fn().mockResolvedValue(undefined);
+    stopConnection = vi.fn();
+  },
+}));
+
+vi.mock('../ThresholdExceededActionDialog', () => ({
+  ThresholdExceededActionDialog: () => null,
+}));
+
+const buildSyncHistoryItem = (
+  runId: string,
+  endTime: string,
+  usersAdded: number,
+  usersRemoved: number
+): SyncJobHistory => ({
+  runId,
+  startTime: endTime,
+  endTime,
+  duration: 10,
+  status: RunHistoryStatus.Idle,
+  beforeSyncUserCount: 10,
+  usersAdded,
+  usersRemoved,
+  afterSyncUserCount: 10 + usersAdded - usersRemoved,
+  thresholdViolations: 0,
+  updatedByFunction: 'Function',
+  createdAt: endTime,
+  updatedAt: endTime,
+});
+
+const defaultProps = {
+  isOpen: true,
+  dismissPanel: vi.fn(),
+  jobId: 'job-1',
+};
+
+const renderPanel = async () => {
+  await act(async () => {
+    render(<JobHistoryPanelBase {...defaultProps} />);
+    await Promise.resolve();
+  });
+};
+
+const selectUser = async () => {
+  await act(async () => {
+    fireEvent.click(screen.getByTestId('people-picker-select'));
+    await Promise.resolve();
+  });
+
+  await waitFor(() => {
+    expect(searchSyncHistoryByUserMock).toHaveBeenCalled();
+  });
+};
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockState = {
+    jobs: {
+      selectedJobChanges: [],
+      selectedJobDetails: {
+        targetGroupId: 'target-group-id',
+        targetGroupName: 'Target Group',
+      },
+    },
+    roles: {
+      isJobTenantReader: true,
+      isJobTenantWriter: true,
+    },
+  };
+  mockSyncHistoryItems = [
+    buildSyncHistoryItem('run-added', '2024-05-02T00:00:00Z', 3, 0),
+    buildSyncHistoryItem('run-removed', '2024-05-01T00:00:00Z', 0, 2),
+  ];
+  mockSearchResult = {
+    matchingRunIds: ['run-added'],
+    runMembershipChanges: [
+      {
+        runId: 'run-added',
+        membershipChangeType: MembershipChangeType.Added,
+      },
+    ],
+    userInCurrentGroup: true,
+    checkedCurrentGroupMembership: true,
+  };
+  mockSelectedPersona = {
+    id: 'user-1',
+    key: 'user-1',
+    text: 'Test User',
+    secondaryText: 'test@example.com',
+  };
+
+  mockUseSelector.mockImplementation((selector: (state: unknown) => unknown) => selector(mockState));
+  mockDispatch.mockImplementation((action: any) => {
+    switch (action?.__type) {
+      case 'fetchSyncJobHistory':
+        return { unwrap: () => Promise.resolve(mockSyncHistoryItems) };
+      case 'searchSyncHistoryByUser':
+        return { unwrap: () => Promise.resolve(mockSearchResult) };
+      case 'getPeoplePickerSuggestions':
+        return {
+          unwrap: () =>
+            Promise.resolve([
+              { id: mockSelectedPersona.id, text: mockSelectedPersona.text, secondaryText: mockSelectedPersona.secondaryText },
+            ]),
+        };
+      case 'fetchJobChanges':
+      case 'fetchThresholdNotification':
+      case 'resolveNotification':
+      case 'downloadMembershipChanges':
+      default:
+        return { unwrap: () => Promise.resolve([]) };
+    }
+  });
+
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(0);
+    return 0;
+  });
+});
+
+describe('JobHistoryPanelBase search banner', () => {
+  it('shows currently part of membership when the user is in the group', async () => {
+    await renderPanel();
+
+    await selectUser();
+
+    expect(
+      await screen.findByText(strings.JobDetails.Panel.userCurrentlyInGroupMessage)
+    ).toBeInTheDocument();
+  });
+
+  it('shows not currently part of membership when the user is not in the group', async () => {
+    mockSearchResult = {
+      ...mockSearchResult,
+      userInCurrentGroup: false,
+    };
+
+    await renderPanel();
+
+    await selectUser();
+
+    expect(
+      await screen.findByText(strings.JobDetails.Panel.userNotInGroupMessage)
+    ).toBeInTheDocument();
+  });
+
+  it('shows warning background styling when the user is not in the group', async () => {
+    mockSearchResult = {
+      ...mockSearchResult,
+      userInCurrentGroup: false,
+    };
+
+    await renderPanel();
+
+    await selectUser();
+
+    const banner = (await screen.findByText(strings.JobDetails.Panel.userNotInGroupMessage)).closest('div');
+    expect(banner).toHaveStyle(`background-color: ${mockTheme.semanticColors.warningBackground}`);
+  });
+
+  it('shows the retention note whenever the banner is visible', async () => {
+    await renderPanel();
+
+    await selectUser();
+
+    expect(await screen.findByText(strings.JobDetails.Panel.syncHistoryRetentionNoteLabel)).toBeInTheDocument();
+    expect(screen.getByText(strings.JobDetails.Panel.syncHistoryRetentionNote)).toBeInTheDocument();
+  });
+
+  it('does not show a manual note when the user is in the group with no matching runs', async () => {
+    mockSearchResult = {
+      matchingRunIds: [],
+      runMembershipChanges: [],
+      userInCurrentGroup: true,
+      checkedCurrentGroupMembership: true,
+    };
+
+    await renderPanel();
+
+    await selectUser();
+
+    expect(screen.queryByText(strings.JobDetails.Panel.userManuallyAddedNote)).not.toBeInTheDocument();
+    expect(screen.queryByText(strings.JobDetails.Panel.userManuallyRemovedNote)).not.toBeInTheDocument();
+  });
+
+  it('shows the manually removed note when the user is not in the group but the last sync added them', async () => {
+    mockSearchResult = {
+      matchingRunIds: ['run-added'],
+      runMembershipChanges: [
+        {
+          runId: 'run-added',
+          membershipChangeType: MembershipChangeType.Added,
+        },
+      ],
+      userInCurrentGroup: false,
+      checkedCurrentGroupMembership: true,
+    };
+
+    await renderPanel();
+
+    await selectUser();
+
+    expect(await screen.findByText(strings.JobDetails.Panel.userManuallyRemovedNote)).toBeInTheDocument();
+  });
+});
+
+describe('JobHistoryPanelBase membership change highlighting', () => {
+  it('highlights the added count when the user was added in that sync', async () => {
+    mockSearchResult = {
+      matchingRunIds: ['run-added'],
+      runMembershipChanges: [
+        {
+          runId: 'run-added',
+          membershipChangeType: MembershipChangeType.Added,
+        },
+      ],
+      userInCurrentGroup: true,
+      checkedCurrentGroupMembership: true,
+    };
+
+    await renderPanel();
+
+    await selectUser();
+
+    expect(await screen.findByLabelText('3 (user was added in this sync)')).toBeInTheDocument();
+  });
+
+  it('highlights the removed count when the user was removed in that sync', async () => {
+    mockSearchResult = {
+      matchingRunIds: ['run-removed'],
+      runMembershipChanges: [
+        {
+          runId: 'run-removed',
+          membershipChangeType: MembershipChangeType.Removed,
+        },
+      ],
+      userInCurrentGroup: false,
+      checkedCurrentGroupMembership: true,
+    };
+
+    await renderPanel();
+
+    await selectUser();
+
+    expect(await screen.findByLabelText('2 (user was removed in this sync)')).toBeInTheDocument();
+  });
+});

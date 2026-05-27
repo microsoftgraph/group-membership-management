@@ -27,6 +27,7 @@ import {
     Spinner,
     SpinnerSize,
     DirectionalHint,
+    Icon,
 } from '@fluentui/react';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import {
@@ -126,6 +127,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
     const [isUserSearchLoading, setIsUserSearchLoading] = useState(false);
     const [userSearchError, setUserSearchError] = useState<string | null>(null);
     const [userSearchInfo, setUserSearchInfo] = useState<string | null>(null);
+    const [userInGroup, setUserInGroup] = useState<boolean | null>(null);
+    const [userManualNote, setUserManualNote] = useState<string | null>(null);
     const [showProgressUnavailableMessage, setShowProgressUnavailableMessage] = useState(false);
     const [searchProgressText, setSearchProgressText] = useState<string | null>(null);
     const [userPickerSuggestions, setUserPickerSuggestions] = useState<IPersonaProps[]>([]);
@@ -280,6 +283,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setIsUserSearchLoading(false);
         setUserSearchError(null);
         setUserSearchInfo(null);
+        setUserInGroup(null);
+        setUserManualNote(null);
         setShowProgressUnavailableMessage(false);
         setSearchProgressText(null);
         activeSearchRequestIdRef.current = null;
@@ -330,14 +335,24 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             return null;
         }
 
-        let bestChange = changes[0];
+        const timestampByRunId = new Map<string, number>();
+        for (const item of syncHistoryItems) {
+            if (item.runId) {
+                timestampByRunId.set(
+                    item.runId,
+                    getUtcTimestampMillis(item.endTime ?? item.startTime ?? null),
+                );
+            }
+        }
+
+        let bestChange: SearchSyncHistoryByUserRunMembershipChange | null = null;
         let bestTime = -1;
 
         for (const change of changes) {
-            const historyItem = syncHistoryItems.find(
-                (item) => item.runId === change.runId,
-            );
-            const time = getUtcTimestampMillis(historyItem?.endTime ?? historyItem?.startTime ?? null);
+            const time = timestampByRunId.get(change.runId);
+            if (time === undefined) {
+                continue;
+            }
             if (time > bestTime) {
                 bestTime = time;
                 bestChange = change;
@@ -353,6 +368,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setSyncPageNumber(1);
         setUserSearchError(null);
         setUserSearchInfo(null);
+        setUserInGroup(null);
+        setUserManualNote(null);
         setShowProgressUnavailableMessage(false);
         setIsUserSearchLoading(true);
         setSearchProgressText(strings.JobDetails.Panel.searchUserLoading);
@@ -395,30 +412,33 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             }
             setRunMembershipChangeMap(changeMap);
 
-            if (result.matchingRunIds.length > 0) {
-                const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
-                const inferredInGroup = mostRecentChange?.membershipChangeType === MembershipChangeType.Added;
+            const actualInGroup = result.checkedCurrentGroupMembership
+                ? result.userInCurrentGroup
+                : null;
 
-                if (inferredInGroup) {
-                    setUserSearchInfo(strings.JobDetails.Panel.userCurrentlyInGroupMessage);
-                } else {
-                    setUserSearchInfo(strings.JobDetails.Panel.userNotInGroupMessage);
+            if (actualInGroup !== null) {
+                setUserInGroup(actualInGroup);
+                setUserSearchInfo(actualInGroup
+                    ? strings.JobDetails.Panel.userCurrentlyInGroupMessage
+                    : strings.JobDetails.Panel.userNotInGroupMessage);
+
+                const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
+                if (mostRecentChange) {
+                    const lastActionWasAdd = mostRecentChange.membershipChangeType === MembershipChangeType.Added;
+                    if (actualInGroup && !lastActionWasAdd) {
+                        setUserManualNote(strings.JobDetails.Panel.userManuallyAddedNote);
+                    } else if (!actualInGroup && lastActionWasAdd) {
+                        setUserManualNote(strings.JobDetails.Panel.userManuallyRemovedNote);
+                    }
                 }
-            } else if (result.checkedCurrentGroupMembership) {
-                if (result.userInCurrentGroup) {
-                    let message = strings.JobDetails.Panel.userCurrentlyInGroupMessage;
-                    const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
-                    if (mostRecentChange?.membershipChangeType === MembershipChangeType.Removed) {
-                        message += ` ${strings.JobDetails.Panel.userManuallyAddedNote}`;
-                    }
-                    setUserSearchInfo(message);
-                } else {
-                    let message = strings.JobDetails.Panel.userNotInGroupMessage;
-                    const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
-                    if (mostRecentChange?.membershipChangeType === MembershipChangeType.Added) {
-                        message += ` ${strings.JobDetails.Panel.userManuallyRemovedNote}`;
-                    }
-                    setUserSearchInfo(message);
+            } else if (result.matchingRunIds.length > 0) {
+                const mostRecentChange = getMostRecentMembershipChange(result.runMembershipChanges);
+                if (mostRecentChange) {
+                    const inferredInGroup = mostRecentChange.membershipChangeType === MembershipChangeType.Added;
+                    setUserInGroup(inferredInGroup);
+                    setUserSearchInfo(inferredInGroup
+                        ? strings.JobDetails.Panel.userCurrentlyInGroupMessage
+                        : strings.JobDetails.Panel.userNotInGroupMessage);
                 }
             }
         } catch {
@@ -454,6 +474,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
         setSyncPageNumber(1);
         setUserSearchError(null);
         setUserSearchInfo(null);
+        setUserInGroup(null);
+        setUserManualNote(null);
         setShowProgressUnavailableMessage(false);
         updateUserPickerPopup([]);
 
@@ -546,8 +568,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                 <span
                     className={highlightClass}
                     aria-label={highlightChangeType === MembershipChangeType.Added
-                        ? `${value} (user was added in this sync)`
-                        : `${value} (user was removed in this sync)`}
+                        ? strings.JobDetails.Panel.userAddedInSyncAriaLabel.replace('{0}', String(value))
+                        : strings.JobDetails.Panel.userRemovedInSyncAriaLabel.replace('{0}', String(value))}
                 >
                     {value}
                 </span>
@@ -617,6 +639,8 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
             setIsUserSearchLoading(false);
             setUserSearchError(null);
             setUserSearchInfo(null);
+            setUserInGroup(null);
+            setUserManualNote(null);
             setShowProgressUnavailableMessage(false);
             setSearchProgressText(null);
             setUserPickerSuggestions([]);
@@ -1245,7 +1269,7 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                     styles={isExpanded && expandedContent ? { root: { borderBottom: 'none' } } : undefined}
                 />
                 {isExpanded && expandedContent && (
-                    <div style={{ padding: '4px 12px 8px 12px', backgroundColor: 'inherit', borderBottom: '1px solid #edebe9' }}>
+                    <div style={{ padding: '4px 12px 8px 12px', backgroundColor: 'inherit', borderBottom: `1px solid ${theme.palette.neutralLight}` }}>
                         {expandedContent}
                     </div>
                 )}
@@ -1382,9 +1406,27 @@ export const JobHistoryPanelBase: React.FunctionComponent<IJobHistoryPanelProps>
                             </MessageBar>
                         )}
                         {userSearchInfo && !isUserSearchLoading && (
-                            <MessageBar messageBarType={MessageBarType.info}>
-                                {userSearchInfo}
-                            </MessageBar>
+                            <div
+                                className={classNames.userSearchBanner}
+                                style={userInGroup === false ? { backgroundColor: theme.semanticColors.warningBackground } : undefined}
+                            >
+                                <Icon
+                                    iconName={userInGroup ? 'CompletedSolid' : 'Warning'}
+                                    className={classNames.userSearchBannerIcon}
+                                    style={{ color: userInGroup ? theme.palette.themePrimary : theme.palette.neutralPrimary }}
+                                />
+                                <span className={classNames.userSearchBannerText}>
+                                    {userSearchInfo}
+                                </span>
+                                <span className={classNames.userSearchBannerNote}>
+                                    <strong>{strings.JobDetails.Panel.syncHistoryRetentionNoteLabel}</strong> {strings.JobDetails.Panel.syncHistoryRetentionNote}
+                                </span>
+                                {userManualNote && (
+                                    <span className={classNames.userSearchBannerNote} style={{ fontStyle: 'italic' }}>
+                                        {userManualNote}
+                                    </span>
+                                )}
+                            </div>
                         )}
                         <DetailsList
                             setKey="combinedSyncSet"

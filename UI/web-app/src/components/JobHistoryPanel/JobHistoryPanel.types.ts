@@ -40,6 +40,11 @@ export interface IJobHistoryPanelStyles {
     userSuggestionSecondaryText: IStyle;
     highlightedAddedCell: IStyle;
     highlightedRemovedCell: IStyle;
+    matchingRow?: IStyle;
+    userSearchBanner: IStyle;
+    userSearchBannerIcon: IStyle;
+    userSearchBannerText: IStyle;
+    userSearchBannerNote: IStyle;
 }
 
 export interface IJobHistoryPanelStyleProps {

@@ -313,7 +313,8 @@ export const searchSyncHistoryByUser = createAsyncThunk<
       'Content-Type': 'application/json'
     });
 
-    const url = new URL(config.searchSyncHistoryUser(encodeURIComponent(syncJobId), encodeURIComponent(userObjectId)));
+    const baseUri = globalThis.location?.origin ?? '';
+    const url = new URL(config.searchSyncHistoryUser(encodeURIComponent(syncJobId), encodeURIComponent(userObjectId)), baseUri);
     if (requestId) {
       url.searchParams.set('requestId', requestId);
     }
