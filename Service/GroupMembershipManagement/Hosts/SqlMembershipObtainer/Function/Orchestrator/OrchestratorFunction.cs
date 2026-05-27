@@ -39,6 +39,7 @@ namespace SqlMembershipObtainer
             });
 
             logger.FunctionStarted(nameof(OrchestratorFunction));
+            Guid? adfRunId = null;
 
             try
             {
@@ -108,8 +109,11 @@ namespace SqlMembershipObtainer
                                 Exclusionary = mainRequest.Exclusionary
                             });
 
+                adfRunId = senderResponse.AdfRunId;
+
                 if (senderResponse.Status != SyncStatus.InProgress)
                 {
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = senderResponse.Status, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = senderResponse.Status, ResultStatus = ResultStatus.Failure, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts });
                     return;
                 }
@@ -126,6 +130,8 @@ namespace SqlMembershipObtainer
                     };
 
                     await context.CallActivityAsync(nameof(QueueMessageSenderFunction), content);
+
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { Status = SyncStatus.InProgress, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
                 }
                 else
                 {
@@ -138,7 +144,8 @@ namespace SqlMembershipObtainer
                                     SyncJob = syncJob,
                                     Status = SyncStatus.FilePathNotValid,
                                     CurrentPart = currentPart,
-                                    TotalParts = totalParts
+                                    TotalParts = totalParts,
+                                    AdfRunId = adfRunId
                                 });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.FilePathNotValid, ResultStatus = ResultStatus.Failure, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts });
                 }
@@ -149,14 +156,14 @@ namespace SqlMembershipObtainer
                 syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
                 var httpStatus = ex.ResponseStatusCode == (int)HttpStatusCode.ServiceUnavailable ? "Service Unavailable" : "Bad Gateway";
                 logger.ReschedulingJob(syncJob.StartDate, httpStatus);
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle, CurrentPart = currentPart, TotalParts = totalParts });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts });
                 return;
             }
             catch (SqlException sqlEx)
             {
                 logger.SqlExceptionCaught(sqlEx);
-                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error, CurrentPart = currentPart, TotalParts = totalParts });
+                await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Error, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
                 throw;
             }
             catch (Exception ex)
@@ -176,7 +183,7 @@ namespace SqlMembershipObtainer
                 {
                     syncJob.StartDate = context.CurrentUtcDateTime.AddMinutes(30);
                     logger.ReschedulingJob(syncJob.StartDate, "Internal .NET Framework Data Provider error 6");
-                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle, CurrentPart = currentPart, TotalParts = totalParts });
+                    await context.CallActivityAsync(nameof(JobStatusUpdaterFunction), new JobStatusUpdaterRequest { SyncJob = syncJob, Status = SyncStatus.Idle, CurrentPart = currentPart, TotalParts = totalParts, AdfRunId = adfRunId });
                     await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = SyncStatus.Idle, ResultStatus = ResultStatus.Success, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts });
                     return;
                 }
@@ -190,7 +197,8 @@ namespace SqlMembershipObtainer
                                     SyncJob = syncJob,
                                     Status = status,
                                     CurrentPart = currentPart,
-                                    TotalParts = totalParts
+                                    TotalParts = totalParts,
+                                    AdfRunId = adfRunId
                                 });
                 await context.CallActivityAsync(nameof(TelemetryTrackerFunction), new TelemetryTrackerRequest { JobStatus = status, ResultStatus = ResultStatus.Failure, SyncJob = syncJob, CurrentPart = currentPart, TotalParts = totalParts });
             }

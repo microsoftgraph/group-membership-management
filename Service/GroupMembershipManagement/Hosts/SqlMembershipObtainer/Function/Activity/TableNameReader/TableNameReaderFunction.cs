@@ -6,6 +6,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Repositories.Contracts.Helpers;
 using Services.Contracts;
+using SqlMembershipObtainer.Entities;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ namespace SqlMembershipObtainer
         }
 
         [Function(nameof(TableNameReaderFunction))]
-        public async Task<string> GetSqlMembershipTableName([ActivityTrigger] TableNameReaderRequest request)
+        public async Task<TableNameResult> GetSqlMembershipTableName([ActivityTrigger] TableNameReaderRequest request)
         {
             using (_logger.BeginSyncJobScope(request.SyncJob, new Dictionary<string, object>
             {
@@ -36,16 +37,16 @@ namespace SqlMembershipObtainer
             {
                 _logger.FunctionStarted(nameof(TableNameReaderFunction));
 
-                string sqlMembershipObtainerTableName = null;
+                TableNameResult result = null;
 
                 await _retryPolicy.ExecuteAsync(async () =>
                 {
-                    sqlMembershipObtainerTableName = await _sqlMembershipObtainerService.GetTableNameAsync(request.SyncJob.RunId, request.GroupId);
+                    result = await _sqlMembershipObtainerService.GetTableNameAsync(request.SyncJob.RunId, request.GroupId);
                 });
 
                 _logger.FunctionCompleted(nameof(TableNameReaderFunction));
 
-                return sqlMembershipObtainerTableName;
+                return result;
             }
         }
 

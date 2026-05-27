@@ -165,7 +165,7 @@ namespace Services
             };
         }
 
-        public async Task<string> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId)
+        public async Task<TableNameResult> GetTableNameAsync(Guid? runId, Guid? targetOfficeGroupId)
         {
             var adfRunId = await GetADFRunIdAsync(runId);
             var tableName = adfRunId.Replace("-", "");
@@ -176,7 +176,11 @@ namespace Services
             else
                 _logger.TableNameDoesNotExist(tableName);
 
-            return tableExists ? tableName : "";
+            return new TableNameResult
+            {
+                TableName = tableExists ? tableName : "",
+                AdfRunId = ParseAdfRunIdGuid(adfRunId)
+            };
         }
 
         private async Task<bool> CheckIfTableExists(string tableName, Guid? runId, Guid? targetOfficeGroupId)
@@ -248,6 +252,17 @@ namespace Services
         private async Task<string> GetADFRunIdAsync(Guid? runId)
         {
             return await _dataFactoryService.GetMostRecentSucceededRunIdAsync(runId);
+        }
+
+        private Guid? ParseAdfRunIdGuid(string adfRunIdString)
+        {
+            if (Guid.TryParse(adfRunIdString, out var adfRunGuid))
+            {
+                return adfRunGuid;
+            }
+
+            _logger.LogWarning("AdfRunId is not a valid GUID: {AdfRunId}", adfRunIdString);
+            return null;
         }
     }
 }

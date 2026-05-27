@@ -2,6 +2,7 @@
 // Licensed under the MIT license.
 using Entities;
 using Models;
+using System;
 
 namespace SqlMembershipObtainer
 {
@@ -11,5 +12,6 @@ namespace SqlMembershipObtainer
         public required SyncJob SyncJob { get; init; }
         public required int CurrentPart { get; init; }
         public required int TotalParts { get; init; }
+        public Guid? AdfRunId { get; init; }
     }
 }

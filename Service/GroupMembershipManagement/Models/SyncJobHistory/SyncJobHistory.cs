@@ -70,6 +70,12 @@ namespace Models.SyncJobHistory
         public int? AfterSyncUserCount { get; set; }
 
         /// <summary>
+        /// Gets or sets the ADF pipeline run identifier associated with this sync execution.
+        /// Null if the job has no SQL membership sources during this run.
+        /// </summary>
+        public Guid? AdfRunId { get; set; }
+
+        /// <summary>
         /// Gets or sets the function that updated the job status
         /// </summary>
         public string UpdatedByFunction { get; set; }

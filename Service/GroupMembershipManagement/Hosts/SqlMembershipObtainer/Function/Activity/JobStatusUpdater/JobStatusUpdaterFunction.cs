@@ -47,6 +47,7 @@ namespace SqlMembershipObtainer
                     Status = request.Status.ToString(),
                     UpdatedByFunction = updatedBy,
                     EndTime = request.Status != SyncStatus.InProgress ? now : null,
+                    AdfRunId = request.AdfRunId,
                     UpdatedAt = now
                 };
 

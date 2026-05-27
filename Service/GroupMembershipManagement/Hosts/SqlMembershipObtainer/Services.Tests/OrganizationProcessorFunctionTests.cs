@@ -4,7 +4,6 @@ using Microsoft.DurableTask;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Models;
 using SqlMembershipObtainer;
@@ -69,8 +68,8 @@ namespace Services.Tests
 
             orgProcessorContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
-            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
-                .ReturnsAsync("sometable");
+            orgProcessorContext.Setup(x => x.CallActivityAsync<TableNameResult>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new TableNameResult { TableName = "sometable", AdfRunId = Guid.NewGuid() });
             orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ManagerOrgReaderFunction), It.IsAny<ManagerOrgReaderRequest>(), It.IsAny<TaskOptions>()))
                 .ReturnsAsync(new MembershipFileResult());
@@ -78,7 +77,7 @@ namespace Services.Tests
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
 
-            orgProcessorContext.Verify(x => x.CallActivityAsync<string>(
+            orgProcessorContext.Verify(x => x.CallActivityAsync<TableNameResult>(
                 nameof(TableNameReaderFunction),
                 It.Is<TableNameReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
                 It.IsAny<TaskOptions>()), Times.Once());
@@ -112,8 +111,8 @@ namespace Services.Tests
 
             orgProcessorContext.Setup(x => x.CreateReplaySafeLogger(It.IsAny<string>())).Returns(NullLogger.Instance);
             orgProcessorContext.Setup(x => x.GetInput<OrganizationProcessorRequest>()).Returns(request);
-            orgProcessorContext.Setup(x => x.CallActivityAsync<string>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
-                .ReturnsAsync("sometable");
+            orgProcessorContext.Setup(x => x.CallActivityAsync<TableNameResult>(nameof(TableNameReaderFunction), It.IsAny<TableNameReaderRequest>(), It.IsAny<TaskOptions>()))
+                .ReturnsAsync(new TableNameResult { TableName = "sometable", AdfRunId = Guid.NewGuid() });
             orgProcessorContext.Setup(x => x.CallActivityAsync<MembershipFileResult>(
                 nameof(ChildEntitiesFilterFunction), It.IsAny<ChildEntitiesFilterRequest>(), It.IsAny<TaskOptions>()))
                 .Callback<TaskName, object, TaskOptions>(async (name, request, options) =>
@@ -125,7 +124,7 @@ namespace Services.Tests
             var function = new OrganizationProcessorFunction();
             await function.ProcessQueryAsync(orgProcessorContext.Object);
 
-            orgProcessorContext.Verify(x => x.CallActivityAsync<string>(
+            orgProcessorContext.Verify(x => x.CallActivityAsync<TableNameResult>(
                 nameof(TableNameReaderFunction),
                 It.Is<TableNameReaderRequest>(r => r.CurrentPart == 1 && r.TotalParts == 1),
                 It.IsAny<TaskOptions>()), Times.Once());

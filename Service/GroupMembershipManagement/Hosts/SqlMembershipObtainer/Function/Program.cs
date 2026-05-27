@@ -15,7 +15,6 @@ using Repositories.BlobStorage;
 using Repositories.Contracts;
 using Repositories.Contracts.InjectConfig;
 using Repositories.DataFactory;
-using Repositories.EntityFramework;
 using Repositories.ServiceBusQueue;
 using Repositories.SqlMembershipRepository;
 using Models;

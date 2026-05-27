@@ -5,6 +5,7 @@ using Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Models;
+using Models.AdfRun;
 using Models.Notifications;
 using Models.SyncJobHistory;
 using System.Text.Json;
@@ -25,6 +26,7 @@ namespace Repositories.EntityFramework.Contexts
         public DbSet<DestinationEmail> DestinationEmail { get; set; }
         public DbSet<Entities.SyncJobChange> SyncJobChanges { get; set; } = null!;
         public DbSet<SyncJobHistory> SyncJobHistory { get; set; } = null!;
+        public DbSet<AdfRun> AdfRuns { get; set; } = null!;
         public DbSet<ThresholdNotification> ThresholdNotifications { get; set; } = null!;
         public DbSet<ServiceStatus> ServiceStatus { get; set; }
         public DbSet<ServiceStatusHistory> ServiceStatusHistory { get; set; }
@@ -177,6 +179,7 @@ namespace Repositories.EntityFramework.Contexts
                 entity.Property(h => h.ThresholdViolations);
                 entity.Property(h => h.BeforeSyncUserCount);
                 entity.Property(h => h.AfterSyncUserCount);
+                entity.Property(h => h.AdfRunId);
                 entity.Property(h => h.UpdatedByFunction).HasMaxLength(255);
                 entity.Property(h => h.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(h => h.UpdatedAt)
@@ -188,6 +191,20 @@ namespace Repositories.EntityFramework.Contexts
                 entity.HasIndex(h => h.EndTime);
 
                 entity.ToTable("SyncJobHistory");
+            });
+
+            modelBuilder.Entity<AdfRun>(entity =>
+            {
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.Id).ValueGeneratedOnAdd().HasDefaultValueSql("NEWSEQUENTIALID()");
+                entity.Property(a => a.AdfRunId).IsRequired().HasMaxLength(255);
+                entity.Property(a => a.Notes).HasMaxLength(2000);
+                entity.Property(a => a.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(a => a.NotesModifiedAt);
+
+                entity.HasIndex(a => a.AdfRunId).IsUnique();
+
+                entity.ToTable("AdfRuns");
             });
 
             modelBuilder.Entity<ThresholdNotification>(entity =>

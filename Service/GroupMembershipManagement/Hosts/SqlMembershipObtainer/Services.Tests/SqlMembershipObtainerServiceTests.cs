@@ -180,5 +180,133 @@ namespace Services.Tests
             Assert.AreEqual(SyncStatus.InProgress, result.Status);
         }
 
+        [TestMethod]
+        public async Task GetTableNameAsync_ReturnsAdfRunIdGuid_WhenAdfReturnsValidGuid()
+        {
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            var dryRunValue = new Mock<IDryRunValue>();
+            var dfService = new Mock<IDataFactoryService>();
+
+            var runId = Guid.NewGuid();
+            var targetGroupId = Guid.NewGuid();
+            var adfRunIdString = "12345678-1234-1234-1234-123456789012";
+            var expectedTableName = adfRunIdString.Replace("-", "");
+            var expectedAdfRunGuid = Guid.Parse(adfRunIdString);
+
+            dfService.Setup(x => x.GetMostRecentSucceededRunIdAsync(runId))
+                .ReturnsAsync(adfRunIdString);
+
+            sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(expectedTableName))
+                .ReturnsAsync(true);
+
+            var sqlMembershipObtainerService = new SqlMembershipObtainerService(
+                                            sqlMembershipRepository.Object,
+                                            blobStorageRepository.Object,
+                                            syncJobStatusService.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
+                                            logger,
+                                            telemetryClient,
+                                            dryRunValue.Object,
+                                            dfService.Object);
+
+            var result = await sqlMembershipObtainerService.GetTableNameAsync(runId, targetGroupId);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(expectedTableName, result.TableName);
+            Assert.AreEqual(expectedAdfRunGuid, result.AdfRunId);
+        }
+
+        [TestMethod]
+        public async Task GetTableNameAsync_ReturnsNullAdfRunId_WhenAdfReturnsNonGuidString()
+        {
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            var dryRunValue = new Mock<IDryRunValue>();
+            var dfService = new Mock<IDataFactoryService>();
+
+            var runId = Guid.NewGuid();
+            var targetGroupId = Guid.NewGuid();
+            var adfRunIdString = "not-a-guid";
+            var expectedTableName = adfRunIdString.Replace("-", "");
+
+            dfService.Setup(x => x.GetMostRecentSucceededRunIdAsync(runId))
+                .ReturnsAsync(adfRunIdString);
+
+            sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(expectedTableName))
+                .ReturnsAsync(true);
+
+            var sqlMembershipObtainerService = new SqlMembershipObtainerService(
+                                            sqlMembershipRepository.Object,
+                                            blobStorageRepository.Object,
+                                            syncJobStatusService.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
+                                            logger,
+                                            telemetryClient,
+                                            dryRunValue.Object,
+                                            dfService.Object);
+
+            var result = await sqlMembershipObtainerService.GetTableNameAsync(runId, targetGroupId);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual(expectedTableName, result.TableName);
+            Assert.IsNull(result.AdfRunId);
+        }
+
+        [TestMethod]
+        public async Task GetTableNameAsync_ReturnsEmptyTableName_WhenTableDoesNotExist()
+        {
+            var sqlMembershipRepository = new Mock<ISqlMembershipRepository>();
+            var blobStorageRepository = new Mock<IBlobStorageRepository>();
+            var syncJobStatusService = new Mock<ISyncJobStatusService>();
+            var groupsRepository = new Mock<IDatabaseGroupsRepository>();
+            var channelsRepository = new Mock<IDatabaseChannelsRepository>();
+            var logger = NullLogger<SqlMembershipObtainerService>.Instance;
+            var telemetryClient = new TelemetryClient(new TelemetryConfiguration());
+            var dryRunValue = new Mock<IDryRunValue>();
+            var dfService = new Mock<IDataFactoryService>();
+
+            var runId = Guid.NewGuid();
+            var targetGroupId = Guid.NewGuid();
+            var adfRunIdString = "12345678-1234-1234-1234-123456789012";
+            var expectedTableName = adfRunIdString.Replace("-", "");
+            var expectedAdfRunGuid = Guid.Parse(adfRunIdString);
+
+            dfService.Setup(x => x.GetMostRecentSucceededRunIdAsync(runId))
+                .ReturnsAsync(adfRunIdString);
+
+            sqlMembershipRepository.Setup(x => x.CheckIfTableExistsAsync(expectedTableName))
+                .ReturnsAsync(false);
+
+            var sqlMembershipObtainerService = new SqlMembershipObtainerService(
+                                            sqlMembershipRepository.Object,
+                                            blobStorageRepository.Object,
+                                            syncJobStatusService.Object,
+                                            groupsRepository.Object,
+                                            channelsRepository.Object,
+                                            logger,
+                                            telemetryClient,
+                                            dryRunValue.Object,
+                                            dfService.Object);
+
+            var result = await sqlMembershipObtainerService.GetTableNameAsync(runId, targetGroupId);
+
+            Assert.IsNotNull(result);
+            Assert.AreEqual("", result.TableName);
+            // AdfRunId is parsed from the ADF API response regardless of whether the table exists.
+            Assert.AreEqual(expectedAdfRunGuid, result.AdfRunId);
+        }
     }
 }

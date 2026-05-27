@@ -29,7 +29,10 @@ namespace SqlMembershipObtainer
 
             logger.FunctionStarted(nameof(OrganizationProcessorFunction));
 
-            var tableName = await context.CallActivityAsync<string>(nameof(TableNameReaderFunction), new TableNameReaderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, CurrentPart = request.CurrentPart, TotalParts = request.TotalParts });
+            var tableNameResult = await context.CallActivityAsync<TableNameResult>(nameof(TableNameReaderFunction), new TableNameReaderRequest { SyncJob = request.SyncJob, GroupId = request.GroupId, CurrentPart = request.CurrentPart, TotalParts = request.TotalParts });
+            var tableName = tableNameResult?.TableName;
+            response.AdfRunId = tableNameResult?.AdfRunId;
+
             if (string.IsNullOrWhiteSpace(tableName))
             {
                 logger.TableDoesNotExist();
@@ -55,6 +58,7 @@ namespace SqlMembershipObtainer
                                                         Exclusionary = request.Exclusionary,
                                                         TableName = tableName
                                                     });
+                response.AdfRunId = tableNameResult?.AdfRunId;
             }
             else
             {
@@ -72,6 +76,7 @@ namespace SqlMembershipObtainer
                                                                     Exclusionary = request.Exclusionary,
                                                                     TableName = tableName
                                                                 });
+                    response.AdfRunId = tableNameResult?.AdfRunId;
                 }
             }
 
