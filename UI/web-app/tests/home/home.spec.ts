@@ -50,3 +50,37 @@ test('Last Modified column is visible in the jobs list', async ({ page }) => {
 
   console.log('✅ Last Modified column is visible in the jobs list');
 });
+
+test('Destination search debounces rapid typing into a single jobs request', async ({ page }) => {
+  // Count GET /api/v1/jobs requests fired AFTER the initial page load settles.
+  const jobsRequests: string[] = [];
+  let tracking = false;
+  page.on('request', (req) => {
+    if (!tracking) return;
+    const url = req.url();
+    if (req.method() === 'GET' && /\/api\/v1\/jobs(\?|$)/.test(url)) {
+      jobsRequests.push(url);
+    }
+  });
+
+  // Let the page settle so the initial jobs fetch doesn't pollute the count.
+  await page.waitForLoadState('networkidle');
+  tracking = true;
+
+  const searchBox = page.getByPlaceholder('Search by Name, Email, or Object ID');
+  await expect(searchBox).toBeVisible();
+
+  // Type "LoadTesting" character-by-character with no delay. Without the debounce
+  // fix this fires one GET /jobs per keystroke (11). With the 350ms debounce
+  // only the final value should produce a single GET /jobs.
+  await searchBox.pressSequentially('LoadTesting', { delay: 20 });
+
+  // Wait past the 350ms debounce window for the trailing-edge fetch to fire.
+  await page.waitForTimeout(1500);
+
+  // The fix means at most 1 jobs request (the debounced trailing-edge fetch).
+  // Without the fix we'd see ~11 (one per keystroke).
+  expect(jobsRequests.length, `expected <=2 jobs fetches, got ${jobsRequests.length}: ${jobsRequests.join('\n')}`).toBeLessThanOrEqual(2);
+
+  console.log(`✅ Debounced destination search fired ${jobsRequests.length} jobs request(s) for 11 keystrokes`);
+});

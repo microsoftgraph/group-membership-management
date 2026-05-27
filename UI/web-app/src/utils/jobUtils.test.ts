@@ -1,8 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 
-import { describe, expect, it } from 'vitest';
-import { processJob, getDisplayActionRequired, getStatusDisplayText } from './jobUtils';
+import { describe, expect, it, vi } from 'vitest';
+import { processJob, getDisplayActionRequired, getStatusDisplayText, debounce } from './jobUtils';
 import { ActionRequired, SyncStatus, RunHistoryStatus } from '../models/Status';
 import type { Job } from '../models/Job';
 
@@ -194,5 +194,47 @@ describe('getStatusDisplayText', () => {
   it('returns status as-is for unknown status', () => {
     const result = getStatusDisplayText('UnknownStatus');
     expect(result).toBe('UnknownStatus');
+  });
+});
+
+describe('debounce', () => {
+  it('collapses rapid calls into a single trailing-edge invocation with the latest args', () => {
+    vi.useFakeTimers();
+    try {
+      const spy = vi.fn();
+      const debounced = debounce(spy, 350);
+
+      debounced('f');
+      debounced('fa');
+      debounced('fal');
+      debounced('fallback');
+
+      expect(spy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(349);
+      expect(spy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(1);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith('fallback');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('cancel() prevents a pending invocation from firing', () => {
+    vi.useFakeTimers();
+    try {
+      const spy = vi.fn();
+      const debounced = debounce(spy, 350);
+
+      debounced('pending');
+      debounced.cancel();
+
+      vi.advanceTimersByTime(1000);
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
