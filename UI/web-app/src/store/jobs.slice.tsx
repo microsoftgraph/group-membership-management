@@ -26,6 +26,12 @@ export interface JobsState {
    * three thunks write the same `selectedJob` slot.
    */
   selectedJobRequestId?: string;
+  /**
+   * Request ID of the latest in-flight fetchJobs thunk. Used to discard
+   * late-arriving responses when the user types rapidly in the destination
+   * search box, preventing a slow earlier response from overwriting a fresh one.
+   */
+  fetchJobsRequestId?: string;
   getJobsError: string | undefined;
   getJobDetailsError: string | undefined;
   patchJobDetailsResponse: PatchJobResponse | undefined;
@@ -40,6 +46,10 @@ export interface JobsState {
   approveJobsLoading: boolean;
   approveJobsError: string | undefined;
   jobOwnerFilterSuggestions?: PeoplePickerPersona[];
+  /** Request ID of the latest in-flight getPeoplePickerSuggestions thunk. Used to discard
+   *  late-arriving responses when the user types rapidly, preventing stale suggestions
+   *  from overwriting fresh results. */
+  jobOwnerFilterSuggestionsRequestId?: string;
   removeGMMLoading: boolean;
   removeGMMResponse: RemoveGMMResponse | undefined;
   removeGMMError: string | undefined;
@@ -144,15 +154,21 @@ export const jobsSlice = createSlice({
     }
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchJobs.pending, (state) => {
+    // fetchJobs – requestId-guarded so a slow earlier response (e.g. for "C")
+    // can't overwrite a fresh later one (e.g. for "CSS") when the user types.
+    builder.addCase(fetchJobs.pending, (state, action) => {
       state.jobsLoading = true;
+      state.fetchJobsRequestId = action.meta.requestId;
+      state.getJobsError = undefined;
     });
     builder.addCase(fetchJobs.fulfilled, (state, action) => {
+      if (action.meta.requestId !== state.fetchJobsRequestId) return;
       state.jobsLoading = false;
       state.jobs = action.payload.items;
       state.totalNumberOfPages = action.payload.totalNumberOfPages;
     });
     builder.addCase(fetchJobs.rejected, (state, action) => {
+      if (action.meta.requestId !== state.fetchJobsRequestId) return;
       state.jobsLoading = false;
       state.getJobsError = action.error.message;
     });
@@ -270,9 +286,17 @@ export const jobsSlice = createSlice({
       state.approveJobsError = action.error.message;
     });
 
-    // jobOwnerFilterSuggestions
-    builder.addCase(getPeoplePickerSuggestions.fulfilled, (state, {payload}: PayloadAction<PeoplePickerPersona[]>) => {
-      state.jobOwnerFilterSuggestions = payload;
+    // jobOwnerFilterSuggestions – requestId-guarded against rapid typing races.
+    builder.addCase(getPeoplePickerSuggestions.pending, (state, action) => {
+      state.jobOwnerFilterSuggestionsRequestId = action.meta.requestId;
+    });
+    builder.addCase(getPeoplePickerSuggestions.fulfilled, (state, action) => {
+      if (action.meta.requestId !== state.jobOwnerFilterSuggestionsRequestId) return;
+      state.jobOwnerFilterSuggestions = action.payload;
+    });
+    builder.addCase(getPeoplePickerSuggestions.rejected, (state, action) => {
+      if (action.meta.requestId !== state.jobOwnerFilterSuggestionsRequestId) return;
+      state.jobOwnerFilterSuggestions = [];
     });
 
     // removeGMM

@@ -77,12 +77,55 @@ export const getDisplayActionRequired = (job: Job, canReviewJob: boolean): strin
   return job.actionRequired;
 };
 
-export function debounce<T extends (...args: any[]) => void>(func: T, wait: number) {
-  let timeout: NodeJS.Timeout;
-  return function (this: ThisParameterType<T>, ...args: Parameters<T>) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(this, args), wait);
+export interface DebouncedFunction<T extends (...args: any[]) => void> {
+  (...args: Parameters<T>): void;
+  cancel: () => void;
+  flush: () => void;
+}
+
+export function debounce<T extends (...args: any[]) => void>(func: T, wait: number): DebouncedFunction<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  let lastThis: any;
+  let lastArgs: Parameters<T> | undefined;
+
+  const debounced = function (this: ThisParameterType<T>, ...args: Parameters<T>) {
+    lastThis = this;
+    lastArgs = args;
+    if (timeout) clearTimeout(timeout);
+    timeout = setTimeout(() => {
+      timeout = undefined;
+      const argsToUse = lastArgs as Parameters<T>;
+      const thisToUse = lastThis;
+      lastArgs = undefined;
+      lastThis = undefined;
+      func.apply(thisToUse, argsToUse);
+    }, wait);
+  } as DebouncedFunction<T>;
+
+  debounced.cancel = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = undefined;
+    }
+    lastArgs = undefined;
+    lastThis = undefined;
   };
+
+  debounced.flush = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+      timeout = undefined;
+      if (lastArgs) {
+        const argsToUse = lastArgs;
+        const thisToUse = lastThis;
+        lastArgs = undefined;
+        lastThis = undefined;
+        func.apply(thisToUse, argsToUse);
+      }
+    }
+  };
+
+  return debounced;
 };
 
 // Get the display text for a sync job history status

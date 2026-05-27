@@ -10,7 +10,7 @@ import {
   SelectionMode,
   ColumnActionsMode,
 } from '@fluentui/react/lib/DetailsList';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { approveJobs, downloadJobs, fetchJobs, getPeoplePickerSuggestions } from '../../store/jobs.api';
 import {
@@ -27,8 +27,7 @@ import {
   selectApproveJobsError,
   setApproveJobsResponse,
   setApproveJobsLoading,
-  selectJobsLoading,
-  selectPeoplePickerSuggestions
+  selectJobsLoading
 } from '../../store/jobs.slice';
 import { AppDispatch } from '../../store';
 
@@ -103,7 +102,7 @@ import { resetManageMembership } from '../../store/manageMembership.slice';
 import Papa from 'papaparse';
 import { selectIsJobTenantWriter, selectIsJobWriter, selectIsSubmissionReviewer, selectIsSubmissionRejector } from '../../store/roles.slice';
 import { destinationTypeLocalization } from '../../utils/destinationTypeUtils';
-import { getDisplayActionRequired } from '../../utils/jobUtils';
+import { debounce, getDisplayActionRequired } from '../../utils/jobUtils';
 
 const getClassNames = classNamesFunction<
   IJobsListStyleProps,
@@ -152,7 +151,6 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   const approveJobsError = useSelector(selectApproveJobsError);
 
   // Filter state
-  const ownerPickerSuggestions = useSelector(selectPeoplePickerSuggestions);
   const persistedFilterDestinationName = useSelector(selectPagingBarfilterDestinationName);
   const persistedFilterDestinationOwnerPersona = useSelector(selectPagingBarfilterDestinationOwnerPersona);
   const [searchValue, setSearchValue] = useState<string>(persistedFilterDestinationName || '');
@@ -161,11 +159,26 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
   });
 
   const handleSearchChanged = (_event?: React.ChangeEvent<HTMLInputElement>, newValue?: string): void => {
-    setSearchValue(newValue || '');
-    dispatch(setFilterDestinationName(newValue || ''));
+    const value = newValue || '';
+    setSearchValue(value);
+    debouncedDispatchDestinationName(value);
   };
 
+  const debouncedDispatchDestinationName = useMemo(
+    () => debounce((value: string) => {
+      dispatch(setFilterDestinationName(value));
+    }, 350),
+    [dispatch]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedDispatchDestinationName.cancel();
+    };
+  }, [debouncedDispatchDestinationName]);
+
   const handleSearchClear = (): void => {
+    debouncedDispatchDestinationName.cancel();
     setSearchValue('');
     dispatch(setFilterDestinationName(''));
   };
@@ -191,12 +204,13 @@ export const JobsListBase: React.FunctionComponent<IJobsListProps> = (
     if (!filterText) return [];
     const action = await dispatch(getPeoplePickerSuggestions(filterText));
     if (getPeoplePickerSuggestions.rejected.match(action)) {
-      return ownerPickerSuggestions ?? [];
+      return [];
     }
     return (action.payload as IPersonaProps[]) ?? [];
   };
 
   const clearFilters = () => {
+    debouncedDispatchDestinationName.cancel();
     dispatch(resetFilters());
     setSearchValue('');
     setSelectedOwners([]);

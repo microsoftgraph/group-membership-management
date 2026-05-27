@@ -17,7 +17,7 @@ import {
 import { useTheme } from '@fluentui/react/lib/Theme';
 import { IJobsListFilterProps, IJobsListFilterStyleProps, IJobsListFilterStyles } from './JobsListFilter.types';
 import { SyncStatus } from '../../models/Status';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStrings } from '../../store/hooks';
 import { IPersonaProps } from '@fluentui/react/lib/Persona';
 import { useDispatch, useSelector } from 'react-redux';
@@ -25,6 +25,7 @@ import { selectIsJobTenantWriter, selectIsSubmissionReviewer, selectIsSubmission
 import { AppDispatch } from '../../store';
 import { selectPeoplePickerSuggestions } from '../../store/jobs.slice';
 import { getPeoplePickerSuggestions } from '../../store/jobs.api';
+import { debounce } from '../../utils/jobUtils';
 import {
   setFilterActionRequired,
   setFilterStatus,
@@ -187,9 +188,23 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const handleNameChanged = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string): void => {
-    setDestinationName(newValue || '');
-    dispatch(setFilterDestinationName(newValue || ''));
+    const value = newValue || '';
+    setDestinationName(value);
+    debouncedDispatchDestinationName(value);
   };
+
+  const debouncedDispatchDestinationName = useMemo(
+    () => debounce((value: string) => {
+      dispatch(setFilterDestinationName(value));
+    }, 350),
+    [dispatch]
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedDispatchDestinationName.cancel();
+    };
+  }, [debouncedDispatchDestinationName]);
 
   const handleStatusChanged = (event: React.FormEvent<HTMLDivElement>, item?: IDropdownOption): void => {
     setStatusSelectedItem(item as IDropdownOption);
@@ -235,6 +250,7 @@ export const JobsListFilterBase: React.FunctionComponent<IJobsListFilterProps> =
   };
 
   const clearFilters = () => {
+    debouncedDispatchDestinationName.cancel();
     dispatch(setFilterDestinationId(''));
     dispatch(setFilterDestinationType(''));
     dispatch(setFilterDestinationName(''));
