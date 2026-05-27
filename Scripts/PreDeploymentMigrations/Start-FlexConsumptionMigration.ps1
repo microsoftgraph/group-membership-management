@@ -10,6 +10,7 @@ if ($Global:SuppressAzureWarnings) {
 
 $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 . ($ScriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+. ($ScriptsDirectory + '/FunctionAppCompat.ps1')
 
 <#
 .SYNOPSIS
@@ -384,7 +385,7 @@ function Get-FunctionsRequiringMigration {
 
     # Query Azure once and cache the results
     Write-Host "  ☁️  Querying Azure Function Apps..." -ForegroundColor Gray
-    $allFunctionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue -WarningAction $warningAction
+    $allFunctionApps = Get-FunctionAppCompat -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue -WarningAction $warningAction
 
     # Check if any function apps exist
     if ($null -eq $allFunctionApps -or $allFunctionApps.Count -eq 0) {
@@ -476,7 +477,7 @@ function Remove-FunctionAppAndServicePlan {
     try {
         Write-Host "    🗑️  Removing function app: $FunctionName..." -ForegroundColor Yellow
         Invoke-WithRetry -OperationName "Remove function app '$FunctionName'" -Operation {
-            Remove-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $FunctionName -Force -ErrorAction Stop
+            Remove-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $FunctionName -ErrorAction Stop
         }
         Write-Host "    🗑️  Removing service plan: $ServicePlanName..." -ForegroundColor Yellow
         Invoke-WithRetry -OperationName "Remove service plan '$ServicePlanName'" -Operation {

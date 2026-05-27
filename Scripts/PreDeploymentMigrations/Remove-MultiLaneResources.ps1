@@ -55,6 +55,7 @@ function Get-WarningAction {
 
 $ScriptsDirectory = Split-Path $PSScriptRoot -Parent
 . ($ScriptsDirectory + '/ReusableModules/Invoke-WithRetry.ps1')
+. ($ScriptsDirectory + '/FunctionAppCompat.ps1')
 
 function Get-TeamsChannelUpdaterSubscriptions {
     param(
@@ -309,7 +310,7 @@ function Remove-FunctionAppResources {
     try {
         # Remove function app with retry
         Invoke-WithRetry -OperationName "Removing function app: $FunctionName" -Operation {
-            Remove-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName -Name $FunctionName -Force -ErrorAction Stop
+            Remove-FunctionAppCompat -ResourceGroupName $ComputeResourceGroupName -Name $FunctionName -ErrorAction Stop
         }
 
         if (-not [string]::IsNullOrEmpty($ServicePlanName)) {
@@ -368,7 +369,7 @@ function Get-TargetFunctionApps {
         Write-Host "     Topic: messagesplitter - Medium, Onboarding" -ForegroundColor Gray
     }
     # Get all function apps in the resource group
-    $allFunctionApps = Get-AzFunctionApp -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue -WarningAction $warningAction
+    $allFunctionApps = Get-FunctionAppCompat -ResourceGroupName $ResourceGroupName -ErrorAction SilentlyContinue -WarningAction $warningAction
     if ($null -eq $allFunctionApps -or $allFunctionApps.Count -eq 0) {
         Write-Host "  📊 No function apps found in resource group" -ForegroundColor Yellow
         return @()
@@ -390,8 +391,8 @@ function Get-TargetFunctionApps {
             # Get storage account name from function app settings
             $storageAccountName = ""
             try {
-                # Get app settings using Get-AzFunctionAppSetting for better reliability
-                $appSettings = Get-AzFunctionAppSetting -ResourceGroupName $ResourceGroupName -Name $functionApp.Name -ErrorAction SilentlyContinue
+                # Get app settings using Get-FunctionAppSettingCompat for better reliability
+                $appSettings = Get-FunctionAppSettingCompat -ResourceGroupName $ResourceGroupName -Name $functionApp.Name -ErrorAction SilentlyContinue
 
                 if ($appSettings -and $appSettings.ContainsKey("AzureWebJobsStorage__accountName")) {
                     $storageAccountName = $appSettings["AzureWebJobsStorage__accountName"]

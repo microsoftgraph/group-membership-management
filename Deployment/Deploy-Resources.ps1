@@ -48,6 +48,7 @@ $maxRetriesForDeploymentOperations = 10
 
 $sharedScriptsDirectory = Join-Path $PSScriptRoot "../Scripts"
 . (Join-Path $sharedScriptsDirectory 'ReusableModules/Invoke-WithRetry.ps1')
+. (Join-Path $sharedScriptsDirectory 'FunctionAppCompat.ps1')
 
 function Set-PostDeploymentUpdates {
     [CmdletBinding()]
@@ -969,7 +970,7 @@ function Update-FunctionAppAuthSettings {
     foreach ($shortName in $FunctionAppNames) {
         $fullFunctionName = "$SolutionAbbreviation-compute-$EnvironmentAbbreviation-$shortName"
         $app = Invoke-WithRetry `
-            -Operation { Get-AzFunctionApp -ResourceGroupName $computeResourceGroup -Name $fullFunctionName -ErrorAction SilentlyContinue } `
+            -Operation { Get-FunctionAppCompat -ResourceGroupName $computeResourceGroup -Name $fullFunctionName -ErrorAction SilentlyContinue } `
             -OperationName "Get function app '$fullFunctionName'" `
             -MaxAttempts 3 -BaseDelaySeconds 2
         if ($null -ne $app) {
@@ -1453,7 +1454,7 @@ function Set-FunctionAppCode {
     Write-Host "`nPublishing function apps code"
 
     $functionApps = Invoke-WithRetry `
-        -Operation { Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroup } `
+        -Operation { Get-FunctionAppCompat -ResourceGroupName $ComputeResourceGroup } `
         -OperationName "Get function apps for code deploy" `
         -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
@@ -1588,13 +1589,13 @@ function Stop-FunctionApps {
     Write-Host "`nStopping function apps"
 
     $functionApps = Invoke-WithRetry `
-        -Operation { Get-AzFunctionApp -ResourceGroupName $ResourceGroupName } `
+        -Operation { Get-FunctionAppCompat -ResourceGroupName $ResourceGroupName } `
         -OperationName "Get function apps to stop" `
         -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($functionApp in $functionApps) {
         Write-Host "Stopping function app $($functionApp.Name)"
         Invoke-WithRetry `
-            -Operation { Stop-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name -Force } `
+            -Operation { Stop-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
             -OperationName "Stop $($functionApp.Name)" `
             -MaxAttempts 3 -BaseDelaySeconds 2
     }
@@ -1620,7 +1621,7 @@ function Start-FunctionApps {
     $jobTriggerApp = $null
 
     $functionApps = Invoke-WithRetry `
-        -Operation { Get-AzFunctionApp -ResourceGroupName $ResourceGroupName } `
+        -Operation { Get-FunctionAppCompat -ResourceGroupName $ResourceGroupName } `
         -OperationName "Get function apps to start" `
         -MaxAttempts 3 -BaseDelaySeconds 2
         
@@ -1632,7 +1633,7 @@ function Start-FunctionApps {
         }
         Write-Host "Starting function app $($functionApp.Name)"
         Invoke-WithRetry `
-            -Operation { Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
+            -Operation { Start-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $functionApp.Name } `
             -OperationName "Start $($functionApp.Name)" `
             -MaxAttempts 3 -BaseDelaySeconds 2
     }
@@ -1641,7 +1642,7 @@ function Start-FunctionApps {
         Write-Host "`nWaiting $JobTriggerDelaySeconds seconds before starting JobTrigger..."
         Start-Sleep -Seconds $JobTriggerDelaySeconds
         Write-Host "Starting $($jobTriggerApp.Name)"
-        Start-AzFunctionApp -ResourceGroupName $ResourceGroupName -Name $jobTriggerApp.Name
+        Start-FunctionAppCompat -ResourceGroupName $ResourceGroupName -Name $jobTriggerApp.Name
     }
 }
 
@@ -1653,13 +1654,13 @@ function Update-AppSettingsVersion {
 
     Write-Host "`nChecking function app settings"
     $functionApps = Invoke-WithRetry `
-        -Operation { Get-AzFunctionApp -ResourceGroupName $ComputeResourceGroupName } `
+        -Operation { Get-FunctionAppCompat -ResourceGroupName $ComputeResourceGroupName } `
         -OperationName "Get function apps for settings update" `
         -MaxAttempts 3 -BaseDelaySeconds 2
     foreach ($function in $functionApps) {
 
         $settings = Invoke-WithRetry `
-            -Operation { Get-AzFunctionAppSetting -ResourceGroupName $ComputeResourceGroupName -Name $function.Name } `
+            -Operation { Get-FunctionAppSettingCompat -ResourceGroupName $ComputeResourceGroupName -Name $function.Name } `
             -OperationName "Get settings for $($function.Name)" `
             -MaxAttempts 3 -BaseDelaySeconds 2
         foreach ($key in $settings.Keys) {
@@ -1674,7 +1675,7 @@ function Update-AppSettingsVersion {
                 Write-Host "Updating $($function.Name) -> $($kvReference.SecretName) to $($latestSecretVersion.Version)"
                 $updatedVersion = $settings[$key] -replace $kvReference.Version, $latestSecretVersion.Version
                 $updatedSettings = Invoke-WithRetry `
-                    -Operation { Update-AzFunctionAppSetting -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion } } `
+                    -Operation { Update-FunctionAppSettingCompat -Name $function.Name -ResourceGroupName $ComputeResourceGroupName -AppSetting @{$key = $updatedVersion } } `
                     -OperationName "Update setting for $($function.Name)" `
                     -MaxAttempts 3 -BaseDelaySeconds 2
             }
