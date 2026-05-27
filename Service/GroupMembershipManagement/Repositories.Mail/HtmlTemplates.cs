@@ -113,6 +113,49 @@ namespace Repositories.Mail
         private const string GrayCalloutTitleStyle =
             "font-size:13px;font-weight:700;color:#323130;letter-spacing:0.5px;margin-bottom:8px;";
 
+        // Shared brand bar prepended to every fallback email: GMM people icon + title + Microsoft wordmark.
+        private const string BrandHeaderHtml = @"
+        <!-- Brand header bar (GMM Notification + Microsoft logo) -->
+        <tr>
+          <td bgcolor=""#0078D4"" style=""background:#0078D4;padding:12px 24px;"">
+            <table width=""100%"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:collapse;""><tr>
+              <td align=""left"" valign=""middle"" style=""vertical-align:middle;"">
+                <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+                  <td width=""34"" height=""34"" align=""center"" valign=""middle"" bgcolor=""#FFFFFF"" style=""background:#FFFFFF;width:34px;height:34px;border-radius:4px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">
+                    <img src=""data:image/png;base64,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"" width=""24"" height=""24"" alt=""GMM"" style=""display:block;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;"" />
+                  </td>
+                  <td style=""padding-left:12px;vertical-align:middle;"">
+                    <div style=""color:#FFFFFF;opacity:0.85;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;line-height:1;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">GMM Notification</div>
+                    <div style=""color:#FFFFFF;font-size:15px;font-weight:600;line-height:1.3;margin-top:3px;font-family:'Segoe UI',Helvetica,Arial,sans-serif;"">Group Membership Management</div>
+                  </td>
+                </tr></table>
+              </td>
+              <td align=""right"" valign=""middle"" style=""vertical-align:middle;text-align:right;"">
+                <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;""><tr>
+                  <td style=""padding-right:8px;vertical-align:middle;"">
+                    <table cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""border-collapse:separate;"">
+                      <tr>
+                        <td width=""8"" height=""8"" bgcolor=""#F25022"" style=""background:#F25022;width:8px;height:8px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">&nbsp;</td>
+                        <td width=""2"" style=""width:2px;line-height:0;font-size:0;"">&nbsp;</td>
+                        <td width=""8"" height=""8"" bgcolor=""#7FBA00"" style=""background:#7FBA00;width:8px;height:8px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">&nbsp;</td>
+                      </tr>
+                      <tr><td colspan=""3"" height=""2"" style=""height:2px;line-height:0;font-size:0;"">&nbsp;</td></tr>
+                      <tr>
+                        <td width=""8"" height=""8"" bgcolor=""#00A4EF"" style=""background:#00A4EF;width:8px;height:8px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">&nbsp;</td>
+                        <td width=""2"" style=""width:2px;line-height:0;font-size:0;"">&nbsp;</td>
+                        <td width=""8"" height=""8"" bgcolor=""#FFB900"" style=""background:#FFB900;width:8px;height:8px;line-height:0;font-size:0;mso-line-height-rule:exactly;"">&nbsp;</td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td style=""vertical-align:middle;"">
+                    <span style=""color:#FFFFFF;font-size:13px;font-weight:600;font-family:'Segoe UI',Helvetica,Arial,sans-serif;letter-spacing:0.2px;"">Microsoft</span>
+                  </td>
+                </tr></table>
+              </td>
+            </tr></table>
+          </td>
+        </tr>";
+
         // ── Per-template header HTML (unique icon + background + title text per type) ──
         private const string SyncStartedHeaderHtml = @"
         <!-- Header bar -->
@@ -281,6 +324,7 @@ namespace Repositories.Mail
     <tr><td align=""center"" style=""padding:32px 16px;"">
 
       <table width=""600"" cellpadding=""0"" cellspacing=""0"" role=""presentation"" style=""background:#ffffff;border-radius:4px;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1);"">
+{BrandHeaderHtml}
 {headerHtml}
 
         <!-- Badge -->
